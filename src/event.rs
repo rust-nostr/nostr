@@ -1,50 +1,18 @@
-use std::{error::Error, str::FromStr, time::{Duration, SystemTime, UNIX_EPOCH}};
+use std::{
+    error::Error,
+    str::FromStr,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
-
-use chrono::{DateTime, NaiveDateTime};
 use chrono::{serde::ts_seconds, Utc};
+use chrono::{DateTime, NaiveDateTime};
 
-use bitcoin_hashes::{hex::FromHex, hex::ToHex, sha256, Hash};
+use bitcoin_hashes::{hex::FromHex, sha256, Hash};
 
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::{schnorrsig, Secp256k1};
-use serde::{Serialize, Deserialize, Deserializer};
-use serde_json::{Value, json};
+use secp256k1::{rand::rngs::OsRng, schnorrsig, Secp256k1};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::json;
 use serde_repr::*;
-use tungstenite::Message;
-
-use crate::error::NostrError;
-
-#[derive(Debug, PartialEq)]
-pub enum NostrMessage {
-    Ping,
-    Notice(String),
-    Event(Event),
-}
-
-pub fn handle_incoming_message(msg: Message) -> Result<NostrMessage, Box<dyn Error>> {
-    let text = msg.to_text()?;
-
-    // Ping
-    if text == "PING" {
-        return Ok(NostrMessage::Ping);
-    }
-
-    let v: Value = serde_json::from_str(text)?;
-
-    // Notice
-    if v[0] == "notice" {
-        let notice = v[1].to_string();
-        println!("message from relay: {}", notice.clone());
-        return Ok(NostrMessage::Notice(notice));
-    }
-
-    // Regular events
-    let event = Event::new_from_json(v[0].to_string())?;
-    let _context = v[1].clone();
-
-    Ok(NostrMessage::Event(event))
-}
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Event {
@@ -69,43 +37,54 @@ where
 }
 
 impl Event {
-    pub fn new(content: &str) -> Self {
+    /// Create a new TextNote Event
+    pub fn new_textnote(content: &str, keypair: &schnorrsig::KeyPair) -> Self {
         let secp = Secp256k1::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let key_pair = schnorrsig::KeyPair::new(&secp, &mut rng);
-        let pubkey = schnorrsig::PublicKey::from_keypair(&secp, &key_pair);
+        let pubkey = schnorrsig::PublicKey::from_keypair(&secp, keypair);
 
-        // Doing all this extra work to construct a time with zero nanoseconds
-        let now =
-            SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
+        // Doing all this extra work to construct a DateTime with zero nanoseconds
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time before Unix epoch");
         let naive = NaiveDateTime::from_timestamp(now.as_secs() as i64, 0);
         let created_at = DateTime::from_utc(naive, Utc);
 
+        // TODO: support more event kinds
         let kind = Kind::TextNote;
 
-        let event_json = json!([0, pubkey.to_string(), created_at, kind, [], content]).to_string();
-
+        // Generate this json just to hash it
+        let event_json = json!([0, pubkey, created_at, kind, [], content]).to_string();
         let id = sha256::Hash::hash(&event_json.as_bytes());
-        let message = secp256k1::Message::from_slice(&id.into_inner()).expect("Failed to make message");
-        let sig = secp.schnorrsig_sign(&message, &key_pair);
 
-        let event = Event {
+        // let m1 = Message::from_hashed_data::<sha256::Hash>("Hello world!".as_bytes());
+        // is equivalent to
+        // let m2 = Message::from(sha256::Hash::hash("Hello world!".as_bytes()));
+
+        let message = secp256k1::Message::from(id);
+        let mut rng = OsRng::new().expect("OsRng");
+
+        // Let the schnorr library handle the aux for us
+        // I _think_ this is bip340 compliant
+        let sig = secp.schnorrsig_sign_with_rng(&message, &keypair, &mut rng);
+
+        // This isn't failing so that's a good thing, yes?
+        secp.schnorrsig_verify(&sig, &message, &pubkey)
+            .expect("Failed to verify schnorrsig");
+
+        Event {
             id,
             pubkey,
             created_at,
             kind,
             tags: vec![],
             content: content.to_string(),
-            sig
-        };
-
-        dbg!(event.clone());
-
-        event
-
+            sig,
+        }
     }
 
-    pub fn new_dummy(
+    /// This is just for serde sanity checking
+    #[allow(dead_code)]
+    pub(crate) fn new_dummy(
         id: &str,
         pubkey: &str,
         created_at: u32,
@@ -131,8 +110,12 @@ impl Event {
         }
     }
 
-    fn new_from_json(json: String) -> Result<Self, Box<dyn Error>> {
+    pub fn new_from_json(json: String) -> Result<Self, Box<dyn Error>> {
         Ok(serde_json::from_str(&json)?)
+    }
+
+    pub fn as_json(&self) -> String {
+        serde_json::to_string(&self).unwrap()
     }
 }
 
