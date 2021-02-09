@@ -24,11 +24,8 @@ fn main() {
     let pubkey = schnorrsig::PublicKey::from_keypair(&secp, &keypair).to_string();
 
     let event = Event::new_textnote("hello", &keypair);
-    let event_json = event.as_json();
-    dbg!(event_json.clone());
-
+    let event_json = event.unwrap().as_json();
     let sub_message = format!("sub-key:{}", pubkey);
-    dbg!(sub_message.clone());
 
     socket
         .write_message(WsMessage::Text(sub_message.into()))

@@ -14,7 +14,7 @@ impl Message {
     pub fn handle(msg: &str) -> Result<Self, Box<dyn std::error::Error>> {
         dbg!(msg);
 
-        if msg == "" {
+        if msg.is_empty() {
             return Ok(Self::Empty);
         }
 

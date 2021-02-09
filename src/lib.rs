@@ -41,7 +41,7 @@ mod tests {
         let mut rng = OsRng::new().expect("OsRng");
         let keypair = schnorrsig::KeyPair::new(&secp, &mut rng);
 
-        let event = Event::new_textnote("hello", &keypair);
+        let event = Event::new_textnote("hello", &keypair).unwrap();
 
         let serialized = event.as_json();
         let deserialized = Event::new_from_json(serialized).unwrap();
