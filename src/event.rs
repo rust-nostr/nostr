@@ -37,8 +37,22 @@ where
 }
 
 impl Event {
+    fn gen_id(
+        pubkey: &schnorrsig::PublicKey,
+        created_at: &DateTime<Utc>,
+        kind: &Kind,
+        tags: &Vec<Tag>,
+        content: &str,
+    ) -> sha256::Hash {
+        let event_json =
+            json!([0, pubkey, created_at.timestamp(), kind, tags, content]).to_string();
+        sha256::Hash::hash(&event_json.as_bytes())
+    }
     /// Create a new TextNote Event
-    pub fn new_textnote(content: &str, keypair: &schnorrsig::KeyPair) -> Result<Self, Box<dyn Error>> {
+    pub fn new_textnote(
+        content: &str,
+        keypair: &schnorrsig::KeyPair,
+    ) -> Result<Self, Box<dyn Error>> {
         let secp = Secp256k1::new();
         let pubkey = schnorrsig::PublicKey::from_keypair(&secp, keypair);
 
@@ -52,10 +66,8 @@ impl Event {
         // TODO: support more event kinds
         let kind = Kind::TextNote;
 
-        // Generate this json just to hash it
         // For some reason the timestamp isn't serializing correctly so I do it manually
-        let event_json = json!([0, pubkey, created_at.timestamp(), kind, [], content]).to_string();
-        let id = sha256::Hash::hash(&event_json.as_bytes());
+        let id = Self::gen_id(&pubkey, &created_at, &kind, &vec![], content);
 
         // let m1 = Message::from_hashed_data::<sha256::Hash>("Hello world!".as_bytes());
         // is equivalent to
@@ -80,23 +92,20 @@ impl Event {
         // This isn't failing so that's a good thing, yes?
         match event.verify() {
             Ok(()) => Ok(event),
-            Err(e) => Err(Box::new(e))
+            Err(e) => Err(Box::new(e)),
         }
     }
 
     pub fn verify(&self) -> Result<(), secp256k1::Error> {
         let secp = Secp256k1::new();
-        let event_json = json!([
-            0,
-            self.pubkey,
-            self.created_at.timestamp(),
-            self.kind,
-            self.tags,
-            self.content
-        ])
-        .to_string();
-        let hashed_event = sha256::Hash::hash(&event_json.as_bytes());
-        let message = secp256k1::Message::from(hashed_event);
+        let id = Self::gen_id(
+            &self.pubkey,
+            &self.created_at,
+            &self.kind,
+            &self.tags,
+            &self.content,
+        );
+        let message = secp256k1::Message::from(id);
         secp.schnorrsig_verify(&self.sig, &message, &self.pubkey)
     }
 
