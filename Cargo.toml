@@ -10,10 +10,14 @@ edition = "2018"
 bitcoin_hashes = { version = "0.9.4", features = ["serde"] }
 chrono = { version = "0.4.19", features = ["serde"] }
 csv = "1.1.5"
-secp256k1 = { version = "0.20.1", features = ["rand", "rand-std", "serde", "bitcoin_hashes"] }
+secp256k1 = { version = "0.20.3", features = ["rand", "rand-std", "serde", "bitcoin_hashes"] }
 serde = { version = "1.0.123", features = ["derive"] }
 serde_json = "1.0.62"
 serde_repr = "0.1.6"
+aes = "0.7.5"
+block-modes = "0.8.1"
+base64 = "0.13.0"
+thiserror = "1.0.29"
 
 [dev-dependencies]
 tungstenite = "0.12.0"

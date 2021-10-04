@@ -1,13 +1,15 @@
 mod event;
 mod message;
 
+pub mod util;
 pub use crate::event::Event;
 pub use crate::message::Message;
 
 #[cfg(test)]
 mod tests {
     use secp256k1::rand::rngs::OsRng;
-    use secp256k1::{schnorrsig, Secp256k1};
+    use secp256k1::{schnorrsig, Secp256k1, SecretKey};
+    use std::str::FromStr;
 
     use crate::{Event, Message};
 
@@ -47,5 +49,23 @@ mod tests {
         let deserialized = Event::new_from_json(serialized).unwrap();
 
         assert_eq!(event, deserialized);
+    }
+
+    #[test]
+    fn test_encrypted_direct_msg() {
+        let secp = Secp256k1::new();
+        let sender_sk =
+            SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+        let receiver_sk =
+            SecretKey::from_str("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+        let receiver_key_pair = schnorrsig::KeyPair::from_secret_key(&secp, receiver_sk);
+        let receiver_pk = schnorrsig::PublicKey::from_keypair(&secp, &receiver_key_pair);
+
+        let content = "Mercury, the Winged Messenger";
+        let event = Event::new_encrypted_direct_msg(sender_sk, &receiver_pk, content);
+
+        assert_eq!(event.verify(), Ok(()));
     }
 }
