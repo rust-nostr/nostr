@@ -54,13 +54,13 @@ pub fn decrypt(
 }
 
 fn generate_shared_key(sk: &SecretKey, pk: &schnorrsig::PublicKey) -> Vec<u8> {
-    let pk_normalized = from_schnoor_pk(pk);
+    let pk_normalized = from_schnorr_pk(pk);
     ecdh::SharedSecret::new_with_hash(&pk_normalized, &sk, |x, _| x.into()).to_vec()
 }
 
-fn from_schnoor_pk(schnoor_pk: &schnorrsig::PublicKey) -> PublicKey {
+fn from_schnorr_pk(schnorr_pk: &schnorrsig::PublicKey) -> PublicKey {
     let mut pk = String::from("02");
-    pk.push_str(&schnoor_pk.to_string());
+    pk.push_str(&schnorr_pk.to_string());
     PublicKey::from_str(&pk).unwrap()
 }
 
