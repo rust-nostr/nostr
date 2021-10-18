@@ -1,18 +1,16 @@
+use crate::util::nip04;
+use bitcoin_hashes::{hex::FromHex, sha256, Hash};
+use chrono::{serde::ts_seconds, Utc};
+use chrono::{DateTime, NaiveDateTime};
+use secp256k1::{schnorrsig, Secp256k1, SecretKey};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::json;
+use serde_repr::*;
 use std::{
     error::Error,
     str::FromStr,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-
-use chrono::{serde::ts_seconds, Utc};
-use chrono::{DateTime, NaiveDateTime};
-
-use bitcoin_hashes::{hex::FromHex, sha256, Hash};
-
-use secp256k1::{schnorrsig, Secp256k1};
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::json;
-use serde_repr::*;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Event {
@@ -37,25 +35,41 @@ where
 }
 
 impl Event {
-    /// Create a new TextNote Event
-    pub fn new_textnote(content: &str, keypair: &schnorrsig::KeyPair) -> Result<Self, Box<dyn Error>> {
-        let secp = Secp256k1::new();
-        let pubkey = schnorrsig::PublicKey::from_keypair(&secp, keypair);
+    fn gen_id(
+        pubkey: &schnorrsig::PublicKey,
+        created_at: &DateTime<Utc>,
+        kind: &Kind,
+        tags: &Vec<Tag>,
+        content: &str,
+    ) -> sha256::Hash {
+        let event_json =
+            json!([0, pubkey, created_at.timestamp(), kind, tags, content]).to_string();
+        sha256::Hash::hash(&event_json.as_bytes())
+    }
 
+    fn time_now() -> DateTime<Utc> {
         // Doing all this extra work to construct a DateTime with zero nanoseconds
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("system time before Unix epoch");
         let naive = NaiveDateTime::from_timestamp(now.as_secs() as i64, 0);
-        let created_at = DateTime::from_utc(naive, Utc);
+        DateTime::from_utc(naive, Utc)
+    }
+    /// Create a new TextNote Event
+    pub fn new_textnote(
+        content: &str,
+        keypair: &schnorrsig::KeyPair,
+    ) -> Result<Self, Box<dyn Error>> {
+        let secp = Secp256k1::new();
+        let pubkey = schnorrsig::PublicKey::from_keypair(&secp, keypair);
+
+        let created_at = Self::time_now();
 
         // TODO: support more event kinds
         let kind = Kind::TextNote;
 
-        // Generate this json just to hash it
         // For some reason the timestamp isn't serializing correctly so I do it manually
-        let event_json = json!([0, pubkey, created_at.timestamp(), kind, [], content]).to_string();
-        let id = sha256::Hash::hash(&event_json.as_bytes());
+        let id = Self::gen_id(&pubkey, &created_at, &kind, &vec![], content);
 
         // let m1 = Message::from_hashed_data::<sha256::Hash>("Hello world!".as_bytes());
         // is equivalent to
@@ -80,23 +94,50 @@ impl Event {
         // This isn't failing so that's a good thing, yes?
         match event.verify() {
             Ok(()) => Ok(event),
-            Err(e) => Err(Box::new(e))
+            Err(e) => Err(Box::new(e)),
+        }
+    }
+
+    pub fn new_encrypted_direct_msg(
+        sender_sk: SecretKey,
+        receiver_pk: &schnorrsig::PublicKey,
+        content: &str,
+    ) -> Self {
+        let secp = Secp256k1::new();
+        let sender_keypair = schnorrsig::KeyPair::from_secret_key(&secp, sender_sk);
+        let sender_pk = schnorrsig::PublicKey::from_keypair(&secp, &sender_keypair);
+
+        let encrypted_content = nip04::encrypt(&sender_sk, &receiver_pk, content);
+        let kind = Kind::EncryptedDirectMessage;
+        let created_at = Self::time_now();
+        let tags = vec![Tag::new("p", &receiver_pk.to_string(), "")];
+        let id = Self::gen_id(&sender_pk, &created_at, &kind, &tags, &encrypted_content);
+
+        let id_to_sign = secp256k1::Message::from(id);
+
+        let sig = secp.schnorrsig_sign(&id_to_sign, &sender_keypair);
+
+        Event {
+            id,
+            pubkey: sender_pk,
+            created_at,
+            kind,
+            tags,
+            content: encrypted_content,
+            sig,
         }
     }
 
     pub fn verify(&self) -> Result<(), secp256k1::Error> {
         let secp = Secp256k1::new();
-        let event_json = json!([
-            0,
-            self.pubkey,
-            self.created_at.timestamp(),
-            self.kind,
-            self.tags,
-            self.content
-        ])
-        .to_string();
-        let hashed_event = sha256::Hash::hash(&event_json.as_bytes());
-        let message = secp256k1::Message::from(hashed_event);
+        let id = Self::gen_id(
+            &self.pubkey,
+            &self.created_at,
+            &self.kind,
+            &self.tags,
+            &self.content,
+        );
+        let message = secp256k1::Message::from(id);
         secp.schnorrsig_verify(&self.sig, &message, &self.pubkey)
     }
 
@@ -154,4 +195,10 @@ pub enum Kind {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct Tag {}
+pub struct Tag([String; 3]);
+
+impl Tag {
+    pub fn new(kind: &str, content: &str, recommended_relay_url: &str) -> Self {
+        Self([kind.into(), content.into(), recommended_relay_url.into()])
+    }
+}
