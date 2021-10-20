@@ -1,9 +1,12 @@
 mod event;
 mod message;
+mod user;
 
 pub mod util;
 pub use crate::event::Event;
+pub use crate::event::Kind;
 pub use crate::message::Message;
+pub use crate::user::gen_keys;
 
 #[cfg(test)]
 mod tests {
