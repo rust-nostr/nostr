@@ -23,15 +23,6 @@ impl Message {
     pub fn handle(msg: &str) -> Result<Self, MessageHandleError> {
         dbg!(msg);
 
-        if msg.is_empty() {
-            return Ok(Self::Empty);
-        }
-
-        // Ping
-        if msg == "PING" {
-            return Ok(Self::Ping);
-        }
-
         let v: Vec<Value> =
             serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
