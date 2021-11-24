@@ -5,12 +5,14 @@ use url::Url;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
+const WS_ENDPOINT: &str = "wss://nostr-relay.freeberty.net";
+// const LOCAL_WS_ENDPOINT: &str = "ws://localhost:3333/ws";
 
 fn main() {
     env_logger::init();
 
-    let (mut socket, _response) = connect(Url::parse("ws://localhost:3333/ws").unwrap())
-        .expect("Can't connect to Bob's relay");
+    let (mut socket, _response) =
+        connect(Url::parse(WS_ENDPOINT).unwrap()).expect("Can't connect to Bob's relay");
 
     let (_alice_keypair, alice_pubkey, alice_sk) = gen_keys(ALICE_SK);
     let (_bob_keypair, bob_pubkey, bob_sk) = gen_keys(BOB_SK);
@@ -21,8 +23,15 @@ fn main() {
     let alice_encrypted_msg =
         Event::new_encrypted_direct_msg(alice_sk, &bob_pubkey, alice_to_bob.clone()).as_json();
 
-    let subscribe_to_alice = format!("sub-key:{}", alice_pubkey);
-    let subscribe_to_bob = format!("sub-key:{}", bob_pubkey);
+    // TODO extract this logic into Message
+    let subscribe_to_alice = format!(
+        "[\"REQ\", \"abcdefg\", {{ \"authors\": [\"{}\"]}}]",
+        alice_pubkey
+    );
+    let subscribe_to_bob = format!(
+        "[\"REQ\", \"123456\", {{ \"authors\": [\"{}\"]}}]",
+        bob_pubkey
+    );
 
     socket
         .write_message(WsMessage::Text(subscribe_to_alice.into()))
