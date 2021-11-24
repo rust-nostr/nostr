@@ -4,10 +4,8 @@ use thiserror::Error;
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
-    Ping,
     Notice(String),
     Event(Event),
-    Empty, // Why am I getting these?
 }
 
 #[derive(Error, Debug, PartialEq)]
