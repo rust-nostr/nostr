@@ -18,9 +18,9 @@ pub struct Event {
     pubkey: schnorrsig::PublicKey,
     #[serde(with = "ts_seconds")]
     created_at: DateTime<Utc>, // unix timestamp seconds
-    kind: Kind,
-    tags: Vec<Tag>,
-    content: String,
+    pub kind: Kind,
+    pub tags: Vec<Tag>,
+    pub content: String,
     #[serde(deserialize_with = "sig_string")] // Serde derive is being weird
     sig: schnorrsig::Signature,
 }
@@ -70,6 +70,7 @@ impl Event {
 
         // For some reason the timestamp isn't serializing correctly so I do it manually
         let id = Self::gen_id(&pubkey, &created_at, &kind, &vec![], content);
+        dbg!(id);
 
         // let m1 = Message::from_hashed_data::<sha256::Hash>("Hello world!".as_bytes());
         // is equivalent to
@@ -200,5 +201,13 @@ pub struct Tag([String; 3]);
 impl Tag {
     pub fn new(kind: &str, content: &str, recommended_relay_url: &str) -> Self {
         Self([kind.into(), content.into(), recommended_relay_url.into()])
+    }
+
+    pub fn kind(&self) -> &str {
+        &self.0[0]
+    }
+
+    pub fn content(&self) -> &str {
+        &self.0[1]
     }
 }

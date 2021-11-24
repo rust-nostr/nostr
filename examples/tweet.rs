@@ -1,9 +1,17 @@
-use secp256k1::{rand::rngs::OsRng, schnorrsig, Secp256k1};
-use tungstenite::{connect, Message as WsMessage};
+use secp256k1::{
+    rand::rngs::OsRng,
+    schnorrsig,
+    schnorrsig::{KeyPair, PublicKey},
+    Secp256k1, SecretKey,
+};
 
+use nostr::{gen_keys, Event, Message};
+use std::str::FromStr;
+use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
-use nostr::{Event, Message};
+const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
+const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 
 fn main() {
     env_logger::init();
@@ -18,18 +26,29 @@ fn main() {
         println!("* {}", header);
     }
 
-    let secp = Secp256k1::new();
-    let mut rng = OsRng::new().expect("OsRng");
-    let keypair = schnorrsig::KeyPair::new(&secp, &mut rng);
-    let pubkey = schnorrsig::PublicKey::from_keypair(&secp, &keypair).to_string();
+    let (alice_keypair, alice_pubkey, _) = gen_keys(ALICE_SK);
+    let (bob_keypair, bob_pubkey, _) = gen_keys(BOB_SK);
 
-    let event = Event::new_textnote("hello", &keypair);
-    let event_json = event.unwrap().as_json();
-    let sub_message = format!("sub-key:{}", pubkey);
+    let alice_says_hi = Event::new_textnote("hi from alice", &alice_keypair)
+        .unwrap()
+        .as_json();
+    let bob_says_hi = Event::new_textnote("bob says hello", &bob_keypair)
+        .unwrap()
+        .as_json();
+
+    let subscribe_to_alice = format!("sub-key:{}", alice_pubkey);
+    let subscribe_to_bob = format!("sub-key:{}", bob_pubkey);
 
     socket
-        .write_message(WsMessage::Text(sub_message.into()))
+        .write_message(WsMessage::Text(subscribe_to_alice.into()))
         .unwrap();
+
+    socket
+        .write_message(WsMessage::Text(subscribe_to_bob.into()))
+        .unwrap();
+
+    socket.write_message(WsMessage::Text(alice_says_hi));
+    socket.write_message(WsMessage::Text(bob_says_hi));
 
     loop {
         let msg = socket.read_message().expect("Error reading message");
@@ -38,11 +57,6 @@ fn main() {
         match handled_message {
             Message::Empty => {
                 println!("Got an empty message... why?");
-                // Since I get these empty messagues on a regular basis
-                // it seems a good place to send out my test message.
-                socket
-                    .write_message(WsMessage::Text(event_json.clone()))
-                    .unwrap();
             }
             Message::Ping => {
                 println!("Got PING, sending PONG");
