@@ -1,6 +1,6 @@
 use aes::Aes256;
 use base64::{decode, encode};
-use block_modes::{block_padding, BlockMode, Cbc, InvalidKeyIvLength};
+use block_modes::{block_padding, BlockMode, Cbc};
 use secp256k1::{ecdh, rand::random, schnorrsig, PublicKey, SecretKey};
 use std::convert::From;
 use std::str::FromStr;

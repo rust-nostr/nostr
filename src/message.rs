@@ -1,5 +1,5 @@
 use crate::{Event, Kind};
-use chrono::{serde::ts_seconds, DateTime, Utc};
+use chrono::{DateTime, Utc};
 use secp256k1::schnorrsig::PublicKey;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -22,6 +22,7 @@ pub struct SubscriptionFilter {
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
     tag_p: Option<PublicKey>,
+    // TODO: we can't skip this always
     // #[serde(with = "ts_seconds")]
     // #[serde(skip_deserializing)]
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -3,7 +3,7 @@ use crate::Keys;
 use bitcoin_hashes::{hex::FromHex, sha256, Hash};
 use chrono::{serde::ts_seconds, Utc};
 use chrono::{DateTime, NaiveDateTime};
-use secp256k1::{schnorrsig, Secp256k1, SecretKey};
+use secp256k1::{schnorrsig, Secp256k1};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::json;
 use serde_repr::*;
@@ -77,9 +77,9 @@ impl Event {
         let id = Self::gen_id(&pubkey, &created_at, &kind, &vec![], content);
         dbg!(id);
 
-        // let m1 = Message::from_hashed_data::<sha256::Hash>("Hello world!".as_bytes());
+        // Message::from_hashed_data::<sha256::Hash>("Hello world!".as_bytes());
         // is equivalent to
-        // let m2 = Message::from(sha256::Hash::hash("Hello world!".as_bytes()));
+        // Message::from(sha256::Hash::hash("Hello world!".as_bytes()));
 
         let message = secp256k1::Message::from(id);
 
