@@ -32,7 +32,7 @@ pub struct Keys {
 impl Keys {
     pub fn generate_from_os_random() -> Result<Self, KeyError> {
         let secp = Secp256k1::new();
-        let mut rng = OsRng::new().unwrap();
+        let mut rng = OsRng::new().expect("Failed to get OS rng probably a good time to panic");
         let (sk, _pk) = secp.generate_keypair(&mut rng);
         Self::new(&sk.to_string())
     }
@@ -65,39 +65,26 @@ impl Keys {
     }
 
     pub fn secret_key(&self) -> Result<SecretKey, KeyError> {
-        // TODO learn the better rust way of writing this
-        if self.secret_key.is_none() {
-            Err(KeyError::SkMissing)
+        if let Some(secret_key) = self.secret_key {
+            Ok(secret_key)
         } else {
-            Ok(self.secret_key.unwrap())
+            Err(KeyError::SkMissing)
         }
     }
 
     pub fn secret_key_as_str(&self) -> Result<String, KeyError> {
-        // TODO learn the better rust way of writing this
-        if self.secret_key.is_none() {
-            Err(KeyError::SkMissing)
+        if let Some(secret_key) = self.secret_key {
+            Ok(secret_key.to_string())
         } else {
-            Ok(self.secret_key.unwrap().to_string())
+            Err(KeyError::SkMissing)
         }
     }
 
     pub fn key_pair(&self) -> Result<KeyPair, KeyError> {
-        // TODO learn the better rust way of writing this
-        if self.key_pair.is_none() {
-            Err(KeyError::KeyPairMissing)
+        if let Some(key_pair) = self.key_pair {
+            Ok(key_pair)
         } else {
-            Ok(self.key_pair.unwrap())
+            Err(KeyError::KeyPairMissing)
         }
     }
 }
-
-// Given a secret key return all the scep256k1 primitives
-// pub fn gen_keys(sk: &str) -> (KeyPair, PublicKey, SecretKey) {
-//     let secp = Secp256k1::new();
-//     let sk = SecretKey::from_str(sk).unwrap();
-//     let key_pair = schnorrsig::KeyPair::from_secret_key(&secp, sk);
-//     let pk = schnorrsig::PublicKey::from_keypair(&secp, &key_pair);
-
-//     return (key_pair, pk, sk);
-// }

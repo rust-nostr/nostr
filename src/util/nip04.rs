@@ -1,6 +1,6 @@
 use aes::Aes256;
 use base64::{decode, encode};
-use block_modes::{block_padding, BlockMode, Cbc};
+use block_modes::{block_padding, BlockMode, Cbc, InvalidKeyIvLength};
 use secp256k1::{ecdh, rand::random, schnorrsig, PublicKey, SecretKey};
 use std::convert::From;
 use std::str::FromStr;
@@ -28,7 +28,8 @@ pub enum DecryptError {
 pub fn encrypt(sk: &SecretKey, pk: &schnorrsig::PublicKey, text: &str) -> String {
     let key = generate_shared_key(&sk, &pk);
     let iv: [u8; 16] = random();
-    let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
+    // This shouldn't fail because we've already validated the inputs
+    let cipher = Aes256Cbc::new_from_slices(&key, &iv).expect("Invalid arguments to Aes");
     let cipher_text = cipher.encrypt_vec(text.as_bytes());
     format!("{}?iv={}", encode(cipher_text), encode(iv))
 }
@@ -46,7 +47,8 @@ pub fn decrypt(
         decode(parsed_content[0]).map_err(|_| DecryptError::Base64DecodeError)?;
     let iv = decode(parsed_content[1]).map_err(|_| DecryptError::Base64DecodeError)?;
     let key = generate_shared_key(&sk, &pk);
-    let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
+    // This shouldn't fail because we've already validated the inputs
+    let cipher = Aes256Cbc::new_from_slices(&key, &iv).expect("Invalid arguments to Aes");
     let decryptedtext = cipher
         .decrypt_vec(&encrypted_content)
         .map_err(|_| DecryptError::WrongBlockMode)?;
@@ -61,7 +63,7 @@ fn generate_shared_key(sk: &SecretKey, pk: &schnorrsig::PublicKey) -> Vec<u8> {
 fn from_schnorr_pk(schnorr_pk: &schnorrsig::PublicKey) -> PublicKey {
     let mut pk = String::from("02");
     pk.push_str(&schnorr_pk.to_string());
-    PublicKey::from_str(&pk).unwrap()
+    PublicKey::from_str(&pk).expect("Failed to make a PublicKey with the addition of 02")
 }
 
 #[cfg(test)]
@@ -69,20 +71,23 @@ mod tests {
 
     use super::*;
     use secp256k1::Secp256k1;
+    use std::error::Error;
+
+    type TestResult = Result<(), Box<dyn Error>>;
 
     #[test]
-    fn test_encryption_decryption() {
+    fn test_encryption_decryption() -> TestResult {
         let secp = Secp256k1::new();
 
-        let sender_sk =
-            SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
-                .unwrap();
+        let sender_sk = SecretKey::from_str(
+            "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?;
         let sender_key_pair = schnorrsig::KeyPair::from_secret_key(&secp, sender_sk);
         let sender_pk = schnorrsig::PublicKey::from_keypair(&secp, &sender_key_pair);
 
-        let receiver_sk =
-            SecretKey::from_str("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
-                .unwrap();
+        let receiver_sk = SecretKey::from_str(
+            "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?;
         let receiver_key_pair = schnorrsig::KeyPair::from_secret_key(&secp, receiver_sk);
         let receiver_pk = schnorrsig::PublicKey::from_keypair(&secp, &receiver_key_pair);
 
@@ -94,12 +99,12 @@ mod tests {
         let encrypted_content = encrypt(&sender_sk, &receiver_pk, &content);
 
         assert_eq!(
-            decrypt(&receiver_sk, &sender_pk, &encrypted_content).unwrap(),
+            decrypt(&receiver_sk, &sender_pk, &encrypted_content)?,
             content
         );
 
         assert_eq!(
-            decrypt(&receiver_sk, &sender_pk, &encrypted_content_from_outside).unwrap(),
+            decrypt(&receiver_sk, &sender_pk, &encrypted_content_from_outside)?,
             content
         );
 
@@ -122,5 +127,7 @@ mod tests {
             .unwrap_err(),
             DecryptError::WrongBlockMode
         );
+
+        Ok(())
     }
 }

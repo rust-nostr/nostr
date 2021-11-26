@@ -12,14 +12,14 @@ pub use crate::user::Keys;
 
 #[cfg(test)]
 mod tests {
-    use secp256k1::rand::rngs::OsRng;
-    use secp256k1::{schnorrsig, Secp256k1, SecretKey};
-    use std::str::FromStr;
+    use std::error::Error;
 
     use crate::{Event, Keys, RelayMessage};
 
+    type TestResult = Result<(), Box<dyn Error>>;
+
     #[test]
-    fn parse_message() {
+    fn parse_message() -> TestResult {
         // Got this fresh off the wire
         pub const SAMPLE_EVENT: &'static str = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]"#;
 
@@ -38,33 +38,38 @@ mod tests {
 
         assert_eq!(
             parsed_event.expect("Failed to parse event"),
-            RelayMessage::new_event(event, "random_string".to_string())
+            RelayMessage::new_event(event?, "random_string".to_string())
         );
+
+        Ok(())
     }
 
     #[test]
-    fn round_trip() {
-        let keys =
-            Keys::new("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e").unwrap();
+    fn round_trip() -> TestResult {
+        let keys = Keys::new("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?;
 
-        let event = Event::new_textnote("hello", &keys).unwrap();
+        let event = Event::new_textnote("hello", &keys)?;
 
         let serialized = event.as_json();
-        let deserialized = Event::new_from_json(serialized).unwrap();
+        let deserialized = Event::new_from_json(serialized)?;
 
         assert_eq!(event, deserialized);
+
+        Ok(())
     }
 
     #[test]
-    fn test_encrypted_direct_msg() {
+    fn test_encrypted_direct_msg() -> TestResult {
         let sender_keys =
-            Keys::new("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e").unwrap();
+            Keys::new("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?;
         let receiver_keys =
-            Keys::new("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e").unwrap();
+            Keys::new("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?;
 
         let content = "Mercury, the Winged Messenger";
         let event = Event::new_encrypted_direct_msg(&sender_keys, &receiver_keys, content);
 
-        assert_eq!(event.unwrap().verify(), Ok(()));
+        assert_eq!(event?.verify(), Ok(()));
+
+        Ok(())
     }
 }

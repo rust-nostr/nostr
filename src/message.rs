@@ -1,4 +1,4 @@
-use crate::Event;
+use crate::{Event, Kind};
 use chrono::{serde::ts_seconds, DateTime, Utc};
 use secp256k1::schnorrsig::PublicKey;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ pub struct SubscriptionFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
     author: Option<PublicKey>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    kind: Option<usize>,
+    kind: Option<Kind>,
     // #e
     #[serde(rename = "#e")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -60,7 +60,7 @@ impl SubscriptionFilter {
     }
 
     // kind: Option<usize>,
-    pub fn kind(self, kind: usize) -> Self {
+    pub fn kind(self, kind: Kind) -> Self {
         Self {
             kind: Some(kind),
             ..self
@@ -153,8 +153,6 @@ impl RelayMessage {
     }
 
     pub fn from_json(msg: &str) -> Result<Self, MessageHandleError> {
-        dbg!(msg);
-
         if msg == "" {
             return Ok(Self::Empty);
         }
@@ -273,17 +271,22 @@ impl ClientMessage {
 mod tests {
 
     use super::*;
+    use std::error::Error;
+
+    type TestResult = Result<(), Box<dyn Error>>;
 
     #[test]
-    fn test_handle_valid_notice() {
+    fn test_handle_valid_notice() -> TestResult {
         let valid_notice_msg = r#"["NOTICE","Invalid event format!"]"#;
         let handled_valid_notice_msg =
             RelayMessage::new_notice(String::from("Invalid event format!"));
 
         assert_eq!(
-            RelayMessage::from_json(valid_notice_msg).unwrap(),
+            RelayMessage::from_json(valid_notice_msg)?,
             handled_valid_notice_msg
         );
+
+        Ok(())
     }
     #[test]
     fn test_handle_invalid_notice() {
@@ -303,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_valid_event() {
+    fn test_handle_valid_event() -> TestResult {
         let valid_event_msg = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]"#;
 
         let id = "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5";
@@ -317,9 +320,11 @@ mod tests {
         let handled_event = Event::new_dummy(id, pubkey, created_at, kind, tags, content, sig);
 
         assert_eq!(
-            RelayMessage::from_json(valid_event_msg).unwrap(),
-            RelayMessage::new_event(handled_event, "random_string".to_string())
+            RelayMessage::from_json(valid_event_msg)?,
+            RelayMessage::new_event(handled_event?, "random_string".to_string())
         );
+
+        Ok(())
     }
 
     #[test]

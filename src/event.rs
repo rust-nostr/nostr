@@ -167,12 +167,12 @@ impl Event {
         tags: Vec<Tag>,
         content: &str,
         sig: &str,
-    ) -> Self {
-        let id = sha256::Hash::from_hex(id).unwrap();
-        let pubkey = schnorrsig::PublicKey::from_str(pubkey).unwrap();
+    ) -> Result<Self, Box<dyn Error>> {
+        let id = sha256::Hash::from_hex(id)?;
+        let pubkey = schnorrsig::PublicKey::from_str(pubkey)?;
         let created_at = DateTime::<Utc>::from(UNIX_EPOCH + Duration::new(created_at as u64, 0));
-        let kind = serde_json::from_str(&kind.to_string()).unwrap();
-        let sig = schnorrsig::Signature::from_str(sig).unwrap();
+        let kind = serde_json::from_str(&kind.to_string())?;
+        let sig = schnorrsig::Signature::from_str(sig)?;
 
         let event = Event {
             id,
@@ -185,9 +185,9 @@ impl Event {
         };
 
         if event.verify().is_ok() {
-            event
+            Ok(event)
         } else {
-            panic!("didn't verify!")
+            Err("Didn't verify".into())
         }
     }
 
@@ -196,7 +196,8 @@ impl Event {
     }
 
     pub fn as_json(&self) -> String {
-        serde_json::to_string(&self).unwrap()
+        // This shouldn't be able to fail
+        serde_json::to_string(&self).expect("Failed to serialize to json")
     }
 }
 
