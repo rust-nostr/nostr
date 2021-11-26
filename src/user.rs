@@ -19,6 +19,7 @@ pub enum KeyError {
     KeyPairMissing,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Keys {
     pub public_key: PublicKey,
     key_pair: Option<KeyPair>,
