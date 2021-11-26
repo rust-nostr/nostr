@@ -8,7 +8,7 @@ pub use crate::event::Kind;
 pub use crate::message::ClientMessage;
 pub use crate::message::RelayMessage;
 pub use crate::message::SubscriptionFilter;
-pub use crate::user::gen_keys;
+pub use crate::user::Keys;
 
 #[cfg(test)]
 mod tests {
@@ -16,7 +16,7 @@ mod tests {
     use secp256k1::{schnorrsig, Secp256k1, SecretKey};
     use std::str::FromStr;
 
-    use crate::{Event, RelayMessage};
+    use crate::{Event, Keys, RelayMessage};
 
     #[test]
     fn parse_message() {
@@ -44,11 +44,10 @@ mod tests {
 
     #[test]
     fn round_trip() {
-        let secp = Secp256k1::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let keypair = schnorrsig::KeyPair::new(&secp, &mut rng);
+        let keys =
+            Keys::new("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e").unwrap();
 
-        let event = Event::new_textnote("hello", &keypair).unwrap();
+        let event = Event::new_textnote("hello", &keys).unwrap();
 
         let serialized = event.as_json();
         let deserialized = Event::new_from_json(serialized).unwrap();
@@ -58,19 +57,14 @@ mod tests {
 
     #[test]
     fn test_encrypted_direct_msg() {
-        let secp = Secp256k1::new();
-        let sender_sk =
-            SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
-                .unwrap();
-        let receiver_sk =
-            SecretKey::from_str("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
-                .unwrap();
-        let receiver_key_pair = schnorrsig::KeyPair::from_secret_key(&secp, receiver_sk);
-        let receiver_pk = schnorrsig::PublicKey::from_keypair(&secp, &receiver_key_pair);
+        let sender_keys =
+            Keys::new("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e").unwrap();
+        let receiver_keys =
+            Keys::new("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e").unwrap();
 
         let content = "Mercury, the Winged Messenger";
-        let event = Event::new_encrypted_direct_msg(sender_sk, &receiver_pk, content);
+        let event = Event::new_encrypted_direct_msg(&sender_keys, &receiver_keys, content);
 
-        assert_eq!(event.verify(), Ok(()));
+        assert_eq!(event.unwrap().verify(), Ok(()));
     }
 }

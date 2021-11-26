@@ -1,5 +1,5 @@
 use nostr::{
-    gen_keys, util::nip04::decrypt, ClientMessage, Event, Kind, RelayMessage, SubscriptionFilter,
+    util::nip04::decrypt, ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter,
 };
 use std::{thread, time};
 use tungstenite::{connect, Message as WsMessage};
@@ -17,14 +17,20 @@ fn main() {
     let (mut socket, _response) =
         connect(Url::parse(WS_ENDPOINT).unwrap()).expect("Can't connect to Bob's relay");
 
-    let (_alice_keypair, alice_pubkey, alice_sk) = gen_keys(ALICE_SK);
-    let (_bob_keypair, bob_pubkey, bob_sk) = gen_keys(BOB_SK);
+    let alice_keys = Keys::new(ALICE_SK).unwrap();
+    // let alice_pubkey = alice_keys.public_key;
+    // let alice_sk = alice_keys.secret_key.unwrap();
+    // let (_alice_keypair, alice_pubkey, alice_sk) = Keys::new(ALICE_SK);
+    let bob_keys = Keys::new(BOB_SK).unwrap();
+    // let bob_pubkey = bob_keys.public_key;
+    // let bob_sk = bob_keys.secret_key.unwrap();
+    // let (_bob_keypair, bob_pubkey, bob_sk) = gen_keys(BOB_SK);
 
     let alice_to_bob = "Hey bob this is alice (ping)";
     let bob_to_alice = "Hey alice this is bob (pong)";
 
     let alice_encrypted_msg =
-        Event::new_encrypted_direct_msg(alice_sk, &bob_pubkey, alice_to_bob.clone());
+        Event::new_encrypted_direct_msg(&alice_keys, &bob_keys, alice_to_bob.clone()).unwrap();
 
     // TODO extract this logic into Message
     // let subscribe_to_alice = format!(
@@ -33,14 +39,14 @@ fn main() {
     // );
     let subscribe_to_alice =
         // ClientMessage::new_req("abcdefg", SubscriptionFilter::new(vec![alice_pubkey])).to_json();
-        ClientMessage::new_req("abcdefg", SubscriptionFilter::new().author(alice_pubkey).tag_p(bob_pubkey));
+        ClientMessage::new_req("abcdefg", SubscriptionFilter::new().author(&alice_keys.public_key).tag_p(bob_keys.public_key));
     dbg!(subscribe_to_alice.to_json());
 
     let subscribe_to_bob = ClientMessage::new_req(
         "123456",
         SubscriptionFilter::new()
-            .author(bob_pubkey)
-            .tag_p(alice_pubkey),
+            .author(&bob_keys.public_key)
+            .tag_p(alice_keys.public_key),
     );
     //  format!(
     //     "[\"REQ\", \"123456\", {{ \"authors\": [\"{}\"]}}]",
@@ -88,37 +94,49 @@ fn main() {
                 if event.kind == Kind::EncryptedDirectMessage {
                     println!("it's a dm");
 
-                    if event.tags[0].content() == &alice_pubkey.to_string() {
+                    if event.tags[0].content() == &alice_keys.public_key_as_str() {
                         println!("It's to alice!");
                         println!("Encrypted it says {}", event.content);
                         println!(
                             "Decrypted it says {}",
-                            decrypt(&alice_sk, &bob_pubkey, &event.content).unwrap()
+                            decrypt(
+                                &alice_keys.secret_key().unwrap(),
+                                &bob_keys.public_key,
+                                &event.content
+                            )
+                            .unwrap()
                         );
                         thread::sleep(time::Duration::from_millis(5000));
                         let alice_encrypted_msg = Event::new_encrypted_direct_msg(
-                            alice_sk,
-                            &bob_pubkey,
+                            &alice_keys,
+                            &bob_keys,
                             alice_to_bob.clone(),
-                        );
+                        )
+                        .unwrap();
                         socket
                             .write_message(WsMessage::Text(
                                 ClientMessage::new_event(alice_encrypted_msg).to_json(),
                             ))
                             .unwrap();
-                    } else if event.tags[0].content() == &bob_pubkey.to_string() {
+                    } else if event.tags[0].content() == &bob_keys.public_key_as_str() {
                         println!("It's to bob!");
                         println!("Encrypted it says {}", event.content);
                         println!(
                             "Decrypted it says {}",
-                            decrypt(&alice_sk, &bob_pubkey, &event.content).unwrap()
+                            decrypt(
+                                &alice_keys.secret_key().unwrap(),
+                                &bob_keys.public_key,
+                                &event.content
+                            )
+                            .unwrap()
                         );
                         thread::sleep(time::Duration::from_millis(5000));
                         let bob_encrypted_msg = Event::new_encrypted_direct_msg(
-                            bob_sk,
-                            &alice_pubkey,
+                            &bob_keys,
+                            &alice_keys,
                             bob_to_alice.clone(),
-                        );
+                        )
+                        .unwrap();
                         socket
                             .write_message(WsMessage::Text(
                                 ClientMessage::new_event(bob_encrypted_msg).to_json(),

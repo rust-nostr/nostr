@@ -1,4 +1,4 @@
-use nostr::{gen_keys, Event, RelayMessage};
+use nostr::{Event, Keys, RelayMessage};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
@@ -18,18 +18,19 @@ fn main() {
         println!("* {}", header);
     }
 
-    let (alice_keypair, alice_pubkey, _) = gen_keys(ALICE_SK);
-    let (bob_keypair, bob_pubkey, _) = gen_keys(BOB_SK);
+    let alice_keys = Keys::new(ALICE_SK).unwrap();
 
-    let alice_says_hi = Event::new_textnote("hi from alice", &alice_keypair)
+    let bob_keys = Keys::new(BOB_SK).unwrap();
+
+    let alice_says_hi = Event::new_textnote("hi from alice", &alice_keys)
         .unwrap()
         .as_json();
-    let bob_says_hi = Event::new_textnote("bob says hello", &bob_keypair)
+    let bob_says_hi = Event::new_textnote("bob says hello", &bob_keys)
         .unwrap()
         .as_json();
 
-    let subscribe_to_alice = format!("sub-key:{}", alice_pubkey);
-    let subscribe_to_bob = format!("sub-key:{}", bob_pubkey);
+    let subscribe_to_alice = format!("sub-key:{}", alice_keys.public_key);
+    let subscribe_to_bob = format!("sub-key:{}", bob_keys.public_key);
 
     socket
         .write_message(WsMessage::Text(subscribe_to_alice.into()))

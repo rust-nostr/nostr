@@ -1,4 +1,5 @@
 use crate::util::nip04;
+use crate::Keys;
 use bitcoin_hashes::{hex::FromHex, sha256, Hash};
 use chrono::{serde::ts_seconds, Utc};
 use chrono::{DateTime, NaiveDateTime};
@@ -14,15 +15,15 @@ use std::{
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Event {
-    id: sha256::Hash, // hash of serialized event with id 0
-    pubkey: schnorrsig::PublicKey,
+    pub id: sha256::Hash, // hash of serialized event with id 0
+    pub pubkey: schnorrsig::PublicKey,
     #[serde(with = "ts_seconds")]
-    created_at: DateTime<Utc>, // unix timestamp seconds
+    pub created_at: DateTime<Utc>, // unix timestamp seconds
     pub kind: Kind,
     pub tags: Vec<Tag>,
     pub content: String,
     #[serde(deserialize_with = "sig_string")] // Serde derive is being weird
-    sig: schnorrsig::Signature,
+    pub sig: schnorrsig::Signature,
 }
 
 fn sig_string<'de, D>(deserializer: D) -> Result<schnorrsig::Signature, D::Error>
@@ -58,9 +59,13 @@ impl Event {
     /// Create a new TextNote Event
     pub fn new_textnote(
         content: &str,
-        keypair: &schnorrsig::KeyPair,
+        keys: &Keys,
+        // keypair: &schnorrsig::KeyPair,
     ) -> Result<Self, Box<dyn Error>> {
         let secp = Secp256k1::new();
+
+        let keypair = &keys.key_pair()?;
+
         let pubkey = schnorrsig::PublicKey::from_keypair(&secp, keypair);
 
         let created_at = Self::time_now();
@@ -100,33 +105,43 @@ impl Event {
     }
 
     pub fn new_encrypted_direct_msg(
-        sender_sk: SecretKey,
-        receiver_pk: &schnorrsig::PublicKey,
+        sender: &Keys,
+        receiver: &Keys,
+        // sender_sk: SecretKey,
+        // receiver_pk: &schnorrsig::PublicKey,
         content: &str,
-    ) -> Self {
+    ) -> Result<Self, Box<dyn Error>> {
         let secp = Secp256k1::new();
-        let sender_keypair = schnorrsig::KeyPair::from_secret_key(&secp, sender_sk);
-        let sender_pk = schnorrsig::PublicKey::from_keypair(&secp, &sender_keypair);
+        // let sender_keypair = schnorrsig::KeyPair::from_secret_key(&secp, sender.secret_key());
+        // let sender_pk = schnorrsig::PublicKey::from_keypair(&secp, &sender_keypair);
 
-        let encrypted_content = nip04::encrypt(&sender_sk, &receiver_pk, content);
+        let encrypted_content =
+            nip04::encrypt(&sender.secret_key()?, &receiver.public_key, content);
         let kind = Kind::EncryptedDirectMessage;
         let created_at = Self::time_now();
-        let tags = vec![Tag::new("p", &receiver_pk.to_string(), "")];
-        let id = Self::gen_id(&sender_pk, &created_at, &kind, &tags, &encrypted_content);
+        let tags = vec![Tag::new("p", &receiver.public_key_as_str(), "")];
+        // TODO maybe could pass Keys here
+        let id = Self::gen_id(
+            &sender.public_key,
+            &created_at,
+            &kind,
+            &tags,
+            &encrypted_content,
+        );
 
         let id_to_sign = secp256k1::Message::from(id);
 
-        let sig = secp.schnorrsig_sign(&id_to_sign, &sender_keypair);
+        let sig = secp.schnorrsig_sign(&id_to_sign, &sender.key_pair()?);
 
-        Event {
+        Ok(Event {
             id,
-            pubkey: sender_pk,
+            pubkey: sender.public_key,
             created_at,
             kind,
             tags,
             content: encrypted_content,
             sig,
-        }
+        })
     }
 
     pub fn verify(&self) -> Result<(), secp256k1::Error> {

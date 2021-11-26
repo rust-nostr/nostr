@@ -52,9 +52,9 @@ impl SubscriptionFilter {
     }
 
     // author: Option<PublicKey>,
-    pub fn author(self, author: PublicKey) -> Self {
+    pub fn author(self, author: &PublicKey) -> Self {
         Self {
-            author: Some(author),
+            author: Some(author.clone()),
             ..self
         }
     }
