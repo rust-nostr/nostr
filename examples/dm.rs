@@ -7,7 +7,8 @@ use url::Url;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
-const WS_ENDPOINT: &str = "wss://nostr-relay.freeberty.net";
+// const WS_ENDPOINT: &str = "wss://nostr-relay.freeberty.net";
+const WS_ENDPOINT: &str = "wss://relayer.fiatjaf.com/";
 // const LOCAL_WS_ENDPOINT: &str = "ws://localhost:3333/ws";
 
 fn main() {
@@ -23,7 +24,7 @@ fn main() {
     let bob_to_alice = "Hey alice this is bob (pong)";
 
     let alice_encrypted_msg =
-        Event::new_encrypted_direct_msg(alice_sk, &bob_pubkey, alice_to_bob.clone()).as_json();
+        Event::new_encrypted_direct_msg(alice_sk, &bob_pubkey, alice_to_bob.clone());
 
     // TODO extract this logic into Message
     // let subscribe_to_alice = format!(
@@ -50,7 +51,9 @@ fn main() {
         .unwrap();
 
     socket
-        .write_message(WsMessage::Text(alice_encrypted_msg))
+        .write_message(WsMessage::Text(
+            ClientMessage::new_event(alice_encrypted_msg).to_json(),
+        ))
         .unwrap();
 
     loop {
@@ -67,6 +70,9 @@ fn main() {
             //         .write_message(WsMessage::Text("PONG".into()))
             //         .unwrap();
             // }
+            RelayMessage::Empty => {
+                println!("Empty message (heartbeat I guess?)")
+            }
             RelayMessage::Notice { message } => {
                 println!("Got a notice: {}", message);
             }
@@ -89,10 +95,11 @@ fn main() {
                             alice_sk,
                             &bob_pubkey,
                             alice_to_bob.clone(),
-                        )
-                        .as_json();
+                        );
                         socket
-                            .write_message(WsMessage::Text(alice_encrypted_msg))
+                            .write_message(WsMessage::Text(
+                                ClientMessage::new_event(alice_encrypted_msg).to_json(),
+                            ))
                             .unwrap();
                     } else if event.tags[0].content() == &bob_pubkey.to_string() {
                         println!("It's to bob!");
@@ -106,10 +113,11 @@ fn main() {
                             bob_sk,
                             &alice_pubkey,
                             bob_to_alice.clone(),
-                        )
-                        .as_json();
+                        );
                         socket
-                            .write_message(WsMessage::Text(bob_encrypted_msg))
+                            .write_message(WsMessage::Text(
+                                ClientMessage::new_event(bob_encrypted_msg).to_json(),
+                            ))
                             .unwrap();
                     }
                 } else {

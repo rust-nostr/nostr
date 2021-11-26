@@ -6,12 +6,13 @@ use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SubscriptionFilter {
-    authors: Vec<PublicKey>,
+    // authors: Vec<PublicKey>,
+    author: PublicKey,
 }
 
 impl SubscriptionFilter {
     pub fn new(authors: Vec<PublicKey>) -> Self {
-        SubscriptionFilter { authors }
+        SubscriptionFilter { author: authors[0] }
     }
 }
 
@@ -35,6 +36,8 @@ pub enum RelayMessage {
     Notice {
         message: String,
     },
+    // TODO: maybe we can remove this idk
+    Empty,
 }
 
 impl RelayMessage {
@@ -51,6 +54,7 @@ impl RelayMessage {
     }
     pub fn to_json(&self) -> String {
         match self {
+            Self::Empty => String::new(),
             Self::Event {
                 event,
                 subscription_id,
@@ -61,6 +65,10 @@ impl RelayMessage {
 
     pub fn from_json(msg: &str) -> Result<Self, MessageHandleError> {
         dbg!(msg);
+
+        if msg == "" {
+            return Ok(Self::Empty);
+        }
 
         let v: Vec<Value> =
             serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;

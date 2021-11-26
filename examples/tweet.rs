@@ -58,6 +58,9 @@ fn main() {
             //         .write_message(WsMessage::Text("PONG".into()))
             //         .unwrap();
             // }
+            RelayMessage::Empty => {
+                println!("Empty message (heartbeat I guess?)")
+            }
             RelayMessage::Notice { message } => {
                 println!("Got a notice: {}", message);
             }
