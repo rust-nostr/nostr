@@ -1,12 +1,4 @@
-use secp256k1::{
-    rand::rngs::OsRng,
-    schnorrsig,
-    schnorrsig::{KeyPair, PublicKey},
-    Secp256k1, SecretKey,
-};
-
-use nostr::{gen_keys, Event, Message};
-use std::str::FromStr;
+use nostr::{gen_keys, Event, RelayMessage};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
@@ -47,27 +39,32 @@ fn main() {
         .write_message(WsMessage::Text(subscribe_to_bob.into()))
         .unwrap();
 
-    socket.write_message(WsMessage::Text(alice_says_hi));
-    socket.write_message(WsMessage::Text(bob_says_hi));
+    socket
+        .write_message(WsMessage::Text(alice_says_hi))
+        .unwrap();
+    socket.write_message(WsMessage::Text(bob_says_hi)).unwrap();
 
     loop {
         let msg = socket.read_message().expect("Error reading message");
         let msg_text = msg.to_text().expect("Failed to conver message to text");
-        let handled_message = Message::handle(msg_text).expect("Failed to handle message");
+        let handled_message = RelayMessage::from_json(msg_text).expect("Failed to handle message");
         match handled_message {
-            Message::Empty => {
-                println!("Got an empty message... why?");
+            // Message::Empty => {
+            //     println!("Got an empty message... why?");
+            // }
+            // Message::Ping => {
+            //     println!("Got PING, sending PONG");
+            //     socket
+            //         .write_message(WsMessage::Text("PONG".into()))
+            //         .unwrap();
+            // }
+            RelayMessage::Notice { message } => {
+                println!("Got a notice: {}", message);
             }
-            Message::Ping => {
-                println!("Got PING, sending PONG");
-                socket
-                    .write_message(WsMessage::Text("PONG".into()))
-                    .unwrap();
-            }
-            Message::Notice(notice) => {
-                println!("Got a notice: {}", notice);
-            }
-            Message::Event(event) => {
+            RelayMessage::Event {
+                event,
+                subscription_id: _,
+            } => {
                 println!("Got an event!");
                 dbg!(event);
             }

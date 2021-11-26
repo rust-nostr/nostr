@@ -5,7 +5,9 @@ mod user;
 pub mod util;
 pub use crate::event::Event;
 pub use crate::event::Kind;
-pub use crate::message::Message;
+pub use crate::message::ClientMessage;
+pub use crate::message::RelayMessage;
+pub use crate::message::SubscriptionFilter;
 pub use crate::user::gen_keys;
 
 #[cfg(test)]
@@ -14,7 +16,7 @@ mod tests {
     use secp256k1::{schnorrsig, Secp256k1, SecretKey};
     use std::str::FromStr;
 
-    use crate::{Event, Message};
+    use crate::{Event, RelayMessage};
 
     #[test]
     fn parse_message() {
@@ -32,11 +34,11 @@ mod tests {
 
         let event = Event::new_dummy(id, pubkey, created_at, kind, tags, content, sig);
 
-        let parsed_event = Message::handle(SAMPLE_EVENT);
+        let parsed_event = RelayMessage::from_json(SAMPLE_EVENT);
 
         assert_eq!(
             parsed_event.expect("Failed to parse event"),
-            Message::Event(event)
+            RelayMessage::new_event(event, "random_string".to_string())
         );
     }
 

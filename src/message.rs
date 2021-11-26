@@ -1,11 +1,18 @@
 use crate::Event;
-use serde_json::Value;
+use secp256k1::schnorrsig::PublicKey;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use thiserror::Error;
 
-#[derive(Debug, PartialEq)]
-pub enum Message {
-    Notice(String),
-    Event(Event),
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct SubscriptionFilter {
+    authors: Vec<PublicKey>,
+}
+
+impl SubscriptionFilter {
+    pub fn new(authors: Vec<PublicKey>) -> Self {
+        SubscriptionFilter { authors }
+    }
 }
 
 #[derive(Error, Debug, PartialEq)]
@@ -17,8 +24,42 @@ pub enum MessageHandleError {
     JsonDeserializationFailed,
 }
 
-impl Message {
-    pub fn handle(msg: &str) -> Result<Self, MessageHandleError> {
+/// Messages sent by relays, received by clients
+#[derive(Debug, PartialEq)]
+pub enum RelayMessage {
+    //["EVENT", <subscription id>, <event JSON as defined above>]
+    Event {
+        event: Event,
+        subscription_id: String,
+    },
+    Notice {
+        message: String,
+    },
+}
+
+impl RelayMessage {
+    // Relay is responsible for storing corresponding subscription id
+    pub fn new_event(event: Event, subscription_id: String) -> Self {
+        Self::Event {
+            event,
+            subscription_id,
+        }
+    }
+
+    pub fn new_notice(message: String) -> Self {
+        Self::Notice { message }
+    }
+    pub fn to_json(&self) -> String {
+        match self {
+            Self::Event {
+                event,
+                subscription_id,
+            } => json!(["EVENT", subscription_id, event]).to_string(),
+            Self::Notice { message } => json!(["NOTICE", message]).to_string(),
+        }
+    }
+
+    pub fn from_json(msg: &str) -> Result<Self, MessageHandleError> {
         dbg!(msg);
 
         let v: Vec<Value> =
@@ -32,7 +73,7 @@ impl Message {
             }
             let v_notice: String = serde_json::from_value(v[1].clone())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-            return Ok(Self::Notice(v_notice));
+            return Ok(Self::Notice { message: v_notice });
         }
 
         // Event
@@ -44,10 +85,88 @@ impl Message {
 
             let event = Event::new_from_json(v[2].to_string())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-            let _context = v[1].clone();
+            let subscription_id: String = serde_json::from_value(v[1].clone())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
-            return Ok(Self::Event(event));
+            return Ok(Self::new_event(event, subscription_id));
         }
+
+        Err(MessageHandleError::InvalidMessageFormat)
+    }
+}
+
+/// Messages sent by clients, received by relays
+#[derive(Debug, PartialEq)]
+pub enum ClientMessage {
+    Event {
+        event: Event,
+    },
+    Req {
+        subscription_id: String,
+        filter: SubscriptionFilter,
+    },
+    Close {
+        subscription_id: String,
+    },
+}
+
+impl ClientMessage {
+    pub fn new_event(event: Event) -> Self {
+        Self::Event { event }
+    }
+
+    pub fn new_req(subscription_id: impl Into<String>, filter: SubscriptionFilter) -> Self {
+        Self::Req {
+            subscription_id: subscription_id.into(),
+            filter,
+        }
+    }
+
+    pub fn close(subscription_id: String) -> Self {
+        Self::Close { subscription_id }
+    }
+
+    pub fn to_json(&self) -> String {
+        match self {
+            Self::Event { event } => json!(["EVENT", event]).to_string(),
+            Self::Req {
+                subscription_id,
+                filter,
+            } => json!(["REQ", subscription_id, filter]).to_string(),
+            Self::Close { subscription_id } => json!(["CLOSE", subscription_id]).to_string(),
+        }
+    }
+
+    pub fn from_json(msg: &str) -> Result<Self, MessageHandleError> {
+        dbg!(msg);
+
+        let _v: Vec<Value> =
+            serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+        // Notice
+        // Relay response format: ["NOTICE", <message>]
+        // if v[0] == "NOTICE" {
+        //     if v.len() != 2 {
+        //         return Err(MessageHandleError::InvalidMessageFormat);
+        //     }
+        //     let v_notice: String = serde_json::from_value(v[1].clone())
+        //         .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+        //     return Ok(Self::Notice { message: v_notice });
+        // }
+
+        // // Event
+        // // Relay response format: ["EVENT", <subscription id>, <event JSON>]
+        // if v[0] == "EVENT" {
+        //     if v.len() != 3 {
+        //         return Err(MessageHandleError::InvalidMessageFormat);
+        //     }
+
+        //     let event = Event::new_from_json(v[2].to_string())
+        //         .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+        //     let _context = v[1].clone();
+
+        //     return Ok(Self::Event { event });
+        // }
 
         Err(MessageHandleError::InvalidMessageFormat)
     }
@@ -61,10 +180,11 @@ mod tests {
     #[test]
     fn test_handle_valid_notice() {
         let valid_notice_msg = r#"["NOTICE","Invalid event format!"]"#;
-        let handled_valid_notice_msg = Message::Notice(String::from("Invalid event format!"));
+        let handled_valid_notice_msg =
+            RelayMessage::new_notice(String::from("Invalid event format!"));
 
         assert_eq!(
-            Message::handle(valid_notice_msg).unwrap(),
+            RelayMessage::from_json(valid_notice_msg).unwrap(),
             handled_valid_notice_msg
         );
     }
@@ -76,11 +196,11 @@ mod tests {
         let invalid_notice_msg_content = r#"["NOTICE": 404]"#;
 
         assert_eq!(
-            Message::handle(invalid_notice_msg).unwrap_err(),
+            RelayMessage::from_json(invalid_notice_msg).unwrap_err(),
             MessageHandleError::InvalidMessageFormat
         );
         assert_eq!(
-            Message::handle(invalid_notice_msg_content).unwrap_err(),
+            RelayMessage::from_json(invalid_notice_msg_content).unwrap_err(),
             MessageHandleError::JsonDeserializationFailed
         );
     }
@@ -100,8 +220,8 @@ mod tests {
         let handled_event = Event::new_dummy(id, pubkey, created_at, kind, tags, content, sig);
 
         assert_eq!(
-            Message::handle(valid_event_msg).unwrap(),
-            Message::Event(handled_event)
+            RelayMessage::from_json(valid_event_msg).unwrap(),
+            RelayMessage::new_event(handled_event, "random_string".to_string())
         );
     }
 
@@ -113,12 +233,12 @@ mod tests {
         let invalid_event_msg_content = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"}]"#;
 
         assert_eq!(
-            Message::handle(invalid_event_msg).unwrap_err(),
+            RelayMessage::from_json(invalid_event_msg).unwrap_err(),
             MessageHandleError::InvalidMessageFormat
         );
 
         assert_eq!(
-            Message::handle(invalid_event_msg_content).unwrap_err(),
+            RelayMessage::from_json(invalid_event_msg_content).unwrap_err(),
             MessageHandleError::JsonDeserializationFailed
         );
     }

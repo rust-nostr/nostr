@@ -1,4 +1,6 @@
-use nostr::{gen_keys, util::nip04::decrypt, Event, Kind, Message};
+use nostr::{
+    gen_keys, util::nip04::decrypt, ClientMessage, Event, Kind, RelayMessage, SubscriptionFilter,
+};
 use std::{thread, time};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
@@ -24,14 +26,20 @@ fn main() {
         Event::new_encrypted_direct_msg(alice_sk, &bob_pubkey, alice_to_bob.clone()).as_json();
 
     // TODO extract this logic into Message
-    let subscribe_to_alice = format!(
-        "[\"REQ\", \"abcdefg\", {{ \"authors\": [\"{}\"]}}]",
-        alice_pubkey
-    );
-    let subscribe_to_bob = format!(
-        "[\"REQ\", \"123456\", {{ \"authors\": [\"{}\"]}}]",
-        bob_pubkey
-    );
+    // let subscribe_to_alice = format!(
+    //     "[\"REQ\", \"abcdefg\", {{ \"authors\": [\"{}\"]}}]",
+    //     alice_pubkey
+    // );
+    let subscribe_to_alice =
+        ClientMessage::new_req("abcdefg", SubscriptionFilter::new(vec![alice_pubkey])).to_json();
+    dbg!(subscribe_to_alice.clone());
+
+    let subscribe_to_bob =
+        ClientMessage::new_req("123456", SubscriptionFilter::new(vec![bob_pubkey])).to_json();
+    //  format!(
+    //     "[\"REQ\", \"123456\", {{ \"authors\": [\"{}\"]}}]",
+    //     bob_pubkey
+    // );
 
     socket
         .write_message(WsMessage::Text(subscribe_to_alice.into()))
@@ -48,21 +56,24 @@ fn main() {
     loop {
         let msg = socket.read_message().expect("Error reading message");
         let msg_text = msg.to_text().expect("Failed to conver message to text");
-        let handled_message = Message::handle(msg_text).expect("Failed to handle message");
+        let handled_message = RelayMessage::from_json(msg_text).expect("Failed to handle message");
         match handled_message {
-            Message::Empty => {
-                println!("Got an empty message... why?");
+            // RelayMessage::Empty => {
+            //     println!("Got an empty message... why?");
+            // }
+            // RelayMessage::Ping => {
+            //     println!("Got PING, sending PONG");
+            //     socket
+            //         .write_message(WsMessage::Text("PONG".into()))
+            //         .unwrap();
+            // }
+            RelayMessage::Notice { message } => {
+                println!("Got a notice: {}", message);
             }
-            Message::Ping => {
-                println!("Got PING, sending PONG");
-                socket
-                    .write_message(WsMessage::Text("PONG".into()))
-                    .unwrap();
-            }
-            Message::Notice(notice) => {
-                println!("Got a notice: {}", notice);
-            }
-            Message::Event(event) => {
+            RelayMessage::Event {
+                event,
+                subscription_id: _,
+            } => {
                 if event.kind == Kind::EncryptedDirectMessage {
                     println!("it's a dm");
 
