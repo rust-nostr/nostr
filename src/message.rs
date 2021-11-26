@@ -1,4 +1,5 @@
 use crate::Event;
+use chrono::{serde::ts_seconds, DateTime, Utc};
 use secp256k1::schnorrsig::PublicKey;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -7,13 +8,101 @@ use thiserror::Error;
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SubscriptionFilter {
     // authors: Vec<PublicKey>,
-    author: PublicKey,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    author: Option<PublicKey>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    kind: Option<usize>,
+    // #e
+    #[serde(rename = "#e")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tag_e: Option<String>,
+    // #p, for instance the receiver public key
+    #[serde(rename = "#p")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tag_p: Option<PublicKey>,
+    // #[serde(with = "ts_seconds")]
+    // #[serde(skip_deserializing)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip)]
+    since: Option<DateTime<Utc>>, // unix timestamp seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    authors: Option<Vec<PublicKey>>,
 }
 
 impl SubscriptionFilter {
-    pub fn new(authors: Vec<PublicKey>) -> Self {
-        SubscriptionFilter { author: authors[0] }
+    pub fn new() -> Self {
+        Self {
+            id: None,
+            author: None,
+            kind: None,
+            tag_e: None,
+            tag_p: None,
+            since: None,
+            authors: None,
+        }
     }
+
+    pub fn id(self, id: impl Into<String>) -> Self {
+        Self {
+            id: Some(id.into()),
+            ..self
+        }
+    }
+
+    // author: Option<PublicKey>,
+    pub fn author(self, author: PublicKey) -> Self {
+        Self {
+            author: Some(author),
+            ..self
+        }
+    }
+
+    // kind: Option<usize>,
+    pub fn kind(self, kind: usize) -> Self {
+        Self {
+            kind: Some(kind),
+            ..self
+        }
+    }
+    // // #e
+    // #[serde(rename = "#e")]
+    // tag_e: Option<String>,
+    pub fn tag_e(self, event_id: impl Into<String>) -> Self {
+        Self {
+            tag_e: Some(event_id.into()),
+            ..self
+        }
+    }
+    // // #p, for instance the receiver public key
+    // #[serde(rename = "#p")]
+    // tag_p: Option<PublicKey>,
+    pub fn tag_p(self, pubkey: PublicKey) -> Self {
+        Self {
+            tag_p: Some(pubkey),
+            ..self
+        }
+    }
+    // #[serde(with = "ts_seconds")]
+    // since: Option<DateTime<Utc>>, // unix timestamp seconds
+    pub fn since(self, since: DateTime<Utc>) -> Self {
+        Self {
+            since: Some(since),
+            ..self
+        }
+    }
+    // authors: Option<Vec<PublicKey>>,
+    pub fn authors(self, authors: Vec<PublicKey>) -> Self {
+        Self {
+            authors: Some(authors),
+            ..self
+        }
+    }
+
+    // pub fn new(authors: Vec<PublicKey>) -> Self {
+    //     SubscriptionFilter { author: authors[0] }
+    // }
 }
 
 #[derive(Error, Debug, PartialEq)]

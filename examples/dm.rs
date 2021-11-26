@@ -32,22 +32,27 @@ fn main() {
     //     alice_pubkey
     // );
     let subscribe_to_alice =
-        ClientMessage::new_req("abcdefg", SubscriptionFilter::new(vec![alice_pubkey])).to_json();
-    dbg!(subscribe_to_alice.clone());
+        // ClientMessage::new_req("abcdefg", SubscriptionFilter::new(vec![alice_pubkey])).to_json();
+        ClientMessage::new_req("abcdefg", SubscriptionFilter::new().author(alice_pubkey).tag_p(bob_pubkey));
+    dbg!(subscribe_to_alice.to_json());
 
-    let subscribe_to_bob =
-        ClientMessage::new_req("123456", SubscriptionFilter::new(vec![bob_pubkey])).to_json();
+    let subscribe_to_bob = ClientMessage::new_req(
+        "123456",
+        SubscriptionFilter::new()
+            .author(bob_pubkey)
+            .tag_p(alice_pubkey),
+    );
     //  format!(
     //     "[\"REQ\", \"123456\", {{ \"authors\": [\"{}\"]}}]",
     //     bob_pubkey
     // );
 
     socket
-        .write_message(WsMessage::Text(subscribe_to_alice.into()))
+        .write_message(WsMessage::Text(subscribe_to_alice.to_json()))
         .unwrap();
 
     socket
-        .write_message(WsMessage::Text(subscribe_to_bob.into()))
+        .write_message(WsMessage::Text(subscribe_to_bob.to_json()))
         .unwrap();
 
     socket
