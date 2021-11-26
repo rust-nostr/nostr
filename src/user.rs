@@ -1,4 +1,5 @@
 use secp256k1::{
+    rand::rngs::OsRng,
     schnorrsig,
     schnorrsig::{KeyPair, PublicKey},
     Secp256k1, SecretKey,
@@ -17,6 +18,8 @@ pub enum KeyError {
     SkMissing,
     #[error("Key pair missing")]
     KeyPairMissing,
+    #[error("Failed to generate new keys")]
+    KeyGenerationFailure,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +30,13 @@ pub struct Keys {
 }
 
 impl Keys {
+    pub fn generate_from_os_random() -> Result<Self, KeyError> {
+        let secp = Secp256k1::new();
+        let mut rng = OsRng::new().unwrap();
+        let (sk, _pk) = secp.generate_keypair(&mut rng);
+        Self::new(&sk.to_string())
+    }
+
     pub fn new_pub_only(pk: &str) -> Result<Self, KeyError> {
         let pk = schnorrsig::PublicKey::from_str(pk).map_err(|_| KeyError::PkParseError)?;
 
