@@ -11,8 +11,6 @@ pub struct SubscriptionFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    author: Option<PublicKey>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     kind: Option<Kind>,
     // #e
     #[serde(rename = "#e")]
@@ -36,7 +34,6 @@ impl SubscriptionFilter {
     pub fn new() -> Self {
         Self {
             id: None,
-            author: None,
             kind: None,
             tag_e: None,
             tag_p: None,
@@ -48,14 +45,6 @@ impl SubscriptionFilter {
     pub fn id(self, id: impl Into<String>) -> Self {
         Self {
             id: Some(id.into()),
-            ..self
-        }
-    }
-
-    // author: Option<PublicKey>,
-    pub fn author(self, author: &PublicKey) -> Self {
-        Self {
-            author: Some(author.clone()),
             ..self
         }
     }
