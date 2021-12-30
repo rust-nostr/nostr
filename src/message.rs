@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SubscriptionFilter {
     // authors: Vec<PublicKey>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -188,7 +188,7 @@ pub enum ClientMessage {
     },
     Req {
         subscription_id: String,
-        filter: SubscriptionFilter,
+        filters: Vec<SubscriptionFilter>,
     },
     Close {
         subscription_id: String,
@@ -200,10 +200,10 @@ impl ClientMessage {
         Self::Event { event }
     }
 
-    pub fn new_req(subscription_id: impl Into<String>, filter: SubscriptionFilter) -> Self {
+    pub fn new_req(subscription_id: impl Into<String>, filters: Vec<SubscriptionFilter>) -> Self {
         Self::Req {
             subscription_id: subscription_id.into(),
-            filter,
+            filters,
         }
     }
 
@@ -216,8 +216,15 @@ impl ClientMessage {
             Self::Event { event } => json!(["EVENT", event]).to_string(),
             Self::Req {
                 subscription_id,
-                filter,
-            } => json!(["REQ", subscription_id, filter]).to_string(),
+                filters,
+            } => {
+                let mut json = json!(["REQ", subscription_id]);
+                let mut filters = json!(filters);
+                json.as_array_mut()
+                    .unwrap()
+                    .append(filters.as_array_mut().unwrap());
+                return json.to_string();
+            }
             Self::Close { subscription_id } => json!(["CLOSE", subscription_id]).to_string(),
         }
     }
@@ -261,7 +268,7 @@ impl ClientMessage {
 mod tests {
 
     use super::*;
-    use std::error::Error;
+    use std::{error::Error, str::FromStr};
 
     type TestResult = Result<(), Box<dyn Error>>;
 
@@ -332,6 +339,23 @@ mod tests {
         assert_eq!(
             RelayMessage::from_json(invalid_event_msg_content).unwrap_err(),
             MessageHandleError::JsonDeserializationFailed
+        );
+    }
+
+    #[test]
+    fn test_client_message_req() {
+        let pk =
+            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap();
+        let filters = vec![
+            SubscriptionFilter::new().kind(Kind::EncryptedDirectMessage),
+            SubscriptionFilter::new().tag_p(pk),
+        ];
+
+        let client_req = ClientMessage::new_req("test", filters);
+        assert_eq!(
+            client_req.to_json(),
+            r##"["REQ","test",{"kind":4},{"#p":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"}]"##
         );
     }
 }

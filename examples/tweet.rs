@@ -30,16 +30,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let subscribe_to_alice = ClientMessage::new_req(
         "abcdefgh",
-        SubscriptionFilter::new()
-            .author(&alice_keys.public_key)
-            .kind(Kind::TextNote),
+        vec![SubscriptionFilter::new()
+            .authors(vec![alice_keys.public_key])
+            .kind(Kind::TextNote)],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         "1234567",
-        SubscriptionFilter::new()
-            .author(&bob_keys.public_key)
-            .kind(Kind::TextNote),
+        vec![SubscriptionFilter::new()
+            .authors(vec![bob_keys.public_key])
+            .kind(Kind::TextNote)],
     );
 
     socket.write_message(WsMessage::Text(subscribe_to_alice.to_json()))?;
