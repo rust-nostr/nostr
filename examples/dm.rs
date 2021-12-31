@@ -28,16 +28,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let subscribe_to_alice = ClientMessage::new_req(
         "abcdefg",
-        SubscriptionFilter::new()
-            .author(&alice_keys.public_key)
-            .tag_p(bob_keys.public_key),
+        vec![SubscriptionFilter::new()
+            .authors(vec![alice_keys.public_key])
+            .tag_p(bob_keys.public_key)],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         "123456",
-        SubscriptionFilter::new()
-            .author(&bob_keys.public_key)
-            .tag_p(alice_keys.public_key),
+        vec![SubscriptionFilter::new()
+            .authors(vec![bob_keys.public_key])
+            .tag_p(alice_keys.public_key)],
     );
 
     println!("Subscribing to Alice");

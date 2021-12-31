@@ -212,11 +212,15 @@ pub enum Kind {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct Tag([String; 3]);
+pub struct Tag(Vec<String>);
 
 impl Tag {
     pub fn new(kind: &str, content: &str, recommended_relay_url: &str) -> Self {
-        Self([kind.into(), content.into(), recommended_relay_url.into()])
+        Self(vec![
+            kind.into(),
+            content.into(),
+            recommended_relay_url.into(),
+        ])
     }
 
     pub fn kind(&self) -> &str {
@@ -225,5 +229,18 @@ impl Tag {
 
     pub fn content(&self) -> &str {
         &self.0[1]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tags_deser_without_recommended_relay() {
+        //The TAG array has dynamic length because the third element(Recommended relay url) is optional
+        let sample_event = r#"{"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","created_at":1640839235,"kind":4,"tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]],"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"}"#;
+        let ev_ser = Event::new_from_json(sample_event.into()).unwrap();
+        assert_eq!(ev_ser.as_json(), sample_event);
     }
 }
