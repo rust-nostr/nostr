@@ -30,14 +30,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         "abcdefg",
         vec![SubscriptionFilter::new()
             .authors(vec![alice_keys.public_key])
-            .tag_p(bob_keys.public_key)],
+            .pubkey(bob_keys.public_key)],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         "123456",
         vec![SubscriptionFilter::new()
             .authors(vec![bob_keys.public_key])
-            .tag_p(alice_keys.public_key)],
+            .pubkey(alice_keys.public_key)],
     );
 
     println!("Subscribing to Alice");

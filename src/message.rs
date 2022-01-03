@@ -7,25 +7,21 @@ use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SubscriptionFilter {
-    // authors: Vec<PublicKey>,
+    // TODO can we write this without all these "Option::is_none"
     #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<String>,
+    ids: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    kind: Option<Kind>,
-    // #e
+    kinds: Option<Vec<Kind>>,
     #[serde(rename = "#e")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    tag_e: Option<String>,
-    // #p, for instance the receiver public key
+    events: Option<Vec<String>>,
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    tag_p: Option<PublicKey>,
-    // TODO: we can't skip this always
-    // #[serde(with = "ts_seconds")]
-    // #[serde(skip_deserializing)]
+    pubkeys: Option<Vec<PublicKey>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(skip)]
-    since: Option<DateTime<Utc>>, // unix timestamp seconds
+    since: Option<u64>, // unix timestamp seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    until: Option<u64>, // unix timestamp seconds
     #[serde(skip_serializing_if = "Option::is_none")]
     authors: Option<Vec<PublicKey>>,
 }
@@ -33,66 +29,68 @@ pub struct SubscriptionFilter {
 impl SubscriptionFilter {
     pub fn new() -> Self {
         Self {
-            id: None,
-            kind: None,
-            tag_e: None,
-            tag_p: None,
+            ids: None,
+            kinds: None,
+            events: None,
+            pubkeys: None,
             since: None,
+            until: None,
             authors: None,
         }
     }
 
     pub fn id(self, id: impl Into<String>) -> Self {
         Self {
-            id: Some(id.into()),
+            ids: Some(vec![id.into()]),
             ..self
         }
     }
 
-    // kind: Option<usize>,
     pub fn kind(self, kind: Kind) -> Self {
         Self {
-            kind: Some(kind),
+            kinds: Some(vec![kind]),
             ..self
         }
     }
-    // // #e
-    // #[serde(rename = "#e")]
-    // tag_e: Option<String>,
-    pub fn tag_e(self, event_id: impl Into<String>) -> Self {
+
+    // #e
+    pub fn event(self, event_id: impl Into<String>) -> Self {
         Self {
-            tag_e: Some(event_id.into()),
+            events: Some(vec![event_id.into()]),
             ..self
         }
     }
-    // // #p, for instance the receiver public key
-    // #[serde(rename = "#p")]
-    // tag_p: Option<PublicKey>,
-    pub fn tag_p(self, pubkey: PublicKey) -> Self {
+
+    // #p, for instance the receiver public key
+    pub fn pubkey(self, pubkey: PublicKey) -> Self {
         Self {
-            tag_p: Some(pubkey),
+            pubkeys: Some(vec![pubkey]),
             ..self
         }
     }
-    // #[serde(with = "ts_seconds")]
-    // since: Option<DateTime<Utc>>, // unix timestamp seconds
+
+    // unix timestamp seconds
     pub fn since(self, since: DateTime<Utc>) -> Self {
         Self {
-            since: Some(since),
+            // TODO is there a cleaner way to do this
+            since: Some(since.timestamp().try_into().unwrap_or(0)),
             ..self
         }
     }
-    // authors: Option<Vec<PublicKey>>,
+
+    pub fn until(self, until: DateTime<Utc>) -> Self {
+        Self {
+            until: Some(until.timestamp().try_into().unwrap_or(0)),
+            ..self
+        }
+    }
+
     pub fn authors(self, authors: Vec<PublicKey>) -> Self {
         Self {
             authors: Some(authors),
             ..self
         }
     }
-
-    // pub fn new(authors: Vec<PublicKey>) -> Self {
-    //     SubscriptionFilter { author: authors[0] }
-    // }
 }
 
 #[derive(Error, Debug, PartialEq)]
@@ -349,13 +347,13 @@ mod tests {
                 .unwrap();
         let filters = vec![
             SubscriptionFilter::new().kind(Kind::EncryptedDirectMessage),
-            SubscriptionFilter::new().tag_p(pk),
+            SubscriptionFilter::new().pubkey(pk),
         ];
 
         let client_req = ClientMessage::new_req("test", filters);
         assert_eq!(
             client_req.to_json(),
-            r##"["REQ","test",{"kind":4},{"#p":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"}]"##
+            r##"["REQ","test",{"kinds":[4]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
         );
     }
 }
