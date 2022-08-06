@@ -113,6 +113,9 @@ pub enum RelayMessage {
     Notice {
         message: String,
     },
+    EndOfStoredEvents {
+        subscription_id: String,
+    },
     // TODO: maybe we can remove this idk
     Empty,
 }
@@ -129,6 +132,11 @@ impl RelayMessage {
     pub fn new_notice(message: String) -> Self {
         Self::Notice { message }
     }
+
+    pub fn new_eose(subscription_id: String) -> Self {
+        Self::EndOfStoredEvents { subscription_id }
+    }
+
     pub fn to_json(&self) -> String {
         match self {
             Self::Empty => String::new(),
@@ -137,6 +145,7 @@ impl RelayMessage {
                 subscription_id,
             } => json!(["EVENT", subscription_id, event]).to_string(),
             Self::Notice { message } => json!(["NOTICE", message]).to_string(),
+            Self::EndOfStoredEvents {subscription_id} => json!(["EOSE", subscription_id]).to_string(),
         }
     }
 
@@ -172,6 +181,19 @@ impl RelayMessage {
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
             return Ok(Self::new_event(event, subscription_id));
+        }
+
+        // EOSE (NIP-15)
+        // Relay response format: ["EOSE", <subscription_id>]
+        if v[0] == "EOSE" {
+            if v.len() != 2 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+
+            let subscription_id: String = serde_json::from_value(v[1].clone())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+            return Ok(Self::new_eose( subscription_id ));
         }
 
         Err(MessageHandleError::InvalidMessageFormat)
@@ -336,6 +358,34 @@ mod tests {
 
         assert_eq!(
             RelayMessage::from_json(invalid_event_msg_content).unwrap_err(),
+            MessageHandleError::JsonDeserializationFailed
+        );
+    }
+
+    #[test]
+    fn test_handle_valid_eose() -> TestResult {
+        let valid_eose_msg = r#"["EOSE","random-subscription-id"]"#;
+        let handled_valid_eose_msg =
+            RelayMessage::new_eose(String::from("random-subscription-id"));
+
+        assert_eq!(
+            RelayMessage::from_json(valid_eose_msg)?,
+            handled_valid_eose_msg
+        );
+
+        Ok(())
+    }
+    #[test]
+    fn test_handle_invalid_eose() {
+        // Missing subscription ID
+        assert_eq!(
+            RelayMessage::from_json(r#"["EOSE"]"#).unwrap_err(),
+            MessageHandleError::InvalidMessageFormat
+        );
+
+        // The subscription ID is not string
+        assert_eq!(
+            RelayMessage::from_json(r#"["EOSE", 404]"#).unwrap_err(),
             MessageHandleError::JsonDeserializationFailed
         );
     }

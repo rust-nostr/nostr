@@ -57,6 +57,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             RelayMessage::Empty => {
                 println!("Empty message")
             }
+            RelayMessage::EndOfStoredEvents { subscription_id } => {
+                println!("End of stored events for subscription {}", subscription_id);
+            }
             RelayMessage::Notice { message } => {
                 println!("Got a notice: {}", message);
             }
