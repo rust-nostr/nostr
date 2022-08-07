@@ -46,6 +46,13 @@ impl SubscriptionFilter {
         }
     }
 
+    pub fn ids(self, ids: impl Into<Vec<String>>) -> Self {
+        Self {
+            ids: Some(ids.into()),
+            ..self
+        }
+    }
+
     pub fn kind(self, kind: Kind) -> Self {
         Self {
             kinds: Some(vec![kind]),
@@ -269,6 +276,20 @@ mod tests {
     use std::{error::Error, str::FromStr};
 
     type TestResult = Result<(), Box<dyn Error>>;
+
+    #[test]
+    fn test_handle_valid_subscription_filter_multiple_id_prefixes() -> TestResult {
+
+        let id_prefixes = vec!["pref1".to_string(), "pref2".to_string()];
+        let f = SubscriptionFilter::new().ids(id_prefixes.clone());
+
+        assert_eq!(
+            Some(id_prefixes),
+            f.ids
+        );
+
+        Ok(())
+    }
 
     #[test]
     fn test_handle_valid_notice() -> TestResult {
