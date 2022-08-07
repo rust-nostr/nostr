@@ -1,8 +1,8 @@
 use crate::util::nip04;
 use crate::Keys;
 use bitcoin_hashes::{hex::FromHex, sha256, Hash};
-use chrono::{serde::ts_seconds, Utc};
-use chrono::{DateTime, NaiveDateTime};
+use chrono::{serde::ts_seconds, TimeZone, Utc};
+use chrono::{DateTime};
 use secp256k1::{schnorrsig, Secp256k1};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::json;
@@ -10,7 +10,6 @@ use serde_repr::*;
 use std::{
     error::Error,
     str::FromStr,
-    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -45,21 +44,19 @@ impl Event {
     ) -> sha256::Hash {
         let event_json =
             json!([0, pubkey, created_at.timestamp(), kind, tags, content]).to_string();
-        sha256::Hash::hash(&event_json.as_bytes())
+        sha256::Hash::hash(event_json.as_bytes())
     }
 
     fn time_now() -> DateTime<Utc> {
-        // Doing all this extra work to construct a DateTime with zero nanoseconds
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system time before Unix epoch");
-        let naive = NaiveDateTime::from_timestamp(now.as_secs() as i64, 0);
-        DateTime::from_utc(naive, Utc)
+        // Return current DateTime with no nanos
+        Utc.timestamp(Utc::now().timestamp(), 0)
     }
+
     /// Create a new TextNote Event
     pub fn new_textnote(
         content: &str,
         keys: &Keys,
+        tags: &Vec<Tag>
         // keypair: &schnorrsig::KeyPair,
     ) -> Result<Self, Box<dyn Error>> {
         let secp = Secp256k1::new();
@@ -73,8 +70,7 @@ impl Event {
         // TODO: support more event kinds
         let kind = Kind::TextNote;
 
-        // For some reason the timestamp isn't serializing correctly so I do it manually
-        let id = Self::gen_id(&pubkey, &created_at, &kind, &vec![], content);
+        let id = Self::gen_id(&pubkey, &created_at, &kind, tags, content);
         dbg!(id);
 
         // Message::from_hashed_data::<sha256::Hash>("Hello world!".as_bytes());
@@ -92,7 +88,7 @@ impl Event {
             pubkey,
             created_at,
             kind,
-            tags: vec![],
+            tags: tags.clone(),
             content: content.to_string(),
             sig,
         };
@@ -162,7 +158,7 @@ impl Event {
     pub(crate) fn new_dummy(
         id: &str,
         pubkey: &str,
-        created_at: u32,
+        created_at: i64,
         kind: u8,
         tags: Vec<Tag>,
         content: &str,
@@ -170,7 +166,7 @@ impl Event {
     ) -> Result<Self, Box<dyn Error>> {
         let id = sha256::Hash::from_hex(id)?;
         let pubkey = schnorrsig::PublicKey::from_str(pubkey)?;
-        let created_at = DateTime::<Utc>::from(UNIX_EPOCH + Duration::new(created_at as u64, 0));
+        let created_at =  Utc.timestamp(created_at, 0);
         let kind = serde_json::from_str(&kind.to_string())?;
         let sig = schnorrsig::Signature::from_str(sig)?;
 

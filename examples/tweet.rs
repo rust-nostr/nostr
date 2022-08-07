@@ -25,8 +25,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let bob_keys = Keys::new(BOB_SK)?;
 
     let alice_says_hi =
-        ClientMessage::new_event(Event::new_textnote("hi from alice", &alice_keys)?);
-    let bob_says_hi = ClientMessage::new_event(Event::new_textnote("bob says hello", &bob_keys)?);
+        ClientMessage::new_event(Event::new_textnote("hi from alice", &alice_keys, &vec![])?);
+    let bob_says_hi = ClientMessage::new_event(Event::new_textnote("bob says hello", &bob_keys, &vec![])?);
 
     let subscribe_to_alice = ClientMessage::new_req(
         "abcdefgh",

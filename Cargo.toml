@@ -18,6 +18,9 @@ aes = "0.7.5"
 block-modes = "0.8.1"
 base64 = "0.13.0"
 thiserror = "1.0.29"
+# On some systems the OpenSSL headers might not be installed. Provide them as vendored dependency.
+openssl = { version = "0.10", features = ["vendored"] }
+log = "*"
 
 [dev-dependencies]
 tungstenite = "0.12.0"
