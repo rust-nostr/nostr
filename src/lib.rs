@@ -1,4 +1,4 @@
-mod event;
+pub mod event;
 mod message;
 mod user;
 
@@ -48,7 +48,7 @@ mod tests {
     fn round_trip() -> TestResult {
         let keys = Keys::new("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?;
 
-        let event = Event::new_textnote("hello", &keys)?;
+        let event = Event::new_textnote("hello", &keys, &vec![])?;
 
         let serialized = event.as_json();
         let deserialized = Event::new_from_json(serialized)?;
