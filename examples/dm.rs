@@ -60,6 +60,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 RelayMessage::Notice { message } => {
                     println!("Got a notice: {}", message);
                 }
+                RelayMessage::EndOfStoredEvents { subscription_id: _} => {
+                    println!("Relay signalled End of Stored Events");
+                }
                 RelayMessage::Event {
                     event,
                     subscription_id: _,

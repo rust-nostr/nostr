@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         let message_str = record.get("message").ok_or("Couldn't get message");
         let message_hash = sha256::Hash::from_hex(message_str?)?;
-        let message = Message::from(message_hash);
+        let message = Message::from_slice(&message_hash)?;
 
         let signature = record.get("signature").ok_or("Couldn't get signature");
         let sig = schnorrsig::Signature::from_str(signature?)?;
