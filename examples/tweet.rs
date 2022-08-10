@@ -6,7 +6,9 @@ use url::Url;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
-const WS_ENDPOINT: &str = "wss://relayer.fiatjaf.com/";
+// const WS_ENDPOINT: &str = "wss://relayer.fiatjaf.com/";
+const WS_ENDPOINT: &str = "wss://nostr-relay-dev.wlvs.space";
+
 
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
@@ -51,20 +53,24 @@ fn main() -> Result<(), Box<dyn Error>> {
     loop {
         let msg = socket.read_message().expect("Error reading message");
         let msg_text = msg.to_text().expect("Failed to conver message to text");
-        let handled_message = RelayMessage::from_json(msg_text).expect("Failed to handle message");
-        match handled_message {
-            RelayMessage::Empty => {
-                println!("Empty message")
+        if let Ok(handled_message) = RelayMessage::from_json(msg_text) {
+            match handled_message {
+                RelayMessage::Empty => {
+                    println!("Empty message")
+                }
+                RelayMessage::Notice { message } => {
+                    println!("Got a notice: {}", message);
+                }
+                RelayMessage::Event {
+                    event: _,
+                    subscription_id: _,
+                } => {
+                    println!("Got an event!");
+                }
             }
-            RelayMessage::Notice { message } => {
-                println!("Got a notice: {}", message);
-            }
-            RelayMessage::Event {
-                event: _,
-                subscription_id: _,
-            } => {
-                println!("Got an event!");
-            }
+        }
+        else {
+            println!("Got unexpected message: {}", msg_text);
         }
     }
 }

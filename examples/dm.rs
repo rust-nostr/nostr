@@ -7,8 +7,8 @@ use url::Url;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
-const WS_ENDPOINT: &str = "wss://relayer.fiatjaf.com/";
-// const WS_ENDPOINT: &str = "wss://nostr-relay.freeberty.net";
+// const WS_ENDPOINT: &str = "wss://relayer.fiatjaf.com/";
+const WS_ENDPOINT: &str = "wss://nostr-relay-dev.wlvs.space";
 // const WS_ENDPOINT: &str = "ws://localhost:3333/ws";
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -51,62 +51,64 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         let msg = socket.read_message().expect("Error reading message");
-        let msg_text = msg.to_text().expect("Failed to conver message to text");
-        let handled_message = RelayMessage::from_json(msg_text).expect("Failed to handle message");
-        match handled_message {
-            RelayMessage::Empty => {
-                println!("Empty message")
-            }
-            RelayMessage::Notice { message } => {
-                println!("Got a notice: {}", message);
-            }
-            RelayMessage::Event {
-                event,
-                subscription_id: _,
-            } => {
-                if event.kind == Kind::EncryptedDirectMessage {
-                    if event.tags[0].content() == &alice_keys.public_key_as_str() {
-                        println!("New DM to alice");
-                        println!("Encrypted: {}", event.content);
-                        println!(
-                            "Decrypted: {}",
-                            decrypt(
-                                &alice_keys.secret_key()?,
-                                &bob_keys.public_key,
-                                &event.content
-                            )?
-                        );
-                        thread::sleep(time::Duration::from_millis(5000));
-                        let alice_encrypted_msg =
-                            Event::new_encrypted_direct_msg(&alice_keys, &bob_keys, alice_to_bob)?;
-                        socket.write_message(WsMessage::Text(
-                            ClientMessage::new_event(alice_encrypted_msg).to_json(),
-                        ))?;
-                    } else if event.tags[0].content() == &bob_keys.public_key_as_str() {
-                        println!("New DM to bob");
-                        println!("Encrypted: {}", event.content);
-                        println!(
-                            "Decrypted: {}",
-                            decrypt(
-                                &alice_keys.secret_key()?,
-                                &bob_keys.public_key,
-                                &event.content
-                            )?
-                        );
-                        thread::sleep(time::Duration::from_millis(5000));
-                        let bob_encrypted_msg = Event::new_encrypted_direct_msg(
-                            &bob_keys,
-                            &alice_keys,
-                            bob_to_alice.clone(),
-                        )?;
-                        socket.write_message(WsMessage::Text(
-                            ClientMessage::new_event(bob_encrypted_msg).to_json(),
-                        ))?;
+        let msg_text = msg.to_text().expect("Failed to convert message to text");
+        if let Ok(handled_message) = RelayMessage::from_json(msg_text) {
+            match handled_message {
+                RelayMessage::Empty => {
+                    println!("Empty message")
+                }
+                RelayMessage::Notice { message } => {
+                    println!("Got a notice: {}", message);
+                }
+                RelayMessage::Event {
+                    event,
+                    subscription_id: _,
+                } => {
+                    if event.kind == Kind::EncryptedDirectMessage {
+                        if event.tags[0].content() == alice_keys.public_key_as_str() {
+                            println!("New DM to alice");
+                            println!("Encrypted: {}", event.content);
+                            println!(
+                                "Decrypted: {}",
+                                decrypt(
+                                    &alice_keys.secret_key()?,
+                                    &bob_keys.public_key,
+                                    &event.content
+                                )?
+                            );
+                            thread::sleep(time::Duration::from_millis(5000));
+                            let alice_encrypted_msg =
+                                Event::new_encrypted_direct_msg(&alice_keys, &bob_keys, alice_to_bob)?;
+                            socket.write_message(WsMessage::Text(
+                                ClientMessage::new_event(alice_encrypted_msg).to_json(),
+                            ))?;
+                        } else if event.tags[0].content() == bob_keys.public_key_as_str() {
+                            println!("New DM to bob");
+                            println!("Encrypted: {}", event.content);
+                            println!(
+                                "Decrypted: {}",
+                                decrypt(
+                                    &alice_keys.secret_key()?,
+                                    &bob_keys.public_key,
+                                    &event.content
+                                )?
+                            );
+                            thread::sleep(time::Duration::from_millis(5000));
+                            let bob_encrypted_msg = Event::new_encrypted_direct_msg(
+                                &bob_keys,
+                                &alice_keys,
+                                bob_to_alice,
+                            )?;
+                            socket.write_message(WsMessage::Text(
+                                ClientMessage::new_event(bob_encrypted_msg).to_json(),
+                            ))?;
+                        }
+                    } else {
+                        dbg!(event);
                     }
-                } else {
-                    dbg!(event);
                 }
             }
         }
+        else { println!("Received unexpected message: {}", msg_text); }
     }
 }
