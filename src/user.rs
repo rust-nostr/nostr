@@ -27,7 +27,7 @@ pub struct Keys {
 impl Keys {
     pub fn generate_from_os_random() -> Result<Self, KeyError> {
         let secp = Secp256k1::new();
-        let mut rng = OsRng::new().expect("Failed to get OS rng probably a good time to panic");
+        let mut rng = OsRng::default();
         let (sk, _pk) = secp.generate_keypair(&mut rng);
         Self::new(sk)
     }
@@ -44,8 +44,8 @@ impl Keys {
 
     pub fn new(sk: SecretKey) -> Result<Self, KeyError> {
         let secp = Secp256k1::new();
-        let key_pair = KeyPair::from_secret_key(&secp, sk);
-        let pk = XOnlyPublicKey::from_keypair(&key_pair);
+        let key_pair = KeyPair::from_secret_key(&secp, &sk);
+        let pk = XOnlyPublicKey::from_keypair(&key_pair).0;
 
         Ok(Self {
             public_key: pk,

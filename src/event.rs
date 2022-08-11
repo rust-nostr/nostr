@@ -63,7 +63,7 @@ impl Event {
 
         let keypair = &keys.key_pair()?;
 
-        let pubkey = XOnlyPublicKey::from_keypair(keypair);
+        let pubkey = XOnlyPublicKey::from_keypair(keypair).0;
 
         let created_at = Self::time_now();
 

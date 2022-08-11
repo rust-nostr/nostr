@@ -57,7 +57,11 @@ pub fn decrypt(
 
 fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Vec<u8> {
     let pk_normalized = from_schnorr_pk(pk);
-    ecdh::SharedSecret::new_with_hash(&pk_normalized, sk, |x, _| x.into()).to_vec()
+    let ssp = ecdh::shared_secret_point(&pk_normalized, sk);
+
+    let mut shared_key = [0u8; 32];
+    shared_key.copy_from_slice(&ssp[..32]);
+    shared_key.to_vec()
 }
 
 fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> PublicKey {
@@ -82,14 +86,14 @@ mod tests {
         let sender_sk = SecretKey::from_str(
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let sender_key_pair = KeyPair::from_secret_key(&secp, sender_sk);
-        let sender_pk = XOnlyPublicKey::from_keypair(&sender_key_pair);
+        let sender_key_pair = KeyPair::from_secret_key(&secp, &sender_sk);
+        let sender_pk = XOnlyPublicKey::from_keypair(&sender_key_pair).0;
 
         let receiver_sk = SecretKey::from_str(
             "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let receiver_key_pair = KeyPair::from_secret_key(&secp, receiver_sk);
-        let receiver_pk = XOnlyPublicKey::from_keypair(&receiver_key_pair);
+        let receiver_key_pair = KeyPair::from_secret_key(&secp, &receiver_sk);
+        let receiver_pk = XOnlyPublicKey::from_keypair(&receiver_key_pair).0;
 
         let encrypted_content_from_outside =
             "dJc+WbBgaFCD2/kfg1XCWJParplBDxnZIdJGZ6FCTOg=?iv=M6VxRPkMZu7aIdD+10xPuw==";
@@ -104,7 +108,7 @@ mod tests {
         );
 
         assert_eq!(
-            decrypt(&receiver_sk, &sender_pk, &encrypted_content_from_outside)?,
+            decrypt(&receiver_sk, &sender_pk, encrypted_content_from_outside)?,
             content
         );
 
