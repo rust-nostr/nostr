@@ -2,6 +2,8 @@ use nostr::{
     util::nip04::decrypt, ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter,
 };
 use std::{error::Error, thread, time};
+use std::str::FromStr;
+use secp256k1::SecretKey;
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
@@ -17,8 +19,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (mut socket, _response) =
         connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect to Bob's relay");
 
-    let alice_keys = Keys::new(ALICE_SK)?;
-    let bob_keys = Keys::new(BOB_SK)?;
+    let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?)?;
+    let bob_keys = Keys::new(SecretKey::from_str(BOB_SK)?)?;
 
     let alice_to_bob = "Hey bob this is alice (ping)";
     let bob_to_alice = "Hey alice this is bob (pong)";

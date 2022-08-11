@@ -1,6 +1,6 @@
 use crate::{Event, Kind};
 use chrono::{DateTime, Utc};
-use secp256k1::schnorrsig::PublicKey;
+use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
@@ -17,13 +17,13 @@ pub struct SubscriptionFilter {
     events: Option<Vec<String>>,
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pubkeys: Option<Vec<PublicKey>>,
+    pubkeys: Option<Vec<XOnlyPublicKey>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     since: Option<u64>, // unix timestamp seconds
     #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<u64>, // unix timestamp seconds
     #[serde(skip_serializing_if = "Option::is_none")]
-    authors: Option<Vec<PublicKey>>,
+    authors: Option<Vec<XOnlyPublicKey>>,
 }
 
 impl SubscriptionFilter {
@@ -69,7 +69,7 @@ impl SubscriptionFilter {
     }
 
     // #p, for instance the receiver public key
-    pub fn pubkey(self, pubkey: PublicKey) -> Self {
+    pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
         Self {
             pubkeys: Some(vec![pubkey]),
             ..self
@@ -92,7 +92,7 @@ impl SubscriptionFilter {
         }
     }
 
-    pub fn authors(self, authors: Vec<PublicKey>) -> Self {
+    pub fn authors(self, authors: Vec<XOnlyPublicKey>) -> Self {
         Self {
             authors: Some(authors),
             ..self
@@ -414,7 +414,7 @@ mod tests {
     #[test]
     fn test_client_message_req() {
         let pk =
-            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+            XOnlyPublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
                 .unwrap();
         let filters = vec![
             SubscriptionFilter::new().kind(Kind::EncryptedDirectMessage),

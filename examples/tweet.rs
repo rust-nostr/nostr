@@ -1,4 +1,6 @@
 use std::error::Error;
+use std::str::FromStr;
+use secp256k1::SecretKey;
 
 use nostr::{ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter};
 use tungstenite::{connect, Message as WsMessage};
@@ -22,9 +24,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("* {}", header);
     }
 
-    let alice_keys = Keys::new(ALICE_SK)?;
+    let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?)?;
 
-    let bob_keys = Keys::new(BOB_SK)?;
+    let bob_keys = Keys::new(SecretKey::from_str(BOB_SK)?)?;
 
     let alice_says_hi =
         ClientMessage::new_event(Event::new_textnote("hi from alice", &alice_keys, &vec![])?);
