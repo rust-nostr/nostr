@@ -1,9 +1,11 @@
 use std::{error::Error};
 use std::cmp::max;
+use std::str::FromStr;
 use std::time::Instant;
 use nostr::event::Tag;
 
 use log::{info};
+use secp256k1::SecretKey;
 use nostr::{Event, Keys, util};
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
@@ -13,7 +15,7 @@ const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88
 fn main() -> Result<(), Box<dyn Error>> {
    env_logger::init();
 
-   let alice_keys = Keys::new(ALICE_SK)?;
+   let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?)?;
 
    let pow_difficulty = 7; // leading zero bits
    let msg_content = "This is a Nostr message with embedded proof-of-work";

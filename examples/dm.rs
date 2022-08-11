@@ -2,13 +2,15 @@ use nostr::{
     util::nip04::decrypt, ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter,
 };
 use std::{error::Error, thread, time};
+use std::str::FromStr;
+use secp256k1::SecretKey;
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 // const WS_ENDPOINT: &str = "wss://relayer.fiatjaf.com/";
-const WS_ENDPOINT: &str = "wss://nostr-relay-dev.wlvs.space";
+const WS_ENDPOINT: &str = "wss://nostr-relay.wlvs.space";
 // const WS_ENDPOINT: &str = "ws://localhost:3333/ws";
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -17,8 +19,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (mut socket, _response) =
         connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect to Bob's relay");
 
-    let alice_keys = Keys::new(ALICE_SK)?;
-    let bob_keys = Keys::new(BOB_SK)?;
+    let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?)?;
+    let bob_keys = Keys::new(SecretKey::from_str(BOB_SK)?)?;
 
     let alice_to_bob = "Hey bob this is alice (ping)";
     let bob_to_alice = "Hey alice this is bob (pong)";
@@ -107,7 +109,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             ))?;
                         }
                     } else {
-                        dbg!(event);
+                        println!("{:#?}", event);
                     }
                 }
             }

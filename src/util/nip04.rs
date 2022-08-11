@@ -1,7 +1,7 @@
 use aes::Aes256;
 use base64::{decode, encode};
 use block_modes::{block_padding, BlockMode, Cbc};
-use secp256k1::{ecdh, rand::random, schnorrsig, PublicKey, SecretKey};
+use secp256k1::{ecdh, rand::random, PublicKey, SecretKey, XOnlyPublicKey};
 use std::convert::From;
 use std::str::FromStr;
 use thiserror::Error;
@@ -25,8 +25,8 @@ pub enum DecryptError {
     WrongBlockMode,
 }
 
-pub fn encrypt(sk: &SecretKey, pk: &schnorrsig::PublicKey, text: &str) -> String {
-    let key = generate_shared_key(&sk, &pk);
+pub fn encrypt(sk: &SecretKey, pk: &XOnlyPublicKey, text: &str) -> String {
+    let key = generate_shared_key(sk, pk);
     let iv: [u8; 16] = random();
     // This shouldn't fail because we've already validated the inputs
     let cipher = Aes256Cbc::new_from_slices(&key, &iv).expect("Invalid arguments to Aes");
@@ -36,7 +36,7 @@ pub fn encrypt(sk: &SecretKey, pk: &schnorrsig::PublicKey, text: &str) -> String
 
 pub fn decrypt(
     sk: &SecretKey,
-    pk: &schnorrsig::PublicKey,
+    pk: &XOnlyPublicKey,
     encrypted_content: &str,
 ) -> Result<String, DecryptError> {
     let parsed_content: Vec<&str> = encrypted_content.split("?iv=").collect();
@@ -46,7 +46,7 @@ pub fn decrypt(
     let encrypted_content =
         decode(parsed_content[0]).map_err(|_| DecryptError::Base64DecodeError)?;
     let iv = decode(parsed_content[1]).map_err(|_| DecryptError::Base64DecodeError)?;
-    let key = generate_shared_key(&sk, &pk);
+    let key = generate_shared_key(sk, pk);
     // This shouldn't fail because we've already validated the inputs
     let cipher = Aes256Cbc::new_from_slices(&key, &iv).expect("Invalid arguments to Aes");
     let decryptedtext = cipher
@@ -55,12 +55,16 @@ pub fn decrypt(
     String::from_utf8(decryptedtext).map_err(|_| DecryptError::Utf8EncodeError)
 }
 
-fn generate_shared_key(sk: &SecretKey, pk: &schnorrsig::PublicKey) -> Vec<u8> {
+fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Vec<u8> {
     let pk_normalized = from_schnorr_pk(pk);
-    ecdh::SharedSecret::new_with_hash(&pk_normalized, &sk, |x, _| x.into()).to_vec()
+    let ssp = ecdh::shared_secret_point(&pk_normalized, sk);
+
+    let mut shared_key = [0u8; 32];
+    shared_key.copy_from_slice(&ssp[..32]);
+    shared_key.to_vec()
 }
 
-fn from_schnorr_pk(schnorr_pk: &schnorrsig::PublicKey) -> PublicKey {
+fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> PublicKey {
     let mut pk = String::from("02");
     pk.push_str(&schnorr_pk.to_string());
     PublicKey::from_str(&pk).expect("Failed to make a PublicKey with the addition of 02")
@@ -70,7 +74,7 @@ fn from_schnorr_pk(schnorr_pk: &schnorrsig::PublicKey) -> PublicKey {
 mod tests {
 
     use super::*;
-    use secp256k1::Secp256k1;
+    use secp256k1::{KeyPair, Secp256k1};
     use std::error::Error;
 
     type TestResult = Result<(), Box<dyn Error>>;
@@ -82,14 +86,14 @@ mod tests {
         let sender_sk = SecretKey::from_str(
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let sender_key_pair = schnorrsig::KeyPair::from_secret_key(&secp, sender_sk);
-        let sender_pk = schnorrsig::PublicKey::from_keypair(&secp, &sender_key_pair);
+        let sender_key_pair = KeyPair::from_secret_key(&secp, &sender_sk);
+        let sender_pk = XOnlyPublicKey::from_keypair(&sender_key_pair).0;
 
         let receiver_sk = SecretKey::from_str(
             "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let receiver_key_pair = schnorrsig::KeyPair::from_secret_key(&secp, receiver_sk);
-        let receiver_pk = schnorrsig::PublicKey::from_keypair(&secp, &receiver_key_pair);
+        let receiver_key_pair = KeyPair::from_secret_key(&secp, &receiver_sk);
+        let receiver_pk = XOnlyPublicKey::from_keypair(&receiver_key_pair).0;
 
         let encrypted_content_from_outside =
             "dJc+WbBgaFCD2/kfg1XCWJParplBDxnZIdJGZ6FCTOg=?iv=M6VxRPkMZu7aIdD+10xPuw==";
@@ -104,7 +108,7 @@ mod tests {
         );
 
         assert_eq!(
-            decrypt(&receiver_sk, &sender_pk, &encrypted_content_from_outside)?,
+            decrypt(&receiver_sk, &sender_pk, encrypted_content_from_outside)?,
             content
         );
 

@@ -1,9 +1,4 @@
-use secp256k1::{
-    rand::rngs::OsRng,
-    schnorrsig,
-    schnorrsig::{KeyPair, PublicKey},
-    Secp256k1, SecretKey,
-};
+use secp256k1::{KeyPair, rand::rngs::OsRng, Secp256k1, SecretKey, XOnlyPublicKey};
 
 use std::str::FromStr;
 use thiserror::Error;
@@ -24,7 +19,7 @@ pub enum KeyError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Keys {
-    pub public_key: PublicKey,
+    pub public_key: XOnlyPublicKey,
     key_pair: Option<KeyPair>,
     secret_key: Option<SecretKey>,
 }
@@ -32,13 +27,13 @@ pub struct Keys {
 impl Keys {
     pub fn generate_from_os_random() -> Result<Self, KeyError> {
         let secp = Secp256k1::new();
-        let mut rng = OsRng::new().expect("Failed to get OS rng probably a good time to panic");
+        let mut rng = OsRng::default();
         let (sk, _pk) = secp.generate_keypair(&mut rng);
-        Self::new(&sk.to_string())
+        Self::new(sk)
     }
 
     pub fn new_pub_only(pk: &str) -> Result<Self, KeyError> {
-        let pk = schnorrsig::PublicKey::from_str(pk).map_err(|_| KeyError::PkParseError)?;
+        let pk = XOnlyPublicKey::from_str(pk).map_err(|_| KeyError::PkParseError)?;
 
         Ok(Keys {
             public_key: pk,
@@ -47,11 +42,10 @@ impl Keys {
         })
     }
 
-    pub fn new(sk: &str) -> Result<Self, KeyError> {
+    pub fn new(sk: SecretKey) -> Result<Self, KeyError> {
         let secp = Secp256k1::new();
-        let sk = SecretKey::from_str(sk).map_err(|_| KeyError::SkParseError)?;
-        let key_pair = schnorrsig::KeyPair::from_secret_key(&secp, sk);
-        let pk = schnorrsig::PublicKey::from_keypair(&secp, &key_pair);
+        let key_pair = KeyPair::from_secret_key(&secp, &sk);
+        let pk = XOnlyPublicKey::from_keypair(&key_pair).0;
 
         Ok(Self {
             public_key: pk,
@@ -67,14 +61,6 @@ impl Keys {
     pub fn secret_key(&self) -> Result<SecretKey, KeyError> {
         if let Some(secret_key) = self.secret_key {
             Ok(secret_key)
-        } else {
-            Err(KeyError::SkMissing)
-        }
-    }
-
-    pub fn secret_key_as_str(&self) -> Result<String, KeyError> {
-        if let Some(secret_key) = self.secret_key {
-            Ok(secret_key.to_string())
         } else {
             Err(KeyError::SkMissing)
         }

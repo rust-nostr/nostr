@@ -3,7 +3,7 @@ use crate::Keys;
 use bitcoin_hashes::{hex::FromHex, sha256, Hash};
 use chrono::{serde::ts_seconds, TimeZone, Utc};
 use chrono::{DateTime};
-use secp256k1::{schnorrsig, Secp256k1};
+use secp256k1::{schnorr, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::json;
 use serde_repr::*;
@@ -15,28 +15,28 @@ use std::{
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Event {
     pub id: sha256::Hash, // hash of serialized event with id 0
-    pub pubkey: schnorrsig::PublicKey,
+    pub pubkey: XOnlyPublicKey,
     #[serde(with = "ts_seconds")]
     pub created_at: DateTime<Utc>, // unix timestamp seconds
     pub kind: Kind,
     pub tags: Vec<Tag>,
     pub content: String,
     #[serde(deserialize_with = "sig_string")] // Serde derive is being weird
-    pub sig: schnorrsig::Signature,
+    pub sig: schnorr::Signature,
 }
 
-fn sig_string<'de, D>(deserializer: D) -> Result<schnorrsig::Signature, D::Error>
+fn sig_string<'de, D>(deserializer: D) -> Result<schnorr::Signature, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s: String = Deserialize::deserialize(deserializer)?;
-    let sig = schnorrsig::Signature::from_str(&s);
+    let sig = schnorr::Signature::from_str(&s);
     sig.map_err(serde::de::Error::custom)
 }
 
 impl Event {
     fn gen_id(
-        pubkey: &schnorrsig::PublicKey,
+        pubkey: &XOnlyPublicKey,
         created_at: &DateTime<Utc>,
         kind: &Kind,
         tags: &Vec<Tag>,
@@ -57,13 +57,13 @@ impl Event {
         content: &str,
         keys: &Keys,
         tags: &Vec<Tag>
-        // keypair: &schnorrsig::KeyPair,
+        // keypair: &schnorr::KeyPair,
     ) -> Result<Self, Box<dyn Error>> {
         let secp = Secp256k1::new();
 
         let keypair = &keys.key_pair()?;
 
-        let pubkey = schnorrsig::PublicKey::from_keypair(&secp, keypair);
+        let pubkey = XOnlyPublicKey::from_keypair(keypair).0;
 
         let created_at = Self::time_now();
 
@@ -81,7 +81,7 @@ impl Event {
 
         // Let the schnorr library handle the aux for us
         // I _think_ this is bip340 compliant
-        let sig = secp.schnorrsig_sign(&message, keypair);
+        let sig = secp.sign_schnorr(&message, keypair);
 
         let event = Event {
             id,
@@ -104,12 +104,12 @@ impl Event {
         sender: &Keys,
         receiver: &Keys,
         // sender_sk: SecretKey,
-        // receiver_pk: &schnorrsig::PublicKey,
+        // receiver_pk: &schnorr::PublicKey,
         content: &str,
     ) -> Result<Self, Box<dyn Error>> {
         let secp = Secp256k1::new();
-        // let sender_keypair = schnorrsig::KeyPair::from_secret_key(&secp, sender.secret_key());
-        // let sender_pk = schnorrsig::PublicKey::from_keypair(&secp, &sender_keypair);
+        // let sender_keypair = schnorr::KeyPair::from_secret_key(&secp, sender.secret_key());
+        // let sender_pk = schnorr::PublicKey::from_keypair(&secp, &sender_keypair);
 
         let encrypted_content =
             nip04::encrypt(&sender.secret_key()?, &receiver.public_key, content);
@@ -127,7 +127,7 @@ impl Event {
 
         let id_to_sign = secp256k1::Message::from_slice(&id)?;
 
-        let sig = secp.schnorrsig_sign(&id_to_sign, &sender.key_pair()?);
+        let sig = secp.sign_schnorr(&id_to_sign, &sender.key_pair()?);
 
         Ok(Event {
             id,
@@ -150,7 +150,7 @@ impl Event {
             &self.content,
         );
         let message = secp256k1::Message::from_slice(&id)?;
-        secp.schnorrsig_verify(&self.sig, &message, &self.pubkey)
+        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
     }
 
     /// This is just for serde sanity checking
@@ -165,10 +165,10 @@ impl Event {
         sig: &str,
     ) -> Result<Self, Box<dyn Error>> {
         let id = sha256::Hash::from_hex(id)?;
-        let pubkey = schnorrsig::PublicKey::from_str(pubkey)?;
+        let pubkey = XOnlyPublicKey::from_str(pubkey)?;
         let created_at =  Utc.timestamp(created_at, 0);
         let kind = serde_json::from_str(&kind.to_string())?;
-        let sig = schnorrsig::Signature::from_str(sig)?;
+        let sig = schnorr::Signature::from_str(sig)?;
 
         let event = Event {
             id,
