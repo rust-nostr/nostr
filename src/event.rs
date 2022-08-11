@@ -81,7 +81,7 @@ impl Event {
 
         // Let the schnorr library handle the aux for us
         // I _think_ this is bip340 compliant
-        let sig = secp.schnorrsig_sign(&message, keypair);
+        let sig = secp.sign_schnorr(&message, keypair);
 
         let event = Event {
             id,
@@ -127,7 +127,7 @@ impl Event {
 
         let id_to_sign = secp256k1::Message::from_slice(&id)?;
 
-        let sig = secp.schnorrsig_sign(&id_to_sign, &sender.key_pair()?);
+        let sig = secp.sign_schnorr(&id_to_sign, &sender.key_pair()?);
 
         Ok(Event {
             id,
@@ -150,7 +150,7 @@ impl Event {
             &self.content,
         );
         let message = secp256k1::Message::from_slice(&id)?;
-        secp.schnorrsig_verify(&self.sig, &message, &self.pubkey)
+        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
     }
 
     /// This is just for serde sanity checking

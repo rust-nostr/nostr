@@ -1,7 +1,9 @@
-use std::{collections::HashMap, error::Error, str::FromStr};
+use std::{collections::HashMap, error::Error};
+use std::str::FromStr;
 
 use bitcoin_hashes::{hex::FromHex, sha256};
-use secp256k1::{schnorrsig, Message, Secp256k1};
+use secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
+use secp256k1::schnorr::Signature;
 
 /// This is an incomplete attempt to test I'm doing bip340 correctly
 /// csv from https://github.com/bitcoin/bips/blob/master/bip-0340/test-vectors.csv
@@ -19,10 +21,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         let message = Message::from_slice(&message_hash)?;
 
         let signature = record.get("signature").ok_or("Couldn't get signature");
-        let sig = schnorrsig::Signature::from_str(signature?)?;
+        let sig = Signature::from_str(signature?)?;
 
         let pubkey_record = record.get("public key").ok_or("Couldn't get public key");
-        let pubkey = match schnorrsig::PublicKey::from_str(pubkey_record?) {
+        let pubkey = match XOnlyPublicKey::from_str(pubkey_record?) {
             Ok(pubkey) => pubkey,
             Err(e) => {
                 eprintln!("Invalid public key: {}", e);
@@ -30,10 +32,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         };
 
-        let _verify_result = secp.schnorrsig_verify(&sig, &message, &pubkey);
+        let _verify_result = secp.verify_schnorr(&sig, &message, &pubkey);
         let secretkey_record = record.get("secret key").ok_or("Couldn't get secret key");
 
-        let _keypair = match schnorrsig::KeyPair::from_seckey_str(&secp, secretkey_record?) {
+        let _keypair = match KeyPair::from_seckey_str(&secp, secretkey_record?) {
             Ok(keypair) => keypair,
             Err(e) => {
                 eprintln!("Invalid secret key: {}", e);
