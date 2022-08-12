@@ -1,13 +1,15 @@
 /// Gets the number of leading zero bits from a hash
-pub fn get_leading_zeroes(h: bitcoin_hashes::sha256::Hash) -> u32 {
+pub fn get_leading_zero_bits(h: bitcoin_hashes::sha256::Hash) -> u32 {
     let mut res = 0;
-    let mut stop_counting = false;
-    h.iter().for_each(|&x| {
-        if stop_counting { return; }
-        res += x.leading_zeros();
-        if x != 0 { stop_counting = true; }
-    });
-
+    for b in h.as_ref() {
+        if *b == 0 {
+            res += 8;
+        }
+        else {
+            res += b.leading_zeros();
+            return res;
+        }
+    }
     res
 }
 
@@ -41,40 +43,40 @@ pub mod tests {
 
     #[test]
     fn check_get_leading_zeroes() {
-        assert_eq!(4, get_leading_zeroes(Hash::from_hex("0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(3, get_leading_zeroes(Hash::from_hex("1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("2fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(1, get_leading_zeroes(Hash::from_hex("4fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(1, get_leading_zeroes(Hash::from_hex("5fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(1, get_leading_zeroes(Hash::from_hex("6fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(1, get_leading_zeroes(Hash::from_hex("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(4, get_leading_zero_bits(Hash::from_hex("0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(3, get_leading_zero_bits(Hash::from_hex("1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(1, get_leading_zero_bits(Hash::from_hex("4fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(1, get_leading_zero_bits(Hash::from_hex("5fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(1, get_leading_zero_bits(Hash::from_hex("6fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(1, get_leading_zero_bits(Hash::from_hex("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
 
-        assert_eq!(0, get_leading_zeroes(Hash::from_hex("8fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(0, get_leading_zeroes(Hash::from_hex("9fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(0, get_leading_zeroes(Hash::from_hex("afffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(0, get_leading_zeroes(Hash::from_hex("bfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(0, get_leading_zeroes(Hash::from_hex("cfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(0, get_leading_zeroes(Hash::from_hex("dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(0, get_leading_zeroes(Hash::from_hex("efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(0, get_leading_zeroes(Hash::from_hex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(0, get_leading_zero_bits(Hash::from_hex("8fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(0, get_leading_zero_bits(Hash::from_hex("9fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(0, get_leading_zero_bits(Hash::from_hex("afffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(0, get_leading_zero_bits(Hash::from_hex("bfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(0, get_leading_zero_bits(Hash::from_hex("cfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(0, get_leading_zero_bits(Hash::from_hex("dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(0, get_leading_zero_bits(Hash::from_hex("efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(0, get_leading_zero_bits(Hash::from_hex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
 
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("20ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("21ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("22ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("23ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("24ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("25ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("26ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("27ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("28ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("29ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("2affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("2bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("2cffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("2dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("2effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
-        assert_eq!(2, get_leading_zeroes(Hash::from_hex("2fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("20ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("21ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("22ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("23ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("24ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("25ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("26ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("27ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("28ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("29ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2cffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+        assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
     }
 
     #[test]
