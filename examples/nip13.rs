@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
    let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?)?;
 
-   let pow_difficulty = 7; // leading zero bits
+   let pow_difficulty = 10; // leading zero bits
    let msg_content = "This is a Nostr message with embedded proof-of-work";
 
    let targeted_difficulty_str = pow_difficulty.to_string();
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn Error>> {
       let temp_note = Event::new_textnote(msg_content, &alice_keys,&vec![t]).expect("Error when creating textnote");
       let id = temp_note.id;
 
-      let leading_zeroes = util::nip13::get_leading_zeroes(id);
+      let leading_zeroes = util::nip13::get_leading_zero_bits(id);
       if leading_zeroes >= pow_difficulty {
          found_valid_hash = true;
 
@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn Error>> {
          let l = iter_string.len();
          let f = iter_string.chars().next().unwrap();
          info!("{} iterations (about {}x10^{} hashes) in {} seconds. Avg rate {} hashes/second",
-            iterations, f, l - 1, now.elapsed().as_secs(), iterations / max(1, now.elapsed().as_secs()));
+            iterations, f, l - 1, now.elapsed().as_secs(), iterations * 1000 / max(1, now.elapsed().as_millis()));
          info!("Nostr event JSON is: {}", serde_json::to_string_pretty(&temp_note).unwrap());
       }
    }
