@@ -14,7 +14,7 @@ pub fn get_leading_zero_bits(h: bitcoin_hashes::sha256::Hash) -> u32 {
 }
 
 /// Returns all possible ID prefixes (hex) that have the specified number of leading zero bits
-pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
+pub fn get_prefixes_for_difficulty(leading_zero_bits: u32) -> Vec<String> {
     let mut r = vec![];
 
     if leading_zero_bits == 0 { return r; }
