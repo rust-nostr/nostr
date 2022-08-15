@@ -13,19 +13,25 @@ pub fn get_leading_zero_bits(h: bitcoin_hashes::sha256::Hash) -> u32 {
     res
 }
 
-/// Returns all possible ID prefixes (hex) that have the specified number of leading zero bits
+/// Returns all possible ID prefixes (hex) that have the specified number of leading zero bits.
+///
+/// Possible values: 0-255
 pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
     let mut r = vec![];
 
     if leading_zero_bits == 0 { return r; }
 
-    let hex_chars =
+    // Up to 64
+    let prefix_hex_len =
         if leading_zero_bits % 4 == 0 { leading_zero_bits / 4 } 
         else { leading_zero_bits / 4 + 1 };
-    let prefix_bits = hex_chars * 4;
 
-    for i in 0..2_u32.pow((prefix_bits - leading_zero_bits) as usize as u32) {
-        let p = format!("{:01$x}", i, hex_chars as usize); // https://stackoverflow.com/a/26286238
+    // Bitlength of relevant prefixes, from 4 (prefix has at least 1 hex char) to 256 (all 64 chars)
+    let prefix_bits : u16 = prefix_hex_len as u16 * 4 ;
+
+    // pow expects u32
+    for i in 0..2_u8.pow((prefix_bits - leading_zero_bits as u16) as u32) {
+        let p = format!("{:01$x}", i, prefix_hex_len as usize); // https://stackoverflow.com/a/26286238
         r.push(p);
     }
 
@@ -109,6 +115,17 @@ pub mod tests {
                    vec!["000", "001"]);
         assert_eq!(get_prefixes_for_difficulty(12),
                    vec!["000"]);
+
+        assert_eq!(get_prefixes_for_difficulty(254),
+                   vec!["0000000000000000000000000000000000000000000000000000000000000000",
+                        "0000000000000000000000000000000000000000000000000000000000000001",
+                        "0000000000000000000000000000000000000000000000000000000000000002",
+                        "0000000000000000000000000000000000000000000000000000000000000003"]
+        );
+        assert_eq!(get_prefixes_for_difficulty(255),
+                   vec!["0000000000000000000000000000000000000000000000000000000000000000",
+                        "0000000000000000000000000000000000000000000000000000000000000001"]
+        );
     }
 
 
