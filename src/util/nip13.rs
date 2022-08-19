@@ -1,12 +1,12 @@
-/// Gets the number of leading zero bits from a hash
-pub fn get_leading_zero_bits(h: bitcoin_hashes::sha256::Hash) -> u32 {
-    let mut res = 0;
+/// Gets the number of leading zero bits of a hash. Result is between 0 and 255.
+pub fn get_leading_zero_bits(h: bitcoin_hashes::sha256::Hash) -> u8 {
+    let mut res= 0_u8;
     for b in h.as_ref() {
         if *b == 0 {
             res += 8;
         }
         else {
-            res += b.leading_zeros();
+            res += b.leading_zeros() as u8;
             return res;
         }
     }
@@ -83,6 +83,10 @@ pub mod tests {
         assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
         assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
         assert_eq!(2, get_leading_zero_bits(Hash::from_hex("2fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()));
+
+        assert_eq!(248, get_leading_zero_bits(Hash::from_hex("00000000000000000000000000000000000000000000000000000000000000ff").unwrap()));
+        assert_eq!(252, get_leading_zero_bits(Hash::from_hex("000000000000000000000000000000000000000000000000000000000000000f").unwrap()));
+        assert_eq!(255, get_leading_zero_bits(Hash::from_hex("0000000000000000000000000000000000000000000000000000000000000001").unwrap()));
     }
 
     #[test]
