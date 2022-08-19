@@ -1,5 +1,7 @@
+use bitcoin_hashes::sha256;
+
 /// Gets the number of leading zero bits of a hash. Result is between 0 and 255.
-pub fn get_leading_zero_bits(h: bitcoin_hashes::sha256::Hash) -> u8 {
+pub fn get_leading_zero_bits(h: sha256::Hash) -> u8 {
     let mut res= 0_u8;
     for b in h.as_ref() {
         if *b == 0 {
