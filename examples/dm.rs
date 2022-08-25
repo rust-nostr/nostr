@@ -6,6 +6,7 @@ use std::str::FromStr;
 use secp256k1::SecretKey;
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
+use nostr::event::KindBase;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
@@ -69,7 +70,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     event,
                     subscription_id: _,
                 } => {
-                    if event.kind == Kind::EncryptedDirectMessage {
+                    if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
                         if event.tags[0].content() == alice_keys.public_key_as_str() {
                             println!("New DM to alice");
                             println!("Encrypted: {}", event.content);
