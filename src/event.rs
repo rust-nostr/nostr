@@ -57,18 +57,23 @@ impl Event {
         content: &str,
         keys: &Keys,
         tags: &Vec<Tag>
-        // keypair: &schnorr::KeyPair,
+    ) -> Result<Self, Box<dyn Error>> {
+        Self::new_generic(content, keys, tags, Kind::Base(KindBase::TextNote))
+    }
+
+    /// Create a generic type of event
+    pub fn new_generic(
+        content: &str,
+        keys: &Keys,
+        tags: &Vec<Tag>,
+        kind: Kind
     ) -> Result<Self, Box<dyn Error>> {
         let secp = Secp256k1::new();
 
         let keypair = &keys.key_pair()?;
-
         let pubkey = XOnlyPublicKey::from_keypair(keypair).0;
 
         let created_at = Self::time_now();
-
-        // TODO: support more event kinds
-        let kind = Kind::TextNote;
 
         let id = Self::gen_id(&pubkey, &created_at, &kind, tags, content);
         dbg!(id);
@@ -101,43 +106,20 @@ impl Event {
     }
 
     pub fn new_encrypted_direct_msg(
-        sender: &Keys,
-        receiver: &Keys,
+        sender_keys: &Keys,
+        receiver_keys: &Keys,
         // sender_sk: SecretKey,
         // receiver_pk: &schnorr::PublicKey,
         content: &str,
     ) -> Result<Self, Box<dyn Error>> {
-        let secp = Secp256k1::new();
-        // let sender_keypair = schnorr::KeyPair::from_secret_key(&secp, sender.secret_key());
-        // let sender_pk = schnorr::PublicKey::from_keypair(&secp, &sender_keypair);
 
-        let encrypted_content =
-            nip04::encrypt(&sender.secret_key()?, &receiver.public_key, content);
-        let kind = Kind::EncryptedDirectMessage;
-        let created_at = Self::time_now();
-        let tags = vec![Tag::new("p", &receiver.public_key_as_str(), "")];
-        // TODO maybe could pass Keys here
-        let id = Self::gen_id(
-            &sender.public_key,
-            &created_at,
-            &kind,
-            &tags,
-            &encrypted_content,
-        );
+        Self::new_generic(
+            &nip04::encrypt(&sender_keys.secret_key()?, &receiver_keys.public_key, content),
+            sender_keys,
+            &vec![Tag::new("p", &receiver_keys.public_key_as_str(), "")],
+            Kind::Base(KindBase::TextNote)
+        )
 
-        let id_to_sign = secp256k1::Message::from_slice(&id)?;
-
-        let sig = secp.sign_schnorr(&id_to_sign, &sender.key_pair()?);
-
-        Ok(Event {
-            id,
-            pubkey: sender.public_key,
-            created_at,
-            kind,
-            tags,
-            content: encrypted_content,
-            sig,
-        })
     }
 
     pub fn verify(&self) -> Result<(), secp256k1::Error> {
@@ -199,13 +181,21 @@ impl Event {
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, Copy, Clone)]
 #[repr(u8)]
-pub enum Kind {
+pub enum KindBase {
     SetMetadata = 0,
     TextNote = 1,
     RecommendServer = 2,
     ContactList = 3,
-    EncryptedDirectMessage = 4,
+    EncryptedDirectMessage = 4
 }
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Copy, Clone)]
+#[serde(untagged)]
+pub enum Kind {
+    Base(KindBase),
+    Custom(u8)
+}
+
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Tag(Vec<String>);
@@ -238,5 +228,18 @@ mod tests {
         let sample_event = r#"{"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","created_at":1640839235,"kind":4,"tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]],"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"}"#;
         let ev_ser = Event::new_from_json(sample_event.into()).unwrap();
         assert_eq!(ev_ser.as_json(), sample_event);
+    }
+
+    #[test]
+    fn test_custom_kind() {
+        let keys = Keys::generate_from_os_random().unwrap();
+        let e = Event::new_generic("my content", &keys, &vec![], Kind::Custom(123)).unwrap();
+
+        let serialized = e.as_json();
+        let deserialized = Event::new_from_json(serialized).unwrap();
+
+        assert_eq!(e, deserialized);
+        assert_eq!(Kind::Custom(123), e.kind);
+        assert_eq!(Kind::Custom(123), deserialized.kind);
     }
 }

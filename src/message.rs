@@ -4,6 +4,7 @@ use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
+use crate::event::KindBase;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SubscriptionFilter {
@@ -53,9 +54,16 @@ impl SubscriptionFilter {
         }
     }
 
-    pub fn kind(self, kind: Kind) -> Self {
+    pub fn kind_custom(self, kind_id: u8) -> Self {
         Self {
-            kinds: Some(vec![kind]),
+            kinds: Some(vec![Kind::Custom(kind_id)]),
+            ..self
+        }
+    }
+
+    pub fn kind_base(self, kind_base: KindBase) -> Self {
+        Self {
+            kinds: Some(vec![Kind::Base(kind_base)]),
             ..self
         }
     }
@@ -417,7 +425,7 @@ mod tests {
             XOnlyPublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
                 .unwrap();
         let filters = vec![
-            SubscriptionFilter::new().kind(Kind::EncryptedDirectMessage),
+            SubscriptionFilter::new().kind_base(KindBase::EncryptedDirectMessage),
             SubscriptionFilter::new().pubkey(pk),
         ];
 
@@ -425,6 +433,23 @@ mod tests {
         assert_eq!(
             client_req.to_json(),
             r##"["REQ","test",{"kinds":[4]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
+        );
+    }
+
+    #[test]
+    fn test_client_message_custom_kind() {
+        let pk =
+            XOnlyPublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap();
+        let filters = vec![
+            SubscriptionFilter::new().kind_custom(22),
+            SubscriptionFilter::new().pubkey(pk),
+        ];
+
+        let client_req = ClientMessage::new_req("test", filters);
+        assert_eq!(
+            client_req.to_json(),
+            r##"["REQ","test",{"kinds":[22]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
         );
     }
 }
