@@ -54,7 +54,7 @@ impl SubscriptionFilter {
         }
     }
 
-    pub fn kind_custom(self, kind_id: u8) -> Self {
+    pub fn kind_custom(self, kind_id: u16) -> Self {
         Self {
             kinds: Some(vec![Kind::Custom(kind_id)]),
             ..self
