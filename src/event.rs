@@ -76,7 +76,6 @@ impl Event {
         let created_at = Self::time_now();
 
         let id = Self::gen_id(&pubkey, &created_at, &kind, tags, content);
-        dbg!(id);
 
         // Message::from_hashed_data::<sha256::Hash>("Hello world!".as_bytes());
         // is equivalent to
