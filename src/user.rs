@@ -1,9 +1,13 @@
-use secp256k1::{KeyPair, rand::rngs::OsRng, Secp256k1, SecretKey, XOnlyPublicKey};
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
 
 use std::str::FromStr;
+
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, Eq, PartialEq)]
 pub enum KeyError {
     #[error("Invalid secret key string")]
     SkParseError,
@@ -17,7 +21,7 @@ pub enum KeyError {
     KeyGenerationFailure,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Keys {
     pub public_key: XOnlyPublicKey,
     key_pair: Option<KeyPair>,

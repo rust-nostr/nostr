@@ -1,18 +1,23 @@
-use crate::util::nip04;
-use crate::Keys;
-use bitcoin_hashes::{hex::FromHex, sha256, Hash};
-use chrono::{serde::ts_seconds, TimeZone, Utc};
-use chrono::{DateTime};
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
+
+use std::error::Error;
+use std::str::FromStr;
+
+use bitcoin_hashes::hex::FromHex;
+use bitcoin_hashes::{sha256, Hash};
+use chrono::serde::ts_seconds;
+use chrono::DateTime;
+use chrono::{TimeZone, Utc};
 use secp256k1::{schnorr, Secp256k1, XOnlyPublicKey};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer};
 use serde_json::json;
 use serde_repr::*;
-use std::{
-    error::Error,
-    str::FromStr,
-};
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+use crate::util::nip04;
+use crate::Keys;
+
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub struct Event {
     pub id: sha256::Hash, // hash of serialized event with id 0
     pub pubkey: XOnlyPublicKey,
@@ -56,9 +61,9 @@ impl Event {
     pub fn new_textnote(
         content: &str,
         keys: &Keys,
-        tags: &Vec<Tag>
+        tags: &Vec<Tag>,
     ) -> Result<Self, Box<dyn Error>> {
-        Self::new_generic(content, keys, tags, Kind::Base(KindBase::TextNote))
+        Self::new_generic(content, keys, tags, Kind::Base(KindBase::Text))
     }
 
     /// Create a generic type of event
@@ -66,7 +71,7 @@ impl Event {
         content: &str,
         keys: &Keys,
         tags: &Vec<Tag>,
-        kind: Kind
+        kind: Kind,
     ) -> Result<Self, Box<dyn Error>> {
         let secp = Secp256k1::new();
 
@@ -111,14 +116,16 @@ impl Event {
         // receiver_pk: &schnorr::PublicKey,
         content: &str,
     ) -> Result<Self, Box<dyn Error>> {
-
         Self::new_generic(
-            &nip04::encrypt(&sender_keys.secret_key()?, &receiver_keys.public_key, content),
+            &nip04::encrypt(
+                &sender_keys.secret_key()?,
+                &receiver_keys.public_key,
+                content,
+            ),
             sender_keys,
             &vec![Tag::new("p", &receiver_keys.public_key_as_str(), "")],
-            Kind::Base(KindBase::TextNote)
+            Kind::Base(KindBase::Text),
         )
-
     }
 
     pub fn verify(&self) -> Result<(), secp256k1::Error> {
@@ -147,7 +154,7 @@ impl Event {
     ) -> Result<Self, Box<dyn Error>> {
         let id = sha256::Hash::from_hex(id)?;
         let pubkey = XOnlyPublicKey::from_str(pubkey)?;
-        let created_at =  Utc.timestamp(created_at, 0);
+        let created_at = Utc.timestamp(created_at, 0);
         let kind = serde_json::from_str(&kind.to_string())?;
         let sig = schnorr::Signature::from_str(sig)?;
 
@@ -178,25 +185,31 @@ impl Event {
     }
 }
 
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, Copy, Clone)]
+#[derive(Serialize_repr, Deserialize_repr, Eq, PartialEq, Debug, Copy, Clone)]
 #[repr(u8)]
 pub enum KindBase {
-    SetMetadata = 0,
-    TextNote = 1,
-    RecommendServer = 2,
-    ContactList = 3,
-    EncryptedDirectMessage = 4
+    Metadata = 0,
+    Text = 1,
+    RecommendRelay = 2,
+    Contact = 3,
+    EncryptedDirectMessage = 4,
+    EventDeletion = 5,
+    Reaction = 7,
+    ChannelCreation = 40,
+    ChannelMetadata = 41,
+    ChannelMessage = 42,
+    ChannelHideMessage = 43,
+    ChannelMuteUser = 44,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone)]
 #[serde(untagged)]
 pub enum Kind {
     Base(KindBase),
-    Custom(u16)
+    Custom(u16),
 }
 
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub struct Tag(Vec<String>);
 
 impl Tag {

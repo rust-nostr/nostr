@@ -1,8 +1,14 @@
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
+
+#[macro_use]
+extern crate serde;
+
 pub mod event;
 mod message;
 mod user;
-
 pub mod util;
+
 pub use crate::event::Event;
 pub use crate::event::Kind;
 pub use crate::message::ClientMessage;
@@ -14,6 +20,7 @@ pub use crate::user::Keys;
 mod tests {
     use std::error::Error;
     use std::str::FromStr;
+
     use secp256k1::SecretKey;
 
     use crate::{Event, Keys, RelayMessage};
@@ -48,7 +55,9 @@ mod tests {
 
     #[test]
     fn round_trip() -> TestResult {
-        let keys = Keys::new(SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?)?;
+        let keys = Keys::new(SecretKey::from_str(
+            "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?)?;
 
         let event = Event::new_textnote("hello", &keys, &vec![])?;
 
@@ -62,10 +71,12 @@ mod tests {
 
     #[test]
     fn test_encrypted_direct_msg() -> TestResult {
-        let sender_keys =
-            Keys::new(SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?)?;
-        let receiver_keys =
-            Keys::new(SecretKey::from_str("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?)?;
+        let sender_keys = Keys::new(SecretKey::from_str(
+            "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?)?;
+        let receiver_keys = Keys::new(SecretKey::from_str(
+            "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?)?;
 
         let content = "Mercury, the Winged Messenger";
         let event = Event::new_encrypted_direct_msg(&sender_keys, &receiver_keys, content);

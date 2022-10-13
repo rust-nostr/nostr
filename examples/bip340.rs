@@ -1,9 +1,14 @@
-use std::{collections::HashMap, error::Error};
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
+
+use std::collections::HashMap;
+use std::error::Error;
 use std::str::FromStr;
 
-use bitcoin_hashes::{hex::FromHex, sha256};
-use secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
+use bitcoin_hashes::hex::FromHex;
+use bitcoin_hashes::sha256;
 use secp256k1::schnorr::Signature;
+use secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 
 /// This is an incomplete attempt to test I'm doing bip340 correctly
 /// csv from https://github.com/bitcoin/bips/blob/master/bip-0340/test-vectors.csv

@@ -1,14 +1,19 @@
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
+
+use std::convert::From;
+use std::str::FromStr;
+
 use aes::Aes256;
 use base64::{decode, encode};
 use block_modes::{block_padding, BlockMode, Cbc};
-use secp256k1::{ecdh, rand::random, PublicKey, SecretKey, XOnlyPublicKey};
-use std::convert::From;
-use std::str::FromStr;
+use secp256k1::rand::random;
+use secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
 use thiserror::Error;
 
 type Aes256Cbc = Cbc<Aes256, block_padding::Pkcs7>;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, Eq, PartialEq)]
 pub enum DecryptError {
     #[error(
         r#"Invalid content format. Expected format "<encrypted_text>?iv=<initialization_vec>""#

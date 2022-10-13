@@ -1,12 +1,15 @@
-use crate::{Event, Kind};
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
+
 use chrono::{DateTime, Utc};
 use secp256k1::XOnlyPublicKey;
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use thiserror::Error;
-use crate::event::KindBase;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+use crate::event::KindBase;
+use crate::{Event, Kind};
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct SubscriptionFilter {
     // TODO can we write this without all these "Option::is_none"
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -25,6 +28,12 @@ pub struct SubscriptionFilter {
     until: Option<u64>, // unix timestamp seconds
     #[serde(skip_serializing_if = "Option::is_none")]
     authors: Option<Vec<XOnlyPublicKey>>,
+}
+
+impl Default for SubscriptionFilter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SubscriptionFilter {
@@ -108,7 +117,7 @@ impl SubscriptionFilter {
     }
 }
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, Eq, PartialEq)]
 pub enum MessageHandleError {
     #[error("Message has an invalid format")]
     InvalidMessageFormat,
@@ -118,11 +127,11 @@ pub enum MessageHandleError {
 }
 
 /// Messages sent by relays, received by clients
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum RelayMessage {
     //["EVENT", <subscription id>, <event JSON as defined above>]
     Event {
-        event: Event,
+        event: Box<Event>,
         subscription_id: String,
     },
     Notice {
@@ -139,7 +148,7 @@ impl RelayMessage {
     // Relay is responsible for storing corresponding subscription id
     pub fn new_event(event: Event, subscription_id: String) -> Self {
         Self::Event {
-            event,
+            event: Box::new(event),
             subscription_id,
         }
     }
@@ -160,12 +169,14 @@ impl RelayMessage {
                 subscription_id,
             } => json!(["EVENT", subscription_id, event]).to_string(),
             Self::Notice { message } => json!(["NOTICE", message]).to_string(),
-            Self::EndOfStoredEvents {subscription_id} => json!(["EOSE", subscription_id]).to_string(),
+            Self::EndOfStoredEvents { subscription_id } => {
+                json!(["EOSE", subscription_id]).to_string()
+            }
         }
     }
 
     pub fn from_json(msg: &str) -> Result<Self, MessageHandleError> {
-        if msg == "" {
+        if msg.is_empty() {
             return Ok(Self::Empty);
         }
 
@@ -208,7 +219,7 @@ impl RelayMessage {
             let subscription_id: String = serde_json::from_value(v[1].clone())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
-            return Ok(Self::new_eose( subscription_id ));
+            return Ok(Self::new_eose(subscription_id));
         }
 
         Err(MessageHandleError::InvalidMessageFormat)
@@ -216,7 +227,7 @@ impl RelayMessage {
 }
 
 /// Messages sent by clients, received by relays
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ClientMessage {
     Event {
         event: Event,
@@ -258,7 +269,7 @@ impl ClientMessage {
                 json.as_array_mut()
                     .unwrap()
                     .append(filters.as_array_mut().unwrap());
-                return json.to_string();
+                json.to_string()
             }
             Self::Close { subscription_id } => json!(["CLOSE", subscription_id]).to_string(),
         }
@@ -309,14 +320,10 @@ mod tests {
 
     #[test]
     fn test_handle_valid_subscription_filter_multiple_id_prefixes() -> TestResult {
-
         let id_prefixes = vec!["pref1".to_string(), "pref2".to_string()];
         let f = SubscriptionFilter::new().ids(id_prefixes.clone());
 
-        assert_eq!(
-            Some(id_prefixes),
-            f.ids
-        );
+        assert_eq!(Some(id_prefixes), f.ids);
 
         Ok(())
     }
@@ -394,8 +401,7 @@ mod tests {
     #[test]
     fn test_handle_valid_eose() -> TestResult {
         let valid_eose_msg = r#"["EOSE","random-subscription-id"]"#;
-        let handled_valid_eose_msg =
-            RelayMessage::new_eose(String::from("random-subscription-id"));
+        let handled_valid_eose_msg = RelayMessage::new_eose(String::from("random-subscription-id"));
 
         assert_eq!(
             RelayMessage::from_json(valid_eose_msg)?,
@@ -421,9 +427,10 @@ mod tests {
 
     #[test]
     fn test_client_message_req() {
-        let pk =
-            XOnlyPublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
-                .unwrap();
+        let pk = XOnlyPublicKey::from_str(
+            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
+        )
+        .unwrap();
         let filters = vec![
             SubscriptionFilter::new().kind_base(KindBase::EncryptedDirectMessage),
             SubscriptionFilter::new().pubkey(pk),
@@ -438,9 +445,10 @@ mod tests {
 
     #[test]
     fn test_client_message_custom_kind() {
-        let pk =
-            XOnlyPublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
-                .unwrap();
+        let pk = XOnlyPublicKey::from_str(
+            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
+        )
+        .unwrap();
         let filters = vec![
             SubscriptionFilter::new().kind_custom(22),
             SubscriptionFilter::new().pubkey(pk),

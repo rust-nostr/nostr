@@ -1,12 +1,16 @@
-use nostr::{
-    util::nip04::decrypt, ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter,
-};
-use std::{error::Error, thread, time};
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
+
+use std::error::Error;
 use std::str::FromStr;
+use std::{thread, time};
+
+use nostr::event::KindBase;
+use nostr::util::nip04::decrypt;
+use nostr::{ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter};
 use secp256k1::SecretKey;
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
-use nostr::event::KindBase;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
@@ -63,7 +67,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 RelayMessage::Notice { message } => {
                     println!("Got a notice: {}", message);
                 }
-                RelayMessage::EndOfStoredEvents { subscription_id: _} => {
+                RelayMessage::EndOfStoredEvents { subscription_id: _ } => {
                     println!("Relay signalled End of Stored Events");
                 }
                 RelayMessage::Event {
@@ -83,8 +87,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 )?
                             );
                             thread::sleep(time::Duration::from_millis(5000));
-                            let alice_encrypted_msg =
-                                Event::new_encrypted_direct_msg(&alice_keys, &bob_keys, alice_to_bob)?;
+                            let alice_encrypted_msg = Event::new_encrypted_direct_msg(
+                                &alice_keys,
+                                &bob_keys,
+                                alice_to_bob,
+                            )?;
                             socket.write_message(WsMessage::Text(
                                 ClientMessage::new_event(alice_encrypted_msg).to_json(),
                             ))?;
@@ -114,7 +121,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
             }
+        } else {
+            println!("Received unexpected message: {}", msg_text);
         }
-        else { println!("Received unexpected message: {}", msg_text); }
     }
 }
