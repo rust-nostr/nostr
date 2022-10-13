@@ -1,28 +1,29 @@
 [package]
 name = "nostr"
 version = "0.1.0"
-authors = ["Paul Miller <paul@pauljmiller.com>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
+license = "MIT"
+homepage = "https://gitlab.com/p2kishimoto/nostr-rs"
+repository = "https://gitlab.com/p2kishimoto/nostr-rs.git"
 
 [dependencies]
+aes = "0.7.5"
+base64 = "0.13.0"
 bitcoin_hashes = { version = "0.11", features = ["serde"] }
+block-modes = "0.8.1"
 chrono = { version = "0.4.19", features = ["serde"] }
-csv = "1.1.5"
+log = "0.4.17"
+# On some systems the OpenSSL headers might not be installed. Provide them as vendored dependency.
+openssl = { version = "0.10", features = ["vendored"] }
 secp256k1 = { version = "0.24", features = ["rand", "rand-std", "serde", "bitcoin_hashes"] }
 serde = { version = "1.0.123", features = ["derive"] }
 serde_json = "1.0.62"
 serde_repr = "0.1.6"
-aes = "0.7.5"
-block-modes = "0.8.1"
-base64 = "0.13.0"
 thiserror = "1.0.29"
-# On some systems the OpenSSL headers might not be installed. Provide them as vendored dependency.
-openssl = { version = "0.10", features = ["vendored"] }
-log = "*"
 
 [dev-dependencies]
+csv = "1.1.5"
+env_logger = "0.8.2"
 tungstenite = { version = "0.17", features = ["native-tls"]}
 url = "2.2.0"
-env_logger = "0.8.2"

@@ -9,7 +9,7 @@ use secp256k1::schnorr::Signature;
 /// csv from https://github.com/bitcoin/bips/blob/master/bip-0340/test-vectors.csv
 fn main() -> Result<(), Box<dyn Error>> {
     type Record = HashMap<String, String>;
-    let mut rdr = csv::Reader::from_path("bip340.csv")?;
+    let mut rdr = csv::Reader::from_path("examples/bip340.csv")?;
     for result in rdr.deserialize() {
         let record: Record = result?;
         let index = record.get("index").ok_or("Couldn't get index");
