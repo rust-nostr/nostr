@@ -4,14 +4,17 @@
 use std::convert::From;
 use std::str::FromStr;
 
+use aes::cipher::block_padding::Pkcs7;
+use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::{decode, encode};
-use block_modes::{block_padding, BlockMode, Cbc};
+use cbc::{Decryptor, Encryptor};
 use secp256k1::rand::random;
 use secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
 use thiserror::Error;
 
-type Aes256Cbc = Cbc<Aes256, block_padding::Pkcs7>;
+type Aes128CbcEnc = Encryptor<Aes256>;
+type Aes128CbcDec = Decryptor<Aes256>;
 
 #[derive(Error, Debug, Eq, PartialEq)]
 pub enum DecryptError {
@@ -31,12 +34,13 @@ pub enum DecryptError {
 }
 
 pub fn encrypt(sk: &SecretKey, pk: &XOnlyPublicKey, text: &str) -> String {
-    let key = generate_shared_key(sk, pk);
+    let key: Vec<u8> = generate_shared_key(sk, pk);
     let iv: [u8; 16] = random();
-    // This shouldn't fail because we've already validated the inputs
-    let cipher = Aes256Cbc::new_from_slices(&key, &iv).expect("Invalid arguments to Aes");
-    let cipher_text = cipher.encrypt_vec(text.as_bytes());
-    format!("{}?iv={}", encode(cipher_text), encode(iv))
+
+    let cipher = Aes128CbcEnc::new(key.as_slice().into(), &iv.into());
+    let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
+
+    format!("{}?iv={}", encode(result), encode(iv))
 }
 
 pub fn decrypt(
@@ -48,16 +52,19 @@ pub fn decrypt(
     if parsed_content.len() != 2 {
         return Err(DecryptError::InvalidContentFormat);
     }
-    let encrypted_content =
+
+    let encrypted_content: Vec<u8> =
         decode(parsed_content[0]).map_err(|_| DecryptError::Base64DecodeError)?;
-    let iv = decode(parsed_content[1]).map_err(|_| DecryptError::Base64DecodeError)?;
-    let key = generate_shared_key(sk, pk);
-    // This shouldn't fail because we've already validated the inputs
-    let cipher = Aes256Cbc::new_from_slices(&key, &iv).expect("Invalid arguments to Aes");
-    let decryptedtext = cipher
-        .decrypt_vec(&encrypted_content)
+
+    let iv: Vec<u8> = decode(parsed_content[1]).map_err(|_| DecryptError::Base64DecodeError)?;
+    let key: Vec<u8> = generate_shared_key(sk, pk);
+
+    let cipher = Aes128CbcDec::new(key.as_slice().into(), iv.as_slice().into());
+    let result = cipher
+        .decrypt_padded_vec_mut::<Pkcs7>(&encrypted_content)
         .map_err(|_| DecryptError::WrongBlockMode)?;
-    String::from_utf8(decryptedtext).map_err(|_| DecryptError::Utf8EncodeError)
+
+    String::from_utf8(result).map_err(|_| DecryptError::Utf8EncodeError)
 }
 
 fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Vec<u8> {
@@ -77,10 +84,11 @@ fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> PublicKey {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    use secp256k1::{KeyPair, Secp256k1};
+
     use std::error::Error;
+
+    use secp256k1::{KeyPair, Secp256k1};
 
     type TestResult = Result<(), Box<dyn Error>>;
 

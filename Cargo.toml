@@ -6,12 +6,13 @@ authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
 license = "MIT"
 homepage = "https://gitlab.com/p2kishimoto/nostr-rs"
 repository = "https://gitlab.com/p2kishimoto/nostr-rs.git"
+rust-version = "1.56"
 
 [dependencies]
-aes = "0.7.5"
+aes = "0.8"
 base64 = "0.13.0"
 bitcoin_hashes = { version = "0.11", features = ["serde"] }
-block-modes = "0.8.1"
+cbc = { version = "0.1", features = ["alloc"] }
 chrono = { version = "0.4.19", features = ["serde"] }
 log = "0.4.17"
 secp256k1 = { version = "0.24", features = ["rand", "rand-std", "serde", "bitcoin_hashes"] }
