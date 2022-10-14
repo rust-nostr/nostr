@@ -108,6 +108,10 @@ impl Keys {
         }
     }
 
+    pub fn secret_key_as_str(&self) -> Result<String, KeyError> {
+        Ok(self.secret_key()?.display_secret().to_string())
+    }
+
     pub fn key_pair(&self) -> Result<KeyPair, KeyError> {
         if let Some(key_pair) = self.key_pair {
             Ok(key_pair)
