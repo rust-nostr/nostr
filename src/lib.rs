@@ -57,7 +57,7 @@ mod tests {
     fn round_trip() -> TestResult {
         let keys = Keys::new(SecretKey::from_str(
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
-        )?)?;
+        )?);
 
         let event = Event::new_textnote("hello", &keys, &vec![])?;
 
@@ -73,10 +73,10 @@ mod tests {
     fn test_encrypted_direct_msg() -> TestResult {
         let sender_keys = Keys::new(SecretKey::from_str(
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
-        )?)?;
+        )?);
         let receiver_keys = Keys::new(SecretKey::from_str(
             "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
-        )?)?;
+        )?);
 
         let content = "Mercury, the Winged Messenger";
         let event = Event::new_encrypted_direct_msg(&sender_keys, &receiver_keys, content);
