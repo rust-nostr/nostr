@@ -3,7 +3,7 @@
 
 use std::str::FromStr;
 
-use bech32::{self, FromBase32};
+use bech32::{self, FromBase32, Variant};
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 use thiserror::Error;
@@ -52,8 +52,13 @@ impl Keys {
     }
 
     pub fn new_pub_only_from_bech32(pk: &str) -> Result<Self, KeyError> {
-        let (_hrp, data, _checksum) =
+        let (hrp, data, checksum) =
             bech32::decode(pk).map_err(|_| KeyError::Bech32PkParseError)?;
+
+        if hrp != "npub" || checksum != Variant::Bech32 {
+            return Err(KeyError::Bech32PkParseError);
+        }
+
         let data = Vec::<u8>::from_base32(&data).map_err(|_| KeyError::Bech32PkParseError)?;
 
         let pk = XOnlyPublicKey::from_slice(data.as_slice()).map_err(|_| KeyError::PkParseError)?;
@@ -78,8 +83,13 @@ impl Keys {
     }
 
     pub fn new_from_bech32(sk: &str) -> Result<Self, KeyError> {
-        let (_hrp, data, _checksum) =
+        let (hrp, data, checksum) =
             bech32::decode(sk).map_err(|_| KeyError::Bech32SkParseError)?;
+
+        if hrp != "nsec" || checksum != Variant::Bech32 {
+            return Err(KeyError::Bech32SkParseError);
+        }
+
         let data = Vec::<u8>::from_base32(&data).map_err(|_| KeyError::Bech32SkParseError)?;
 
         let sk =
