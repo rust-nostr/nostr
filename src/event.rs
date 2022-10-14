@@ -124,8 +124,14 @@ impl Event {
             ),
             sender_keys,
             &vec![Tag::new("p", &receiver_keys.public_key_as_str(), "")],
-            Kind::Base(KindBase::Text),
+            Kind::Base(KindBase::EncryptedDirectMessage),
         )
+    }
+
+    pub fn delete(keys: &Keys, ids: Vec<&str>, content: &str) -> Result<Self, Box<dyn Error>> {
+        let tags: Vec<Tag> = ids.iter().map(|id| Tag::new("e", id, "")).collect();
+
+        Self::new_generic(content, keys, &tags, Kind::Base(KindBase::EventDeletion))
     }
 
     pub fn verify(&self) -> Result<(), secp256k1::Error> {
@@ -244,7 +250,7 @@ mod tests {
 
     #[test]
     fn test_custom_kind() {
-        let keys = Keys::generate_from_os_random().unwrap();
+        let keys = Keys::generate_from_os_random();
         let e = Event::new_generic("my content", &keys, &vec![], Kind::Custom(123)).unwrap();
 
         let serialized = e.as_json();
