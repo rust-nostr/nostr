@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use secp256k1::XOnlyPublicKey;
 use serde_json::{json, Value};
 use thiserror::Error;
+use uuid::Uuid;
 
 use crate::event::KindBase;
 use crate::{Event, Kind};
@@ -13,12 +14,12 @@ use crate::{Event, Kind};
 pub struct SubscriptionFilter {
     // TODO can we write this without all these "Option::is_none"
     #[serde(skip_serializing_if = "Option::is_none")]
-    ids: Option<Vec<String>>,
+    ids: Option<Vec<Uuid>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     kinds: Option<Vec<Kind>>,
     #[serde(rename = "#e")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    events: Option<Vec<String>>,
+    events: Option<Vec<Uuid>>,
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pubkeys: Option<Vec<XOnlyPublicKey>>,
@@ -49,14 +50,14 @@ impl SubscriptionFilter {
         }
     }
 
-    pub fn id(self, id: impl Into<String>) -> Self {
+    pub fn id(self, id: impl Into<Uuid>) -> Self {
         Self {
             ids: Some(vec![id.into()]),
             ..self
         }
     }
 
-    pub fn ids(self, ids: impl Into<Vec<String>>) -> Self {
+    pub fn ids(self, ids: impl Into<Vec<Uuid>>) -> Self {
         Self {
             ids: Some(ids.into()),
             ..self
@@ -78,7 +79,7 @@ impl SubscriptionFilter {
     }
 
     // #e
-    pub fn event(self, event_id: impl Into<String>) -> Self {
+    pub fn event(self, event_id: impl Into<Uuid>) -> Self {
         Self {
             events: Some(vec![event_id.into()]),
             ..self
@@ -96,7 +97,6 @@ impl SubscriptionFilter {
     // unix timestamp seconds
     pub fn since(self, since: DateTime<Utc>) -> Self {
         Self {
-            // TODO is there a cleaner way to do this
             since: Some(since.timestamp().try_into().unwrap_or(0)),
             ..self
         }
@@ -321,7 +321,7 @@ mod tests {
     #[test]
     fn test_handle_valid_subscription_filter_multiple_id_prefixes() -> TestResult {
         let id_prefixes = vec!["pref1".to_string(), "pref2".to_string()];
-        let f = SubscriptionFilter::new().ids(id_prefixes.clone());
+        let f = SubscriptionFilter::new().ids(id_prefixes.into());
 
         assert_eq!(Some(id_prefixes), f.ids);
 

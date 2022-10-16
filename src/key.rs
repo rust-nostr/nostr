@@ -52,8 +52,7 @@ impl Keys {
     }
 
     pub fn new_pub_only_from_bech32(pk: &str) -> Result<Self, KeyError> {
-        let (hrp, data, checksum) =
-            bech32::decode(pk).map_err(|_| KeyError::Bech32PkParseError)?;
+        let (hrp, data, checksum) = bech32::decode(pk).map_err(|_| KeyError::Bech32PkParseError)?;
 
         if hrp != "npub" || checksum != Variant::Bech32 {
             return Err(KeyError::Bech32PkParseError);
@@ -83,8 +82,7 @@ impl Keys {
     }
 
     pub fn new_from_bech32(sk: &str) -> Result<Self, KeyError> {
-        let (hrp, data, checksum) =
-            bech32::decode(sk).map_err(|_| KeyError::Bech32SkParseError)?;
+        let (hrp, data, checksum) = bech32::decode(sk).map_err(|_| KeyError::Bech32SkParseError)?;
 
         if hrp != "nsec" || checksum != Variant::Bech32 {
             return Err(KeyError::Bech32SkParseError);

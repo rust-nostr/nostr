@@ -27,9 +27,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("* {}", header);
     }
 
-    let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?)?;
+    let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?);
 
-    let bob_keys = Keys::new(SecretKey::from_str(BOB_SK)?)?;
+    let bob_keys = Keys::new(SecretKey::from_str(BOB_SK)?);
 
     let alice_says_hi =
         ClientMessage::new_event(Event::new_textnote("hi from alice", &alice_keys, &vec![])?);
@@ -40,14 +40,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         "abcdefgh",
         vec![SubscriptionFilter::new()
             .authors(vec![alice_keys.public_key])
-            .kind_base(KindBase::Text)],
+            .kind_base(KindBase::TextNote)],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         "1234567",
         vec![SubscriptionFilter::new()
             .authors(vec![bob_keys.public_key])
-            .kind_base(KindBase::Text)],
+            .kind_base(KindBase::TextNote)],
     );
 
     socket.write_message(WsMessage::Text(subscribe_to_alice.to_json()))?;

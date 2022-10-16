@@ -2,7 +2,9 @@
 // Distributed under the MIT software license
 
 use std::error::Error;
+use std::str::FromStr;
 
+use bitcoin_hashes::sha256::Hash;
 use nostr::{ClientMessage, Event, Keys};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
@@ -19,9 +21,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let my_keys = Keys::new_from_bech32(MY_BECH32_SK).unwrap();
 
+    let event_id =
+        Hash::from_str("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?;
     let event = Event::delete(
         &my_keys,
-        vec!["14689524662bccd0835e87aa978869228e3605db4c5d30f275f9427f7e0996d5"],
+        vec![event_id],
         "these posts were published by accident",
     )?;
 

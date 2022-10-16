@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 use std::error::Error;
+use std::fmt;
 use std::str::FromStr;
 
 use bitcoin_hashes::hex::FromHex;
@@ -57,15 +58,6 @@ impl Event {
         Utc.timestamp(Utc::now().timestamp(), 0)
     }
 
-    /// Create a new TextNote Event
-    pub fn new_textnote(
-        content: &str,
-        keys: &Keys,
-        tags: &Vec<Tag>,
-    ) -> Result<Self, Box<dyn Error>> {
-        Self::new_generic(content, keys, tags, Kind::Base(KindBase::Text))
-    }
-
     /// Create a generic type of event
     pub fn new_generic(
         content: &str,
@@ -109,11 +101,34 @@ impl Event {
         }
     }
 
+    /// Create a new TextNote Event
+    pub fn new_textnote(
+        content: &str,
+        keys: &Keys,
+        tags: &Vec<Tag>,
+    ) -> Result<Self, Box<dyn Error>> {
+        Self::new_generic(content, keys, tags, Kind::Base(KindBase::TextNote))
+    }
+
+    pub fn backup_contacts(keys: &Keys, list: Vec<Contact>) -> Result<Self, Box<dyn Error>> {
+        let tags: Vec<Tag> = list
+            .iter()
+            .map(|contact| {
+                Tag::new(TagData::ContactList {
+                    pk: contact.pk,
+                    relay_url: String::new(),
+                    alias: contact.alias.clone(),
+                })
+            })
+            .collect();
+
+        Self::new_generic("", keys, &tags, Kind::Base(KindBase::ContactList))
+    }
+
+    /// Create encrypted direct msg event
     pub fn new_encrypted_direct_msg(
         sender_keys: &Keys,
         receiver_keys: &Keys,
-        // sender_sk: SecretKey,
-        // receiver_pk: &schnorr::PublicKey,
         content: &str,
     ) -> Result<Self, Box<dyn Error>> {
         Self::new_generic(
@@ -123,13 +138,23 @@ impl Event {
                 content,
             ),
             sender_keys,
-            &vec![Tag::new("p", &receiver_keys.public_key_as_str(), "")],
+            &vec![Tag::new(TagData::EncryptedDirectMessage {
+                pk: receiver_keys.public_key,
+            })],
             Kind::Base(KindBase::EncryptedDirectMessage),
         )
     }
 
-    pub fn delete(keys: &Keys, ids: Vec<&str>, content: &str) -> Result<Self, Box<dyn Error>> {
-        let tags: Vec<Tag> = ids.iter().map(|id| Tag::new("e", id, "")).collect();
+    /// Create delete event
+    pub fn delete(
+        keys: &Keys,
+        ids: Vec<sha256::Hash>,
+        content: &str,
+    ) -> Result<Self, Box<dyn Error>> {
+        let tags: Vec<Tag> = ids
+            .iter()
+            .map(|id| Tag::new(TagData::EventId(id.to_string())))
+            .collect();
 
         Self::new_generic(content, keys, &tags, Kind::Base(KindBase::EventDeletion))
     }
@@ -195,9 +220,9 @@ impl Event {
 #[repr(u8)]
 pub enum KindBase {
     Metadata = 0,
-    Text = 1,
+    TextNote = 1,
     RecommendRelay = 2,
-    Contact = 3,
+    ContactList = 3,
     EncryptedDirectMessage = 4,
     EventDeletion = 5,
     Reaction = 7,
@@ -215,16 +240,65 @@ pub enum Kind {
     Custom(u16),
 }
 
+pub enum TagKind {
+    P,
+    E,
+    Nonce,
+}
+
+impl fmt::Display for TagKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::P => write!(f, "p"),
+            Self::E => write!(f, "e"),
+            Self::Nonce => write!(f, "nonce"),
+        }
+    }
+}
+
+pub enum TagData {
+    Generic(TagKind, Vec<String>),
+    EventId(String),
+    ContactList {
+        pk: XOnlyPublicKey,
+        relay_url: String,
+        alias: String,
+    },
+    EncryptedDirectMessage {
+        pk: XOnlyPublicKey,
+    },
+    POW {
+        nonce: u128,
+        difficulty: u8,
+    },
+}
+
+impl From<TagData> for Vec<String> {
+    fn from(data: TagData) -> Self {
+        match data {
+            TagData::Generic(kind, data) => vec![vec![kind.to_string()], data].concat(),
+            TagData::EventId(id) => vec![TagKind::E.to_string(), id],
+            TagData::ContactList {
+                pk,
+                relay_url,
+                alias,
+            } => vec![TagKind::P.to_string(), pk.to_string(), relay_url, alias],
+            TagData::EncryptedDirectMessage { pk } => vec![TagKind::P.to_string(), pk.to_string()],
+            TagData::POW { nonce, difficulty } => vec![
+                TagKind::Nonce.to_string(),
+                nonce.to_string(),
+                difficulty.to_string(),
+            ],
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub struct Tag(Vec<String>);
 
 impl Tag {
-    pub fn new(kind: &str, content: &str, recommended_relay_url: &str) -> Self {
-        Self(vec![
-            kind.into(),
-            content.into(),
-            recommended_relay_url.into(),
-        ])
+    pub fn new(data: TagData) -> Self {
+        Self(data.into())
     }
 
     pub fn kind(&self) -> &str {
@@ -233,6 +307,21 @@ impl Tag {
 
     pub fn content(&self) -> &str {
         &self.0[1]
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Contact {
+    pub alias: String,
+    pub pk: XOnlyPublicKey,
+}
+
+impl Contact {
+    pub fn new(alias: &str, pk: XOnlyPublicKey) -> Self {
+        Self {
+            alias: alias.into(),
+            pk,
+        }
     }
 }
 

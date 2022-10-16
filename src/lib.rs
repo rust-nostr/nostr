@@ -5,16 +5,13 @@
 extern crate serde;
 
 pub mod event;
+mod key;
 mod message;
-mod user;
 pub mod util;
 
-pub use crate::event::Event;
-pub use crate::event::Kind;
-pub use crate::message::ClientMessage;
-pub use crate::message::RelayMessage;
-pub use crate::message::SubscriptionFilter;
-pub use crate::user::Keys;
+pub use crate::event::{Event, Kind, KindBase};
+pub use crate::key::Keys;
+pub use crate::message::{ClientMessage, RelayMessage, SubscriptionFilter};
 
 #[cfg(test)]
 mod tests {

@@ -11,7 +11,9 @@ fn main() {
     println!("Secret key: {}", keys.secret_key_as_str().unwrap());
 
     // Bech32 keys
-    let keys = Keys::new_from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99").unwrap();
+    let keys =
+        Keys::new_from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
+            .unwrap();
     println!("Public key: {}", keys.public_key);
 
     let keys = Keys::new_pub_only_from_bech32(

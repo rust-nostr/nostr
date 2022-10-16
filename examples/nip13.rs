@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::time::Instant;
 
 use log::info;
-use nostr::event::Tag;
+use nostr::event::{Tag, TagData};
 use nostr::{util, Event, Keys};
 use secp256k1::SecretKey;
 
@@ -18,12 +18,10 @@ const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
-    let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?)?;
+    let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?);
 
     let pow_difficulty = 10; // leading zero bits
     let msg_content = "This is a Nostr message with embedded proof-of-work";
-
-    let targeted_difficulty_str = pow_difficulty.to_string();
 
     // Loop: generate IDs until desired number of leading zeroes is reached
     let now = Instant::now();
@@ -34,8 +32,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         iterations += 1;
 
         let nonce = iterations; // Different value per iteration
-        let nonce_str = nonce.to_string();
-        let t = Tag::new("nonce", &nonce_str, &targeted_difficulty_str);
+        let t = Tag::new(TagData::POW {
+            nonce,
+            difficulty: pow_difficulty,
+        });
 
         let temp_note = Event::new_textnote(msg_content, &alice_keys, &vec![t])
             .expect("Error when creating textnote");
