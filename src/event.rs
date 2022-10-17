@@ -297,7 +297,7 @@ impl Tag {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Contact {
     pub alias: String,
     pub pk: XOnlyPublicKey,
