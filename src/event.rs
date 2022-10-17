@@ -212,6 +212,7 @@ pub enum KindBase {
     ContactList = 3,
     EncryptedDirectMessage = 4,
     EventDeletion = 5,
+    Boost = 6,
     Reaction = 7,
     ChannelCreation = 40,
     ChannelMetadata = 41,
