@@ -4,7 +4,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::{sha256, Hash};
 use chrono::serde::ts_seconds;
@@ -59,12 +59,7 @@ impl Event {
     }
 
     /// Create a generic type of event
-    pub fn new_generic(
-        content: &str,
-        keys: &Keys,
-        tags: &Vec<Tag>,
-        kind: Kind,
-    ) -> Result<Self> {
+    pub fn new_generic(content: &str, keys: &Keys, tags: &Vec<Tag>, kind: Kind) -> Result<Self> {
         let secp = Secp256k1::new();
 
         let keypair = &keys.key_pair()?;
@@ -102,11 +97,7 @@ impl Event {
     }
 
     /// Create a new TextNote Event
-    pub fn new_textnote(
-        content: &str,
-        keys: &Keys,
-        tags: &Vec<Tag>,
-    ) -> Result<Self> {
+    pub fn new_textnote(content: &str, keys: &Keys, tags: &Vec<Tag>) -> Result<Self> {
         Self::new_generic(content, keys, tags, Kind::Base(KindBase::TextNote))
     }
 
@@ -116,7 +107,7 @@ impl Event {
             .map(|contact| {
                 Tag::new(TagData::ContactList {
                     pk: contact.pk,
-                    relay_url: String::new(),
+                    relay_url: contact.relay_url.clone(),
                     alias: contact.alias.clone(),
                 })
             })
@@ -146,11 +137,7 @@ impl Event {
     }
 
     /// Create delete event
-    pub fn delete(
-        keys: &Keys,
-        ids: Vec<sha256::Hash>,
-        content: &str,
-    ) -> Result<Self> {
+    pub fn delete(keys: &Keys, ids: Vec<sha256::Hash>, content: &str) -> Result<Self> {
         let tags: Vec<Tag> = ids
             .iter()
             .map(|id| Tag::new(TagData::EventId(id.to_string())))
@@ -314,13 +301,15 @@ impl Tag {
 pub struct Contact {
     pub alias: String,
     pub pk: XOnlyPublicKey,
+    pub relay_url: String,
 }
 
 impl Contact {
-    pub fn new(alias: &str, pk: XOnlyPublicKey) -> Self {
+    pub fn new(alias: &str, pk: XOnlyPublicKey, relay_url: &str) -> Self {
         Self {
             alias: alias.into(),
             pk,
+            relay_url: relay_url.into(),
         }
     }
 }
