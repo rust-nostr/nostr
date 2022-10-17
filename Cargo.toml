@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "nostr-protocol",
+    "nostr",
     "nostr-sdk",
 ]
 
