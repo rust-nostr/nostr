@@ -10,6 +10,7 @@ rust-version = "1.56"
 
 [dependencies]
 aes = "0.8"
+anyhow = "1.0"
 base64 = "0.13"
 bech32 = "0.9"
 bitcoin_hashes = { version = "0.11", features = ["serde"] }

@@ -1,10 +1,10 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
+use anyhow::{Result, anyhow};
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::{sha256, Hash};
 use chrono::serde::ts_seconds;
@@ -64,7 +64,7 @@ impl Event {
         keys: &Keys,
         tags: &Vec<Tag>,
         kind: Kind,
-    ) -> Result<Self, Box<dyn Error>> {
+    ) -> Result<Self> {
         let secp = Secp256k1::new();
 
         let keypair = &keys.key_pair()?;
@@ -97,7 +97,7 @@ impl Event {
         // This isn't failing so that's a good thing, yes?
         match event.verify() {
             Ok(()) => Ok(event),
-            Err(e) => Err(Box::new(e)),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 
@@ -106,11 +106,11 @@ impl Event {
         content: &str,
         keys: &Keys,
         tags: &Vec<Tag>,
-    ) -> Result<Self, Box<dyn Error>> {
+    ) -> Result<Self> {
         Self::new_generic(content, keys, tags, Kind::Base(KindBase::TextNote))
     }
 
-    pub fn backup_contacts(keys: &Keys, list: Vec<Contact>) -> Result<Self, Box<dyn Error>> {
+    pub fn backup_contacts(keys: &Keys, list: Vec<Contact>) -> Result<Self> {
         let tags: Vec<Tag> = list
             .iter()
             .map(|contact| {
@@ -130,7 +130,7 @@ impl Event {
         sender_keys: &Keys,
         receiver_keys: &Keys,
         content: &str,
-    ) -> Result<Self, Box<dyn Error>> {
+    ) -> Result<Self> {
         Self::new_generic(
             &nip04::encrypt(
                 &sender_keys.secret_key()?,
@@ -150,7 +150,7 @@ impl Event {
         keys: &Keys,
         ids: Vec<sha256::Hash>,
         content: &str,
-    ) -> Result<Self, Box<dyn Error>> {
+    ) -> Result<Self> {
         let tags: Vec<Tag> = ids
             .iter()
             .map(|id| Tag::new(TagData::EventId(id.to_string())))
@@ -182,7 +182,7 @@ impl Event {
         tags: Vec<Tag>,
         content: &str,
         sig: &str,
-    ) -> Result<Self, Box<dyn Error>> {
+    ) -> Result<Self> {
         let id = sha256::Hash::from_hex(id)?;
         let pubkey = XOnlyPublicKey::from_str(pubkey)?;
         let created_at = Utc.timestamp(created_at, 0);
@@ -202,11 +202,11 @@ impl Event {
         if event.verify().is_ok() {
             Ok(event)
         } else {
-            Err("Didn't verify".into())
+            Err(anyhow!("Didn't verify"))
         }
     }
 
-    pub fn new_from_json(json: String) -> Result<Self, Box<dyn Error>> {
+    pub fn new_from_json(json: String) -> Result<Self> {
         Ok(serde_json::from_str(&json)?)
     }
 

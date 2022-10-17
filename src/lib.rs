@@ -9,7 +9,7 @@ mod key;
 mod message;
 pub mod util;
 
-pub use crate::event::{Event, Kind, KindBase};
+pub use crate::event::{Event, Kind, KindBase, Contact};
 pub use crate::key::Keys;
 pub use crate::message::{ClientMessage, RelayMessage, SubscriptionFilter};
 
