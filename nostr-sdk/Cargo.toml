@@ -1,0 +1,25 @@
+[package]
+name = "nostr-sdk"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = "1.0"
+bitcoin_hashes = { version = "0.11", features = ["serde"] }
+crossbeam-channel = "0.5"
+futures-util = "0.3"
+log = "0.4"
+nostr = { path = "../nostr-protocol" }
+tokio = { version = "1.19", features = ["macros", "rt-multi-thread", "time", "sync"] }
+tokio-tungstenite = { version = "0.17", features = ["native-tls"] }
+url = "2.3"
+uuid = { version = "1.2", features = ["v4", "fast-rng", "macro-diagnostics"] }
+
+[dev-dependencies]
+chrono = "0.4"
+env_logger = "0.8"
