@@ -54,7 +54,8 @@ interface SubscriptionFilter {
     SubscriptionFilter ids(sequence<string> ids);
     [Self=ByArc]
     SubscriptionFilter kind_custom(u16 kind_id);
-    
+    [Self=ByArc]
+    SubscriptionFilter kind_base(KindBase kind_base);
     [Throws=NostrError, Self=ByArc]
     SubscriptionFilter event(string event_id);
     [Throws=NostrError, Self=ByArc]
