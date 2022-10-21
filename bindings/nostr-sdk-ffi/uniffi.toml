@@ -1,0 +1,5 @@
+[bindings.kotlin]
+cdylib_name = "nostrsdk"
+
+[bindings.swift]
+cdylib_name = "nostrsdk"

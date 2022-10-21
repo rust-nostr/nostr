@@ -5,7 +5,7 @@ edition = "2021"
 
 [lib]
 name = "nostr"
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 anyhow = "1.0"

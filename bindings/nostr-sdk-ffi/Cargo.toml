@@ -1,0 +1,18 @@
+[package]
+name = "nostr-sdk-ffi"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "nostrsdk"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+nostr-ffi = { path = "../nostr-ffi" }
+nostr-sdk  = { path = "../../nostr-sdk" }
+parking_lot = "0.12.1"
+uniffi = "0.21.0"
+uniffi_macros = "0.21.0"
+
+[build-dependencies]
+uniffi_build = { version = "0.21.0", features = ["builtin-bindgen"] }

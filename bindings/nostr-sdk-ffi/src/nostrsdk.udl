@@ -1,0 +1,87 @@
+namespace nostrsdk {};
+
+// NOSTR FFI (duplicates of nostr-ffi crate because "External types" not work)
+//
+// External types: https://mozilla.github.io/uniffi-rs/udl/ext_types_external.html
+
+[Error]
+interface NostrError {
+    Generic(string msg);
+};
+
+enum KindBase {
+    "Metadata",
+    "TextNote",
+    "RecommendRelay",
+    "ContactList",
+    "EncryptedDirectMessage",
+    "EventDeletion",
+    "Boost",
+    "Reaction",
+    "ChannelCreation",
+    "ChannelMetadata",
+    "ChannelMessage",
+    "ChannelHideMessage",
+    "ChannelMuteUser",
+};
+
+[Enum]
+interface Kind {
+    Base(KindBase kind);
+    Custom(u16 kind);
+};
+
+interface Keys {
+    [Throws=NostrError]
+    constructor(string sk);
+    [Throws=NostrError, Name=new_pub_only]
+    constructor(string pk);
+    [Throws=NostrError, Name=new_pub_only_from_bech32]
+    constructor(string pk);
+    [Throws=NostrError, Name=new_from_bech32]
+    constructor(string sk);
+    [Name=generate_from_os_random]
+    constructor();
+    string public_key();
+    [Throws=NostrError]
+    string secret_key();
+};
+
+interface SubscriptionFilter {
+    constructor();
+    [Throws=NostrError, Self=ByArc]
+    SubscriptionFilter id(string id);
+    [Throws=NostrError, Self=ByArc]
+    SubscriptionFilter ids(sequence<string> ids);
+    [Self=ByArc]
+    SubscriptionFilter kind_custom(u16 kind_id);
+    [Self=ByArc]
+    SubscriptionFilter kind_base(KindBase kind_base);
+    [Throws=NostrError, Self=ByArc]
+    SubscriptionFilter event(string event_id);
+    [Throws=NostrError, Self=ByArc]
+    SubscriptionFilter pubkey(string pubkey);
+    [Self=ByArc]
+    SubscriptionFilter since(u64 timestamp);
+    [Self=ByArc]
+    SubscriptionFilter until(u64 timestamp);
+    [Throws=NostrError, Self=ByArc]
+    SubscriptionFilter authors(sequence<string> authors);
+};
+
+// NOSTR SDK
+
+interface Channel {
+    constructor(string relay_url);
+    string id();
+    string relay_url();
+};
+
+interface Subscription {
+    constructor();
+    void update_filters(sequence<SubscriptionFilter> filters);
+    sequence<SubscriptionFilter> get_filters();
+    void add_channel(string relay_url, Channel channel);
+    Channel? remove_channel(string relay_url);
+    Channel get_channel(string relay_url);
+};
