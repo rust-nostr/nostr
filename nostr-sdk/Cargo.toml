@@ -16,7 +16,7 @@ futures-util = "0.3"
 log = "0.4"
 nostr = { path = "../nostr" }
 tokio = { version = "1.19", features = ["macros", "rt-multi-thread", "time", "sync"] }
-tokio-tungstenite = { version = "0.17", features = ["native-tls"] }
+tokio-tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"] }
 url = "2.3"
 uuid = { version = "1.2", features = ["v4", "fast-rng", "macro-diagnostics"] }
 
