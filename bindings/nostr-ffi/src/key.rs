@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::str::FromStr;
 
 use anyhow::Result;
@@ -9,6 +10,13 @@ use secp256k1::SecretKey;
 
 pub struct Keys {
     keys: KeysSdk,
+}
+
+impl Deref for Keys {
+    type Target = KeysSdk;
+    fn deref(&self) -> &Self::Target {
+        &self.keys
+    }
 }
 
 impl Keys {
