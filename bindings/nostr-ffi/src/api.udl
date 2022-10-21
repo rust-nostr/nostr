@@ -4,7 +4,7 @@
 namespace nostr {};
 
 [Error]
-interface Error {
+interface NostrError {
     Generic(string msg);
 };
 
@@ -31,38 +31,38 @@ interface Kind {
 };
 
 interface Keys {
-    [Throws=Error]
+    [Throws=NostrError]
     constructor(string sk);
-    [Throws=Error, Name=new_pub_only]
+    [Throws=NostrError, Name=new_pub_only]
     constructor(string pk);
-    [Throws=Error, Name=new_pub_only_from_bech32]
+    [Throws=NostrError, Name=new_pub_only_from_bech32]
     constructor(string pk);
-    [Throws=Error, Name=new_from_bech32]
+    [Throws=NostrError, Name=new_from_bech32]
     constructor(string sk);
     [Name=generate_from_os_random]
     constructor();
     string public_key();
-    [Throws=Error]
+    [Throws=NostrError]
     string secret_key();
 };
 
 interface SubscriptionFilter {
     constructor();
-    [Throws=Error, Self=ByArc]
+    [Throws=NostrError, Self=ByArc]
     SubscriptionFilter id(string id);
-    [Throws=Error, Self=ByArc]
+    [Throws=NostrError, Self=ByArc]
     SubscriptionFilter ids(sequence<string> ids);
     [Self=ByArc]
     SubscriptionFilter kind_custom(u16 kind_id);
     
-    [Throws=Error, Self=ByArc]
+    [Throws=NostrError, Self=ByArc]
     SubscriptionFilter event(string event_id);
-    [Throws=Error, Self=ByArc]
+    [Throws=NostrError, Self=ByArc]
     SubscriptionFilter pubkey(string pubkey);
     [Self=ByArc]
     SubscriptionFilter since(u64 timestamp);
     [Self=ByArc]
     SubscriptionFilter until(u64 timestamp);
-    [Throws=Error, Self=ByArc]
+    [Throws=NostrError, Self=ByArc]
     SubscriptionFilter authors(sequence<string> authors);
 };
