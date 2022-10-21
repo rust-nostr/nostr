@@ -8,7 +8,7 @@ endif
 all: build
 
 build: deps
-	$(Q)uniffi-bindgen generate src/api.udl --language kotlin --no-format --out-dir ./build/android/app/src/main/java
+	$(Q)uniffi-bindgen generate src/nostr.udl --language kotlin --no-format --out-dir ./build/android/app/src/main/java
 	$(Q)cargo ndk -t armeabi-v7a -t arm64-v8a -t x86_64 -t x86 -o build/android/app/src/main/jniLibs build --release
 
 deps:
