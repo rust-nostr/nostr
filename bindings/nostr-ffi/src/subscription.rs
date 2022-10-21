@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -20,6 +21,19 @@ pub struct SubscriptionFilter {
 impl Default for SubscriptionFilter {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Deref for SubscriptionFilter {
+    type Target = SubscriptionFilterSdk;
+    fn deref(&self) -> &Self::Target {
+        &self.sub_filter
+    }
+}
+
+impl From<SubscriptionFilterSdk> for SubscriptionFilter {
+    fn from(f: SubscriptionFilterSdk) -> Self {
+        Self { sub_filter: f }
     }
 }
 
