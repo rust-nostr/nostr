@@ -67,3 +67,11 @@ interface SubscriptionFilter {
     [Throws=NostrError, Self=ByArc]
     SubscriptionFilter authors(sequence<string> authors);
 };
+
+interface Event {
+    [Throws=NostrError, Name=new_encrypted_direct_msg]
+    constructor(Keys sender_keys, Keys receiver_keys, string content);
+    [Throws=NostrError, Name=new_from_json]
+    constructor(string json);
+    string as_json();
+};
