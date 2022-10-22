@@ -14,6 +14,8 @@ use tokio_tungstenite::tungstenite::Message;
 use url::Url;
 
 use crate::subscription::Subscription;
+#[cfg(feature = "blocking")]
+use crate::RUNTIME;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayStatus {
@@ -84,7 +86,7 @@ impl Relay {
                 self.relay_sender = Some(relay_sender);
 
                 let relay = self.clone();
-                tokio::spawn(async move {
+                let func_relay_event = async move {
                     loop {
                         select! {
                             recv(relay_receiver) -> result => {
@@ -114,10 +116,14 @@ impl Relay {
                     relay.set_status(RelayStatus::Disconnected).await;
 
                     log::debug!("Closed RELAY TX to WS RX {}", relay.url);
-                });
+                };
+                #[cfg(feature = "blocking")]
+                RUNTIME.spawn(func_relay_event);
+                #[cfg(not(feature = "blocking"))]
+                tokio::spawn(func_relay_event);
 
                 let relay = self.clone();
-                tokio::spawn(async move {
+                let func_relay_msg = async move {
                     while let Some(msg_res) = ws_rx.next().await {
                         if let Ok(msg) = msg_res {
                             let data: Vec<u8> = msg.into_data();
@@ -154,7 +160,11 @@ impl Relay {
                     relay.disconnect().await;
 
                     log::error!("Closed WS RX to RELAY POOL TX {}", relay.url);
-                });
+                };
+                #[cfg(feature = "blocking")]
+                RUNTIME.spawn(func_relay_msg);
+                #[cfg(not(feature = "blocking"))]
+                tokio::spawn(func_relay_msg);
             }
             Err(err) => {
                 self.set_status(RelayStatus::Disconnected).await;
@@ -287,6 +297,9 @@ impl RelayPool {
         let (pool_task_sender, pool_task_receiver) = bounded(64);
 
         let mut relay_pool_task = RelayPoolTask::new(pool_task_receiver, notification_sender);
+        #[cfg(feature = "blocking")]
+        RUNTIME.spawn(async move { relay_pool_task.run().await });
+        #[cfg(not(feature = "blocking"))]
         tokio::spawn(async move { relay_pool_task.run().await });
 
         Self {
