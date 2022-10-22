@@ -4,7 +4,7 @@
 use log::Level;
 
 #[cfg(target_os = "android")]
-use android_logger::{Config, FilterBuilder};
+use android_logger::Config;
 
 pub fn init_logger() {
     #[allow(unused_variables)]
