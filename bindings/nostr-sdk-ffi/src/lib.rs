@@ -2,16 +2,11 @@
 // Distributed under the MIT software license
 
 use anyhow::Result;
-use once_cell::sync::Lazy;
-use tokio::runtime::Runtime;
 
 mod base;
 mod error;
 mod helper;
 mod sdk;
-
-pub static RUNTIME: Lazy<Runtime> =
-    Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
 
 trait FromResult<T>: Sized {
     fn from_result(_: T) -> Result<Self>;

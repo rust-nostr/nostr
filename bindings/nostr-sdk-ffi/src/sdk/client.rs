@@ -11,7 +11,6 @@ use nostr_sdk::relay::RelayPoolNotifications as RelayPoolNotificationsSdk;
 use crate::base::event::{Contact, Event};
 use crate::base::key::Keys;
 use crate::base::subscription::SubscriptionFilter;
-use crate::RUNTIME;
 
 pub struct Client {
     client: ClientSdk,
@@ -45,85 +44,67 @@ impl Client {
     }
 
     pub fn add_contact(&self, contact: Arc<Contact>) {
-        RUNTIME.block_on(async move {
-            self.client
-                .add_contact(contact.as_ref().deref().clone())
-                .await;
-        });
+        self.client.add_contact(contact.as_ref().deref().clone());
     }
 
     pub fn remove_contact(&self, contact: Arc<Contact>) {
-        RUNTIME.block_on(async move {
-            self.client.remove_contact(contact.as_ref().deref()).await;
-        });
+        self.client.remove_contact(contact.as_ref().deref());
     }
 
     pub fn add_relay(&self, url: String) -> Result<()> {
-        RUNTIME.block_on(async move { self.client.add_relay(&url).await })
+        self.client.add_relay(&url)
     }
 
     pub fn connect_relay(&self, url: String) {
-        RUNTIME.block_on(async move {
-            self.client.connect_relay(&url).await;
-        });
+        self.client.connect_relay(&url);
     }
 
     pub fn connect_all(&self) {
-        RUNTIME.block_on(async move {
-            self.client.connect_all().await;
-        });
+        self.client.connect_all();
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) {
-        RUNTIME.block_on(async move {
-            let mut new_filters: Vec<nostr_sdk_base::SubscriptionFilter> =
-                Vec::with_capacity(filters.len());
-            for filter in filters.into_iter() {
-                new_filters.push(filter.as_ref().deref().clone());
-            }
+        let mut new_filters: Vec<nostr_sdk_base::SubscriptionFilter> =
+            Vec::with_capacity(filters.len());
+        for filter in filters.into_iter() {
+            new_filters.push(filter.as_ref().deref().clone());
+        }
 
-            self.client.subscribe(new_filters).await;
-        });
+        self.client.subscribe(new_filters);
     }
 
     pub fn send_event(&self, event: Arc<Event>) {
-        RUNTIME.block_on(async move {
-            self.client.send_event(event.as_ref().deref().clone()).await;
-        });
+        self.client.send_event(event.as_ref().deref().clone());
     }
 
     pub fn run_thread(&self) -> Result<()> {
-        RUNTIME.block_on(async move {
-            self.client
-                .keep_alive(|notification| {
-                    match notification {
-                        RelayPoolNotificationsSdk::ReceivedEvent(event) => {
-                            if event.kind
-                                == nostr_sdk_base::Kind::Base(
-                                    nostr_sdk_base::KindBase::EncryptedDirectMessage,
-                                )
-                            {
-                                if let Ok(msg) = nostr_sdk_base::util::nip04::decrypt(
-                                    &self.client.keys.secret_key()?,
-                                    &event.pubkey,
-                                    &event.content,
-                                ) {
-                                    println!("New DM: {}", msg);
-                                } else {
-                                    println!("Impossible to decrypt direct message");
-                                }
-                            } else {
-                                println!("{:#?}", event);
-                            }
+        self.client.keep_alive(|notification| {
+            match notification {
+                RelayPoolNotificationsSdk::ReceivedEvent(event) => {
+                    if event.kind
+                        == nostr_sdk_base::Kind::Base(
+                            nostr_sdk_base::KindBase::EncryptedDirectMessage,
+                        )
+                    {
+                        if let Ok(msg) = nostr_sdk_base::util::nip04::decrypt(
+                            &self.client.keys.secret_key()?,
+                            &event.pubkey,
+                            &event.content,
+                        ) {
+                            println!("New DM: {}", msg);
+                        } else {
+                            println!("Impossible to decrypt direct message");
                         }
-                        RelayPoolNotificationsSdk::RelayDisconnected(url) => {
-                            println!("Relay {} disconnected", url);
-                        }
+                    } else {
+                        println!("{:#?}", event);
                     }
+                }
+                RelayPoolNotificationsSdk::RelayDisconnected(url) => {
+                    println!("Relay {} disconnected", url);
+                }
+            }
 
-                    Ok(())
-                })
-                .await
+            Ok(())
         })
     }
 }
