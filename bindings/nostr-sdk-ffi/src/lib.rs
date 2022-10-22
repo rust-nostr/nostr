@@ -6,6 +6,7 @@ use anyhow::Result;
 mod base;
 mod error;
 mod helper;
+mod logger;
 mod sdk;
 
 trait FromResult<T>: Sized {
@@ -19,6 +20,8 @@ mod ffi {
 
     // Error
     pub use crate::error::NostrError;
+
+    pub use crate::logger::init_logger;
 
     // Base
     pub use crate::base::event::{Contact, Event, Kind};
