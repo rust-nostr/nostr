@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 
     let my_keys = Keys::new_from_bech32(BECH32_SK)?;
 
-    let client = Client::new(my_keys.clone(), None);
+    let client = Client::new(&my_keys, None);
     client.add_relay("ws://localhost:8090").await?;
     client.add_relay("wss://relay.damus.io").await?;
 

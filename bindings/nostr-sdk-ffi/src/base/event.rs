@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use bitcoin_hashes::sha256;
-//use nostr_sdk_base::event::TagKind;
+use nostr_sdk_base::event::Kind as KindSdk;
 use nostr_sdk_base::{Contact as ContactSdk, Event as EventSdk, KindBase};
 use secp256k1::XOnlyPublicKey;
 
@@ -28,7 +28,7 @@ impl Event {
     /* /// Create a generic type of event
     pub fn new_generic(content: String, keys: Keys, tags: Vec<Tag>, kind: Kind) -> Result<Self> {
         Ok(Self {
-            event: EventSdk::new_generic(&content, keys.deref(), tags, *kind.deref())?,
+            event: EventSdk::new_generic(&content, keys.deref(), tags, kind.into())?,
         })
     }
 
@@ -98,15 +98,15 @@ pub enum Kind {
     Custom { kind: u16 },
 }
 
-/* impl Deref for Kind {
-    type Target = nostr::Kind;
-    fn deref(&self) -> &Self::Target {
-        match &self {
-            Self::Base { kind } => &nostr::Kind::Base(*kind),
-            Self::Custom { kind } => &nostr::Kind::Custom(*kind),
+#[allow(clippy::from_over_into)]
+impl Into<KindSdk> for Kind {
+    fn into(self) -> KindSdk {
+        match self {
+            Self::Base { kind } => KindSdk::Base(kind),
+            Self::Custom { kind } => KindSdk::Custom(kind),
         }
     }
-} */
+}
 
 /* pub enum TagData {
     Generic(TagKind, Vec<String>),

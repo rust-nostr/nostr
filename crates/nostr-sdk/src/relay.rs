@@ -192,7 +192,7 @@ pub enum RelayPoolEvent {
 #[derive(Debug, Clone)]
 pub enum RelayPoolNotifications {
     ReceivedEvent(NostrEvent),
-    RelayDisconnected(Url),
+    RelayDisconnected(String),
 }
 
 struct RelayPoolTask {
@@ -259,7 +259,7 @@ impl RelayPoolTask {
             RelayPoolEvent::RelayDisconnected(url) => {
                 if let Err(e) = self
                     .notification_sender
-                    .send(RelayPoolNotifications::RelayDisconnected(url))
+                    .send(RelayPoolNotifications::RelayDisconnected(url.to_string()))
                 {
                     log::error!("RelayPoolNotifications::RelayDisconnected error: {:?}", e);
                 };

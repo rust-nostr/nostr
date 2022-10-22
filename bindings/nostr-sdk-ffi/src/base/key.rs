@@ -8,6 +8,7 @@ use anyhow::Result;
 use nostr_sdk_base::Keys as KeysSdk;
 use secp256k1::SecretKey;
 
+#[derive(Clone)]
 pub struct Keys {
     keys: KeysSdk,
 }

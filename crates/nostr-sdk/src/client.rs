@@ -15,15 +15,15 @@ use crate::relay::{RelayPool, RelayPoolNotifications};
 
 pub struct Client {
     pub pool: Arc<Mutex<RelayPool>>,
-    keys: Keys,
-    contacts: Arc<Mutex<Vec<Contact>>>,
+    pub keys: Keys,
+    pub contacts: Arc<Mutex<Vec<Contact>>>,
 }
 
 impl Client {
-    pub fn new(keys: Keys, contacts: Option<Vec<Contact>>) -> Self {
+    pub fn new(keys: &Keys, contacts: Option<Vec<Contact>>) -> Self {
         Self {
             pool: Arc::new(Mutex::new(RelayPool::new())),
-            keys,
+            keys: keys.clone(),
             contacts: Arc::new(Mutex::new(contacts.unwrap_or_default())),
         }
     }
@@ -39,10 +39,10 @@ impl Client {
         }
     }
 
-    pub async fn remove_contact(&self, contact: Contact) {
+    pub async fn remove_contact(&self, contact: &Contact) {
         let mut contacts = self.contacts.lock().await;
-        if contacts.contains(&contact) {
-            contacts.retain(|c| c != &contact);
+        if contacts.contains(contact) {
+            contacts.retain(|c| c != contact);
         }
     }
 
@@ -57,7 +57,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn connect_relay(&mut self, url: &str) {
+    pub async fn connect_relay(&self, url: &str) {
         let mut pool = self.pool.lock().await;
         pool.connect_relay(url).await;
     }
@@ -67,9 +67,9 @@ impl Client {
         pool.connect_all().await;
     }
 
-    pub async fn subscribe(&self, filter: Vec<SubscriptionFilter>) {
+    pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) {
         let mut pool = self.pool.lock().await;
-        pool.start_sub(filter).await;
+        pool.start_sub(filters).await;
     }
 
     pub async fn send_event(&self, event: Event) {

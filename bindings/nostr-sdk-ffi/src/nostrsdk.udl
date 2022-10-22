@@ -93,6 +93,12 @@ interface Contact {
 
 // NOSTR-SDK
 
+[Enum]
+interface RelayPoolNotifications {
+    ReceivedEvent(string json);
+    RelayDisconnected(string url);
+};
+
 interface Channel {
     constructor(string relay_url);
     string id();
@@ -106,4 +112,10 @@ interface Subscription {
     void add_channel(string relay_url, Channel channel);
     Channel? remove_channel(string relay_url);
     Channel get_channel(string relay_url);
+};
+
+interface Client {
+    constructor(Keys keys, sequence<Contact>? contacts);
+    [Throws=NostrError]
+    void run_thread();
 };
