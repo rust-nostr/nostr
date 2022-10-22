@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use nostr::SubscriptionFilter;
+use nostr_sdk_base::SubscriptionFilter;
 use uuid::Uuid;
 
 #[derive(Clone)]

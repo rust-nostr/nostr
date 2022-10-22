@@ -14,7 +14,7 @@ bitcoin_hashes = { version = "0.11", features = ["serde"] }
 crossbeam-channel = "0.5"
 futures-util = "0.3"
 log = "0.4"
-nostr = { path = "../nostr" }
+nostr-sdk-base = { path = "../nostr-sdk-base" }
 tokio = { version = "1.19", features = ["macros", "rt-multi-thread", "time", "sync"] }
 tokio-tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"] }
 url = "2.3"

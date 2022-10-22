@@ -5,9 +5,9 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use nostr::{Event as EventSdk, KindBase};
+use nostr_sdk_base::{Event as EventSdk, KindBase};
 
-use crate::key::Keys;
+use crate::base::key::Keys;
 
 pub struct Event {
     event: EventSdk,

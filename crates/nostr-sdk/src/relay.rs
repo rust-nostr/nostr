@@ -8,7 +8,7 @@ use std::time::Duration;
 use anyhow::Result;
 use crossbeam_channel::{bounded, select, Receiver, Sender};
 use futures_util::{SinkExt, StreamExt};
-use nostr::{ClientMessage, Event as NostrEvent, Keys, RelayMessage, SubscriptionFilter};
+use nostr_sdk_base::{ClientMessage, Event as NostrEvent, Keys, RelayMessage, SubscriptionFilter};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 use url::Url;

@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr::Keys;
+use nostr_sdk_base::Keys;
 
 fn main() {
     //  Random keys

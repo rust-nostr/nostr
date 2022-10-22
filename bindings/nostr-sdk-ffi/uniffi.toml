@@ -1,5 +1,3 @@
 [bindings.kotlin]
-cdylib_name = "nostrsdk"
-
-[bindings.swift]
+package_name = "nostr.sdk"
 cdylib_name = "nostrsdk"

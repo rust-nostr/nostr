@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use anyhow::Result;
-use nostr::Keys as KeysSdk;
+use nostr_sdk_base::Keys as KeysSdk;
 use secp256k1::SecretKey;
 
 pub struct Keys {

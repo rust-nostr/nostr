@@ -5,7 +5,7 @@ use std::error::Error;
 use std::str::FromStr;
 
 use bitcoin_hashes::sha256::Hash;
-use nostr::{ClientMessage, Event, Keys};
+use nostr_sdk_base::{ClientMessage, Event, Keys};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 

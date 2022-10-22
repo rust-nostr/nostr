@@ -8,7 +8,7 @@ use std::time::Duration;
 use anyhow::Result;
 use bitcoin_hashes::sha256::Hash;
 use crossbeam_channel::{select, Receiver};
-use nostr::{Contact, Event, Keys, SubscriptionFilter};
+use nostr_sdk_base::{Contact, Event, Keys, SubscriptionFilter};
 use tokio::sync::Mutex;
 
 use crate::relay::{RelayPool, RelayPoolNotifications};

@@ -1,18 +1,34 @@
 [package]
 name = "nostr-sdk-ffi"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
 
 [lib]
 name = "nostrsdk"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-nostr-ffi = { path = "../nostr-ffi" }
-nostr-sdk  = { path = "../../nostr-sdk" }
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+nostr-sdk  = { path = "../../crates/nostr-sdk" }
+nostr-sdk-base  = { path = "../../crates/nostr-sdk-base" }
 parking_lot = "0.12.1"
+secp256k1 = "0.24" 
+thiserror = "1.0"
 uniffi = "0.21.0"
 uniffi_macros = "0.21.0"
+uuid = { version = "1.2", features = ["serde"] }
 
 [build-dependencies]
 uniffi_build = { version = "0.21.0", features = ["builtin-bindgen"] }
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+debug = true

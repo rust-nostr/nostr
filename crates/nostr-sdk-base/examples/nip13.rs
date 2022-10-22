@@ -7,8 +7,8 @@ use std::str::FromStr;
 use std::time::Instant;
 
 use log::info;
-use nostr::event::{Tag, TagData};
-use nostr::{util, Event, Keys};
+use nostr_sdk_base::event::{Tag, TagData};
+use nostr_sdk_base::{util, Event, Keys};
 use secp256k1::SecretKey;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";

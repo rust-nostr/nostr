@@ -1,18 +1,17 @@
 [workspace]
 members = [
-    "bindings/nostr-ffi",
     "bindings/nostr-sdk-ffi",
-    "nostr",
-    "nostr-sdk",
+    "crates/*",
 ]
+default-members = ["crates/*"]
 
 [workspace.package]
 edition = "2021"
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
 license = "MIT"
-homepage = "https://gitlab.com/p2kishimoto/nostr-rs"
-repository = "https://gitlab.com/p2kishimoto/nostr-rs.git"
-rust-version = "1.56"
+homepage = "https://gitlab.com/p2kishimoto/nostr-rs-sdk"
+repository = "https://gitlab.com/p2kishimoto/nostr-rs-sdk.git"
+rust-version = "1.64"
 
 [profile.release]
 lto = true

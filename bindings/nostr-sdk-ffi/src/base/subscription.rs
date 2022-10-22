@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use nostr::{KindBase, SubscriptionFilter as SubscriptionFilterSdk};
+use nostr_sdk_base::{KindBase, SubscriptionFilter as SubscriptionFilterSdk};
 use secp256k1::XOnlyPublicKey;
 use uuid::Uuid;
 

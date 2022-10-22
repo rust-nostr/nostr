@@ -5,9 +5,9 @@ use std::error::Error;
 use std::str::FromStr;
 use std::{thread, time};
 
-use nostr::event::KindBase;
-use nostr::util::nip04::decrypt;
-use nostr::{ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter};
+use nostr_sdk_base::event::KindBase;
+use nostr_sdk_base::util::nip04::decrypt;
+use nostr_sdk_base::{ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter};
 use secp256k1::SecretKey;
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;

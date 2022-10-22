@@ -1,13 +1,14 @@
-namespace nostrsdk {};
+// Copyright (c) 2022 Yuki Kishimoto
+// Distributed under the MIT software license
 
-// NOSTR FFI (duplicates of nostr-ffi crate because "External types" not work)
-//
-// External types: https://mozilla.github.io/uniffi-rs/udl/ext_types_external.html
+namespace nostrsdk {};
 
 [Error]
 interface NostrError {
     Generic(string msg);
 };
+
+// NOSTR-SDK-BASE
 
 enum KindBase {
     "Metadata",
@@ -69,7 +70,15 @@ interface SubscriptionFilter {
     SubscriptionFilter authors(sequence<string> authors);
 };
 
-// NOSTR SDK
+interface Event {
+    [Throws=NostrError, Name=new_encrypted_direct_msg]
+    constructor(Keys sender_keys, Keys receiver_keys, string content);
+    [Throws=NostrError, Name=new_from_json]
+    constructor(string json);
+    string as_json();
+};
+
+// NOSTR-SDK
 
 interface Channel {
     constructor(string relay_url);

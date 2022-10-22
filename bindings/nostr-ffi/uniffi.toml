@@ -1,5 +1,0 @@
-[bindings.kotlin]
-cdylib_name = "nostr"
-
-[bindings.swift]
-cdylib_name = "nostr"

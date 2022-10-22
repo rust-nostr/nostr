@@ -4,9 +4,10 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::SubscriptionFilter;
 use nostr_sdk::subscription::{Channel as ChannelSdk, Subscription as SubscriptionSdk};
 use parking_lot::RwLock;
+
+use crate::base::subscription::SubscriptionFilter;
 
 pub struct Subscription {
     sub: Arc<RwLock<SubscriptionSdk>>,
@@ -26,7 +27,8 @@ impl Subscription {
     }
 
     pub fn update_filters(&self, filters: Vec<Arc<SubscriptionFilter>>) {
-        let mut new_filters: Vec<nostr_sdk::nostr::SubscriptionFilter> = Vec::with_capacity(filters.len());
+        let mut new_filters: Vec<nostr_sdk_base::SubscriptionFilter> =
+            Vec::with_capacity(filters.len());
         for filter in filters.into_iter() {
             new_filters.push(filter.as_ref().deref().clone());
         }
@@ -37,7 +39,10 @@ impl Subscription {
 
     pub fn get_filters(&self) -> Vec<Arc<SubscriptionFilter>> {
         let sub = self.sub.read();
-        sub.get_filters().into_iter().map(|s| Arc::new(SubscriptionFilter::from(s))).collect()
+        sub.get_filters()
+            .into_iter()
+            .map(|s| Arc::new(SubscriptionFilter::from(s)))
+            .collect()
     }
 
     pub fn add_channel(&self, relay_url: String, channel: Arc<Channel>) {
