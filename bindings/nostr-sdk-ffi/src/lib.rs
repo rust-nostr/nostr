@@ -8,6 +8,7 @@ mod error;
 mod helper;
 mod logger;
 mod sdk;
+mod thread;
 
 trait FromResult<T>: Sized {
     fn from_result(_: T) -> Result<Self>;

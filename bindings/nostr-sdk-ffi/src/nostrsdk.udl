@@ -126,6 +126,6 @@ interface Client {
     void connect_all();
     void subscribe(sequence<SubscriptionFilter> filters);
     void send_event(Event event);
-    [Throws=NostrError]
+    [Self=ByArc]
     void run_thread();
 };

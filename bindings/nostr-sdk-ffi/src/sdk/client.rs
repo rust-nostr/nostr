@@ -77,34 +77,36 @@ impl Client {
         self.client.send_event(event.as_ref().deref().clone());
     }
 
-    pub fn run_thread(&self) -> Result<()> {
-        self.client.keep_alive(|notification| {
-            match notification {
-                RelayPoolNotificationsSdk::ReceivedEvent(event) => {
-                    if event.kind
-                        == nostr_sdk_base::Kind::Base(
-                            nostr_sdk_base::KindBase::EncryptedDirectMessage,
-                        )
-                    {
-                        if let Ok(msg) = nostr_sdk_base::util::nip04::decrypt(
-                            &self.client.keys.secret_key()?,
-                            &event.pubkey,
-                            &event.content,
-                        ) {
-                            println!("New DM: {}", msg);
+    pub fn run_thread(self: Arc<Self>) {
+        crate::thread::spawn("client", move || {
+            self.client.keep_alive(|notification| {
+                match notification {
+                    RelayPoolNotificationsSdk::ReceivedEvent(event) => {
+                        if event.kind
+                            == nostr_sdk_base::Kind::Base(
+                                nostr_sdk_base::KindBase::EncryptedDirectMessage,
+                            )
+                        {
+                            if let Ok(msg) = nostr_sdk_base::util::nip04::decrypt(
+                                &self.client.keys.secret_key()?,
+                                &event.pubkey,
+                                &event.content,
+                            ) {
+                                println!("New DM: {}", msg);
+                            } else {
+                                println!("Impossible to decrypt direct message");
+                            }
                         } else {
-                            println!("Impossible to decrypt direct message");
+                            println!("{:#?}", event);
                         }
-                    } else {
-                        println!("{:#?}", event);
+                    }
+                    RelayPoolNotificationsSdk::RelayDisconnected(url) => {
+                        println!("Relay {} disconnected", url);
                     }
                 }
-                RelayPoolNotificationsSdk::RelayDisconnected(url) => {
-                    println!("Relay {} disconnected", url);
-                }
-            }
 
-            Ok(())
-        })
+                Ok(())
+            })
+        });
     }
 }
