@@ -1,28 +1,27 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-// Extenal
-use nostr_sdk_base::KindBase;
-
 mod base;
 mod error;
 mod helper;
 mod sdk;
 
-// Error
-use self::error::NostrError;
-
-// Base
-use self::base::event::{Event, Kind};
-use self::base::key::Keys;
-use self::base::subscription::SubscriptionFilter;
-
-// SDK
-use self::sdk::subscription::{Channel, Subscription};
-
 #[allow(missing_docs)]
 mod ffi {
-    use super::*;
+    // Extenal
+    pub use nostr_sdk_base::event::KindBase;
+
+    // Error
+    pub use crate::error::NostrError;
+
+    // Base
+    pub use crate::base::event::{Contact, Event, Kind};
+    pub use crate::base::key::Keys;
+    pub use crate::base::subscription::SubscriptionFilter;
+
+    // SDK
+    pub use crate::sdk::subscription::{Channel, Subscription};
+
     uniffi_macros::include_scaffolding!("nostrsdk");
 }
 pub use ffi::*;

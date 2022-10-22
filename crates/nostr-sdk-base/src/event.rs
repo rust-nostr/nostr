@@ -137,13 +137,18 @@ impl Event {
     }
 
     /// Create delete event
-    pub fn delete(keys: &Keys, ids: Vec<sha256::Hash>, content: &str) -> Result<Self> {
+    pub fn delete(keys: &Keys, ids: Vec<sha256::Hash>, content: Option<&str>) -> Result<Self> {
         let tags: Vec<Tag> = ids
             .iter()
             .map(|id| Tag::new(TagData::EventId(id.to_string())))
             .collect();
 
-        Self::new_generic(content, keys, &tags, Kind::Base(KindBase::EventDeletion))
+        Self::new_generic(
+            content.unwrap_or(""),
+            keys,
+            &tags,
+            Kind::Base(KindBase::EventDeletion),
+        )
     }
 
     pub fn verify(&self) -> Result<(), secp256k1::Error> {

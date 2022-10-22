@@ -71,11 +71,24 @@ interface SubscriptionFilter {
 };
 
 interface Event {
+    [Throws=NostrError, Name=backup_contacts]
+    constructor(Keys keys, sequence<Contact> list);
     [Throws=NostrError, Name=new_encrypted_direct_msg]
     constructor(Keys sender_keys, Keys receiver_keys, string content);
+    [Throws=NostrError, Name=delete]
+    constructor(Keys keys, sequence<string> ids, string? reason);
+    boolean verify();
     [Throws=NostrError, Name=new_from_json]
     constructor(string json);
     string as_json();
+};
+
+interface Contact {
+    [Throws=NostrError]
+    constructor(string alias, string pk, string relay_url);
+    string alias();
+    string public_key();
+    string relay_url();
 };
 
 // NOSTR-SDK

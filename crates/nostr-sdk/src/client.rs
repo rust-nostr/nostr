@@ -78,7 +78,7 @@ impl Client {
     }
 
     pub async fn delete_event(&self, event_id: &str) -> Result<()> {
-        let event = Event::delete(&self.keys, vec![Hash::from_str(event_id)?], "")?;
+        let event = Event::delete(&self.keys, vec![Hash::from_str(event_id)?], None)?;
         self.send_event(event).await;
         Ok(())
     }

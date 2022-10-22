@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let event = Event::delete(
         &my_keys,
         vec![event_id],
-        "these posts were published by accident",
+        Some("these posts were published by accident"),
     )?;
 
     socket.write_message(WsMessage::Text(ClientMessage::new_event(event).to_json()))?;
