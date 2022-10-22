@@ -116,6 +116,14 @@ interface Subscription {
 
 interface Client {
     constructor(Keys keys, sequence<Contact>? contacts);
+    void add_contact(Contact contact);
+    void remove_contact(Contact contact);
+    [Throws=NostrError]
+    void add_relay(string url);
+    void connect_relay(string url);
+    void connect_all();
+    void subscribe(sequence<SubscriptionFilter> filters);
+    void send_event(Event event);
     [Throws=NostrError]
     void run_thread();
 };

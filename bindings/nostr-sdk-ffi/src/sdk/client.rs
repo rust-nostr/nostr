@@ -44,10 +44,6 @@ impl Client {
         }
     }
 
-    pub fn generate_keys() -> Arc<Keys> {
-        Arc::new(Keys::generate_from_os_random())
-    }
-
     pub fn add_contact(&self, contact: Arc<Contact>) {
         RUNTIME.block_on(async move {
             self.client
@@ -78,12 +74,12 @@ impl Client {
         });
     }
 
-    pub fn subscribe(&self, filters: Vec<SubscriptionFilter>) {
+    pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) {
         RUNTIME.block_on(async move {
             let mut new_filters: Vec<nostr_sdk_base::SubscriptionFilter> =
                 Vec::with_capacity(filters.len());
             for filter in filters.into_iter() {
-                new_filters.push(filter.deref().clone());
+                new_filters.push(filter.as_ref().deref().clone());
             }
 
             self.client.subscribe(new_filters).await;
