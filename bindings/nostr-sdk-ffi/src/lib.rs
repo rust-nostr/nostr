@@ -9,6 +9,7 @@ mod helper;
 mod logger;
 mod sdk;
 mod thread;
+mod util;
 
 trait FromResult<T>: Sized {
     fn from_result(_: T) -> Result<Self>;
@@ -19,10 +20,12 @@ mod ffi {
     // Extenal
     pub use nostr_sdk_base::event::KindBase;
 
+    // Namespace
+    pub use crate::logger::init_logger;
+    pub use crate::util::time::timestamp;
+
     // Error
     pub use crate::error::NostrError;
-
-    pub use crate::logger::init_logger;
 
     // Base
     pub use crate::base::event::{Contact, Event, Kind};

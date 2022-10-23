@@ -3,6 +3,7 @@
 
 namespace nostrsdk {
     void init_logger(string? level);
+    u64 timestamp();
 };
 
 [Error]
