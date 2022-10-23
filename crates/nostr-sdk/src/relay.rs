@@ -13,9 +13,9 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 use url::Url;
 
-use crate::subscription::Subscription;
 #[cfg(feature = "blocking")]
-use crate::RUNTIME;
+use crate::new_current_thread;
+use crate::subscription::Subscription;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayStatus {
@@ -118,8 +118,17 @@ impl Relay {
 
                     log::debug!("Closed RELAY TX to WS RX {}", relay.url);
                 };
+
                 #[cfg(feature = "blocking")]
-                RUNTIME.spawn(func_relay_event);
+                match new_current_thread() {
+                    Ok(rt) => {
+                        std::thread::spawn(move || {
+                            rt.block_on(async move { func_relay_event.await });
+                        });
+                    }
+                    Err(e) => log::error!("Impossible to crate new current thread: {:?}", e),
+                };
+
                 #[cfg(not(feature = "blocking"))]
                 tokio::spawn(func_relay_event);
 
@@ -163,8 +172,17 @@ impl Relay {
 
                     log::error!("Closed WS RX to RELAY POOL TX {}", relay.url);
                 };
+
                 #[cfg(feature = "blocking")]
-                RUNTIME.spawn(func_relay_msg);
+                match new_current_thread() {
+                    Ok(rt) => {
+                        std::thread::spawn(move || {
+                            rt.block_on(async move { func_relay_msg.await });
+                        });
+                    }
+                    Err(e) => log::error!("Impossible to crate new current thread: {:?}", e),
+                };
+
                 #[cfg(not(feature = "blocking"))]
                 tokio::spawn(func_relay_msg);
             }
@@ -300,8 +318,17 @@ impl RelayPool {
         let (pool_task_sender, pool_task_receiver) = bounded(64);
 
         let mut relay_pool_task = RelayPoolTask::new(pool_task_receiver, notification_sender);
+
         #[cfg(feature = "blocking")]
-        RUNTIME.spawn(async move { relay_pool_task.run().await });
+        match new_current_thread() {
+            Ok(rt) => {
+                std::thread::spawn(move || {
+                    rt.block_on(async move { relay_pool_task.run().await });
+                });
+            }
+            Err(e) => log::error!("Impossible to crate new current thread: {:?}", e),
+        };
+
         #[cfg(not(feature = "blocking"))]
         tokio::spawn(async move { relay_pool_task.run().await });
 

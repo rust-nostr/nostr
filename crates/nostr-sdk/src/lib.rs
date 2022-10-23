@@ -1,10 +1,11 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use anyhow::Result;
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
-use tokio::runtime::Runtime;
+use tokio::runtime::{Builder, Runtime};
 
 pub mod client;
 pub mod relay;
@@ -15,3 +16,8 @@ pub use relay::{Relay, RelayPool, RelayPoolNotifications, RelayStatus};
 
 #[cfg(feature = "blocking")]
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
+
+#[cfg(feature = "blocking")]
+fn new_current_thread() -> Result<Runtime> {
+    Ok(Builder::new_current_thread().enable_all().build()?)
+}
