@@ -87,6 +87,7 @@ impl Relay {
 
                 let relay = self.clone();
                 let func_relay_event = async move {
+                    log::debug!("Relay Event Thread Started");
                     loop {
                         select! {
                             recv(relay_receiver) -> result => {
@@ -124,6 +125,7 @@ impl Relay {
 
                 let relay = self.clone();
                 let func_relay_msg = async move {
+                    log::debug!("Relay Message Thread Started");
                     while let Some(msg_res) = ws_rx.next().await {
                         if let Ok(msg) = msg_res {
                             let data: Vec<u8> = msg.into_data();
@@ -224,6 +226,7 @@ impl RelayPoolTask {
     }
 
     pub async fn run(&mut self) {
+        log::debug!("RelayPoolTask Thread Started");
         while let Ok(msg) = self.receiver.recv() {
             self.handle_message(msg).await;
         }
