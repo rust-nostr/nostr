@@ -79,6 +79,7 @@ impl Client {
 
     pub fn run_thread(self: Arc<Self>) {
         crate::thread::spawn("client", move || {
+            log::debug!("Client Thread Started");
             self.client.keep_alive(|notification| {
                 match notification {
                     RelayPoolNotificationsSdk::ReceivedEvent(event) => {
@@ -92,16 +93,16 @@ impl Client {
                                 &event.pubkey,
                                 &event.content,
                             ) {
-                                println!("New DM: {}", msg);
+                                log::debug!("New DM: {}", msg);
                             } else {
-                                println!("Impossible to decrypt direct message");
+                                log::debug!("Impossible to decrypt direct message");
                             }
                         } else {
-                            println!("{:#?}", event);
+                            log::debug!("{:#?}", event);
                         }
                     }
                     RelayPoolNotificationsSdk::RelayDisconnected(url) => {
-                        println!("Relay {} disconnected", url);
+                        log::debug!("Relay {} disconnected", url);
                     }
                 }
 
