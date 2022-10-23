@@ -28,3 +28,10 @@ uuid = { version = "1.2", features = ["v4", "fast-rng", "macro-diagnostics"] }
 [dev-dependencies]
 chrono = "0.4"
 env_logger = "0.8"
+
+[[example]]
+name = "client"
+
+[[example]]
+name = "client_blocking"
+required-features = ["blocking"]

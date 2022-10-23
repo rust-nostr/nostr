@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+#[cfg(feature = "blocking")]
 use anyhow::Result;
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
