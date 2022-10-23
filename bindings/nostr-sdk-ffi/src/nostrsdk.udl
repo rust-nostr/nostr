@@ -2,7 +2,7 @@
 // Distributed under the MIT software license
 
 namespace nostrsdk {
-    void init_logger();
+    void init_logger(string? level);
 };
 
 [Error]
