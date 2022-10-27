@@ -77,29 +77,13 @@ impl Client {
         self.client.send_event(event.as_ref().deref().clone());
     }
 
-    pub fn run_thread(self: Arc<Self>) {
+    pub fn run_thread(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
         nostr_sdk_common::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
             self.client.keep_alive(|notification| {
                 match notification {
                     RelayPoolNotificationsSdk::ReceivedEvent(event) => {
-                        if event.kind
-                            == nostr_sdk_base::Kind::Base(
-                                nostr_sdk_base::KindBase::EncryptedDirectMessage,
-                            )
-                        {
-                            if let Ok(msg) = nostr_sdk_base::util::nip04::decrypt(
-                                &self.client.keys.secret_key()?,
-                                &event.pubkey,
-                                &event.content,
-                            ) {
-                                log::debug!("New DM: {}", msg);
-                            } else {
-                                log::debug!("Impossible to decrypt direct message");
-                            }
-                        } else {
-                            log::debug!("{:#?}", event);
-                        }
+                        handler.handle(Arc::new(event.into()));
                     }
                     RelayPoolNotificationsSdk::RelayDisconnected(url) => {
                         log::debug!("Relay {} disconnected", url);
@@ -110,4 +94,8 @@ impl Client {
             })
         });
     }
+}
+
+pub trait HandleNotification: Send + Sync {
+    fn handle(&self, event: Arc<Event>);
 }

@@ -32,8 +32,7 @@ mod ffi {
     pub use crate::base::subscription::SubscriptionFilter;
 
     // SDK
-    pub use crate::sdk::client::Client;
-    pub use crate::sdk::relay::RelayPoolNotifications;
+    pub use crate::sdk::client::{Client, HandleNotification};
     pub use crate::sdk::subscription::{Channel, Subscription};
 
     uniffi_macros::include_scaffolding!("nostrsdk");

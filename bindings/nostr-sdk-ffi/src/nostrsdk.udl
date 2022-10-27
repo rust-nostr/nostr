@@ -99,12 +99,6 @@ interface Contact {
 
 // NOSTR-SDK
 
-[Enum]
-interface RelayPoolNotifications {
-    ReceivedEvent(string json);
-    RelayDisconnected(string url);
-};
-
 interface Channel {
     constructor(string relay_url);
     string id();
@@ -120,6 +114,10 @@ interface Subscription {
     Channel get_channel(string relay_url);
 };
 
+callback interface HandleNotification {
+    void handle(Event event);
+};
+
 interface Client {
     constructor(Keys keys, sequence<Contact>? contacts);
     void add_contact(Contact contact);
@@ -131,5 +129,5 @@ interface Client {
     void subscribe(sequence<SubscriptionFilter> filters);
     void send_event(Event event);
     [Self=ByArc]
-    void run_thread();
+    void run_thread(HandleNotification handler);
 };

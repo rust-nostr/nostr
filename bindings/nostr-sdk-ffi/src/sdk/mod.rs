@@ -2,5 +2,4 @@
 // Distributed under the MIT software license
 
 pub mod client;
-pub mod relay;
 pub mod subscription;
