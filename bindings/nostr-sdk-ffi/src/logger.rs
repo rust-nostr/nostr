@@ -2,7 +2,6 @@
 // Distributed under the MIT software license
 
 #![allow(unused_variables)]
-#![allow(dead_code)]
 
 use std::str::FromStr;
 
@@ -12,8 +11,10 @@ use log::Level;
 use android_logger::Config;
 
 pub fn init_logger(level: Option<String>) {
+    let level: Level = min_level(level);
+
     #[cfg(target_os = "android")]
-    android_logger::init_once(Config::default().with_min_level(min_level(level)));
+    android_logger::init_once(Config::default().with_min_level(level));
 }
 
 fn min_level(level: Option<String>) -> Level {
