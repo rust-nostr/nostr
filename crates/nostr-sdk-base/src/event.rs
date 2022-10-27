@@ -127,7 +127,7 @@ impl Event {
                 &sender_keys.secret_key()?,
                 &receiver_keys.public_key,
                 content,
-            ),
+            )?,
             sender_keys,
             &vec![Tag::new(TagData::EncryptedDirectMessage {
                 pk: receiver_keys.public_key,

@@ -17,7 +17,7 @@ type Aes128CbcEnc = Encryptor<Aes256>;
 type Aes128CbcDec = Decryptor<Aes256>;
 
 #[derive(Error, Debug, Eq, PartialEq)]
-pub enum DecryptError {
+pub enum Error {
     #[error(
         r#"Invalid content format. Expected format "<encrypted_text>?iv=<initialization_vec>""#
     )]
@@ -31,66 +31,74 @@ pub enum DecryptError {
 
     #[error("Wrong encryption block mode.The content must be encrypted using CBC mode!")]
     WrongBlockMode,
+
+    #[error("Secp256k1 Error: {}", _0)]
+    Secp256k1Error(secp256k1::Error),
 }
 
-pub fn encrypt(sk: &SecretKey, pk: &XOnlyPublicKey, text: &str) -> String {
-    let key: Vec<u8> = generate_shared_key(sk, pk);
+impl From<secp256k1::Error> for Error {
+    fn from(err: secp256k1::Error) -> Self {
+        Self::Secp256k1Error(err)
+    }
+}
+
+pub fn encrypt(sk: &SecretKey, pk: &XOnlyPublicKey, text: &str) -> Result<String, Error> {
+    let key: Vec<u8> = generate_shared_key(sk, pk)?;
     let iv: [u8; 16] = random();
 
     let cipher = Aes128CbcEnc::new(key.as_slice().into(), &iv.into());
     let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
 
-    format!("{}?iv={}", encode(result), encode(iv))
+    Ok(format!("{}?iv={}", encode(result), encode(iv)))
 }
 
 pub fn decrypt(
     sk: &SecretKey,
     pk: &XOnlyPublicKey,
     encrypted_content: &str,
-) -> Result<String, DecryptError> {
+) -> Result<String, Error> {
     let parsed_content: Vec<&str> = encrypted_content.split("?iv=").collect();
     if parsed_content.len() != 2 {
-        return Err(DecryptError::InvalidContentFormat);
+        return Err(Error::InvalidContentFormat);
     }
 
     let encrypted_content: Vec<u8> =
-        decode(parsed_content[0]).map_err(|_| DecryptError::Base64DecodeError)?;
+        decode(parsed_content[0]).map_err(|_| Error::Base64DecodeError)?;
 
-    let iv: Vec<u8> = decode(parsed_content[1]).map_err(|_| DecryptError::Base64DecodeError)?;
-    let key: Vec<u8> = generate_shared_key(sk, pk);
+    let iv: Vec<u8> = decode(parsed_content[1]).map_err(|_| Error::Base64DecodeError)?;
+    let key: Vec<u8> = generate_shared_key(sk, pk)?;
 
     let cipher = Aes128CbcDec::new(key.as_slice().into(), iv.as_slice().into());
     let result = cipher
         .decrypt_padded_vec_mut::<Pkcs7>(&encrypted_content)
-        .map_err(|_| DecryptError::WrongBlockMode)?;
+        .map_err(|_| Error::WrongBlockMode)?;
 
-    String::from_utf8(result).map_err(|_| DecryptError::Utf8EncodeError)
+    String::from_utf8(result).map_err(|_| Error::Utf8EncodeError)
 }
 
-fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Vec<u8> {
-    let pk_normalized = from_schnorr_pk(pk);
+fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<Vec<u8>, Error> {
+    let pk_normalized: PublicKey = from_schnorr_pk(pk)?;
     let ssp = ecdh::shared_secret_point(&pk_normalized, sk);
 
     let mut shared_key = [0u8; 32];
     shared_key.copy_from_slice(&ssp[..32]);
-    shared_key.to_vec()
+    Ok(shared_key.to_vec())
 }
 
-fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> PublicKey {
+fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
     let mut pk = String::from("02");
     pk.push_str(&schnorr_pk.to_string());
-    PublicKey::from_str(&pk).expect("Failed to make a PublicKey with the addition of 02")
+    // .expect("Failed to make a PublicKey with the addition of 02")
+    Ok(PublicKey::from_str(&pk)?)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use std::error::Error;
-
     use secp256k1::{KeyPair, Secp256k1};
 
-    type TestResult = Result<(), Box<dyn Error>>;
+    type TestResult = Result<(), Box<dyn std::error::Error>>;
 
     #[test]
     fn test_encryption_decryption() -> TestResult {
@@ -113,7 +121,7 @@ mod tests {
 
         let content = String::from("Saturn, bringer of old age");
 
-        let encrypted_content = encrypt(&sender_sk, &receiver_pk, &content);
+        let encrypted_content = encrypt(&sender_sk, &receiver_pk, &content).unwrap();
 
         assert_eq!(
             decrypt(&receiver_sk, &sender_pk, &encrypted_content)?,
@@ -127,11 +135,11 @@ mod tests {
 
         assert_eq!(
             decrypt(&sender_sk, &receiver_pk, "invalidcontentformat").unwrap_err(),
-            DecryptError::InvalidContentFormat
+            Error::InvalidContentFormat
         );
         assert_eq!(
             decrypt(&sender_sk, &receiver_pk, "badbase64?iv=encode").unwrap_err(),
-            DecryptError::Base64DecodeError
+            Error::Base64DecodeError
         );
 
         //Content encrypted with aes256 using GCM mode
@@ -142,7 +150,7 @@ mod tests {
                 "nseh0cQPEFID5C0CxYdcPwp091NhRQ==?iv=8PHy8/T19vf4+fr7/P3+/w=="
             )
             .unwrap_err(),
-            DecryptError::WrongBlockMode
+            Error::WrongBlockMode
         );
 
         Ok(())
