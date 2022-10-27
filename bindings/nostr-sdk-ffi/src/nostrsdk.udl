@@ -74,6 +74,9 @@ interface SubscriptionFilter {
 };
 
 interface Event {
+    string pubkey();
+    Kind kind();
+    string content();
     [Throws=NostrError, Name=backup_contacts]
     constructor(Keys keys, sequence<Contact> list);
     [Throws=NostrError, Name=new_encrypted_direct_msg]

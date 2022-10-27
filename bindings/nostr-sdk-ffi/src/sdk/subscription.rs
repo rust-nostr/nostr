@@ -52,13 +52,12 @@ impl Subscription {
 
     pub fn remove_channel(&self, relay_url: String) -> Option<Arc<Channel>> {
         let mut sub = self.sub.write();
-        sub.remove_channel(&relay_url)
-            .map(|ch| Arc::new(Channel::from(ch)))
+        sub.remove_channel(&relay_url).map(|ch| Arc::new(ch.into()))
     }
 
     pub fn get_channel(&self, relay_url: String) -> Arc<Channel> {
         let mut sub = self.sub.write();
-        Arc::new(Channel::from(sub.get_channel(&relay_url)))
+        Arc::new(sub.get_channel(&relay_url).into())
     }
 }
 

@@ -17,10 +17,30 @@ pub struct Event {
     event: EventSdk,
 }
 
+impl From<EventSdk> for Event {
+    fn from(event: EventSdk) -> Self {
+        Self { event }
+    }
+}
+
 impl Deref for Event {
     type Target = EventSdk;
     fn deref(&self) -> &Self::Target {
         &self.event
+    }
+}
+
+impl Event {
+    pub fn pubkey(&self) -> String {
+        self.event.pubkey.to_string()
+    }
+
+    pub fn kind(&self) -> Kind {
+        self.event.kind.into()
+    }
+
+    pub fn content(&self) -> String {
+        self.event.content.clone()
     }
 }
 
@@ -98,12 +118,11 @@ pub enum Kind {
     Custom { kind: u16 },
 }
 
-#[allow(clippy::from_over_into)]
-impl Into<KindSdk> for Kind {
-    fn into(self) -> KindSdk {
-        match self {
-            Self::Base { kind } => KindSdk::Base(kind),
-            Self::Custom { kind } => KindSdk::Custom(kind),
+impl From<KindSdk> for Kind {
+    fn from(kind: KindSdk) -> Self {
+        match kind {
+            KindSdk::Base(kind) => Self::Base { kind },
+            KindSdk::Custom(kind) => Self::Custom { kind },
         }
     }
 }
