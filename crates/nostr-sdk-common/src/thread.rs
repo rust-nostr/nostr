@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 use std::thread;
+use std::time::Duration;
 
 use anyhow::Result;
 
@@ -17,4 +18,16 @@ where
             }
         })
         .expect("failed to spawn a thread")
+}
+
+pub fn sleep(seconds: u64) {
+    thread::sleep(Duration::from_secs(seconds));
+}
+
+pub fn sleep_millis(millis: u64) {
+    thread::sleep(Duration::from_millis(millis));
+}
+
+pub fn panicking() -> bool {
+    thread::panicking()
 }

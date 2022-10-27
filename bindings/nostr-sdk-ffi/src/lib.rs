@@ -8,7 +8,6 @@ mod error;
 mod helper;
 mod logger;
 mod sdk;
-mod thread;
 mod util;
 
 trait FromResult<T>: Sized {

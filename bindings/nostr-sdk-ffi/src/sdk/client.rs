@@ -78,7 +78,7 @@ impl Client {
     }
 
     pub fn run_thread(self: Arc<Self>) {
-        crate::thread::spawn("client", move || {
+        nostr_sdk_common::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
             self.client.keep_alive(|notification| {
                 match notification {
