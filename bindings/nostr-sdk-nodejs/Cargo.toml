@@ -1,0 +1,23 @@
+[package]
+name = "nostr-sdk-nodejs"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2.9.1", default-features = false, features = ["napi6", "tokio_rt"] }
+napi-derive = "2.9.1"
+nostr-sdk  = { path = "../../crates/nostr-sdk" }
+nostr-sdk-base  = { path = "../../crates/nostr-sdk-base" }
+nostr-sdk-common  = { path = "../../crates/nostr-sdk-common" }
+secp256k1 = "0.24" 
+
+[build-dependencies]
+napi-build = "2.0.0"
