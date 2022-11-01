@@ -13,17 +13,17 @@ default = []
 blocking = ["once_cell"]
 
 [dependencies]
-anyhow = "1.0"
+anyhow = "1"
 bitcoin_hashes = { version = "0.11", features = ["serde"] }
 crossbeam-channel = "0.5"
 futures-util = "0.3"
 log = "0.4"
 nostr-sdk-base = { path = "../nostr-sdk-base" }
-once_cell = { version = "1.10", optional = true }
+once_cell = { version = "1", optional = true }
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"] }
-url = "2.3"
-uuid = { version = "1.2", features = ["v4", "fast-rng", "macro-diagnostics"] }
+url = "2"
+uuid = { version = "1", features = ["v4", "fast-rng", "macro-diagnostics"] }
 
 [dev-dependencies]
 chrono = "0.4"
