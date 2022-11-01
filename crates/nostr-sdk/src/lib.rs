@@ -8,6 +8,8 @@ use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
 use tokio::runtime::{Builder, Runtime};
 
+pub use nostr_sdk_base as base;
+
 pub mod client;
 pub mod relay;
 pub mod subscription;
