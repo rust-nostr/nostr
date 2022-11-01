@@ -12,7 +12,7 @@ use chrono::DateTime;
 use chrono::{TimeZone, Utc};
 use secp256k1::{schnorr, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer};
-use serde_json::json;
+use serde_json::{json, Value};
 use serde_repr::*;
 
 use crate::util::nip04;
@@ -94,6 +94,26 @@ impl Event {
             Ok(()) => Ok(event),
             Err(e) => Err(anyhow!(e)),
         }
+    }
+
+    pub fn set_metadata(
+        keys: &Keys,
+        username: &str,
+        about: Option<&str>,
+        picture: Option<&str>,
+    ) -> Result<Self> {
+        let metadata: Value = json!({
+            "username": username,
+            "about": about.unwrap_or(""),
+            "picture": picture.unwrap_or(""),
+        });
+
+        Self::new_generic(
+            &metadata.to_string(),
+            keys,
+            &Vec::new(),
+            Kind::Base(KindBase::Metadata),
+        )
     }
 
     /// Create a new TextNote Event

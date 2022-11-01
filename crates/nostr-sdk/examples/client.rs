@@ -5,9 +5,9 @@ extern crate nostr_sdk;
 
 use anyhow::Result;
 use chrono::Utc;
-use nostr_sdk::{Client, RelayPoolNotifications};
 use nostr_sdk::base::util::nip04::decrypt;
 use nostr_sdk::base::{Keys, Kind, KindBase, SubscriptionFilter};
+use nostr_sdk::{Client, RelayPoolNotifications};
 
 const BECH32_SK: &str = "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
 
