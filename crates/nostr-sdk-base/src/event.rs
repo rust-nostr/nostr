@@ -15,7 +15,7 @@ use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
 use serde_repr::*;
 
-use crate::util::nip04;
+use crate::util::{nip04, nip13};
 use crate::Keys;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
@@ -121,6 +121,43 @@ impl Event {
     /// Create a new TextNote Event
     pub fn new_textnote(content: &str, keys: &Keys, tags: &Vec<Tag>) -> Result<Self> {
         Self::new_generic(content, keys, tags, Kind::Base(KindBase::TextNote))
+    }
+
+    pub fn new_pow_textnote(
+        content: &str,
+        keys: &Keys,
+        tags: &[Tag],
+        pow_difficulty: u8,
+    ) -> Result<Self> {
+        let mut iterations = 0;
+
+        loop {
+            iterations += 1;
+
+            let nonce = iterations; // Different value per iteration
+
+            let mut tags: Vec<Tag> = tags.to_owned();
+
+            tags.push(Tag::new(TagData::POW {
+                nonce,
+                difficulty: pow_difficulty,
+            }));
+
+            let temp_note = Self::new_textnote(content, keys, &tags)?;
+            let id = temp_note.id;
+
+            let leading_zeroes = nip13::get_leading_zero_bits(id);
+            if leading_zeroes >= pow_difficulty {
+                log::info!("Found matching hash: {}", id);
+                log::info!(
+                    "Leading zero bits: {} (min. required: {})",
+                    leading_zeroes,
+                    pow_difficulty
+                );
+
+                return Ok(temp_note);
+            }
+        }
     }
 
     pub fn backup_contacts(keys: &Keys, list: Vec<Contact>) -> Result<Self> {
