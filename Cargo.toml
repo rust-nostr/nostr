@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "bindings/nostr-sdk-ffi",
-    "bindings/nostr-sdk-nodejs",
     "crates/*",
 ]
 default-members = ["crates/*"]
