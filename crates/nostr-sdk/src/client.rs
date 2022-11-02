@@ -77,10 +77,11 @@ impl Client {
     /// Connect to all relays and every 60 sec try to reconnect to disconnected ones
     pub async fn connect_and_keep_alive(&self) {
         let client = self.clone();
+        client.connect_all().await;
         tokio::spawn(async move {
             loop {
-                client.connect_all().await;
                 thread::sleep(60);
+                client.connect_all().await;
             }
         });
     }
@@ -172,9 +173,10 @@ impl Client {
     /// Connect to all relays and every 60 sec try to reconnect to disconnected ones
     pub fn connect_and_keep_alive(&self) {
         let client = self.clone();
+        client.connect_all();
         thread::spawn("connect_all_and_keep_alive", move || loop {
-            client.connect_all();
             thread::sleep(60);
+            client.connect_all();
         });
     }
 
