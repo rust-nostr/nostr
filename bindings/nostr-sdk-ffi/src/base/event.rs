@@ -59,6 +59,24 @@ impl Event {
         })
     } */
 
+    pub fn set_metadata(
+        keys: Arc<Keys>,
+        username: String,
+        display_name: String,
+        about: Option<String>,
+        picture: Option<String>,
+    ) -> Result<Self> {
+        Ok(Self {
+            event: EventSdk::set_metadata(
+                keys.deref(),
+                &username,
+                &display_name,
+                about.as_deref(),
+                picture.as_deref(),
+            )?,
+        })
+    }
+
     pub fn backup_contacts(keys: Arc<Keys>, list: Vec<Arc<Contact>>) -> Result<Self> {
         let list: Vec<ContactSdk> = list
             .into_iter()
