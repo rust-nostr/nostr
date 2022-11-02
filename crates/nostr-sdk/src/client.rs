@@ -3,18 +3,19 @@
 
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::Result;
 use bitcoin_hashes::sha256::Hash;
 use crossbeam_channel::{select, Receiver};
 use nostr_sdk_base::{Contact, Event, Keys, SubscriptionFilter};
+use nostr_sdk_common::thread;
 use tokio::sync::Mutex;
 
 use crate::relay::{RelayPool, RelayPoolNotifications};
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 
+#[derive(Clone)]
 pub struct Client {
     pub pool: Arc<Mutex<RelayPool>>,
     pub keys: Keys,
@@ -67,9 +68,21 @@ impl Client {
         pool.connect_relay(url).await;
     }
 
+    /// Connect to all disconnected relays
     pub async fn connect_all(&self) {
         let mut pool = self.pool.lock().await;
         pool.connect_all().await;
+    }
+
+    /// Connect to all relays and every 60 sec try to reconnect to disconnected ones
+    pub async fn connect_and_keep_alive(&self) {
+        let client = self.clone();
+        tokio::spawn(async move {
+            loop {
+                client.connect_all().await;
+                thread::sleep(60);
+            }
+        });
     }
 
     pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) {
@@ -88,7 +101,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn keep_alive<F>(&self, func: F) -> Result<()>
+    pub async fn handle_notifications<F>(&self, func: F) -> Result<()>
     where
         F: Fn(RelayPoolNotifications) -> Result<()>,
     {
@@ -101,7 +114,6 @@ impl Client {
                         func(notification)?;
                     }
                 }
-                default(Duration::from_secs(60)) => self.connect_all().await
             }
         }
     }
@@ -149,10 +161,20 @@ impl Client {
         });
     }
 
+    /// Connect to all disconnected relays
     pub fn connect_all(&self) {
         RUNTIME.block_on(async {
             let mut pool = self.pool.lock().await;
             pool.connect_all().await;
+        });
+    }
+
+    /// Connect to all relays and every 60 sec try to reconnect to disconnected ones
+    pub fn connect_and_keep_alive(&self) {
+        let client = self.clone();
+        thread::spawn("connect_all_and_keep_alive", move || loop {
+            client.connect_all();
+            thread::sleep(60);
         });
     }
 
@@ -176,7 +198,7 @@ impl Client {
         Ok(())
     }
 
-    pub fn keep_alive<F>(&self, func: F) -> Result<()>
+    pub fn handle_notifications<F>(&self, func: F) -> Result<()>
     where
         F: Fn(RelayPoolNotifications) -> Result<()>,
     {
@@ -189,7 +211,6 @@ impl Client {
                         func(notification)?;
                     }
                 }
-                default(Duration::from_secs(60)) => self.connect_all()
             }
         }
     }

@@ -63,6 +63,10 @@ impl Client {
         self.client.connect_all();
     }
 
+    pub fn connect_and_keep_alive(&self) {
+        self.client.connect_and_keep_alive();
+    }
+
     pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) {
         let mut new_filters: Vec<nostr_sdk_base::SubscriptionFilter> =
             Vec::with_capacity(filters.len());
@@ -80,7 +84,7 @@ impl Client {
     pub fn run_thread(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
         nostr_sdk_common::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
-            self.client.keep_alive(|notification| {
+            self.client.handle_notifications(|notification| {
                 match notification {
                     RelayPoolNotificationsSdk::ReceivedEvent(event) => {
                         handler.handle(Arc::new(event.into()));

@@ -20,7 +20,7 @@ fn main() -> Result<()> {
     client.add_relay("ws://localhost:8090")?;
     client.add_relay("wss://relay.damus.io")?;
 
-    client.connect_all();
+    client.connect_and_keep_alive();
 
     client.delete_event("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")?;
 
@@ -30,7 +30,7 @@ fn main() -> Result<()> {
 
     client.subscribe(vec![subscription]);
 
-    client.keep_alive(|notification| {
+    client.handle_notifications(|notification| {
         match notification {
             RelayPoolNotifications::ReceivedEvent(event) => {
                 if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
