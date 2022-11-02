@@ -3,6 +3,7 @@
 
 use std::fmt;
 use std::str::FromStr;
+use std::time::Instant;
 
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::hex::FromHex;
@@ -127,35 +128,43 @@ impl Event {
         content: &str,
         keys: &Keys,
         tags: &[Tag],
-        pow_difficulty: u8,
+        difficulty: u8,
     ) -> Result<Self> {
-        let mut iterations = 0;
+        let capacity: usize = tags.len() + 1;
+        let pow_tag_index: usize = capacity - 1;
+        let mut nonce: u128 = 0;
+        #[allow(unused_assignments)]
+        let mut new_tags: Vec<Tag> = Vec::with_capacity(capacity);
+
+        new_tags = vec![
+            tags.to_owned(),
+            vec![Tag::new(TagData::POW { nonce, difficulty })],
+        ]
+        .concat();
+
+        let now = Instant::now();
 
         loop {
-            iterations += 1;
+            nonce += 1;
 
-            let nonce = iterations; // Different value per iteration
+            if let Some(elem) = new_tags.get_mut(pow_tag_index) {
+                *elem = Tag::new(TagData::POW { nonce, difficulty });
+            } else {
+                return Err(anyhow!("Invalid pow tag index"));
+            }
 
-            let mut tags: Vec<Tag> = tags.to_owned();
+            let event = Self::new_textnote(content, keys, &new_tags)?;
 
-            tags.push(Tag::new(TagData::POW {
-                nonce,
-                difficulty: pow_difficulty,
-            }));
-
-            let temp_note = Self::new_textnote(content, keys, &tags)?;
-            let id = temp_note.id;
-
-            let leading_zeroes = nip13::get_leading_zero_bits(id);
-            if leading_zeroes >= pow_difficulty {
-                log::info!("Found matching hash: {}", id);
-                log::info!(
-                    "Leading zero bits: {} (min. required: {})",
-                    leading_zeroes,
-                    pow_difficulty
+            let leading_zeroes = nip13::get_leading_zero_bits(event.id);
+            if leading_zeroes >= difficulty {
+                log::debug!(
+                    "{} iterations in {} seconds. Avg rate {} hashes/second",
+                    nonce,
+                    now.elapsed().as_secs(),
+                    nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
                 );
 
-                return Ok(temp_note);
+                return Ok(event);
             }
         }
     }
