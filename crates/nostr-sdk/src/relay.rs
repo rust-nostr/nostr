@@ -76,7 +76,7 @@ impl Relay {
 
         match tokio_tungstenite::connect_async(&self.url).await {
             Ok((stream, _)) => {
-                log::debug!("Successfully connected to relay {}", url);
+                log::info!("Connected to relay {}", url);
                 self.set_status(RelayStatus::Connected).await;
 
                 let (mut ws_tx, mut ws_rx) = stream.split();
