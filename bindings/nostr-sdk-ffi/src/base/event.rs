@@ -45,17 +45,10 @@ impl Event {
 }
 
 impl Event {
-    /* /// Create a generic type of event
-    pub fn new_generic(content: String, keys: Keys, tags: Vec<Tag>, kind: Kind) -> Result<Self> {
+    /// Create a generic type of event
+    /* pub fn new_generic(content: String, keys: Arc<Keys>, tags: Vec<String>, kind: Kind) -> Result<Self> {
         Ok(Self {
             event: EventSdk::new_generic(&content, keys.deref(), tags, kind.into())?,
-        })
-    }
-
-    /// Create a new TextNote Event
-    pub fn new_textnote(content: String, keys: Keys, tags: Vec<Tag>) -> Result<Self> {
-        Ok(Self {
-            event: EventSdk::new_textnote(&content, keys.deref(), &tags)?,
         })
     } */
 
@@ -76,6 +69,13 @@ impl Event {
             )?,
         })
     }
+
+    /* /// Create a new TextNote Event
+    pub fn new_textnote(content: String, keys: Arc<Keys>, tags: Vec<Tag>) -> Result<Self> {
+        Ok(Self {
+            event: EventSdk::new_textnote(&content, keys.deref(), &tags)?,
+        })
+    } */
 
     pub fn backup_contacts(keys: Arc<Keys>, list: Vec<Arc<Contact>>) -> Result<Self> {
         let list: Vec<ContactSdk> = list
@@ -117,11 +117,11 @@ impl Event {
     }
 
     /// Add reaction (like/upvote, dislike/downvote) to an event
-    pub fn reaction(keys: Arc<Keys>, event_id: String, positive: bool) -> Result<Self> {
+    pub fn new_reaction(keys: Arc<Keys>, event_id: String, positive: bool) -> Result<Self> {
         let event_id = sha256::Hash::from_str(&event_id)?;
 
         Ok(Self {
-            event: EventSdk::reaction(keys.deref(), event_id, positive)?,
+            event: EventSdk::new_reaction(keys.deref(), event_id, positive)?,
         })
     }
 

@@ -196,7 +196,7 @@ impl Event {
     }
 
     /// Add reaction (like/upvote, dislike/downvote) to an event
-    pub fn reaction(keys: &Keys, event_id: sha256::Hash, positive: bool) -> Result<Self> {
+    pub fn new_reaction(keys: &Keys, event_id: sha256::Hash, positive: bool) -> Result<Self> {
         let tags: &[Tag] = &[
             Tag::new(TagData::EventId(event_id)),
             Tag::new(TagData::PubKey(keys.public_key)),
