@@ -11,10 +11,10 @@ use bitcoin_hashes::{sha256, Hash};
 use chrono::serde::ts_seconds;
 use chrono::DateTime;
 use chrono::{TimeZone, Utc};
-use secp256k1::{schnorr, Secp256k1, XOnlyPublicKey};
+use secp256k1::{schnorr, KeyPair, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
-use serde_repr::*;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::util::{nip04, nip13};
 use crate::Keys;
@@ -46,7 +46,7 @@ impl Event {
         pubkey: &XOnlyPublicKey,
         created_at: &DateTime<Utc>,
         kind: &Kind,
-        tags: &Vec<Tag>,
+        tags: &[Tag],
         content: &str,
     ) -> sha256::Hash {
         let event_json =
@@ -54,47 +54,25 @@ impl Event {
         sha256::Hash::hash(event_json.as_bytes())
     }
 
-    fn time_now() -> DateTime<Utc> {
-        // Return current DateTime with no nanos
-        Utc.timestamp(Utc::now().timestamp(), 0)
-    }
-
     /// Create a generic type of event
-    pub fn new_generic(content: &str, keys: &Keys, tags: &Vec<Tag>, kind: Kind) -> Result<Self> {
+    pub fn new_generic(content: &str, keys: &Keys, tags: &[Tag], kind: Kind) -> Result<Self> {
         let secp = Secp256k1::new();
+        let keypair: &KeyPair = &keys.key_pair()?;
+        let pubkey: XOnlyPublicKey = keys.public_key;
+        let created_at: DateTime<Utc> = Utc::now();
 
-        let keypair = &keys.key_pair()?;
-        let pubkey = XOnlyPublicKey::from_keypair(keypair).0;
-
-        let created_at = Self::time_now();
-
-        let id = Self::gen_id(&pubkey, &created_at, &kind, tags, content);
-
-        // Message::from_hashed_data::<sha256::Hash>("Hello world!".as_bytes());
-        // is equivalent to
-        // Message::from(sha256::Hash::hash("Hello world!".as_bytes()));
-
+        let id: sha256::Hash = Self::gen_id(&pubkey, &created_at, &kind, tags, content);
         let message = secp256k1::Message::from_slice(&id)?;
 
-        // Let the schnorr library handle the aux for us
-        // I _think_ this is bip340 compliant
-        let sig = secp.sign_schnorr(&message, keypair);
-
-        let event = Event {
+        Ok(Event {
             id,
             pubkey,
             created_at,
             kind,
-            tags: tags.clone(),
+            tags: tags.to_vec(),
             content: content.to_string(),
-            sig,
-        };
-
-        // This isn't failing so that's a good thing, yes?
-        match event.verify() {
-            Ok(()) => Ok(event),
-            Err(e) => Err(anyhow!(e)),
-        }
+            sig: secp.sign_schnorr(&message, keypair),
+        })
     }
 
     pub fn set_metadata(
@@ -120,7 +98,7 @@ impl Event {
     }
 
     /// Create a new TextNote Event
-    pub fn new_textnote(content: &str, keys: &Keys, tags: &Vec<Tag>) -> Result<Self> {
+    pub fn new_textnote(content: &str, keys: &Keys, tags: &[Tag]) -> Result<Self> {
         Self::new_generic(content, keys, tags, Kind::Base(KindBase::TextNote))
     }
 
@@ -197,7 +175,7 @@ impl Event {
                 content,
             )?,
             sender_keys,
-            &vec![Tag::new(TagData::EncryptedDirectMessage {
+            &[Tag::new(TagData::EncryptedDirectMessage {
                 pk: receiver_keys.public_key,
             })],
             Kind::Base(KindBase::EncryptedDirectMessage),
@@ -232,6 +210,17 @@ impl Event {
         secp.verify_schnorr(&self.sig, &message, &self.pubkey)
     }
 
+    pub fn new_from_json(json: String) -> Result<Self> {
+        Ok(serde_json::from_str(&json)?)
+    }
+
+    pub fn as_json(&self) -> String {
+        // This shouldn't be able to fail
+        serde_json::to_string(&self).expect("Failed to serialize to json")
+    }
+}
+
+impl Event {
     /// This is just for serde sanity checking
     #[allow(dead_code)]
     pub(crate) fn new_dummy(
@@ -264,15 +253,6 @@ impl Event {
         } else {
             Err(anyhow!("Didn't verify"))
         }
-    }
-
-    pub fn new_from_json(json: String) -> Result<Self> {
-        Ok(serde_json::from_str(&json)?)
-    }
-
-    pub fn as_json(&self) -> String {
-        // This shouldn't be able to fail
-        serde_json::to_string(&self).expect("Failed to serialize to json")
     }
 }
 
