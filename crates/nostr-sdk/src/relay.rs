@@ -110,6 +110,7 @@ impl Relay {
                             },
                             default(Duration::from_secs(60)) => if let Err(e) = ws_tx.send(Message::Ping(Vec::new())).await {
                                 log::error!("Ping error: {:?}", e);
+                                break;
                             },
                         }
                     }
