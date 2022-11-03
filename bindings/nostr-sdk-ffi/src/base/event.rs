@@ -116,6 +116,15 @@ impl Event {
         })
     }
 
+    /// Add reaction (like/upvote, dislike/downvote) to an event
+    pub fn reaction(keys: Arc<Keys>, event_id: String, positive: bool) -> Result<Self> {
+        let event_id = sha256::Hash::from_str(&event_id)?;
+
+        Ok(Self {
+            event: EventSdk::reaction(keys.deref(), event_id, positive)?,
+        })
+    }
+
     pub fn verify(&self) -> bool {
         self.event.verify().is_ok()
     }

@@ -175,9 +175,7 @@ impl Event {
                 content,
             )?,
             sender_keys,
-            &[Tag::new(TagData::EncryptedDirectMessage {
-                pk: receiver_keys.public_key,
-            })],
+            &[Tag::new(TagData::PubKey(receiver_keys.public_key))],
             Kind::Base(KindBase::EncryptedDirectMessage),
         )
     }
@@ -186,7 +184,7 @@ impl Event {
     pub fn delete(keys: &Keys, ids: Vec<sha256::Hash>, content: Option<&str>) -> Result<Self> {
         let tags: Vec<Tag> = ids
             .iter()
-            .map(|id| Tag::new(TagData::EventId(id.to_string())))
+            .map(|id| Tag::new(TagData::EventId(*id)))
             .collect();
 
         Self::new_generic(
@@ -195,6 +193,21 @@ impl Event {
             &tags,
             Kind::Base(KindBase::EventDeletion),
         )
+    }
+
+    /// Add reaction (like/upvote, dislike/downvote) to an event
+    pub fn reaction(keys: &Keys, event_id: sha256::Hash, positive: bool) -> Result<Self> {
+        let tags: &[Tag] = &[
+            Tag::new(TagData::EventId(event_id)),
+            Tag::new(TagData::PubKey(keys.public_key)),
+        ];
+
+        let content: &str = match positive {
+            true => "+",
+            false => "-",
+        };
+
+        Self::new_generic(content, keys, tags, Kind::Base(KindBase::Reaction))
     }
 
     pub fn verify(&self) -> Result<(), secp256k1::Error> {
@@ -299,14 +312,12 @@ impl fmt::Display for TagKind {
 
 pub enum TagData {
     Generic(TagKind, Vec<String>),
-    EventId(String),
+    EventId(sha256::Hash),
+    PubKey(XOnlyPublicKey),
     ContactList {
         pk: XOnlyPublicKey,
         relay_url: String,
         alias: String,
-    },
-    EncryptedDirectMessage {
-        pk: XOnlyPublicKey,
     },
     POW {
         nonce: u128,
@@ -318,13 +329,13 @@ impl From<TagData> for Vec<String> {
     fn from(data: TagData) -> Self {
         match data {
             TagData::Generic(kind, data) => vec![vec![kind.to_string()], data].concat(),
-            TagData::EventId(id) => vec![TagKind::E.to_string(), id],
+            TagData::EventId(id) => vec![TagKind::E.to_string(), id.to_string()],
+            TagData::PubKey(pk) => vec![TagKind::P.to_string(), pk.to_string()],
             TagData::ContactList {
                 pk,
                 relay_url,
                 alias,
             } => vec![TagKind::P.to_string(), pk.to_string(), relay_url, alias],
-            TagData::EncryptedDirectMessage { pk } => vec![TagKind::P.to_string(), pk.to_string()],
             TagData::POW { nonce, difficulty } => vec![
                 TagKind::Nonce.to_string(),
                 nonce.to_string(),

@@ -85,6 +85,8 @@ interface Event {
     constructor(Keys sender_keys, Keys receiver_keys, string content);
     [Throws=NostrError, Name=delete]
     constructor(Keys keys, sequence<string> ids, optional string? reason = null);
+    [Throws=NostrError, Name=reaction]
+    constructor(Keys keys, string event_id, boolean positive);
     boolean verify();
     [Throws=NostrError, Name=new_from_json]
     constructor(string json);
