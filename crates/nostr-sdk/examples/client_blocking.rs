@@ -9,7 +9,7 @@ use nostr_sdk::{Client, RelayPoolNotifications};
 use nostr_sdk_base::util::nip04::decrypt;
 use nostr_sdk_base::{Keys, Kind, KindBase, SubscriptionFilter};
 
-const BECH32_SK: &str = "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
+const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -17,8 +17,9 @@ fn main() -> Result<()> {
     let my_keys = Keys::new_from_bech32(BECH32_SK)?;
 
     let client = Client::new(&my_keys, None);
-    client.add_relay("ws://localhost:8090")?;
+    client.add_relay("wss://relay.nostr.info")?;
     client.add_relay("wss://relay.damus.io")?;
+    client.add_relay("wss://nostr.openchain.fr")?;
 
     client.connect_and_keep_alive();
 
@@ -29,6 +30,8 @@ fn main() -> Result<()> {
         .since(Utc::now());
 
     client.subscribe(vec![subscription]);
+
+    client.disconnect_relay("wss://relay.nostr.info");
 
     client.handle_notifications(|notification| {
         match notification {
