@@ -63,9 +63,20 @@ impl Client {
         Ok(())
     }
 
+    pub async fn remove_relay(&self, url: &str) -> Result<()> {
+        let mut pool = self.pool.lock().await;
+        pool.remove_relay(url).await?;
+        Ok(())
+    }
+
     pub async fn connect_relay(&self, url: &str) {
         let mut pool = self.pool.lock().await;
         pool.connect_relay(url).await;
+    }
+
+    pub async fn disconnect_relay(&self, url: &str) {
+        let mut pool = self.pool.lock().await;
+        pool.disconnect_relay(url).await;
     }
 
     /// Connect to all disconnected relays
@@ -155,10 +166,25 @@ impl Client {
         })
     }
 
+    pub fn remove_relay(&self, url: &str) -> Result<()> {
+        RUNTIME.block_on(async {
+            let mut pool = self.pool.lock().await;
+            pool.remove_relay(url).await?;
+            Ok(())
+        })
+    }
+
     pub fn connect_relay(&self, url: &str) {
         RUNTIME.block_on(async {
             let mut pool = self.pool.lock().await;
             pool.connect_relay(url).await;
+        });
+    }
+
+    pub fn disconnect_relay(&self, url: &str) {
+        RUNTIME.block_on(async {
+            let mut pool = self.pool.lock().await;
+            pool.disconnect_relay(url).await;
         });
     }
 
