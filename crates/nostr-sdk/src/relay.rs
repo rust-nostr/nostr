@@ -116,8 +116,7 @@ impl Relay {
                     }
 
                     relay.set_status(RelayStatus::Disconnected).await;
-
-                    log::debug!("Closed RELAY TX to WS RX {}", relay.url);
+                    log::info!("Disconnected from relay {}", url);
                 };
 
                 #[cfg(feature = "blocking")]
@@ -128,7 +127,7 @@ impl Relay {
                             rt.shutdown_timeout(Duration::from_millis(100));
                         });
                     }
-                    Err(e) => log::error!("Impossible to crate new current thread: {:?}", e),
+                    Err(e) => log::error!("Impossible to create new current thread: {:?}", e),
                 };
 
                 #[cfg(not(feature = "blocking"))]
@@ -151,7 +150,10 @@ impl Relay {
                                                 msg,
                                             })
                                         {
-                                            log::error!("[CH Relay -> RelayPool] {}", &err);
+                                            log::error!(
+                                                "Impossible to send ReceivedMsg to pool: {}",
+                                                &err
+                                            );
                                         }
                                     }
                                     Err(err) => {
@@ -167,12 +169,13 @@ impl Relay {
                         .pool_sender
                         .send(RelayPoolEvent::RelayDisconnected(relay.url()))
                     {
-                        log::error!("pool_send error: {}", e.to_string())
+                        log::error!(
+                            "Impossible to send RelayDisconnected to pool: {}",
+                            e.to_string()
+                        )
                     };
 
                     relay.disconnect().await;
-
-                    log::error!("Closed WS RX to RELAY POOL TX {}", relay.url);
                 };
 
                 #[cfg(feature = "blocking")]
@@ -183,7 +186,7 @@ impl Relay {
                             rt.shutdown_timeout(Duration::from_millis(100));
                         });
                     }
-                    Err(e) => log::error!("Impossible to crate new current thread: {:?}", e),
+                    Err(e) => log::error!("Impossible to create new current thread: {:?}", e),
                 };
 
                 #[cfg(not(feature = "blocking"))]
@@ -207,8 +210,12 @@ impl Relay {
 
     async fn send_relay_event(&self, relay_msg: RelayEvent) {
         if let Some(relay_sender) = &self.relay_sender {
-            if let Err(e) = relay_sender.send(relay_msg) {
-                log::error!("send_relay_event error: {}", e.to_string())
+            if let Err(err) = relay_sender.send(relay_msg) {
+                log::error!(
+                    "Impossible to send msg to relay {}: {}",
+                    self.url,
+                    err.to_string()
+                )
             };
         }
     }
@@ -330,7 +337,7 @@ impl RelayPool {
                     rt.shutdown_timeout(Duration::from_millis(100));
                 });
             }
-            Err(e) => log::error!("Impossible to crate new current thread: {:?}", e),
+            Err(e) => log::error!("Impossible to create new current thread: {:?}", e),
         };
 
         #[cfg(not(feature = "blocking"))]
