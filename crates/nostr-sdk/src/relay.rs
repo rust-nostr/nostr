@@ -125,6 +125,7 @@ impl Relay {
                     Ok(rt) => {
                         std::thread::spawn(move || {
                             rt.block_on(async move { func_relay_event.await });
+                            rt.shutdown_timeout(Duration::from_millis(100));
                         });
                     }
                     Err(e) => log::error!("Impossible to crate new current thread: {:?}", e),
@@ -179,6 +180,7 @@ impl Relay {
                     Ok(rt) => {
                         std::thread::spawn(move || {
                             rt.block_on(async move { func_relay_msg.await });
+                            rt.shutdown_timeout(Duration::from_millis(100));
                         });
                     }
                     Err(e) => log::error!("Impossible to crate new current thread: {:?}", e),
@@ -325,6 +327,7 @@ impl RelayPool {
             Ok(rt) => {
                 std::thread::spawn(move || {
                     rt.block_on(async move { relay_pool_task.run().await });
+                    rt.shutdown_timeout(Duration::from_millis(100));
                 });
             }
             Err(e) => log::error!("Impossible to crate new current thread: {:?}", e),
