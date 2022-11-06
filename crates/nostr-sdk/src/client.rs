@@ -102,15 +102,14 @@ impl Client {
         pool.start_sub(filters).await;
     }
 
-    pub async fn send_event(&self, event: Event) {
+    pub async fn send_event(&self, event: Event) -> Result<()> {
         let pool = self.pool.lock().await;
-        pool.send_event(event).await;
+        pool.send_event(event).await
     }
 
     pub async fn delete_event(&self, event_id: &str) -> Result<()> {
         let event = Event::delete(&self.keys, vec![Hash::from_str(event_id)?], None)?;
-        self.send_event(event).await;
-        Ok(())
+        self.send_event(event).await
     }
 
     pub async fn handle_notifications<F>(&self, func: F) -> Result<()>
@@ -213,17 +212,16 @@ impl Client {
         });
     }
 
-    pub fn send_event(&self, event: Event) {
+    pub fn send_event(&self, event: Event) -> Result<()> {
         RUNTIME.block_on(async {
             let pool = self.pool.lock().await;
-            pool.send_event(event).await;
-        });
+            pool.send_event(event).await
+        })
     }
 
     pub fn delete_event(&self, event_id: &str) -> Result<()> {
         let event = Event::delete(&self.keys, vec![Hash::from_str(event_id)?], None)?;
-        self.send_event(event);
-        Ok(())
+        self.send_event(event)
     }
 
     pub fn handle_notifications<F>(&self, func: F) -> Result<()>

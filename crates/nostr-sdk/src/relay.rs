@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use crossbeam_channel::{bounded, select, Receiver, Sender};
 use futures_util::{SinkExt, StreamExt};
 use nostr_sdk_base::{ClientMessage, Event as NostrEvent, Keys, RelayMessage, SubscriptionFilter};
@@ -36,7 +36,8 @@ pub struct Relay {
     //proxy: Option<SocketAddr>,
     status: Arc<Mutex<RelayStatus>>,
     pool_sender: Sender<RelayPoolEvent>,
-    relay_sender: Option<Sender<RelayEvent>>,
+    relay_sender: Sender<RelayEvent>,
+    relay_receiver: Receiver<RelayEvent>,
 }
 
 impl Relay {
@@ -45,12 +46,15 @@ impl Relay {
         pool_sender: Sender<RelayPoolEvent>,
         //proxy: Option<SocketAddr>,
     ) -> Result<Self> {
+        let (relay_sender, relay_receiver) = bounded::<RelayEvent>(32);
+
         Ok(Self {
             url: Url::parse(url)?,
             //proxy,
             status: Arc::new(Mutex::new(RelayStatus::Disconnected)),
             pool_sender,
-            relay_sender: None,
+            relay_sender,
+            relay_receiver,
         })
     }
 
@@ -68,7 +72,7 @@ impl Relay {
         *s = status;
     }
 
-    pub async fn connect(&mut self) {
+    pub async fn connect(&self) {
         let url: String = self.url.to_string();
 
         self.set_status(RelayStatus::Connecting).await;
@@ -81,16 +85,12 @@ impl Relay {
 
                 let (mut ws_tx, mut ws_rx) = stream.split();
 
-                let (relay_sender, relay_receiver) = bounded::<RelayEvent>(32);
-
-                self.relay_sender = Some(relay_sender);
-
                 let relay = self.clone();
                 let func_relay_event = async move {
                     log::debug!("Relay Event Thread Started");
                     loop {
                         select! {
-                            recv(relay_receiver) -> result => {
+                            recv(relay.relay_receiver) -> result => {
                                 if let Ok(relay_event) = result {
                                     match relay_event {
                                         RelayEvent::SendMsg(msg) => {
@@ -209,15 +209,13 @@ impl Relay {
     }
 
     async fn send_relay_event(&self, relay_msg: RelayEvent) {
-        if let Some(relay_sender) = &self.relay_sender {
-            if let Err(err) = relay_sender.send(relay_msg) {
-                log::error!(
-                    "Impossible to send msg to relay {}: {}",
-                    self.url,
-                    err.to_string()
-                )
-            };
-        }
+        if let Err(err) = self.relay_sender.send(relay_msg) {
+            log::error!(
+                "Impossible to send msg to relay {}: {}",
+                self.url,
+                err.to_string()
+            )
+        };
     }
 }
 
@@ -390,23 +388,27 @@ impl RelayPool {
         };
     } */
 
-    pub async fn send_event(&self, ev: NostrEvent) {
+    pub async fn send_event(&self, ev: NostrEvent) -> Result<()> {
         //Send to pool task to save in all received events
-        if !self.relays.is_empty() {
-            if let Err(e) = self
-                .pool_task_sender
-                .send(RelayPoolEvent::EventSent(ev.clone()))
-            {
-                log::error!("send_ev send error: {}", e.to_string());
-            };
-
-            for (_k, v) in self.relays.iter() {
-                v.send_relay_event(RelayEvent::SendMsg(Box::new(ClientMessage::new_event(
-                    ev.clone(),
-                ))))
-                .await;
-            }
+        if self.relays.is_empty() {
+            return Err(anyhow!("No relay connected"));
         }
+
+        if let Err(e) = self
+            .pool_task_sender
+            .send(RelayPoolEvent::EventSent(ev.clone()))
+        {
+            log::error!("send_ev send error: {}", e.to_string());
+        };
+
+        for (_k, v) in self.relays.iter() {
+            v.send_relay_event(RelayEvent::SendMsg(Box::new(ClientMessage::new_event(
+                ev.clone(),
+            ))))
+            .await;
+        }
+
+        Ok(())
     }
 
     pub async fn start_sub(&mut self, filters: Vec<SubscriptionFilter>) {
@@ -451,7 +453,7 @@ impl RelayPool {
     }
 
     pub async fn connect_relay(&mut self, url: &str) {
-        if let Some(relay) = self.relays.get_mut(&url.to_string()) {
+        if let Some(relay) = self.relays.get(&url.to_string()) {
             relay.connect().await;
             self.subscribe_relay(url).await;
         } else {
@@ -460,7 +462,7 @@ impl RelayPool {
     }
 
     pub async fn disconnect_relay(&mut self, url: &str) {
-        if let Some(relay) = self.relays.get_mut(&url.to_string()) {
+        if let Some(relay) = self.relays.get(&url.to_string()) {
             relay.disconnect().await;
             self.unsubscribe_relay(url).await;
         } else {
