@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::net::SocketAddr;
 use std::str::FromStr;
 
 use anyhow::Result;
@@ -50,8 +51,8 @@ impl Client {
         self.pool.notifications()
     }
 
-    pub async fn add_relay(&mut self, url: &str) -> Result<()> {
-        self.pool.add_relay(url)
+    pub async fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
+        self.pool.add_relay(url, proxy)
     }
 
     pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
@@ -120,8 +121,8 @@ impl Client {
         RUNTIME.block_on(async { self.pool.notifications() })
     }
 
-    pub fn add_relay(&mut self, url: &str) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.add_relay(url) })
+    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
+        RUNTIME.block_on(async { self.pool.add_relay(url, proxy) })
     }
 
     pub fn remove_relay(&mut self, url: &str) -> Result<()> {

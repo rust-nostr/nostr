@@ -2,17 +2,20 @@
 // Distributed under the MIT software license
 
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use futures_util::{SinkExt, StreamExt};
 use nostr_sdk_base::{ClientMessage, Event as NostrEvent, Keys, RelayMessage, SubscriptionFilter};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 use url::Url;
+
+mod network;
+mod socks;
 
 #[cfg(feature = "blocking")]
 use crate::new_current_thread;
@@ -38,7 +41,7 @@ enum RelayEvent {
 #[derive(Clone)]
 pub struct Relay {
     url: Url,
-    //proxy: Option<SocketAddr>,
+    proxy: Option<SocketAddr>,
     status: Arc<Mutex<RelayStatus>>,
     pool_sender: Sender<RelayPoolEvent>,
     relay_sender: Sender<RelayEvent>,
@@ -49,13 +52,13 @@ impl Relay {
     pub fn new(
         url: &str,
         pool_sender: Sender<RelayPoolEvent>,
-        //proxy: Option<SocketAddr>,
+        proxy: Option<SocketAddr>,
     ) -> Result<Self> {
         let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(64);
 
         Ok(Self {
             url: Url::parse(url)?,
-            //proxy,
+            proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
             pool_sender,
             relay_sender,
@@ -87,10 +90,12 @@ impl Relay {
                 loop {
                     // Check status
                     match relay.status().await {
-                        RelayStatus::Disconnected => relay._connect().await,
+                        RelayStatus::Disconnected => relay.try_connect().await,
                         RelayStatus::Terminated => break,
                         _ => (),
                     };
+
+                    // TODO: if disconnected and connected again, get subscription filters from store (sled or something else) and send it again
 
                     tokio::time::sleep(Duration::from_secs(10)).await;
                 }
@@ -112,18 +117,16 @@ impl Relay {
         }
     }
 
-    async fn _connect(&self) {
+    async fn try_connect(&self) {
         let url: String = self.url.to_string();
 
         self.set_status(RelayStatus::Connecting).await;
         log::debug!("Connecting to {}", url);
 
-        match tokio_tungstenite::connect_async(&self.url).await {
-            Ok((stream, _)) => {
-                log::info!("Connected to {}", url);
+        match network::get_connection(&self.url, self.proxy).await {
+            Ok((mut ws_tx, mut ws_rx)) => {
                 self.set_status(RelayStatus::Connected).await;
-
-                let (mut ws_tx, mut ws_rx) = stream.split();
+                log::info!("Connected to {}", url);
 
                 let relay = self.clone();
                 let func_relay_event = async move {
@@ -283,7 +286,7 @@ impl Relay {
                 self.set_status(RelayStatus::Disconnected).await;
                 log::error!("Impossible to connect to {}: {}", url, err);
             }
-        }
+        };
     }
 
     async fn send_relay_event(&self, relay_msg: RelayEvent) -> Result<()> {
@@ -458,8 +461,8 @@ impl RelayPool {
         self.subscription.clone()
     }
 
-    pub fn add_relay(&mut self, url: &str /* proxy: Option<SocketAddr> */) -> Result<()> {
-        let relay = Relay::new(url, self.pool_task_sender.clone() /* proxy */)?;
+    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
+        let relay = Relay::new(url, self.pool_task_sender.clone(), proxy)?;
         self.relays.insert(url.into(), relay);
         Ok(())
     }

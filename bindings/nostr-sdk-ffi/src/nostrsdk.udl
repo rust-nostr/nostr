@@ -127,7 +127,7 @@ interface Client {
     void add_contact(Contact contact);
     void remove_contact(Contact contact);
     [Throws=NostrError]
-    void add_relay(string url);
+    void add_relay(string url, optional string? proxy = null);
     [Throws=NostrError]
     void connect_relay(string url);
     [Throws=NostrError]

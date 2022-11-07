@@ -3,6 +3,8 @@
 
 extern crate nostr_sdk;
 
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+
 use anyhow::Result;
 use chrono::Utc;
 use nostr_sdk::base::util::nip04::decrypt;
@@ -17,10 +19,18 @@ async fn main() -> Result<()> {
 
     let my_keys = Keys::new_from_bech32(BECH32_SK)?;
 
+    let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
+
     let mut client = Client::new(&my_keys, None);
-    client.add_relay("wss://relay.nostr.info").await?;
-    client.add_relay("wss://relay.damus.io").await?;
-    client.add_relay("wss://nostr.openchain.fr").await?;
+    client.add_relay("wss://relay.nostr.info", None).await?;
+    client.add_relay("wss://relay.damus.io", None).await?;
+    client.add_relay("wss://nostr.openchain.fr", None).await?;
+    client
+        .add_relay(
+            "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
+            proxy,
+        )
+        .await?;
 
     client.connect_all().await?;
 

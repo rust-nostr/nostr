@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -47,8 +48,13 @@ impl Client {
         self.client.lock().remove_contact(contact.as_ref().deref());
     }
 
-    pub fn add_relay(&self, url: String) -> Result<()> {
-        self.client.lock().add_relay(&url)
+    pub fn add_relay(&self, url: String, proxy: Option<String>) -> Result<()> {
+        let proxy: Option<SocketAddr> = match proxy {
+            Some(proxy) => Some(proxy.parse()?),
+            None => None,
+        };
+
+        self.client.lock().add_relay(&url, proxy)
     }
 
     pub fn connect_relay(&self, url: String) -> Result<()> {
