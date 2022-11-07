@@ -3,13 +3,11 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-#[cfg(feature = "blocking")]
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use futures_util::{SinkExt, StreamExt};
 use nostr_sdk_base::{ClientMessage, Event as NostrEvent, Keys, RelayMessage, SubscriptionFilter};
-use nostr_sdk_common::thread;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
@@ -22,9 +20,11 @@ use crate::subscription::Subscription;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayStatus {
-    Disconnected,
+    Initialized,
     Connected,
     Connecting,
+    Disconnected,
+    Terminated,
 }
 
 #[derive(Debug)]
@@ -32,6 +32,7 @@ enum RelayEvent {
     SendMsg(Box<ClientMessage>),
     Ping,
     Close,
+    Terminate,
 }
 
 #[derive(Clone)]
@@ -55,7 +56,7 @@ impl Relay {
         Ok(Self {
             url: Url::parse(url)?,
             //proxy,
-            status: Arc::new(Mutex::new(RelayStatus::Disconnected)),
+            status: Arc::new(Mutex::new(RelayStatus::Initialized)),
             pool_sender,
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
@@ -77,6 +78,38 @@ impl Relay {
     }
 
     pub async fn connect(&self) {
+        if let RelayStatus::Initialized | RelayStatus::Terminated = self.status().await {
+            self._connect().await;
+
+            let relay = self.clone();
+            let connection_thread = async move {
+                loop {
+                    match relay.status().await {
+                        RelayStatus::Disconnected => relay._connect().await,
+                        RelayStatus::Terminated => break,
+                        _ => (),
+                    };
+                    tokio::time::sleep(Duration::from_secs(10)).await;
+                }
+            };
+
+            #[cfg(feature = "blocking")]
+            match new_current_thread() {
+                Ok(rt) => {
+                    std::thread::spawn(move || {
+                        rt.block_on(async move { connection_thread.await });
+                        rt.shutdown_timeout(Duration::from_millis(100));
+                    });
+                }
+                Err(e) => log::error!("Impossible to create new current thread: {:?}", e),
+            };
+
+            #[cfg(not(feature = "blocking"))]
+            tokio::task::spawn(connection_thread);
+        }
+    }
+
+    async fn _connect(&self) {
         let url: String = self.url.to_string();
 
         self.set_status(RelayStatus::Connecting).await;
@@ -110,13 +143,20 @@ impl Relay {
                                 if let Err(e) = ws_tx.close().await {
                                     log::error!("RelayEvent::Close error: {:?}", e);
                                 };
+                                relay.set_status(RelayStatus::Disconnected).await;
+                                log::info!("Disconnected from relay {}", url);
+                                break;
+                            }
+                            RelayEvent::Terminate => {
+                                if let Err(e) = ws_tx.close().await {
+                                    log::error!("RelayEvent::Close error: {:?}", e);
+                                };
+                                relay.set_status(RelayStatus::Terminated).await;
+                                log::info!("Completely disconnected from relay {}", url);
                                 break;
                             }
                         }
                     }
-
-                    relay.set_status(RelayStatus::Disconnected).await;
-                    log::info!("Disconnected from relay {}", url);
                 };
 
                 #[cfg(feature = "blocking")]
@@ -131,7 +171,7 @@ impl Relay {
                 };
 
                 #[cfg(not(feature = "blocking"))]
-                tokio::spawn(func_relay_event);
+                tokio::task::spawn(func_relay_event);
 
                 let relay = self.clone();
                 let func_relay_msg = async move {
@@ -178,8 +218,10 @@ impl Relay {
                         )
                     };
 
-                    if let Err(err) = relay.disconnect().await {
-                        log::error!("Impossible to disconnect relay {}: {}", relay.url, err);
+                    if relay.status().await != RelayStatus::Terminated {
+                        if let Err(err) = relay.disconnect().await {
+                            log::error!("Impossible to disconnect relay {}: {}", relay.url, err);
+                        }
                     }
                 };
 
@@ -195,7 +237,7 @@ impl Relay {
                 };
 
                 #[cfg(not(feature = "blocking"))]
-                tokio::spawn(func_relay_msg);
+                tokio::task::spawn(func_relay_msg);
 
                 // Ping thread
                 let relay = self.clone();
@@ -203,8 +245,8 @@ impl Relay {
                     log::debug!("Relay Ping Thread Started");
 
                     loop {
-                        thread::sleep(60);
-                        match relay.send_relay_event(RelayEvent::Ping).await {
+                        tokio::time::sleep(Duration::from_secs(60)).await;
+                        match relay.ping().await {
                             Ok(_) => log::debug!("Ping {}", relay.url),
                             Err(err) => {
                                 log::error!("Impossible to ping {}: {}", relay.url, err);
@@ -213,8 +255,10 @@ impl Relay {
                         }
                     }
 
-                    if let Err(err) = relay.disconnect().await {
-                        log::error!("Impossible to disconnect relay {}: {}", relay.url, err);
+                    if relay.status().await != RelayStatus::Terminated {
+                        if let Err(err) = relay.disconnect().await {
+                            log::error!("Impossible to disconnect relay {}: {}", relay.url, err);
+                        }
                     }
                 };
 
@@ -230,7 +274,7 @@ impl Relay {
                 };
 
                 #[cfg(not(feature = "blocking"))]
-                tokio::spawn(func_relay_ping);
+                tokio::task::spawn(func_relay_ping);
             }
             Err(err) => {
                 self.set_status(RelayStatus::Disconnected).await;
@@ -239,17 +283,28 @@ impl Relay {
         }
     }
 
-    pub async fn disconnect(&self) -> Result<()> {
+    async fn send_relay_event(&self, relay_msg: RelayEvent) -> Result<()> {
+        Ok(self.relay_sender.send(relay_msg).await?)
+    }
+
+    /// Ping relay
+    async fn ping(&self) -> Result<()> {
+        self.send_relay_event(RelayEvent::Ping).await
+    }
+
+    /// Disconnect from relay and set status to 'Disconnected'
+    async fn disconnect(&self) -> Result<()> {
         self.send_relay_event(RelayEvent::Close).await
+    }
+
+    /// Disconnect from relay and set status to 'Terminated'
+    pub async fn terminate(&self) -> Result<()> {
+        self.send_relay_event(RelayEvent::Terminate).await
     }
 
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<()> {
         self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)))
             .await
-    }
-
-    async fn send_relay_event(&self, relay_msg: RelayEvent) -> Result<()> {
-        Ok(self.relay_sender.send(relay_msg).await?)
     }
 }
 
@@ -374,7 +429,7 @@ impl RelayPool {
         };
 
         #[cfg(not(feature = "blocking"))]
-        tokio::spawn(async move { relay_pool_task.run().await });
+        tokio::task::spawn(async move { relay_pool_task.run().await });
 
         Self {
             relays: HashMap::new(),
@@ -437,11 +492,8 @@ impl RelayPool {
             log::error!("send_ev send error: {}", e.to_string());
         };
 
-        for (_k, v) in self.relays.iter() {
-            v.send_relay_event(RelayEvent::SendMsg(Box::new(ClientMessage::new_event(
-                ev.clone(),
-            ))))
-            .await?;
+        for (_, relay) in self.relays.iter() {
+            relay.send_msg(ClientMessage::new_event(ev.clone())).await?;
         }
 
         Ok(())
@@ -488,9 +540,8 @@ impl RelayPool {
 
     pub async fn connect_all(&mut self) -> Result<()> {
         for (relay_url, relay) in self.relays.clone().iter() {
-            if let RelayStatus::Disconnected = relay.status().await {
-                self.connect_relay(relay_url).await?;
-            }
+            relay.connect().await;
+            self.subscribe_relay(relay_url).await?;
         }
 
         Ok(())
@@ -509,7 +560,7 @@ impl RelayPool {
 
     pub async fn disconnect_relay(&mut self, url: &str) -> Result<()> {
         if let Some(relay) = self.relays.get(&url.to_string()) {
-            relay.disconnect().await?;
+            relay.terminate().await?;
             self.unsubscribe_relay(url).await?;
         } else {
             log::error!("Impossible to disconnect from relay {}", url);
