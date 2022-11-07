@@ -128,10 +128,14 @@ interface Client {
     void remove_contact(Contact contact);
     [Throws=NostrError]
     void add_relay(string url);
+    [Throws=NostrError]
     void connect_relay(string url);
+    [Throws=NostrError]
     void connect_all();
+    [Throws=NostrError]
     void subscribe(sequence<SubscriptionFilter> filters);
+    [Throws=NostrError]
     void send_event(Event event);
     [Self=ByArc]
-    void run_thread(HandleNotification handler);
+    void handle_notifications(HandleNotification handler);
 };

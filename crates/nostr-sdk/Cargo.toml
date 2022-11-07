@@ -15,7 +15,6 @@ blocking = ["once_cell"]
 [dependencies]
 anyhow = "1"
 bitcoin_hashes = { version = "0.11", features = ["serde"] }
-crossbeam-channel = "0.5"
 futures-util = "0.3"
 log = "0.4"
 nostr-sdk-base = { path = "../nostr-sdk-base" }

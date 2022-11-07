@@ -9,7 +9,7 @@ use nostr_sdk::base::util::nip04::decrypt;
 use nostr_sdk::base::{Keys, Kind, KindBase, SubscriptionFilter};
 use nostr_sdk::{Client, RelayPoolNotifications};
 
-const BECH32_SK: &str = "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
+const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -17,11 +17,11 @@ async fn main() -> Result<()> {
 
     let my_keys = Keys::new_from_bech32(BECH32_SK)?;
 
-    let client = Client::new(&my_keys, None);
+    let mut client = Client::new(&my_keys, None);
     client.add_relay("ws://localhost:8090").await?;
     client.add_relay("wss://relay.damus.io").await?;
 
-    client.connect_and_keep_alive().await;
+    client.connect_all().await?;
 
     client
         .delete_event("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")
@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         .pubkey(my_keys.public_key)
         .since(Utc::now());
 
-    client.subscribe(vec![subscription]).await;
+    client.subscribe(vec![subscription]).await?;
 
     client
         .handle_notifications(|notification| {

@@ -7,20 +7,14 @@ use std::sync::Arc;
 use anyhow::Result;
 use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotifications as RelayPoolNotificationsSdk;
+use parking_lot::Mutex;
 
 use crate::base::event::{Contact, Event};
 use crate::base::key::Keys;
 use crate::base::subscription::SubscriptionFilter;
 
 pub struct Client {
-    client: ClientSdk,
-}
-
-impl Deref for Client {
-    type Target = ClientSdk;
-    fn deref(&self) -> &Self::Target {
-        &self.client
-    }
+    client: Mutex<ClientSdk>,
 }
 
 impl Client {
@@ -39,52 +33,52 @@ impl Client {
         };
 
         Self {
-            client: ClientSdk::new(keys.as_ref().deref(), contacts),
+            client: Mutex::new(ClientSdk::new(keys.as_ref().deref(), contacts)),
         }
     }
 
     pub fn add_contact(&self, contact: Arc<Contact>) {
-        self.client.add_contact(contact.as_ref().deref().clone());
+        self.client
+            .lock()
+            .add_contact(contact.as_ref().deref().clone());
     }
 
     pub fn remove_contact(&self, contact: Arc<Contact>) {
-        self.client.remove_contact(contact.as_ref().deref());
+        self.client.lock().remove_contact(contact.as_ref().deref());
     }
 
     pub fn add_relay(&self, url: String) -> Result<()> {
-        self.client.add_relay(&url)
+        self.client.lock().add_relay(&url)
     }
 
-    pub fn connect_relay(&self, url: String) {
-        self.client.connect_relay(&url);
+    pub fn connect_relay(&self, url: String) -> Result<()> {
+        self.client.lock().connect_relay(&url)
     }
 
-    pub fn connect_all(&self) {
-        self.client.connect_all();
+    pub fn connect_all(&self) -> Result<()> {
+        self.client.lock().connect_all()
     }
 
-    pub fn connect_and_keep_alive(&self) {
-        self.client.connect_and_keep_alive();
-    }
-
-    pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) {
+    pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) -> Result<()> {
         let mut new_filters: Vec<nostr_sdk_base::SubscriptionFilter> =
             Vec::with_capacity(filters.len());
         for filter in filters.into_iter() {
             new_filters.push(filter.as_ref().deref().clone());
         }
 
-        self.client.subscribe(new_filters);
+        self.client.lock().subscribe(new_filters)
     }
 
-    pub fn send_event(&self, event: Arc<Event>) {
-        self.client.send_event(event.as_ref().deref().clone());
+    pub fn send_event(&self, event: Arc<Event>) -> Result<()> {
+        self.client
+            .lock()
+            .send_event(event.as_ref().deref().clone())
     }
 
-    pub fn run_thread(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
+    pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
         nostr_sdk_common::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
-            self.client.handle_notifications(|notification| {
+            self.client.lock().handle_notifications(|notification| {
                 match notification {
                     RelayPoolNotificationsSdk::ReceivedEvent(event) => {
                         handler.handle(Arc::new(event.into()));

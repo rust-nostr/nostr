@@ -16,12 +16,12 @@ fn main() -> Result<()> {
 
     let my_keys = Keys::new_from_bech32(BECH32_SK)?;
 
-    let client = Client::new(&my_keys, None);
+    let mut client = Client::new(&my_keys, None);
     client.add_relay("wss://relay.nostr.info")?;
     client.add_relay("wss://relay.damus.io")?;
     client.add_relay("wss://nostr.openchain.fr")?;
 
-    client.connect_and_keep_alive();
+    client.connect_all()?;
 
     client.delete_event("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")?;
 
@@ -29,9 +29,9 @@ fn main() -> Result<()> {
         .pubkey(my_keys.public_key)
         .since(Utc::now());
 
-    client.subscribe(vec![subscription]);
+    client.subscribe(vec![subscription])?;
 
-    client.disconnect_relay("wss://relay.nostr.info");
+    client.disconnect_relay("wss://relay.nostr.info")?;
 
     client.handle_notifications(|notification| {
         match notification {
