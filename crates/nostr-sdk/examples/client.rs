@@ -18,8 +18,9 @@ async fn main() -> Result<()> {
     let my_keys = Keys::new_from_bech32(BECH32_SK)?;
 
     let mut client = Client::new(&my_keys, None);
-    client.add_relay("ws://localhost:8090").await?;
+    client.add_relay("wss://relay.nostr.info").await?;
     client.add_relay("wss://relay.damus.io").await?;
+    client.add_relay("wss://nostr.openchain.fr").await?;
 
     client.connect_all().await?;
 
