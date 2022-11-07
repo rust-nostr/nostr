@@ -51,7 +51,7 @@ impl Relay {
         pool_sender: Sender<RelayPoolEvent>,
         //proxy: Option<SocketAddr>,
     ) -> Result<Self> {
-        let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(32);
+        let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(64);
 
         Ok(Self {
             url: Url::parse(url)?,
@@ -67,7 +67,7 @@ impl Relay {
         self.url.clone()
     }
 
-    pub async fn status(&self) -> RelayStatus {
+    async fn status(&self) -> RelayStatus {
         let status = self.status.lock().await;
         status.clone()
     }
@@ -79,16 +79,19 @@ impl Relay {
 
     pub async fn connect(&self) {
         if let RelayStatus::Initialized | RelayStatus::Terminated = self.status().await {
-            self._connect().await;
+            // Update relay status
+            self.set_status(RelayStatus::Disconnected).await;
 
             let relay = self.clone();
             let connection_thread = async move {
                 loop {
+                    // Check status
                     match relay.status().await {
                         RelayStatus::Disconnected => relay._connect().await,
                         RelayStatus::Terminated => break,
                         _ => (),
                     };
+
                     tokio::time::sleep(Duration::from_secs(10)).await;
                 }
             };
@@ -101,7 +104,7 @@ impl Relay {
                         rt.shutdown_timeout(Duration::from_millis(100));
                     });
                 }
-                Err(e) => log::error!("Impossible to create new current thread: {:?}", e),
+                Err(e) => log::error!("Impossible to create new thread: {:?}", e),
             };
 
             #[cfg(not(feature = "blocking"))]
@@ -113,11 +116,11 @@ impl Relay {
         let url: String = self.url.to_string();
 
         self.set_status(RelayStatus::Connecting).await;
-        log::debug!("Connecting to relay {}", url);
+        log::debug!("Connecting to {}", url);
 
         match tokio_tungstenite::connect_async(&self.url).await {
             Ok((stream, _)) => {
-                log::info!("Connected to relay {}", url);
+                log::info!("Connected to {}", url);
                 self.set_status(RelayStatus::Connected).await;
 
                 let (mut ws_tx, mut ws_rx) = stream.split();
@@ -144,7 +147,7 @@ impl Relay {
                                     log::error!("RelayEvent::Close error: {:?}", e);
                                 };
                                 relay.set_status(RelayStatus::Disconnected).await;
-                                log::info!("Disconnected from relay {}", url);
+                                log::info!("Disconnected from {}", url);
                                 break;
                             }
                             RelayEvent::Terminate => {
@@ -152,7 +155,7 @@ impl Relay {
                                     log::error!("RelayEvent::Close error: {:?}", e);
                                 };
                                 relay.set_status(RelayStatus::Terminated).await;
-                                log::info!("Completely disconnected from relay {}", url);
+                                log::info!("Completely disconnected from {}", url);
                                 break;
                             }
                         }
@@ -167,7 +170,7 @@ impl Relay {
                             rt.shutdown_timeout(Duration::from_millis(100));
                         });
                     }
-                    Err(e) => log::error!("Impossible to create new current thread: {:?}", e),
+                    Err(e) => log::error!("Impossible to create new thread: {:?}", e),
                 };
 
                 #[cfg(not(feature = "blocking"))]
@@ -220,7 +223,7 @@ impl Relay {
 
                     if relay.status().await != RelayStatus::Terminated {
                         if let Err(err) = relay.disconnect().await {
-                            log::error!("Impossible to disconnect relay {}: {}", relay.url, err);
+                            log::error!("Impossible to disconnect {}: {}", relay.url, err);
                         }
                     }
                 };
@@ -233,7 +236,7 @@ impl Relay {
                             rt.shutdown_timeout(Duration::from_millis(100));
                         });
                     }
-                    Err(e) => log::error!("Impossible to create new current thread: {:?}", e),
+                    Err(e) => log::error!("Impossible to create new thread: {:?}", e),
                 };
 
                 #[cfg(not(feature = "blocking"))]
@@ -257,7 +260,7 @@ impl Relay {
 
                     if relay.status().await != RelayStatus::Terminated {
                         if let Err(err) = relay.disconnect().await {
-                            log::error!("Impossible to disconnect relay {}: {}", relay.url, err);
+                            log::error!("Impossible to disconnect {}: {}", relay.url, err);
                         }
                     }
                 };
@@ -270,7 +273,7 @@ impl Relay {
                             rt.shutdown_timeout(Duration::from_millis(100));
                         });
                     }
-                    Err(e) => log::error!("Impossible to create new current thread: {:?}", e),
+                    Err(e) => log::error!("Impossible to create new thread: {:?}", e),
                 };
 
                 #[cfg(not(feature = "blocking"))]
@@ -278,7 +281,7 @@ impl Relay {
             }
             Err(err) => {
                 self.set_status(RelayStatus::Disconnected).await;
-                log::error!("Impossible to connect to relay {}: {}", url, err);
+                log::error!("Impossible to connect to {}: {}", url, err);
             }
         }
     }
@@ -425,7 +428,7 @@ impl RelayPool {
                     rt.shutdown_timeout(Duration::from_millis(100));
                 });
             }
-            Err(e) => log::error!("Impossible to create new current thread: {:?}", e),
+            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
         };
 
         #[cfg(not(feature = "blocking"))]
@@ -489,7 +492,7 @@ impl RelayPool {
             .send(RelayPoolEvent::EventSent(ev.clone()))
             .await
         {
-            log::error!("send_ev send error: {}", e.to_string());
+            log::error!("send_event error: {}", e.to_string());
         };
 
         for (_, relay) in self.relays.iter() {
@@ -499,7 +502,7 @@ impl RelayPool {
         Ok(())
     }
 
-    pub async fn start_sub(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
+    pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
         self.subscription.update_filters(filters.clone());
         for (k, _) in self.relays.clone().iter() {
             self.subscribe_relay(k).await?;
@@ -510,15 +513,13 @@ impl RelayPool {
 
     async fn subscribe_relay(&mut self, url: &str) -> Result<()> {
         if let Some(relay) = self.relays.get(url) {
-            if let RelayStatus::Connected = relay.status().await {
-                let channel = self.subscription.get_channel(url);
-                relay
-                    .send_msg(ClientMessage::new_req(
-                        channel.id.to_string(),
-                        self.subscription.get_filters(),
-                    ))
-                    .await?;
-            }
+            let channel = self.subscription.get_channel(url);
+            relay
+                .send_msg(ClientMessage::new_req(
+                    channel.id.to_string(),
+                    self.subscription.get_filters(),
+                ))
+                .await?;
         }
 
         Ok(())
@@ -526,12 +527,10 @@ impl RelayPool {
 
     async fn unsubscribe_relay(&mut self, url: &str) -> Result<()> {
         if let Some(relay) = self.relays.get(url) {
-            if let RelayStatus::Connected = relay.status().await {
-                if let Some(channel) = self.subscription.remove_channel(url) {
-                    relay
-                        .send_msg(ClientMessage::close(channel.id.to_string()))
-                        .await?;
-                }
+            if let Some(channel) = self.subscription.remove_channel(url) {
+                relay
+                    .send_msg(ClientMessage::close(channel.id.to_string()))
+                    .await?;
             }
         }
 
@@ -552,7 +551,7 @@ impl RelayPool {
             relay.connect().await;
             self.subscribe_relay(url).await?;
         } else {
-            log::error!("Impossible to connect to relay {}", url);
+            log::error!("Impossible to connect to {}", url);
         }
 
         Ok(())
@@ -563,7 +562,7 @@ impl RelayPool {
             relay.terminate().await?;
             self.unsubscribe_relay(url).await?;
         } else {
-            log::error!("Impossible to disconnect from relay {}", url);
+            log::error!("Impossible to disconnect from {}", url);
         }
 
         Ok(())

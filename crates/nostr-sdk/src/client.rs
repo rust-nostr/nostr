@@ -72,7 +72,7 @@ impl Client {
     }
 
     pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
-        self.pool.start_sub(filters).await
+        self.pool.subscribe(filters).await
     }
 
     pub async fn send_event(&self, event: Event) -> Result<()> {
@@ -142,7 +142,7 @@ impl Client {
     }
 
     pub fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.start_sub(filters).await })
+        RUNTIME.block_on(async { self.pool.subscribe(filters).await })
     }
 
     pub fn send_event(&self, event: Event) -> Result<()> {
