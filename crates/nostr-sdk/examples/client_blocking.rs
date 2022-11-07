@@ -47,9 +47,6 @@ fn main() -> Result<()> {
                     println!("{:#?}", event);
                 }
             }
-            RelayPoolNotifications::RelayDisconnected(url) => {
-                log::warn!("Relay {} disconnected", url);
-            }
         }
 
         Ok(())

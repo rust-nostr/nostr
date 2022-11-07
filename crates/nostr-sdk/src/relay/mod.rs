@@ -213,17 +213,6 @@ impl Relay {
                         }
                     }
 
-                    if let Err(e) = relay
-                        .pool_sender
-                        .send(RelayPoolEvent::RelayDisconnected(relay.url()))
-                        .await
-                    {
-                        log::error!(
-                            "Impossible to send RelayDisconnected to pool: {}",
-                            e.to_string()
-                        )
-                    };
-
                     if relay.status().await != RelayStatus::Terminated {
                         if let Err(err) = relay.disconnect().await {
                             log::error!("Impossible to disconnect {}: {}", relay.url, err);
@@ -316,7 +305,6 @@ impl Relay {
 
 #[derive(Debug)]
 pub enum RelayPoolEvent {
-    RelayDisconnected(Url),
     ReceivedMsg { relay_url: Url, msg: RelayMessage },
     RemoveContactEvents(Keys),
     EventSent(NostrEvent),
@@ -325,7 +313,6 @@ pub enum RelayPoolEvent {
 #[derive(Debug, Clone)]
 pub enum RelayPoolNotifications {
     ReceivedEvent(NostrEvent),
-    RelayDisconnected(String),
 }
 
 struct RelayPoolTask {
@@ -389,14 +376,6 @@ impl RelayPoolTask {
                     v.pubkey != contact_keys.public_key
                         && v.tags[0].content() != contact_keys.public_key.to_string()
                 });
-            }
-            RelayPoolEvent::RelayDisconnected(url) => {
-                if let Err(e) = self
-                    .notification_sender
-                    .send(RelayPoolNotifications::RelayDisconnected(url.to_string()))
-                {
-                    log::error!("RelayPoolNotifications::RelayDisconnected error: {:?}", e);
-                };
             }
         }
     }
