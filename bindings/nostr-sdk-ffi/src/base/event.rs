@@ -10,6 +10,7 @@ use bitcoin_hashes::sha256;
 use nostr_sdk_base::event::Kind as KindSdk;
 use nostr_sdk_base::{Contact as ContactSdk, Event as EventSdk, KindBase};
 use secp256k1::XOnlyPublicKey;
+use url::Url;
 
 use crate::base::key::Keys;
 
@@ -67,6 +68,14 @@ impl Event {
                 about.as_deref(),
                 picture.as_deref(),
             )?,
+        })
+    }
+
+    pub fn add_recommended_relay(keys: Arc<Keys>, url: String) -> Result<Self> {
+        let url = Url::from_str(&url)?;
+
+        Ok(Self {
+            event: EventSdk::add_recommended_relay(keys.deref(), &url)?,
         })
     }
 

@@ -25,6 +25,7 @@ secp256k1 = "0.24"
 thiserror = "1.0"
 uniffi = "0.21.0"
 uniffi_macros = "0.21.0"
+url = "2"
 uuid = "1.2"
 
 [target.'cfg(target_os = "android")'.dependencies]
