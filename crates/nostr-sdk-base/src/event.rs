@@ -16,6 +16,7 @@ use secp256k1::{schnorr, KeyPair, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use url::Url;
 
 use crate::util::{nip04, nip13};
 use crate::Keys;
@@ -95,6 +96,15 @@ impl Event {
             keys,
             &Vec::new(),
             Kind::Base(KindBase::Metadata),
+        )
+    }
+
+    pub fn add_recommended_relay(keys: &Keys, url: &Url) -> Result<Self> {
+        Self::new_generic(
+            url.as_ref(),
+            keys,
+            &[],
+            Kind::Base(KindBase::RecommendRelay),
         )
     }
 
