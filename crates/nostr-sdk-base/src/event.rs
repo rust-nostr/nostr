@@ -227,9 +227,8 @@ impl Event {
         Ok(serde_json::from_str(&json)?)
     }
 
-    pub fn as_json(&self) -> String {
-        // This shouldn't be able to fail
-        serde_json::to_string(&self).expect("Failed to serialize to json")
+    pub fn as_json(&self) -> Result<String> {
+        Ok(serde_json::to_string(&self)?)
     }
 }
 
@@ -396,7 +395,7 @@ mod tests {
         let keys = Keys::generate_from_os_random();
         let e = Event::new_generic("my content", &keys, &vec![], Kind::Custom(123)).unwrap();
 
-        let serialized = e.as_json();
+        let serialized = e.as_json().unwrap();
         let deserialized = Event::new_from_json(serialized).unwrap();
 
         assert_eq!(e, deserialized);

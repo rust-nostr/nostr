@@ -58,7 +58,7 @@ mod tests {
 
         let event = Event::new_textnote("hello", &keys, &vec![])?;
 
-        let serialized = event.as_json();
+        let serialized = event.as_json().unwrap();
         let deserialized = Event::new_from_json(serialized)?;
 
         assert_eq!(event, deserialized);

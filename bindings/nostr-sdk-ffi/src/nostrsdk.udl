@@ -90,6 +90,7 @@ interface Event {
     boolean verify();
     [Throws=NostrError, Name=new_from_json]
     constructor(string json);
+    [Throws=NostrError]
     string as_json();
 };
 
