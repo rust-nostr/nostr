@@ -51,13 +51,13 @@ impl Event {
         tags: &[Tag],
         content: &str,
     ) -> sha256::Hash {
-        let event_json =
-            json!([0, pubkey, created_at.timestamp(), kind, tags, content]).to_string();
-        sha256::Hash::hash(event_json.as_bytes())
+        let json: Value = json!([0, pubkey, created_at.timestamp(), kind, tags, content]);
+        let event_str: String = json.to_string();
+        sha256::Hash::hash(event_str.as_bytes())
     }
 
     /// Create a generic type of event
-    pub fn new_generic(content: &str, keys: &Keys, tags: &[Tag], kind: Kind) -> Result<Self> {
+    pub fn new_generic(keys: &Keys, kind: Kind, content: &str, tags: &[Tag]) -> Result<Self> {
         let secp = Secp256k1::new();
         let keypair: &KeyPair = &keys.key_pair()?;
         let pubkey: XOnlyPublicKey = keys.public_key();
@@ -92,25 +92,25 @@ impl Event {
         });
 
         Self::new_generic(
-            &metadata.to_string(),
             keys,
-            &Vec::new(),
             Kind::Base(KindBase::Metadata),
+            &metadata.to_string(),
+            &Vec::new(),
         )
     }
 
     pub fn add_recommended_relay(keys: &Keys, url: &Url) -> Result<Self> {
         Self::new_generic(
-            url.as_ref(),
             keys,
-            &[],
             Kind::Base(KindBase::RecommendRelay),
+            url.as_ref(),
+            &[],
         )
     }
 
     /// Create a new TextNote Event
     pub fn new_textnote(content: &str, keys: &Keys, tags: &[Tag]) -> Result<Self> {
-        Self::new_generic(content, keys, tags, Kind::Base(KindBase::TextNote))
+        Self::new_generic(keys, Kind::Base(KindBase::TextNote), content, tags)
     }
 
     pub fn new_pow_textnote(
@@ -170,7 +170,7 @@ impl Event {
             })
             .collect();
 
-        Self::new_generic("", keys, &tags, Kind::Base(KindBase::ContactList))
+        Self::new_generic(keys, Kind::Base(KindBase::ContactList), "", &tags)
     }
 
     /// Create encrypted direct msg event
@@ -180,14 +180,14 @@ impl Event {
         content: &str,
     ) -> Result<Self> {
         Self::new_generic(
+            sender_keys,
+            Kind::Base(KindBase::EncryptedDirectMessage),
             &nip04::encrypt(
                 &sender_keys.secret_key()?,
                 &receiver_keys.public_key(),
                 content,
             )?,
-            sender_keys,
             &[Tag::new(TagData::PubKey(receiver_keys.public_key()))],
-            Kind::Base(KindBase::EncryptedDirectMessage),
         )
     }
 
@@ -199,10 +199,10 @@ impl Event {
             .collect();
 
         Self::new_generic(
-            content.unwrap_or(""),
             keys,
-            &tags,
             Kind::Base(KindBase::EventDeletion),
+            content.unwrap_or(""),
+            &tags,
         )
     }
 
@@ -218,7 +218,7 @@ impl Event {
             false => "-",
         };
 
-        Self::new_generic(content, keys, tags, Kind::Base(KindBase::Reaction))
+        Self::new_generic(keys, Kind::Base(KindBase::Reaction), content, tags)
     }
 
     pub fn verify(&self) -> Result<(), secp256k1::Error> {
@@ -404,7 +404,7 @@ mod tests {
     #[test]
     fn test_custom_kind() {
         let keys = Keys::generate_from_os_random();
-        let e = Event::new_generic("my content", &keys, &vec![], Kind::Custom(123)).unwrap();
+        let e = Event::new_generic(&keys, Kind::Custom(123), "my content", &vec![]).unwrap();
 
         let serialized = e.as_json().unwrap();
         let deserialized = Event::new_from_json(serialized).unwrap();
