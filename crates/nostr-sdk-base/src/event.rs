@@ -59,7 +59,7 @@ impl Event {
         let secp = Secp256k1::new();
         let keypair: &KeyPair = &keys.key_pair()?;
         let pubkey: XOnlyPublicKey = keys.public_key;
-        let created_at: DateTime<Utc> = Utc::now();
+        let created_at: DateTime<Utc> = Utc.timestamp(Utc::now().timestamp(), 0);
 
         let id: sha256::Hash = Self::gen_id(&pubkey, &created_at, &kind, tags, content);
         let message = secp256k1::Message::from_slice(&id)?;
