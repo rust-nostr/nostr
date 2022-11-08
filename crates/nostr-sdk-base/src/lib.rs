@@ -5,8 +5,8 @@
 extern crate serde;
 
 pub mod event;
-mod key;
-mod message;
+pub mod key;
+pub mod message;
 pub mod util;
 
 pub use crate::event::{Contact, Event, Kind, KindBase};
