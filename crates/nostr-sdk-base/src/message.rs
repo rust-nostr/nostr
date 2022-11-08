@@ -316,12 +316,17 @@ mod tests {
     use super::*;
     use std::{error::Error, str::FromStr};
 
+    use uuid::uuid;
+
     type TestResult = Result<(), Box<dyn Error>>;
 
     #[test]
     fn test_handle_valid_subscription_filter_multiple_id_prefixes() -> TestResult {
-        let id_prefixes = vec!["pref1".to_string(), "pref2".to_string()];
-        let f = SubscriptionFilter::new().ids(id_prefixes.into());
+        let id_prefixes = vec![
+            uuid!("b6527a19-5961-4310-8cf9-2d35307f442b"),
+            uuid!("6b9cb378-2abd-439f-953b-883380e2701f"),
+        ];
+        let f = SubscriptionFilter::new().ids(id_prefixes.clone());
 
         assert_eq!(Some(id_prefixes), f.ids);
 
