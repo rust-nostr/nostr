@@ -38,11 +38,11 @@ interface Kind {
 interface Keys {
     [Throws=NostrError]
     constructor(string sk);
-    [Throws=NostrError, Name=new_pub_only]
+    [Throws=NostrError, Name=from_public_key]
     constructor(string pk);
-    [Throws=NostrError, Name=new_pub_only_from_bech32]
+    [Throws=NostrError, Name=from_bech32_public_key]
     constructor(string pk);
-    [Throws=NostrError, Name=new_from_bech32]
+    [Throws=NostrError, Name=from_bech32]
     constructor(string sk);
     [Name=generate_from_os_random]
     constructor();

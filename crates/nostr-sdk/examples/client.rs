@@ -7,8 +7,9 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use anyhow::Result;
 use chrono::Utc;
+use nostr_sdk::base::key::{FromBech32, Keys};
 use nostr_sdk::base::util::nip04::decrypt;
-use nostr_sdk::base::{Keys, Kind, KindBase, SubscriptionFilter};
+use nostr_sdk::base::{Kind, KindBase, SubscriptionFilter};
 use nostr_sdk::{Client, RelayPoolNotifications};
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
@@ -17,7 +18,7 @@ const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9
 async fn main() -> Result<()> {
     env_logger::init();
 
-    let my_keys = Keys::new_from_bech32(BECH32_SK)?;
+    let my_keys = Keys::from_bech32(BECH32_SK)?;
 
     let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
 
@@ -39,7 +40,7 @@ async fn main() -> Result<()> {
         .await?;
 
     let subscription = SubscriptionFilter::new()
-        .pubkey(my_keys.public_key)
+        .pubkey(my_keys.public_key())
         .since(Utc::now());
 
     client.subscribe(vec![subscription]).await?;

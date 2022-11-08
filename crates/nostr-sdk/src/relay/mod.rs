@@ -373,8 +373,8 @@ impl RelayPoolTask {
             }
             RelayPoolEvent::RemoveContactEvents(contact_keys) => {
                 self.events.retain(|_, v| {
-                    v.pubkey != contact_keys.public_key
-                        && v.tags[0].content() != contact_keys.public_key.to_string()
+                    v.pubkey != contact_keys.public_key()
+                        && v.tags[0].content() != contact_keys.public_key().to_string()
                 });
             }
         }

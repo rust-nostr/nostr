@@ -39,14 +39,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let subscribe_to_alice = ClientMessage::new_req(
         "abcdefgh",
         vec![SubscriptionFilter::new()
-            .authors(vec![alice_keys.public_key])
+            .authors(vec![alice_keys.public_key()])
             .kind_base(KindBase::TextNote)],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         "1234567",
         vec![SubscriptionFilter::new()
-            .authors(vec![bob_keys.public_key])
+            .authors(vec![bob_keys.public_key()])
             .kind_base(KindBase::TextNote)],
     );
 

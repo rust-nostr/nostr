@@ -58,7 +58,7 @@ impl Event {
     pub fn new_generic(content: &str, keys: &Keys, tags: &[Tag], kind: Kind) -> Result<Self> {
         let secp = Secp256k1::new();
         let keypair: &KeyPair = &keys.key_pair()?;
-        let pubkey: XOnlyPublicKey = keys.public_key;
+        let pubkey: XOnlyPublicKey = keys.public_key();
         let created_at: DateTime<Utc> = Utc.timestamp(Utc::now().timestamp(), 0);
 
         let id: sha256::Hash = Self::gen_id(&pubkey, &created_at, &kind, tags, content);
@@ -171,11 +171,11 @@ impl Event {
         Self::new_generic(
             &nip04::encrypt(
                 &sender_keys.secret_key()?,
-                &receiver_keys.public_key,
+                &receiver_keys.public_key(),
                 content,
             )?,
             sender_keys,
-            &[Tag::new(TagData::PubKey(receiver_keys.public_key))],
+            &[Tag::new(TagData::PubKey(receiver_keys.public_key()))],
             Kind::Base(KindBase::EncryptedDirectMessage),
         )
     }
@@ -199,7 +199,7 @@ impl Event {
     pub fn new_reaction(keys: &Keys, event_id: sha256::Hash, positive: bool) -> Result<Self> {
         let tags: &[Tag] = &[
             Tag::new(TagData::EventId(event_id)),
-            Tag::new(TagData::PubKey(keys.public_key)),
+            Tag::new(TagData::PubKey(keys.public_key())),
         ];
 
         let content: &str = match positive {

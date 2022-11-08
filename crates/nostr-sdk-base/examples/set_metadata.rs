@@ -3,7 +3,8 @@
 
 use std::error::Error;
 
-use nostr_sdk_base::{ClientMessage, Event, Keys};
+use nostr_sdk_base::key::{FromBech32, Keys};
+use nostr_sdk_base::{ClientMessage, Event};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
@@ -17,7 +18,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (mut socket, _response) =
         connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect to relay");
 
-    let my_keys = Keys::new_from_bech32(MY_BECH32_SK).unwrap();
+    let my_keys = Keys::from_bech32(MY_BECH32_SK).unwrap();
 
     let event = Event::set_metadata(
         &my_keys,

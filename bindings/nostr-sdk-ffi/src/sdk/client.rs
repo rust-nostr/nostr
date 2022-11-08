@@ -89,9 +89,6 @@ impl Client {
                     RelayPoolNotificationsSdk::ReceivedEvent(event) => {
                         handler.handle(Arc::new(event.into()));
                     }
-                    RelayPoolNotificationsSdk::RelayDisconnected(url) => {
-                        log::debug!("Relay {} disconnected", url);
-                    }
                 }
 
                 Ok(())

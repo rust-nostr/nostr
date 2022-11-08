@@ -8,7 +8,6 @@ use std::{thread, time};
 use nostr_sdk_base::event::KindBase;
 use nostr_sdk_base::util::nip04::decrypt;
 use nostr_sdk_base::{ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter};
-use secp256k1::SecretKey;
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
@@ -24,8 +23,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (mut socket, _response) =
         connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect to relay");
 
-    let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?);
-    let bob_keys = Keys::new(SecretKey::from_str(BOB_SK)?);
+    let alice_keys = Keys::from_str(ALICE_SK)?;
+    let bob_keys = Keys::from_str(BOB_SK)?;
 
     let alice_to_bob = "Hey bob this is alice (ping)";
     let bob_to_alice = "Hey alice this is bob (pong)";
@@ -36,15 +35,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let subscribe_to_alice = ClientMessage::new_req(
         "abcdefg",
         vec![SubscriptionFilter::new()
-            .authors(vec![alice_keys.public_key])
-            .pubkey(bob_keys.public_key)],
+            .authors(vec![alice_keys.public_key()])
+            .pubkey(bob_keys.public_key())],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         "123456",
         vec![SubscriptionFilter::new()
-            .authors(vec![bob_keys.public_key])
-            .pubkey(alice_keys.public_key)],
+            .authors(vec![bob_keys.public_key()])
+            .pubkey(alice_keys.public_key())],
     );
 
     println!("Subscribing to Alice");
@@ -82,7 +81,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 "Decrypted: {}",
                                 decrypt(
                                     &alice_keys.secret_key()?,
-                                    &bob_keys.public_key,
+                                    &bob_keys.public_key(),
                                     &event.content
                                 )?
                             );
@@ -102,7 +101,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 "Decrypted: {}",
                                 decrypt(
                                     &alice_keys.secret_key()?,
-                                    &bob_keys.public_key,
+                                    &bob_keys.public_key(),
                                     &event.content
                                 )?
                             );

@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use anyhow::Result;
-use nostr_sdk_base::Keys as KeysSdk;
+use nostr_sdk_base::key::{FromBech32, Keys as KeysSdk, XOnlyPublicKey};
 use secp256k1::SecretKey;
 
 #[derive(Clone)]
@@ -29,21 +29,23 @@ impl Keys {
         })
     }
 
-    pub fn new_pub_only(pk: String) -> Result<Self> {
+    pub fn from_public_key(pk: String) -> Result<Self> {
+        let public_key = XOnlyPublicKey::from_str(&pk)?;
+
         Ok(Self {
-            keys: KeysSdk::new_pub_only(&pk)?,
+            keys: KeysSdk::from_public_key(public_key),
         })
     }
 
-    pub fn new_pub_only_from_bech32(pk: String) -> Result<Self> {
+    pub fn from_bech32_public_key(pk: String) -> Result<Self> {
         Ok(Self {
-            keys: KeysSdk::new_pub_only_from_bech32(&pk)?,
+            keys: KeysSdk::from_bech32_public_key(&pk)?,
         })
     }
 
-    pub fn new_from_bech32(sk: String) -> Result<Self> {
+    pub fn from_bech32(sk: String) -> Result<Self> {
         Ok(Self {
-            keys: KeysSdk::new_from_bech32(&sk)?,
+            keys: KeysSdk::from_bech32(&sk)?,
         })
     }
 
