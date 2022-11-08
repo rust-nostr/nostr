@@ -79,7 +79,7 @@ interface Event {
     string content();
     [Throws=NostrError, Name=set_metadata]
     constructor(Keys keys, string username, string display_name, optional string? about = null, optional string? picture = null);
-    [Throws=NostrError, Name=backup_contacts]
+    [Throws=NostrError, Name=set_contact_list]
     constructor(Keys keys, sequence<Contact> list);
     [Throws=NostrError, Name=new_encrypted_direct_msg]
     constructor(Keys sender_keys, Keys receiver_keys, string content);

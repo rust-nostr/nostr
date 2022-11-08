@@ -158,7 +158,7 @@ impl Event {
         }
     }
 
-    pub fn backup_contacts(keys: &Keys, list: Vec<Contact>) -> Result<Self> {
+    pub fn set_contact_list(keys: &Keys, list: Vec<Contact>) -> Result<Self> {
         let tags: Vec<Tag> = list
             .iter()
             .map(|contact| {

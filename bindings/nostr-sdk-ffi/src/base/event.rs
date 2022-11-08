@@ -77,14 +77,14 @@ impl Event {
         })
     } */
 
-    pub fn backup_contacts(keys: Arc<Keys>, list: Vec<Arc<Contact>>) -> Result<Self> {
+    pub fn set_contact_list(keys: Arc<Keys>, list: Vec<Arc<Contact>>) -> Result<Self> {
         let list: Vec<ContactSdk> = list
             .into_iter()
             .map(|c| c.as_ref().deref().clone())
             .collect();
 
         Ok(Self {
-            event: EventSdk::backup_contacts(keys.deref(), list)?,
+            event: EventSdk::set_contact_list(keys.deref(), list)?,
         })
     }
 
