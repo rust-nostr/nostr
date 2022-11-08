@@ -7,14 +7,12 @@ use std::str::FromStr;
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
-use base64::{decode, encode};
 use cbc::{Decryptor, Encryptor};
-use secp256k1::rand::random;
 use secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
 use thiserror::Error;
 
-type Aes128CbcEnc = Encryptor<Aes256>;
-type Aes128CbcDec = Decryptor<Aes256>;
+type Aes256CbcEnc = Encryptor<Aes256>;
+type Aes256CbcDec = Decryptor<Aes256>;
 
 #[derive(Error, Debug, Eq, PartialEq)]
 pub enum Error {
@@ -22,17 +20,13 @@ pub enum Error {
         r#"Invalid content format. Expected format "<encrypted_text>?iv=<initialization_vec>""#
     )]
     InvalidContentFormat,
-
     #[error("Error while decoding from base64")]
     Base64DecodeError,
-
     #[error("Error while encoding to UTF-8")]
     Utf8EncodeError,
-
     #[error("Wrong encryption block mode.The content must be encrypted using CBC mode!")]
     WrongBlockMode,
-
-    #[error("Secp256k1 Error: {}", _0)]
+    #[error("Secp256k1 error: {}", _0)]
     Secp256k1Error(secp256k1::Error),
 }
 
@@ -44,12 +38,16 @@ impl From<secp256k1::Error> for Error {
 
 pub fn encrypt(sk: &SecretKey, pk: &XOnlyPublicKey, text: &str) -> Result<String, Error> {
     let key: Vec<u8> = generate_shared_key(sk, pk)?;
-    let iv: [u8; 16] = random();
+    let iv: [u8; 16] = secp256k1::rand::random();
 
-    let cipher = Aes128CbcEnc::new(key.as_slice().into(), &iv.into());
+    let cipher = Aes256CbcEnc::new(key.as_slice().into(), &iv.into());
     let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
 
-    Ok(format!("{}?iv={}", encode(result), encode(iv)))
+    Ok(format!(
+        "{}?iv={}",
+        base64::encode(result),
+        base64::encode(iv)
+    ))
 }
 
 pub fn decrypt(
@@ -63,12 +61,11 @@ pub fn decrypt(
     }
 
     let encrypted_content: Vec<u8> =
-        decode(parsed_content[0]).map_err(|_| Error::Base64DecodeError)?;
-
-    let iv: Vec<u8> = decode(parsed_content[1]).map_err(|_| Error::Base64DecodeError)?;
+        base64::decode(parsed_content[0]).map_err(|_| Error::Base64DecodeError)?;
+    let iv: Vec<u8> = base64::decode(parsed_content[1]).map_err(|_| Error::Base64DecodeError)?;
     let key: Vec<u8> = generate_shared_key(sk, pk)?;
 
-    let cipher = Aes128CbcDec::new(key.as_slice().into(), iv.as_slice().into());
+    let cipher = Aes256CbcDec::new(key.as_slice().into(), iv.as_slice().into());
     let result = cipher
         .decrypt_padded_vec_mut::<Pkcs7>(&encrypted_content)
         .map_err(|_| Error::WrongBlockMode)?;
@@ -88,7 +85,6 @@ fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<Vec<u8>, E
 fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
     let mut pk = String::from("02");
     pk.push_str(&schnorr_pk.to_string());
-    // .expect("Failed to make a PublicKey with the addition of 02")
     Ok(PublicKey::from_str(&pk)?)
 }
 

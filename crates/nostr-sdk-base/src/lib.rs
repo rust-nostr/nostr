@@ -9,9 +9,9 @@ pub mod key;
 pub mod message;
 pub mod util;
 
-pub use crate::event::{Contact, Event, Kind, KindBase};
-pub use crate::key::Keys;
-pub use crate::message::{ClientMessage, RelayMessage, SubscriptionFilter};
+pub use self::event::{Contact, Event, Kind, KindBase};
+pub use self::key::Keys;
+pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
 
 #[cfg(test)]
 mod tests {
