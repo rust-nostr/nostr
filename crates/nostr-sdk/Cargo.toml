@@ -1,6 +1,7 @@
 [package]
 name = "nostr-sdk"
 version = "0.1.0"
+description = "High level Nostr client library."
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -18,7 +19,6 @@ bitcoin_hashes = { version = "0.11", features = ["serde"] }
 futures-util = "0.3"
 log = "0.4"
 nostr-sdk-base = { path = "../nostr-sdk-base" }
-nostr-sdk-common = { path = "../nostr-sdk-common" }
 once_cell = { version = "1", optional = true }
 tokio = { version = "1", features = ["full"] }
 tokio-socks = "0.5"
