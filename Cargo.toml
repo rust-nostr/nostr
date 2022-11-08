@@ -9,8 +9,8 @@ default-members = ["crates/*"]
 edition = "2021"
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
 license = "MIT"
-homepage = "https://gitlab.com/p2kishimoto/nostr-rs-sdk"
-repository = "https://gitlab.com/p2kishimoto/nostr-rs-sdk.git"
+homepage = "https://github.com/p2kishimoto/nostr-rs-sdk"
+repository = "https://github.com/p2kishimoto/nostr-rs-sdk.git"
 rust-version = "1.64"
 
 [profile.release]
