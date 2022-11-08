@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use bitcoin_hashes::sha256::Hash;
-use nostr_sdk_base::{Contact, Event, Keys, SubscriptionFilter};
+use nostr_sdk_base::{Event, Keys, SubscriptionFilter};
 use tokio::sync::broadcast;
 
 use crate::relay::{RelayPool, RelayPoolNotifications};
@@ -16,45 +16,31 @@ use crate::RUNTIME;
 pub struct Client {
     pub pool: RelayPool,
     pub keys: Keys,
-    pub contacts: Vec<Contact>,
 }
 
 impl Client {
-    pub fn new(keys: &Keys, contacts: Option<Vec<Contact>>) -> Self {
+    pub fn new(keys: &Keys) -> Self {
         Self {
             pool: RelayPool::new(),
             keys: keys.clone(),
-            contacts: contacts.unwrap_or_default(),
         }
     }
 
     pub fn generate_keys() -> Keys {
         Keys::generate_from_os_random()
     }
+
+    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
+        self.pool.notifications()
+    }
+
+    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
+        self.pool.add_relay(url, proxy)
+    }
 }
 
 #[cfg(not(feature = "blocking"))]
 impl Client {
-    pub async fn add_contact(&mut self, contact: Contact) {
-        if !self.contacts.contains(&contact) {
-            self.contacts.push(contact);
-        }
-    }
-
-    pub async fn remove_contact(&mut self, contact: &Contact) {
-        if self.contacts.contains(contact) {
-            self.contacts.retain(|c| c != contact);
-        }
-    }
-
-    pub async fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
-        self.pool.notifications()
-    }
-
-    pub async fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
-        self.pool.add_relay(url, proxy)
-    }
-
     pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
         self.pool.remove_relay(url).await
     }
@@ -90,7 +76,7 @@ impl Client {
         F: Fn(RelayPoolNotifications) -> Result<()>,
     {
         loop {
-            let mut notifications = self.notifications().await;
+            let mut notifications = self.notifications();
 
             while let Ok(notification) = notifications.recv().await {
                 func(notification)?;
@@ -101,30 +87,6 @@ impl Client {
 
 #[cfg(feature = "blocking")]
 impl Client {
-    pub fn add_contact(&mut self, contact: Contact) {
-        RUNTIME.block_on(async {
-            if !self.contacts.contains(&contact) {
-                self.contacts.push(contact);
-            }
-        });
-    }
-
-    pub fn remove_contact(&mut self, contact: &Contact) {
-        RUNTIME.block_on(async {
-            if self.contacts.contains(contact) {
-                self.contacts.retain(|c| c != contact);
-            }
-        });
-    }
-
-    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
-        RUNTIME.block_on(async { self.pool.notifications() })
-    }
-
-    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.add_relay(url, proxy) })
-    }
-
     pub fn remove_relay(&mut self, url: &str) -> Result<()> {
         RUNTIME.block_on(async { self.pool.remove_relay(url).await })
     }

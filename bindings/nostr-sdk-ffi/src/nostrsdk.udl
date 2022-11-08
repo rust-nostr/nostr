@@ -124,9 +124,7 @@ callback interface HandleNotification {
 };
 
 interface Client {
-    constructor(Keys keys, optional sequence<Contact>? contacts = null);
-    void add_contact(Contact contact);
-    void remove_contact(Contact contact);
+    constructor(Keys keys);
     [Throws=NostrError]
     void add_relay(string url, optional string? proxy = null);
     [Throws=NostrError]

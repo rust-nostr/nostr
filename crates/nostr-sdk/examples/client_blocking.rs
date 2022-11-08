@@ -17,7 +17,7 @@ fn main() -> Result<()> {
 
     let my_keys = Keys::from_bech32(BECH32_SK)?;
 
-    let mut client = Client::new(&my_keys, None);
+    let mut client = Client::new(&my_keys);
     client.add_relay("wss://relay.nostr.info", None)?;
     client.add_relay("wss://relay.damus.io", None)?;
     client.add_relay("wss://nostr.openchain.fr", None)?;
