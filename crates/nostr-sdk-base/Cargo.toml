@@ -1,6 +1,7 @@
 [package]
 name = "nostr-sdk-base"
 version = "0.1.0"
+description = "Rust implementation of the nostr protocol "
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
