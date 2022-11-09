@@ -76,6 +76,9 @@ The following crate feature flags are available:
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
 | `blocking`          |   No    | Needed if you want to use this library in not async/await context                                                          |
 
+## State
+
+**This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
 
 ## License
 
