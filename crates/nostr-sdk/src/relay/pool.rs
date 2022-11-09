@@ -109,6 +109,7 @@ impl Default for RelayPool {
 }
 
 impl RelayPool {
+    /// Create new `RelayPool`
     pub fn new() -> Self {
         let (notification_sender, _) = broadcast::channel(64);
         let (pool_task_sender, pool_task_receiver) = mpsc::channel(64);
@@ -138,45 +139,41 @@ impl RelayPool {
         }
     }
 
+    /// Get new notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
         self.notification_sender.subscribe()
     }
 
+    /// Get relays
     pub fn relays(&self) -> HashMap<String, Relay> {
         self.relays.clone()
     }
 
+    /// Get list of relays
     pub fn list_relays(&self) -> Vec<Relay> {
         self.relays.iter().map(|(_k, v)| v.clone()).collect()
     }
 
+    /// Get subscriptions
     pub async fn subscription(&self) -> Subscription {
         self.subscription.clone()
     }
 
+    /// Add new relay
     pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
         let relay = Relay::new(url, self.pool_task_sender.clone(), proxy)?;
         self.relays.insert(url.into(), relay);
         Ok(())
     }
 
+    /// Disconnect and remove relay
     pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
         self.disconnect_relay(url).await?;
         self.relays.remove(url);
         Ok(())
     }
 
-    /* pub async fn remove_contact_events(&self, contact: Contact) {
-        //TODO: Remove this convertion when change contact pk to Keys type
-        let c_keys = Keys::new_pub_only(&contact.pk.to_string()).unwrap();
-        if let Err(e) = self
-            .pool_task_sender
-            .send(RelayPoolEvent::RemoveContactEvents(c_keys))
-        {
-            log::error!("remove_contact_events send error: {}", e.to_string())
-        };
-    } */
-
+    /// Send event
     pub async fn send_event(&self, ev: NostrEvent) -> Result<()> {
         //Send to pool task to save in all received events
         if self.relays.is_empty() {
@@ -198,6 +195,7 @@ impl RelayPool {
         Ok(())
     }
 
+    /// Subscribe to filters
     pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
         self.subscription.update_filters(filters.clone());
         for (k, _) in self.relays.clone().iter() {
@@ -212,7 +210,7 @@ impl RelayPool {
             let channel = self.subscription.get_channel(url);
             relay
                 .send_msg(ClientMessage::new_req(
-                    channel.id.to_string(),
+                    channel.id().to_string(),
                     self.subscription.get_filters(),
                 ))
                 .await?;
@@ -225,7 +223,7 @@ impl RelayPool {
         if let Some(relay) = self.relays.get(url) {
             if let Some(channel) = self.subscription.remove_channel(url) {
                 relay
-                    .send_msg(ClientMessage::close(channel.id.to_string()))
+                    .send_msg(ClientMessage::close(channel.id().to_string()))
                     .await?;
             }
         }
@@ -233,6 +231,7 @@ impl RelayPool {
         Ok(())
     }
 
+    /// Connect to all added relays and keep connection alive
     pub async fn connect(&mut self) -> Result<()> {
         for url in self.relays.clone().keys() {
             self.connect_relay(url).await?;
@@ -241,6 +240,7 @@ impl RelayPool {
         Ok(())
     }
 
+    /// Disconnect from all relays
     pub async fn disconnect(&mut self) -> Result<()> {
         for url in self.relays.clone().keys() {
             self.disconnect_relay(url).await?;
@@ -249,6 +249,7 @@ impl RelayPool {
         Ok(())
     }
 
+    /// Connect to relay
     pub async fn connect_relay(&mut self, url: &str) -> Result<()> {
         if let Some(relay) = self.relays.get(&url.to_string()) {
             relay.connect().await;
@@ -260,6 +261,7 @@ impl RelayPool {
         Ok(())
     }
 
+    /// Disconnect from relay
     pub async fn disconnect_relay(&mut self, url: &str) -> Result<()> {
         if let Some(relay) = self.relays.get(&url.to_string()) {
             relay.terminate().await?;

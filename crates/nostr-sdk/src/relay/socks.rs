@@ -8,7 +8,7 @@ use tokio::net::TcpStream;
 use tokio_socks::tcp::Socks5Stream;
 use tokio_socks::IntoTargetAddr;
 
-pub struct TpcSocks5Stream;
+pub(crate) struct TpcSocks5Stream;
 
 impl TpcSocks5Stream {
     pub async fn connect<'a>(

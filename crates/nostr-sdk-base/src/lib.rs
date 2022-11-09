@@ -1,6 +1,8 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+#![doc = include_str!("../README.md")]
+
 #[macro_use]
 extern crate serde;
 

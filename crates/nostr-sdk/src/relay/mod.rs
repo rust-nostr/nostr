@@ -22,12 +22,18 @@ use self::pool::RelayPoolEvent;
 #[cfg(feature = "blocking")]
 use crate::new_current_thread;
 
+/// Relay connection status
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayStatus {
+    /// Relay initialized
     Initialized,
+    /// Relay connected
     Connected,
+    /// Connecting
     Connecting,
+    /// Relay disconnected, will retry to connect again
     Disconnected,
+    /// Relay completly disconnected
     Terminated,
 }
 
@@ -50,6 +56,7 @@ pub struct Relay {
 }
 
 impl Relay {
+    /// Create new `Relay`
     pub fn new(
         url: &str,
         pool_sender: Sender<RelayPoolEvent>,
@@ -67,6 +74,7 @@ impl Relay {
         })
     }
 
+    /// Get relay url
     pub fn url(&self) -> Url {
         self.url.clone()
     }
@@ -76,11 +84,12 @@ impl Relay {
         status.clone()
     }
 
-    pub async fn set_status(&self, status: RelayStatus) {
+    async fn set_status(&self, status: RelayStatus) {
         let mut s = self.status.lock().await;
         *s = status;
     }
 
+    /// Connect to relay and keep alive connection
     pub async fn connect(&self) {
         if let RelayStatus::Initialized | RelayStatus::Terminated = self.status().await {
             // Update relay status
@@ -298,6 +307,7 @@ impl Relay {
         self.send_relay_event(RelayEvent::Terminate).await
     }
 
+    /// Send msg to relay
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<()> {
         self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)))
             .await

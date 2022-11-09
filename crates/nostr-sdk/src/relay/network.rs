@@ -12,19 +12,19 @@ use tokio_tungstenite::tungstenite::{Error, Message};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use url::Url;
 
-pub type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
-pub type WebSocketSocks5 = WebSocketStream<Socks5Stream<TcpStream>>;
+type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
+type WebSocketSocks5 = WebSocketStream<Socks5Stream<TcpStream>>;
 
-pub type SplitSinkDirect = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
-pub type StreamClearnet = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
+type SplitSinkDirect = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
+type StreamClearnet = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
-pub type SplitSinkSocks5 = SplitSink<WebSocketStream<Socks5Stream<TcpStream>>, Message>;
-pub type StreamSocks5 = SplitStream<WebSocketStream<Socks5Stream<TcpStream>>>;
+type SplitSinkSocks5 = SplitSink<WebSocketStream<Socks5Stream<TcpStream>>, Message>;
+type StreamSocks5 = SplitStream<WebSocketStream<Socks5Stream<TcpStream>>>;
 
 use super::socks::TpcSocks5Stream;
 
 #[derive(Debug)]
-pub enum Sink {
+pub(crate) enum Sink {
     Direct(SplitSinkDirect),
     Socks5(SplitSinkSocks5),
 }
@@ -46,7 +46,7 @@ impl Sink {
 }
 
 #[derive(Debug)]
-pub enum Stream {
+pub(crate) enum Stream {
     Direct(StreamClearnet),
     Socks5(StreamSocks5),
 }
@@ -60,7 +60,7 @@ impl Stream {
     }
 }
 
-pub async fn get_connection(url: &Url, proxy: Option<SocketAddr>) -> Result<(Sink, Stream)> {
+pub(crate) async fn get_connection(url: &Url, proxy: Option<SocketAddr>) -> Result<(Sink, Stream)> {
     match proxy {
         Some(proxy) => {
             let stream = connect_proxy(url, proxy).await?;

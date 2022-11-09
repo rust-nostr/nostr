@@ -24,10 +24,9 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// use nostr_sdk::base::Keys;
     /// use nostr_sdk::Client;
     ///
-    /// let my_keys: Keys = Client::generate_keys();
+    /// let my_keys = Client::generate_keys();
     /// let mut client = Client::new(&my_keys);
     /// ```
     pub fn new(keys: &Keys) -> Self {
@@ -248,7 +247,7 @@ impl Client {
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
-        let event = Event::new_encrypted_direct_msg(&self.keys, &recipient, msg)?;
+        let event = Event::new_encrypted_direct_msg(&self.keys, recipient, msg)?;
         self.send_event(event).await
     }
 
