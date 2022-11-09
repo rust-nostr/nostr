@@ -5,7 +5,7 @@
 use std::error::Error;
 use std::str::FromStr;
 
-use nostr_sdk_base::event::KindBase;
+use nostr_sdk_base::event::{Kind, KindBase};
 use nostr_sdk_base::{ClientMessage, Event, Keys, RelayMessage, SubscriptionFilter};
 use secp256k1::SecretKey;
 use tungstenite::{connect, Message as WsMessage};
@@ -41,14 +41,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         "abcdefgh",
         vec![SubscriptionFilter::new()
             .authors(vec![alice_keys.public_key()])
-            .kind_base(KindBase::TextNote)],
+            .kind(Kind::Base(KindBase::TextNote))],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         "1234567",
         vec![SubscriptionFilter::new()
             .authors(vec![bob_keys.public_key()])
-            .kind_base(KindBase::TextNote)],
+            .kind(Kind::Base(KindBase::TextNote))],
     );
 
     socket.write_message(WsMessage::Text(subscribe_to_alice.to_json()))?;

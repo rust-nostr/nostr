@@ -52,6 +52,7 @@ impl SubscriptionFilter {
         }
     }
 
+    /// Set subscription id
     pub fn id(self, id: impl Into<Uuid>) -> Self {
         Self {
             ids: Some(vec![id.into()]),
@@ -59,6 +60,7 @@ impl SubscriptionFilter {
         }
     }
 
+    /// Set subscription ids
     pub fn ids(self, ids: impl Into<Vec<Uuid>>) -> Self {
         Self {
             ids: Some(ids.into()),
@@ -66,6 +68,7 @@ impl SubscriptionFilter {
         }
     }
 
+    /// Set authors
     pub fn authors(self, authors: Vec<XOnlyPublicKey>) -> Self {
         Self {
             authors: Some(authors),
@@ -73,6 +76,15 @@ impl SubscriptionFilter {
         }
     }
 
+    /// Set kind
+    pub fn kind(self, kind: Kind) -> Self {
+        Self {
+            kinds: Some(vec![kind]),
+            ..self
+        }
+    }
+
+    /// Set kinds
     pub fn kinds(self, kinds: Vec<Kind>) -> Self {
         Self {
             kinds: Some(kinds),
@@ -80,7 +92,7 @@ impl SubscriptionFilter {
         }
     }
 
-    // #e
+    /// Set events
     pub fn events(self, ids: impl Into<Vec<Uuid>>) -> Self {
         Self {
             events: Some(ids.into()),
@@ -88,7 +100,15 @@ impl SubscriptionFilter {
         }
     }
 
-    // #p, for instance the receiver public key
+    /// Set pubkey
+    pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
+        Self {
+            pubkeys: Some(vec![pubkey]),
+            ..self
+        }
+    }
+
+    /// Set pubkeys
     pub fn pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
         Self {
             pubkeys: Some(pubkeys),
@@ -96,6 +116,7 @@ impl SubscriptionFilter {
         }
     }
 
+    /// Set since
     pub fn since(self, since: DateTime<Utc>) -> Self {
         Self {
             since: Some(since.timestamp().try_into().unwrap_or(0)),
@@ -103,6 +124,7 @@ impl SubscriptionFilter {
         }
     }
 
+    /// Set until
     pub fn until(self, until: DateTime<Utc>) -> Self {
         Self {
             until: Some(until.timestamp().try_into().unwrap_or(0)),
@@ -110,6 +132,7 @@ impl SubscriptionFilter {
         }
     }
 
+    /// Set limit
     pub fn limit(self, limit: u16) -> Self {
         Self {
             limit: Some(limit),
@@ -313,11 +336,13 @@ impl ClientMessage {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+
     use std::{error::Error, str::FromStr};
 
     use uuid::uuid;
+
+    use crate::KindBase;
 
     type TestResult = Result<(), Box<dyn Error>>;
 
@@ -438,7 +463,7 @@ mod tests {
         )
         .unwrap();
         let filters = vec![
-            SubscriptionFilter::new().kind_base(KindBase::EncryptedDirectMessage),
+            SubscriptionFilter::new().kind(Kind::Base(KindBase::EncryptedDirectMessage)),
             SubscriptionFilter::new().pubkey(pk),
         ];
 
@@ -456,7 +481,7 @@ mod tests {
         )
         .unwrap();
         let filters = vec![
-            SubscriptionFilter::new().kind_custom(22),
+            SubscriptionFilter::new().kind(Kind::Custom(22)),
             SubscriptionFilter::new().pubkey(pk),
         ];
 
