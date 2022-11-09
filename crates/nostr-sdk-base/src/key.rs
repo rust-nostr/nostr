@@ -40,7 +40,7 @@ pub struct Keys {
 }
 
 impl Keys {
-    /// Initialize Keys from secret key.
+    /// Initialize from secret key.
     pub fn new(secret_key: SecretKey) -> Self {
         let secp = Secp256k1::new();
         let key_pair = KeyPair::from_secret_key(&secp, &secret_key);
@@ -53,7 +53,7 @@ impl Keys {
         }
     }
 
-    /// Initialize Keys with public key only (no secret key).
+    /// Initialize with public key only (no secret key).
     pub fn from_public_key(public_key: XOnlyPublicKey) -> Self {
         Self {
             public_key,

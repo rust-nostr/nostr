@@ -19,6 +19,16 @@ pub struct Client {
 }
 
 impl Client {
+    /// Create a new `Client`
+    ///
+    /// # Example
+    /// ```rust
+    /// use nostr_sdk::base::Keys;
+    /// use nostr_sdk::Client;
+    ///
+    /// let my_keys: Keys = Client::generate_keys();
+    /// let mut client = Client::new(&my_keys);
+    /// ```
     pub fn new(keys: &Keys) -> Self {
         Self {
             pool: RelayPool::new(),
@@ -37,54 +47,132 @@ impl Client {
     }
 
     /// Add new relay
+    ///
+    /// # Example
+    /// ```rust
+    /// client.add_relay("wss://relay.nostr.info", None)?;
+    /// client.add_relay("wss://relay.damus.io", None)?;
+    /// ```
     pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
         self.pool.add_relay(url, proxy)
     }
-}
 
-#[cfg(not(feature = "blocking"))]
-impl Client {
     /// Disconnect and remove relay
+    ///
+    /// # Example
+    /// ```rust
+    /// client.remove_relay("wss://relay.nostr.info", None).await?;
+    /// ```
+    #[cfg(not(feature = "blocking"))]
     pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
         self.pool.remove_relay(url).await
     }
 
     /// Connect relay
+    ///
+    /// # Example
+    /// ```rust
+    /// client.connect_relay("wss://relay.nostr.info", None).await?;
+    /// ```
+    #[cfg(not(feature = "blocking"))]
     pub async fn connect_relay(&mut self, url: &str) -> Result<()> {
         self.pool.connect_relay(url).await
     }
 
     /// Disconnect relay
+    ///
+    /// # Example
+    /// ```rust
+    /// client.disconnect_relay("wss://relay.nostr.info", None).await?;
+    /// ```
+    #[cfg(not(feature = "blocking"))]
     pub async fn disconnect_relay(&mut self, url: &str) -> Result<()> {
         self.pool.disconnect_relay(url).await
     }
 
     /// Connect to all added relays and keep connection alive
+    ///
+    /// # Example
+    /// ```rust
+    /// client.connect().await?;
+    /// ```
+    #[cfg(not(feature = "blocking"))]
     pub async fn connect(&mut self) -> Result<()> {
         self.pool.connect().await
     }
 
     /// Disconnect from all relays
+    ///
+    /// # Example
+    /// ```rust
+    /// client.disconnect().await?;
+    /// ```
+    #[cfg(not(feature = "blocking"))]
     pub async fn disconnect(&mut self) -> Result<()> {
         self.pool.disconnect().await
     }
 
     /// Subscribe to filters
+    ///
+    /// # Example
+    /// ```rust
+    /// use nostr_sdk::base::SubscriptionFilter;
+    ///
+    /// let subscription = SubscriptionFilter::new()
+    ///     .pubkey(my_keys.public_key())
+    ///     .since(Utc::now());
+    ///
+    /// client.subscribe(vec![subscription]).await?;
+    /// ```
+    #[cfg(not(feature = "blocking"))]
     pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
         self.pool.subscribe(filters).await
     }
 
     /// Send event
+    #[cfg(not(feature = "blocking"))]
     pub async fn send_event(&self, event: Event) -> Result<()> {
         self.pool.send_event(event).await
     }
 
+    /// Update profile metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// client.update_profile(
+    ///     Some("nostr_sdk"),
+    ///     Some("Nostr SDK"),
+    ///     Some("https://github.com/yukibtc/nostr-rs-sdk"),
+    ///     None,
+    /// )
+    /// .await
+    /// .unwrap();
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn update_profile(
+        &self,
+        username: Option<&str>,
+        display_name: Option<&str>,
+        about: Option<&str>,
+        picture: Option<&str>,
+    ) -> Result<()> {
+        let event = Event::set_metadata(&self.keys, username, display_name, about, picture)?;
+        self.send_event(event).await
+    }
+
     /// Delete event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
+    ///
+    #[cfg(not(feature = "blocking"))]
     pub async fn delete_event(&self, event_id: &str) -> Result<()> {
         let event = Event::delete(&self.keys, vec![Hash::from_str(event_id)?], None)?;
         self.send_event(event).await
     }
 
+    #[cfg(not(feature = "blocking"))]
     pub async fn handle_notifications<F>(&self, func: F) -> Result<()>
     where
         F: Fn(RelayPoolNotifications) -> Result<()>,
@@ -101,42 +189,34 @@ impl Client {
 
 #[cfg(feature = "blocking")]
 impl Client {
-    /// Disconnect and remove relay
     pub fn remove_relay(&mut self, url: &str) -> Result<()> {
         RUNTIME.block_on(async { self.pool.remove_relay(url).await })
     }
 
-    /// Connect relay
     pub fn connect_relay(&mut self, url: &str) -> Result<()> {
         RUNTIME.block_on(async { self.pool.connect_relay(url).await })
     }
 
-    /// Disconnect relay
     pub fn disconnect_relay(&mut self, url: &str) -> Result<()> {
         RUNTIME.block_on(async { self.pool.disconnect_relay(url).await })
     }
 
-    /// Connect to all added relays and keep connection alive
     pub fn connect(&mut self) -> Result<()> {
         RUNTIME.block_on(async { self.pool.connect().await })
     }
 
-    /// Disconnect from all relays
     pub fn disconnect(&mut self) -> Result<()> {
         RUNTIME.block_on(async { self.pool.disconnect().await })
     }
 
-    /// Subscribe to filters
     pub fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
         RUNTIME.block_on(async { self.pool.subscribe(filters).await })
     }
 
-    /// Send event
     pub fn send_event(&self, event: Event) -> Result<()> {
         RUNTIME.block_on(async { self.pool.send_event(event).await })
     }
 
-    /// Delete event
     pub fn delete_event(&self, event_id: &str) -> Result<()> {
         let event = Event::delete(&self.keys, vec![Hash::from_str(event_id)?], None)?;
         self.send_event(event)
