@@ -13,9 +13,9 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use url::Url;
 
 use super::Relay;
-use crate::subscription::Subscription;
 #[cfg(feature = "blocking")]
 use crate::new_current_thread;
+use crate::subscription::Subscription;
 
 #[derive(Debug)]
 pub enum RelayPoolEvent {
