@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use bitcoin_hashes::sha256::Hash;
-use nostr_sdk_base::{Event, Keys, SubscriptionFilter};
+use nostr_sdk_base::{Event, Keys, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 
 use crate::relay::pool::{RelayPool, RelayPoolNotifications};
@@ -162,6 +162,20 @@ impl Client {
         self.send_event(event).await
     }
 
+    /// Publish text note
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// client.publish_text_note("My first text note from Nostr SDK!", &[]).await.unwrap();
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<()> {
+        let event = Event::new_text_note(&self.keys, content, tags)?;
+        self.send_event(event).await
+    }
+
     /// Delete event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
@@ -215,6 +229,22 @@ impl Client {
 
     pub fn send_event(&self, event: Event) -> Result<()> {
         RUNTIME.block_on(async { self.pool.send_event(event).await })
+    }
+
+    pub fn update_profile(
+        &self,
+        username: Option<&str>,
+        display_name: Option<&str>,
+        about: Option<&str>,
+        picture: Option<&str>,
+    ) -> Result<()> {
+        let event = Event::set_metadata(&self.keys, username, display_name, about, picture)?;
+        self.send_event(event)
+    }
+
+    pub fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<()> {
+        let event = Event::new_text_note(&self.keys, content, tags)?;
+        self.send_event(event)
     }
 
     pub fn delete_event(&self, event_id: &str) -> Result<()> {
