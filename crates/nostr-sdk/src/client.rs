@@ -9,7 +9,7 @@ use bitcoin_hashes::sha256::Hash;
 use nostr_sdk_base::{Event, Keys, SubscriptionFilter};
 use tokio::sync::broadcast;
 
-use crate::relay::{RelayPool, RelayPoolNotifications};
+use crate::relay::pool::{RelayPool, RelayPoolNotifications};
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 

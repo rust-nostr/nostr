@@ -14,8 +14,9 @@ pub mod client;
 pub mod relay;
 pub mod subscription;
 
-pub use client::Client;
-pub use relay::{Relay, RelayPool, RelayPoolNotifications, RelayStatus};
+pub use self::client::Client;
+pub use self::relay::pool::{RelayPool, RelayPoolNotifications};
+pub use self::relay::{Relay, RelayStatus};
 
 #[cfg(feature = "blocking")]
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
