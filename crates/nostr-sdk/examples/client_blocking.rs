@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     client.add_relay("wss://relay.damus.io", None)?;
     client.add_relay("wss://nostr.openchain.fr", None)?;
 
-    client.connect_all()?;
+    client.connect()?;
 
     client.delete_event("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")?;
 

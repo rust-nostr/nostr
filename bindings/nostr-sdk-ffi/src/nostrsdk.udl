@@ -132,7 +132,7 @@ interface Client {
     [Throws=NostrError]
     void connect_relay(string url);
     [Throws=NostrError]
-    void connect_all();
+    void connect();
     [Throws=NostrError]
     void subscribe(sequence<SubscriptionFilter> filters);
     [Throws=NostrError]

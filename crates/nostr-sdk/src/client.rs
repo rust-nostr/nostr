@@ -54,8 +54,8 @@ impl Client {
     }
 
     /// Connect to all disconnected relays
-    pub async fn connect_all(&mut self) -> Result<()> {
-        self.pool.connect_all().await
+    pub async fn connect(&mut self) -> Result<()> {
+        self.pool.connect().await
     }
 
     pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
@@ -100,8 +100,8 @@ impl Client {
     }
 
     /// Connect to all disconnected relays
-    pub fn connect_all(&mut self) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.connect_all().await })
+    pub fn connect(&mut self) -> Result<()> {
+        RUNTIME.block_on(async { self.pool.connect().await })
     }
 
     pub fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {

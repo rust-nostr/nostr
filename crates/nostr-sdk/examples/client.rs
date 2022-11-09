@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
         proxy,
     )?;
 
-    client.connect_all().await?;
+    client.connect().await?;
 
     client
         .delete_event("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")

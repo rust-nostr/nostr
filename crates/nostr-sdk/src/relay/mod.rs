@@ -519,7 +519,7 @@ impl RelayPool {
         Ok(())
     }
 
-    pub async fn connect_all(&mut self) -> Result<()> {
+    pub async fn connect(&mut self) -> Result<()> {
         for (relay_url, relay) in self.relays.clone().iter() {
             relay.connect().await;
             self.subscribe_relay(relay_url).await?;

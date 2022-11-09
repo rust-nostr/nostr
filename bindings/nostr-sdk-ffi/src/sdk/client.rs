@@ -38,8 +38,8 @@ impl Client {
         self.client.lock().connect_relay(&url)
     }
 
-    pub fn connect_all(&self) -> Result<()> {
-        self.client.lock().connect_all()
+    pub fn connect(&self) -> Result<()> {
+        self.client.lock().connect()
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) -> Result<()> {
