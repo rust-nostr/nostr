@@ -22,8 +22,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let event = Event::set_metadata(
         &my_keys,
-        "username",
-        "Username",
+        Some("username"),
+        Some("Username"),
         Some("Description"),
         Some("https://example.com/avatar.png"),
     )?;

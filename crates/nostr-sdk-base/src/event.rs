@@ -79,14 +79,14 @@ impl Event {
 
     pub fn set_metadata(
         keys: &Keys,
-        username: &str,
-        display_name: &str,
+        username: Option<&str>,
+        display_name: Option<&str>,
         about: Option<&str>,
         picture: Option<&str>,
     ) -> Result<Self> {
         let metadata: Value = json!({
-            "name": username,
-            "display_name": display_name,
+            "name": username.unwrap_or(""),
+            "display_name": display_name.unwrap_or(""),
             "about": about.unwrap_or(""),
             "picture": picture.unwrap_or(""),
         });

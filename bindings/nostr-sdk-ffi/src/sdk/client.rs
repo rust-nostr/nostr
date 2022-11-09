@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use nostr_sdk::client::Client as ClientSdk;
-use nostr_sdk::relay::RelayPoolNotifications as RelayPoolNotificationsSdk;
+use nostr_sdk::relay::pool::RelayPoolNotifications as RelayPoolNotificationsSdk;
 use parking_lot::Mutex;
 
 use crate::base::event::Event;

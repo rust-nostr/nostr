@@ -3,6 +3,8 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+#[cfg(feature = "blocking")]
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use nostr_sdk_base::{ClientMessage, Event as NostrEvent, Keys, RelayMessage, SubscriptionFilter};
@@ -12,6 +14,8 @@ use url::Url;
 
 use super::Relay;
 use crate::subscription::Subscription;
+#[cfg(feature = "blocking")]
+use crate::new_current_thread;
 
 #[derive(Debug)]
 pub enum RelayPoolEvent {

@@ -55,16 +55,16 @@ impl Event {
 
     pub fn set_metadata(
         keys: Arc<Keys>,
-        username: String,
-        display_name: String,
+        username: Option<String>,
+        display_name: Option<String>,
         about: Option<String>,
         picture: Option<String>,
     ) -> Result<Self> {
         Ok(Self {
             event: EventSdk::set_metadata(
                 keys.deref(),
-                &username,
-                &display_name,
+                username.as_deref(),
+                display_name.as_deref(),
                 about.as_deref(),
                 picture.as_deref(),
             )?,

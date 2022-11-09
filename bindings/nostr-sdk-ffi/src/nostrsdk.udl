@@ -78,7 +78,7 @@ interface Event {
     Kind kind();
     string content();
     [Throws=NostrError, Name=set_metadata]
-    constructor(Keys keys, string username, string display_name, optional string? about = null, optional string? picture = null);
+    constructor(Keys keys, string? username, string? display_name, string? about, string? picture);
     [Throws=NostrError, Name=add_recommended_relay]
     constructor(Keys keys, string url);
     [Throws=NostrError, Name=set_contact_list]
