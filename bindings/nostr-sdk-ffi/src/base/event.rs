@@ -80,9 +80,9 @@ impl Event {
     }
 
     /* /// Create a new TextNote Event
-    pub fn new_textnote(content: String, keys: Arc<Keys>, tags: Vec<Tag>) -> Result<Self> {
+    pub fn new_text_note(content: String, keys: Arc<Keys>, tags: Vec<Tag>) -> Result<Self> {
         Ok(Self {
-            event: EventSdk::new_textnote(&content, keys.deref(), &tags)?,
+            event: EventSdk::new_text_note(&content, keys.deref(), &tags)?,
         })
     } */
 

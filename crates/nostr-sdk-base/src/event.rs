@@ -109,11 +109,11 @@ impl Event {
     }
 
     /// Create a new TextNote Event
-    pub fn new_textnote(keys: &Keys, content: &str, tags: &[Tag]) -> Result<Self> {
+    pub fn new_text_note(keys: &Keys, content: &str, tags: &[Tag]) -> Result<Self> {
         Self::new_generic(keys, Kind::Base(KindBase::TextNote), content, tags)
     }
 
-    pub fn new_pow_textnote(
+    pub fn new_pow_text_note(
         keys: &Keys,
         content: &str,
         tags: &[Tag],
@@ -142,7 +142,7 @@ impl Event {
                 return Err(anyhow!("Invalid pow tag index"));
             }
 
-            let event = Self::new_textnote(keys, content, &new_tags)?;
+            let event = Self::new_text_note(keys, content, &new_tags)?;
 
             let leading_zeroes = nip13::get_leading_zero_bits(event.id);
             if leading_zeroes >= difficulty {

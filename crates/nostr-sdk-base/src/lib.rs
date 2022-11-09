@@ -9,7 +9,7 @@ pub mod key;
 pub mod message;
 pub mod util;
 
-pub use self::event::{Contact, Event, Kind, KindBase};
+pub use self::event::{Contact, Event, Kind, KindBase, Tag};
 pub use self::key::Keys;
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
 
@@ -56,7 +56,7 @@ mod tests {
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?);
 
-        let event = Event::new_textnote(&keys, "hello", &vec![])?;
+        let event = Event::new_text_note(&keys, "hello", &vec![])?;
 
         let serialized = event.as_json().unwrap();
         let deserialized = Event::new_from_json(serialized)?;

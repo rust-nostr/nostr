@@ -46,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
     client.connect().await?;
 
     // Create and send new text note
-    let event = Event::new_textnote(&my_keys, "My first text note from Nostr SDK!", &[])?;
+    let event = Event::new_text_note(&my_keys, "My first text note from Nostr SDK!", &[])?;
     client.send_event(event).await?;
 
     Ok(())
