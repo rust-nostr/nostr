@@ -11,6 +11,7 @@ use nostr_sdk_base::{ClientMessage, Event as NostrEvent, Keys, RelayMessage, Sub
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use url::Url;
+use uuid::Uuid;
 
 use super::Relay;
 #[cfg(feature = "blocking")]
@@ -168,8 +169,12 @@ impl RelayPool {
 
     /// Disconnect and remove relay
     pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
-        self.disconnect_relay(url).await?;
-        self.relays.remove(url);
+        if let Some(relay) = self.relays.remove(url) {
+            if self.disconnect_relay(&relay).await.is_err() {
+                self.relays.insert(url.into(), relay);
+            }
+        }
+
         Ok(())
     }
 
@@ -198,34 +203,41 @@ impl RelayPool {
     /// Subscribe to filters
     pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
         self.subscription.update_filters(filters.clone());
-        for (k, _) in self.relays.clone().iter() {
-            self.subscribe_relay(k).await?;
+        for relay in self.relays.clone().values() {
+            self.subscribe_relay(relay).await?;
         }
 
         Ok(())
     }
 
-    async fn subscribe_relay(&mut self, url: &str) -> Result<()> {
-        if let Some(relay) = self.relays.get(url) {
-            let channel = self.subscription.get_channel(url);
+    /// Unsubscribe from filters
+    pub async fn unsubscribe(&mut self) -> Result<()> {
+        for relay in self.relays.clone().values() {
+            self.unsubscribe_relay(relay).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn subscribe_relay(&mut self, relay: &Relay) -> Result<Uuid> {
+        let channel = self.subscription.get_channel(&relay.url());
+        let channel_id = channel.id();
+
+        relay
+            .send_msg(ClientMessage::new_req(
+                channel_id.to_string(),
+                self.subscription.get_filters(),
+            ))
+            .await?;
+
+        Ok(channel_id)
+    }
+
+    async fn unsubscribe_relay(&mut self, relay: &Relay) -> Result<()> {
+        if let Some(channel) = self.subscription.remove_channel(&relay.url()) {
             relay
-                .send_msg(ClientMessage::new_req(
-                    channel.id().to_string(),
-                    self.subscription.get_filters(),
-                ))
+                .send_msg(ClientMessage::close(channel.id().to_string()))
                 .await?;
-        }
-
-        Ok(())
-    }
-
-    async fn unsubscribe_relay(&mut self, url: &str) -> Result<()> {
-        if let Some(relay) = self.relays.get(url) {
-            if let Some(channel) = self.subscription.remove_channel(url) {
-                relay
-                    .send_msg(ClientMessage::close(channel.id().to_string()))
-                    .await?;
-            }
         }
 
         Ok(())
@@ -233,8 +245,8 @@ impl RelayPool {
 
     /// Connect to all added relays and keep connection alive
     pub async fn connect(&mut self) -> Result<()> {
-        for url in self.relays.clone().keys() {
-            self.connect_relay(url).await?;
+        for relay in self.relays.clone().values() {
+            self.connect_relay(relay).await?;
         }
 
         Ok(())
@@ -242,34 +254,24 @@ impl RelayPool {
 
     /// Disconnect from all relays
     pub async fn disconnect(&mut self) -> Result<()> {
-        for url in self.relays.clone().keys() {
-            self.disconnect_relay(url).await?;
+        for relay in self.relays.clone().values() {
+            self.disconnect_relay(relay).await?;
         }
 
         Ok(())
     }
 
     /// Connect to relay
-    pub async fn connect_relay(&mut self, url: &str) -> Result<()> {
-        if let Some(relay) = self.relays.get(&url.to_string()) {
-            relay.connect().await;
-            self.subscribe_relay(url).await?;
-        } else {
-            log::error!("Impossible to connect to {}", url);
-        }
-
+    pub async fn connect_relay(&mut self, relay: &Relay) -> Result<()> {
+        relay.connect().await;
+        self.subscribe_relay(relay).await?;
         Ok(())
     }
 
     /// Disconnect from relay
-    pub async fn disconnect_relay(&mut self, url: &str) -> Result<()> {
-        if let Some(relay) = self.relays.get(&url.to_string()) {
-            relay.terminate().await?;
-            self.unsubscribe_relay(url).await?;
-        } else {
-            log::error!("Impossible to disconnect from {}", url);
-        }
-
+    pub async fn disconnect_relay(&mut self, relay: &Relay) -> Result<()> {
+        relay.terminate().await?;
+        self.unsubscribe_relay(relay).await?;
         Ok(())
     }
 }

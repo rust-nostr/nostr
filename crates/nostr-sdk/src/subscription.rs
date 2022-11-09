@@ -4,12 +4,13 @@
 use std::collections::HashMap;
 
 use nostr_sdk_base::SubscriptionFilter;
+use url::Url;
 use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct Subscription {
     filters: Vec<SubscriptionFilter>,
-    channels: HashMap<String, Channel>,
+    channels: HashMap<Url, Channel>,
 }
 
 impl Default for Subscription {
@@ -37,20 +38,20 @@ impl Subscription {
     }
 
     /// Add new subscription channel
-    pub fn add_channel(&mut self, relay_url: String, channel: Channel) {
-        self.channels.insert(relay_url, channel);
+    pub fn add_channel(&mut self, relay_url: &Url, channel: Channel) {
+        self.channels.insert(relay_url.clone(), channel);
     }
 
     /// Remove subscription channel
-    pub fn remove_channel(&mut self, relay_url: &str) -> Option<Channel> {
+    pub fn remove_channel(&mut self, relay_url: &Url) -> Option<Channel> {
         self.channels.remove(relay_url)
     }
 
     /// Get subscription channels
-    pub fn get_channel(&mut self, relay_url: &str) -> Channel {
+    pub fn get_channel(&mut self, relay_url: &Url) -> Channel {
         self.channels
-            .entry(relay_url.into())
-            .or_insert_with(|| Channel::new(relay_url))
+            .entry(relay_url.clone())
+            .or_insert_with(|| Channel::new(relay_url.clone()))
             .clone()
     }
 }
@@ -58,15 +59,15 @@ impl Subscription {
 #[derive(Debug, Clone)]
 pub struct Channel {
     id: Uuid,
-    relay_url: String,
+    relay_url: Url,
 }
 
 impl Channel {
     /// Create new subscription channel
-    pub fn new(relay_url: &str) -> Self {
+    pub fn new(relay_url: Url) -> Self {
         Self {
             id: Uuid::new_v4(),
-            relay_url: relay_url.into(),
+            relay_url,
         }
     }
 
@@ -76,7 +77,7 @@ impl Channel {
     }
 
     /// Get channel relay url
-    pub fn relay_url(&self) -> String {
+    pub fn relay_url(&self) -> Url {
         self.relay_url.clone()
     }
 }

@@ -4,7 +4,7 @@
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256::Hash;
 use nostr_sdk_base::{Contact, Event, Keys, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
@@ -76,7 +76,11 @@ impl Client {
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn connect_relay(&mut self, url: &str) -> Result<()> {
-        self.pool.connect_relay(url).await
+        if let Some(relay) = self.pool.relays().get(url) {
+            return self.pool.connect_relay(relay).await;
+        }
+
+        Err(anyhow!("Relay url not found"))
     }
 
     /// Disconnect relay
@@ -87,7 +91,11 @@ impl Client {
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn disconnect_relay(&mut self, url: &str) -> Result<()> {
-        self.pool.disconnect_relay(url).await
+        if let Some(relay) = self.pool.relays().get(url) {
+            return self.pool.disconnect_relay(relay).await;
+        }
+
+        Err(anyhow!("Relay url not found"))
     }
 
     /// Connect to all added relays and keep connection alive
