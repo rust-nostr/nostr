@@ -520,9 +520,16 @@ impl RelayPool {
     }
 
     pub async fn connect(&mut self) -> Result<()> {
-        for (relay_url, relay) in self.relays.clone().iter() {
-            relay.connect().await;
-            self.subscribe_relay(relay_url).await?;
+        for url in self.relays.clone().keys() {
+            self.connect_relay(url).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn disconnect(&mut self) -> Result<()> {
+        for url in self.relays.clone().keys() {
+            self.disconnect_relay(url).await?;
         }
 
         Ok(())

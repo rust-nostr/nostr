@@ -53,9 +53,14 @@ impl Client {
         self.pool.disconnect_relay(url).await
     }
 
-    /// Connect to all disconnected relays
+    /// Connect to relays and keep connection alive
     pub async fn connect(&mut self) -> Result<()> {
         self.pool.connect().await
+    }
+
+    /// Disconnect from all relays
+    pub async fn disconnect(&mut self) -> Result<()> {
+        self.pool.disconnect().await
     }
 
     pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
