@@ -1,5 +1,9 @@
 # Nostr SDK
 
+[![crates.io](https://img.shields.io/crates/v/nostr-sdk.svg)](https://crates.io/crates/nostr-sdk)
+[![Documentation](https://docs.rs/nostr_rust/badge.svg)](https://docs.rs/nostr-sdk)
+[![MIT/Apache-2 licensed](https://img.shields.io/crates/l/nostr-sdk.svg)](../../LICENSE)
+
 A high-level, [Nostr](https://github.com/nostr-protocol/nostr) client library written in Rust.
 
 If you're writing a typical Nostr client or bot, this is likely the crate you need.
