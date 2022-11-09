@@ -217,14 +217,13 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// use std::str::FromStr;
     /// use nostr_sdk::base::Contact;
-    /// use nostr_sdk::base::key::XOnlyPublicKey;
+    /// use nostr_sdk::base::key::{Keys, FromBech32};
     ///
     /// let list = vec![
     ///     Contact::new(
     ///         "my_first_contact",
-    ///         XOnlyPublicKey::from_str("hex_public_key").unwrap(),
+    ///         Keys::from_bech32_public_key("npub1...").unwrap().public_key(),
     ///         "wss://relay.damus.io",
     ///     ),
     /// ];
@@ -233,6 +232,23 @@ impl Client {
     #[cfg(not(feature = "blocking"))]
     pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
         let event = Event::set_contact_list(&self.keys, list)?;
+        self.send_event(event).await
+    }
+
+    /// Send encrypted direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// use nostr_sdk::base::key::{Keys, FromBech32};
+    ///
+    /// let alice_keys = Keys::from_bech32_public_key("npub1...").unwrap();
+    /// client.send_direct_msg(alice_keys, "My first DM fro Nostr SDK!").await.unwrap();
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
+        let event = Event::new_encrypted_direct_msg(&self.keys, &recipient, msg)?;
         self.send_event(event).await
     }
 
