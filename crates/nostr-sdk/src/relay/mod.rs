@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -57,7 +58,7 @@ impl Relay {
         let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(64);
 
         Ok(Self {
-            url: Url::parse(url)?,
+            url: Url::from_str(url)?,
             proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
             pool_sender,

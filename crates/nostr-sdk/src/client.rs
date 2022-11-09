@@ -8,6 +8,7 @@ use anyhow::Result;
 use bitcoin_hashes::sha256::Hash;
 use nostr_sdk_base::{Event, Keys, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
+use url::Url;
 
 use crate::relay::pool::{RelayPool, RelayPoolNotifications};
 #[cfg(feature = "blocking")]
@@ -176,6 +177,22 @@ impl Client {
         self.send_event(event).await
     }
 
+    /// Add recommended relay
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    ///
+    /// # Example
+    /// ```rust
+    ///
+    /// client.add_recommended_relay("wss://relay.damus.io").await.unwrap();
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn add_recommended_relay(&self, url: &str) -> Result<()> {
+        let url = Url::from_str(url)?;
+        let event = Event::add_recommended_relay(&self.keys, &url)?;
+        self.send_event(event).await
+    }
+
     /// Delete event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
@@ -201,6 +218,7 @@ impl Client {
     }
 }
 
+#[allow(missing_docs)]
 #[cfg(feature = "blocking")]
 impl Client {
     pub fn remove_relay(&mut self, url: &str) -> Result<()> {
