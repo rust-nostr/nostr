@@ -6,7 +6,7 @@
     - [nostr-sdk-ffi](./bindings/nostr-sdk-ffi/): UniFFI bindings of the nostr-sdk crate
 - [crates](./crates/):
     - [nostr-sdk](./crates/nostr-sdk/): High level client library.
-    - [nostr-sdk-base](./crates/nostr-sdk-base/): No (network) IO client state machine that can be used to embed a Nostr client in your project or build a full fledged network enabled client lib on top of it.
+    - [nostr-sdk-base](./crates/nostr-sdk-base/): Rust implementation of Nostr protocol.
 
 ## Minimum Supported Rust Version (MSRV)
 
