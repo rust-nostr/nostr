@@ -9,7 +9,7 @@ other lower-level crates. If you're attempting something more custom, you might 
 
 - [`nostr-sdk-base`](https://crates.io/crates/nostr-sdk-base): Rust implementation of Nostr protocol.
 
-# Getting started
+## Getting started
 
 ```toml
 [dependencies]
@@ -45,8 +45,19 @@ async fn main() -> anyhow::Result<()> {
     // Connect to relays and keep alive connection
     client.connect().await?;
 
+    // Update profile metadata
+    client.update_profile(
+        Some("username"), 
+        Some("Display Name"), 
+        Some("About"), 
+        Some("https://example.com/avatar.png")
+    ).await?;
+
     // Publish a text note
     client.publish_text_note("My first text note from Nostr SDK!", &[]).await?;
+
+    // Publish a POW text note
+    client.publish_pow_text_note("My first text note from Nostr SDK!", &[], 16).await?;
 
     // Disconnect from all relays
     client.disconnect().await?;
@@ -57,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
 
 More examples can be found in the [examples](https://github.com/yukibtc/nostr-rs-sdk/tree/master/crates/nostr-sdk/examples) directory.
 
-# Crate Feature Flags
+## Crate Feature Flags
 
 The following crate feature flags are available:
 
