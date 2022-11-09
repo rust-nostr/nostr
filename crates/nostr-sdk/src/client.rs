@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use bitcoin_hashes::sha256::Hash;
-use nostr_sdk_base::{Event, Keys, SubscriptionFilter, Tag};
+use nostr_sdk_base::{Contact, Event, Keys, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 use url::Url;
 
@@ -202,13 +202,37 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    ///
     /// client.add_recommended_relay("wss://relay.damus.io").await.unwrap();
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn add_recommended_relay(&self, url: &str) -> Result<()> {
         let url = Url::from_str(url)?;
         let event = Event::add_recommended_relay(&self.keys, &url)?;
+        self.send_event(event).await
+    }
+
+    /// Set contact list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::str::FromStr;
+    /// use nostr_sdk::base::Contact;
+    /// use nostr_sdk::base::key::XOnlyPublicKey;
+    ///
+    /// let list = vec![
+    ///     Contact::new(
+    ///         "my_first_contact",
+    ///         XOnlyPublicKey::from_str("hex_public_key").unwrap(),
+    ///         "wss://relay.damus.io",
+    ///     ),
+    /// ];
+    /// client.set_contact_list(list).await.unwrap();
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
+        let event = Event::set_contact_list(&self.keys, list)?;
         self.send_event(event).await
     }
 
