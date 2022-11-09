@@ -33,9 +33,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let bob_keys = Keys::new(SecretKey::from_str(BOB_SK)?);
 
     let alice_says_hi =
-        ClientMessage::new_event(Event::new_textnote("hi from alice", &alice_keys, &vec![])?);
+        ClientMessage::new_event(Event::new_textnote(&alice_keys, "hi from alice", &vec![])?);
     let bob_says_hi =
-        ClientMessage::new_event(Event::new_textnote("bob says hello", &bob_keys, &vec![])?);
+        ClientMessage::new_event(Event::new_textnote(&bob_keys, "bob says hello", &vec![])?);
 
     let subscribe_to_alice = ClientMessage::new_req(
         "abcdefgh",

@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let pow_difficulty = 16; // leading zero bits
     let msg_content = "This is a Nostr message with embedded proof-of-work";
 
-    let event = Event::new_pow_textnote(msg_content, &alice_keys, &[], pow_difficulty)?;
+    let event = Event::new_pow_textnote(&alice_keys, msg_content, &[], pow_difficulty)?;
 
     println!("{:#?}", event);
 
