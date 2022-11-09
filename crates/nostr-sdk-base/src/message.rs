@@ -8,14 +8,14 @@ use serde_json::{json, Value};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::event::KindBase;
 use crate::{Event, Kind};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct SubscriptionFilter {
-    // TODO can we write this without all these "Option::is_none"
     #[serde(skip_serializing_if = "Option::is_none")]
     ids: Option<Vec<Uuid>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    authors: Option<Vec<XOnlyPublicKey>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     kinds: Option<Vec<Kind>>,
     #[serde(rename = "#e")]
@@ -29,7 +29,7 @@ pub struct SubscriptionFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
     until: Option<u64>, // unix timestamp seconds
     #[serde(skip_serializing_if = "Option::is_none")]
-    authors: Option<Vec<XOnlyPublicKey>>,
+    limit: Option<u16>,
 }
 
 impl Default for SubscriptionFilter {
@@ -48,6 +48,7 @@ impl SubscriptionFilter {
             since: None,
             until: None,
             authors: None,
+            limit: None,
         }
     }
 
@@ -65,37 +66,36 @@ impl SubscriptionFilter {
         }
     }
 
-    pub fn kind_custom(self, kind_id: u16) -> Self {
+    pub fn authors(self, authors: Vec<XOnlyPublicKey>) -> Self {
         Self {
-            kinds: Some(vec![Kind::Custom(kind_id)]),
+            authors: Some(authors),
             ..self
         }
     }
 
-    pub fn kind_base(self, kind_base: KindBase) -> Self {
+    pub fn kinds(self, kinds: Vec<Kind>) -> Self {
         Self {
-            kinds: Some(vec![Kind::Base(kind_base)]),
+            kinds: Some(kinds),
             ..self
         }
     }
 
     // #e
-    pub fn event(self, event_id: impl Into<Uuid>) -> Self {
+    pub fn events(self, ids: impl Into<Vec<Uuid>>) -> Self {
         Self {
-            events: Some(vec![event_id.into()]),
+            events: Some(ids.into()),
             ..self
         }
     }
 
     // #p, for instance the receiver public key
-    pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
+    pub fn pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
         Self {
-            pubkeys: Some(vec![pubkey]),
+            pubkeys: Some(pubkeys),
             ..self
         }
     }
 
-    // unix timestamp seconds
     pub fn since(self, since: DateTime<Utc>) -> Self {
         Self {
             since: Some(since.timestamp().try_into().unwrap_or(0)),
@@ -110,9 +110,9 @@ impl SubscriptionFilter {
         }
     }
 
-    pub fn authors(self, authors: Vec<XOnlyPublicKey>) -> Self {
+    pub fn limit(self, limit: u16) -> Self {
         Self {
-            authors: Some(authors),
+            limit: Some(limit),
             ..self
         }
     }

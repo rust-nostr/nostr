@@ -27,7 +27,7 @@ fn main() -> Result<()> {
     client.delete_event("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")?;
 
     let subscription = SubscriptionFilter::new()
-        .pubkey(my_keys.public_key())
+        .pubkey(vec![my_keys.public_key()])
         .since(Utc::now());
 
     client.subscribe(vec![subscription])?;

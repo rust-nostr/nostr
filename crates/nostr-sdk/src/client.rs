@@ -119,7 +119,7 @@ impl Client {
     /// use nostr_sdk::base::SubscriptionFilter;
     ///
     /// let subscription = SubscriptionFilter::new()
-    ///     .pubkey(my_keys.public_key())
+    ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Utc::now());
     ///
     /// client.subscribe(vec![subscription]).await?;
