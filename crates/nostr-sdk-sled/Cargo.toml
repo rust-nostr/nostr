@@ -1,5 +1,5 @@
 [package]
-name = "nostr-sdk-common"
+name = "nostr-sdk-sled"
 version = "0.1.0"
 edition = "2021"
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
@@ -8,5 +8,3 @@ repository = "https://github.com/yukibtc/nostr-rs-sdk.git"
 license = "MIT"
 
 [dependencies]
-anyhow = "1.0"
-log = "0.4"

@@ -5,15 +5,6 @@ members = [
 ]
 default-members = ["crates/*"]
 
-[workspace.package]
-edition = "2021"
-authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
-license = "MIT"
-homepage = "https://github.com/yukibtc/nostr-rs-sdk"
-repository = "https://github.com/yukibtc/nostr-rs-sdk.git"
-rust-version = "1.64"
-keywords = ["nostr", "sdk", "rust"]
-
 [profile.release]
 lto = true
 codegen-units = 1

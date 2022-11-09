@@ -1,13 +1,15 @@
 [package]
 name = "nostr-sdk-base"
 version = "0.1.1"
+edition = "2021"
 description = "Rust implementation of the Nostr protocol."
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
-rust-version.workspace = true
+authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
+homepage = "https://github.com/yukibtc/nostr-rs-sdk"
+repository = "https://github.com/yukibtc/nostr-rs-sdk.git"
+license = "MIT"
+readme = "README.md"
+rust-version = "1.64"
+keywords = ["nostr", "sdk", "rust"]
 
 [dependencies]
 aes = "0.8"
