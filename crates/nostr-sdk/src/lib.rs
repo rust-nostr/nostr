@@ -1,6 +1,9 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+#![doc = include_str!("../README.md")]
+#![warn(missing_debug_implementations, missing_docs)]
+
 #[cfg(feature = "blocking")]
 use anyhow::Result;
 #[cfg(feature = "blocking")]

@@ -45,9 +45,11 @@ async fn main() -> anyhow::Result<()> {
     // Connect to relays and keep alive connection
     client.connect().await?;
 
-    // Create and send new text note
-    let event = Event::new_text_note(&my_keys, "My first text note from Nostr SDK!", &[])?;
-    client.send_event(event).await?;
+    // Publish a text note
+    client.publish_text_note("My first text note from Nostr SDK!", &[]).await?;
+
+    // Disconnect from all relays
+    client.disconnect().await?;
 
     Ok(())
 }
