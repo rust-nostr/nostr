@@ -177,6 +177,25 @@ impl Client {
         self.send_event(event).await
     }
 
+    /// Publish POW text note
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16).await.unwrap();
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn publish_pow_text_note(
+        &self,
+        content: &str,
+        tags: &[Tag],
+        difficulty: u8,
+    ) -> Result<()> {
+        let event = Event::new_pow_text_note(&self.keys, content, tags, difficulty)?;
+        self.send_event(event).await
+    }
+
     /// Add recommended relay
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
