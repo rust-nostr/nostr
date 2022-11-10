@@ -4,6 +4,8 @@
 [![Documentation](https://docs.rs/nostr-sdk/badge.svg)](https://docs.rs/nostr-sdk)
 [![MIT](https://img.shields.io/crates/l/nostr-sdk.svg)](../../LICENSE)
 
+## Description
+
 A high-level, [Nostr](https://github.com/nostr-protocol/nostr) client library written in Rust.
 
 If you're writing a typical Nostr client or bot, this is likely the crate you need.
