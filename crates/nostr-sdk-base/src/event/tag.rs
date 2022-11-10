@@ -2,10 +2,15 @@
 // Distributed under the MIT software license
 
 use std::fmt;
+use std::str::FromStr;
 
+use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256;
 use secp256k1::XOnlyPublicKey;
 
+use super::kind::KindBase;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TagKind {
     P,
     E,
@@ -18,6 +23,19 @@ impl fmt::Display for TagKind {
             Self::P => write!(f, "p"),
             Self::E => write!(f, "e"),
             Self::Nonce => write!(f, "nonce"),
+        }
+    }
+}
+
+impl FromStr for TagKind {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "p" => Ok(Self::P),
+            "e" => Ok(Self::E),
+            "nonce" => Ok(Self::Nonce),
+            _ => Err(anyhow!("Impossible to parse tag kind")),
         }
     }
 }
@@ -65,11 +83,31 @@ impl Tag {
         Self(data.into())
     }
 
-    pub fn kind(&self) -> &str {
-        &self.0[0]
+    pub fn kind(&self) -> Result<TagKind> {
+        match self.0.get(0) {
+            Some(kind) => Ok(TagKind::from_str(kind)?),
+            None => Err(anyhow!("Impossible to find kind")),
+        }
     }
 
-    pub fn content(&self) -> &str {
-        &self.0[1]
+    pub fn content(&self) -> Option<&str> {
+        self.0.get(1).map(|x| &**x)
+    }
+
+    pub fn parse(&self, kind_base: KindBase) -> Result<TagData> {
+        if let KindBase::ContactList = kind_base {
+            if let Some(pk) = self.0.get(1) {
+                let pk = XOnlyPublicKey::from_str(pk)?;
+                let relay_url = self.0.get(2).cloned();
+                let alias = self.0.get(3).cloned();
+                return Ok(TagData::ContactList {
+                    pk,
+                    relay_url: relay_url.unwrap_or_default(),
+                    alias: alias.unwrap_or_default(),
+                });
+            }
+        }
+
+        Err(anyhow!("Impossible to parse tag"))
     }
 }

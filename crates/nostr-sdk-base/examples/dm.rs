@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     subscription_id: _,
                 } => {
                     if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
-                        if event.tags[0].content() == alice_keys.public_key_as_str() {
+                        if event.tags[0].content() == Some(&alice_keys.public_key_as_str()) {
                             println!("New DM to alice");
                             println!("Encrypted: {}", event.content);
                             println!(
@@ -95,7 +95,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             socket.write_message(WsMessage::Text(
                                 ClientMessage::new_event(alice_encrypted_msg).to_json(),
                             ))?;
-                        } else if event.tags[0].content() == bob_keys.public_key_as_str() {
+                        } else if event.tags[0].content() == Some(&bob_keys.public_key_as_str()) {
                             println!("New DM to bob");
                             println!("Encrypted: {}", event.content);
                             println!(

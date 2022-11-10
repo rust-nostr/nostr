@@ -151,7 +151,7 @@ pub enum MessageHandleError {
 }
 
 /// Messages sent by relays, received by clients
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayMessage {
     //["EVENT", <subscription id>, <event JSON as defined above>]
     Event {

@@ -5,17 +5,20 @@ use secp256k1::XOnlyPublicKey;
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Contact {
-    pub alias: String,
     pub pk: XOnlyPublicKey,
     pub relay_url: String,
+    pub alias: String,
 }
 
 impl Contact {
-    pub fn new(alias: &str, pk: XOnlyPublicKey, relay_url: &str) -> Self {
+    pub fn new<S>(pk: XOnlyPublicKey, relay_url: S, alias: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
-            alias: alias.into(),
             pk,
             relay_url: relay_url.into(),
+            alias: alias.into(),
         }
     }
 }
