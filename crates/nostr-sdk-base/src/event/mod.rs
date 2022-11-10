@@ -2,7 +2,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::fmt;
 use std::str::FromStr;
 use std::time::Instant;
 
@@ -15,11 +14,15 @@ use chrono::{TimeZone, Utc};
 use secp256k1::{schnorr, KeyPair, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use url::Url;
 
+pub mod kind;
+pub mod tag;
+
+pub use self::kind::{Kind, KindBase};
+pub use self::tag::{Tag, TagData, TagKind};
 use crate::util::{nip04, nip13};
-use crate::Keys;
+use crate::{Contact, Keys};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub struct Event {
@@ -30,7 +33,7 @@ pub struct Event {
     pub kind: Kind,
     pub tags: Vec<Tag>,
     pub content: String,
-    #[serde(deserialize_with = "sig_string")] // Serde derive is being weird
+    #[serde(deserialize_with = "sig_string")]
     pub sig: schnorr::Signature,
 }
 
@@ -275,116 +278,6 @@ impl Event {
             Ok(event)
         } else {
             Err(anyhow!("Didn't verify"))
-        }
-    }
-}
-
-#[derive(Serialize_repr, Deserialize_repr, Eq, PartialEq, Debug, Copy, Clone)]
-#[repr(u8)]
-pub enum KindBase {
-    Metadata = 0,
-    TextNote = 1,
-    RecommendRelay = 2,
-    ContactList = 3,
-    EncryptedDirectMessage = 4,
-    EventDeletion = 5,
-    Boost = 6,
-    Reaction = 7,
-    ChannelCreation = 40,
-    ChannelMetadata = 41,
-    ChannelMessage = 42,
-    ChannelHideMessage = 43,
-    ChannelMuteUser = 44,
-}
-
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone)]
-#[serde(untagged)]
-pub enum Kind {
-    Base(KindBase),
-    Custom(u16),
-}
-
-pub enum TagKind {
-    P,
-    E,
-    Nonce,
-}
-
-impl fmt::Display for TagKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::P => write!(f, "p"),
-            Self::E => write!(f, "e"),
-            Self::Nonce => write!(f, "nonce"),
-        }
-    }
-}
-
-pub enum TagData {
-    Generic(TagKind, Vec<String>),
-    EventId(sha256::Hash),
-    PubKey(XOnlyPublicKey),
-    ContactList {
-        pk: XOnlyPublicKey,
-        relay_url: String,
-        alias: String,
-    },
-    POW {
-        nonce: u128,
-        difficulty: u8,
-    },
-}
-
-impl From<TagData> for Vec<String> {
-    fn from(data: TagData) -> Self {
-        match data {
-            TagData::Generic(kind, data) => vec![vec![kind.to_string()], data].concat(),
-            TagData::EventId(id) => vec![TagKind::E.to_string(), id.to_string()],
-            TagData::PubKey(pk) => vec![TagKind::P.to_string(), pk.to_string()],
-            TagData::ContactList {
-                pk,
-                relay_url,
-                alias,
-            } => vec![TagKind::P.to_string(), pk.to_string(), relay_url, alias],
-            TagData::POW { nonce, difficulty } => vec![
-                TagKind::Nonce.to_string(),
-                nonce.to_string(),
-                difficulty.to_string(),
-            ],
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
-pub struct Tag(Vec<String>);
-
-impl Tag {
-    pub fn new(data: TagData) -> Self {
-        Self(data.into())
-    }
-
-    pub fn kind(&self) -> &str {
-        &self.0[0]
-    }
-
-    pub fn content(&self) -> &str {
-        &self.0[1]
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Contact {
-    pub alias: String,
-    pub pk: XOnlyPublicKey,
-    pub relay_url: String,
-}
-
-impl Contact {
-    pub fn new(alias: &str, pk: XOnlyPublicKey, relay_url: &str) -> Self {
-        Self {
-            alias: alias.into(),
-            pk,
-            relay_url: relay_url.into(),
         }
     }
 }

@@ -6,12 +6,14 @@
 #[macro_use]
 extern crate serde;
 
+pub mod contact;
 pub mod event;
 pub mod key;
 pub mod message;
 pub mod util;
 
-pub use self::event::{Contact, Event, Kind, KindBase, Tag};
+pub use self::contact::Contact;
+pub use self::event::{Event, Kind, KindBase, Tag};
 pub use self::key::Keys;
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
 
