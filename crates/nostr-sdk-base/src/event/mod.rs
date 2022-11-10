@@ -80,6 +80,25 @@ impl Event {
         })
     }
 
+    /// Set metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// use nostr_sdk_base::key::{FromBech32, Keys};
+    /// use nostr_sdk_base::Event;
+    ///
+    /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
+    ///
+    /// let event = Event::set_metadata(
+    ///     &my_keys,
+    ///     Some("username"),
+    ///     Some("Username"),
+    ///     Some("Description"),
+    ///     Some("https://example.com/avatar.png"),
+    /// ).unwrap();
+    /// ```
     pub fn set_metadata(
         keys: &Keys,
         username: Option<&str>,
@@ -102,6 +121,7 @@ impl Event {
         )
     }
 
+    ///  Add recommended relay
     pub fn add_recommended_relay(keys: &Keys, url: &Url) -> Result<Self> {
         Self::new_generic(
             keys,
@@ -111,11 +131,36 @@ impl Event {
         )
     }
 
-    /// Create a new TextNote Event
+    /// Text note
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// use nostr_sdk_base::key::{FromBech32, Keys};
+    /// use nostr_sdk_base::Event;
+    ///
+    /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
+    ///
+    /// let event = Event::new_text_note(&my_keys, "My first text note from Nostr SDK!", &[]).unwrap();
+    /// ```
     pub fn new_text_note(keys: &Keys, content: &str, tags: &[Tag]) -> Result<Self> {
         Self::new_generic(keys, Kind::Base(KindBase::TextNote), content, tags)
     }
 
+    /// POW Text note
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// use nostr_sdk_base::key::{FromBech32, Keys};
+    /// use nostr_sdk_base::Event;
+    ///
+    /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
+    ///
+    /// let event = Event::new_pow_text_note(&my_keys, "My first POW text note from Nostr SDK!", &[], 16).unwrap();
+    /// ```
     pub fn new_pow_text_note(
         keys: &Keys,
         content: &str,
@@ -161,6 +206,7 @@ impl Event {
         }
     }
 
+    /// Set contact list
     pub fn set_contact_list(keys: &Keys, list: Vec<Contact>) -> Result<Self> {
         let tags: Vec<Tag> = list
             .iter()
@@ -224,6 +270,7 @@ impl Event {
         Self::new_generic(keys, Kind::Base(KindBase::Reaction), content, tags)
     }
 
+    /// Verify event
     pub fn verify(&self) -> Result<(), secp256k1::Error> {
         let secp = Secp256k1::new();
         let id = Self::gen_id(
@@ -237,10 +284,12 @@ impl Event {
         secp.verify_schnorr(&self.sig, &message, &self.pubkey)
     }
 
+    /// New event from json string
     pub fn new_from_json(json: String) -> Result<Self> {
         Ok(serde_json::from_str(&json)?)
     }
 
+    /// Get event as json string
     pub fn as_json(&self) -> Result<String> {
         Ok(serde_json::to_string(&self)?)
     }
