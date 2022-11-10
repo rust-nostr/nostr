@@ -68,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
     client.publish_text_note("My first text note from Nostr SDK!", &[]).await?;
 
     // Publish a POW text note
-    client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16).await?;
+    client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 20).await?;
 
     // Handle notifications
     client

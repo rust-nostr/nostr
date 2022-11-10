@@ -69,7 +69,7 @@ impl Event {
         let id: sha256::Hash = Self::gen_id(&pubkey, &created_at, &kind, tags, content);
         let message = secp256k1::Message::from_slice(&id)?;
 
-        Ok(Event {
+        Ok(Self {
             id,
             pubkey,
             created_at,
@@ -159,7 +159,7 @@ impl Event {
     ///
     /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
     ///
-    /// let event = Event::new_pow_text_note(&my_keys, "My first POW text note from Nostr SDK!", &[], 16).unwrap();
+    /// let event = Event::new_pow_text_note(&my_keys, "My first POW text note from Nostr SDK!", &[], 20).unwrap();
     /// ```
     pub fn new_pow_text_note(
         keys: &Keys,
@@ -167,42 +167,47 @@ impl Event {
         tags: &[Tag],
         difficulty: u8,
     ) -> Result<Self> {
-        let capacity: usize = tags.len() + 1;
-        let pow_tag_index: usize = capacity - 1;
         let mut nonce: u128 = 0;
         #[allow(unused_assignments)]
-        let mut new_tags: Vec<Tag> = Vec::with_capacity(capacity);
+        let mut tags: Vec<Tag> = tags.to_vec();
 
-        new_tags = vec![
-            tags.to_owned(),
-            vec![Tag::new(TagData::POW { nonce, difficulty })],
-        ]
-        .concat();
+        let pubkey = keys.public_key();
+        let kind = Kind::Base(KindBase::TextNote);
 
         let now = Instant::now();
 
         loop {
             nonce += 1;
 
-            if let Some(elem) = new_tags.get_mut(pow_tag_index) {
-                *elem = Tag::new(TagData::POW { nonce, difficulty });
-            } else {
-                return Err(anyhow!("Invalid pow tag index"));
-            }
+            tags.push(Tag::new(TagData::POW { nonce, difficulty }));
 
-            let event = Self::new_text_note(keys, content, &new_tags)?;
+            let created_at: DateTime<Utc> = Utc.timestamp(Utc::now().timestamp(), 0);
+            let id: sha256::Hash = Self::gen_id(&pubkey, &created_at, &kind, &tags, content);
 
-            let leading_zeroes = nip13::get_leading_zero_bits(event.id);
-            if leading_zeroes >= difficulty {
+            if nip13::get_leading_zero_bits(id) >= difficulty {
                 log::debug!(
-                    "{} iterations in {} seconds. Avg rate {} hashes/second",
+                    "{} iterations in {} ms. Avg rate {} hashes/second",
                     nonce,
-                    now.elapsed().as_secs(),
+                    now.elapsed().as_millis(),
                     nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
                 );
 
-                return Ok(event);
+                let secp = Secp256k1::new();
+                let keypair: &KeyPair = &keys.key_pair()?;
+                let message = secp256k1::Message::from_slice(&id)?;
+
+                return Ok(Self {
+                    id,
+                    pubkey,
+                    created_at,
+                    kind,
+                    tags,
+                    content: content.to_string(),
+                    sig: secp.sign_schnorr(&message, keypair),
+                });
             }
+
+            tags.pop();
         }
     }
 

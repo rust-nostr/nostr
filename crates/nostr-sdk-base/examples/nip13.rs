@@ -16,10 +16,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let alice_keys = Keys::new(SecretKey::from_str(ALICE_SK)?);
 
-    let pow_difficulty = 16; // leading zero bits
+    let pow_difficulty = 20; // leading zero bits
     let msg_content = "This is a Nostr message with embedded proof-of-work";
 
     let event = Event::new_pow_text_note(&alice_keys, msg_content, &[], pow_difficulty)?;
+
+    event.verify().unwrap();
 
     println!("{:#?}", event);
 
