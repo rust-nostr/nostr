@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use nostr_sdk_base::{ClientMessage, Event as NostrEvent, Keys, RelayMessage, SubscriptionFilter};
+use nostr_sdk_base::{ClientMessage, Event, RelayMessage, SubscriptionFilter};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use url::Url;
@@ -21,19 +21,19 @@ use crate::subscription::Subscription;
 #[derive(Debug)]
 pub enum RelayPoolEvent {
     ReceivedMsg { relay_url: Url, msg: RelayMessage },
-    RemoveContactEvents(Keys),
-    EventSent(NostrEvent),
+    EventSent(Event),
 }
 
 #[derive(Debug, Clone)]
 pub enum RelayPoolNotifications {
-    ReceivedEvent(NostrEvent),
+    ReceivedEvent(Event),
+    ReceivedMessage(RelayMessage),
 }
 
 struct RelayPoolTask {
     receiver: Receiver<RelayPoolEvent>,
     notification_sender: broadcast::Sender<RelayPoolNotifications>,
-    events: HashMap<String, Box<NostrEvent>>,
+    events: HashMap<String, Box<Event>>,
 }
 
 impl RelayPoolTask {
@@ -57,12 +57,17 @@ impl RelayPoolTask {
 
     async fn handle_message(&mut self, msg: RelayPoolEvent) {
         match msg {
-            RelayPoolEvent::ReceivedMsg { relay_url, msg } => {
-                log::debug!("Received message from {}: {:?}", &relay_url, &msg);
+            RelayPoolEvent::ReceivedMsg { relay_url: _, msg } => {
+                if let Err(e) = self
+                    .notification_sender
+                    .send(RelayPoolNotifications::ReceivedMessage(msg.clone()))
+                {
+                    log::error!("RelayPoolNotifications::ReceivedMessage error: {:?}", e);
+                };
 
                 if let RelayMessage::Event {
-                    event,
                     subscription_id: _,
+                    event,
                 } = msg
                 {
                     //Verifies if the event is valid
@@ -85,12 +90,6 @@ impl RelayPoolTask {
             }
             RelayPoolEvent::EventSent(ev) => {
                 self.events.insert(ev.id.to_string(), Box::new(ev));
-            }
-            RelayPoolEvent::RemoveContactEvents(contact_keys) => {
-                self.events.retain(|_, v| {
-                    v.pubkey != contact_keys.public_key()
-                        && v.tags[0].content() != contact_keys.public_key().to_string()
-                });
             }
         }
     }
@@ -179,22 +178,24 @@ impl RelayPool {
     }
 
     /// Send event
-    pub async fn send_event(&self, ev: NostrEvent) -> Result<()> {
+    pub async fn send_event(&self, event: Event) -> Result<()> {
         //Send to pool task to save in all received events
         if self.relays.is_empty() {
             return Err(anyhow!("No relay connected"));
         }
 
-        if let Err(e) = self
+        if let Err(err) = self
             .pool_task_sender
-            .send(RelayPoolEvent::EventSent(ev.clone()))
+            .send(RelayPoolEvent::EventSent(event.clone()))
             .await
         {
-            log::error!("send_event error: {}", e.to_string());
+            log::error!("send_event error: {}", err.to_string());
         };
 
-        for (_, relay) in self.relays.iter() {
-            relay.send_msg(ClientMessage::new_event(ev.clone())).await?;
+        for relay in self.relays.values() {
+            relay
+                .send_msg(ClientMessage::new_event(event.clone()))
+                .await?;
         }
 
         Ok(())
@@ -241,6 +242,49 @@ impl RelayPool {
         }
 
         Ok(())
+    }
+
+    pub async fn get_events_of(&mut self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>> {
+        let mut events: Vec<Event> = Vec::new();
+
+        let id = Uuid::new_v4();
+
+        // Subscribe
+        for relay in self.relays.clone().values() {
+            relay
+                .send_msg(ClientMessage::new_req(id.to_string(), filters.clone()))
+                .await?;
+        }
+
+        let mut notifications = self.notifications();
+
+        while let Ok(notification) = notifications.recv().await {
+            if let RelayPoolNotifications::ReceivedMessage(msg) = notification {
+                match msg {
+                    RelayMessage::Event {
+                        subscription_id,
+                        event,
+                    } => {
+                        if subscription_id == id.to_string() {
+                            events.push(event.as_ref().clone());
+                        }
+                    }
+                    RelayMessage::EndOfStoredEvents { subscription_id } => {
+                        if subscription_id == id.to_string() {
+                            break;
+                        }
+                    }
+                    _ => (),
+                };
+            }
+        }
+
+        // Unsubscribe
+        for relay in self.relays.clone().values() {
+            relay.send_msg(ClientMessage::close(id.to_string())).await?;
+        }
+
+        Ok(events)
     }
 
     /// Connect to all added relays and keep connection alive

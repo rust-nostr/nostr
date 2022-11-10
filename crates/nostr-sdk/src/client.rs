@@ -6,7 +6,8 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256::Hash;
-use nostr_sdk_base::{Contact, Event, Keys, SubscriptionFilter, Tag};
+use nostr_sdk_base::event::tag::TagData;
+use nostr_sdk_base::{Contact, Event, Keys, Kind, KindBase, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 use url::Url;
 
@@ -15,8 +16,8 @@ use crate::relay::pool::{RelayPool, RelayPoolNotifications};
 use crate::RUNTIME;
 
 pub struct Client {
-    pub pool: RelayPool,
-    pub keys: Keys,
+    pool: RelayPool,
+    keys: Keys,
 }
 
 impl Client {
@@ -240,6 +241,40 @@ impl Client {
     pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
         let event = Event::set_contact_list(&self.keys, list)?;
         self.send_event(event).await
+    }
+
+    /// Get contact list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// let list = client.get_contact_list().await.unwrap();
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn get_contact_list(&mut self) -> Result<Vec<Contact>> {
+        let mut contact_list: Vec<Contact> = Vec::new();
+
+        let filter = SubscriptionFilter::new()
+            .authors(vec![self.keys.public_key()])
+            .kind(Kind::Base(KindBase::ContactList))
+            .limit(1);
+        let events: Vec<Event> = self.pool.get_events_of(vec![filter]).await?;
+
+        for event in events.iter() {
+            for tag in event.tags.iter() {
+                if let Ok(TagData::ContactList {
+                    pk,
+                    relay_url,
+                    alias,
+                }) = tag.parse(KindBase::ContactList)
+                {
+                    contact_list.push(Contact::new(pk, relay_url, alias));
+                }
+            }
+        }
+
+        Ok(contact_list)
     }
 
     /// Send encrypted direct message

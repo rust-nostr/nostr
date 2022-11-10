@@ -199,7 +199,7 @@ impl Relay {
                             match String::from_utf8(data) {
                                 Ok(data) => match RelayMessage::from_json(&data) {
                                     Ok(msg) => {
-                                        log::trace!("Received data: {}", &msg.to_json());
+                                        log::debug!("Received message to {}: {:?}", relay.url, msg);
                                         if let Err(err) = relay
                                             .pool_sender
                                             .send(RelayPoolEvent::ReceivedMsg {

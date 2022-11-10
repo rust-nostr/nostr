@@ -46,19 +46,16 @@ async fn main() -> Result<()> {
 
     client
         .handle_notifications(|notification| {
-            match notification {
-                RelayPoolNotifications::ReceivedEvent(event) => {
-                    if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
-                        if let Ok(msg) =
-                            decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
-                        {
-                            println!("New DM: {}", msg);
-                        } else {
-                            log::error!("Impossible to decrypt direct message");
-                        }
+            if let RelayPoolNotifications::ReceivedEvent(event) = notification {
+                if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
+                    if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
+                    {
+                        println!("New DM: {}", msg);
                     } else {
-                        println!("{:#?}", event);
+                        log::error!("Impossible to decrypt direct message");
                     }
+                } else {
+                    println!("{:#?}", event);
                 }
             }
 
