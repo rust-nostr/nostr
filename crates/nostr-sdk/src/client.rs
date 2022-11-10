@@ -269,6 +269,58 @@ impl Client {
         self.send_event(event).await
     }
 
+    /// Like event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// use nostr_sdk::base::Event;
+    ///
+    /// let event = Event::from_json(r#"{
+    ///     "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
+    ///     "content":"🔥 78,680 blocks to the next Halving 🔥",
+    ///     "id":"3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21",
+    ///     "created_at":1667337749,
+    ///     "sig":"96e0a125e15ecc889757a1b517fdab0223a9ceae22d2591536b5f5186599b50cb1c5f20c2d0d06cdd5cd75368529e33bac4fcd3b321db9865d47785b95b72625",
+    ///     "kind":1,
+    ///     "tags":[]
+    /// }"#).unwrap();
+    ///
+    /// client.like(event).await.unwrap();
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn like(&self, event: &Event) -> Result<()> {
+        let event = Event::new_reaction(&self.keys, event, true)?;
+        self.send_event(event).await
+    }
+
+    /// Disike event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
+    ///
+    /// # Example
+    /// ```rust
+    /// use nostr_sdk::base::Event;
+    ///
+    /// let event = Event::from_json(r#"{
+    ///     "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
+    ///     "content":"🔥 78,680 blocks to the next Halving 🔥",
+    ///     "id":"3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21",
+    ///     "created_at":1667337749,
+    ///     "sig":"96e0a125e15ecc889757a1b517fdab0223a9ceae22d2591536b5f5186599b50cb1c5f20c2d0d06cdd5cd75368529e33bac4fcd3b321db9865d47785b95b72625",
+    ///     "kind":1,
+    ///     "tags":[]
+    /// }"#).unwrap();
+    ///  
+    /// client.dislike(event).await.unwrap();
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn dislike(&self, event: &Event) -> Result<()> {
+        let event = Event::new_reaction(&self.keys, event, false)?;
+        self.send_event(event).await
+    }
+
     #[cfg(not(feature = "blocking"))]
     pub async fn handle_notifications<F>(&self, func: F) -> Result<()>
     where
@@ -292,11 +344,23 @@ impl Client {
     }
 
     pub fn connect_relay(&mut self, url: &str) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.connect_relay(url).await })
+        RUNTIME.block_on(async {
+            if let Some(relay) = self.pool.relays().get(url) {
+                return self.pool.connect_relay(relay).await;
+            }
+
+            Err(anyhow!("Relay url not found"))
+        })
     }
 
     pub fn disconnect_relay(&mut self, url: &str) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.disconnect_relay(url).await })
+        RUNTIME.block_on(async {
+            if let Some(relay) = self.pool.relays().get(url) {
+                return self.pool.disconnect_relay(relay).await;
+            }
+
+            Err(anyhow!("Relay url not found"))
+        })
     }
 
     pub fn connect(&mut self) -> Result<()> {
@@ -331,8 +395,39 @@ impl Client {
         self.send_event(event)
     }
 
+    pub fn publish_pow_text_note(&self, content: &str, tags: &[Tag], difficulty: u8) -> Result<()> {
+        let event = Event::new_pow_text_note(&self.keys, content, tags, difficulty)?;
+        self.send_event(event)
+    }
+
+    pub fn add_recommended_relay(&self, url: &str) -> Result<()> {
+        let url = Url::from_str(url)?;
+        let event = Event::add_recommended_relay(&self.keys, &url)?;
+        self.send_event(event)
+    }
+
+    pub fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
+        let event = Event::set_contact_list(&self.keys, list)?;
+        self.send_event(event)
+    }
+
+    pub fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
+        let event = Event::new_encrypted_direct_msg(&self.keys, recipient, msg)?;
+        self.send_event(event)
+    }
+
     pub fn delete_event(&self, event_id: &str) -> Result<()> {
         let event = Event::delete(&self.keys, vec![Hash::from_str(event_id)?], None)?;
+        self.send_event(event)
+    }
+
+    pub fn like(&self, event: &Event) -> Result<()> {
+        let event = Event::new_reaction(&self.keys, event, true)?;
+        self.send_event(event)
+    }
+
+    pub fn dislike(&self, event: &Event) -> Result<()> {
+        let event = Event::new_reaction(&self.keys, event, false)?;
         self.send_event(event)
     }
 
