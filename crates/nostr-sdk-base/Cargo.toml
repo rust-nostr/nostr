@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk-base"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "Rust implementation of the Nostr protocol."
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
