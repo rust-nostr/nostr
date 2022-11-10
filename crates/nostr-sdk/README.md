@@ -38,8 +38,13 @@ async fn main() -> anyhow::Result<()> {
     //
     // or use your already existing
     //
+    // From Bech32
     // use nostr_sdk::base::key::FromBech32;
-    // let my_keys: Keys = Keys::from_bech32("nsec1...")?;
+    // let my_keys = Keys::from_bech32("nsec1...")?;
+    //
+    // From hex string
+    // use std::str::FromStr;
+    // let my_keys = Keys::from_str("hex-secret-key")?;
 
     // Create new client
     let mut client = Client::new(&my_keys);
