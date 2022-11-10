@@ -77,8 +77,6 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         })
         .await
-
-    Ok(())
 }
 ```
 
