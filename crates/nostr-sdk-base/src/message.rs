@@ -225,7 +225,7 @@ impl RelayMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let event = Event::new_from_json(v[2].to_string())
+            let event = Event::from_json(v[2].to_string())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
             let subscription_id: String = serde_json::from_value(v[1].clone())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
@@ -323,7 +323,7 @@ impl ClientMessage {
         //         return Err(MessageHandleError::InvalidMessageFormat);
         //     }
 
-        //     let event = Event::new_from_json(v[2].to_string())
+        //     let event = Event::from_json(v[2].to_string())
         //         .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
         //     let _context = v[1].clone();
 

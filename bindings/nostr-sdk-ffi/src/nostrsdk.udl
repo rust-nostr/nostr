@@ -90,7 +90,7 @@ interface Event {
     [Throws=NostrError, Name=new_reaction]
     constructor(Keys keys, string event_id, boolean positive);
     boolean verify();
-    [Throws=NostrError, Name=new_from_json]
+    [Throws=NostrError, Name=from_json]
     constructor(string json);
     [Throws=NostrError]
     string as_json();

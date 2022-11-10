@@ -138,9 +138,9 @@ impl Event {
         self.event.verify().is_ok()
     }
 
-    pub fn new_from_json(json: String) -> Result<Self> {
+    pub fn from_json(json: String) -> Result<Self> {
         Ok(Self {
-            event: EventSdk::new_from_json(json)?,
+            event: EventSdk::from_json(json)?,
         })
     }
 
