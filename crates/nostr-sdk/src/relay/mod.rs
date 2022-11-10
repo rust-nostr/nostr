@@ -90,10 +90,14 @@ impl Relay {
     }
 
     /// Connect to relay and keep alive connection
-    pub async fn connect(&self) {
+    pub async fn connect(&self, wait_for_connection: bool) {
         if let RelayStatus::Initialized | RelayStatus::Terminated = self.status().await {
-            // Update relay status
-            self.set_status(RelayStatus::Disconnected).await;
+            if wait_for_connection {
+                self.try_connect().await
+            } else {
+                // Update relay status
+                self.set_status(RelayStatus::Disconnected).await;
+            }
 
             let relay = self.clone();
             let connection_thread = async move {

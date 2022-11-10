@@ -62,7 +62,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// client.remove_relay("wss://relay.nostr.info", None).await?;
+    /// client.remove_relay("wss://relay.nostr.info").await?;
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
@@ -73,12 +73,12 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// client.connect_relay("wss://relay.nostr.info", None).await?;
+    /// client.connect_relay("wss://relay.nostr.info", true).await?;
     /// ```
     #[cfg(not(feature = "blocking"))]
-    pub async fn connect_relay(&mut self, url: &str) -> Result<()> {
+    pub async fn connect_relay(&mut self, url: &str, wait_for_connection: bool) -> Result<()> {
         if let Some(relay) = self.pool.relays().get(url) {
-            return self.pool.connect_relay(relay).await;
+            return self.pool.connect_relay(relay, wait_for_connection).await;
         }
 
         Err(anyhow!("Relay url not found"))
@@ -88,7 +88,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// client.disconnect_relay("wss://relay.nostr.info", None).await?;
+    /// client.disconnect_relay("wss://relay.nostr.info").await?;
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn disconnect_relay(&mut self, url: &str) -> Result<()> {
@@ -99,7 +99,7 @@ impl Client {
         Err(anyhow!("Relay url not found"))
     }
 
-    /// Connect to all added relays and keep connection alive
+    /// Connect to all added relays without waiting for connection and keep connection alive
     ///
     /// # Example
     /// ```rust
@@ -107,7 +107,18 @@ impl Client {
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn connect(&mut self) -> Result<()> {
-        self.pool.connect().await
+        self.pool.connect(false).await
+    }
+
+    /// Connect to all added relays waiting for initial connection and keep connection alive
+    ///
+    /// # Example
+    /// ```rust
+    /// client.connect().await?;
+    /// ```
+    #[cfg(not(feature = "blocking"))]
+    pub async fn connect_and_wait(&mut self) -> Result<()> {
+        self.pool.connect(true).await
     }
 
     /// Disconnect from all relays
@@ -378,10 +389,10 @@ impl Client {
         RUNTIME.block_on(async { self.pool.remove_relay(url).await })
     }
 
-    pub fn connect_relay(&mut self, url: &str) -> Result<()> {
+    pub fn connect_relay(&mut self, url: &str, wait_for_connection: bool) -> Result<()> {
         RUNTIME.block_on(async {
             if let Some(relay) = self.pool.relays().get(url) {
-                return self.pool.connect_relay(relay).await;
+                return self.pool.connect_relay(relay, wait_for_connection).await;
             }
 
             Err(anyhow!("Relay url not found"))
@@ -399,7 +410,11 @@ impl Client {
     }
 
     pub fn connect(&mut self) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.connect().await })
+        RUNTIME.block_on(async { self.pool.connect(false).await })
+    }
+
+    pub fn connect_and_wait(&mut self) -> Result<()> {
+        RUNTIME.block_on(async { self.pool.connect(true).await })
     }
 
     pub fn disconnect(&mut self) -> Result<()> {

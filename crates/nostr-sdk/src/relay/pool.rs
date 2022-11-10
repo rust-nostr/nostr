@@ -288,9 +288,9 @@ impl RelayPool {
     }
 
     /// Connect to all added relays and keep connection alive
-    pub async fn connect(&mut self) -> Result<()> {
+    pub async fn connect(&mut self, wait_for_connection: bool) -> Result<()> {
         for relay in self.relays.clone().values() {
-            self.connect_relay(relay).await?;
+            self.connect_relay(relay, wait_for_connection).await?;
         }
 
         Ok(())
@@ -306,8 +306,8 @@ impl RelayPool {
     }
 
     /// Connect to relay
-    pub async fn connect_relay(&mut self, relay: &Relay) -> Result<()> {
-        relay.connect().await;
+    pub async fn connect_relay(&mut self, relay: &Relay, wait_for_connection: bool) -> Result<()> {
+        relay.connect(wait_for_connection).await;
         self.subscribe_relay(relay).await?;
         Ok(())
     }

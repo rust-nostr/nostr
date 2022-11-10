@@ -25,7 +25,7 @@ tokio = { version = "1", features = ["full"] }
 ```
 
 ```rust,no_run
-use nostr_sdk::base::{Event, Keys};
+use nostr_sdk::base::Keys;
 use nostr_sdk::Client;
 
 #[tokio::main]
@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
     client.add_relay("wss://relay.damus.io", None)?;
     client.add_relay("wss://nostr.openchain.fr", None)?;
 
-    // Connect to relays and keep alive connection
+    // Connect to relays and keep connection alive
     client.connect().await?;
 
     // Update profile metadata
@@ -68,10 +68,15 @@ async fn main() -> anyhow::Result<()> {
     client.publish_text_note("My first text note from Nostr SDK!", &[]).await?;
 
     // Publish a POW text note
-    client.publish_pow_text_note("My first text note from Nostr SDK!", &[], 16).await?;
+    client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16).await?;
 
-    // Disconnect from all relays
-    client.disconnect().await?;
+    // Handle notifications
+    client
+        .handle_notifications(|notification| {
+            println!("{:?}", notification);
+            Ok(())
+        })
+        .await
 
     Ok(())
 }
