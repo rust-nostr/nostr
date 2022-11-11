@@ -244,13 +244,13 @@ impl RelayPool {
         Ok(())
     }
 
-    pub async fn get_events_of(&mut self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>> {
+    pub async fn get_events_of(&self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>> {
         let mut events: Vec<Event> = Vec::new();
 
         let id = Uuid::new_v4();
 
         // Subscribe
-        for relay in self.relays.clone().values() {
+        for relay in self.relays.values() {
             relay
                 .send_msg(ClientMessage::new_req(id.to_string(), filters.clone()))
                 .await?;
@@ -280,7 +280,7 @@ impl RelayPool {
         }
 
         // Unsubscribe
-        for relay in self.relays.clone().values() {
+        for relay in self.relays.values() {
             relay.send_msg(ClientMessage::close(id.to_string())).await?;
         }
 

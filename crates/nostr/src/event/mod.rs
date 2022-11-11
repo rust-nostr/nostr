@@ -20,7 +20,7 @@ pub mod kind;
 pub mod tag;
 
 pub use self::kind::{Kind, KindBase};
-pub use self::tag::{Tag, TagData, TagKind};
+pub use self::tag::{Marker, Tag, TagData, TagKind};
 use crate::util::{nip04, nip13};
 use crate::{Contact, Keys};
 
@@ -117,7 +117,7 @@ impl Event {
             keys,
             Kind::Base(KindBase::Metadata),
             &metadata.to_string(),
-            &Vec::new(),
+            &[],
         )
     }
 
@@ -273,6 +273,116 @@ impl Event {
         };
 
         Self::new_generic(keys, Kind::Base(KindBase::Reaction), content, tags)
+    }
+
+    /// Create new channel
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    pub fn new_channel(
+        keys: &Keys,
+        name: &str,
+        about: Option<&str>,
+        picture: Option<&str>,
+    ) -> Result<Self> {
+        let metadata: Value = json!({
+            "name": name,
+            "about": about.unwrap_or(""),
+            "picture": picture.unwrap_or(""),
+        });
+
+        Self::new_generic(
+            keys,
+            Kind::Base(KindBase::ChannelCreation),
+            &metadata.to_string(),
+            &[],
+        )
+    }
+
+    /// Set channel metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    pub fn set_channel_metadata(
+        keys: &Keys,
+        channel_id: sha256::Hash, // event id of kind 40
+        relay_url: Url,
+        name: &str,
+        about: Option<&str>,
+        picture: Option<&str>,
+    ) -> Result<Self> {
+        let metadata: Value = json!({
+            "name": name,
+            "about": about.unwrap_or(""),
+            "picture": picture.unwrap_or(""),
+        });
+
+        Self::new_generic(
+            keys,
+            Kind::Base(KindBase::ChannelMetadata),
+            &metadata.to_string(),
+            &[Tag::new(TagData::Nip10E(channel_id, relay_url, None))],
+        )
+    }
+
+    /// New channel message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    pub fn new_channel_msg(
+        keys: &Keys,
+        channel_id: sha256::Hash, // event id of kind 40
+        relay_url: Url,
+        content: &str,
+    ) -> Result<Self> {
+        Self::new_generic(
+            keys,
+            Kind::Base(KindBase::ChannelMessage),
+            content,
+            &[Tag::new(TagData::Nip10E(
+                channel_id,
+                relay_url,
+                Some(Marker::Root),
+            ))],
+        )
+    }
+
+    /// Hide message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    pub fn hide_channel_msg(
+        keys: &Keys,
+        message_id: sha256::Hash, // event id of kind 42
+        reason: &str,
+    ) -> Result<Self> {
+        let content: Value = json!({
+            "reason": reason,
+        });
+
+        Self::new_generic(
+            keys,
+            Kind::Base(KindBase::ChannelHideMessage),
+            &content.to_string(),
+            &[Tag::new(TagData::EventId(message_id))],
+        )
+    }
+
+    /// Hide message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    pub fn mute_channel_user(keys: &Keys, pubkey: XOnlyPublicKey, reason: &str) -> Result<Self> {
+        let content: Value = json!({
+            "reason": reason,
+        });
+
+        Self::new_generic(
+            keys,
+            Kind::Base(KindBase::ChannelMuteUser),
+            &content.to_string(),
+            &[Tag::new(TagData::PubKey(pubkey))],
+        )
     }
 
     /// Verify event

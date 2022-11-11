@@ -7,6 +7,34 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256;
 use secp256k1::XOnlyPublicKey;
+use url::Url;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Marker {
+    Root,
+    Reply,
+}
+
+impl fmt::Display for Marker {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Root => write!(f, "root"),
+            Self::Reply => write!(f, "reply"),
+        }
+    }
+}
+
+impl FromStr for Marker {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "root" => Ok(Self::Root),
+            "reply" => Ok(Self::Reply),
+            _ => Err(anyhow!("Impossible to parse marker")),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TagKind {
@@ -51,6 +79,7 @@ pub enum TagData {
         nonce: u128,
         difficulty: u8,
     },
+    Nip10E(sha256::Hash, Url, Option<Marker>),
 }
 
 impl From<TagData> for Vec<String> {
@@ -69,6 +98,17 @@ impl From<TagData> for Vec<String> {
                 nonce.to_string(),
                 difficulty.to_string(),
             ],
+            TagData::Nip10E(id, relay_url, marker) => {
+                let mut tag = vec![
+                    TagKind::E.to_string(),
+                    id.to_string(),
+                    relay_url.to_string(),
+                ];
+                if let Some(marker) = marker {
+                    tag.push(marker.to_string());
+                }
+                tag
+            }
         }
     }
 }
