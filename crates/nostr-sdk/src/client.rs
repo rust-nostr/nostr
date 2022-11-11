@@ -377,6 +377,74 @@ impl Client {
         self.send_event(event).await
     }
 
+    /// Create new channel
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    #[cfg(not(feature = "blocking"))]
+    pub async fn new_channel(
+        &self,
+        name: &str,
+        about: Option<&str>,
+        picture: Option<&str>,
+    ) -> Result<()> {
+        let event = Event::new_channel(&self.keys, name, about, picture)?;
+        self.send_event(event).await
+    }
+
+    /// Update channel metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    #[cfg(not(feature = "blocking"))]
+    pub async fn update_channel(
+        &self,
+        channel_id: Hash,
+        relay_url: Url,
+        name: &str,
+        about: Option<&str>,
+        picture: Option<&str>,
+    ) -> Result<()> {
+        let event =
+            Event::set_channel_metadata(&self.keys, channel_id, relay_url, name, about, picture)?;
+        self.send_event(event).await
+    }
+
+    /// Send message to channel
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    #[cfg(not(feature = "blocking"))]
+    pub async fn send_channel_msg(
+        &self,
+        channel_id: Hash,
+        relay_url: Url,
+        msg: &str,
+    ) -> Result<()> {
+        let event = Event::new_channel_msg(&self.keys, channel_id, relay_url, msg)?;
+        self.send_event(event).await
+    }
+
+    /// Hide channel message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    #[cfg(not(feature = "blocking"))]
+    pub async fn hide_channel_msg(&self, message_id: Hash, reason: &str) -> Result<()> {
+        let event = Event::hide_channel_msg(&self.keys, message_id, reason)?;
+        self.send_event(event).await
+    }
+
+    /// Mute channel user
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    ///
+    #[cfg(not(feature = "blocking"))]
+    pub async fn mute_channel_user(&self, pubkey: XOnlyPublicKey, reason: &str) -> Result<()> {
+        let event = Event::mute_channel_user(&self.keys, pubkey, reason)?;
+        self.send_event(event).await
+    }
+
     #[cfg(not(feature = "blocking"))]
     pub async fn handle_notifications<F>(&self, func: F) -> Result<()>
     where
