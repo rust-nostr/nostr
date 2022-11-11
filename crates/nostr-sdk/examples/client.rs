@@ -7,10 +7,10 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use anyhow::Result;
 use chrono::Utc;
-use nostr_sdk::base::key::{FromBech32, Keys};
-use nostr_sdk::base::util::nip04::decrypt;
-use nostr_sdk::base::{Kind, KindBase, SubscriptionFilter};
-use nostr_sdk::{Client, RelayPoolNotifications};
+use nostr::key::{FromBech32, Keys};
+use nostr::util::nip04::decrypt;
+use nostr::{Kind, KindBase, SubscriptionFilter};
+use nostr_sdk::{Client, RelayPoolNotifications, SyncSetting};
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 

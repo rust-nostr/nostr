@@ -19,7 +19,7 @@ bitcoin_hashes = "0.11"
 chrono = "0.4"
 log = "0.4"
 nostr-sdk  = { path = "../../crates/nostr-sdk", features = ["blocking"] }
-nostr-sdk-base  = { path = "../../crates/nostr-sdk-base" }
+nostr  = { path = "../../crates/nostr" }
 nostr-sdk-common  = { path = "../../crates/nostr-sdk-common" }
 parking_lot = "0.12.1"
 secp256k1 = "0.24" 

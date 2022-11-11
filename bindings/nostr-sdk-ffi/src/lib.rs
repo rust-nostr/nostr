@@ -17,7 +17,7 @@ trait FromResult<T>: Sized {
 #[allow(missing_docs)]
 mod ffi {
     // Extenal
-    pub use nostr_sdk_base::event::KindBase;
+    pub use nostr::event::KindBase;
 
     // Namespace
     pub use crate::logger::init_logger;

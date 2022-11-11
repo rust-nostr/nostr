@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use bitcoin_hashes::sha256;
-use nostr_sdk_base::event::Kind as KindSdk;
-use nostr_sdk_base::{Contact as ContactSdk, Event as EventSdk, KindBase};
+use nostr::event::Kind as KindSdk;
+use nostr::{Contact as ContactSdk, Event as EventSdk, KindBase};
 use secp256k1::XOnlyPublicKey;
 use url::Url;
 

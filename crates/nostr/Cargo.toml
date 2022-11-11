@@ -1,5 +1,5 @@
 [package]
-name = "nostr-sdk-base"
+name = "nostr"
 version = "0.1.5"
 edition = "2021"
 description = "Rust implementation of the Nostr protocol."
@@ -9,7 +9,7 @@ repository = "https://github.com/yukibtc/nostr-rs-sdk.git"
 license = "MIT"
 readme = "README.md"
 rust-version = "1.64"
-keywords = ["nostr", "sdk", "rust"]
+keywords = ["nostr", "protocol", "sdk", "rust"]
 
 [dependencies]
 aes = "0.8"

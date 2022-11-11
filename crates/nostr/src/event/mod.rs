@@ -86,8 +86,8 @@ impl Event {
     ///
     /// # Example
     /// ```rust
-    /// use nostr_sdk_base::key::{FromBech32, Keys};
-    /// use nostr_sdk_base::Event;
+    /// use nostr::key::{FromBech32, Keys};
+    /// use nostr::Event;
     ///
     /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
     ///
@@ -137,8 +137,8 @@ impl Event {
     ///
     /// # Example
     /// ```rust
-    /// use nostr_sdk_base::key::{FromBech32, Keys};
-    /// use nostr_sdk_base::Event;
+    /// use nostr::key::{FromBech32, Keys};
+    /// use nostr::Event;
     ///
     /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
     ///
@@ -154,8 +154,8 @@ impl Event {
     ///
     /// # Example
     /// ```rust
-    /// use nostr_sdk_base::key::{FromBech32, Keys};
-    /// use nostr_sdk_base::Event;
+    /// use nostr::key::{FromBech32, Keys};
+    /// use nostr::Event;
     ///
     /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
     ///

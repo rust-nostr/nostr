@@ -6,8 +6,8 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256::Hash;
-use nostr_sdk_base::event::tag::TagData;
-use nostr_sdk_base::{Contact, Event, Keys, Kind, KindBase, SubscriptionFilter, Tag};
+use nostr::event::tag::TagData;
+use nostr::{Contact, Event, Keys, Kind, KindBase, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 use url::Url;
 

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
-use nostr_sdk_base::{ClientMessage, RelayMessage};
+use nostr::{ClientMessage, RelayMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;

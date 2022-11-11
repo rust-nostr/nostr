@@ -1,8 +1,8 @@
 # Nostr
 
-[![crates.io](https://img.shields.io/crates/v/nostr-sdk-base.svg)](https://crates.io/crates/nostr-sdk-base)
-[![Documentation](https://docs.rs/nostr-sdk-base/badge.svg)](https://docs.rs/nostr-sdk-base)
-[![MIT](https://img.shields.io/crates/l/nostr-sdk-base.svg)](../../LICENSE)
+[![crates.io](https://img.shields.io/crates/v/nostr.svg)](https://crates.io/crates/nostr)
+[![Documentation](https://docs.rs/nostr/badge.svg)](https://docs.rs/nostr)
+[![MIT](https://img.shields.io/crates/l/nostr.svg)](../../LICENSE)
 
 ## Description
 
@@ -13,14 +13,14 @@ Rust implementation of Nostr protocol.
 ```toml
 [dependencies]
 anyhow = "1"
-nostr-sdk-base = "0.1"
+nostr = "0.1"
 tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"]}
 ```
 
 ```rust,no_run
 use std::str::FromStr;
-use nostr_sdk_base::key::{FromBech32, Keys};
-use nostr_sdk_base::message::ClientMessage;
+use nostr::key::{FromBech32, Keys};
+use nostr::message::ClientMessage;
 use tungstenite::{Message as WsMessage};
 
 #[tokio::main]
@@ -36,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
 
     let event = Event::set_metadata(
         &my_keys,
-        Some("nostr_sdk_base"),
+        Some("nostr"),
         Some("Nostr SDK"),
         Some("Description"),
         Some("https://example.com/avatar.png"),
@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-More examples can be found in the [examples](https://github.com/yukibtc/nostr-rs-sdk/tree/master/crates/nostr-sdk-base/examples) directory.
+More examples can be found in the [examples](https://github.com/yukibtc/nostr-rs-sdk/tree/master/crates/nostr/examples) directory.
 
 ## State
 

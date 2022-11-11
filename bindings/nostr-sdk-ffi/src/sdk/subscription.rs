@@ -27,8 +27,7 @@ impl Subscription {
     }
 
     pub fn update_filters(&self, filters: Vec<Arc<SubscriptionFilter>>) {
-        let mut new_filters: Vec<nostr_sdk_base::SubscriptionFilter> =
-            Vec::with_capacity(filters.len());
+        let mut new_filters: Vec<nostr::SubscriptionFilter> = Vec::with_capacity(filters.len());
         for filter in filters.into_iter() {
             new_filters.push(filter.as_ref().deref().clone());
         }

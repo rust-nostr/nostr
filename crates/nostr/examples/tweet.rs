@@ -5,8 +5,8 @@
 use std::error::Error;
 use std::str::FromStr;
 
-use nostr_sdk_base::event::{Kind, KindBase};
-use nostr_sdk_base::{ClientMessage, Event, Keys, RelayMessage, SubscriptionFilter};
+use nostr::event::{Kind, KindBase};
+use nostr::{ClientMessage, Event, Keys, RelayMessage, SubscriptionFilter};
 use secp256k1::SecretKey;
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;

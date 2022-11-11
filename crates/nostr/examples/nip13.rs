@@ -1,12 +1,12 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-extern crate nostr_sdk_base;
+extern crate nostr;
 
 use std::error::Error;
 use std::str::FromStr;
 
-use nostr_sdk_base::{Event, Keys};
+use nostr::{Event, Keys};
 use secp256k1::SecretKey;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";

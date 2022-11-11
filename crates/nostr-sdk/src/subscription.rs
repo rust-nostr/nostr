@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use nostr_sdk_base::SubscriptionFilter;
+use nostr::SubscriptionFilter;
 use url::Url;
 use uuid::Uuid;
 

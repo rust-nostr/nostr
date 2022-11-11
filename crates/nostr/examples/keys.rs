@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr_sdk_base::key::{FromBech32, Keys};
+use nostr::key::{FromBech32, Keys};
 
 fn main() {
     //  Random keys

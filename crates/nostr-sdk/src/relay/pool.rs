@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use nostr_sdk_base::{ClientMessage, Event, RelayMessage, SubscriptionFilter};
+use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use url::Url;
