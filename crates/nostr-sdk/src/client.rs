@@ -136,7 +136,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// use nostr_sdk::base::SubscriptionFilter;
+    /// use nostr::SubscriptionFilter;
     ///
     /// let subscription = SubscriptionFilter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
@@ -236,8 +236,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// use nostr_sdk::base::Contact;
-    /// use nostr_sdk::base::key::{Keys, FromBech32};
+    /// use nostr::Contact;
+    /// use nostr::key::{Keys, FromBech32};
     ///
     /// let list = vec![
     ///     Contact::new(
@@ -294,7 +294,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// use nostr_sdk::base::key::{Keys, FromBech32};
+    /// use nostr::key::{Keys, FromBech32};
     ///
     /// let alice_keys = Keys::from_bech32_public_key("npub1...").unwrap();
     /// client.send_direct_msg(alice_keys, "My first DM fro Nostr SDK!").await.unwrap();
@@ -321,7 +321,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// use nostr_sdk::base::Event;
+    /// use nostr::Event;
     ///
     /// let event = Event::from_json(r#"{
     ///     "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
@@ -347,7 +347,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust
-    /// use nostr_sdk::base::Event;
+    /// use nostr::Event;
     ///
     /// let event = Event::from_json(r#"{
     ///     "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",

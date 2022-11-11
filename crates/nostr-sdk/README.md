@@ -20,12 +20,13 @@ other lower-level crates. If you're attempting something more custom, you might 
 ```toml
 [dependencies]
 anyhow = "1"
+nostr = "0.1"
 nostr-sdk = "0.1"
 tokio = { version = "1", features = ["full"] }
 ```
 
 ```rust,no_run
-use nostr_sdk::base::Keys;
+use nostr::Keys;
 use nostr_sdk::Client;
 
 #[tokio::main]
@@ -39,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
     // or use your already existing
     //
     // From Bech32
-    // use nostr_sdk::base::key::FromBech32;
+    // use nostr::key::FromBech32;
     // let my_keys = Keys::from_bech32("nsec1...")?;
     //
     // From hex string
