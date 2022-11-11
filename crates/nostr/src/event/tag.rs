@@ -8,8 +8,6 @@ use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256;
 use secp256k1::XOnlyPublicKey;
 
-use super::kind::KindBase;
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TagKind {
     P,
@@ -94,20 +92,7 @@ impl Tag {
         self.0.get(1).map(|x| &**x)
     }
 
-    pub fn parse(&self, kind_base: KindBase) -> Result<TagData> {
-        if let KindBase::ContactList = kind_base {
-            if let Some(pk) = self.0.get(1) {
-                let pk = XOnlyPublicKey::from_str(pk)?;
-                let relay_url = self.0.get(2).cloned();
-                let alias = self.0.get(3).cloned();
-                return Ok(TagData::ContactList {
-                    pk,
-                    relay_url: relay_url.unwrap_or_default(),
-                    alias: alias.unwrap_or_default(),
-                });
-            }
-        }
-
-        Err(anyhow!("Impossible to parse tag"))
+    pub fn as_vec(&self) -> Vec<String> {
+        self.0.clone()
     }
 }

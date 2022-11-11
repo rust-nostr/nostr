@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256::Hash;
-use nostr::event::tag::TagData;
+use nostr::key::XOnlyPublicKey;
 use nostr::{Contact, Event, Keys, Kind, KindBase, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 use url::Url;
@@ -272,15 +272,18 @@ impl Client {
             .limit(1);
         let events: Vec<Event> = self.pool.get_events_of(vec![filter]).await?;
 
-        for event in events.iter() {
-            for tag in event.tags.iter() {
-                if let Ok(TagData::ContactList {
-                    pk,
-                    relay_url,
-                    alias,
-                }) = tag.parse(KindBase::ContactList)
-                {
-                    contact_list.push(Contact::new(pk, relay_url, alias));
+        for event in events.into_iter() {
+            for tag in event.tags.into_iter() {
+                let tag: Vec<String> = tag.as_vec();
+                if let Some(pk) = tag.get(1) {
+                    let pk = XOnlyPublicKey::from_str(pk)?;
+                    let relay_url = tag.get(2).cloned();
+                    let alias = tag.get(3).cloned();
+                    contact_list.push(Contact::new(
+                        pk,
+                        relay_url.unwrap_or_default(),
+                        alias.unwrap_or_default(),
+                    ));
                 }
             }
         }
@@ -459,6 +462,36 @@ impl Client {
     pub fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
         let event = Event::set_contact_list(&self.keys, list)?;
         self.send_event(event)
+    }
+
+    pub async fn get_contact_list(&mut self) -> Result<Vec<Contact>> {
+        RUNTIME.block_on(async {
+            let mut contact_list: Vec<Contact> = Vec::new();
+
+            let filter = SubscriptionFilter::new()
+                .authors(vec![self.keys.public_key()])
+                .kind(Kind::Base(KindBase::ContactList))
+                .limit(1);
+            let events: Vec<Event> = self.pool.get_events_of(vec![filter]).await?;
+
+            for event in events.into_iter() {
+                for tag in event.tags.into_iter() {
+                    let tag: Vec<String> = tag.as_vec();
+                    if let Some(pk) = tag.get(1) {
+                        let pk = XOnlyPublicKey::from_str(pk)?;
+                        let relay_url = tag.get(2).cloned();
+                        let alias = tag.get(3).cloned();
+                        contact_list.push(Contact::new(
+                            pk,
+                            relay_url.unwrap_or_default(),
+                            alias.unwrap_or_default(),
+                        ));
+                    }
+                }
+            }
+
+            Ok(contact_list)
+        })
     }
 
     pub fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
