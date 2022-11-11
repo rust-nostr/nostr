@@ -13,7 +13,7 @@ Rust implementation of Nostr protocol.
 ```toml
 [dependencies]
 anyhow = "1"
-nostr = "0.1"
+nostr = "0.2"
 tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"]}
 url = "2"
 ```

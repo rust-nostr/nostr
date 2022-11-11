@@ -20,13 +20,12 @@ other lower-level crates. If you're attempting something more custom, you might 
 ```toml
 [dependencies]
 anyhow = "1"
-nostr = "0.1"
-nostr-sdk = "0.1"
+nostr-sdk = "0.2"
 tokio = { version = "1", features = ["full"] }
 ```
 
 ```rust,no_run
-use nostr::Keys;
+use nostr_sdk::nostr::Keys;
 use nostr_sdk::Client;
 
 #[tokio::main]
