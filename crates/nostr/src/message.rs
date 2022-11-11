@@ -145,7 +145,6 @@ impl SubscriptionFilter {
 pub enum MessageHandleError {
     #[error("Message has an invalid format")]
     InvalidMessageFormat,
-
     #[error("Json deserialization failed")]
     JsonDeserializationFailed,
 }
@@ -164,7 +163,6 @@ pub enum RelayMessage {
     EndOfStoredEvents {
         subscription_id: String,
     },
-    // TODO: maybe we can remove this idk
     Empty,
 }
 
@@ -290,47 +288,17 @@ impl ClientMessage {
             } => {
                 let mut json = json!(["REQ", subscription_id]);
                 let mut filters = json!(filters);
-                json.as_array_mut()
-                    .unwrap()
-                    .append(filters.as_array_mut().unwrap());
+
+                if let Some(json) = json.as_array_mut() {
+                    if let Some(filters) = filters.as_array_mut() {
+                        json.append(filters);
+                    }
+                }
+
                 json.to_string()
             }
             Self::Close { subscription_id } => json!(["CLOSE", subscription_id]).to_string(),
         }
-    }
-
-    pub fn from_json(msg: &str) -> Result<Self, MessageHandleError> {
-        dbg!(msg);
-
-        let _v: Vec<Value> =
-            serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-
-        // Notice
-        // Relay response format: ["NOTICE", <message>]
-        // if v[0] == "NOTICE" {
-        //     if v.len() != 2 {
-        //         return Err(MessageHandleError::InvalidMessageFormat);
-        //     }
-        //     let v_notice: String = serde_json::from_value(v[1].clone())
-        //         .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-        //     return Ok(Self::Notice { message: v_notice });
-        // }
-
-        // // Event
-        // // Relay response format: ["EVENT", <subscription id>, <event JSON>]
-        // if v[0] == "EVENT" {
-        //     if v.len() != 3 {
-        //         return Err(MessageHandleError::InvalidMessageFormat);
-        //     }
-
-        //     let event = Event::from_json(v[2].to_string())
-        //         .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-        //     let _context = v[1].clone();
-
-        //     return Ok(Self::Event { event });
-        // }
-
-        Err(MessageHandleError::InvalidMessageFormat)
     }
 }
 

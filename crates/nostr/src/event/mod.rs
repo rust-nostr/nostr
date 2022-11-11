@@ -85,7 +85,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// use nostr::key::{FromBech32, Keys};
     /// use nostr::Event;
     ///
@@ -136,7 +136,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// use nostr::key::{FromBech32, Keys};
     /// use nostr::Event;
     ///
@@ -153,7 +153,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// use nostr::key::{FromBech32, Keys};
     /// use nostr::Event;
     ///

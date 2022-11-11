@@ -15,16 +15,18 @@ Rust implementation of Nostr protocol.
 anyhow = "1"
 nostr = "0.1"
 tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"]}
+url = "2"
 ```
 
 ```rust,no_run
 use std::str::FromStr;
+use nostr::Event;
 use nostr::key::{FromBech32, Keys};
 use nostr::message::ClientMessage;
 use tungstenite::{Message as WsMessage};
+use url::Url;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     // Generate new random keys
     let my_new_keys = Keys::generate_from_os_random();
 

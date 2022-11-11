@@ -24,7 +24,7 @@ impl Client {
     /// Create a new `Client`
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// use nostr_sdk::Client;
     ///
     /// let my_keys = Client::generate_keys();
@@ -50,7 +50,7 @@ impl Client {
     /// Add new relay
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.add_relay("wss://relay.nostr.info", None)?;
     /// client.add_relay("wss://relay.damus.io", None)?;
     /// ```
@@ -61,7 +61,7 @@ impl Client {
     /// Disconnect and remove relay
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.remove_relay("wss://relay.nostr.info").await?;
     /// ```
     #[cfg(not(feature = "blocking"))]
@@ -72,7 +72,7 @@ impl Client {
     /// Connect relay
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.connect_relay("wss://relay.nostr.info", true).await?;
     /// ```
     #[cfg(not(feature = "blocking"))]
@@ -87,7 +87,7 @@ impl Client {
     /// Disconnect relay
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.disconnect_relay("wss://relay.nostr.info").await?;
     /// ```
     #[cfg(not(feature = "blocking"))]
@@ -102,7 +102,7 @@ impl Client {
     /// Connect to all added relays without waiting for connection and keep connection alive
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.connect().await?;
     /// ```
     #[cfg(not(feature = "blocking"))]
@@ -113,8 +113,8 @@ impl Client {
     /// Connect to all added relays waiting for initial connection and keep connection alive
     ///
     /// # Example
-    /// ```rust
-    /// client.connect().await?;
+    /// ```rust,no_run
+    /// client.connect_and_wait().await?;
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn connect_and_wait(&mut self) -> Result<()> {
@@ -124,7 +124,7 @@ impl Client {
     /// Disconnect from all relays
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.disconnect().await?;
     /// ```
     #[cfg(not(feature = "blocking"))]
@@ -135,14 +135,14 @@ impl Client {
     /// Subscribe to filters
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// use nostr::SubscriptionFilter;
     ///
     /// let subscription = SubscriptionFilter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Utc::now());
     ///
-    /// client.subscribe(vec![subscription]).await?;
+    /// client.subscribe(vec![subscription]).await.unwrap();
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
@@ -160,7 +160,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.update_profile(
     ///     Some("nostr_sdk"),
     ///     Some("Nostr SDK"),
@@ -187,7 +187,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.publish_text_note("My first text note from Nostr SDK!", &[]).await.unwrap();
     /// ```
     #[cfg(not(feature = "blocking"))]
@@ -201,7 +201,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16).await.unwrap();
     /// ```
     #[cfg(not(feature = "blocking"))]
@@ -220,7 +220,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// client.add_recommended_relay("wss://relay.damus.io").await.unwrap();
     /// ```
     #[cfg(not(feature = "blocking"))]
@@ -235,7 +235,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// use nostr::Contact;
     /// use nostr::key::{Keys, FromBech32};
     ///
@@ -259,7 +259,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// let list = client.get_contact_list().await.unwrap();
     /// ```
     #[cfg(not(feature = "blocking"))]
@@ -296,8 +296,15 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// use nostr::key::{Keys, FromBech32};
+    /// use nostr_sdk::Client;
+    ///
+    /// let my_keys = Client::generate_keys();
+    /// let mut client = Client::new(&my_keys);
+    ///
+    /// client.add_relay("wss://relay.nostr.info", None).unwrap();
+    /// client.connect().await.unwrap();
     ///
     /// let alice_keys = Keys::from_bech32_public_key("npub1...").unwrap();
     /// client.send_direct_msg(alice_keys, "My first DM fro Nostr SDK!").await.unwrap();
@@ -323,7 +330,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// use nostr::Event;
     ///
     /// let event = Event::from_json(r#"{
@@ -349,7 +356,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,no_run
     /// use nostr::Event;
     ///
     /// let event = Event::from_json(r#"{
