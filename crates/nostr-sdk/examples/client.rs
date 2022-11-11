@@ -10,7 +10,7 @@ use chrono::Utc;
 use nostr::key::{FromBech32, Keys};
 use nostr::util::nip04::decrypt;
 use nostr::{Kind, KindBase, SubscriptionFilter};
-use nostr_sdk::{Client, RelayPoolNotifications, SyncSetting};
+use nostr_sdk::{Client, RelayPoolNotifications};
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
