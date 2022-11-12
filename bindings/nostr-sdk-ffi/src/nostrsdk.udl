@@ -58,9 +58,7 @@ interface SubscriptionFilter {
     [Throws=NostrError, Self=ByArc]
     SubscriptionFilter ids(sequence<string> ids);
     [Self=ByArc]
-    SubscriptionFilter kind_custom(u16 kind_id);
-    [Self=ByArc]
-    SubscriptionFilter kind_base(KindBase kind_base);
+    SubscriptionFilter kind(Kind kind);
     [Throws=NostrError, Self=ByArc]
     SubscriptionFilter event(string event_id);
     [Throws=NostrError, Self=ByArc]
@@ -88,7 +86,7 @@ interface Event {
     [Throws=NostrError, Name=delete]
     constructor(Keys keys, sequence<string> ids, optional string? reason = null);
     [Throws=NostrError, Name=new_reaction]
-    constructor(Keys keys, string event_id, boolean positive);
+    constructor(Keys keys, Event event, boolean positive);
     boolean verify();
     [Throws=NostrError, Name=from_json]
     constructor(string json);
@@ -107,6 +105,7 @@ interface Contact {
 // NOSTR-SDK
 
 interface Channel {
+    [Throws=NostrError]
     constructor(string relay_url);
     string id();
     string relay_url();
@@ -116,8 +115,11 @@ interface Subscription {
     constructor();
     void update_filters(sequence<SubscriptionFilter> filters);
     sequence<SubscriptionFilter> get_filters();
+    [Throws=NostrError]
     void add_channel(string relay_url, Channel channel);
+    [Throws=NostrError]
     Channel? remove_channel(string relay_url);
+    [Throws=NostrError]
     Channel get_channel(string relay_url);
 };
 
@@ -130,7 +132,7 @@ interface Client {
     [Throws=NostrError]
     void add_relay(string url, optional string? proxy = null);
     [Throws=NostrError]
-    void connect_relay(string url);
+    void connect_relay(string url, boolean wait_for_connection);
     [Throws=NostrError]
     void connect();
     [Throws=NostrError]

@@ -34,8 +34,8 @@ impl Client {
         self.client.lock().add_relay(&url, proxy)
     }
 
-    pub fn connect_relay(&self, url: String) -> Result<()> {
-        self.client.lock().connect_relay(&url)
+    pub fn connect_relay(&self, url: String, wait_for_connection: bool) -> Result<()> {
+        self.client.lock().connect_relay(&url, wait_for_connection)
     }
 
     pub fn connect(&self) -> Result<()> {
@@ -61,10 +61,8 @@ impl Client {
         nostr_sdk_common::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
             self.client.lock().handle_notifications(|notification| {
-                match notification {
-                    RelayPoolNotificationsSdk::ReceivedEvent(event) => {
-                        handler.handle(Arc::new(event.into()));
-                    }
+                if let RelayPoolNotificationsSdk::ReceivedEvent(event) = notification {
+                    handler.handle(Arc::new(event.into()));
                 }
 
                 Ok(())

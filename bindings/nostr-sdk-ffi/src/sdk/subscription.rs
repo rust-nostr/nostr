@@ -2,10 +2,13 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::str::FromStr;
 use std::sync::Arc;
 
+use anyhow::Result;
 use nostr_sdk::subscription::{Channel as ChannelSdk, Subscription as SubscriptionSdk};
 use parking_lot::RwLock;
+use url::Url;
 
 use crate::base::subscription::SubscriptionFilter;
 
@@ -44,19 +47,23 @@ impl Subscription {
             .collect()
     }
 
-    pub fn add_channel(&self, relay_url: String, channel: Arc<Channel>) {
+    pub fn add_channel(&self, relay_url: String, channel: Arc<Channel>) -> Result<()> {
+        let relay_url = Url::from_str(&relay_url)?;
         let mut sub = self.sub.write();
-        sub.add_channel(relay_url, channel.as_ref().deref().clone());
+        sub.add_channel(&relay_url, channel.as_ref().deref().clone());
+        Ok(())
     }
 
-    pub fn remove_channel(&self, relay_url: String) -> Option<Arc<Channel>> {
+    pub fn remove_channel(&self, relay_url: String) -> Result<Option<Arc<Channel>>> {
+        let relay_url = Url::from_str(&relay_url)?;
         let mut sub = self.sub.write();
-        sub.remove_channel(&relay_url).map(|ch| Arc::new(ch.into()))
+        Ok(sub.remove_channel(&relay_url).map(|ch| Arc::new(ch.into())))
     }
 
-    pub fn get_channel(&self, relay_url: String) -> Arc<Channel> {
+    pub fn get_channel(&self, relay_url: String) -> Result<Arc<Channel>> {
+        let relay_url = Url::from_str(&relay_url)?;
         let mut sub = self.sub.write();
-        Arc::new(sub.get_channel(&relay_url).into())
+        Ok(Arc::new(sub.get_channel(&relay_url).into()))
     }
 }
 
@@ -79,17 +86,18 @@ impl From<ChannelSdk> for Channel {
 }
 
 impl Channel {
-    pub fn new(relay_url: String) -> Self {
-        Self {
-            ch: ChannelSdk::new(&relay_url),
-        }
+    pub fn new(relay_url: String) -> Result<Self> {
+        let relay_url = Url::from_str(&relay_url)?;
+        Ok(Self {
+            ch: ChannelSdk::new(relay_url),
+        })
     }
 
     pub fn id(&self) -> String {
-        self.ch.id.to_string()
+        self.ch.id().to_string()
     }
 
     pub fn relay_url(&self) -> String {
-        self.ch.relay_url.clone()
+        self.ch.relay_url().to_string()
     }
 }

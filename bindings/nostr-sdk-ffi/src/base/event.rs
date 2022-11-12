@@ -126,11 +126,9 @@ impl Event {
     }
 
     /// Add reaction (like/upvote, dislike/downvote) to an event
-    pub fn new_reaction(keys: Arc<Keys>, event_id: String, positive: bool) -> Result<Self> {
-        let event_id = sha256::Hash::from_str(&event_id)?;
-
+    pub fn new_reaction(keys: Arc<Keys>, event: Arc<Event>, positive: bool) -> Result<Self> {
         Ok(Self {
-            event: EventSdk::new_reaction(keys.deref(), event_id, positive)?,
+            event: EventSdk::new_reaction(keys.deref(), event.deref(), positive)?,
         })
     }
 
@@ -159,6 +157,15 @@ impl From<KindSdk> for Kind {
         match kind {
             KindSdk::Base(kind) => Self::Base { kind },
             KindSdk::Custom(kind) => Self::Custom { kind },
+        }
+    }
+}
+
+impl From<Kind> for KindSdk {
+    fn from(kind: Kind) -> Self {
+        match kind {
+            Kind::Base { kind } => Self::Base(kind),
+            Kind::Custom { kind } => Self::Custom(kind),
         }
     }
 }
@@ -232,7 +239,7 @@ impl Contact {
         let pk = XOnlyPublicKey::from_str(&pk)?;
 
         Ok(Self {
-            contact: ContactSdk::new(&alias, pk, &relay_url),
+            contact: ContactSdk::new(pk, &relay_url, &alias),
         })
     }
 

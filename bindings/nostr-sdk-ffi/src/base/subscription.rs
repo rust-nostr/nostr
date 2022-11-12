@@ -7,10 +7,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use nostr::{KindBase, SubscriptionFilter as SubscriptionFilterSdk};
+use nostr::SubscriptionFilter as SubscriptionFilterSdk;
 use secp256k1::XOnlyPublicKey;
 use uuid::Uuid;
 
+use crate::base::event::Kind;
 use crate::helper::unwrap_or_clone_arc;
 
 #[derive(Clone)]
@@ -65,16 +66,9 @@ impl SubscriptionFilter {
         Ok(Arc::new(builder))
     }
 
-    pub fn kind_custom(self: Arc<Self>, kind_id: u16) -> Arc<Self> {
+    pub fn kind(self: Arc<Self>, kind: Kind) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.kind_custom(kind_id);
-
-        Arc::new(builder)
-    }
-
-    pub fn kind_base(self: Arc<Self>, kind_base: KindBase) -> Arc<Self> {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.kind_base(kind_base);
+        builder.sub_filter = builder.sub_filter.kind(kind.into());
 
         Arc::new(builder)
     }
@@ -83,7 +77,7 @@ impl SubscriptionFilter {
         let event_id = Uuid::from_str(&event_id)?;
 
         let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.event(event_id);
+        builder.sub_filter = builder.sub_filter.events(vec![event_id]);
 
         Ok(Arc::new(builder))
     }
