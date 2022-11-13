@@ -8,12 +8,10 @@ use std::time::Instant;
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::{sha256, Hash};
-use chrono::serde::ts_seconds;
-use chrono::DateTime;
-use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use secp256k1::{schnorr, KeyPair, Secp256k1, XOnlyPublicKey};
+use secp256k1::schnorr::Signature;
+use secp256k1::{KeyPair, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
 use url::Url;
@@ -23,7 +21,8 @@ pub mod tag;
 
 pub use self::kind::{Kind, KindBase};
 pub use self::tag::{Marker, Tag, TagData, TagKind};
-use crate::util::{nip04, nip13};
+use crate::util::nips::{nip04, nip13};
+use crate::util::time::timestamp;
 use crate::{Contact, Keys};
 
 static REGEX_USERNAME: Lazy<Regex> =
@@ -33,33 +32,32 @@ static REGEX_USERNAME: Lazy<Regex> =
 pub struct Event {
     pub id: sha256::Hash, // hash of serialized event with id 0
     pub pubkey: XOnlyPublicKey,
-    #[serde(with = "ts_seconds")]
-    pub created_at: DateTime<Utc>, // unix timestamp seconds
+    pub created_at: u64, // unix timestamp seconds
     pub kind: Kind,
     pub tags: Vec<Tag>,
     pub content: String,
     #[serde(deserialize_with = "sig_string")]
-    pub sig: schnorr::Signature,
+    pub sig: Signature,
 }
 
-fn sig_string<'de, D>(deserializer: D) -> Result<schnorr::Signature, D::Error>
+fn sig_string<'de, D>(deserializer: D) -> Result<Signature, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s: String = Deserialize::deserialize(deserializer)?;
-    let sig = schnorr::Signature::from_str(&s);
+    let sig = Signature::from_str(&s);
     sig.map_err(serde::de::Error::custom)
 }
 
 impl Event {
     fn gen_id(
         pubkey: &XOnlyPublicKey,
-        created_at: &DateTime<Utc>,
+        created_at: u64,
         kind: &Kind,
         tags: &[Tag],
         content: &str,
     ) -> sha256::Hash {
-        let json: Value = json!([0, pubkey, created_at.timestamp(), kind, tags, content]);
+        let json: Value = json!([0, pubkey, created_at, kind, tags, content]);
         let event_str: String = json.to_string();
         sha256::Hash::hash(event_str.as_bytes())
     }
@@ -69,9 +67,9 @@ impl Event {
         let secp = Secp256k1::new();
         let keypair: &KeyPair = &keys.key_pair()?;
         let pubkey: XOnlyPublicKey = keys.public_key();
-        let created_at: DateTime<Utc> = Utc.timestamp(Utc::now().timestamp(), 0);
+        let created_at: u64 = timestamp();
 
-        let id: sha256::Hash = Self::gen_id(&pubkey, &created_at, &kind, tags, content);
+        let id: sha256::Hash = Self::gen_id(&pubkey, created_at, &kind, tags, content);
         let message = secp256k1::Message::from_slice(&id)?;
 
         Ok(Self {
@@ -192,8 +190,8 @@ impl Event {
 
             tags.push(Tag::new(TagData::POW { nonce, difficulty }));
 
-            let created_at: DateTime<Utc> = Utc.timestamp(Utc::now().timestamp(), 0);
-            let id: sha256::Hash = Self::gen_id(&pubkey, &created_at, &kind, &tags, content);
+            let created_at: u64 = timestamp();
+            let id: sha256::Hash = Self::gen_id(&pubkey, created_at, &kind, &tags, content);
 
             if nip13::get_leading_zero_bits(id) >= difficulty {
                 log::debug!(
@@ -411,7 +409,7 @@ impl Event {
         let secp = Secp256k1::new();
         let id = Self::gen_id(
             &self.pubkey,
-            &self.created_at,
+            self.created_at,
             &self.kind,
             &self.tags,
             &self.content,
@@ -439,7 +437,7 @@ impl Event {
     pub(crate) fn new_dummy(
         id: &str,
         pubkey: &str,
-        created_at: i64,
+        created_at: u64,
         kind: u8,
         tags: Vec<Tag>,
         content: &str,
@@ -447,9 +445,8 @@ impl Event {
     ) -> Result<Self> {
         let id = sha256::Hash::from_hex(id)?;
         let pubkey = XOnlyPublicKey::from_str(pubkey)?;
-        let created_at = Utc.timestamp(created_at, 0);
         let kind = serde_json::from_str(&kind.to_string())?;
-        let sig = schnorr::Signature::from_str(sig)?;
+        let sig = Signature::from_str(sig)?;
 
         let event = Event {
             id,

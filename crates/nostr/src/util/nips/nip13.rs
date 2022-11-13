@@ -52,7 +52,7 @@ pub mod tests {
     use bitcoin_hashes::hex::FromHex;
     use bitcoin_hashes::sha256::Hash;
 
-    use crate::util::nip13::*;
+    use super::*;
 
     #[test]
     fn check_get_leading_zeroes() {

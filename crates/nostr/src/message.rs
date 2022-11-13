@@ -2,7 +2,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use chrono::{DateTime, Utc};
 use secp256k1::XOnlyPublicKey;
 use serde_json::{json, Value};
 use thiserror::Error;
@@ -116,18 +115,18 @@ impl SubscriptionFilter {
         }
     }
 
-    /// Set since
-    pub fn since(self, since: DateTime<Utc>) -> Self {
+    /// Set since unix timestamp
+    pub fn since(self, since: u64) -> Self {
         Self {
-            since: Some(since.timestamp().try_into().unwrap_or(0)),
+            since: Some(since),
             ..self
         }
     }
 
-    /// Set until
-    pub fn until(self, until: DateTime<Utc>) -> Self {
+    /// Set until unix timestamp
+    pub fn until(self, until: u64) -> Self {
         Self {
-            until: Some(until.timestamp().try_into().unwrap_or(0)),
+            until: Some(until),
             ..self
         }
     }

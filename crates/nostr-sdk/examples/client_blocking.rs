@@ -4,9 +4,9 @@
 extern crate nostr_sdk;
 
 use anyhow::Result;
-use chrono::Utc;
 use nostr::key::{FromBech32, Keys};
-use nostr::util::nip04::decrypt;
+use nostr::util::nips::nip04::decrypt;
+use nostr::util::time::timestamp;
 use nostr::{Kind, KindBase, SubscriptionFilter};
 use nostr_sdk::{Client, RelayPoolNotifications};
 
@@ -28,7 +28,7 @@ fn main() -> Result<()> {
 
     let subscription = SubscriptionFilter::new()
         .pubkey(my_keys.public_key())
-        .since(Utc::now());
+        .since(timestamp());
 
     client.subscribe(vec![subscription])?;
 

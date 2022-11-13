@@ -15,7 +15,6 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 anyhow = "1.0"
-chrono = "0.4"
 log = "0.4"
 nostr  = { path = "../../crates/nostr" }
 nostr-ffi  = { path = "../nostr-ffi" }
