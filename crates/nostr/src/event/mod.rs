@@ -11,6 +11,8 @@ use bitcoin_hashes::{sha256, Hash};
 use chrono::serde::ts_seconds;
 use chrono::DateTime;
 use chrono::{TimeZone, Utc};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use secp256k1::{schnorr, KeyPair, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
@@ -23,6 +25,9 @@ pub use self::kind::{Kind, KindBase};
 pub use self::tag::{Marker, Tag, TagData, TagKind};
 use crate::util::{nip04, nip13};
 use crate::{Contact, Keys};
+
+static REGEX_USERNAME: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub struct Event {
@@ -106,6 +111,12 @@ impl Event {
         about: Option<&str>,
         picture: Option<&str>,
     ) -> Result<Self> {
+        if let Some(username) = username {
+            if !REGEX_USERNAME.is_match(username) {
+                return Err(anyhow!("Invalid username"));
+            }
+        }
+
         let metadata: Value = json!({
             "name": username.unwrap_or(""),
             "display_name": display_name.unwrap_or(""),
@@ -285,6 +296,10 @@ impl Event {
         about: Option<&str>,
         picture: Option<&str>,
     ) -> Result<Self> {
+        if !REGEX_USERNAME.is_match(name) {
+            return Err(anyhow!("Invalid name"));
+        }
+
         let metadata: Value = json!({
             "name": name,
             "about": about.unwrap_or(""),
@@ -307,12 +322,18 @@ impl Event {
         keys: &Keys,
         channel_id: sha256::Hash, // event id of kind 40
         relay_url: Url,
-        name: &str,
+        name: Option<&str>,
         about: Option<&str>,
         picture: Option<&str>,
     ) -> Result<Self> {
+        if let Some(name) = name {
+            if !REGEX_USERNAME.is_match(name) {
+                return Err(anyhow!("Invalid name"));
+            }
+        }
+
         let metadata: Value = json!({
-            "name": name,
+            "name": name.unwrap_or(""),
             "about": about.unwrap_or(""),
             "picture": picture.unwrap_or(""),
         });

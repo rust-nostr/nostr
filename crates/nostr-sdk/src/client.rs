@@ -401,7 +401,7 @@ impl Client {
         &self,
         channel_id: Hash,
         relay_url: Url,
-        name: &str,
+        name: Option<&str>,
         about: Option<&str>,
         picture: Option<&str>,
     ) -> Result<()> {
