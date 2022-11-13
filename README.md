@@ -3,11 +3,14 @@
 ## Structure
 
 - [bindings](./bindings/):
-    - [nostr-ffi](./bindings/nostr-ffi/): UniFFI bindings of the nostr crate
-    - [nostr-sdk-ffi](./bindings/nostr-sdk-ffi/): UniFFI bindings of the nostr-sdk crate
+    - [nostr-ffi](./bindings/nostr-ffi/): UniFFI bindings of the [nostr][] crate
+    - [nostr-sdk-ffi](./bindings/nostr-sdk-ffi/): UniFFI bindings of the [nostr-sdk][] crate
 - [crates](./crates/):
-    - [nostr](./crates/nostr/): Rust implementation of Nostr protocol.
-    - [nostr-sdk](./crates/nostr-sdk/): High level client library.
+    - [nostr][]: Rust implementation of Nostr protocol.
+    - [nostr-sdk][]: High level client library.
+
+[nostr]: ./crates/nostr/
+[nostr-sdk]: ./crates/nostr-sdk/
 
 ## Minimum Supported Rust Version (MSRV)
 
