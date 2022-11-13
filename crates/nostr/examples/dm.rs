@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::{thread, time};
 
 use nostr::event::KindBase;
-use nostr::util::nip04::decrypt;
+use nostr::util::nips::nip04::decrypt;
 use nostr::{ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
