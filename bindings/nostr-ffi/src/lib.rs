@@ -6,6 +6,7 @@ mod error;
 mod event;
 pub mod helper;
 mod key;
+mod metadata;
 mod subscription;
 
 #[allow(missing_docs)]
@@ -22,6 +23,7 @@ mod ffi {
     pub use crate::event::kind::Kind;
     pub use crate::event::Event;
     pub use crate::key::Keys;
+    pub use crate::metadata::Metadata as AccountMetadata;
     pub use crate::subscription::SubscriptionFilter;
 
     // UDL

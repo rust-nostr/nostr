@@ -15,6 +15,7 @@ pub mod kind;
 use self::kind::Kind;
 use crate::contact::Contact;
 use crate::key::Keys;
+use crate::metadata::Metadata;
 
 pub struct Event {
     event: EventSdk,
@@ -61,21 +62,9 @@ impl Event {
         })
     }
 
-    pub fn set_metadata(
-        keys: Arc<Keys>,
-        username: Option<String>,
-        display_name: Option<String>,
-        about: Option<String>,
-        picture: Option<String>,
-    ) -> Result<Self> {
+    pub fn set_metadata(keys: Arc<Keys>, metadata: Arc<Metadata>) -> Result<Self> {
         Ok(Self {
-            event: EventSdk::set_metadata(
-                keys.deref(),
-                username.as_deref(),
-                display_name.as_deref(),
-                about.as_deref(),
-                picture.as_deref(),
-            )?,
+            event: EventSdk::set_metadata(keys.deref(), metadata.as_ref().deref().clone())?,
         })
     }
 
