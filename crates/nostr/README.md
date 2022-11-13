@@ -20,7 +20,7 @@ url = "2"
 
 ```rust,no_run
 use std::str::FromStr;
-use nostr::Event;
+use nostr::{Event, Metadata};
 use nostr::key::{FromBech32, Keys};
 use nostr::message::ClientMessage;
 use tungstenite::{Message as WsMessage};
