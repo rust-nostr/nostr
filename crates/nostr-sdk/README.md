@@ -20,19 +20,18 @@ other lower-level crates. If you're attempting something more custom, you might 
 ```toml
 [dependencies]
 anyhow = "1"
-nostr-sdk = "0.2"
+nostr-sdk = "0.4"
 tokio = { version = "1", features = ["full"] }
+url = "2"
 ```
 
 ```rust,no_run
-use nostr_sdk::nostr::Keys;
+use nostr_sdk::nostr::{Keys, Metadata};
 use nostr_sdk::Client;
+use url::Url;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Init logger
-    env_logger::init();
-
     // Generate new keys
     let my_keys: Keys = Client::generate_keys();
     //
@@ -56,13 +55,15 @@ async fn main() -> anyhow::Result<()> {
     // Connect to relays and keep connection alive
     client.connect().await?;
 
+    let metadata = Metadata::new()
+        .name("username")
+        .display_name("My Username")
+        .about("Description")
+        .picture(Url::from_str("https://example.com/avatar.png")?)
+        .nip05("username@example.com");
+
     // Update profile metadata
-    client.update_profile(
-        Some("username"), 
-        Some("Display Name"), 
-        Some("About"), 
-        Some("https://example.com/avatar.png")
-    ).await?;
+    client.update_profile(metadata).await?;
 
     // Publish a text note
     client.publish_text_note("My first text note from Nostr SDK!", &[]).await?;

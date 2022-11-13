@@ -13,7 +13,7 @@ Rust implementation of Nostr protocol.
 ```toml
 [dependencies]
 anyhow = "1"
-nostr = "0.2"
+nostr = "0.4"
 tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"]}
 url = "2"
 ```
@@ -36,13 +36,14 @@ fn main() -> anyhow::Result<()> {
     // Use your already existing keys
     let my_keys = Keys::from_str("hex-secret-key")?;
 
-    let event = Event::set_metadata(
-        &my_keys,
-        Some("nostr"),
-        Some("Nostr SDK"),
-        Some("Description"),
-        Some("https://example.com/avatar.png"),
-    )?;
+    let metadata = Metadata::new()
+        .name("username")
+        .display_name("My Username")
+        .about("Description")
+        .picture(Url::from_str("https://example.com/avatar.png")?)
+        .nip05("username@example.com");
+
+    let event = Event::set_metadata(&my_keys, metadata)?;
 
     // Connect to relay
     let (mut socket, _) = tungstenite::connect(Url::parse("wss://relay.damus.io")?).expect("Can't connect to relay");
@@ -65,7 +66,7 @@ More examples can be found in the [examples](https://github.com/yukibtc/nostr-rs
 | ✅         | [02 - Contact List and Petnames](https://github.com/nostr-protocol/nips/blob/master/02.md)                                          |
 | ❌         | [03 - OpenTimestamps Attestations for Events](https://github.com/nostr-protocol/nips/blob/master/03.md)                             |
 | ✅         | [04 - Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)                                           |
-| ❌         | [05 - Mapping Nostr keys to DNS-based internet identifiers](https://github.com/nostr-protocol/nips/blob/master/05.md)               |
+| ✅         | [05 - Mapping Nostr keys to DNS-based internet identifiers](https://github.com/nostr-protocol/nips/blob/master/05.md)               |
 | ✅         | [06 - Basic key derivation from mnemonic seed phrase](https://github.com/nostr-protocol/nips/blob/master/06.md)                     |
 | ❌         | [08 - Handling Mentions](https://github.com/nostr-protocol/nips/blob/master/08.md)                                                  |
 | ✅         | [09 - Event Deletion](https://github.com/nostr-protocol/nips/blob/master/09.md)                                                     |

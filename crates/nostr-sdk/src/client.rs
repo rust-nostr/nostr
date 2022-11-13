@@ -7,7 +7,7 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256::Hash;
 use nostr::key::XOnlyPublicKey;
-use nostr::{Contact, Event, Keys, Kind, KindBase, SubscriptionFilter, Tag};
+use nostr::{Contact, Event, Keys, Kind, KindBase, Metadata, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 use url::Url;
 
@@ -171,14 +171,8 @@ impl Client {
     /// .unwrap();
     /// ```
     #[cfg(not(feature = "blocking"))]
-    pub async fn update_profile(
-        &self,
-        username: Option<&str>,
-        display_name: Option<&str>,
-        about: Option<&str>,
-        picture: Option<&str>,
-    ) -> Result<()> {
-        let event = Event::set_metadata(&self.keys, username, display_name, about, picture)?;
+    pub async fn update_profile(&self, metadata: Metadata) -> Result<()> {
+        let event = Event::set_metadata(&self.keys, metadata)?;
         self.send_event(event).await
     }
 
@@ -507,14 +501,8 @@ impl Client {
         RUNTIME.block_on(async { self.pool.send_event(event).await })
     }
 
-    pub fn update_profile(
-        &self,
-        username: Option<&str>,
-        display_name: Option<&str>,
-        about: Option<&str>,
-        picture: Option<&str>,
-    ) -> Result<()> {
-        let event = Event::set_metadata(&self.keys, username, display_name, about, picture)?;
+    pub fn update_profile(&self, metadata: Metadata) -> Result<()> {
+        let event = Event::set_metadata(&self.keys, metadata)?;
         self.send_event(event)
     }
 

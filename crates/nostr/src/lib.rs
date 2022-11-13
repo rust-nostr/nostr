@@ -10,12 +10,14 @@ pub mod contact;
 pub mod event;
 pub mod key;
 pub mod message;
+pub mod metadata;
 pub mod util;
 
 pub use self::contact::Contact;
 pub use self::event::{Event, Kind, KindBase, Tag};
 pub use self::key::Keys;
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
+pub use self::metadata::Metadata;
 
 #[cfg(test)]
 mod tests {

@@ -21,11 +21,12 @@ pub mod tag;
 
 pub use self::kind::{Kind, KindBase};
 pub use self::tag::{Marker, Tag, TagData, TagKind};
-use crate::util::nips::{nip04, nip13};
+use crate::metadata::Metadata;
+use crate::util::nips::{nip04, nip05, nip13};
 use crate::util::time::timestamp;
 use crate::{Contact, Keys};
 
-static REGEX_USERNAME: Lazy<Regex> =
+static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
@@ -90,37 +91,47 @@ impl Event {
     /// # Example
     /// ```rust,no_run
     /// use nostr::key::{FromBech32, Keys};
+    /// use nostr::metadata::Metadata;
     /// use nostr::Event;
+    /// use url::Url;
     ///
     /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
     ///
-    /// let event = Event::set_metadata(
-    ///     &my_keys,
-    ///     Some("username"),
-    ///     Some("Username"),
-    ///     Some("Description"),
-    ///     Some("https://example.com/avatar.png"),
-    /// ).unwrap();
+    /// let metadata = Metadata::new()
+    ///     .name("username")
+    ///     .display_name("My Username")
+    ///     .about("Description")
+    ///     .picture(Url::from_str("https://example.com/avatar.png").unwrap())
+    ///     .nip05("username@example.com");
+    ///
+    /// let event = Event::set_metadata(&my_keys, metadata).unwrap();
     /// ```
-    pub fn set_metadata(
-        keys: &Keys,
-        username: Option<&str>,
-        display_name: Option<&str>,
-        about: Option<&str>,
-        picture: Option<&str>,
-    ) -> Result<Self> {
-        if let Some(username) = username {
-            if !REGEX_USERNAME.is_match(username) {
-                return Err(anyhow!("Invalid username"));
+    pub fn set_metadata(keys: &Keys, metadata: Metadata) -> Result<Self> {
+        let name = metadata.name;
+        let display_name = metadata.display_name;
+        let about = metadata.about;
+        let picture = metadata.picture;
+        let nip05_str = metadata.nip05;
+
+        if let Some(name) = name.clone() {
+            if !REGEX_NAME.is_match(&name) {
+                return Err(anyhow!("Invalid name"));
             }
         }
 
-        let metadata: Value = json!({
-            "name": username.unwrap_or(""),
-            "display_name": display_name.unwrap_or(""),
-            "about": about.unwrap_or(""),
-            "picture": picture.unwrap_or(""),
+        let mut metadata: Value = json!({
+            "name": name.unwrap_or_else(|| "".into()),
+            "display_name": display_name.unwrap_or_else(|| "".into()),
+            "about": about.unwrap_or_else(|| "".into()),
+            "picture": picture.unwrap_or_else(|| "".into()),
         });
+
+        if let Some(nip05_str) = nip05_str {
+            if !nip05::verify(keys.public_key(), &nip05_str)? {
+                return Err(anyhow!("Impossible to verify NIP-05"));
+            }
+            metadata["nip05"] = json!(nip05_str);
+        }
 
         Self::new_generic(
             keys,
@@ -294,7 +305,7 @@ impl Event {
         about: Option<&str>,
         picture: Option<&str>,
     ) -> Result<Self> {
-        if !REGEX_USERNAME.is_match(name) {
+        if !REGEX_NAME.is_match(name) {
             return Err(anyhow!("Invalid name"));
         }
 
@@ -325,7 +336,7 @@ impl Event {
         picture: Option<&str>,
     ) -> Result<Self> {
         if let Some(name) = name {
-            if !REGEX_USERNAME.is_match(name) {
+            if !REGEX_NAME.is_match(name) {
                 return Err(anyhow!("Invalid name"));
             }
         }
