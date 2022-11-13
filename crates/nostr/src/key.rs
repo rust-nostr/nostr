@@ -4,10 +4,15 @@
 
 use std::str::FromStr;
 
-use bech32::{self, FromBase32, Variant};
+use anyhow::anyhow;
+use bech32::{self, FromBase32, ToBase32, Variant};
+use bip32::{DerivationPath, Language, Mnemonic, XPrv};
 use secp256k1::rand::rngs::OsRng;
 pub use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 use thiserror::Error;
+
+const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
+const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 
 #[derive(Error, Debug, Eq, PartialEq)]
 pub enum KeyError {
@@ -29,7 +34,37 @@ pub enum KeyError {
 
 pub trait FromBech32: Sized {
     fn from_bech32(secret_key: &str) -> Result<Self, KeyError>;
-    fn from_bech32_public_key(publicc_key: &str) -> Result<Self, KeyError>;
+    fn from_bech32_public_key(public_key: &str) -> Result<Self, KeyError>;
+}
+
+pub trait ToBech32 {
+    type Err;
+    fn to_bech32(&self) -> Result<String, Self::Err>;
+}
+
+pub trait FromSeedPhrase: Sized {
+    type Err;
+    fn from_seed(seed: &str) -> Result<Self, Self::Err>;
+}
+
+impl ToBech32 for XOnlyPublicKey {
+    type Err = anyhow::Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        let data = self.serialize().to_base32();
+        let encoded = bech32::encode(PREFIX_BECH32_PUBLIC_KEY, data, Variant::Bech32)?;
+        Ok(encoded)
+    }
+}
+
+impl ToBech32 for SecretKey {
+    type Err = anyhow::Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        let data = self.secret_bytes().to_base32();
+        let encoded = bech32::encode(PREFIX_BECH32_SECRET_KEY, data, Variant::Bech32)?;
+        Ok(encoded)
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -118,7 +153,7 @@ impl FromBech32 for Keys {
         let (hrp, data, checksum) =
             bech32::decode(secret_key).map_err(|_| KeyError::Bech32SkParseError)?;
 
-        if hrp != "nsec" || checksum != Variant::Bech32 {
+        if hrp != PREFIX_BECH32_SECRET_KEY || checksum != Variant::Bech32 {
             return Err(KeyError::Bech32SkParseError);
         }
 
@@ -142,7 +177,7 @@ impl FromBech32 for Keys {
         let (hrp, data, checksum) =
             bech32::decode(public_key).map_err(|_| KeyError::Bech32PkParseError)?;
 
-        if hrp != "npub" || checksum != Variant::Bech32 {
+        if hrp != PREFIX_BECH32_PUBLIC_KEY || checksum != Variant::Bech32 {
             return Err(KeyError::Bech32PkParseError);
         }
 
@@ -156,5 +191,59 @@ impl FromBech32 for Keys {
             key_pair: None,
             secret_key: None,
         })
+    }
+}
+
+impl FromSeedPhrase for Keys {
+    type Err = anyhow::Error;
+
+    /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
+    /// ONLY 24-WORD BIP-39 MNEMONICS ARE SUPPORTED!
+    fn from_seed(phrase: &str) -> Result<Self, Self::Err> {
+        if phrase.split(' ').count() != 24 {
+            return Err(anyhow!(
+                "Invalid mnemonic length: only 24-word BIP-39 mnemonics are supported."
+            ));
+        }
+
+        let mnemonic = Mnemonic::new(phrase, Language::English)?;
+        let seed = mnemonic.to_seed("");
+        let child_path = DerivationPath::from_str("m/44'/1237'/0'/0/0")?;
+        let child_xprv = XPrv::derive_from_path(seed, &child_path)?;
+
+        let secret_key = SecretKey::from_slice(child_xprv.private_key().to_bytes().as_slice())?;
+
+        Ok(Self::new(secret_key))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use anyhow::Result;
+
+    #[test]
+    fn to_bech32_public_key() -> Result<()> {
+        let bech32_pubkey_str: &str =
+            "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy";
+        let keys = Keys::from_bech32_public_key(bech32_pubkey_str)?;
+        let public_key: XOnlyPublicKey = keys.public_key();
+
+        assert_eq!(bech32_pubkey_str.to_string(), public_key.to_bech32()?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn to_bech32_secret_key() -> Result<()> {
+        let bech32_secret_key_str: &str =
+            "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
+        let keys = Keys::from_bech32(bech32_secret_key_str)?;
+        let secret_key: SecretKey = keys.secret_key()?;
+
+        assert_eq!(bech32_secret_key_str.to_string(), secret_key.to_bech32()?);
+
+        Ok(())
     }
 }

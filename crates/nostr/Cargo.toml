@@ -16,6 +16,7 @@ aes = "0.8"
 anyhow = "1.0"
 base64 = "0.13"
 bech32 = "0.9"
+bip32 = "0.4"
 bitcoin_hashes = { version = "0.11", features = ["serde"] }
 cbc = { version = "0.1", features = ["alloc"] }
 chrono = { version = "0.4", features = ["serde"] }
