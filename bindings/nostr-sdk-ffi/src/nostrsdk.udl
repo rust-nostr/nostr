@@ -60,7 +60,7 @@ interface Event {
     [Throws=NostrError, Name=new_generic]
     constructor(Keys keys, Kind kind, string content, sequence<sequence<string>> tags);
     [Throws=NostrError, Name=set_metadata]
-    constructor(Keys keys, string? username, string? display_name, string? about, string? picture);
+    constructor(Keys keys, AccountMetadata metadata);
     [Throws=NostrError, Name=add_recommended_relay]
     constructor(Keys keys, string url);
     [Throws=NostrError, Name=new_text_note]
@@ -88,6 +88,20 @@ interface Contact {
     string alias();
     string public_key();
     string relay_url();
+};
+
+interface AccountMetadata {
+    constructor();
+    [Self=ByArc]
+    AccountMetadata name(string name);
+    [Self=ByArc]
+    AccountMetadata display_name(string display_name);
+    [Self=ByArc]
+    AccountMetadata about(string about);
+    [Throws=NostrError, Self=ByArc]
+    AccountMetadata picture(string picture);
+    [Self=ByArc]
+    AccountMetadata nip05(string nip05);
 };
 
 // NOSTR-SDK
