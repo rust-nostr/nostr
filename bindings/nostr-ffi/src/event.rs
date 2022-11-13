@@ -12,8 +12,7 @@ use nostr::{Contact as ContactSdk, Event as EventSdk, KindBase};
 use secp256k1::XOnlyPublicKey;
 use url::Url;
 
-use crate::base::key::Keys;
-
+use crate::key::Keys;
 pub struct Event {
     event: EventSdk,
 }

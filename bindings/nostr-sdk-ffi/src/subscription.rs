@@ -6,11 +6,10 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
+use nostr_ffi::SubscriptionFilter;
 use nostr_sdk::subscription::{Channel as ChannelSdk, Subscription as SubscriptionSdk};
 use parking_lot::RwLock;
 use url::Url;
-
-use crate::base::subscription::SubscriptionFilter;
 
 pub struct Subscription {
     sub: Arc<RwLock<SubscriptionSdk>>,

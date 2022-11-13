@@ -11,7 +11,7 @@ use nostr::SubscriptionFilter as SubscriptionFilterSdk;
 use secp256k1::XOnlyPublicKey;
 use uuid::Uuid;
 
-use crate::base::event::Kind;
+use crate::event::Kind;
 use crate::helper::unwrap_or_clone_arc;
 
 #[derive(Clone)]

@@ -1,21 +1,34 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-namespace nostrsdk {
-    void init_logger(optional string? level = null);
-    u64 timestamp();
+namespace nostr {};
+
+[Error]
+interface NostrError {
+    Generic(string msg);
 };
 
-// NOSTR
+enum KindBase {
+    "Metadata",
+    "TextNote",
+    "RecommendRelay",
+    "ContactList",
+    "EncryptedDirectMessage",
+    "EventDeletion",
+    "Boost",
+    "Reaction",
+    "ChannelCreation",
+    "ChannelMetadata",
+    "ChannelMessage",
+    "ChannelHideMessage",
+    "ChannelMuteUser",
+};
 
-[External="nostr-ffi"]
-typedef extern NostrError;
-
-[External="nostr-ffi"]
-typedef extern KindBase;
-
-[External="nostr-ffi"]
-typedef extern Kind;
+[Enum]
+interface Kind {
+    Base(KindBase kind);
+    Custom(u16 kind);
+};
 
 interface Keys {
     [Throws=NostrError]
@@ -82,45 +95,4 @@ interface Contact {
     string alias();
     string public_key();
     string relay_url();
-};
-
-// NOSTR-SDK
-
-interface Channel {
-    [Throws=NostrError]
-    constructor(string relay_url);
-    string id();
-    string relay_url();
-};
-
-interface Subscription {
-    constructor();
-    void update_filters(sequence<SubscriptionFilter> filters);
-    sequence<SubscriptionFilter> get_filters();
-    [Throws=NostrError]
-    void add_channel(string relay_url, Channel channel);
-    [Throws=NostrError]
-    Channel? remove_channel(string relay_url);
-    [Throws=NostrError]
-    Channel get_channel(string relay_url);
-};
-
-callback interface HandleNotification {
-    void handle(Event event);
-};
-
-interface Client {
-    constructor(Keys keys);
-    [Throws=NostrError]
-    void add_relay(string url, optional string? proxy = null);
-    [Throws=NostrError]
-    void connect_relay(string url, boolean wait_for_connection);
-    [Throws=NostrError]
-    void connect();
-    [Throws=NostrError]
-    void subscribe(sequence<SubscriptionFilter> filters);
-    [Throws=NostrError]
-    void send_event(Event event);
-    [Self=ByArc]
-    void handle_notifications(HandleNotification handler);
 };

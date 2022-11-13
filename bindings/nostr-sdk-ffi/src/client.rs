@@ -6,13 +6,10 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
+use nostr_ffi::{Event, Keys, SubscriptionFilter};
 use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::relay::pool::RelayPoolNotifications as RelayPoolNotificationsSdk;
 use parking_lot::Mutex;
-
-use crate::base::event::Event;
-use crate::base::key::Keys;
-use crate::base::subscription::SubscriptionFilter;
 
 pub struct Client {
     client: Mutex<ClientSdk>,

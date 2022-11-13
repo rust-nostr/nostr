@@ -3,11 +3,9 @@
 
 use anyhow::Result;
 
-mod base;
-mod error;
-mod helper;
+mod client;
 mod logger;
-mod sdk;
+mod subscription;
 mod util;
 
 trait FromResult<T>: Sized {
@@ -15,26 +13,20 @@ trait FromResult<T>: Sized {
 }
 
 #[allow(missing_docs)]
+#[allow(unused_imports)]
 mod ffi {
     // Extenal
-    pub use nostr::event::KindBase;
+    pub use nostr_ffi::{Contact, Event, Keys, Kind, KindBase, SubscriptionFilter};
 
     // Namespace
     pub use crate::logger::init_logger;
     pub use crate::util::time::timestamp;
 
-    // Error
-    pub use crate::error::NostrError;
+    // Nostr SDK
+    pub use crate::client::{Client, HandleNotification};
+    pub use crate::subscription::{Channel, Subscription};
 
-    // Base
-    pub use crate::base::event::{Contact, Event, Kind};
-    pub use crate::base::key::Keys;
-    pub use crate::base::subscription::SubscriptionFilter;
-
-    // SDK
-    pub use crate::sdk::client::{Client, HandleNotification};
-    pub use crate::sdk::subscription::{Channel, Subscription};
-
+    // UDL
     uniffi_macros::include_scaffolding!("nostrsdk");
 }
 pub use ffi::*;

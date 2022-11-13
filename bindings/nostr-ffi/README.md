@@ -1,4 +1,4 @@
-# Nostr SDK FFI
+# Nostr FFI
 
 ## Usage
 

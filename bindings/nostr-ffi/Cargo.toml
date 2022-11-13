@@ -1,5 +1,5 @@
 [package]
-name = "nostr-sdk-ffi"
+name = "nostr-ffi"
 version = "0.1.0"
 edition = "2021"
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
@@ -7,27 +7,22 @@ homepage = "https://github.com/yukibtc/nostr-rs-sdk"
 repository = "https://github.com/yukibtc/nostr-rs-sdk.git"
 license = "MIT"
 rust-version = "1.64"
-keywords = ["nostr", "sdk", "rust", "ffi"]
+keywords = ["nostr", "rust", "ffi"]
 
 [lib]
-name = "nostrsdk"
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 anyhow = "1.0"
+bitcoin_hashes = "0.11"
 chrono = "0.4"
-log = "0.4"
 nostr  = { path = "../../crates/nostr" }
-nostr-ffi  = { path = "../nostr-ffi" }
-nostr-sdk  = { path = "../../crates/nostr-sdk", features = ["blocking"] }
-nostr-sdk-common  = { path = "../../crates/nostr-sdk-common" }
-parking_lot = "0.12.1"
+secp256k1 = "0.24"
+thiserror = "1.0"
 uniffi = "0.21.0"
 uniffi_macros = "0.21.0"
 url = "2"
-
-[target.'cfg(target_os = "android")'.dependencies]
-android_logger = "0.11"
+uuid = "1.2"
 
 [build-dependencies]
 uniffi_build = { version = "0.21.0", features = ["builtin-bindgen"] }
