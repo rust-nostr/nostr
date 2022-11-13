@@ -2,143 +2,11 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use secp256k1::XOnlyPublicKey;
+use bitcoin_hashes::sha256::Hash;
 use serde_json::{json, Value};
 use thiserror::Error;
-use uuid::Uuid;
 
-use crate::{Event, Kind};
-
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
-pub struct SubscriptionFilter {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    ids: Option<Vec<Uuid>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    authors: Option<Vec<XOnlyPublicKey>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    kinds: Option<Vec<Kind>>,
-    #[serde(rename = "#e")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    events: Option<Vec<Uuid>>,
-    #[serde(rename = "#p")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pubkeys: Option<Vec<XOnlyPublicKey>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    since: Option<u64>, // unix timestamp seconds
-    #[serde(skip_serializing_if = "Option::is_none")]
-    until: Option<u64>, // unix timestamp seconds
-    #[serde(skip_serializing_if = "Option::is_none")]
-    limit: Option<u16>,
-}
-
-impl Default for SubscriptionFilter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl SubscriptionFilter {
-    pub fn new() -> Self {
-        Self {
-            ids: None,
-            kinds: None,
-            events: None,
-            pubkeys: None,
-            since: None,
-            until: None,
-            authors: None,
-            limit: None,
-        }
-    }
-
-    /// Set subscription id
-    pub fn id(self, id: impl Into<Uuid>) -> Self {
-        Self {
-            ids: Some(vec![id.into()]),
-            ..self
-        }
-    }
-
-    /// Set subscription ids
-    pub fn ids(self, ids: impl Into<Vec<Uuid>>) -> Self {
-        Self {
-            ids: Some(ids.into()),
-            ..self
-        }
-    }
-
-    /// Set authors
-    pub fn authors(self, authors: Vec<XOnlyPublicKey>) -> Self {
-        Self {
-            authors: Some(authors),
-            ..self
-        }
-    }
-
-    /// Set kind
-    pub fn kind(self, kind: Kind) -> Self {
-        Self {
-            kinds: Some(vec![kind]),
-            ..self
-        }
-    }
-
-    /// Set kinds
-    pub fn kinds(self, kinds: Vec<Kind>) -> Self {
-        Self {
-            kinds: Some(kinds),
-            ..self
-        }
-    }
-
-    /// Set events
-    pub fn events(self, ids: impl Into<Vec<Uuid>>) -> Self {
-        Self {
-            events: Some(ids.into()),
-            ..self
-        }
-    }
-
-    /// Set pubkey
-    pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
-        Self {
-            pubkeys: Some(vec![pubkey]),
-            ..self
-        }
-    }
-
-    /// Set pubkeys
-    pub fn pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
-        Self {
-            pubkeys: Some(pubkeys),
-            ..self
-        }
-    }
-
-    /// Set since unix timestamp
-    pub fn since(self, since: u64) -> Self {
-        Self {
-            since: Some(since),
-            ..self
-        }
-    }
-
-    /// Set until unix timestamp
-    pub fn until(self, until: u64) -> Self {
-        Self {
-            until: Some(until),
-            ..self
-        }
-    }
-
-    /// Set limit
-    pub fn limit(self, limit: u16) -> Self {
-        Self {
-            limit: Some(limit),
-            ..self
-        }
-    }
-}
+use crate::Event;
 
 #[derive(Error, Debug, Eq, PartialEq)]
 pub enum MessageHandleError {
@@ -151,7 +19,6 @@ pub enum MessageHandleError {
 /// Messages sent by relays, received by clients
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayMessage {
-    //["EVENT", <subscription id>, <event JSON as defined above>]
     Event {
         event: Box<Event>,
         subscription_id: String,
@@ -161,6 +28,11 @@ pub enum RelayMessage {
     },
     EndOfStoredEvents {
         subscription_id: String,
+    },
+    Ok {
+        event_id: Hash,
+        status: bool,
+        message: String,
     },
     Empty,
 }
@@ -182,9 +54,16 @@ impl RelayMessage {
         Self::EndOfStoredEvents { subscription_id }
     }
 
+    pub fn new_ok(event_id: Hash, status: bool, message: String) -> Self {
+        Self::Ok {
+            event_id,
+            status,
+            message,
+        }
+    }
+
     pub fn to_json(&self) -> String {
         match self {
-            Self::Empty => String::new(),
             Self::Event {
                 event,
                 subscription_id,
@@ -193,6 +72,12 @@ impl RelayMessage {
             Self::EndOfStoredEvents { subscription_id } => {
                 json!(["EOSE", subscription_id]).to_string()
             }
+            Self::Ok {
+                event_id,
+                status,
+                message,
+            } => json!(["OK", event_id, status, message]).to_string(),
+            Self::Empty => String::new(),
         }
     }
 
@@ -243,61 +128,26 @@ impl RelayMessage {
             return Ok(Self::new_eose(subscription_id));
         }
 
-        Err(MessageHandleError::InvalidMessageFormat)
-    }
-}
-
-/// Messages sent by clients, received by relays
-#[derive(Debug, Eq, PartialEq)]
-pub enum ClientMessage {
-    Event {
-        event: Event,
-    },
-    Req {
-        subscription_id: String,
-        filters: Vec<SubscriptionFilter>,
-    },
-    Close {
-        subscription_id: String,
-    },
-}
-
-impl ClientMessage {
-    pub fn new_event(event: Event) -> Self {
-        Self::Event { event }
-    }
-
-    pub fn new_req(subscription_id: impl Into<String>, filters: Vec<SubscriptionFilter>) -> Self {
-        Self::Req {
-            subscription_id: subscription_id.into(),
-            filters,
-        }
-    }
-
-    pub fn close(subscription_id: String) -> Self {
-        Self::Close { subscription_id }
-    }
-
-    pub fn to_json(&self) -> String {
-        match self {
-            Self::Event { event } => json!(["EVENT", event]).to_string(),
-            Self::Req {
-                subscription_id,
-                filters,
-            } => {
-                let mut json = json!(["REQ", subscription_id]);
-                let mut filters = json!(filters);
-
-                if let Some(json) = json.as_array_mut() {
-                    if let Some(filters) = filters.as_array_mut() {
-                        json.append(filters);
-                    }
-                }
-
-                json.to_string()
+        // OK (NIP-20)
+        // Relay response format: ["OK", <event_id>, <true|false>, <message>]
+        if v[0] == "OK" {
+            if v.len() != 4 {
+                return Err(MessageHandleError::InvalidMessageFormat);
             }
-            Self::Close { subscription_id } => json!(["CLOSE", subscription_id]).to_string(),
+
+            let event_id: Hash = serde_json::from_value(v[1].clone())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+            let status: bool = serde_json::from_value(v[2].clone())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+            let message: String = serde_json::from_value(v[3].clone())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+            return Ok(Self::new_ok(event_id, status, message));
         }
+
+        Err(MessageHandleError::InvalidMessageFormat)
     }
 }
 
@@ -307,24 +157,7 @@ mod tests {
 
     use std::{error::Error, str::FromStr};
 
-    use uuid::uuid;
-
-    use crate::KindBase;
-
     type TestResult = Result<(), Box<dyn Error>>;
-
-    #[test]
-    fn test_handle_valid_subscription_filter_multiple_id_prefixes() -> TestResult {
-        let id_prefixes = vec![
-            uuid!("b6527a19-5961-4310-8cf9-2d35307f442b"),
-            uuid!("6b9cb378-2abd-439f-953b-883380e2701f"),
-        ];
-        let f = SubscriptionFilter::new().ids(id_prefixes.clone());
-
-        assert_eq!(Some(id_prefixes), f.ids);
-
-        Ok(())
-    }
 
     #[test]
     fn test_handle_valid_notice() -> TestResult {
@@ -424,38 +257,48 @@ mod tests {
     }
 
     #[test]
-    fn test_client_message_req() {
-        let pk = XOnlyPublicKey::from_str(
-            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
-        )
-        .unwrap();
-        let filters = vec![
-            SubscriptionFilter::new().kind(Kind::Base(KindBase::EncryptedDirectMessage)),
-            SubscriptionFilter::new().pubkey(pk),
-        ];
-
-        let client_req = ClientMessage::new_req("test", filters);
-        assert_eq!(
-            client_req.to_json(),
-            r##"["REQ","test",{"kinds":[4]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
+    fn test_handle_valid_ok() -> TestResult {
+        let valid_ok_msg = r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, "pow: difficulty 25>=24"]"#;
+        let handled_valid_ok_msg = RelayMessage::new_ok(
+            Hash::from_str("b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30")?,
+            true,
+            "pow: difficulty 25>=24".into(),
         );
+
+        assert_eq!(RelayMessage::from_json(valid_ok_msg)?, handled_valid_ok_msg);
+
+        Ok(())
     }
-
     #[test]
-    fn test_client_message_custom_kind() {
-        let pk = XOnlyPublicKey::from_str(
-            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
-        )
-        .unwrap();
-        let filters = vec![
-            SubscriptionFilter::new().kind(Kind::Custom(22)),
-            SubscriptionFilter::new().pubkey(pk),
-        ];
-
-        let client_req = ClientMessage::new_req("test", filters);
+    fn test_handle_invalid_ok() {
+        // Missing params
         assert_eq!(
-            client_req.to_json(),
-            r##"["REQ","test",{"kinds":[22]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
+            RelayMessage::from_json(
+                r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30"]"#
+            )
+            .unwrap_err(),
+            MessageHandleError::InvalidMessageFormat
+        );
+
+        // Invalid event_id
+        assert_eq!(
+            RelayMessage::from_json(
+                r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7dde", true, ""]"#
+            )
+            .unwrap_err(),
+            MessageHandleError::JsonDeserializationFailed
+        );
+
+        // Invalid status
+        assert_eq!(
+            RelayMessage::from_json(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", hello, ""]"#).unwrap_err(),
+            MessageHandleError::JsonDeserializationFailed
+        );
+
+        // Invalid message
+        assert_eq!(
+            RelayMessage::from_json(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", hello, 404]"#).unwrap_err(),
+            MessageHandleError::JsonDeserializationFailed
         );
     }
 }

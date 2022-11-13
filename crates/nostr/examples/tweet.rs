@@ -62,9 +62,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         let msg_text = msg.to_text().expect("Failed to conver message to text");
         if let Ok(handled_message) = RelayMessage::from_json(msg_text) {
             match handled_message {
-                RelayMessage::Empty => {
-                    println!("Empty message")
-                }
                 RelayMessage::Notice { message } => {
                     println!("Got a notice: {}", message);
                 }
@@ -76,6 +73,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
                 RelayMessage::EndOfStoredEvents { subscription_id: _ } => {
                     println!("Relay signalled End of Stored Events");
+                }
+                RelayMessage::Ok {
+                    event_id,
+                    status,
+                    message,
+                } => {
+                    println!("Got OK message: {} - {} - {}", event_id, status, message);
+                }
+                RelayMessage::Empty => {
+                    println!("Empty message");
                 }
             }
         } else {
