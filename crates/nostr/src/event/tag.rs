@@ -116,6 +116,12 @@ impl From<TagData> for Vec<String> {
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub struct Tag(Vec<String>);
 
+impl From<Vec<String>> for Tag {
+    fn from(list: Vec<String>) -> Self {
+        Self(list)
+    }
+}
+
 impl Tag {
     pub fn new(data: TagData) -> Self {
         Self(data.into())

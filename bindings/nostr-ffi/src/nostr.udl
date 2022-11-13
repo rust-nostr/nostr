@@ -70,10 +70,16 @@ interface Event {
     string pubkey();
     Kind kind();
     string content();
+    [Throws=NostrError, Name=new_generic]
+    constructor(Keys keys, Kind kind, string content, sequence<sequence<string>> tags);
     [Throws=NostrError, Name=set_metadata]
     constructor(Keys keys, string? username, string? display_name, string? about, string? picture);
     [Throws=NostrError, Name=add_recommended_relay]
     constructor(Keys keys, string url);
+    [Throws=NostrError, Name=new_text_note]
+    constructor(Keys keys, string content, sequence<sequence<string>> tags);
+    [Throws=NostrError, Name=new_pow_text_note]
+    constructor(Keys keys, string content, sequence<sequence<string>> tags, u8 difficulty);
     [Throws=NostrError, Name=set_contact_list]
     constructor(Keys keys, sequence<Contact> list);
     [Throws=NostrError, Name=new_encrypted_direct_msg]
