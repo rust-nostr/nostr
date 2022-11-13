@@ -7,12 +7,15 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use bitcoin_hashes::sha256;
-use nostr::event::Kind as KindSdk;
-use nostr::{Contact as ContactSdk, Event as EventSdk, KindBase};
-use secp256k1::XOnlyPublicKey;
+use nostr::{Contact as ContactSdk, Event as EventSdk};
 use url::Url;
 
+pub mod kind;
+
+use self::kind::Kind;
+use crate::contact::Contact;
 use crate::key::Keys;
+
 pub struct Event {
     event: EventSdk,
 }
@@ -146,29 +149,6 @@ impl Event {
     }
 }
 
-pub enum Kind {
-    Base { kind: KindBase },
-    Custom { kind: u16 },
-}
-
-impl From<KindSdk> for Kind {
-    fn from(kind: KindSdk) -> Self {
-        match kind {
-            KindSdk::Base(kind) => Self::Base { kind },
-            KindSdk::Custom(kind) => Self::Custom { kind },
-        }
-    }
-}
-
-impl From<Kind> for KindSdk {
-    fn from(kind: Kind) -> Self {
-        match kind {
-            Kind::Base { kind } => Self::Base(kind),
-            Kind::Custom { kind } => Self::Custom(kind),
-        }
-    }
-}
-
 /* pub enum TagData {
     Generic(TagKind, Vec<String>),
     EventId(String),
@@ -221,36 +201,3 @@ impl Tag {
         &self.0[1]
     }
 } */
-
-pub struct Contact {
-    contact: ContactSdk,
-}
-
-impl Deref for Contact {
-    type Target = ContactSdk;
-    fn deref(&self) -> &Self::Target {
-        &self.contact
-    }
-}
-
-impl Contact {
-    pub fn new(alias: String, pk: String, relay_url: String) -> Result<Self> {
-        let pk = XOnlyPublicKey::from_str(&pk)?;
-
-        Ok(Self {
-            contact: ContactSdk::new(pk, &relay_url, &alias),
-        })
-    }
-
-    pub fn alias(&self) -> String {
-        self.contact.alias.clone()
-    }
-
-    pub fn public_key(&self) -> String {
-        self.contact.pk.to_string()
-    }
-
-    pub fn relay_url(&self) -> String {
-        self.contact.relay_url.clone()
-    }
-}

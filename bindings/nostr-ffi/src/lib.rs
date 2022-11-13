@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+mod contact;
 mod error;
 mod event;
 pub mod helper;
@@ -17,7 +18,9 @@ mod ffi {
     pub use crate::error::NostrError;
 
     // Nostr
-    pub use crate::event::{Contact, Event, Kind};
+    pub use crate::contact::Contact;
+    pub use crate::event::kind::Kind;
+    pub use crate::event::Event;
     pub use crate::key::Keys;
     pub use crate::subscription::SubscriptionFilter;
 
