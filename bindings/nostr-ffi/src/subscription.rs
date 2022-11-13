@@ -6,7 +6,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
-use chrono::{DateTime, NaiveDateTime, Utc};
 use nostr::SubscriptionFilter as SubscriptionFilterSdk;
 use secp256k1::XOnlyPublicKey;
 use uuid::Uuid;
@@ -91,23 +90,16 @@ impl SubscriptionFilter {
         Ok(Arc::new(builder))
     }
 
-    // unix timestamp seconds
     pub fn since(self: Arc<Self>, timestamp: u64) -> Arc<Self> {
-        let naive = NaiveDateTime::from_timestamp(timestamp as i64, 0);
-        let since = DateTime::<Utc>::from_utc(naive, Utc);
-
         let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.since(since);
+        builder.sub_filter = builder.sub_filter.since(timestamp);
 
         Arc::new(builder)
     }
 
     pub fn until(self: Arc<Self>, timestamp: u64) -> Arc<Self> {
-        let naive = NaiveDateTime::from_timestamp(timestamp as i64, 0);
-        let until = DateTime::<Utc>::from_utc(naive, Utc);
-
         let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.until(until);
+        builder.sub_filter = builder.sub_filter.until(timestamp);
 
         Arc::new(builder)
     }
