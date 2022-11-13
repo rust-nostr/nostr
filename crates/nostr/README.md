@@ -57,6 +57,29 @@ fn main() -> anyhow::Result<()> {
 
 More examples can be found in the [examples](https://github.com/yukibtc/nostr-rs-sdk/tree/master/crates/nostr/examples) directory.
 
+## NIPs
+
+| Supported  | NIP                                                                                                                                |
+|:----------:| ---------------------------------------------------------------------------------------------------------------------------------- |
+| ✅         | [01 - Basic protocol flow description](https://github.com/nostr-protocol/nips/blob/master/01.md)                                    |
+| ✅         | [02 - Contact List and Petnames](https://github.com/nostr-protocol/nips/blob/master/02.md)                                          |
+| ❌         | [03 - OpenTimestamps Attestations for Events](https://github.com/nostr-protocol/nips/blob/master/03.md)                             |
+| ✅         | [04 - Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)                                           |
+| ❌         | [05 - Mapping Nostr keys to DNS-based internet identifiers](https://github.com/nostr-protocol/nips/blob/master/05.md)               |
+| ✅         | [06 - Basic key derivation from mnemonic seed phrase](https://github.com/nostr-protocol/nips/blob/master/06.md)                     |
+| ❌         | [08 - Handling Mentions](https://github.com/nostr-protocol/nips/blob/master/08.md)                                                  |
+| ✅         | [09 - Event Deletion](https://github.com/nostr-protocol/nips/blob/master/09.md)                                                     |
+| ❌         | [10 - Conventions for clients' use of `e` and `p` tags in text events](https://github.com/nostr-protocol/nips/blob/master/10.md)    |
+| ❌         | [11 - Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)                                         |
+| ❌         | [12 - Generic Tag Queries](https://github.com/nostr-protocol/nips/blob/master/12.md)                                                |
+| ✅         | [13 - Proof of Work](https://github.com/nostr-protocol/nips/blob/master/13.md)                                                      |
+| ❌         | [14 - Subject tag in text events](https://github.com/nostr-protocol/nips/blob/master/14.md)                                         |
+| ✅         | [15 - End of Stored Events Notice](https://github.com/nostr-protocol/nips/blob/master/15.md)                                        |
+| ❌         | [16 - Event Treatment](https://github.com/nostr-protocol/nips/blob/master/16.md)                                                    |
+| ❌         | [22 - Event created_at Limits](https://github.com/nostr-protocol/nips/blob/master/22.md)                                            |
+| ✅         | [25 - Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)                                                          |
+| ✅         | [28 - Public Chat](https://github.com/nostr-protocol/nips/blob/master/28.md)                                                        |
+
 ## State
 
 **This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
