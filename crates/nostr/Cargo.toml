@@ -11,12 +11,16 @@ readme = "README.md"
 rust-version = "1.64"
 keywords = ["nostr", "protocol", "sdk", "rust"]
 
+[features]
+default = ["nip06"]
+nip06 = ["bip32"]
+
 [dependencies]
 aes = "0.8"
 anyhow = "1.0"
 base64 = "0.13"
 bech32 = "0.9"
-bip32 = "0.4"
+bip32 = { version = "0.4", optional = true }
 bitcoin_hashes = { version = "0.11", features = ["serde"] }
 cbc = { version = "0.1", features = ["alloc"] }
 log = "0.4"
@@ -35,3 +39,7 @@ uuid = { version = "1.2", features = ["serde"] }
 csv = "1.1.5"
 env_logger = "0.8.2"
 tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"]}
+
+[[example]]
+name = "nip06"
+required-features = ["nip06"]

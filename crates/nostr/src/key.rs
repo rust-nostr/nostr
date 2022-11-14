@@ -4,8 +4,8 @@
 
 use std::str::FromStr;
 
-use anyhow::anyhow;
 use bech32::{self, FromBase32, ToBase32, Variant};
+#[cfg(feature = "nip06")]
 use bip32::{DerivationPath, Language, Mnemonic, XPrv};
 use secp256k1::rand::rngs::OsRng;
 pub use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
@@ -42,9 +42,16 @@ pub trait ToBech32 {
     fn to_bech32(&self) -> Result<String, Self::Err>;
 }
 
+#[cfg(feature = "nip06")]
 pub trait FromSeedPhrase: Sized {
     type Err;
     fn from_seed(seed: &str) -> Result<Self, Self::Err>;
+}
+
+#[cfg(feature = "nip06")]
+pub trait GenerateSeedPhrase {
+    type Err;
+    fn generate_seed_from_os_random() -> Result<String, Self::Err>;
 }
 
 impl ToBech32 for XOnlyPublicKey {
@@ -194,12 +201,15 @@ impl FromBech32 for Keys {
     }
 }
 
+#[cfg(feature = "nip06")]
 impl FromSeedPhrase for Keys {
     type Err = anyhow::Error;
 
     /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
     /// ONLY 24-WORD BIP-39 MNEMONICS ARE SUPPORTED!
     fn from_seed(phrase: &str) -> Result<Self, Self::Err> {
+        use anyhow::anyhow;
+
         if phrase.split(' ').count() != 24 {
             return Err(anyhow!(
                 "Invalid mnemonic length: only 24-word BIP-39 mnemonics are supported."
@@ -214,6 +224,16 @@ impl FromSeedPhrase for Keys {
         let secret_key = SecretKey::from_slice(child_xprv.private_key().to_bytes().as_slice())?;
 
         Ok(Self::new(secret_key))
+    }
+}
+
+#[cfg(feature = "nip06")]
+impl GenerateSeedPhrase for Keys {
+    type Err = anyhow::Error;
+
+    fn generate_seed_from_os_random() -> Result<String, Self::Err> {
+        let mnemonic = Mnemonic::random(OsRng, Language::English);
+        Ok(mnemonic.phrase().to_string())
     }
 }
 

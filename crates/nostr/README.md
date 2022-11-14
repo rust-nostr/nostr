@@ -82,6 +82,14 @@ More examples can be found in the [examples](https://github.com/yukibtc/nostr-rs
 | ✅         | [25 - Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)                                                          |
 | ✅         | [28 - Public Chat](https://github.com/nostr-protocol/nips/blob/master/28.md)                                                        |
 
+## Crate Feature Flags
+
+The following crate feature flags are available:
+
+| Feature             | Default | Description                                                                                                                |
+| ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
+| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
+
 ## State
 
 **This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
