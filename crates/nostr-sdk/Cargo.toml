@@ -13,7 +13,8 @@ keywords = ["nostr", "sdk", "rust"]
 
 [features]
 default = []
-blocking = ["once_cell"]
+blocking = ["dep:once_cell"]
+nip06 = ["nostr/nip06"]
 
 [dependencies]
 anyhow = "1"

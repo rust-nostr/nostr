@@ -90,6 +90,7 @@ The following crate feature flags are available:
 | Feature             | Default | Description                                                                                                                |
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
 | `blocking`          |   No    | Needed if you want to use this library in not async/await context                                                          |
+| `nip06`             |   No    | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
 
 ## State
 
