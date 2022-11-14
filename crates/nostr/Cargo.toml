@@ -12,8 +12,8 @@ rust-version = "1.64"
 keywords = ["nostr", "protocol", "sdk", "rust"]
 
 [features]
-default = ["nip06"]
-nip06 = ["bip32"]
+default = []
+nip06 = ["dep:bip32"]
 
 [dependencies]
 aes = "0.8"

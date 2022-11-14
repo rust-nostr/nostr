@@ -70,7 +70,7 @@ The following crate feature flags are available:
 
 | Feature             | Default | Description                                                                                                                |
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
-| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
+| `nip06`             |   No    | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
 
 ## Supported NIPs
 
