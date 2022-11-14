@@ -20,7 +20,7 @@ other lower-level crates. If you're attempting something more custom, you might 
 ```toml
 [dependencies]
 anyhow = "1"
-nostr-sdk = "0.4"
+nostr-sdk = "0.5"
 tokio = { version = "1", features = ["full"] }
 url = "2"
 ```

@@ -24,9 +24,9 @@ static REGEX_NAME: Lazy<Regex> =
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct EventBuilder {
-    pub kind: Kind,
-    pub tags: Vec<Tag>,
-    pub content: String,
+    kind: Kind,
+    tags: Vec<Tag>,
+    content: String,
 }
 
 impl EventBuilder {
@@ -126,7 +126,7 @@ impl EventBuilder {
     /// # Example
     /// ```rust,no_run
     /// use std::str::FromStr;
-    /// 
+    ///
     /// use nostr::key::{FromBech32, Keys};
     /// use nostr::metadata::Metadata;
     /// use nostr::EventBuilder;
