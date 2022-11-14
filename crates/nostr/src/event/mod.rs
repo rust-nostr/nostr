@@ -29,7 +29,7 @@ use crate::{Contact, Keys};
 static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Event {
     pub id: sha256::Hash, // hash of serialized event with id 0
     pub pubkey: XOnlyPublicKey,
@@ -51,7 +51,7 @@ where
 }
 
 impl Event {
-    fn gen_id(
+    pub fn gen_id(
         pubkey: &XOnlyPublicKey,
         created_at: u64,
         kind: &Kind,
@@ -82,6 +82,57 @@ impl Event {
             content: content.to_string(),
             sig: secp.sign_schnorr(&message, keypair),
         })
+    }
+
+    /// Create a POW generic type of event
+    pub fn new_pow_generic(
+        keys: &Keys,
+        kind: Kind,
+        content: &str,
+        tags: &[Tag],
+        difficulty: u8,
+    ) -> Result<Self> {
+        let mut nonce: u128 = 0;
+        #[allow(unused_assignments)]
+        let mut tags: Vec<Tag> = tags.to_vec();
+
+        let pubkey = keys.public_key();
+
+        let now = Instant::now();
+
+        loop {
+            nonce += 1;
+
+            tags.push(Tag::new(TagData::POW { nonce, difficulty }));
+
+            let created_at: u64 = timestamp();
+            let id: sha256::Hash = Self::gen_id(&pubkey, created_at, &kind, &tags, content);
+
+            if nip13::get_leading_zero_bits(id) >= difficulty {
+                log::debug!(
+                    "{} iterations in {} ms. Avg rate {} hashes/second",
+                    nonce,
+                    now.elapsed().as_millis(),
+                    nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
+                );
+
+                let secp = Secp256k1::new();
+                let keypair: &KeyPair = &keys.key_pair()?;
+                let message = secp256k1::Message::from_slice(&id)?;
+
+                return Ok(Self {
+                    id,
+                    pubkey,
+                    created_at,
+                    kind,
+                    tags,
+                    content: content.to_string(),
+                    sig: secp.sign_schnorr(&message, keypair),
+                });
+            }
+
+            tags.pop();
+        }
     }
 
     /// Set metadata
@@ -187,48 +238,13 @@ impl Event {
         tags: &[Tag],
         difficulty: u8,
     ) -> Result<Self> {
-        let mut nonce: u128 = 0;
-        #[allow(unused_assignments)]
-        let mut tags: Vec<Tag> = tags.to_vec();
-
-        let pubkey = keys.public_key();
-        let kind = Kind::Base(KindBase::TextNote);
-
-        let now = Instant::now();
-
-        loop {
-            nonce += 1;
-
-            tags.push(Tag::new(TagData::POW { nonce, difficulty }));
-
-            let created_at: u64 = timestamp();
-            let id: sha256::Hash = Self::gen_id(&pubkey, created_at, &kind, &tags, content);
-
-            if nip13::get_leading_zero_bits(id) >= difficulty {
-                log::debug!(
-                    "{} iterations in {} ms. Avg rate {} hashes/second",
-                    nonce,
-                    now.elapsed().as_millis(),
-                    nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
-                );
-
-                let secp = Secp256k1::new();
-                let keypair: &KeyPair = &keys.key_pair()?;
-                let message = secp256k1::Message::from_slice(&id)?;
-
-                return Ok(Self {
-                    id,
-                    pubkey,
-                    created_at,
-                    kind,
-                    tags,
-                    content: content.to_string(),
-                    sig: secp.sign_schnorr(&message, keypair),
-                });
-            }
-
-            tags.pop();
-        }
+        Self::new_pow_generic(
+            keys,
+            Kind::Base(KindBase::TextNote),
+            content,
+            tags,
+            difficulty,
+        )
     }
 
     /// Set contact list
