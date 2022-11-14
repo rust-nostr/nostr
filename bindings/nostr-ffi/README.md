@@ -2,5 +2,5 @@
 
 ## Usage
 
-Kotlin: https://github.com/mozilla/rust-android-gradle
-Swift: https://mozilla.github.io/uniffi-rs/swift/overview.html
+- Kotlin: https://github.com/mozilla/rust-android-gradle
+- Swift: https://mozilla.github.io/uniffi-rs/swift/overview.html
