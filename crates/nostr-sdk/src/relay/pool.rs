@@ -58,12 +58,9 @@ impl RelayPoolTask {
     async fn handle_message(&mut self, msg: RelayPoolEvent) {
         match msg {
             RelayPoolEvent::ReceivedMsg { relay_url: _, msg } => {
-                if let Err(e) = self
+                let _ = self
                     .notification_sender
-                    .send(RelayPoolNotifications::ReceivedMessage(msg.clone()))
-                {
-                    log::error!("RelayPoolNotifications::ReceivedMessage error: {:?}", e);
-                };
+                    .send(RelayPoolNotifications::ReceivedMessage(msg.clone()));
 
                 if let RelayMessage::Event {
                     subscription_id: _,
@@ -81,9 +78,7 @@ impl RelayPoolTask {
                             let notification =
                                 RelayPoolNotifications::ReceivedEvent(event.as_ref().clone());
 
-                            if let Err(e) = self.notification_sender.send(notification) {
-                                log::error!("RelayPoolNotifications::ReceivedEvent error: {:?}", e);
-                            };
+                            let _ = self.notification_sender.send(notification);
                         }
                     }
                 }
