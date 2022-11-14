@@ -20,6 +20,7 @@ mod ffi {
 
     // Nostr
     pub use crate::contact::Contact;
+    pub use crate::event::builder::EventBuilder;
     pub use crate::event::kind::Kind;
     pub use crate::event::Event;
     pub use crate::key::Keys;

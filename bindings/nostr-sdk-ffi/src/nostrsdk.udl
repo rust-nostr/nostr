@@ -57,29 +57,33 @@ interface Event {
     string pubkey();
     Kind kind();
     string content();
-    [Throws=NostrError, Name=new_generic]
-    constructor(Keys keys, Kind kind, string content, sequence<sequence<string>> tags);
-    [Throws=NostrError, Name=set_metadata]
-    constructor(Keys keys, AccountMetadata metadata);
-    [Throws=NostrError, Name=add_recommended_relay]
-    constructor(Keys keys, string url);
-    [Throws=NostrError, Name=new_text_note]
-    constructor(Keys keys, string content, sequence<sequence<string>> tags);
-    [Throws=NostrError, Name=new_pow_text_note]
-    constructor(Keys keys, string content, sequence<sequence<string>> tags, u8 difficulty);
-    [Throws=NostrError, Name=set_contact_list]
-    constructor(Keys keys, sequence<Contact> list);
-    [Throws=NostrError, Name=new_encrypted_direct_msg]
-    constructor(Keys sender_keys, Keys receiver_keys, string content);
-    [Throws=NostrError, Name=delete]
-    constructor(Keys keys, sequence<string> ids, optional string? reason = null);
-    [Throws=NostrError, Name=new_reaction]
-    constructor(Keys keys, Event event, boolean positive);
     boolean verify();
     [Throws=NostrError, Name=from_json]
     constructor(string json);
     [Throws=NostrError]
     string as_json();
+};
+
+interface EventBuilder {
+    constructor(Kind kind, string content, sequence<sequence<string>> tags);
+    [Throws=NostrError]
+    Event to_event(Keys keys);
+    [Throws=NostrError]
+    Event to_pow_event(Keys keys, u8 difficulty);
+    [Throws=NostrError, Name=set_metadata]
+    constructor(Keys keys, AccountMetadata metadata);
+    [Throws=NostrError, Name=add_recommended_relay]
+    constructor(string url);
+    [Name=new_text_note]
+    constructor(string content, sequence<sequence<string>> tags);
+    [Name=set_contact_list]
+    constructor(sequence<Contact> list);
+    [Throws=NostrError, Name=new_encrypted_direct_msg]
+    constructor(Keys sender_keys, Keys receiver_keys, string content);
+    [Throws=NostrError, Name=delete]
+    constructor(sequence<string> ids, optional string? reason = null);
+    [Name=new_reaction]
+    constructor(Event event, boolean positive);
 };
 
 interface Contact {

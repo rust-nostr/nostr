@@ -17,7 +17,7 @@ mod ffi {
     // Extenal
     pub use nostr::util::time::timestamp;
     pub use nostr_ffi::{
-        AccountMetadata, Contact, Event, Keys, Kind, KindBase, SubscriptionFilter,
+        AccountMetadata, Contact, Event, EventBuilder, Keys, Kind, KindBase, SubscriptionFilter,
     };
 
     // Namespace
