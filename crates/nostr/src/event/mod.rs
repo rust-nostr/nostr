@@ -3,31 +3,21 @@
 // Distributed under the MIT software license
 
 use std::str::FromStr;
-use std::time::Instant;
 
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::hex::FromHex;
-use bitcoin_hashes::{sha256, Hash};
-use once_cell::sync::Lazy;
-use regex::Regex;
+use bitcoin_hashes::sha256;
 use secp256k1::schnorr::Signature;
-use secp256k1::{KeyPair, Secp256k1, XOnlyPublicKey};
+use secp256k1::{Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer};
-use serde_json::{json, Value};
-use url::Url;
 
+pub mod builder;
 pub mod kind;
 pub mod tag;
 
+pub use self::builder::EventBuilder;
 pub use self::kind::{Kind, KindBase};
 pub use self::tag::{Marker, Tag, TagData, TagKind};
-use crate::metadata::Metadata;
-use crate::util::nips::{nip04, nip05, nip13};
-use crate::util::time::timestamp;
-use crate::{Contact, Keys};
-
-static REGEX_NAME: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Event {
@@ -51,390 +41,10 @@ where
 }
 
 impl Event {
-    pub fn gen_id(
-        pubkey: &XOnlyPublicKey,
-        created_at: u64,
-        kind: &Kind,
-        tags: &[Tag],
-        content: &str,
-    ) -> sha256::Hash {
-        let json: Value = json!([0, pubkey, created_at, kind, tags, content]);
-        let event_str: String = json.to_string();
-        sha256::Hash::hash(event_str.as_bytes())
-    }
-
-    /// Create a generic type of event
-    pub fn new_generic(keys: &Keys, kind: Kind, content: &str, tags: &[Tag]) -> Result<Self> {
-        let secp = Secp256k1::new();
-        let keypair: &KeyPair = &keys.key_pair()?;
-        let pubkey: XOnlyPublicKey = keys.public_key();
-        let created_at: u64 = timestamp();
-
-        let id: sha256::Hash = Self::gen_id(&pubkey, created_at, &kind, tags, content);
-        let message = secp256k1::Message::from_slice(&id)?;
-
-        Ok(Self {
-            id,
-            pubkey,
-            created_at,
-            kind,
-            tags: tags.to_vec(),
-            content: content.to_string(),
-            sig: secp.sign_schnorr(&message, keypair),
-        })
-    }
-
-    /// Create a POW generic type of event
-    pub fn new_pow_generic(
-        keys: &Keys,
-        kind: Kind,
-        content: &str,
-        tags: &[Tag],
-        difficulty: u8,
-    ) -> Result<Self> {
-        let mut nonce: u128 = 0;
-        #[allow(unused_assignments)]
-        let mut tags: Vec<Tag> = tags.to_vec();
-
-        let pubkey = keys.public_key();
-
-        let now = Instant::now();
-
-        loop {
-            nonce += 1;
-
-            tags.push(Tag::new(TagData::POW { nonce, difficulty }));
-
-            let created_at: u64 = timestamp();
-            let id: sha256::Hash = Self::gen_id(&pubkey, created_at, &kind, &tags, content);
-
-            if nip13::get_leading_zero_bits(id) >= difficulty {
-                log::debug!(
-                    "{} iterations in {} ms. Avg rate {} hashes/second",
-                    nonce,
-                    now.elapsed().as_millis(),
-                    nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
-                );
-
-                let secp = Secp256k1::new();
-                let keypair: &KeyPair = &keys.key_pair()?;
-                let message = secp256k1::Message::from_slice(&id)?;
-
-                return Ok(Self {
-                    id,
-                    pubkey,
-                    created_at,
-                    kind,
-                    tags,
-                    content: content.to_string(),
-                    sig: secp.sign_schnorr(&message, keypair),
-                });
-            }
-
-            tags.pop();
-        }
-    }
-
-    /// Set metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr::key::{FromBech32, Keys};
-    /// use nostr::metadata::Metadata;
-    /// use nostr::Event;
-    /// use url::Url;
-    ///
-    /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
-    ///
-    /// let metadata = Metadata::new()
-    ///     .name("username")
-    ///     .display_name("My Username")
-    ///     .about("Description")
-    ///     .picture(Url::from_str("https://example.com/avatar.png").unwrap())
-    ///     .nip05("username@example.com");
-    ///
-    /// let event = Event::set_metadata(&my_keys, metadata).unwrap();
-    /// ```
-    pub fn set_metadata(keys: &Keys, metadata: Metadata) -> Result<Self> {
-        let name = metadata.name;
-        let display_name = metadata.display_name;
-        let about = metadata.about;
-        let picture = metadata.picture;
-        let nip05_str = metadata.nip05;
-
-        if let Some(name) = name.clone() {
-            if !REGEX_NAME.is_match(&name) {
-                return Err(anyhow!("Invalid name"));
-            }
-        }
-
-        let mut metadata: Value = json!({
-            "name": name.unwrap_or_else(|| "".into()),
-            "display_name": display_name.unwrap_or_else(|| "".into()),
-            "about": about.unwrap_or_else(|| "".into()),
-            "picture": picture.unwrap_or_else(|| "".into()),
-        });
-
-        if let Some(nip05_str) = nip05_str {
-            if !nip05::verify(keys.public_key(), &nip05_str)? {
-                return Err(anyhow!("Impossible to verify NIP-05"));
-            }
-            metadata["nip05"] = json!(nip05_str);
-        }
-
-        Self::new_generic(
-            keys,
-            Kind::Base(KindBase::Metadata),
-            &metadata.to_string(),
-            &[],
-        )
-    }
-
-    ///  Add recommended relay
-    pub fn add_recommended_relay(keys: &Keys, url: &Url) -> Result<Self> {
-        Self::new_generic(
-            keys,
-            Kind::Base(KindBase::RecommendRelay),
-            url.as_ref(),
-            &[],
-        )
-    }
-
-    /// Text note
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr::key::{FromBech32, Keys};
-    /// use nostr::Event;
-    ///
-    /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
-    ///
-    /// let event = Event::new_text_note(&my_keys, "My first text note from Nostr SDK!", &[]).unwrap();
-    /// ```
-    pub fn new_text_note(keys: &Keys, content: &str, tags: &[Tag]) -> Result<Self> {
-        Self::new_generic(keys, Kind::Base(KindBase::TextNote), content, tags)
-    }
-
-    /// POW Text note
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr::key::{FromBech32, Keys};
-    /// use nostr::Event;
-    ///
-    /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
-    ///
-    /// let event = Event::new_pow_text_note(&my_keys, "My first POW text note from Nostr SDK!", &[], 20).unwrap();
-    /// ```
-    pub fn new_pow_text_note(
-        keys: &Keys,
-        content: &str,
-        tags: &[Tag],
-        difficulty: u8,
-    ) -> Result<Self> {
-        Self::new_pow_generic(
-            keys,
-            Kind::Base(KindBase::TextNote),
-            content,
-            tags,
-            difficulty,
-        )
-    }
-
-    /// Set contact list
-    pub fn set_contact_list(keys: &Keys, list: Vec<Contact>) -> Result<Self> {
-        let tags: Vec<Tag> = list
-            .iter()
-            .map(|contact| {
-                Tag::new(TagData::ContactList {
-                    pk: contact.pk,
-                    relay_url: contact.relay_url.clone(),
-                    alias: contact.alias.clone(),
-                })
-            })
-            .collect();
-
-        Self::new_generic(keys, Kind::Base(KindBase::ContactList), "", &tags)
-    }
-
-    /// Create encrypted direct msg event
-    pub fn new_encrypted_direct_msg(
-        sender_keys: &Keys,
-        receiver_keys: &Keys,
-        content: &str,
-    ) -> Result<Self> {
-        Self::new_generic(
-            sender_keys,
-            Kind::Base(KindBase::EncryptedDirectMessage),
-            &nip04::encrypt(
-                &sender_keys.secret_key()?,
-                &receiver_keys.public_key(),
-                content,
-            )?,
-            &[Tag::new(TagData::PubKey(receiver_keys.public_key()))],
-        )
-    }
-
-    /// Create delete event
-    pub fn delete(keys: &Keys, ids: Vec<sha256::Hash>, content: Option<&str>) -> Result<Self> {
-        let tags: Vec<Tag> = ids
-            .iter()
-            .map(|id| Tag::new(TagData::EventId(*id)))
-            .collect();
-
-        Self::new_generic(
-            keys,
-            Kind::Base(KindBase::EventDeletion),
-            content.unwrap_or(""),
-            &tags,
-        )
-    }
-
-    /// Add reaction (like/upvote, dislike/downvote) to an event
-    pub fn new_reaction(keys: &Keys, event: &Event, positive: bool) -> Result<Self> {
-        let tags: &[Tag] = &[
-            Tag::new(TagData::EventId(event.id)),
-            Tag::new(TagData::PubKey(event.pubkey)),
-        ];
-
-        let content: &str = match positive {
-            true => "+",
-            false => "-",
-        };
-
-        Self::new_generic(keys, Kind::Base(KindBase::Reaction), content, tags)
-    }
-
-    /// Create new channel
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
-    pub fn new_channel(
-        keys: &Keys,
-        name: &str,
-        about: Option<&str>,
-        picture: Option<&str>,
-    ) -> Result<Self> {
-        if !REGEX_NAME.is_match(name) {
-            return Err(anyhow!("Invalid name"));
-        }
-
-        let metadata: Value = json!({
-            "name": name,
-            "about": about.unwrap_or(""),
-            "picture": picture.unwrap_or(""),
-        });
-
-        Self::new_generic(
-            keys,
-            Kind::Base(KindBase::ChannelCreation),
-            &metadata.to_string(),
-            &[],
-        )
-    }
-
-    /// Set channel metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
-    pub fn set_channel_metadata(
-        keys: &Keys,
-        channel_id: sha256::Hash, // event id of kind 40
-        relay_url: Url,
-        name: Option<&str>,
-        about: Option<&str>,
-        picture: Option<&str>,
-    ) -> Result<Self> {
-        if let Some(name) = name {
-            if !REGEX_NAME.is_match(name) {
-                return Err(anyhow!("Invalid name"));
-            }
-        }
-
-        let metadata: Value = json!({
-            "name": name.unwrap_or(""),
-            "about": about.unwrap_or(""),
-            "picture": picture.unwrap_or(""),
-        });
-
-        Self::new_generic(
-            keys,
-            Kind::Base(KindBase::ChannelMetadata),
-            &metadata.to_string(),
-            &[Tag::new(TagData::Nip10E(channel_id, relay_url, None))],
-        )
-    }
-
-    /// New channel message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
-    pub fn new_channel_msg(
-        keys: &Keys,
-        channel_id: sha256::Hash, // event id of kind 40
-        relay_url: Url,
-        content: &str,
-    ) -> Result<Self> {
-        Self::new_generic(
-            keys,
-            Kind::Base(KindBase::ChannelMessage),
-            content,
-            &[Tag::new(TagData::Nip10E(
-                channel_id,
-                relay_url,
-                Some(Marker::Root),
-            ))],
-        )
-    }
-
-    /// Hide message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
-    pub fn hide_channel_msg(
-        keys: &Keys,
-        message_id: sha256::Hash, // event id of kind 42
-        reason: &str,
-    ) -> Result<Self> {
-        let content: Value = json!({
-            "reason": reason,
-        });
-
-        Self::new_generic(
-            keys,
-            Kind::Base(KindBase::ChannelHideMessage),
-            &content.to_string(),
-            &[Tag::new(TagData::EventId(message_id))],
-        )
-    }
-
-    /// Hide message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
-    pub fn mute_channel_user(keys: &Keys, pubkey: XOnlyPublicKey, reason: &str) -> Result<Self> {
-        let content: Value = json!({
-            "reason": reason,
-        });
-
-        Self::new_generic(
-            keys,
-            Kind::Base(KindBase::ChannelMuteUser),
-            &content.to_string(),
-            &[Tag::new(TagData::PubKey(pubkey))],
-        )
-    }
-
     /// Verify event
     pub fn verify(&self) -> Result<(), secp256k1::Error> {
         let secp = Secp256k1::new();
-        let id = Self::gen_id(
+        let id = EventBuilder::gen_id(
             &self.pubkey,
             self.created_at,
             &self.kind,
@@ -497,6 +107,8 @@ impl Event {
 mod tests {
     use super::*;
 
+    use crate::Keys;
+
     #[test]
     fn test_tags_deser_without_recommended_relay() {
         //The TAG array has dynamic length because the third element(Recommended relay url) is optional
@@ -508,7 +120,9 @@ mod tests {
     #[test]
     fn test_custom_kind() {
         let keys = Keys::generate_from_os_random();
-        let e = Event::new_generic(&keys, Kind::Custom(123), "my content", &vec![]).unwrap();
+        let e: Event = EventBuilder::new(Kind::Custom(123), "my content", &vec![])
+            .to_event(&keys)
+            .unwrap();
 
         let serialized = e.as_json().unwrap();
         let deserialized = Event::from_json(serialized).unwrap();

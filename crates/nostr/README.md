@@ -20,7 +20,7 @@ url = "2"
 
 ```rust,no_run
 use std::str::FromStr;
-use nostr::{Event, Metadata};
+use nostr::{Event, EventBuilder, Metadata};
 use nostr::key::{FromBech32, Keys};
 use nostr::message::ClientMessage;
 use tungstenite::{Message as WsMessage};
@@ -43,7 +43,13 @@ fn main() -> anyhow::Result<()> {
         .picture(Url::from_str("https://example.com/avatar.png")?)
         .nip05("username@example.com");
 
-    let event = Event::set_metadata(&my_keys, metadata)?;
+    let _event: Event = EventBuilder::set_metadata(&my_keys, metadata)?.to_event(&my_keys)?;
+
+    // New text note
+    let _event: Event = EventBuilder::new_text_note("Hello from Nostr SDK", &[]).to_event(&my_keys)?;
+
+    // New POW text note
+    let event: Event = EventBuilder::new_text_note("My first POW text note from Nostr SDK", &[]).to_pow_event(&my_keys, 20)?;
 
     // Connect to relay
     let (mut socket, _) = tungstenite::connect(Url::parse("wss://relay.damus.io")?).expect("Can't connect to relay");

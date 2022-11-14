@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use bitcoin_hashes::sha256::Hash;
 use nostr::key::{FromBech32, Keys};
-use nostr::{ClientMessage, Event};
+use nostr::{ClientMessage, Event, EventBuilder};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
@@ -24,11 +24,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let event_id =
         Hash::from_str("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?;
-    let event = Event::delete(
-        &my_keys,
+
+    let event: Event = EventBuilder::delete(
         vec![event_id],
         Some("these posts were published by accident"),
-    )?;
+    )
+    .to_event(&my_keys)?;
 
     socket.write_message(WsMessage::Text(ClientMessage::new_event(event).to_json()))?;
 

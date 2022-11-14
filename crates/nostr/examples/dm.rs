@@ -8,7 +8,7 @@ use std::{thread, time};
 
 use nostr::event::KindBase;
 use nostr::util::nips::nip04::decrypt;
-use nostr::{ClientMessage, Event, Keys, Kind, RelayMessage, SubscriptionFilter};
+use nostr::{ClientMessage, EventBuilder, Keys, Kind, RelayMessage, SubscriptionFilter};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
@@ -31,7 +31,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let bob_to_alice = "Hey alice this is bob (pong)";
 
     let alice_encrypted_msg =
-        Event::new_encrypted_direct_msg(&alice_keys, &bob_keys, alice_to_bob)?;
+        EventBuilder::new_encrypted_direct_msg(&alice_keys, &bob_keys, alice_to_bob)?
+            .to_event(&alice_keys)?;
 
     let subscribe_to_alice = ClientMessage::new_req(
         "abcdefg",
@@ -94,11 +95,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 )?
                             );
                             thread::sleep(time::Duration::from_millis(5000));
-                            let alice_encrypted_msg = Event::new_encrypted_direct_msg(
+                            let alice_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
                                 &alice_keys,
                                 &bob_keys,
                                 alice_to_bob,
-                            )?;
+                            )?
+                            .to_event(&alice_keys)?;
                             socket.write_message(WsMessage::Text(
                                 ClientMessage::new_event(alice_encrypted_msg).to_json(),
                             ))?;
@@ -114,11 +116,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 )?
                             );
                             thread::sleep(time::Duration::from_millis(5000));
-                            let bob_encrypted_msg = Event::new_encrypted_direct_msg(
+                            let bob_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
                                 &bob_keys,
                                 &alice_keys,
                                 bob_to_alice,
-                            )?;
+                            )?
+                            .to_event(&bob_keys)?;
                             socket.write_message(WsMessage::Text(
                                 ClientMessage::new_event(bob_encrypted_msg).to_json(),
                             ))?;

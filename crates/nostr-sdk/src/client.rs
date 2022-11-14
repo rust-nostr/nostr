@@ -7,7 +7,9 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256::Hash;
 use nostr::key::XOnlyPublicKey;
-use nostr::{Contact, Event, Keys, Kind, KindBase, Metadata, SubscriptionFilter, Tag};
+use nostr::{
+    Contact, Event, EventBuilder, Keys, Kind, KindBase, Metadata, SubscriptionFilter, Tag,
+};
 use tokio::sync::broadcast;
 use url::Url;
 
@@ -161,18 +163,21 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.update_profile(
-    ///     Some("nostr_sdk"),
-    ///     Some("Nostr SDK"),
-    ///     Some("https://github.com/yukibtc/nostr-rs-sdk"),
-    ///     None,
-    /// )
-    /// .await
-    /// .unwrap();
+    /// use nostr_sdk::nostr::Metadata;
+    ///
+    /// let metadata = Metadata::new()
+    ///     .name("username")
+    ///     .display_name("My Username")
+    ///     .about("Description")
+    ///     .picture(Url::from_str("https://example.com/avatar.png").unwrap())
+    ///     .nip05("username@example.com");
+    ///
+    /// client.update_profile(metadata).await.unwrap();
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn update_profile(&self, metadata: Metadata) -> Result<()> {
-        let event = Event::set_metadata(&self.keys, metadata)?;
+        let event: Event =
+            EventBuilder::set_metadata(&self.keys, metadata)?.to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -186,7 +191,7 @@ impl Client {
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<()> {
-        let event = Event::new_text_note(&self.keys, content, tags)?;
+        let event: Event = EventBuilder::new_text_note(content, tags).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -205,7 +210,8 @@ impl Client {
         tags: &[Tag],
         difficulty: u8,
     ) -> Result<()> {
-        let event = Event::new_pow_text_note(&self.keys, content, tags, difficulty)?;
+        let event: Event =
+            EventBuilder::new_text_note(content, tags).to_pow_event(&self.keys, difficulty)?;
         self.send_event(event).await
     }
 
@@ -220,7 +226,7 @@ impl Client {
     #[cfg(not(feature = "blocking"))]
     pub async fn add_recommended_relay(&self, url: &str) -> Result<()> {
         let url = Url::from_str(url)?;
-        let event = Event::add_recommended_relay(&self.keys, &url)?;
+        let event: Event = EventBuilder::add_recommended_relay(&url).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -244,7 +250,7 @@ impl Client {
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
-        let event = Event::set_contact_list(&self.keys, list)?;
+        let event: Event = EventBuilder::set_contact_list(list).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -305,7 +311,8 @@ impl Client {
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
-        let event = Event::new_encrypted_direct_msg(&self.keys, recipient, msg)?;
+        let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, recipient, msg)?
+            .to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -315,7 +322,8 @@ impl Client {
     ///
     #[cfg(not(feature = "blocking"))]
     pub async fn delete_event(&self, event_id: &str) -> Result<()> {
-        let event = Event::delete(&self.keys, vec![Hash::from_str(event_id)?], None)?;
+        let event: Event =
+            EventBuilder::delete(vec![Hash::from_str(event_id)?], None).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -341,7 +349,7 @@ impl Client {
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn like(&self, event: &Event) -> Result<()> {
-        let event = Event::new_reaction(&self.keys, event, true)?;
+        let event: Event = EventBuilder::new_reaction(event, true).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -367,7 +375,7 @@ impl Client {
     /// ```
     #[cfg(not(feature = "blocking"))]
     pub async fn dislike(&self, event: &Event) -> Result<()> {
-        let event = Event::new_reaction(&self.keys, event, false)?;
+        let event: Event = EventBuilder::new_reaction(event, false).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -382,7 +390,7 @@ impl Client {
         about: Option<&str>,
         picture: Option<&str>,
     ) -> Result<()> {
-        let event = Event::new_channel(&self.keys, name, about, picture)?;
+        let event: Event = EventBuilder::new_channel(name, about, picture)?.to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -399,8 +407,9 @@ impl Client {
         about: Option<&str>,
         picture: Option<&str>,
     ) -> Result<()> {
-        let event =
-            Event::set_channel_metadata(&self.keys, channel_id, relay_url, name, about, picture)?;
+        let event: Event =
+            EventBuilder::set_channel_metadata(channel_id, relay_url, name, about, picture)?
+                .to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -415,7 +424,8 @@ impl Client {
         relay_url: Url,
         msg: &str,
     ) -> Result<()> {
-        let event = Event::new_channel_msg(&self.keys, channel_id, relay_url, msg)?;
+        let event: Event =
+            EventBuilder::new_channel_msg(channel_id, relay_url, msg).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -425,7 +435,8 @@ impl Client {
     ///
     #[cfg(not(feature = "blocking"))]
     pub async fn hide_channel_msg(&self, message_id: Hash, reason: &str) -> Result<()> {
-        let event = Event::hide_channel_msg(&self.keys, message_id, reason)?;
+        let event: Event =
+            EventBuilder::hide_channel_msg(message_id, reason).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -435,7 +446,7 @@ impl Client {
     ///
     #[cfg(not(feature = "blocking"))]
     pub async fn mute_channel_user(&self, pubkey: XOnlyPublicKey, reason: &str) -> Result<()> {
-        let event = Event::mute_channel_user(&self.keys, pubkey, reason)?;
+        let event: Event = EventBuilder::mute_channel_user(pubkey, reason).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -502,28 +513,30 @@ impl Client {
     }
 
     pub fn update_profile(&self, metadata: Metadata) -> Result<()> {
-        let event = Event::set_metadata(&self.keys, metadata)?;
+        let event: Event =
+            EventBuilder::set_metadata(&self.keys, metadata)?.to_event(&self.keys)?;
         self.send_event(event)
     }
 
     pub fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<()> {
-        let event = Event::new_text_note(&self.keys, content, tags)?;
+        let event: Event = EventBuilder::new_text_note(content, tags).to_event(&self.keys)?;
         self.send_event(event)
     }
 
     pub fn publish_pow_text_note(&self, content: &str, tags: &[Tag], difficulty: u8) -> Result<()> {
-        let event = Event::new_pow_text_note(&self.keys, content, tags, difficulty)?;
+        let event: Event =
+            EventBuilder::new_text_note(content, tags).to_pow_event(&self.keys, difficulty)?;
         self.send_event(event)
     }
 
     pub fn add_recommended_relay(&self, url: &str) -> Result<()> {
         let url = Url::from_str(url)?;
-        let event = Event::add_recommended_relay(&self.keys, &url)?;
+        let event: Event = EventBuilder::add_recommended_relay(&url).to_event(&self.keys)?;
         self.send_event(event)
     }
 
     pub fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
-        let event = Event::set_contact_list(&self.keys, list)?;
+        let event: Event = EventBuilder::set_contact_list(list).to_event(&self.keys)?;
         self.send_event(event)
     }
 
@@ -558,22 +571,24 @@ impl Client {
     }
 
     pub fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
-        let event = Event::new_encrypted_direct_msg(&self.keys, recipient, msg)?;
+        let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, recipient, msg)?
+            .to_event(&self.keys)?;
         self.send_event(event)
     }
 
     pub fn delete_event(&self, event_id: &str) -> Result<()> {
-        let event = Event::delete(&self.keys, vec![Hash::from_str(event_id)?], None)?;
+        let event: Event =
+            EventBuilder::delete(vec![Hash::from_str(event_id)?], None).to_event(&self.keys)?;
         self.send_event(event)
     }
 
     pub fn like(&self, event: &Event) -> Result<()> {
-        let event = Event::new_reaction(&self.keys, event, true)?;
+        let event: Event = EventBuilder::new_reaction(event, true).to_event(&self.keys)?;
         self.send_event(event)
     }
 
     pub fn dislike(&self, event: &Event) -> Result<()> {
-        let event = Event::new_reaction(&self.keys, event, false)?;
+        let event: Event = EventBuilder::new_reaction(event, false).to_event(&self.keys)?;
         self.send_event(event)
     }
 

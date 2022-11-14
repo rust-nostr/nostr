@@ -14,7 +14,7 @@ pub mod metadata;
 pub mod util;
 
 pub use self::contact::Contact;
-pub use self::event::{Event, Kind, KindBase, Tag};
+pub use self::event::{Event, EventBuilder, Kind, KindBase, Tag};
 pub use self::key::Keys;
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
 pub use self::metadata::Metadata;
@@ -26,7 +26,7 @@ mod tests {
 
     use secp256k1::SecretKey;
 
-    use crate::{Event, Keys, RelayMessage};
+    use crate::{Event, EventBuilder, Keys, RelayMessage};
 
     type TestResult = Result<(), Box<dyn Error>>;
 
@@ -62,7 +62,7 @@ mod tests {
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?);
 
-        let event = Event::new_text_note(&keys, "hello", &vec![])?;
+        let event = EventBuilder::new_text_note("hello", &vec![]).to_event(&keys)?;
 
         let serialized = event.as_json().unwrap();
         let deserialized = Event::from_json(serialized)?;
@@ -82,9 +82,10 @@ mod tests {
         )?);
 
         let content = "Mercury, the Winged Messenger";
-        let event = Event::new_encrypted_direct_msg(&sender_keys, &receiver_keys, content);
+        let event = EventBuilder::new_encrypted_direct_msg(&sender_keys, &receiver_keys, content)?
+            .to_event(&sender_keys)?;
 
-        assert_eq!(event?.verify(), Ok(()));
+        assert_eq!(event.verify(), Ok(()));
 
         Ok(())
     }

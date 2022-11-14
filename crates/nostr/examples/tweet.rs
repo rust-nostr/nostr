@@ -6,7 +6,7 @@ use std::error::Error;
 use std::str::FromStr;
 
 use nostr::event::{Kind, KindBase};
-use nostr::{ClientMessage, Event, Keys, RelayMessage, SubscriptionFilter};
+use nostr::{ClientMessage, EventBuilder, Keys, RelayMessage, SubscriptionFilter};
 use secp256k1::SecretKey;
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
@@ -32,10 +32,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let bob_keys = Keys::new(SecretKey::from_str(BOB_SK)?);
 
-    let alice_says_hi =
-        ClientMessage::new_event(Event::new_text_note(&alice_keys, "hi from alice", &vec![])?);
-    let bob_says_hi =
-        ClientMessage::new_event(Event::new_text_note(&bob_keys, "bob says hello", &vec![])?);
+    let alice_says_hi = ClientMessage::new_event(
+        EventBuilder::new_text_note("hi from alice", &vec![]).to_event(&alice_keys)?,
+    );
+    let bob_says_hi = ClientMessage::new_event(
+        EventBuilder::new_text_note("bob says hello", &vec![]).to_event(&bob_keys)?,
+    );
 
     let subscribe_to_alice = ClientMessage::new_req(
         "abcdefgh",

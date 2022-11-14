@@ -4,7 +4,7 @@
 use std::str::FromStr;
 
 use nostr::key::Keys;
-use nostr::{ClientMessage, Event, Metadata};
+use nostr::{ClientMessage, Event, EventBuilder, Metadata};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
         .picture(Url::from_str("https://example.com/avatar.png")?)
         .nip05("username@example.com");
 
-    let event = Event::set_metadata(&my_keys, metadata)?;
+    let event: Event = EventBuilder::set_metadata(&my_keys, metadata)?.to_event(&my_keys)?;
 
     socket.write_message(WsMessage::Text(ClientMessage::new_event(event).to_json()))?;
 
