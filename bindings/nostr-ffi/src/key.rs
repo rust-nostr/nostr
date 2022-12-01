@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use anyhow::Result;
-use nostr::key::{FromBech32, Keys as KeysSdk, XOnlyPublicKey};
+use nostr::key::{FromBech32, FromMnemonic, Keys as KeysSdk, XOnlyPublicKey};
 use secp256k1::SecretKey;
 
 #[derive(Clone)]
@@ -53,6 +53,12 @@ impl Keys {
         Self {
             keys: KeysSdk::generate_from_os_random(),
         }
+    }
+
+    pub fn from_mnemonic(mnemonic: String) -> Result<Self> {
+        Ok(Self {
+            keys: KeysSdk::from_mnemonic(mnemonic.as_str())?,
+        })
     }
 
     pub fn public_key(&self) -> String {

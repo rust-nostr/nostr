@@ -41,6 +41,8 @@ interface Keys {
     constructor(string sk);
     [Name=generate_from_os_random]
     constructor();
+    [Throws=NostrError, Name=from_mnemonic]
+    constructor(string mnemonic);
     string public_key();
     [Throws=NostrError]
     string secret_key();
