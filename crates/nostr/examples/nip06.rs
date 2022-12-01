@@ -5,18 +5,16 @@ extern crate nostr;
 
 use std::error::Error;
 
-use nostr::key::{FromSeedPhrase, GenerateSeedPhrase, Keys, ToBech32};
+use nostr::key::{FromMnemonic, GenerateMnemonic, Keys, ToBech32};
 
-// WORK ONLY WITH 24-WORD MNEMONICS
-const SEED_PHRASE: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
+const MNEMONIC_PHRASE: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
 
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
-    println!("Seed: {}", Keys::generate_seed_from_os_random()?);
+    println!("Mnemonic: {}", Keys::generate_mnemonic(12)?);
 
-    let keys = Keys::from_seed(SEED_PHRASE)?;
-
+    let keys = Keys::from_mnemonic(MNEMONIC_PHRASE)?;
     println!("{}", keys.secret_key()?.to_bech32()?);
 
     Ok(())

@@ -5,8 +5,16 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Timestamp in seconds
 pub fn timestamp() -> u64 {
-    match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(time) => time.as_secs(),
-        Err(_) => panic!("Invalid system time"),
-    }
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Invalid system time")
+        .as_secs()
+}
+
+/// Timestamp in nanos
+pub fn timestamp_nanos() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Invalid system time")
+        .as_nanos()
 }

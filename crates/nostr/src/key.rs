@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use bech32::{self, FromBase32, ToBase32, Variant};
 #[cfg(feature = "nip06")]
-use bip32::{DerivationPath, Language, Mnemonic, XPrv};
+use bip39::Mnemonic;
 use secp256k1::rand::rngs::OsRng;
 pub use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 use thiserror::Error;
@@ -43,15 +43,15 @@ pub trait ToBech32 {
 }
 
 #[cfg(feature = "nip06")]
-pub trait FromSeedPhrase: Sized {
+pub trait FromMnemonic: Sized {
     type Err;
-    fn from_seed(seed: &str) -> Result<Self, Self::Err>;
+    fn from_mnemonic(mnemonic: &str) -> Result<Self, Self::Err>;
 }
 
 #[cfg(feature = "nip06")]
-pub trait GenerateSeedPhrase {
+pub trait GenerateMnemonic {
     type Err;
-    fn generate_seed_from_os_random() -> Result<String, Self::Err>;
+    fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err>;
 }
 
 impl ToBech32 for XOnlyPublicKey {
@@ -202,38 +202,40 @@ impl FromBech32 for Keys {
 }
 
 #[cfg(feature = "nip06")]
-impl FromSeedPhrase for Keys {
+impl FromMnemonic for Keys {
     type Err = anyhow::Error;
 
     /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
-    /// ONLY 24-WORD BIP-39 MNEMONICS ARE SUPPORTED!
-    fn from_seed(phrase: &str) -> Result<Self, Self::Err> {
-        use anyhow::anyhow;
+    fn from_mnemonic(mnemonic: &str) -> Result<Self, Self::Err> {
+        use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
+        use bitcoin::Network;
 
-        if phrase.split(' ').count() != 24 {
-            return Err(anyhow!(
-                "Invalid mnemonic length: only 24-word BIP-39 mnemonics are supported."
-            ));
-        }
-
-        let mnemonic = Mnemonic::new(phrase, Language::English)?;
+        let mnemonic = Mnemonic::from_str(mnemonic)?;
         let seed = mnemonic.to_seed("");
-        let child_path = DerivationPath::from_str("m/44'/1237'/0'/0/0")?;
-        let child_xprv = XPrv::derive_from_path(seed, &child_path)?;
-
-        let secret_key = SecretKey::from_slice(child_xprv.private_key().to_bytes().as_slice())?;
-
-        Ok(Self::new(secret_key))
+        let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)?;
+        let path = DerivationPath::from_str("m/44'/1237'/0'/0/0")?;
+        let secp = Secp256k1::new();
+        let child_xprv = root_key.derive_priv(&secp, &path)?;
+        Ok(Self::new(child_xprv.private_key))
     }
 }
 
 #[cfg(feature = "nip06")]
-impl GenerateSeedPhrase for Keys {
+impl GenerateMnemonic for Keys {
     type Err = anyhow::Error;
 
-    fn generate_seed_from_os_random() -> Result<String, Self::Err> {
-        let mnemonic = Mnemonic::random(OsRng, Language::English);
-        Ok(mnemonic.phrase().to_string())
+    fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err> {
+        use crate::util::time;
+        use bitcoin::hashes::hmac::{Hmac, HmacEngine};
+        use bitcoin::hashes::{sha512, Hash, HashEngine};
+
+        let mut h = HmacEngine::<sha512::Hash>::new(b"nostr");
+        let random: [u8; 32] = secp256k1::rand::random();
+        h.input(&random);
+        h.input(&time::timestamp_nanos().to_be_bytes());
+        let entropy: [u8; 64] = Hmac::from_engine(h).into_inner();
+        let len: usize = word_count * 4 / 3;
+        Ok(Mnemonic::from_entropy(&entropy[0..len])?)
     }
 }
 
@@ -263,6 +265,20 @@ mod tests {
         let secret_key: SecretKey = keys.secret_key()?;
 
         assert_eq!(bech32_secret_key_str.to_string(), secret_key.to_bech32()?);
+
+        Ok(())
+    }
+
+    #[cfg(feature = "nip06")]
+    #[test]
+    fn test_nip06() -> Result<()> {
+        let mnemonic: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
+        let keys = Keys::from_mnemonic(mnemonic)?;
+
+        assert_eq!(
+            keys.secret_key()?.to_bech32()?,
+            "nsec1q6vjgxdgl6ppmkx7q02vxqrpf687a7674ymtwmufjaku4n52a0hq9glmaf".to_string()
+        );
 
         Ok(())
     }
