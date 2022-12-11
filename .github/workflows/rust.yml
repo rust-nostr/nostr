@@ -1,0 +1,49 @@
+name: Rust
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: cargo fmt --all -- --config format_code_in_doc_comments=true --check
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build-args:
+          [
+            -p nostr --no-default-features,
+            -p nostr --features nip06,
+            -p nostr-sdk --no-default-features,
+            -p nostr-sdk --features nip06,
+            -p nostr-sdk --features blocking,
+          ]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
+    - name: Build
+      run: cargo build ${{ matrix.build-args }} --all
+    - name: Tests
+      run: cargo test ${{ matrix.build-args }} --all
+    - name: Clippy
+      uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: ${{ matrix.build-args }} -- -D warnings
+  
