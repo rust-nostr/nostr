@@ -13,9 +13,10 @@ use nostr::{
 use tokio::sync::broadcast;
 use url::Url;
 
-use crate::relay::pool::{RelayPool, RelayPoolNotifications};
 #[cfg(feature = "blocking")]
-use crate::RUNTIME;
+pub mod blocking;
+
+use crate::relay::pool::{RelayPool, RelayPoolNotifications};
 
 pub struct Client {
     pool: RelayPool,
@@ -66,7 +67,6 @@ impl Client {
     /// ```rust,no_run
     /// client.remove_relay("wss://relay.nostr.info").await?;
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
         self.pool.remove_relay(url).await
     }
@@ -77,7 +77,6 @@ impl Client {
     /// ```rust,no_run
     /// client.connect_relay("wss://relay.nostr.info", true).await?;
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn connect_relay(&mut self, url: &str, wait_for_connection: bool) -> Result<()> {
         if let Some(relay) = self.pool.relays().get(url) {
             return self.pool.connect_relay(relay, wait_for_connection).await;
@@ -92,7 +91,6 @@ impl Client {
     /// ```rust,no_run
     /// client.disconnect_relay("wss://relay.nostr.info").await?;
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn disconnect_relay(&mut self, url: &str) -> Result<()> {
         if let Some(relay) = self.pool.relays().get(url) {
             return self.pool.disconnect_relay(relay).await;
@@ -107,7 +105,6 @@ impl Client {
     /// ```rust,no_run
     /// client.connect().await?;
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn connect(&mut self) -> Result<()> {
         self.pool.connect(false).await
     }
@@ -118,7 +115,6 @@ impl Client {
     /// ```rust,no_run
     /// client.connect_and_wait().await?;
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn connect_and_wait(&mut self) -> Result<()> {
         self.pool.connect(true).await
     }
@@ -129,7 +125,6 @@ impl Client {
     /// ```rust,no_run
     /// client.disconnect().await?;
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn disconnect(&mut self) -> Result<()> {
         self.pool.disconnect().await
     }
@@ -146,13 +141,11 @@ impl Client {
     ///
     /// client.subscribe(vec![subscription]).await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
         self.pool.subscribe(filters).await
     }
 
     /// Send event
-    #[cfg(not(feature = "blocking"))]
     pub async fn send_event(&self, event: Event) -> Result<()> {
         self.pool.send_event(event).await
     }
@@ -174,7 +167,6 @@ impl Client {
     ///
     /// client.update_profile(metadata).await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn update_profile(&self, metadata: Metadata) -> Result<()> {
         let event: Event =
             EventBuilder::set_metadata(&self.keys, metadata)?.to_event(&self.keys)?;
@@ -189,7 +181,6 @@ impl Client {
     /// ```rust,no_run
     /// client.publish_text_note("My first text note from Nostr SDK!", &[]).await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<()> {
         let event: Event = EventBuilder::new_text_note(content, tags).to_event(&self.keys)?;
         self.send_event(event).await
@@ -203,7 +194,6 @@ impl Client {
     /// ```rust,no_run
     /// client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16).await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn publish_pow_text_note(
         &self,
         content: &str,
@@ -223,7 +213,6 @@ impl Client {
     /// ```rust,no_run
     /// client.add_recommended_relay("wss://relay.damus.io").await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn add_recommended_relay(&self, url: &str) -> Result<()> {
         let url = Url::from_str(url)?;
         let event: Event = EventBuilder::add_recommended_relay(&url).to_event(&self.keys)?;
@@ -248,7 +237,6 @@ impl Client {
     /// ];
     /// client.set_contact_list(list).await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
         let event: Event = EventBuilder::set_contact_list(list).to_event(&self.keys)?;
         self.send_event(event).await
@@ -262,7 +250,6 @@ impl Client {
     /// ```rust,no_run
     /// let list = client.get_contact_list().await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn get_contact_list(&mut self) -> Result<Vec<Contact>> {
         let mut contact_list: Vec<Contact> = Vec::new();
 
@@ -309,7 +296,6 @@ impl Client {
     /// let alice_keys = Keys::from_bech32_public_key("npub1...").unwrap();
     /// client.send_direct_msg(alice_keys, "My first DM fro Nostr SDK!").await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
         let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, recipient, msg)?
             .to_event(&self.keys)?;
@@ -320,7 +306,6 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     ///
-    #[cfg(not(feature = "blocking"))]
     pub async fn delete_event(&self, event_id: &str) -> Result<()> {
         let event: Event =
             EventBuilder::delete(vec![Hash::from_str(event_id)?], None).to_event(&self.keys)?;
@@ -347,7 +332,6 @@ impl Client {
     ///
     /// client.like(event).await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn like(&self, event: &Event) -> Result<()> {
         let event: Event = EventBuilder::new_reaction(event, true).to_event(&self.keys)?;
         self.send_event(event).await
@@ -373,7 +357,6 @@ impl Client {
     ///  
     /// client.dislike(event).await.unwrap();
     /// ```
-    #[cfg(not(feature = "blocking"))]
     pub async fn dislike(&self, event: &Event) -> Result<()> {
         let event: Event = EventBuilder::new_reaction(event, false).to_event(&self.keys)?;
         self.send_event(event).await
@@ -383,7 +366,6 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     ///
-    #[cfg(not(feature = "blocking"))]
     pub async fn new_channel(
         &self,
         name: &str,
@@ -398,7 +380,6 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     ///
-    #[cfg(not(feature = "blocking"))]
     pub async fn update_channel(
         &self,
         channel_id: Hash,
@@ -417,7 +398,6 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     ///
-    #[cfg(not(feature = "blocking"))]
     pub async fn send_channel_msg(
         &self,
         channel_id: Hash,
@@ -433,7 +413,6 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     ///
-    #[cfg(not(feature = "blocking"))]
     pub async fn hide_channel_msg(&self, message_id: Hash, reason: &str) -> Result<()> {
         let event: Event =
             EventBuilder::hide_channel_msg(message_id, reason).to_event(&self.keys)?;
@@ -444,13 +423,11 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     ///
-    #[cfg(not(feature = "blocking"))]
     pub async fn mute_channel_user(&self, pubkey: XOnlyPublicKey, reason: &str) -> Result<()> {
         let event: Event = EventBuilder::mute_channel_user(pubkey, reason).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
-    #[cfg(not(feature = "blocking"))]
     pub async fn handle_notifications<F>(&self, func: F) -> Result<()>
     where
         F: Fn(RelayPoolNotifications) -> Result<()>,
@@ -462,148 +439,5 @@ impl Client {
                 func(notification)?;
             }
         }
-    }
-}
-
-#[allow(missing_docs)]
-#[cfg(feature = "blocking")]
-impl Client {
-    pub fn remove_relay(&mut self, url: &str) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.remove_relay(url).await })
-    }
-
-    pub fn connect_relay(&mut self, url: &str, wait_for_connection: bool) -> Result<()> {
-        RUNTIME.block_on(async {
-            if let Some(relay) = self.pool.relays().get(url) {
-                return self.pool.connect_relay(relay, wait_for_connection).await;
-            }
-
-            Err(anyhow!("Relay url not found"))
-        })
-    }
-
-    pub fn disconnect_relay(&mut self, url: &str) -> Result<()> {
-        RUNTIME.block_on(async {
-            if let Some(relay) = self.pool.relays().get(url) {
-                return self.pool.disconnect_relay(relay).await;
-            }
-
-            Err(anyhow!("Relay url not found"))
-        })
-    }
-
-    pub fn connect(&mut self) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.connect(false).await })
-    }
-
-    pub fn connect_and_wait(&mut self) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.connect(true).await })
-    }
-
-    pub fn disconnect(&mut self) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.disconnect().await })
-    }
-
-    pub fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.subscribe(filters).await })
-    }
-
-    pub fn send_event(&self, event: Event) -> Result<()> {
-        RUNTIME.block_on(async { self.pool.send_event(event).await })
-    }
-
-    pub fn update_profile(&self, metadata: Metadata) -> Result<()> {
-        let event: Event =
-            EventBuilder::set_metadata(&self.keys, metadata)?.to_event(&self.keys)?;
-        self.send_event(event)
-    }
-
-    pub fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<()> {
-        let event: Event = EventBuilder::new_text_note(content, tags).to_event(&self.keys)?;
-        self.send_event(event)
-    }
-
-    pub fn publish_pow_text_note(&self, content: &str, tags: &[Tag], difficulty: u8) -> Result<()> {
-        let event: Event =
-            EventBuilder::new_text_note(content, tags).to_pow_event(&self.keys, difficulty)?;
-        self.send_event(event)
-    }
-
-    pub fn add_recommended_relay(&self, url: &str) -> Result<()> {
-        let url = Url::from_str(url)?;
-        let event: Event = EventBuilder::add_recommended_relay(&url).to_event(&self.keys)?;
-        self.send_event(event)
-    }
-
-    pub fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
-        let event: Event = EventBuilder::set_contact_list(list).to_event(&self.keys)?;
-        self.send_event(event)
-    }
-
-    pub async fn get_contact_list(&mut self) -> Result<Vec<Contact>> {
-        RUNTIME.block_on(async {
-            let mut contact_list: Vec<Contact> = Vec::new();
-
-            let filter = SubscriptionFilter::new()
-                .authors(vec![self.keys.public_key()])
-                .kind(Kind::Base(KindBase::ContactList))
-                .limit(1);
-            let events: Vec<Event> = self.pool.get_events_of(vec![filter]).await?;
-
-            for event in events.into_iter() {
-                for tag in event.tags.into_iter() {
-                    let tag: Vec<String> = tag.as_vec();
-                    if let Some(pk) = tag.get(1) {
-                        let pk = XOnlyPublicKey::from_str(pk)?;
-                        let relay_url = tag.get(2).cloned();
-                        let alias = tag.get(3).cloned();
-                        contact_list.push(Contact::new(
-                            pk,
-                            relay_url.unwrap_or_default(),
-                            alias.unwrap_or_default(),
-                        ));
-                    }
-                }
-            }
-
-            Ok(contact_list)
-        })
-    }
-
-    pub fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
-        let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, recipient, msg)?
-            .to_event(&self.keys)?;
-        self.send_event(event)
-    }
-
-    pub fn delete_event(&self, event_id: &str) -> Result<()> {
-        let event: Event =
-            EventBuilder::delete(vec![Hash::from_str(event_id)?], None).to_event(&self.keys)?;
-        self.send_event(event)
-    }
-
-    pub fn like(&self, event: &Event) -> Result<()> {
-        let event: Event = EventBuilder::new_reaction(event, true).to_event(&self.keys)?;
-        self.send_event(event)
-    }
-
-    pub fn dislike(&self, event: &Event) -> Result<()> {
-        let event: Event = EventBuilder::new_reaction(event, false).to_event(&self.keys)?;
-        self.send_event(event)
-    }
-
-    pub fn handle_notifications<F>(&self, func: F) -> Result<()>
-    where
-        F: Fn(RelayPoolNotifications) -> Result<()>,
-    {
-        RUNTIME.block_on(async {
-            loop {
-                let mut notifications = self.notifications();
-
-                while let Ok(notification) = notifications.recv().await {
-                    func(notification)?;
-                }
-            }
-        })
     }
 }

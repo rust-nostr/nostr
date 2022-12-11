@@ -8,7 +8,8 @@ use nostr::key::{FromBech32, Keys};
 use nostr::util::nips::nip04::decrypt;
 use nostr::util::time::timestamp;
 use nostr::{Kind, KindBase, SubscriptionFilter};
-use nostr_sdk::{Client, RelayPoolNotifications};
+use nostr_sdk::client::blocking::Client;
+use nostr_sdk::RelayPoolNotifications;
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 

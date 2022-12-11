@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use nostr_ffi::{Event, Keys, SubscriptionFilter};
-use nostr_sdk::client::Client as ClientSdk;
+use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::pool::RelayPoolNotifications as RelayPoolNotificationsSdk;
 use parking_lot::Mutex;
 
