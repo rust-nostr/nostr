@@ -54,8 +54,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.add_relay("wss://relay.nostr.info", None)?;
-    /// client.add_relay("wss://relay.damus.io", None)?;
+    /// # use nostr_sdk::Client;
+    /// # let my_keys = Client::generate_keys();
+    /// # let mut client = Client::new(&my_keys);
+    /// client.add_relay("wss://relay.nostr.info", None).unwrap();
+    /// client.add_relay("wss://relay.damus.io", None).unwrap();
     /// ```
     pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
         self.pool.add_relay(url, proxy)
@@ -65,7 +68,14 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.remove_relay("wss://relay.nostr.info").await?;
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// client.remove_relay("wss://relay.nostr.info").await.unwrap();
+    /// # }
     /// ```
     pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
         self.pool.remove_relay(url).await
@@ -75,7 +85,17 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.connect_relay("wss://relay.nostr.info", true).await?;
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// client
+    ///     .connect_relay("wss://relay.nostr.info", true)
+    ///     .await
+    ///     .unwrap();
+    /// # }
     /// ```
     pub async fn connect_relay(&mut self, url: &str, wait_for_connection: bool) -> Result<()> {
         if let Some(relay) = self.pool.relays().get(url) {
@@ -89,7 +109,17 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.disconnect_relay("wss://relay.nostr.info").await?;
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// client
+    ///     .disconnect_relay("wss://relay.nostr.info")
+    ///     .await
+    ///     .unwrap();
+    /// # }
     /// ```
     pub async fn disconnect_relay(&mut self, url: &str) -> Result<()> {
         if let Some(relay) = self.pool.relays().get(url) {
@@ -103,7 +133,14 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.connect().await?;
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// client.connect().await.unwrap();
+    /// # }
     /// ```
     pub async fn connect(&mut self) -> Result<()> {
         self.pool.connect(false).await
@@ -113,7 +150,14 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.connect_and_wait().await?;
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// client.connect_and_wait().await.unwrap();
+    /// # }
     /// ```
     pub async fn connect_and_wait(&mut self) -> Result<()> {
         self.pool.connect(true).await
@@ -123,7 +167,14 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.disconnect().await?;
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// client.disconnect().await.unwrap();
+    /// # }
     /// ```
     pub async fn disconnect(&mut self) -> Result<()> {
         self.pool.disconnect().await
@@ -133,13 +184,20 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+    /// # use nostr_sdk::Client;
+    /// use nostr::util::time;
     /// use nostr::SubscriptionFilter;
     ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
     /// let subscription = SubscriptionFilter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
-    ///     .since(Utc::now());
+    ///     .since(time::timestamp());
     ///
     /// client.subscribe(vec![subscription]).await.unwrap();
+    /// # }
     /// ```
     pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
         self.pool.subscribe(filters).await
@@ -156,16 +214,23 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+    /// # use nostr_sdk::Client;
     /// use nostr_sdk::nostr::Metadata;
+    /// use url::Url;
     ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
     /// let metadata = Metadata::new()
     ///     .name("username")
     ///     .display_name("My Username")
     ///     .about("Description")
-    ///     .picture(Url::from_str("https://example.com/avatar.png").unwrap())
+    ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
     ///     .nip05("username@example.com");
     ///
     /// client.update_profile(metadata).await.unwrap();
+    /// # }
     /// ```
     pub async fn update_profile(&self, metadata: Metadata) -> Result<()> {
         let event: Event =
@@ -179,7 +244,17 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.publish_text_note("My first text note from Nostr SDK!", &[]).await.unwrap();
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// client
+    ///     .publish_text_note("My first text note from Nostr SDK!", &[])
+    ///     .await
+    ///     .unwrap();
+    /// # }
     /// ```
     pub async fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<()> {
         let event: Event = EventBuilder::new_text_note(content, tags).to_event(&self.keys)?;
@@ -192,7 +267,17 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16).await.unwrap();
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// client
+    ///     .publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16)
+    ///     .await
+    ///     .unwrap();
+    /// # }
     /// ```
     pub async fn publish_pow_text_note(
         &self,
@@ -211,7 +296,17 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// client.add_recommended_relay("wss://relay.damus.io").await.unwrap();
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// client
+    ///     .add_recommended_relay("wss://relay.damus.io")
+    ///     .await
+    ///     .unwrap();
+    /// # }
     /// ```
     pub async fn add_recommended_relay(&self, url: &str) -> Result<()> {
         let url = Url::from_str(url)?;
@@ -222,21 +317,6 @@ impl Client {
     /// Set contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr::Contact;
-    /// use nostr::key::{Keys, FromBech32};
-    ///
-    /// let list = vec![
-    ///     Contact::new(
-    ///         "my_first_contact",
-    ///         Keys::from_bech32_public_key("npub1...").unwrap().public_key(),
-    ///         "wss://relay.damus.io",
-    ///     ),
-    /// ];
-    /// client.set_contact_list(list).await.unwrap();
-    /// ```
     pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
         let event: Event = EventBuilder::set_contact_list(list).to_event(&self.keys)?;
         self.send_event(event).await
@@ -248,7 +328,14 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// let list = client.get_contact_list().await.unwrap();
+    /// # use nostr_sdk::Client;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// let _list = client.get_contact_list().await.unwrap();
+    /// # }
     /// ```
     pub async fn get_contact_list(&mut self) -> Result<Vec<Contact>> {
         let mut contact_list: Vec<Contact> = Vec::new();
@@ -284,17 +371,27 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::key::{Keys, FromBech32};
+    /// use nostr::key::{FromBech32, Keys};
     /// use nostr_sdk::Client;
     ///
-    /// let my_keys = Client::generate_keys();
-    /// let mut client = Client::new(&my_keys);
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
     ///
     /// client.add_relay("wss://relay.nostr.info", None).unwrap();
     /// client.connect().await.unwrap();
     ///
-    /// let alice_keys = Keys::from_bech32_public_key("npub1...").unwrap();
-    /// client.send_direct_msg(alice_keys, "My first DM fro Nostr SDK!").await.unwrap();
+    /// let alice_keys = Keys::from_bech32_public_key(
+    ///     "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
+    /// )
+    /// .unwrap();
+    ///
+    /// client
+    ///     .send_direct_msg(&alice_keys, "My first DM fro Nostr SDK!")
+    ///     .await
+    ///     .unwrap();
+    /// # }
     /// ```
     pub async fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
         let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, recipient, msg)?
@@ -305,7 +402,6 @@ impl Client {
     /// Delete event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    ///
     pub async fn delete_event(&self, event_id: &str) -> Result<()> {
         let event: Event =
             EventBuilder::delete(vec![Hash::from_str(event_id)?], None).to_event(&self.keys)?;
@@ -318,19 +414,25 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+    /// # use nostr_sdk::Client;
     /// use nostr::Event;
     ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
     /// let event = Event::from_json(r#"{
-    ///     "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
-    ///     "content":"🔥 78,680 blocks to the next Halving 🔥",
-    ///     "id":"3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21",
-    ///     "created_at":1667337749,
-    ///     "sig":"96e0a125e15ecc889757a1b517fdab0223a9ceae22d2591536b5f5186599b50cb1c5f20c2d0d06cdd5cd75368529e33bac4fcd3b321db9865d47785b95b72625",
-    ///     "kind":1,
-    ///     "tags":[]
-    /// }"#).unwrap();
+    ///         "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
+    ///         "content":"🔥 78,680 blocks to the next Halving 🔥",
+    ///         "id":"3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21",
+    ///         "created_at":1667337749,
+    ///         "sig":"96e0a125e15ecc889757a1b517fdab0223a9ceae22d2591536b5f5186599b50cb1c5f20c2d0d06cdd5cd75368529e33bac4fcd3b321db9865d47785b95b72625",
+    ///         "kind":1,
+    ///         "tags":[]
+    ///     }"#).unwrap();
     ///
-    /// client.like(event).await.unwrap();
+    /// client.like(&event).await.unwrap();
+    /// # }
     /// ```
     pub async fn like(&self, event: &Event) -> Result<()> {
         let event: Event = EventBuilder::new_reaction(event, true).to_event(&self.keys)?;
@@ -343,8 +445,13 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+    /// # use nostr_sdk::Client;
     /// use nostr::Event;
     ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
     /// let event = Event::from_json(r#"{
     ///     "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
     ///     "content":"🔥 78,680 blocks to the next Halving 🔥",
@@ -354,8 +461,9 @@ impl Client {
     ///     "kind":1,
     ///     "tags":[]
     /// }"#).unwrap();
-    ///  
-    /// client.dislike(event).await.unwrap();
+    ///
+    /// client.dislike(&event).await.unwrap();
+    /// # }
     /// ```
     pub async fn dislike(&self, event: &Event) -> Result<()> {
         let event: Event = EventBuilder::new_reaction(event, false).to_event(&self.keys)?;
@@ -365,7 +473,6 @@ impl Client {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub async fn new_channel(
         &self,
         name: &str,
@@ -379,7 +486,6 @@ impl Client {
     /// Update channel metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub async fn update_channel(
         &self,
         channel_id: Hash,
@@ -397,7 +503,6 @@ impl Client {
     /// Send message to channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub async fn send_channel_msg(
         &self,
         channel_id: Hash,
@@ -412,7 +517,6 @@ impl Client {
     /// Hide channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub async fn hide_channel_msg(&self, message_id: Hash, reason: &str) -> Result<()> {
         let event: Event =
             EventBuilder::hide_channel_msg(message_id, reason).to_event(&self.keys)?;
@@ -422,7 +526,6 @@ impl Client {
     /// Mute channel user
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub async fn mute_channel_user(&self, pubkey: XOnlyPublicKey, reason: &str) -> Result<()> {
         let event: Event = EventBuilder::mute_channel_user(pubkey, reason).to_event(&self.keys)?;
         self.send_event(event).await

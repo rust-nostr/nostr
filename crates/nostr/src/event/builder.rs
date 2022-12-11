@@ -263,7 +263,6 @@ impl EventBuilder {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub fn new_channel(name: &str, about: Option<&str>, picture: Option<&str>) -> Result<Self> {
         if !REGEX_NAME.is_match(name) {
             return Err(anyhow!("Invalid name"));
@@ -285,7 +284,6 @@ impl EventBuilder {
     /// Set channel metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub fn set_channel_metadata(
         channel_id: sha256::Hash, // event id of kind 40
         relay_url: Url,
@@ -315,7 +313,6 @@ impl EventBuilder {
     /// New channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub fn new_channel_msg(
         channel_id: sha256::Hash, // event id of kind 40
         relay_url: Url,
@@ -335,7 +332,6 @@ impl EventBuilder {
     /// Hide message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub fn hide_channel_msg(
         message_id: sha256::Hash, // event id of kind 42
         reason: &str,
@@ -354,7 +350,6 @@ impl EventBuilder {
     /// Hide message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    ///
     pub fn mute_channel_user(pubkey: XOnlyPublicKey, reason: &str) -> Self {
         let content: Value = json!({
             "reason": reason,

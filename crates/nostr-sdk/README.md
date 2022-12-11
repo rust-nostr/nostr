@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
         .name("username")
         .display_name("My Username")
         .about("Description")
-        .picture(Url::from_str("https://example.com/avatar.png")?)
+        .picture(Url::parse("https://example.com/avatar.png")?)
         .nip05("username@example.com");
 
     // Update profile metadata
