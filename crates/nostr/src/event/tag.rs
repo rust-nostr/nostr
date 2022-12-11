@@ -6,6 +6,7 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::sha256;
+use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
 use url::Url;
 
@@ -41,6 +42,7 @@ pub enum TagKind {
     P,
     E,
     Nonce,
+    Delegation,
 }
 
 impl fmt::Display for TagKind {
@@ -49,6 +51,7 @@ impl fmt::Display for TagKind {
             Self::P => write!(f, "p"),
             Self::E => write!(f, "e"),
             Self::Nonce => write!(f, "nonce"),
+            Self::Delegation => write!(f, "delegation"),
         }
     }
 }
@@ -61,6 +64,7 @@ impl FromStr for TagKind {
             "p" => Ok(Self::P),
             "e" => Ok(Self::E),
             "nonce" => Ok(Self::Nonce),
+            "delegation" => Ok(Self::Delegation),
             _ => Err(anyhow!("Impossible to parse tag kind")),
         }
     }
@@ -80,6 +84,11 @@ pub enum TagData {
         difficulty: u8,
     },
     Nip10E(sha256::Hash, Url, Option<Marker>),
+    Delegation {
+        delegator_pk: XOnlyPublicKey,
+        conditions: String,
+        sig: Signature,
+    },
 }
 
 impl From<TagData> for Vec<String> {
@@ -109,6 +118,16 @@ impl From<TagData> for Vec<String> {
                 }
                 tag
             }
+            TagData::Delegation {
+                delegator_pk,
+                conditions,
+                sig,
+            } => vec![
+                TagKind::Delegation.to_string(),
+                delegator_pk.to_string(),
+                conditions,
+                sig.to_string(),
+            ],
         }
     }
 }
