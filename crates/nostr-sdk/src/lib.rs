@@ -16,7 +16,7 @@ pub mod client;
 pub mod relay;
 pub mod subscription;
 
-pub use self::client::Client;
+pub use self::client::{Client, Entity};
 pub use self::relay::pool::{RelayPool, RelayPoolNotifications};
 pub use self::relay::{Relay, RelayStatus};
 

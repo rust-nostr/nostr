@@ -18,6 +18,13 @@ pub mod blocking;
 
 use crate::relay::pool::{RelayPool, RelayPoolNotifications};
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Entity {
+    Account,
+    Channel,
+    Unknown,
+}
+
 pub struct Client {
     pool: RelayPool,
     keys: Keys,
@@ -552,6 +559,27 @@ impl Client {
     pub async fn mute_channel_user(&self, pubkey: XOnlyPublicKey, reason: &str) -> Result<()> {
         let event: Event = EventBuilder::mute_channel_user(pubkey, reason).to_event(&self.keys)?;
         self.send_event(event).await
+    }
+
+    pub async fn get_entity_of_pubkey(&self, pubkey: XOnlyPublicKey) -> Result<Entity> {
+        let events: Vec<Event> = self
+            .get_events_of(vec![SubscriptionFilter::new()
+                .id(pubkey.to_string())
+                .kind(Kind::Base(KindBase::ChannelCreation))
+                .limit(1)])
+            .await?;
+        if events.is_empty() {
+            let events: Vec<Event> = self
+                .get_events_of(vec![SubscriptionFilter::new().author(pubkey).limit(1)])
+                .await?;
+            if events.is_empty() {
+                Ok(Entity::Unknown)
+            } else {
+                Ok(Entity::Account)
+            }
+        } else {
+            Ok(Entity::Channel)
+        }
     }
 
     pub async fn handle_notifications<F>(&self, func: F) -> Result<()>

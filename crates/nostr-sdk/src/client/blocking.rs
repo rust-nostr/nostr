@@ -10,6 +10,7 @@ use nostr::{Contact, Event, Keys, Metadata, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 use url::Url;
 
+use crate::client::Entity;
 use crate::relay::pool::RelayPoolNotifications;
 use crate::RUNTIME;
 
@@ -155,6 +156,10 @@ impl Client {
 
     pub fn mute_channel_user(&self, pubkey: XOnlyPublicKey, reason: &str) -> Result<()> {
         RUNTIME.block_on(async { self.client.mute_channel_user(pubkey, reason).await })
+    }
+
+    pub fn get_entity_of_pubkey(&self, pubkey: XOnlyPublicKey) -> Result<Entity> {
+        RUNTIME.block_on(async { self.client.get_entity_of_pubkey(pubkey).await })
     }
 
     pub fn handle_notifications<F>(&self, func: F) -> Result<()>
