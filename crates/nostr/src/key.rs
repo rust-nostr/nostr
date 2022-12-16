@@ -2,6 +2,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::fmt;
 use std::str::FromStr;
 
 use bech32::{self, FromBase32, ToBase32, Variant};
@@ -9,28 +10,36 @@ use bech32::{self, FromBase32, ToBase32, Variant};
 use bip39::Mnemonic;
 use secp256k1::rand::rngs::OsRng;
 pub use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
-use thiserror::Error;
 
 const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 
-#[derive(Error, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum KeyError {
-    #[error("Invalid secret key string")]
     SkParseError,
-    #[error("Invalid public key string")]
     PkParseError,
-    #[error("Invalid bech32 secret key string")]
     Bech32SkParseError,
-    #[error("Invalid bech32 public key string")]
     Bech32PkParseError,
-    #[error("Secrete key missing")]
     SkMissing,
-    #[error("Key pair missing")]
     KeyPairMissing,
-    #[error("Failed to generate new keys")]
     KeyGenerationFailure,
 }
+
+impl fmt::Display for KeyError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SkParseError => write!(f, "Invalid secret key string"),
+            Self::PkParseError => write!(f, "Invalid public key string"),
+            Self::Bech32SkParseError => write!(f, "Invalid bech32 secret key string"),
+            Self::Bech32PkParseError => write!(f, "Invalid bech32 public key string"),
+            Self::SkMissing => write!(f, "Secrete key missing"),
+            Self::KeyPairMissing => write!(f, "Key pair missing"),
+            Self::KeyGenerationFailure => write!(f, "Failed to generate new keys"),
+        }
+    }
+}
+
+impl std::error::Error for KeyError {}
 
 pub trait FromBech32: Sized {
     fn from_bech32(secret_key: &str) -> Result<Self, KeyError>;

@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use std::convert::From;
+use std::fmt;
 use std::str::FromStr;
 
 use aes::cipher::block_padding::Pkcs7;
@@ -10,26 +11,38 @@ use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use cbc::{Decryptor, Encryptor};
 use secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
-use thiserror::Error;
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
 
-#[derive(Error, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Error {
-    #[error(
-        r#"Invalid content format. Expected format "<encrypted_text>?iv=<initialization_vec>""#
-    )]
     InvalidContentFormat,
-    #[error("Error while decoding from base64")]
     Base64DecodeError,
-    #[error("Error while encoding to UTF-8")]
     Utf8EncodeError,
-    #[error("Wrong encryption block mode.The content must be encrypted using CBC mode!")]
     WrongBlockMode,
-    #[error("Secp256k1 error: {}", _0)]
     Secp256k1Error(secp256k1::Error),
 }
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidContentFormat => write!(
+                f,
+                r#"Invalid content format. Expected format "<encrypted_text>?iv=<initialization_vec>""#
+            ),
+            Self::Base64DecodeError => write!(f, "Error while decoding from base64"),
+            Self::Utf8EncodeError => write!(f, "Error while encoding to UTF-8"),
+            Self::WrongBlockMode => write!(
+                f,
+                "Wrong encryption block mode.The content must be encrypted using CBC mode!"
+            ),
+            Self::Secp256k1Error(err) => write!(f, "Secp256k1 error: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 impl From<secp256k1::Error> for Error {
     fn from(err: secp256k1::Error) -> Self {
