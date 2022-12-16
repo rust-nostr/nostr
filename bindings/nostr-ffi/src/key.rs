@@ -5,7 +5,8 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use anyhow::Result;
-use nostr::key::{FromBech32, FromMnemonic, Keys as KeysSdk, XOnlyPublicKey};
+use nostr::key::{FromBech32, Keys as KeysSdk, XOnlyPublicKey};
+use nostr::util::nips::nip06::FromMnemonic;
 use secp256k1::SecretKey;
 
 #[derive(Clone)]

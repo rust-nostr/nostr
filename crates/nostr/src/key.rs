@@ -6,8 +6,6 @@ use std::fmt;
 use std::str::FromStr;
 
 use bech32::{self, FromBase32, ToBase32, Variant};
-#[cfg(feature = "nip06")]
-use bip39::Mnemonic;
 use secp256k1::rand::rngs::OsRng;
 pub use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 
@@ -49,18 +47,6 @@ pub trait FromBech32: Sized {
 pub trait ToBech32 {
     type Err;
     fn to_bech32(&self) -> Result<String, Self::Err>;
-}
-
-#[cfg(feature = "nip06")]
-pub trait FromMnemonic: Sized {
-    type Err;
-    fn from_mnemonic(mnemonic: &str) -> Result<Self, Self::Err>;
-}
-
-#[cfg(feature = "nip06")]
-pub trait GenerateMnemonic {
-    type Err;
-    fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err>;
 }
 
 impl ToBech32 for XOnlyPublicKey {
@@ -210,44 +196,6 @@ impl FromBech32 for Keys {
     }
 }
 
-#[cfg(feature = "nip06")]
-impl FromMnemonic for Keys {
-    type Err = anyhow::Error;
-
-    /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
-    fn from_mnemonic(mnemonic: &str) -> Result<Self, Self::Err> {
-        use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
-        use bitcoin::Network;
-
-        let mnemonic = Mnemonic::from_str(mnemonic)?;
-        let seed = mnemonic.to_seed("");
-        let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)?;
-        let path = DerivationPath::from_str("m/44'/1237'/0'/0/0")?;
-        let secp = Secp256k1::new();
-        let child_xprv = root_key.derive_priv(&secp, &path)?;
-        Ok(Self::new(child_xprv.private_key))
-    }
-}
-
-#[cfg(feature = "nip06")]
-impl GenerateMnemonic for Keys {
-    type Err = anyhow::Error;
-
-    fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err> {
-        use crate::util::time;
-        use bitcoin::hashes::hmac::{Hmac, HmacEngine};
-        use bitcoin::hashes::{sha512, Hash, HashEngine};
-
-        let mut h = HmacEngine::<sha512::Hash>::new(b"nostr");
-        let random: [u8; 32] = secp256k1::rand::random();
-        h.input(&random);
-        h.input(&time::timestamp_nanos().to_be_bytes());
-        let entropy: [u8; 64] = Hmac::from_engine(h).into_inner();
-        let len: usize = word_count * 4 / 3;
-        Ok(Mnemonic::from_entropy(&entropy[0..len])?)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,20 +222,6 @@ mod tests {
         let secret_key: SecretKey = keys.secret_key()?;
 
         assert_eq!(bech32_secret_key_str.to_string(), secret_key.to_bech32()?);
-
-        Ok(())
-    }
-
-    #[cfg(feature = "nip06")]
-    #[test]
-    fn test_nip06() -> Result<()> {
-        let mnemonic: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
-        let keys = Keys::from_mnemonic(mnemonic)?;
-
-        assert_eq!(
-            keys.secret_key()?.to_bech32()?,
-            "nsec1q6vjgxdgl6ppmkx7q02vxqrpf687a7674ymtwmufjaku4n52a0hq9glmaf".to_string()
-        );
 
         Ok(())
     }

@@ -5,7 +5,8 @@ extern crate nostr;
 
 use std::error::Error;
 
-use nostr::key::{FromMnemonic, GenerateMnemonic, Keys, ToBech32};
+use nostr::key::{Keys, ToBech32};
+use nostr::util::nips::nip06::{FromMnemonic, GenerateMnemonic};
 
 const MNEMONIC_PHRASE: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
 
