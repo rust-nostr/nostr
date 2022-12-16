@@ -4,7 +4,7 @@
 
 use secp256k1::XOnlyPublicKey;
 
-use crate::Kind;
+use crate::{Kind, Sha256Hash};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct SubscriptionFilter {
@@ -16,7 +16,7 @@ pub struct SubscriptionFilter {
     kinds: Option<Vec<Kind>>,
     #[serde(rename = "#e")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    events: Option<Vec<XOnlyPublicKey>>,
+    events: Option<Vec<Sha256Hash>>,
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pubkeys: Option<Vec<XOnlyPublicKey>>,
@@ -97,7 +97,7 @@ impl SubscriptionFilter {
     }
 
     /// Set event
-    pub fn event(self, id: XOnlyPublicKey) -> Self {
+    pub fn event(self, id: Sha256Hash) -> Self {
         Self {
             events: Some(vec![id]),
             ..self
@@ -105,7 +105,7 @@ impl SubscriptionFilter {
     }
 
     /// Set events
-    pub fn events(self, ids: Vec<XOnlyPublicKey>) -> Self {
+    pub fn events(self, ids: Vec<Sha256Hash>) -> Self {
         Self {
             events: Some(ids),
             ..self

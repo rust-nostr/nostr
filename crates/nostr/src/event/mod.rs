@@ -6,7 +6,6 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
 use bitcoin_hashes::hex::FromHex;
-use bitcoin_hashes::sha256;
 use secp256k1::schnorr::Signature;
 use secp256k1::{Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer};
@@ -18,10 +17,11 @@ pub mod tag;
 pub use self::builder::EventBuilder;
 pub use self::kind::{Kind, KindBase};
 pub use self::tag::{Marker, Tag, TagData, TagKind};
+use crate::Sha256Hash;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Event {
-    pub id: sha256::Hash, // hash of serialized event with id 0
+    pub id: Sha256Hash, // hash of serialized event with id 0
     pub pubkey: XOnlyPublicKey,
     pub created_at: u64, // unix timestamp seconds
     pub kind: Kind,
@@ -83,7 +83,7 @@ impl Event {
         content: &str,
         sig: &str,
     ) -> Result<Self> {
-        let id = sha256::Hash::from_hex(id)?;
+        let id = Sha256Hash::from_hex(id)?;
         let pubkey = XOnlyPublicKey::from_str(pubkey)?;
         let kind = serde_json::from_str(&kind.to_string())?;
         let sig = Signature::from_str(sig)?;
@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn test_custom_kind() {
         let keys = Keys::generate_from_os_random();
-        let e: Event = EventBuilder::new(Kind::Custom(123), "my content", &vec![])
+        let e: Event = EventBuilder::new(Kind::Custom(123), "my content", &[])
             .to_event(&keys)
             .unwrap();
 

@@ -4,9 +4,8 @@
 use std::net::SocketAddr;
 
 use anyhow::Result;
-use bitcoin_hashes::sha256::Hash;
 use nostr::key::XOnlyPublicKey;
-use nostr::{Contact, Event, Keys, Metadata, SubscriptionFilter, Tag};
+use nostr::{Contact, Event, Keys, Metadata, Sha256Hash, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 use url::Url;
 
@@ -129,7 +128,7 @@ impl Client {
 
     pub fn update_channel(
         &self,
-        channel_id: Hash,
+        channel_id: Sha256Hash,
         relay_url: Url,
         name: Option<&str>,
         about: Option<&str>,
@@ -142,7 +141,12 @@ impl Client {
         })
     }
 
-    pub fn send_channel_msg(&self, channel_id: Hash, relay_url: Url, msg: &str) -> Result<()> {
+    pub fn send_channel_msg(
+        &self,
+        channel_id: Sha256Hash,
+        relay_url: Url,
+        msg: &str,
+    ) -> Result<()> {
         RUNTIME.block_on(async {
             self.client
                 .send_channel_msg(channel_id, relay_url, msg)
@@ -150,7 +154,7 @@ impl Client {
         })
     }
 
-    pub fn hide_channel_msg(&self, message_id: Hash, reason: &str) -> Result<()> {
+    pub fn hide_channel_msg(&self, message_id: Sha256Hash, reason: &str) -> Result<()> {
         RUNTIME.block_on(async { self.client.hide_channel_msg(message_id, reason).await })
     }
 

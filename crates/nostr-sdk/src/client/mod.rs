@@ -5,10 +5,10 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
-use bitcoin_hashes::sha256::Hash;
 use nostr::key::XOnlyPublicKey;
 use nostr::{
-    Contact, Event, EventBuilder, Keys, Kind, KindBase, Metadata, SubscriptionFilter, Tag,
+    Contact, Event, EventBuilder, Keys, Kind, KindBase, Metadata, Sha256Hash, SubscriptionFilter,
+    Tag,
 };
 use tokio::sync::broadcast;
 use url::Url;
@@ -433,8 +433,8 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     pub async fn delete_event(&self, event_id: &str) -> Result<()> {
-        let event: Event =
-            EventBuilder::delete(vec![Hash::from_str(event_id)?], None).to_event(&self.keys)?;
+        let event: Event = EventBuilder::delete(vec![Sha256Hash::from_str(event_id)?], None)
+            .to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -518,7 +518,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn update_channel(
         &self,
-        channel_id: Hash,
+        channel_id: Sha256Hash,
         relay_url: Url,
         name: Option<&str>,
         about: Option<&str>,
@@ -535,7 +535,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn send_channel_msg(
         &self,
-        channel_id: Hash,
+        channel_id: Sha256Hash,
         relay_url: Url,
         msg: &str,
     ) -> Result<()> {
@@ -547,7 +547,7 @@ impl Client {
     /// Hide channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn hide_channel_msg(&self, message_id: Hash, reason: &str) -> Result<()> {
+    pub async fn hide_channel_msg(&self, message_id: Sha256Hash, reason: &str) -> Result<()> {
         let event: Event =
             EventBuilder::hide_channel_msg(message_id, reason).to_event(&self.keys)?;
         self.send_event(event).await

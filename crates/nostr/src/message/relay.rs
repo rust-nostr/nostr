@@ -4,10 +4,9 @@
 
 use std::fmt;
 
-use bitcoin_hashes::sha256::Hash;
 use serde_json::{json, Value};
 
-use crate::Event;
+use crate::{Event, Sha256Hash};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum MessageHandleError {
@@ -40,7 +39,7 @@ pub enum RelayMessage {
         subscription_id: String,
     },
     Ok {
-        event_id: Hash,
+        event_id: Sha256Hash,
         status: bool,
         message: String,
     },
@@ -64,7 +63,7 @@ impl RelayMessage {
         Self::EndOfStoredEvents { subscription_id }
     }
 
-    pub fn new_ok(event_id: Hash, status: bool, message: String) -> Self {
+    pub fn new_ok(event_id: Sha256Hash, status: bool, message: String) -> Self {
         Self::Ok {
             event_id,
             status,
@@ -145,7 +144,7 @@ impl RelayMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let event_id: Hash = serde_json::from_value(v[1].clone())
+            let event_id: Sha256Hash = serde_json::from_value(v[1].clone())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
             let status: bool = serde_json::from_value(v[2].clone())
@@ -270,7 +269,9 @@ mod tests {
     fn test_handle_valid_ok() -> TestResult {
         let valid_ok_msg = r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, "pow: difficulty 25>=24"]"#;
         let handled_valid_ok_msg = RelayMessage::new_ok(
-            Hash::from_str("b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30")?,
+            Sha256Hash::from_str(
+                "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30",
+            )?,
             true,
             "pow: difficulty 25>=24".into(),
         );

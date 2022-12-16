@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
-use nostr::SubscriptionFilter as SubscriptionFilterSdk;
+use nostr::{Sha256Hash, SubscriptionFilter as SubscriptionFilterSdk};
 use secp256k1::XOnlyPublicKey;
 
 use crate::event::kind::Kind;
@@ -65,7 +65,7 @@ impl SubscriptionFilter {
     }
 
     pub fn event(self: Arc<Self>, event_id: String) -> Result<Arc<Self>> {
-        let event_id = XOnlyPublicKey::from_str(&event_id)?;
+        let event_id = Sha256Hash::from_str(&event_id)?;
 
         let mut builder = unwrap_or_clone_arc(self);
         builder.sub_filter = builder.sub_filter.events(vec![event_id]);
