@@ -4,7 +4,7 @@
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
-use bitcoin_hashes::{sha256, Hash};
+use bitcoin_hashes::Hash;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use secp256k1::{KeyPair, Secp256k1, XOnlyPublicKey};
@@ -17,7 +17,7 @@ use super::Event;
 use crate::metadata::Metadata;
 use crate::util::nips::{nip04, nip05, nip13};
 use crate::util::time::timestamp;
-use crate::{Contact, Keys};
+use crate::{Contact, Keys, Sha256Hash};
 
 static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
@@ -44,10 +44,10 @@ impl EventBuilder {
         kind: &Kind,
         tags: &[Tag],
         content: &str,
-    ) -> sha256::Hash {
+    ) -> Sha256Hash {
         let json: Value = json!([0, pubkey, created_at, kind, tags, content]);
         let event_str: String = json.to_string();
-        sha256::Hash::hash(event_str.as_bytes())
+        Sha256Hash::hash(event_str.as_bytes())
     }
 
     /// Build `Event`
@@ -57,7 +57,7 @@ impl EventBuilder {
         let pubkey: XOnlyPublicKey = keys.public_key();
         let created_at: u64 = timestamp();
 
-        let id: sha256::Hash =
+        let id: Sha256Hash =
             Self::gen_id(&pubkey, created_at, &self.kind, &self.tags, &self.content);
         let message = secp256k1::Message::from_slice(&id)?;
 
@@ -87,7 +87,7 @@ impl EventBuilder {
             tags.push(Tag::new(TagData::POW { nonce, difficulty }));
 
             let created_at: u64 = timestamp();
-            let id: sha256::Hash =
+            let id: Sha256Hash =
                 Self::gen_id(&pubkey, created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id) >= difficulty {
@@ -232,7 +232,7 @@ impl EventBuilder {
     }
 
     /// Create delete event
-    pub fn delete(ids: Vec<sha256::Hash>, reason: Option<&str>) -> Self {
+    pub fn delete(ids: Vec<Sha256Hash>, reason: Option<&str>) -> Self {
         let tags: Vec<Tag> = ids
             .iter()
             .map(|id| Tag::new(TagData::EventId(*id)))
@@ -285,7 +285,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn set_channel_metadata(
-        channel_id: sha256::Hash, // event id of kind 40
+        channel_id: Sha256Hash, // event id of kind 40
         relay_url: Url,
         name: Option<&str>,
         about: Option<&str>,
@@ -314,7 +314,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn new_channel_msg(
-        channel_id: sha256::Hash, // event id of kind 40
+        channel_id: Sha256Hash, // event id of kind 40
         relay_url: Url,
         content: &str,
     ) -> Self {
@@ -333,7 +333,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn hide_channel_msg(
-        message_id: sha256::Hash, // event id of kind 42
+        message_id: Sha256Hash, // event id of kind 42
         reason: &str,
     ) -> Self {
         let content: Value = json!({

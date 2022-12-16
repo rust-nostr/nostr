@@ -6,6 +6,8 @@
 #[macro_use]
 extern crate serde;
 
+pub use secp256k1::hashes::sha256::Hash as Sha256Hash;
+
 pub mod contact;
 pub mod event;
 pub mod key;

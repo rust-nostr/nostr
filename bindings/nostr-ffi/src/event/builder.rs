@@ -6,8 +6,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
-use bitcoin_hashes::sha256;
-use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, Tag};
+use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, Sha256Hash, Tag};
 use url::Url;
 
 use super::kind::Kind;
@@ -109,10 +108,10 @@ impl EventBuilder {
 
     /// Create delete event
     pub fn delete(ids: Vec<String>, reason: Option<String>) -> Result<Self> {
-        let mut new_ids: Vec<sha256::Hash> = Vec::with_capacity(ids.len());
+        let mut new_ids: Vec<Sha256Hash> = Vec::with_capacity(ids.len());
 
         for id in ids.into_iter() {
-            new_ids.push(sha256::Hash::from_str(&id)?);
+            new_ids.push(Sha256Hash::from_str(&id)?);
         }
 
         Ok(Self {

@@ -5,10 +5,11 @@ use std::fmt;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
-use bitcoin_hashes::sha256;
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
 use url::Url;
+
+use crate::Sha256Hash;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Marker {
@@ -72,7 +73,7 @@ impl FromStr for TagKind {
 
 pub enum TagData {
     Generic(TagKind, Vec<String>),
-    EventId(sha256::Hash),
+    EventId(Sha256Hash),
     PubKey(XOnlyPublicKey),
     ContactList {
         pk: XOnlyPublicKey,
@@ -83,7 +84,7 @@ pub enum TagData {
         nonce: u128,
         difficulty: u8,
     },
-    Nip10E(sha256::Hash, Url, Option<Marker>),
+    Nip10E(Sha256Hash, Url, Option<Marker>),
     Delegation {
         delegator_pk: XOnlyPublicKey,
         conditions: String,

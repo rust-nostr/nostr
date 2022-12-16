@@ -4,9 +4,8 @@
 use std::error::Error;
 use std::str::FromStr;
 
-use bitcoin_hashes::sha256::Hash;
 use nostr::key::{FromBech32, Keys};
-use nostr::{ClientMessage, Event, EventBuilder};
+use nostr::{ClientMessage, Event, EventBuilder, Sha256Hash};
 use tungstenite::{connect, Message as WsMessage};
 use url::Url;
 
@@ -23,7 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let my_keys = Keys::from_bech32(MY_BECH32_SK)?;
 
     let event_id =
-        Hash::from_str("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?;
+        Sha256Hash::from_str("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?;
 
     let event: Event = EventBuilder::delete(
         vec![event_id],

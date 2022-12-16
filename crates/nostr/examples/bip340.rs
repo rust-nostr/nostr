@@ -7,7 +7,7 @@ use std::error::Error;
 use std::str::FromStr;
 
 use bitcoin_hashes::hex::FromHex;
-use bitcoin_hashes::sha256;
+use nostr::Sha256Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 
@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let secp = Secp256k1::new();
 
         let message_str = record.get("message").ok_or("Couldn't get message");
-        let message_hash = sha256::Hash::from_hex(message_str?)?;
+        let message_hash = Sha256Hash::from_hex(message_str?)?;
         let message = Message::from_slice(&message_hash)?;
 
         let signature = record.get("signature").ok_or("Couldn't get signature");
