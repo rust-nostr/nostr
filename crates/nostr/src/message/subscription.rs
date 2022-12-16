@@ -3,21 +3,20 @@
 // Distributed under the MIT software license
 
 use secp256k1::XOnlyPublicKey;
-use uuid::Uuid;
 
 use crate::Kind;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct SubscriptionFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
-    ids: Option<Vec<Uuid>>,
+    ids: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     authors: Option<Vec<XOnlyPublicKey>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     kinds: Option<Vec<Kind>>,
     #[serde(rename = "#e")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    events: Option<Vec<Uuid>>,
+    events: Option<Vec<XOnlyPublicKey>>,
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pubkeys: Option<Vec<XOnlyPublicKey>>,
@@ -50,7 +49,7 @@ impl SubscriptionFilter {
     }
 
     /// Set subscription id
-    pub fn id(self, id: impl Into<Uuid>) -> Self {
+    pub fn id(self, id: impl Into<String>) -> Self {
         Self {
             ids: Some(vec![id.into()]),
             ..self
@@ -58,7 +57,7 @@ impl SubscriptionFilter {
     }
 
     /// Set subscription ids
-    pub fn ids(self, ids: impl Into<Vec<Uuid>>) -> Self {
+    pub fn ids(self, ids: impl Into<Vec<String>>) -> Self {
         Self {
             ids: Some(ids.into()),
             ..self
@@ -89,10 +88,18 @@ impl SubscriptionFilter {
         }
     }
 
-    /// Set events
-    pub fn events(self, ids: impl Into<Vec<Uuid>>) -> Self {
+    /// Set event
+    pub fn event(self, id: XOnlyPublicKey) -> Self {
         Self {
-            events: Some(ids.into()),
+            events: Some(vec![id]),
+            ..self
+        }
+    }
+
+    /// Set events
+    pub fn events(self, ids: Vec<XOnlyPublicKey>) -> Self {
+        Self {
+            events: Some(ids),
             ..self
         }
     }
@@ -135,29 +142,5 @@ impl SubscriptionFilter {
             limit: Some(limit),
             ..self
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use std::error::Error;
-
-    use uuid::uuid;
-
-    type TestResult = Result<(), Box<dyn Error>>;
-
-    #[test]
-    fn test_handle_valid_subscription_filter_multiple_id_prefixes() -> TestResult {
-        let id_prefixes = vec![
-            uuid!("b6527a19-5961-4310-8cf9-2d35307f442b"),
-            uuid!("6b9cb378-2abd-439f-953b-883380e2701f"),
-        ];
-        let f = SubscriptionFilter::new().ids(id_prefixes.clone());
-
-        assert_eq!(Some(id_prefixes), f.ids);
-
-        Ok(())
     }
 }

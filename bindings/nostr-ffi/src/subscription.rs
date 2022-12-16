@@ -8,7 +8,6 @@ use std::sync::Arc;
 use anyhow::Result;
 use nostr::SubscriptionFilter as SubscriptionFilterSdk;
 use secp256k1::XOnlyPublicKey;
-use uuid::Uuid;
 
 use crate::event::kind::Kind;
 use crate::helper::unwrap_or_clone_arc;
@@ -45,8 +44,6 @@ impl SubscriptionFilter {
     }
 
     pub fn id(self: Arc<Self>, id: String) -> Result<Arc<Self>> {
-        let id = Uuid::from_str(&id)?;
-
         let mut builder = unwrap_or_clone_arc(self);
         builder.sub_filter = builder.sub_filter.id(id);
 
@@ -54,13 +51,8 @@ impl SubscriptionFilter {
     }
 
     pub fn ids(self: Arc<Self>, ids: Vec<String>) -> Result<Arc<Self>> {
-        let mut new_ids: Vec<Uuid> = Vec::with_capacity(ids.len());
-        for id in ids.into_iter() {
-            new_ids.push(Uuid::from_str(&id)?);
-        }
-
         let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.ids(new_ids);
+        builder.sub_filter = builder.sub_filter.ids(ids);
 
         Ok(Arc::new(builder))
     }
@@ -73,7 +65,7 @@ impl SubscriptionFilter {
     }
 
     pub fn event(self: Arc<Self>, event_id: String) -> Result<Arc<Self>> {
-        let event_id = Uuid::from_str(&event_id)?;
+        let event_id = XOnlyPublicKey::from_str(&event_id)?;
 
         let mut builder = unwrap_or_clone_arc(self);
         builder.sub_filter = builder.sub_filter.events(vec![event_id]);
