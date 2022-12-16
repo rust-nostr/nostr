@@ -64,6 +64,14 @@ impl SubscriptionFilter {
         }
     }
 
+    /// Set author
+    pub fn author(self, author: XOnlyPublicKey) -> Self {
+        Self {
+            authors: Some(vec![author]),
+            ..self
+        }
+    }
+
     /// Set authors
     pub fn authors(self, authors: Vec<XOnlyPublicKey>) -> Self {
         Self {
