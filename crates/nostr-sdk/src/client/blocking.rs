@@ -64,6 +64,10 @@ impl Client {
         RUNTIME.block_on(async { self.client.subscribe(filters).await })
     }
 
+    pub fn get_events_of(&mut self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>> {
+        RUNTIME.block_on(async { self.client.get_events_of(filters).await })
+    }
+
     /// Send event
     pub fn send_event(&self, event: Event) -> Result<()> {
         RUNTIME.block_on(async { self.client.send_event(event).await })

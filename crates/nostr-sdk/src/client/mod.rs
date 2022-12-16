@@ -203,6 +203,29 @@ impl Client {
         self.pool.subscribe(filters).await
     }
 
+    /// Get events of filters
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use nostr_sdk::Client;
+    /// use nostr::util::time;
+    /// use nostr::SubscriptionFilter;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let mut client = Client::new(&my_keys);
+    /// let subscription = SubscriptionFilter::new()
+    ///     .pubkeys(vec![my_keys.public_key()])
+    ///     .since(time::timestamp());
+    ///
+    /// let _events = client.get_events_of(vec![subscription]).await.unwrap();
+    /// # }
+    /// ```
+    pub async fn get_events_of(&self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>> {
+        self.pool.get_events_of(filters).await
+    }
+
     /// Send event
     pub async fn send_event(&self, event: Event) -> Result<()> {
         self.pool.send_event(event).await
@@ -344,7 +367,7 @@ impl Client {
             .authors(vec![self.keys.public_key()])
             .kind(Kind::Base(KindBase::ContactList))
             .limit(1);
-        let events: Vec<Event> = self.pool.get_events_of(vec![filter]).await?;
+        let events: Vec<Event> = self.get_events_of(vec![filter]).await?;
 
         for event in events.into_iter() {
             for tag in event.tags.into_iter() {
