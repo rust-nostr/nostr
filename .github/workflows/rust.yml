@@ -22,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        rust:
+          - version: 1.65.0 # Stable
+          - version: 1.64.0 #MSRV
         build-args:
           [
             -p nostr --no-default-features,
@@ -29,6 +32,8 @@ jobs:
             -p nostr-sdk --no-default-features,
             -p nostr-sdk --features nip06,
             -p nostr-sdk --features blocking,
+            -p nostr-ffi,
+            -p nostr-sdk-ffi,
           ]
     steps:
     - name: Checkout
@@ -41,13 +46,14 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
+    - name: Set default toolchain
+      run: rustup default ${{ matrix.rust.version }}
+    - name: Set profile
+      run: rustup set profile minimal && rustup component add clippy
     - name: Build
-      run: cargo build ${{ matrix.build-args }} --all
+      run: cargo build ${{ matrix.build-args }}
     - name: Tests
-      run: cargo test ${{ matrix.build-args }} --all
+      run: cargo test ${{ matrix.build-args }}
     - name: Clippy
-      uses: actions-rs/clippy-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        args: ${{ matrix.build-args }} -- -D warnings
+      run: cargo clippy ${{ matrix.build-args }} -- -D warnings
   
