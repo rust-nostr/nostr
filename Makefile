@@ -6,7 +6,7 @@ else
 endif
 
 precommit:
-	$(Q)cargo fmt && cargo clippy
+	$(Q)cargo fmt --all && cargo clippy --all
 
 clean:
 	$(Q)cargo clean
