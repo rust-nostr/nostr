@@ -28,9 +28,9 @@ jobs:
         build-args:
           [
             -p nostr --no-default-features,
-            -p nostr --features nip06,
+            -p nostr --features all-nips,
             -p nostr-sdk --no-default-features,
-            -p nostr-sdk --features nip06,
+            -p nostr-sdk --features all-nips,
             -p nostr-sdk --features blocking,
             -p nostr-ffi,
             -p nostr-sdk-ffi,

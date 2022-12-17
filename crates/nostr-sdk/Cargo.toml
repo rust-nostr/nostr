@@ -14,6 +14,8 @@ keywords = ["nostr", "sdk", "rust"]
 [features]
 default = []
 blocking = ["dep:once_cell"]
+all-nips = ["nostr/all-nips"]
+nip04 = ["nostr/nip04"]
 nip06 = ["nostr/nip06"]
 
 [dependencies]
@@ -33,7 +35,8 @@ env_logger = "0.8"
 
 [[example]]
 name = "client"
+required-features = ["all-nips"]
 
 [[example]]
 name = "client_blocking"
-required-features = ["blocking"]
+required-features = ["all-nips", "blocking"]

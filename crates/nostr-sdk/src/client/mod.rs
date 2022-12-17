@@ -423,6 +423,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
+    #[cfg(feature = "nip04")]
     pub async fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
         let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, recipient, msg)?
             .to_event(&self.keys)?;

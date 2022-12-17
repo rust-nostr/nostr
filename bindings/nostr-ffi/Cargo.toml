@@ -14,7 +14,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 anyhow = "1.0"
-nostr  = { path = "../../crates/nostr", features = ["nip06"] }
+nostr  = { path = "../../crates/nostr", features = ["all-nips"] }
 uniffi = "0.21.0"
 uniffi_macros = "0.21.0"
 url = "2"

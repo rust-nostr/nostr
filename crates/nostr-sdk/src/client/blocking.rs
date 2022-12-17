@@ -101,6 +101,7 @@ impl Client {
         RUNTIME.block_on(async { self.client.get_contact_list().await })
     }
 
+    #[cfg(feature = "nip04")]
     pub fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
         RUNTIME.block_on(async { self.client.send_direct_msg(recipient, msg).await })
     }

@@ -15,7 +15,7 @@ pub use super::kind::{Kind, KindBase};
 pub use super::tag::{Marker, Tag, TagData, TagKind};
 use super::Event;
 use crate::metadata::Metadata;
-use crate::util::nips::{nip04, nip05, nip13};
+use crate::util::nips;
 use crate::util::time::timestamp;
 use crate::{Contact, Keys, Sha256Hash};
 
@@ -90,7 +90,7 @@ impl EventBuilder {
             let id: Sha256Hash =
                 Self::gen_id(&pubkey, created_at, &self.kind, &tags, &self.content);
 
-            if nip13::get_leading_zero_bits(id) >= difficulty {
+            if nips::nip13::get_leading_zero_bits(id) >= difficulty {
                 log::debug!(
                     "{} iterations in {} ms. Avg rate {} hashes/second",
                     nonce,
@@ -164,7 +164,7 @@ impl EventBuilder {
         });
 
         if let Some(nip05_str) = nip05_str {
-            if !nip05::verify(keys.public_key(), &nip05_str)? {
+            if !nips::nip05::verify(keys.public_key(), &nip05_str)? {
                 return Err(anyhow!("Impossible to verify NIP-05"));
             }
             metadata["nip05"] = json!(nip05_str);
@@ -213,12 +213,13 @@ impl EventBuilder {
     }
 
     /// Create encrypted direct msg event
+    #[cfg(feature = "nip04")]
     pub fn new_encrypted_direct_msg(
         sender_keys: &Keys,
         receiver_keys: &Keys,
         content: &str,
     ) -> Result<Self> {
-        let msg = nip04::encrypt(
+        let msg = nips::nip04::encrypt(
             &sender_keys.secret_key()?,
             &receiver_keys.public_key(),
             content,

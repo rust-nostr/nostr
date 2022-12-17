@@ -6,11 +6,11 @@ else
 endif
 
 precommit:
-	$(Q)cargo fmt --all 
+	$(Q)cargo fmt --all && cargo clippy --all
 	$(Q)cargo clippy -p nostr --no-default-features
-	$(Q)cargo clippy -p nostr --features nip06
+	$(Q)cargo clippy -p nostr --features all-nips
 	$(Q)cargo clippy -p nostr-sdk --no-default-features
-	$(Q)cargo clippy -p nostr-sdk --features nip06
+	$(Q)cargo clippy -p nostr-sdk --features all-nips
 	$(Q)cargo clippy -p nostr-sdk --features blocking
 	$(Q)cargo clippy -p nostr-ffi
 	$(Q)cargo clippy -p nostr-sdk-ffi

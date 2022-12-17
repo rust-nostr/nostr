@@ -77,6 +77,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "nip04")]
     fn test_encrypted_direct_msg() -> TestResult {
         let sender_keys = Keys::new(SecretKey::from_str(
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",

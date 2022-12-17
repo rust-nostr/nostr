@@ -18,7 +18,7 @@ anyhow = "1.0"
 log = "0.4"
 nostr  = { path = "../../crates/nostr" }
 nostr-ffi  = { path = "../nostr-ffi" }
-nostr-sdk  = { path = "../../crates/nostr-sdk", features = ["blocking", "nip06"] }
+nostr-sdk  = { path = "../../crates/nostr-sdk", features = ["blocking", "all-nips"] }
 nostr-sdk-common  = { path = "../../crates/nostr-sdk-common" }
 parking_lot = "0.12.1"
 uniffi = "0.21.0"
