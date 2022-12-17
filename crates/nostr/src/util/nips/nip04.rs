@@ -18,26 +18,23 @@ type Aes256CbcDec = Decryptor<Aes256>;
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     InvalidContentFormat,
-    Base64DecodeError,
-    Utf8EncodeError,
+    Base64Decode,
+    Utf8Encode,
     WrongBlockMode,
-    Secp256k1Error(bitcoin::secp256k1::Error),
+    Secp256k1(bitcoin::secp256k1::Error),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidContentFormat => write!(
-                f,
-                r#"Invalid content format. Expected format "<encrypted_text>?iv=<initialization_vec>""#
-            ),
-            Self::Base64DecodeError => write!(f, "Error while decoding from base64"),
-            Self::Utf8EncodeError => write!(f, "Error while encoding to UTF-8"),
+            Self::InvalidContentFormat => write!(f, "Invalid content format"),
+            Self::Base64Decode => write!(f, "Error while decoding from base64"),
+            Self::Utf8Encode => write!(f, "Error while encoding to UTF-8"),
             Self::WrongBlockMode => write!(
                 f,
-                "Wrong encryption block mode.The content must be encrypted using CBC mode!"
+                "Wrong encryption block mode. The content must be encrypted using CBC mode!"
             ),
-            Self::Secp256k1Error(err) => write!(f, "Secp256k1 error: {}", err),
+            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
         }
     }
 }
@@ -46,7 +43,7 @@ impl std::error::Error for Error {}
 
 impl From<bitcoin::secp256k1::Error> for Error {
     fn from(err: bitcoin::secp256k1::Error) -> Self {
-        Self::Secp256k1Error(err)
+        Self::Secp256k1(err)
     }
 }
 
@@ -75,8 +72,8 @@ pub fn decrypt(
     }
 
     let encrypted_content: Vec<u8> =
-        base64::decode(parsed_content[0]).map_err(|_| Error::Base64DecodeError)?;
-    let iv: Vec<u8> = base64::decode(parsed_content[1]).map_err(|_| Error::Base64DecodeError)?;
+        base64::decode(parsed_content[0]).map_err(|_| Error::Base64Decode)?;
+    let iv: Vec<u8> = base64::decode(parsed_content[1]).map_err(|_| Error::Base64Decode)?;
     let key: Vec<u8> = generate_shared_key(sk, pk)?;
 
     let cipher = Aes256CbcDec::new(key.as_slice().into(), iv.as_slice().into());
@@ -84,7 +81,7 @@ pub fn decrypt(
         .decrypt_padded_vec_mut::<Pkcs7>(&encrypted_content)
         .map_err(|_| Error::WrongBlockMode)?;
 
-    String::from_utf8(result).map_err(|_| Error::Utf8EncodeError)
+    String::from_utf8(result).map_err(|_| Error::Utf8Encode)
 }
 
 fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<Vec<u8>, Error> {
@@ -108,10 +105,10 @@ mod tests {
 
     use bitcoin::secp256k1::{KeyPair, Secp256k1};
 
-    type TestResult = Result<(), Box<dyn std::error::Error>>;
+    use crate::Result;
 
     #[test]
-    fn test_encryption_decryption() -> TestResult {
+    fn test_encryption_decryption() -> Result<()> {
         let secp = Secp256k1::new();
 
         let sender_sk = SecretKey::from_str(
@@ -149,7 +146,7 @@ mod tests {
         );
         assert_eq!(
             decrypt(&sender_sk, &receiver_pk, "badbase64?iv=encode").unwrap_err(),
-            Error::Base64DecodeError
+            Error::Base64Decode
         );
 
         //Content encrypted with aes256 using GCM mode

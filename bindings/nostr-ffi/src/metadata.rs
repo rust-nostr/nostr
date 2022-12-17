@@ -2,13 +2,12 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::Result;
+use nostr::url::Url;
 use nostr::Metadata as MetadataSdk;
-use url::Url;
 
+use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 
 #[derive(Clone)]
@@ -64,7 +63,7 @@ impl Metadata {
     }
 
     pub fn picture(self: Arc<Self>, picture: String) -> Result<Arc<Self>> {
-        let picture = Url::from_str(&picture)?;
+        let picture = Url::parse(&picture)?;
 
         let mut builder = unwrap_or_clone_arc(self);
         builder.metadata = builder.metadata.picture(picture);

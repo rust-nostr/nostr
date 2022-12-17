@@ -1,14 +1,14 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use anyhow::Result;
-
 mod client;
+mod error;
 mod logger;
 mod subscription;
+mod thread;
 
 trait FromResult<T>: Sized {
-    fn from_result(_: T) -> Result<Self>;
+    fn from_result(_: T) -> error::Result<Self>;
 }
 
 #[allow(missing_docs)]
@@ -25,6 +25,7 @@ mod ffi {
 
     // Nostr SDK
     pub use crate::client::{Client, HandleNotification};
+    pub use crate::error::NostrSdkError;
     pub use crate::subscription::{Channel, Subscription};
 
     // UDL

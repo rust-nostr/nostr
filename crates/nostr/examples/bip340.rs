@@ -3,17 +3,16 @@
 // Distributed under the MIT software license
 
 use std::collections::HashMap;
-use std::error::Error;
 use std::str::FromStr;
 
 use nostr::hashes::hex::FromHex;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
-use nostr::Sha256Hash;
+use nostr::{Result, Sha256Hash};
 
 /// This is an incomplete attempt to test I'm doing bip340 correctly
 /// csv from https://github.com/bitcoin/bips/blob/master/bip-0340/test-vectors.csv
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     type Record = HashMap<String, String>;
     let mut rdr = csv::Reader::from_path("examples/bip340.csv")?;
     for result in rdr.deserialize() {

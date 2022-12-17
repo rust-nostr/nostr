@@ -1,16 +1,14 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::str::FromStr;
-
 use nostr::key::Keys;
-use nostr::{ClientMessage, Event, EventBuilder, Metadata};
+use nostr::url::Url;
+use nostr::{ClientMessage, Event, EventBuilder, Metadata, Result};
 use tungstenite::{connect, Message as WsMessage};
-use url::Url;
 
 const WS_ENDPOINT: &str = "wss://relay.damus.io";
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     env_logger::init();
 
     let (mut socket, _response) =
@@ -22,12 +20,14 @@ fn main() -> anyhow::Result<()> {
         .name("username")
         .display_name("My Username")
         .about("Description")
-        .picture(Url::from_str("https://example.com/avatar.png")?)
+        .picture(Url::parse("https://example.com/avatar.png")?)
         .nip05("username@example.com");
 
     let event: Event = EventBuilder::set_metadata(&my_keys, metadata)?.to_event(&my_keys)?;
 
-    socket.write_message(WsMessage::Text(ClientMessage::new_event(event).to_json()))?;
+    socket
+        .write_message(WsMessage::Text(ClientMessage::new_event(event).to_json()))
+        .unwrap();
 
     Ok(())
 }

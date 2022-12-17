@@ -2,15 +2,14 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::error::Error;
 use std::str::FromStr;
 use std::{thread, time};
 
 use nostr::event::KindBase;
+use nostr::url::Url;
 use nostr::util::nips::nip04::decrypt;
-use nostr::{ClientMessage, EventBuilder, Keys, Kind, RelayMessage, SubscriptionFilter};
+use nostr::{ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter};
 use tungstenite::{connect, Message as WsMessage};
-use url::Url;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
@@ -18,7 +17,7 @@ const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b2
 const WS_ENDPOINT: &str = "wss://relay.damus.io";
 // const WS_ENDPOINT: &str = "ws://localhost:3333/ws";
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     env_logger::init();
 
     let (mut socket, _response) =

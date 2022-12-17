@@ -1,11 +1,11 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::fmt;
 use std::time::Instant;
 
-use anyhow::{anyhow, Result};
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{KeyPair, Secp256k1, XOnlyPublicKey};
+use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_json::{json, Value};
@@ -14,13 +14,68 @@ use url::Url;
 pub use super::kind::{Kind, KindBase};
 pub use super::tag::{Marker, Tag, TagData, TagKind};
 use super::Event;
+use crate::key::{self, Keys};
 use crate::metadata::Metadata;
 use crate::util::nips;
 use crate::util::time::timestamp;
-use crate::{Contact, Keys, Sha256Hash};
+use crate::{Contact, Sha256Hash};
 
 static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
+
+#[derive(Debug)]
+pub enum Error {
+    /// Key error
+    Key(key::Error),
+    Secp256k1(bitcoin::secp256k1::Error),
+    /// Invalid metadata name
+    InvalidName,
+    /// NIP04 error
+    #[cfg(feature = "nip04")]
+    NIP04(nips::nip04::Error),
+    /// NIP05 error
+    NIP05(nips::nip05::Error),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Key(err) => write!(f, "key error: {}", err),
+            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
+            Self::InvalidName => write!(f, "invalid name"),
+            #[cfg(feature = "nip04")]
+            Self::NIP04(err) => write!(f, "nip04 error: {}", err),
+            Self::NIP05(err) => write!(f, "nip05 error: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<key::Error> for Error {
+    fn from(err: key::Error) -> Self {
+        Self::Key(err)
+    }
+}
+
+impl From<bitcoin::secp256k1::Error> for Error {
+    fn from(err: bitcoin::secp256k1::Error) -> Self {
+        Self::Secp256k1(err)
+    }
+}
+
+#[cfg(feature = "nip04")]
+impl From<nips::nip04::Error> for Error {
+    fn from(err: nips::nip04::Error) -> Self {
+        Self::NIP04(err)
+    }
+}
+
+impl From<nips::nip05::Error> for Error {
+    fn from(err: nips::nip05::Error) -> Self {
+        Self::NIP05(err)
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct EventBuilder {
@@ -51,7 +106,7 @@ impl EventBuilder {
     }
 
     /// Build `Event`
-    pub fn to_event(self, keys: &Keys) -> Result<Event> {
+    pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
         let secp = Secp256k1::new();
         let keypair: &KeyPair = &keys.key_pair()?;
         let pubkey: XOnlyPublicKey = keys.public_key();
@@ -59,7 +114,7 @@ impl EventBuilder {
 
         let id: Sha256Hash =
             Self::gen_id(&pubkey, created_at, &self.kind, &self.tags, &self.content);
-        let message = bitcoin::secp256k1::Message::from_slice(&id)?;
+        let message = Message::from_slice(&id)?;
 
         Ok(Event {
             id,
@@ -73,7 +128,7 @@ impl EventBuilder {
     }
 
     /// Build POW `Event`
-    pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event> {
+    pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
         let mut nonce: u128 = 0;
         let mut tags: Vec<Tag> = self.tags;
 
@@ -100,7 +155,7 @@ impl EventBuilder {
 
                 let secp = Secp256k1::new();
                 let keypair: &KeyPair = &keys.key_pair()?;
-                let message = bitcoin::secp256k1::Message::from_slice(&id)?;
+                let message = Message::from_slice(&id)?;
 
                 return Ok(Event {
                     id,
@@ -138,12 +193,12 @@ impl EventBuilder {
     ///     .name("username")
     ///     .display_name("My Username")
     ///     .about("Description")
-    ///     .picture(Url::from_str("https://example.com/avatar.png").unwrap())
+    ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
     ///     .nip05("username@example.com");
     ///
     /// let builder = EventBuilder::set_metadata(&my_keys, metadata).unwrap();
     /// ```
-    pub fn set_metadata(keys: &Keys, metadata: Metadata) -> Result<Self> {
+    pub fn set_metadata(keys: &Keys, metadata: Metadata) -> Result<Self, Error> {
         let name = metadata.name;
         let display_name = metadata.display_name;
         let about = metadata.about;
@@ -152,7 +207,7 @@ impl EventBuilder {
 
         if let Some(name) = name.clone() {
             if !REGEX_NAME.is_match(&name) {
-                return Err(anyhow!("Invalid name"));
+                return Err(Error::InvalidName);
             }
         }
 
@@ -164,9 +219,7 @@ impl EventBuilder {
         });
 
         if let Some(nip05_str) = nip05_str {
-            if !nips::nip05::verify(keys.public_key(), &nip05_str)? {
-                return Err(anyhow!("Impossible to verify NIP-05"));
-            }
+            nips::nip05::verify(keys.public_key(), &nip05_str)?;
             metadata["nip05"] = json!(nip05_str);
         }
 
@@ -218,7 +271,7 @@ impl EventBuilder {
         sender_keys: &Keys,
         receiver_keys: &Keys,
         content: &str,
-    ) -> Result<Self> {
+    ) -> Result<Self, Error> {
         let msg = nips::nip04::encrypt(
             &sender_keys.secret_key()?,
             &receiver_keys.public_key(),
@@ -264,9 +317,13 @@ impl EventBuilder {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel(name: &str, about: Option<&str>, picture: Option<&str>) -> Result<Self> {
+    pub fn new_channel(
+        name: &str,
+        about: Option<&str>,
+        picture: Option<&str>,
+    ) -> Result<Self, Error> {
         if !REGEX_NAME.is_match(name) {
-            return Err(anyhow!("Invalid name"));
+            return Err(Error::InvalidName);
         }
 
         let metadata: Value = json!({
@@ -291,10 +348,10 @@ impl EventBuilder {
         name: Option<&str>,
         about: Option<&str>,
         picture: Option<&str>,
-    ) -> Result<Self> {
+    ) -> Result<Self, Error> {
         if let Some(name) = name {
             if !REGEX_NAME.is_match(name) {
-                return Err(anyhow!("Invalid name"));
+                return Err(Error::InvalidName);
             }
         }
 

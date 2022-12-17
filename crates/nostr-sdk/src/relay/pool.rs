@@ -2,21 +2,46 @@
 // Distributed under the MIT software license
 
 use std::collections::HashMap;
+use std::fmt;
 use std::net::SocketAddr;
 #[cfg(feature = "blocking")]
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use nostr::url::Url;
 use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use url::Url;
 use uuid::Uuid;
 
-use super::Relay;
+use super::{Error as RelayError, Relay};
 #[cfg(feature = "blocking")]
 use crate::new_current_thread;
 use crate::subscription::Subscription;
+
+#[derive(Debug)]
+pub enum Error {
+    /// Relay error
+    Relay(RelayError),
+    /// No relay connected
+    NoRelayConnected,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Relay(err) => write!(f, "relay error: {}", err),
+            Self::NoRelayConnected => write!(f, "no relay connected"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<RelayError> for Error {
+    fn from(err: RelayError) -> Self {
+        Self::Relay(err)
+    }
+}
 
 #[derive(Debug)]
 pub enum RelayPoolEvent {
@@ -155,14 +180,14 @@ impl RelayPool {
     }
 
     /// Add new relay
-    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
+    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<(), Error> {
         let relay = Relay::new(url, self.pool_task_sender.clone(), proxy)?;
         self.relays.insert(url.into(), relay);
         Ok(())
     }
 
     /// Disconnect and remove relay
-    pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
+    pub async fn remove_relay(&mut self, url: &str) -> Result<(), Error> {
         if let Some(relay) = self.relays.remove(url) {
             if self.disconnect_relay(&relay).await.is_err() {
                 self.relays.insert(url.into(), relay);
@@ -173,10 +198,10 @@ impl RelayPool {
     }
 
     /// Send event
-    pub async fn send_event(&self, event: Event) -> Result<()> {
+    pub async fn send_event(&self, event: Event) -> Result<(), Error> {
         //Send to pool task to save in all received events
         if self.relays.is_empty() {
-            return Err(anyhow!("No relay connected"));
+            return Err(Error::NoRelayConnected);
         }
 
         if let Err(err) = self
@@ -197,7 +222,7 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
+    pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
         self.subscription.update_filters(filters.clone());
         for relay in self.relays.clone().values() {
             self.subscribe_relay(relay).await?;
@@ -207,7 +232,7 @@ impl RelayPool {
     }
 
     /// Unsubscribe from filters
-    pub async fn unsubscribe(&mut self) -> Result<()> {
+    pub async fn unsubscribe(&mut self) -> Result<(), Error> {
         for relay in self.relays.clone().values() {
             self.unsubscribe_relay(relay).await?;
         }
@@ -215,7 +240,7 @@ impl RelayPool {
         Ok(())
     }
 
-    async fn subscribe_relay(&mut self, relay: &Relay) -> Result<Uuid> {
+    async fn subscribe_relay(&mut self, relay: &Relay) -> Result<Uuid, Error> {
         let channel = self.subscription.get_channel(&relay.url());
         let channel_id = channel.id();
 
@@ -229,7 +254,7 @@ impl RelayPool {
         Ok(channel_id)
     }
 
-    async fn unsubscribe_relay(&mut self, relay: &Relay) -> Result<()> {
+    async fn unsubscribe_relay(&mut self, relay: &Relay) -> Result<(), Error> {
         if let Some(channel) = self.subscription.remove_channel(&relay.url()) {
             relay
                 .send_msg(ClientMessage::close(channel.id().to_string()))
@@ -239,7 +264,10 @@ impl RelayPool {
         Ok(())
     }
 
-    pub async fn get_events_of(&self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>> {
+    pub async fn get_events_of(
+        &self,
+        filters: Vec<SubscriptionFilter>,
+    ) -> Result<Vec<Event>, Error> {
         let mut events: Vec<Event> = Vec::new();
 
         let id = Uuid::new_v4();
@@ -283,7 +311,7 @@ impl RelayPool {
     }
 
     /// Connect to all added relays and keep connection alive
-    pub async fn connect(&mut self, wait_for_connection: bool) -> Result<()> {
+    pub async fn connect(&mut self, wait_for_connection: bool) -> Result<(), Error> {
         for relay in self.relays.clone().values() {
             self.connect_relay(relay, wait_for_connection).await?;
         }
@@ -292,7 +320,7 @@ impl RelayPool {
     }
 
     /// Disconnect from all relays
-    pub async fn disconnect(&mut self) -> Result<()> {
+    pub async fn disconnect(&mut self) -> Result<(), Error> {
         for relay in self.relays.clone().values() {
             self.disconnect_relay(relay).await?;
         }
@@ -301,14 +329,18 @@ impl RelayPool {
     }
 
     /// Connect to relay
-    pub async fn connect_relay(&mut self, relay: &Relay, wait_for_connection: bool) -> Result<()> {
+    pub async fn connect_relay(
+        &mut self,
+        relay: &Relay,
+        wait_for_connection: bool,
+    ) -> Result<(), Error> {
         relay.connect(wait_for_connection).await;
         self.subscribe_relay(relay).await?;
         Ok(())
     }
 
     /// Disconnect from relay
-    pub async fn disconnect_relay(&mut self, relay: &Relay) -> Result<()> {
+    pub async fn disconnect_relay(&mut self, relay: &Relay) -> Result<(), Error> {
         relay.terminate().await?;
         self.unsubscribe_relay(relay).await?;
         Ok(())

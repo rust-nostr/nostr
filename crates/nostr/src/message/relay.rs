@@ -162,14 +162,13 @@ impl RelayMessage {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
-
-    use std::{error::Error, str::FromStr};
-
-    type TestResult = Result<(), Box<dyn Error>>;
+    use crate::Result;
 
     #[test]
-    fn test_handle_valid_notice() -> TestResult {
+    fn test_handle_valid_notice() -> Result<()> {
         let valid_notice_msg = r#"["NOTICE","Invalid event format!"]"#;
         let handled_valid_notice_msg =
             RelayMessage::new_notice(String::from("Invalid event format!"));
@@ -199,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_valid_event() -> TestResult {
+    fn test_handle_valid_event() -> Result<()> {
         let valid_event_msg = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]"#;
 
         let id = "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5";
@@ -239,7 +238,7 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_valid_eose() -> TestResult {
+    fn test_handle_valid_eose() -> Result<()> {
         let valid_eose_msg = r#"["EOSE","random-subscription-id"]"#;
         let handled_valid_eose_msg = RelayMessage::new_eose(String::from("random-subscription-id"));
 
@@ -266,7 +265,7 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_valid_ok() -> TestResult {
+    fn test_handle_valid_ok() -> Result<()> {
         let valid_ok_msg = r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, "pow: difficulty 25>=24"]"#;
         let handled_valid_ok_msg = RelayMessage::new_ok(
             Sha256Hash::from_str(

@@ -3,13 +3,12 @@
 
 extern crate nostr_sdk;
 
-use anyhow::Result;
 use nostr::key::{FromBech32, Keys};
 use nostr::util::nips::nip04::decrypt;
 use nostr::util::time::timestamp;
 use nostr::{Kind, KindBase, SubscriptionFilter};
 use nostr_sdk::client::blocking::Client;
-use nostr_sdk::RelayPoolNotifications;
+use nostr_sdk::{RelayPoolNotifications, Result};
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
@@ -38,7 +37,11 @@ fn main() -> Result<()> {
     client.handle_notifications(|notification| {
         if let RelayPoolNotifications::ReceivedEvent(event) = notification {
             if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
-                if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content) {
+                if let Ok(msg) = decrypt(
+                    &my_keys.secret_key().unwrap(),
+                    &event.pubkey,
+                    &event.content,
+                ) {
                     println!("New DM: {}", msg);
                 } else {
                     log::error!("Impossible to decrypt direct message");
@@ -49,5 +52,7 @@ fn main() -> Result<()> {
         }
 
         Ok(())
-    })
+    })?;
+
+    Ok(())
 }

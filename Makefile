@@ -15,6 +15,9 @@ precommit:
 	$(Q)cargo clippy -p nostr-ffi
 	$(Q)cargo clippy -p nostr-sdk-ffi
 
+test:
+	$(Q)cargo test --all --all-features
+
 clean:
 	$(Q)cargo clean
 

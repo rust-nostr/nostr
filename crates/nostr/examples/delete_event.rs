@@ -1,19 +1,18 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::error::Error;
 use std::str::FromStr;
 
 use nostr::key::{FromBech32, Keys};
-use nostr::{ClientMessage, Event, EventBuilder, Sha256Hash};
+use nostr::url::Url;
+use nostr::{ClientMessage, Event, EventBuilder, Result, Sha256Hash};
 use tungstenite::{connect, Message as WsMessage};
-use url::Url;
 
 const MY_BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
 const WS_ENDPOINT: &str = "wss://relay.damus.io";
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     env_logger::init();
 
     let (mut socket, _response) =

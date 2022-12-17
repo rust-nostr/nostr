@@ -5,13 +5,13 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::Result;
+use nostr::url::Url;
 use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, Sha256Hash, Tag};
-use url::Url;
 
 use super::kind::Kind;
 use super::Event;
 use crate::contact::Contact;
+use crate::error::Result;
 use crate::key::Keys;
 use crate::metadata::Metadata;
 
@@ -66,7 +66,7 @@ impl EventBuilder {
     }
 
     pub fn add_recommended_relay(url: String) -> Result<Self> {
-        let url = Url::from_str(&url)?;
+        let url = Url::parse(&url)?;
 
         Ok(Self {
             builder: EventBuilderSdk::add_recommended_relay(&url),

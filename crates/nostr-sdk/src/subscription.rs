@@ -3,8 +3,8 @@
 
 use std::collections::HashMap;
 
+use nostr::url::Url;
 use nostr::SubscriptionFilter;
-use url::Url;
 use uuid::Uuid;
 
 #[derive(Clone)]

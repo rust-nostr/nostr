@@ -4,10 +4,11 @@
 use std::ops::Deref;
 use std::str::FromStr;
 
-use anyhow::Result;
 use nostr::key::{FromBech32, Keys as KeysSdk, XOnlyPublicKey};
 use nostr::secp256k1::SecretKey;
 use nostr::util::nips::nip06::FromMnemonic;
+
+use crate::error::{NostrError, Result};
 
 #[derive(Clone)]
 pub struct Keys {
@@ -58,7 +59,8 @@ impl Keys {
 
     pub fn from_mnemonic(mnemonic: String, passphrase: Option<String>) -> Result<Self> {
         Ok(Self {
-            keys: KeysSdk::from_mnemonic(mnemonic, passphrase)?,
+            keys: KeysSdk::from_mnemonic(mnemonic, passphrase)
+                .map_err(|e| NostrError::Generic { err: e.to_string() })?,
         })
     }
 

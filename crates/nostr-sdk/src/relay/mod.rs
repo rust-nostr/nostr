@@ -1,26 +1,55 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::fmt;
 use std::net::SocketAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
+use nostr::url::Url;
 use nostr::{ClientMessage, RelayMessage};
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
-use url::Url;
 
-mod network;
+mod net;
 pub mod pool;
-mod socks;
 
 use self::pool::RelayPoolEvent;
 
 #[cfg(feature = "blocking")]
 use crate::new_current_thread;
+
+#[derive(Debug)]
+pub enum Error {
+    /// Url parse error
+    Url(nostr::url::ParseError),
+    RelayEventSender(SendError<RelayEvent>),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Url(err) => write!(f, "impossible to parse URL: {}", err),
+            Self::RelayEventSender(err) => write!(f, "impossible to send relay event: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<nostr::url::ParseError> for Error {
+    fn from(err: nostr::url::ParseError) -> Self {
+        Self::Url(err)
+    }
+}
+
+impl From<SendError<RelayEvent>> for Error {
+    fn from(err: SendError<RelayEvent>) -> Self {
+        Self::RelayEventSender(err)
+    }
+}
 
 /// Relay connection status
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -38,7 +67,7 @@ pub enum RelayStatus {
 }
 
 #[derive(Debug)]
-enum RelayEvent {
+pub enum RelayEvent {
     SendMsg(Box<ClientMessage>),
     Ping,
     Close,
@@ -61,11 +90,11 @@ impl Relay {
         url: &str,
         pool_sender: Sender<RelayPoolEvent>,
         proxy: Option<SocketAddr>,
-    ) -> Result<Self> {
+    ) -> Result<Self, Error> {
         let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(64);
 
         Ok(Self {
-            url: Url::from_str(url)?,
+            url: Url::parse(url)?,
             proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
             pool_sender,
@@ -137,7 +166,7 @@ impl Relay {
         self.set_status(RelayStatus::Connecting).await;
         log::debug!("Connecting to {}", url);
 
-        match network::get_connection(&self.url, self.proxy).await {
+        match net::get_connection(&self.url, self.proxy).await {
             Ok((mut ws_tx, mut ws_rx)) => {
                 self.set_status(RelayStatus::Connected).await;
                 log::info!("Connected to {}", url);
@@ -292,27 +321,27 @@ impl Relay {
         };
     }
 
-    async fn send_relay_event(&self, relay_msg: RelayEvent) -> Result<()> {
+    async fn send_relay_event(&self, relay_msg: RelayEvent) -> Result<(), Error> {
         Ok(self.relay_sender.send(relay_msg).await?)
     }
 
     /// Ping relay
-    async fn ping(&self) -> Result<()> {
+    async fn ping(&self) -> Result<(), Error> {
         self.send_relay_event(RelayEvent::Ping).await
     }
 
     /// Disconnect from relay and set status to 'Disconnected'
-    async fn disconnect(&self) -> Result<()> {
+    async fn disconnect(&self) -> Result<(), Error> {
         self.send_relay_event(RelayEvent::Close).await
     }
 
     /// Disconnect from relay and set status to 'Terminated'
-    pub async fn terminate(&self) -> Result<()> {
+    pub async fn terminate(&self) -> Result<(), Error> {
         self.send_relay_event(RelayEvent::Terminate).await
     }
 
     /// Send msg to relay
-    pub async fn send_msg(&self, msg: ClientMessage) -> Result<()> {
+    pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
         self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)))
             .await
     }

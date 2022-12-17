@@ -2,9 +2,9 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::fmt;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Result};
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{Secp256k1, XOnlyPublicKey};
@@ -18,6 +18,45 @@ pub use self::builder::EventBuilder;
 pub use self::kind::{Kind, KindBase};
 pub use self::tag::{Marker, Tag, TagData, TagKind};
 use crate::Sha256Hash;
+
+#[derive(Debug)]
+pub enum Error {
+    /// Error serializing or deserializing JSON data
+    Json(serde_json::Error),
+    Secp256k1(bitcoin::secp256k1::Error),
+    /// Hex decoding error
+    Hex(bitcoin::hashes::hex::Error),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Json(err) => write!(f, "json error: {}", err),
+            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
+            Self::Hex(err) => write!(f, "hex decoding error: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Self {
+        Self::Json(err)
+    }
+}
+
+impl From<bitcoin::secp256k1::Error> for Error {
+    fn from(err: bitcoin::secp256k1::Error) -> Self {
+        Self::Secp256k1(err)
+    }
+}
+
+impl From<bitcoin::hashes::hex::Error> for Error {
+    fn from(err: bitcoin::hashes::hex::Error) -> Self {
+        Self::Hex(err)
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Event {
@@ -42,7 +81,7 @@ where
 
 impl Event {
     /// Verify event
-    pub fn verify(&self) -> Result<(), bitcoin::secp256k1::Error> {
+    pub fn verify(&self) -> Result<(), Error> {
         let secp = Secp256k1::new();
         let id = EventBuilder::gen_id(
             &self.pubkey,
@@ -52,11 +91,11 @@ impl Event {
             &self.content,
         );
         let message = bitcoin::secp256k1::Message::from_slice(&id)?;
-        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
+        Ok(secp.verify_schnorr(&self.sig, &message, &self.pubkey)?)
     }
 
     /// New event from json string
-    pub fn from_json<S>(json: S) -> Result<Self>
+    pub fn from_json<S>(json: S) -> Result<Self, Error>
     where
         S: Into<String>,
     {
@@ -66,7 +105,7 @@ impl Event {
     }
 
     /// Get event as json string
-    pub fn as_json(&self) -> Result<String> {
+    pub fn as_json(&self) -> Result<String, Error> {
         Ok(serde_json::to_string(&self)?)
     }
 }
@@ -82,8 +121,8 @@ impl Event {
         tags: Vec<Tag>,
         content: &str,
         sig: &str,
-    ) -> Result<Self> {
-        let id = Sha256Hash::from_hex(id).map_err(|e| anyhow!(e.to_string()))?;
+    ) -> Result<Self, Error> {
+        let id = Sha256Hash::from_hex(id)?;
         let pubkey = XOnlyPublicKey::from_str(pubkey)?;
         let kind = serde_json::from_str(&kind.to_string())?;
         let sig = Signature::from_str(sig)?;
@@ -98,11 +137,9 @@ impl Event {
             sig,
         };
 
-        if event.verify().is_ok() {
-            Ok(event)
-        } else {
-            Err(anyhow!("Didn't verify"))
-        }
+        event.verify()?;
+
+        Ok(event)
     }
 }
 

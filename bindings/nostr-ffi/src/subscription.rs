@@ -5,10 +5,10 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::Result;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Sha256Hash, SubscriptionFilter as SubscriptionFilterSdk};
 
+use crate::error::Result;
 use crate::event::kind::Kind;
 use crate::helper::unwrap_or_clone_arc;
 

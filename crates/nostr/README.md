@@ -12,35 +12,35 @@ Rust implementation of Nostr protocol.
 
 ```toml
 [dependencies]
-anyhow = "1"
 nostr = "0.7"
 tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"]}
-url = "2"
 ```
 
 ```rust,no_run
-use std::str::FromStr;
-use nostr::{Event, EventBuilder, Metadata};
-use nostr::key::{FromBech32, Keys};
+use nostr::{Event, EventBuilder, Metadata, Keys, Result};
 use nostr::message::ClientMessage;
+use nostr::url::Url;
 use tungstenite::{Message as WsMessage};
-use url::Url;
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     // Generate new random keys
-    let my_new_keys = Keys::generate_from_os_random();
+    let my_keys = Keys::generate_from_os_random();
 
-    // Use your already existing bec32 keys
-    let my_bech32_keys = Keys::from_bech32("nsec1...")?;
-
-    // Use your already existing keys
-    let my_keys = Keys::from_str("hex-secret-key")?;
+    // or use your already existing
+    //
+    // From Bech32
+    // use nostr::key::FromBech32;
+    // let my_keys = Keys::from_bech32("nsec1...")?;
+    //
+    // From hex string
+    // use std::str::FromStr;
+    // let my_keys = Keys::from_str("hex-secret-key")?;
 
     let metadata = Metadata::new()
         .name("username")
         .display_name("My Username")
         .about("Description")
-        .picture(Url::from_str("https://example.com/avatar.png")?)
+        .picture(Url::parse("https://example.com/avatar.png")?)
         .nip05("username@example.com");
 
     let event: Event = EventBuilder::set_metadata(&my_keys, metadata)?.to_event(&my_keys)?;
@@ -56,7 +56,7 @@ fn main() -> anyhow::Result<()> {
 
     // Send msg
     let msg = ClientMessage::new_event(event).to_json();
-    socket.write_message(WsMessage::Text(msg))?;
+    socket.write_message(WsMessage::Text(msg)).expect("Impossible to send message");
 
     Ok(())
 }

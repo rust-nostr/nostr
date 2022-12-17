@@ -14,16 +14,13 @@ name = "nostrsdk"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-anyhow = "1.0"
 log = "0.4"
 nostr  = { path = "../../crates/nostr" }
 nostr-ffi  = { path = "../nostr-ffi" }
 nostr-sdk  = { path = "../../crates/nostr-sdk", features = ["blocking", "all-nips"] }
-nostr-sdk-common  = { path = "../../crates/nostr-sdk-common" }
 parking_lot = "0.12.1"
 uniffi = "0.21.0"
 uniffi_macros = "0.21.0"
-url = "2"
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.11"

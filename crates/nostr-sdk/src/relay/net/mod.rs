@@ -1,16 +1,16 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::fmt;
 use std::net::SocketAddr;
 
-use anyhow::{anyhow, Result};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
+use nostr::url::{ParseError, Url};
 use tokio::net::TcpStream;
 use tokio_socks::tcp::Socks5Stream;
-use tokio_tungstenite::tungstenite::{Error, Message};
+use tokio_tungstenite::tungstenite::{Error as WsError, Message};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-use url::Url;
 
 type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 type WebSocketSocks5 = WebSocketStream<Socks5Stream<TcpStream>>;
@@ -21,7 +21,42 @@ type StreamClearnet = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 type SplitSinkSocks5 = SplitSink<WebSocketStream<Socks5Stream<TcpStream>>, Message>;
 type StreamSocks5 = SplitStream<WebSocketStream<Socks5Stream<TcpStream>>>;
 
-use super::socks::TpcSocks5Stream;
+mod socks;
+
+use self::socks::TpcSocks5Stream;
+
+#[derive(Debug)]
+pub enum Error {
+    /// Ws error
+    Ws(WsError),
+    Socks(tokio_socks::Error),
+    /// Url parse error
+    Url(nostr::url::ParseError),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Ws(err) => write!(f, "ws error: {}", err),
+            Self::Socks(err) => write!(f, "socks error: {}", err),
+            Self::Url(err) => write!(f, "impossible to parse URL: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<WsError> for Error {
+    fn from(err: WsError) -> Self {
+        Self::Ws(err)
+    }
+}
+
+impl From<tokio_socks::Error> for Error {
+    fn from(err: tokio_socks::Error) -> Self {
+        Self::Socks(err)
+    }
+}
 
 #[derive(Debug)]
 pub(crate) enum Sink {
@@ -30,14 +65,14 @@ pub(crate) enum Sink {
 }
 
 impl Sink {
-    pub async fn send(&mut self, msg: Message) -> Result<()> {
+    pub async fn send(&mut self, msg: Message) -> Result<(), Error> {
         match self {
             Self::Direct(ws_tx) => Ok(ws_tx.send(msg).await?),
             Self::Socks5(ws_tx) => Ok(ws_tx.send(msg).await?),
         }
     }
 
-    pub async fn close(&mut self) -> Result<()> {
+    pub async fn close(&mut self) -> Result<(), Error> {
         match self {
             Self::Direct(ws_tx) => Ok(ws_tx.close().await?),
             Self::Socks5(ws_tx) => Ok(ws_tx.close().await?),
@@ -52,7 +87,7 @@ pub(crate) enum Stream {
 }
 
 impl Stream {
-    pub async fn next(&mut self) -> Option<Result<Message, Error>> {
+    pub async fn next(&mut self) -> Option<Result<Message, WsError>> {
         match self {
             Self::Direct(ws_rx) => ws_rx.next().await,
             Self::Socks5(ws_rx) => ws_rx.next().await,
@@ -60,7 +95,10 @@ impl Stream {
     }
 }
 
-pub(crate) async fn get_connection(url: &Url, proxy: Option<SocketAddr>) -> Result<(Sink, Stream)> {
+pub(crate) async fn get_connection(
+    url: &Url,
+    proxy: Option<SocketAddr>,
+) -> Result<(Sink, Stream), Error> {
     match proxy {
         Some(proxy) => {
             let stream = connect_proxy(url, proxy).await?;
@@ -75,18 +113,18 @@ pub(crate) async fn get_connection(url: &Url, proxy: Option<SocketAddr>) -> Resu
     }
 }
 
-async fn connect(url: &Url) -> Result<WebSocket> {
+async fn connect(url: &Url) -> Result<WebSocket, Error> {
     let (stream, _) = tokio_tungstenite::connect_async(url).await?;
     Ok(stream)
 }
 
-async fn connect_proxy(url: &Url, proxy: SocketAddr) -> Result<WebSocketSocks5> {
+async fn connect_proxy(url: &Url, proxy: SocketAddr) -> Result<WebSocketSocks5, Error> {
     let addr: String = match url.host_str() {
         Some(host) => match url.port_or_known_default() {
             Some(port) => format!("{}:{}", host, port),
-            None => return Err(anyhow!("Impossible to extract port from url")),
+            None => return Err(Error::Url(ParseError::EmptyHost)),
         },
-        None => return Err(anyhow!("Impossible to extract host from url")),
+        None => return Err(Error::Url(ParseError::InvalidPort)),
     };
 
     log::debug!("Addr: {}", addr);

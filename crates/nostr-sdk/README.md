@@ -19,19 +19,17 @@ other lower-level crates. If you're attempting something more custom, you might 
 
 ```toml
 [dependencies]
-anyhow = "1"
 nostr-sdk = "0.7"
 tokio = { version = "1", features = ["full"] }
-url = "2"
 ```
 
 ```rust,no_run
 use nostr_sdk::nostr::{Keys, Metadata};
-use nostr_sdk::Client;
-use url::Url;
+use nostr_sdk::nostr::url::Url;
+use nostr_sdk::{Client, Result};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     // Generate new keys
     let my_keys: Keys = Client::generate_keys();
     //
@@ -72,12 +70,12 @@ async fn main() -> anyhow::Result<()> {
     client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 20).await?;
 
     // Handle notifications
-    client
-        .handle_notifications(|notification| {
-            println!("{:?}", notification);
-            Ok(())
-        })
-        .await
+    let mut notifications = client.notifications();
+    while let Ok(notification) = notifications.recv().await {
+        println!("{:?}", notification);
+    }
+
+    Ok(())
 }
 ```
 

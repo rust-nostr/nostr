@@ -2,21 +2,20 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::error::Error;
 use std::str::FromStr;
 
 use nostr::event::{Kind, KindBase};
 use nostr::secp256k1::SecretKey;
-use nostr::{ClientMessage, EventBuilder, Keys, RelayMessage, SubscriptionFilter};
+use nostr::url::Url;
+use nostr::{ClientMessage, EventBuilder, Keys, RelayMessage, Result, SubscriptionFilter};
 use tungstenite::{connect, Message as WsMessage};
-use url::Url;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 // const WS_ENDPOINT: &str = "wss://relayer.fiatjaf.com/";
 const WS_ENDPOINT: &str = "wss://nostr-relay-dev.wlvs.space";
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     env_logger::init();
 
     let (mut socket, response) = connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect");

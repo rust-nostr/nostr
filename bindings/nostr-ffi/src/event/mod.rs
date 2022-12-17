@@ -3,13 +3,13 @@
 
 use std::ops::Deref;
 
-use anyhow::Result;
 use nostr::Event as EventSdk;
 
 pub mod builder;
 pub mod kind;
 
 use self::kind::Kind;
+use crate::error::Result;
 
 pub struct Event {
     event: EventSdk,
@@ -54,6 +54,6 @@ impl Event {
     }
 
     pub fn as_json(&self) -> Result<String> {
-        self.event.as_json()
+        Ok(self.event.as_json()?)
     }
 }

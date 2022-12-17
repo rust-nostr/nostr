@@ -1,22 +1,79 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::fmt;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Result};
+use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
+use nostr::url::Url;
 use nostr::{
     Contact, Event, EventBuilder, Keys, Kind, KindBase, Metadata, Sha256Hash, SubscriptionFilter,
     Tag,
 };
 use tokio::sync::broadcast;
-use url::Url;
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
 
-use crate::relay::pool::{RelayPool, RelayPoolNotifications};
+use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotifications};
+
+#[derive(Debug)]
+pub enum Error {
+    /// Url parse error
+    Url(nostr::url::ParseError),
+    RelayPool(RelayPoolError),
+    RelayNotFound,
+    EventBuilder(EventBuilderError),
+    Secp256k1(nostr::secp256k1::Error),
+    Hex(nostr::hashes::hex::Error),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Url(err) => write!(f, "impossible to parse URL: {}", err),
+            Self::RelayPool(err) => write!(f, "relay pool error: {}", err),
+            Self::RelayNotFound => write!(f, "relay not found"),
+            Self::EventBuilder(err) => write!(f, "event builder error: {}", err),
+            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
+            Self::Hex(err) => write!(f, "hex decoding error: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<nostr::url::ParseError> for Error {
+    fn from(err: nostr::url::ParseError) -> Self {
+        Self::Url(err)
+    }
+}
+
+impl From<RelayPoolError> for Error {
+    fn from(err: RelayPoolError) -> Self {
+        Self::RelayPool(err)
+    }
+}
+
+impl From<EventBuilderError> for Error {
+    fn from(err: EventBuilderError) -> Self {
+        Self::EventBuilder(err)
+    }
+}
+
+impl From<nostr::secp256k1::Error> for Error {
+    fn from(err: nostr::secp256k1::Error) -> Self {
+        Self::Secp256k1(err)
+    }
+}
+
+impl From<nostr::hashes::hex::Error> for Error {
+    fn from(err: nostr::hashes::hex::Error) -> Self {
+        Self::Hex(err)
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Entity {
@@ -67,8 +124,8 @@ impl Client {
     /// client.add_relay("wss://relay.nostr.info", None).unwrap();
     /// client.add_relay("wss://relay.damus.io", None).unwrap();
     /// ```
-    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<()> {
-        self.pool.add_relay(url, proxy)
+    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<(), Error> {
+        Ok(self.pool.add_relay(url, proxy)?)
     }
 
     /// Disconnect and remove relay
@@ -84,8 +141,8 @@ impl Client {
     /// client.remove_relay("wss://relay.nostr.info").await.unwrap();
     /// # }
     /// ```
-    pub async fn remove_relay(&mut self, url: &str) -> Result<()> {
-        self.pool.remove_relay(url).await
+    pub async fn remove_relay(&mut self, url: &str) -> Result<(), Error> {
+        Ok(self.pool.remove_relay(url).await?)
     }
 
     /// Connect relay
@@ -104,12 +161,16 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn connect_relay(&mut self, url: &str, wait_for_connection: bool) -> Result<()> {
+    pub async fn connect_relay(
+        &mut self,
+        url: &str,
+        wait_for_connection: bool,
+    ) -> Result<(), Error> {
         if let Some(relay) = self.pool.relays().get(url) {
-            return self.pool.connect_relay(relay, wait_for_connection).await;
+            return Ok(self.pool.connect_relay(relay, wait_for_connection).await?);
         }
 
-        Err(anyhow!("Relay url not found"))
+        Err(Error::RelayNotFound)
     }
 
     /// Disconnect relay
@@ -128,12 +189,12 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn disconnect_relay(&mut self, url: &str) -> Result<()> {
+    pub async fn disconnect_relay(&mut self, url: &str) -> Result<(), Error> {
         if let Some(relay) = self.pool.relays().get(url) {
-            return self.pool.disconnect_relay(relay).await;
+            return Ok(self.pool.disconnect_relay(relay).await?);
         }
 
-        Err(anyhow!("Relay url not found"))
+        Err(Error::RelayNotFound)
     }
 
     /// Connect to all added relays without waiting for connection and keep connection alive
@@ -149,8 +210,8 @@ impl Client {
     /// client.connect().await.unwrap();
     /// # }
     /// ```
-    pub async fn connect(&mut self) -> Result<()> {
-        self.pool.connect(false).await
+    pub async fn connect(&mut self) -> Result<(), Error> {
+        Ok(self.pool.connect(false).await?)
     }
 
     /// Connect to all added relays waiting for initial connection and keep connection alive
@@ -166,8 +227,8 @@ impl Client {
     /// client.connect_and_wait().await.unwrap();
     /// # }
     /// ```
-    pub async fn connect_and_wait(&mut self) -> Result<()> {
-        self.pool.connect(true).await
+    pub async fn connect_and_wait(&mut self) -> Result<(), Error> {
+        Ok(self.pool.connect(true).await?)
     }
 
     /// Disconnect from all relays
@@ -183,8 +244,8 @@ impl Client {
     /// client.disconnect().await.unwrap();
     /// # }
     /// ```
-    pub async fn disconnect(&mut self) -> Result<()> {
-        self.pool.disconnect().await
+    pub async fn disconnect(&mut self) -> Result<(), Error> {
+        Ok(self.pool.disconnect().await?)
     }
 
     /// Subscribe to filters
@@ -206,8 +267,8 @@ impl Client {
     /// client.subscribe(vec![subscription]).await.unwrap();
     /// # }
     /// ```
-    pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<()> {
-        self.pool.subscribe(filters).await
+    pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
+        Ok(self.pool.subscribe(filters).await?)
     }
 
     /// Get events of filters
@@ -229,13 +290,16 @@ impl Client {
     /// let _events = client.get_events_of(vec![subscription]).await.unwrap();
     /// # }
     /// ```
-    pub async fn get_events_of(&self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>> {
-        self.pool.get_events_of(filters).await
+    pub async fn get_events_of(
+        &self,
+        filters: Vec<SubscriptionFilter>,
+    ) -> Result<Vec<Event>, Error> {
+        Ok(self.pool.get_events_of(filters).await?)
     }
 
     /// Send event
-    pub async fn send_event(&self, event: Event) -> Result<()> {
-        self.pool.send_event(event).await
+    pub async fn send_event(&self, event: Event) -> Result<(), Error> {
+        Ok(self.pool.send_event(event).await?)
     }
 
     /// Update profile metadata
@@ -245,8 +309,8 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// # use nostr_sdk::Client;
+    /// use nostr::url::Url;
     /// use nostr_sdk::nostr::Metadata;
-    /// use url::Url;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -262,7 +326,7 @@ impl Client {
     /// client.update_profile(metadata).await.unwrap();
     /// # }
     /// ```
-    pub async fn update_profile(&self, metadata: Metadata) -> Result<()> {
+    pub async fn update_profile(&self, metadata: Metadata) -> Result<(), Error> {
         let event: Event =
             EventBuilder::set_metadata(&self.keys, metadata)?.to_event(&self.keys)?;
         self.send_event(event).await
@@ -286,7 +350,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<()> {
+    pub async fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<(), Error> {
         let event: Event = EventBuilder::new_text_note(content, tags).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -314,7 +378,7 @@ impl Client {
         content: &str,
         tags: &[Tag],
         difficulty: u8,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         let event: Event =
             EventBuilder::new_text_note(content, tags).to_pow_event(&self.keys, difficulty)?;
         self.send_event(event).await
@@ -338,8 +402,8 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn add_recommended_relay(&self, url: &str) -> Result<()> {
-        let url = Url::from_str(url)?;
+    pub async fn add_recommended_relay(&self, url: &str) -> Result<(), Error> {
+        let url = Url::parse(url)?;
         let event: Event = EventBuilder::add_recommended_relay(&url).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -347,7 +411,7 @@ impl Client {
     /// Set contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<()> {
+    pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<(), Error> {
         let event: Event = EventBuilder::set_contact_list(list).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -367,7 +431,7 @@ impl Client {
     /// let _list = client.get_contact_list().await.unwrap();
     /// # }
     /// ```
-    pub async fn get_contact_list(&mut self) -> Result<Vec<Contact>> {
+    pub async fn get_contact_list(&mut self) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
 
         let filter = SubscriptionFilter::new()
@@ -424,7 +488,7 @@ impl Client {
     /// # }
     /// ```
     #[cfg(feature = "nip04")]
-    pub async fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<()> {
+    pub async fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<(), Error> {
         let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, recipient, msg)?
             .to_event(&self.keys)?;
         self.send_event(event).await
@@ -433,7 +497,7 @@ impl Client {
     /// Delete event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    pub async fn delete_event(&self, event_id: &str) -> Result<()> {
+    pub async fn delete_event(&self, event_id: &str) -> Result<(), Error> {
         let event: Event = EventBuilder::delete(vec![Sha256Hash::from_str(event_id)?], None)
             .to_event(&self.keys)?;
         self.send_event(event).await
@@ -465,7 +529,7 @@ impl Client {
     /// client.like(&event).await.unwrap();
     /// # }
     /// ```
-    pub async fn like(&self, event: &Event) -> Result<()> {
+    pub async fn like(&self, event: &Event) -> Result<(), Error> {
         let event: Event = EventBuilder::new_reaction(event, true).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -496,7 +560,7 @@ impl Client {
     /// client.dislike(&event).await.unwrap();
     /// # }
     /// ```
-    pub async fn dislike(&self, event: &Event) -> Result<()> {
+    pub async fn dislike(&self, event: &Event) -> Result<(), Error> {
         let event: Event = EventBuilder::new_reaction(event, false).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -509,7 +573,7 @@ impl Client {
         name: &str,
         about: Option<&str>,
         picture: Option<&str>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         let event: Event = EventBuilder::new_channel(name, about, picture)?.to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -524,7 +588,7 @@ impl Client {
         name: Option<&str>,
         about: Option<&str>,
         picture: Option<&str>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         let event: Event =
             EventBuilder::set_channel_metadata(channel_id, relay_url, name, about, picture)?
                 .to_event(&self.keys)?;
@@ -539,7 +603,7 @@ impl Client {
         channel_id: Sha256Hash,
         relay_url: Url,
         msg: &str,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         let event: Event =
             EventBuilder::new_channel_msg(channel_id, relay_url, msg).to_event(&self.keys)?;
         self.send_event(event).await
@@ -548,7 +612,11 @@ impl Client {
     /// Hide channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn hide_channel_msg(&self, message_id: Sha256Hash, reason: &str) -> Result<()> {
+    pub async fn hide_channel_msg(
+        &self,
+        message_id: Sha256Hash,
+        reason: &str,
+    ) -> Result<(), Error> {
         let event: Event =
             EventBuilder::hide_channel_msg(message_id, reason).to_event(&self.keys)?;
         self.send_event(event).await
@@ -557,12 +625,16 @@ impl Client {
     /// Mute channel user
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn mute_channel_user(&self, pubkey: XOnlyPublicKey, reason: &str) -> Result<()> {
+    pub async fn mute_channel_user(
+        &self,
+        pubkey: XOnlyPublicKey,
+        reason: &str,
+    ) -> Result<(), Error> {
         let event: Event = EventBuilder::mute_channel_user(pubkey, reason).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
-    pub async fn get_entity_of_pubkey(&self, pubkey: XOnlyPublicKey) -> Result<Entity> {
+    pub async fn get_entity_of_pubkey(&self, pubkey: XOnlyPublicKey) -> Result<Entity, Error> {
         let events: Vec<Event> = self
             .get_events_of(vec![SubscriptionFilter::new()
                 .id(pubkey.to_string())
@@ -583,9 +655,9 @@ impl Client {
         }
     }
 
-    pub async fn handle_notifications<F>(&self, func: F) -> Result<()>
+    pub async fn handle_notifications<F>(&self, func: F) -> Result<(), Error>
     where
-        F: Fn(RelayPoolNotifications) -> Result<()>,
+        F: Fn(RelayPoolNotifications) -> Result<(), Error>,
     {
         loop {
             let mut notifications = self.notifications();

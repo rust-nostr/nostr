@@ -3,7 +3,6 @@
 
 use std::net::SocketAddr;
 
-use anyhow::Result;
 use tokio::net::TcpStream;
 use tokio_socks::tcp::Socks5Stream;
 use tokio_socks::IntoTargetAddr;
@@ -14,7 +13,7 @@ impl TpcSocks5Stream {
     pub async fn connect<'a>(
         proxy: SocketAddr,
         dest: impl IntoTargetAddr<'a>,
-    ) -> Result<Socks5Stream<TcpStream>> {
-        Ok(Socks5Stream::connect(proxy, dest).await?)
+    ) -> Result<Socks5Stream<TcpStream>, tokio_socks::Error> {
+        Socks5Stream::connect(proxy, dest).await
     }
 }

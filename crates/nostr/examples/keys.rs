@@ -2,8 +2,9 @@
 // Distributed under the MIT software license
 
 use nostr::key::{FromBech32, Keys, ToBech32};
+use nostr::Result;
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     //  Random keys
     let keys = Keys::generate_from_os_random();
     let public_key = keys.public_key();

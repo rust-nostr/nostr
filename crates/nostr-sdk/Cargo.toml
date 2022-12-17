@@ -19,7 +19,6 @@ nip04 = ["nostr/nip04"]
 nip06 = ["nostr/nip06"]
 
 [dependencies]
-anyhow = "1"
 futures-util = "0.3"
 log = "0.4"
 nostr = { version = "0.7.1", path = "../nostr" }
@@ -27,7 +26,6 @@ once_cell = { version = "1", optional = true }
 tokio = { version = "1", features = ["full"] }
 tokio-socks = "0.5"
 tokio-tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"] }
-url = "2"
 uuid = { version = "1", features = ["v4", "fast-rng", "macro-diagnostics"] }
 
 [dev-dependencies]

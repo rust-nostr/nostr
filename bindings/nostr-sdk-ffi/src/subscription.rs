@@ -2,14 +2,14 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::Result;
+use nostr::url::Url;
 use nostr_ffi::SubscriptionFilter;
 use nostr_sdk::subscription::{Channel as ChannelSdk, Subscription as SubscriptionSdk};
 use parking_lot::RwLock;
-use url::Url;
+
+use crate::error::Result;
 
 pub struct Subscription {
     sub: Arc<RwLock<SubscriptionSdk>>,
@@ -47,20 +47,20 @@ impl Subscription {
     }
 
     pub fn add_channel(&self, relay_url: String, channel: Arc<Channel>) -> Result<()> {
-        let relay_url = Url::from_str(&relay_url)?;
+        let relay_url = Url::parse(&relay_url)?;
         let mut sub = self.sub.write();
         sub.add_channel(&relay_url, channel.as_ref().deref().clone());
         Ok(())
     }
 
     pub fn remove_channel(&self, relay_url: String) -> Result<Option<Arc<Channel>>> {
-        let relay_url = Url::from_str(&relay_url)?;
+        let relay_url = Url::parse(&relay_url)?;
         let mut sub = self.sub.write();
         Ok(sub.remove_channel(&relay_url).map(|ch| Arc::new(ch.into())))
     }
 
     pub fn get_channel(&self, relay_url: String) -> Result<Arc<Channel>> {
-        let relay_url = Url::from_str(&relay_url)?;
+        let relay_url = Url::parse(&relay_url)?;
         let mut sub = self.sub.write();
         Ok(Arc::new(sub.get_channel(&relay_url).into()))
     }
@@ -86,7 +86,7 @@ impl From<ChannelSdk> for Channel {
 
 impl Channel {
     pub fn new(relay_url: String) -> Result<Self> {
-        let relay_url = Url::from_str(&relay_url)?;
+        let relay_url = Url::parse(&relay_url)?;
         Ok(Self {
             ch: ChannelSdk::new(relay_url),
         })

@@ -5,11 +5,12 @@ use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use anyhow::Result;
 use nostr_ffi::{Event, Keys, SubscriptionFilter};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::pool::RelayPoolNotifications as RelayPoolNotificationsSdk;
 use parking_lot::Mutex;
+
+use crate::error::Result;
 
 pub struct Client {
     client: Mutex<ClientSdk>,
@@ -28,15 +29,18 @@ impl Client {
             None => None,
         };
 
-        self.client.lock().add_relay(&url, proxy)
+        Ok(self.client.lock().add_relay(&url, proxy)?)
     }
 
     pub fn connect_relay(&self, url: String, wait_for_connection: bool) -> Result<()> {
-        self.client.lock().connect_relay(&url, wait_for_connection)
+        Ok(self
+            .client
+            .lock()
+            .connect_relay(&url, wait_for_connection)?)
     }
 
     pub fn connect(&self) -> Result<()> {
-        self.client.lock().connect()
+        Ok(self.client.lock().connect()?)
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) -> Result<()> {
@@ -44,26 +48,26 @@ impl Client {
         for filter in filters.into_iter() {
             new_filters.push(filter.as_ref().deref().clone());
         }
-
-        self.client.lock().subscribe(new_filters)
+        Ok(self.client.lock().subscribe(new_filters)?)
     }
 
     pub fn send_event(&self, event: Arc<Event>) -> Result<()> {
-        self.client
+        Ok(self
+            .client
             .lock()
-            .send_event(event.as_ref().deref().clone())
+            .send_event(event.as_ref().deref().clone())?)
     }
 
     pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
-        nostr_sdk_common::thread::spawn("client", move || {
+        crate::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
-            self.client.lock().handle_notifications(|notification| {
+            Ok(self.client.lock().handle_notifications(|notification| {
                 if let RelayPoolNotificationsSdk::ReceivedEvent(event) = notification {
                     handler.handle(Arc::new(event.into()));
                 }
 
                 Ok(())
-            })
+            })?)
         });
     }
 }

@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::fmt;
 use std::str::FromStr;
 
 use bip39::Mnemonic;
@@ -12,6 +13,37 @@ use bitcoin::Network;
 
 use crate::key::Keys;
 use crate::util::time;
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum Error {
+    /// BIP32 error
+    BIP32(bitcoin::util::bip32::Error),
+    /// BIP39 error
+    BIP39(bip39::Error),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BIP32(err) => write!(f, "BIP32 error: {}", err),
+            Self::BIP39(err) => write!(f, "BIP39 error: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<bitcoin::util::bip32::Error> for Error {
+    fn from(err: bitcoin::util::bip32::Error) -> Self {
+        Self::BIP32(err)
+    }
+}
+
+impl From<bip39::Error> for Error {
+    fn from(err: bip39::Error) -> Self {
+        Self::BIP39(err)
+    }
+}
 
 pub trait FromMnemonic: Sized {
     type Err;
@@ -26,7 +58,7 @@ pub trait GenerateMnemonic {
 }
 
 impl FromMnemonic for Keys {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
     fn from_mnemonic<S>(mnemonic: S, passphrase: Option<S>) -> Result<Self, Self::Err>
@@ -44,7 +76,7 @@ impl FromMnemonic for Keys {
 }
 
 impl GenerateMnemonic for Keys {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err> {
         let mut h = HmacEngine::<sha512::Hash>::new(b"nostr");
@@ -61,9 +93,9 @@ impl GenerateMnemonic for Keys {
 mod tests {
     use super::*;
 
-    use anyhow::Result;
-
     use crate::key::ToBech32;
+
+    type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
     #[test]
     fn test_nip06() -> Result<()> {

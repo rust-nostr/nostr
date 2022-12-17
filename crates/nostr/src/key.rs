@@ -13,35 +13,53 @@ const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum KeyError {
+pub enum Error {
     SkParseError,
     PkParseError,
+    /// Bech32 encoding error.
+    Bech32(bech32::Error),
     Bech32SkParseError,
     Bech32PkParseError,
     SkMissing,
     KeyPairMissing,
     KeyGenerationFailure,
+    /// Secp256k1 error
+    Secp256k1(bitcoin::secp256k1::Error),
 }
 
-impl fmt::Display for KeyError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::SkParseError => write!(f, "Invalid secret key string"),
             Self::PkParseError => write!(f, "Invalid public key string"),
+            Self::Bech32(err) => write!(f, "Bech32 key encoding error: {}", err),
             Self::Bech32SkParseError => write!(f, "Invalid bech32 secret key string"),
             Self::Bech32PkParseError => write!(f, "Invalid bech32 public key string"),
             Self::SkMissing => write!(f, "Secrete key missing"),
             Self::KeyPairMissing => write!(f, "Key pair missing"),
             Self::KeyGenerationFailure => write!(f, "Failed to generate new keys"),
+            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
         }
     }
 }
 
-impl std::error::Error for KeyError {}
+impl std::error::Error for Error {}
+
+impl From<bech32::Error> for Error {
+    fn from(err: bech32::Error) -> Self {
+        Self::Bech32(err)
+    }
+}
+
+impl From<bitcoin::secp256k1::Error> for Error {
+    fn from(err: bitcoin::secp256k1::Error) -> Self {
+        Self::Secp256k1(err)
+    }
+}
 
 pub trait FromBech32: Sized {
-    fn from_bech32(secret_key: &str) -> Result<Self, KeyError>;
-    fn from_bech32_public_key(public_key: &str) -> Result<Self, KeyError>;
+    fn from_bech32(secret_key: &str) -> Result<Self, Error>;
+    fn from_bech32_public_key(public_key: &str) -> Result<Self, Error>;
 }
 
 pub trait ToBech32 {
@@ -50,22 +68,28 @@ pub trait ToBech32 {
 }
 
 impl ToBech32 for XOnlyPublicKey {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
         let data = self.serialize().to_base32();
-        let encoded = bech32::encode(PREFIX_BECH32_PUBLIC_KEY, data, Variant::Bech32)?;
-        Ok(encoded)
+        Ok(bech32::encode(
+            PREFIX_BECH32_PUBLIC_KEY,
+            data,
+            Variant::Bech32,
+        )?)
     }
 }
 
 impl ToBech32 for SecretKey {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
         let data = self.secret_bytes().to_base32();
-        let encoded = bech32::encode(PREFIX_BECH32_SECRET_KEY, data, Variant::Bech32)?;
-        Ok(encoded)
+        Ok(bech32::encode(
+            PREFIX_BECH32_SECRET_KEY,
+            data,
+            Variant::Bech32,
+        )?)
     }
 }
 
@@ -113,25 +137,25 @@ impl Keys {
     }
 
     /// Get secret key
-    pub fn secret_key(&self) -> Result<SecretKey, KeyError> {
+    pub fn secret_key(&self) -> Result<SecretKey, Error> {
         if let Some(secret_key) = self.secret_key {
             Ok(secret_key)
         } else {
-            Err(KeyError::SkMissing)
+            Err(Error::SkMissing)
         }
     }
 
     /// Get keypair
-    pub fn key_pair(&self) -> Result<KeyPair, KeyError> {
+    pub fn key_pair(&self) -> Result<KeyPair, Error> {
         if let Some(key_pair) = self.key_pair {
             Ok(key_pair)
         } else {
-            Err(KeyError::KeyPairMissing)
+            Err(Error::KeyPairMissing)
         }
     }
 
     /// Get secret key as string
-    pub fn secret_key_as_str(&self) -> Result<String, KeyError> {
+    pub fn secret_key_as_str(&self) -> Result<String, Error> {
         Ok(self.secret_key()?.display_secret().to_string())
     }
 
@@ -142,7 +166,7 @@ impl Keys {
 }
 
 impl FromStr for Keys {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
         let secret_key = SecretKey::from_str(secret_key)?;
@@ -151,18 +175,18 @@ impl FromStr for Keys {
 }
 
 impl FromBech32 for Keys {
-    fn from_bech32(secret_key: &str) -> Result<Self, KeyError> {
+    fn from_bech32(secret_key: &str) -> Result<Self, Error> {
         let (hrp, data, checksum) =
-            bech32::decode(secret_key).map_err(|_| KeyError::Bech32SkParseError)?;
+            bech32::decode(secret_key).map_err(|_| Error::Bech32SkParseError)?;
 
         if hrp != PREFIX_BECH32_SECRET_KEY || checksum != Variant::Bech32 {
-            return Err(KeyError::Bech32SkParseError);
+            return Err(Error::Bech32SkParseError);
         }
 
-        let data = Vec::<u8>::from_base32(&data).map_err(|_| KeyError::Bech32SkParseError)?;
+        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32SkParseError)?;
 
         let secret_key =
-            SecretKey::from_slice(data.as_slice()).map_err(|_| KeyError::Bech32SkParseError)?;
+            SecretKey::from_slice(data.as_slice()).map_err(|_| Error::Bech32SkParseError)?;
 
         let secp = Secp256k1::new();
         let key_pair = KeyPair::from_secret_key(&secp, &secret_key);
@@ -175,18 +199,18 @@ impl FromBech32 for Keys {
         })
     }
 
-    fn from_bech32_public_key(public_key: &str) -> Result<Self, KeyError> {
+    fn from_bech32_public_key(public_key: &str) -> Result<Self, Error> {
         let (hrp, data, checksum) =
-            bech32::decode(public_key).map_err(|_| KeyError::Bech32PkParseError)?;
+            bech32::decode(public_key).map_err(|_| Error::Bech32PkParseError)?;
 
         if hrp != PREFIX_BECH32_PUBLIC_KEY || checksum != Variant::Bech32 {
-            return Err(KeyError::Bech32PkParseError);
+            return Err(Error::Bech32PkParseError);
         }
 
-        let data = Vec::<u8>::from_base32(&data).map_err(|_| KeyError::Bech32PkParseError)?;
+        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32PkParseError)?;
 
         let public_key =
-            XOnlyPublicKey::from_slice(data.as_slice()).map_err(|_| KeyError::PkParseError)?;
+            XOnlyPublicKey::from_slice(data.as_slice()).map_err(|_| Error::PkParseError)?;
 
         Ok(Keys {
             public_key,
@@ -199,8 +223,7 @@ impl FromBech32 for Keys {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use anyhow::Result;
+    use crate::Result;
 
     #[test]
     fn to_bech32_public_key() -> Result<()> {

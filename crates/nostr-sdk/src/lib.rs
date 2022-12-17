@@ -4,13 +4,12 @@
 #![doc = include_str!("../README.md")]
 
 #[cfg(feature = "blocking")]
-use anyhow::Result;
-#[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
 use tokio::runtime::{Builder, Runtime};
 
 pub use nostr;
+pub use nostr::Result;
 
 pub mod client;
 pub mod relay;
@@ -24,6 +23,6 @@ pub use self::relay::{Relay, RelayStatus};
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
 
 #[cfg(feature = "blocking")]
-fn new_current_thread() -> Result<Runtime> {
+fn new_current_thread() -> nostr::Result<Runtime> {
     Ok(Builder::new_current_thread().enable_all().build()?)
 }

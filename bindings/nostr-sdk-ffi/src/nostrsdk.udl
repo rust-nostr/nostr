@@ -6,6 +6,11 @@ namespace nostrsdk {
     u64 timestamp();
 };
 
+[Error]
+interface NostrSdkError {
+    Generic(string err);
+};
+
 // NOSTR
 
 [External="nostr-ffi"]
@@ -113,7 +118,7 @@ interface AccountMetadata {
 // NOSTR-SDK
 
 interface Channel {
-    [Throws=NostrError]
+    [Throws=NostrSdkError]
     constructor(string relay_url);
     string id();
     string relay_url();
@@ -123,11 +128,11 @@ interface Subscription {
     constructor();
     void update_filters(sequence<SubscriptionFilter> filters);
     sequence<SubscriptionFilter> get_filters();
-    [Throws=NostrError]
+    [Throws=NostrSdkError]
     void add_channel(string relay_url, Channel channel);
-    [Throws=NostrError]
+    [Throws=NostrSdkError]
     Channel? remove_channel(string relay_url);
-    [Throws=NostrError]
+    [Throws=NostrSdkError]
     Channel get_channel(string relay_url);
 };
 
@@ -137,15 +142,15 @@ callback interface HandleNotification {
 
 interface Client {
     constructor(Keys keys);
-    [Throws=NostrError]
+    [Throws=NostrSdkError]
     void add_relay(string url, optional string? proxy = null);
-    [Throws=NostrError]
+    [Throws=NostrSdkError]
     void connect_relay(string url, boolean wait_for_connection);
-    [Throws=NostrError]
+    [Throws=NostrSdkError]
     void connect();
-    [Throws=NostrError]
+    [Throws=NostrSdkError]
     void subscribe(sequence<SubscriptionFilter> filters);
-    [Throws=NostrError]
+    [Throws=NostrSdkError]
     void send_event(Event event);
     [Self=ByArc]
     void handle_notifications(HandleNotification handler);

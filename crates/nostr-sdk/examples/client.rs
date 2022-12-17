@@ -1,17 +1,14 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-extern crate nostr_sdk;
-
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::str::FromStr;
 
-use anyhow::Result;
 use nostr::key::{FromBech32, Keys, XOnlyPublicKey};
 use nostr::util::nips::nip04::decrypt;
 use nostr::util::time::timestamp;
 use nostr::{Kind, KindBase, SubscriptionFilter};
-use nostr_sdk::{Client, Entity, RelayPoolNotifications};
+use nostr_sdk::{Client, Entity, RelayPoolNotifications, Result};
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
@@ -52,22 +49,21 @@ async fn main() -> Result<()> {
 
     client.subscribe(vec![subscription]).await?;
 
-    client
-        .handle_notifications(|notification| {
-            if let RelayPoolNotifications::ReceivedEvent(event) = notification {
-                if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
-                    if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
-                    {
-                        println!("New DM: {}", msg);
-                    } else {
-                        log::error!("Impossible to decrypt direct message");
-                    }
-                } else {
-                    println!("{:#?}", event);
-                }
-            }
+    let mut notifications = client.notifications();
 
-            Ok(())
-        })
-        .await
+    while let Ok(notification) = notifications.recv().await {
+        if let RelayPoolNotifications::ReceivedEvent(event) = notification {
+            if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
+                if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content) {
+                    println!("New DM: {}", msg);
+                } else {
+                    log::error!("Impossible to decrypt direct message");
+                }
+            } else {
+                println!("{:#?}", event);
+            }
+        }
+    }
+
+    Ok(())
 }

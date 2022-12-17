@@ -4,12 +4,30 @@
 use std::fmt;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Result};
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::XOnlyPublicKey;
 use url::Url;
 
 use crate::Sha256Hash;
+
+#[derive(Debug)]
+pub enum Error {
+    MarkerParseError,
+    KindParseError,
+    KindNotFound,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MarkerParseError => write!(f, "impossible to parse marker"),
+            Self::KindParseError => write!(f, "impossible to parse tag kind"),
+            Self::KindNotFound => write!(f, "impossible to find kind"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Marker {
@@ -27,13 +45,13 @@ impl fmt::Display for Marker {
 }
 
 impl FromStr for Marker {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "root" => Ok(Self::Root),
             "reply" => Ok(Self::Reply),
-            _ => Err(anyhow!("Impossible to parse marker")),
+            _ => Err(Error::MarkerParseError),
         }
     }
 }
@@ -58,7 +76,7 @@ impl fmt::Display for TagKind {
 }
 
 impl FromStr for TagKind {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -66,7 +84,7 @@ impl FromStr for TagKind {
             "e" => Ok(Self::E),
             "nonce" => Ok(Self::Nonce),
             "delegation" => Ok(Self::Delegation),
-            _ => Err(anyhow!("Impossible to parse tag kind")),
+            _ => Err(Error::KindParseError),
         }
     }
 }
@@ -147,10 +165,10 @@ impl Tag {
         Self(data.into())
     }
 
-    pub fn kind(&self) -> Result<TagKind> {
+    pub fn kind(&self) -> Result<TagKind, Error> {
         match self.0.get(0) {
             Some(kind) => Ok(TagKind::from_str(kind)?),
-            None => Err(anyhow!("Impossible to find kind")),
+            None => Err(Error::KindNotFound),
         }
     }
 
