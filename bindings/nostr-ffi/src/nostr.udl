@@ -5,7 +5,7 @@ namespace nostr {};
 
 [Error]
 interface NostrError {
-    Generic(string msg);
+    Generic(string err);
 };
 
 enum KindBase {

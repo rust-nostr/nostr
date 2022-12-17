@@ -1,14 +1,23 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-#[derive(thiserror::Error, Debug)]
+use std::fmt;
+
+#[derive(Debug)]
 pub enum NostrError {
-    #[error("error: {msg}")]
-    Generic { msg: String },
+    Generic { err: String },
+}
+
+impl fmt::Display for NostrError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Generic { err } => write!(f, "{}", err),
+        }
+    }
 }
 
 impl From<anyhow::Error> for NostrError {
     fn from(e: anyhow::Error) -> NostrError {
-        Self::Generic { msg: e.to_string() }
+        Self::Generic { err: e.to_string() }
     }
 }
