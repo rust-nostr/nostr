@@ -1,0 +1,8 @@
+reorder_imports = true
+reorder_modules = true
+
+# nightly (to enable when are stable)
+# normalize_comments = true
+# imports_granularity = "Module"
+# reorder_impl_items = true
+# group_imports = "StdExternalCrate"
