@@ -19,11 +19,11 @@ nostr  = { path = "../../crates/nostr" }
 nostr-ffi  = { path = "../nostr-ffi" }
 nostr-sdk  = { path = "../../crates/nostr-sdk", features = ["blocking", "all-nips"] }
 parking_lot = "0.12.1"
-uniffi = "0.21.0"
-uniffi_macros = "0.21.0"
+uniffi = "0.22.0"
+uniffi_macros = "0.22.0"
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.11"
 
 [build-dependencies]
-uniffi_build = { version = "0.21.0", features = ["builtin-bindgen"] }
+uniffi_build = { version = "0.22.0", features = ["builtin-bindgen"] }
