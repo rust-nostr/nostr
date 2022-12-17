@@ -16,7 +16,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 anyhow = "1.0"
 bitcoin_hashes = "0.11"
 nostr  = { path = "../../crates/nostr", features = ["nip06"] }
-secp256k1 = "0.24"
+secp256k1 = "0.25"
 thiserror = "1.0"
 uniffi = "0.21.0"
 uniffi_macros = "0.21.0"

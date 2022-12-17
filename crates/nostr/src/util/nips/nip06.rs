@@ -4,7 +4,7 @@
 use std::str::FromStr;
 
 use bip39::Mnemonic;
-use secp256k1::Secp256k1;
+use bitcoin::secp256k1::Secp256k1;
 
 use crate::key::Keys;
 
@@ -32,7 +32,11 @@ impl FromMnemonic for Keys {
         let path = DerivationPath::from_str("m/44'/1237'/0'/0/0")?;
         let secp = Secp256k1::new();
         let child_xprv = root_key.derive_priv(&secp, &path)?;
-        Ok(Self::new(child_xprv.private_key))
+        // Convert from
+        // secp256k1::SecretKey (from the secp256k1 version in the bitcoin dependency) into
+        // secp256k1::SecretKey (from the secp256k1 version in the direct secp256k1 dependency)
+        let sk = secp256k1::SecretKey::from_slice(&child_xprv.private_key.secret_bytes())?;
+        Ok(Self::new(sk))
     }
 }
 
