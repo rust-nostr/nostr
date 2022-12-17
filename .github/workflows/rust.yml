@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         rust:
-          - version: 1.65.0 # Stable
+          - version: stable
           - version: 1.64.0 #MSRV
         build-args:
           [
