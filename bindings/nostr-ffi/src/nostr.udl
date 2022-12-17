@@ -42,7 +42,7 @@ interface Keys {
     [Name=generate_from_os_random]
     constructor();
     [Throws=NostrError, Name=from_mnemonic]
-    constructor(string mnemonic);
+    constructor(string mnemonic, optional string? passphrase = null);
     string public_key();
     [Throws=NostrError]
     string secret_key();

@@ -56,9 +56,9 @@ impl Keys {
         }
     }
 
-    pub fn from_mnemonic(mnemonic: String) -> Result<Self> {
+    pub fn from_mnemonic(mnemonic: String, passphrase: Option<String>) -> Result<Self> {
         Ok(Self {
-            keys: KeysSdk::from_mnemonic(mnemonic.as_str())?,
+            keys: KeysSdk::from_mnemonic(mnemonic, passphrase)?,
         })
     }
 

@@ -4,13 +4,20 @@
 use std::str::FromStr;
 
 use bip39::Mnemonic;
+use bitcoin::hashes::hmac::{Hmac, HmacEngine};
+use bitcoin::hashes::{sha512, Hash, HashEngine};
 use bitcoin::secp256k1::Secp256k1;
+use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
+use bitcoin::Network;
 
 use crate::key::Keys;
+use crate::util::time;
 
 pub trait FromMnemonic: Sized {
     type Err;
-    fn from_mnemonic(mnemonic: &str) -> Result<Self, Self::Err>;
+    fn from_mnemonic<S>(mnemonic: S, passphrase: Option<S>) -> Result<Self, Self::Err>
+    where
+        S: Into<String>;
 }
 
 pub trait GenerateMnemonic {
@@ -22,12 +29,12 @@ impl FromMnemonic for Keys {
     type Err = anyhow::Error;
 
     /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
-    fn from_mnemonic(mnemonic: &str) -> Result<Self, Self::Err> {
-        use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
-        use bitcoin::Network;
-
-        let mnemonic = Mnemonic::from_str(mnemonic)?;
-        let seed = mnemonic.to_seed("");
+    fn from_mnemonic<S>(mnemonic: S, passphrase: Option<S>) -> Result<Self, Self::Err>
+    where
+        S: Into<String>,
+    {
+        let mnemonic = Mnemonic::from_str(&mnemonic.into())?;
+        let seed = mnemonic.to_seed(passphrase.map(|p| p.into()).unwrap_or_default());
         let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)?;
         let path = DerivationPath::from_str("m/44'/1237'/0'/0/0")?;
         let secp = Secp256k1::new();
@@ -40,10 +47,6 @@ impl GenerateMnemonic for Keys {
     type Err = anyhow::Error;
 
     fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err> {
-        use crate::util::time;
-        use bitcoin::hashes::hmac::{Hmac, HmacEngine};
-        use bitcoin::hashes::{sha512, Hash, HashEngine};
-
         let mut h = HmacEngine::<sha512::Hash>::new(b"nostr");
         let random: [u8; 32] = bitcoin::secp256k1::rand::random();
         h.input(&random);
@@ -65,7 +68,7 @@ mod tests {
     #[test]
     fn test_nip06() -> Result<()> {
         let mnemonic: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
-        let keys = Keys::from_mnemonic(mnemonic)?;
+        let keys = Keys::from_mnemonic(mnemonic, None)?;
 
         assert_eq!(
             keys.secret_key()?.to_bech32()?,

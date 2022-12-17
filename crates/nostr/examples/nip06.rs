@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Mnemonic: {}", Keys::generate_mnemonic(12)?);
 
-    let keys = Keys::from_mnemonic(MNEMONIC_PHRASE)?;
+    let keys = Keys::from_mnemonic(MNEMONIC_PHRASE, Some("mypassphrase"))?;
     println!("{}", keys.secret_key()?.to_bech32()?);
 
     Ok(())
