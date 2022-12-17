@@ -5,9 +5,9 @@
 use std::fmt;
 use std::str::FromStr;
 
-use bech32::{self, FromBase32, ToBase32, Variant};
-use secp256k1::rand::rngs::OsRng;
-pub use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
+use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
+use bitcoin::secp256k1::rand::rngs::OsRng;
+pub use bitcoin::secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 
 const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";

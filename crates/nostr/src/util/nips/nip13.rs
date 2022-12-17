@@ -50,7 +50,7 @@ pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use bitcoin_hashes::hex::FromHex;
+    use bitcoin::hashes::hex::FromHex;
 
     #[test]
     fn check_get_leading_zeroes() {

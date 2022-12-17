@@ -6,7 +6,9 @@
 #[macro_use]
 extern crate serde;
 
-pub use secp256k1::hashes::sha256::Hash as Sha256Hash;
+pub use bitcoin::hashes;
+pub use bitcoin::hashes::sha256::Hash as Sha256Hash;
+pub use bitcoin::secp256k1;
 
 pub mod contact;
 pub mod event;
@@ -26,7 +28,7 @@ mod tests {
     use std::error::Error;
     use std::str::FromStr;
 
-    use secp256k1::SecretKey;
+    use bitcoin::secp256k1::SecretKey;
 
     use crate::{Event, EventBuilder, Keys, RelayMessage};
 

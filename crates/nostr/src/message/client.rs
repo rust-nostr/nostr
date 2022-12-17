@@ -66,7 +66,7 @@ mod tests {
 
     use std::str::FromStr;
 
-    use secp256k1::XOnlyPublicKey;
+    use bitcoin::secp256k1::XOnlyPublicKey;
 
     use crate::{Kind, KindBase};
 

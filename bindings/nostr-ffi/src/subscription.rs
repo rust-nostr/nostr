@@ -6,8 +6,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
+use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Sha256Hash, SubscriptionFilter as SubscriptionFilterSdk};
-use secp256k1::XOnlyPublicKey;
 
 use crate::event::kind::Kind;
 use crate::helper::unwrap_or_clone_arc;

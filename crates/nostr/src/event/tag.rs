@@ -5,8 +5,8 @@ use std::fmt;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
-use secp256k1::schnorr::Signature;
-use secp256k1::XOnlyPublicKey;
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::XOnlyPublicKey;
 use url::Url;
 
 use crate::Sha256Hash;

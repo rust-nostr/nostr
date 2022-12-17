@@ -5,8 +5,8 @@ extern crate nostr;
 
 use std::str::FromStr;
 
+use nostr::secp256k1::XOnlyPublicKey;
 use nostr::util::nips::nip05;
-use secp256k1::XOnlyPublicKey;
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();

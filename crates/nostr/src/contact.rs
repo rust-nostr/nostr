@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use secp256k1::XOnlyPublicKey;
+use bitcoin::secp256k1::XOnlyPublicKey;
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Contact {

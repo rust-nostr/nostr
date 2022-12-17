@@ -4,10 +4,10 @@
 use std::time::Instant;
 
 use anyhow::{anyhow, Result};
-use bitcoin_hashes::Hash;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::{KeyPair, Secp256k1, XOnlyPublicKey};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use secp256k1::{KeyPair, Secp256k1, XOnlyPublicKey};
 use serde_json::{json, Value};
 use url::Url;
 
@@ -59,7 +59,7 @@ impl EventBuilder {
 
         let id: Sha256Hash =
             Self::gen_id(&pubkey, created_at, &self.kind, &self.tags, &self.content);
-        let message = secp256k1::Message::from_slice(&id)?;
+        let message = bitcoin::secp256k1::Message::from_slice(&id)?;
 
         Ok(Event {
             id,
@@ -100,7 +100,7 @@ impl EventBuilder {
 
                 let secp = Secp256k1::new();
                 let keypair: &KeyPair = &keys.key_pair()?;
-                let message = secp256k1::Message::from_slice(&id)?;
+                let message = bitcoin::secp256k1::Message::from_slice(&id)?;
 
                 return Ok(Event {
                     id,

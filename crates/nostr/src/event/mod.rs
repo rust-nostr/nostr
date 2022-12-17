@@ -5,9 +5,9 @@
 use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
-use bitcoin_hashes::hex::FromHex;
-use secp256k1::schnorr::Signature;
-use secp256k1::{Secp256k1, XOnlyPublicKey};
+use bitcoin::hashes::hex::FromHex;
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::{Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer};
 
 pub mod builder;
@@ -42,7 +42,7 @@ where
 
 impl Event {
     /// Verify event
-    pub fn verify(&self) -> Result<(), secp256k1::Error> {
+    pub fn verify(&self) -> Result<(), bitcoin::secp256k1::Error> {
         let secp = Secp256k1::new();
         let id = EventBuilder::gen_id(
             &self.pubkey,
@@ -51,7 +51,7 @@ impl Event {
             &self.tags,
             &self.content,
         );
-        let message = secp256k1::Message::from_slice(&id)?;
+        let message = bitcoin::secp256k1::Message::from_slice(&id)?;
         secp.verify_schnorr(&self.sig, &message, &self.pubkey)
     }
 
@@ -83,7 +83,7 @@ impl Event {
         content: &str,
         sig: &str,
     ) -> Result<Self> {
-        let id = Sha256Hash::from_hex(id)?;
+        let id = Sha256Hash::from_hex(id).map_err(|e| anyhow!(e.to_string()))?;
         let pubkey = XOnlyPublicKey::from_str(pubkey)?;
         let kind = serde_json::from_str(&kind.to_string())?;
         let sig = Signature::from_str(sig)?;

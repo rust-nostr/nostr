@@ -4,8 +4,8 @@
 use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
+use bitcoin::secp256k1::XOnlyPublicKey;
 use reqwest::blocking::Client;
-use secp256k1::XOnlyPublicKey;
 use serde_json::Value;
 
 /// Verify NIP-05

@@ -2,9 +2,9 @@
 // Distributed under the MIT software license
 
 use anyhow::Result;
-use bitcoin_hashes::Hash;
-use secp256k1::schnorr::Signature;
-use secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 
 use crate::key::Keys;
 use crate::Sha256Hash;

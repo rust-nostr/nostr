@@ -18,7 +18,6 @@ nip06 = ["nostr/nip06"]
 
 [dependencies]
 anyhow = "1"
-bitcoin_hashes = { version = "0.11", features = ["serde"] }
 futures-util = "0.3"
 log = "0.4"
 nostr = { version = "0.7.1", path = "../nostr" }

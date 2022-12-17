@@ -4,7 +4,7 @@
 use std::str::FromStr;
 
 use bip39::Mnemonic;
-use secp256k1::Secp256k1;
+use bitcoin::secp256k1::Secp256k1;
 
 use crate::key::Keys;
 
@@ -45,7 +45,7 @@ impl GenerateMnemonic for Keys {
         use bitcoin::hashes::{sha512, Hash, HashEngine};
 
         let mut h = HmacEngine::<sha512::Hash>::new(b"nostr");
-        let random: [u8; 32] = secp256k1::rand::random();
+        let random: [u8; 32] = bitcoin::secp256k1::rand::random();
         h.input(&random);
         h.input(&time::timestamp_nanos().to_be_bytes());
         let entropy: [u8; 64] = Hmac::from_engine(h).into_inner();

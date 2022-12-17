@@ -5,8 +5,8 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use anyhow::Result;
+use nostr::secp256k1::XOnlyPublicKey;
 use nostr::Contact as ContactSdk;
-use secp256k1::XOnlyPublicKey;
 
 pub struct Contact {
     contact: ContactSdk,

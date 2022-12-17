@@ -9,8 +9,8 @@ use std::str::FromStr;
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
+use bitcoin::secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
 use cbc::{Decryptor, Encryptor};
-use secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
@@ -21,7 +21,7 @@ pub enum Error {
     Base64DecodeError,
     Utf8EncodeError,
     WrongBlockMode,
-    Secp256k1Error(secp256k1::Error),
+    Secp256k1Error(bitcoin::secp256k1::Error),
 }
 
 impl fmt::Display for Error {
@@ -44,15 +44,15 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-impl From<secp256k1::Error> for Error {
-    fn from(err: secp256k1::Error) -> Self {
+impl From<bitcoin::secp256k1::Error> for Error {
+    fn from(err: bitcoin::secp256k1::Error) -> Self {
         Self::Secp256k1Error(err)
     }
 }
 
 pub fn encrypt(sk: &SecretKey, pk: &XOnlyPublicKey, text: &str) -> Result<String, Error> {
     let key: Vec<u8> = generate_shared_key(sk, pk)?;
-    let iv: [u8; 16] = secp256k1::rand::random();
+    let iv: [u8; 16] = bitcoin::secp256k1::rand::random();
 
     let cipher = Aes256CbcEnc::new(key.as_slice().into(), &iv.into());
     let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
@@ -106,7 +106,7 @@ fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
 mod tests {
     use super::*;
 
-    use secp256k1::{KeyPair, Secp256k1};
+    use bitcoin::secp256k1::{KeyPair, Secp256k1};
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
 
