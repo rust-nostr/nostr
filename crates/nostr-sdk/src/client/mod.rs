@@ -9,8 +9,8 @@ use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{
-    Contact, Event, EventBuilder, Keys, Kind, KindBase, Metadata, Sha256Hash, SubscriptionFilter,
-    Tag,
+    Contact, Entity, Event, EventBuilder, Keys, Kind, KindBase, Metadata, Sha256Hash,
+    SubscriptionFilter, Tag,
 };
 use tokio::sync::broadcast;
 
@@ -73,13 +73,6 @@ impl From<nostr::hashes::hex::Error> for Error {
     fn from(err: nostr::hashes::hex::Error) -> Self {
         Self::Hex(err)
     }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Entity {
-    Account,
-    Channel,
-    Unknown,
 }
 
 pub struct Client {

@@ -12,6 +12,7 @@ pub use bitcoin::secp256k1;
 pub use url;
 
 pub mod contact;
+pub mod entity;
 pub mod event;
 pub mod key;
 pub mod message;
@@ -19,6 +20,7 @@ pub mod metadata;
 pub mod util;
 
 pub use self::contact::Contact;
+pub use self::entity::Entity;
 pub use self::event::{Event, EventBuilder, Kind, KindBase, Tag};
 pub use self::key::Keys;
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
