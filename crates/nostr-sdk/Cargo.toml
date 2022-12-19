@@ -4,11 +4,11 @@ version = "0.7.1"
 edition = "2021"
 description = "High level Nostr client library."
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
-homepage = "https://github.com/yukibtc/nostr-rs-sdk"
-repository = "https://github.com/yukibtc/nostr-rs-sdk.git"
-license = "MIT"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
 readme = "README.md"
-rust-version = "1.64"
+rust-version.workspace = true
 keywords = ["nostr", "sdk", "rust"]
 
 [features]

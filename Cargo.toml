@@ -2,11 +2,16 @@
 members = [
     "bindings/nostr-ffi",
     "bindings/nostr-sdk-ffi",
-    "crates/*",
+    "crates/nostr",
+    "crates/nostr-sdk",
 ]
-default-members = ["crates/*"]
+
+[workspace.package]
+homepage = "https://github.com/yukibtc/nostr-rs-sdk"
+repository = "https://github.com/yukibtc/nostr-rs-sdk.git"
+license = "MIT"
+rust-version = "1.64.0"
 
 [profile.release]
-opt-level = 3
 lto = true
 codegen-units = 1
