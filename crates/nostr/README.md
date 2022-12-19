@@ -1,7 +1,9 @@
 # Nostr
 
 [![crates.io](https://img.shields.io/crates/v/nostr.svg)](https://crates.io/crates/nostr)
+[![crates.io - Downloads](https://img.shields.io/crates/d/nostr)](https://crates.io/crates/nostr)
 [![Documentation](https://docs.rs/nostr/badge.svg)](https://docs.rs/nostr)
+[![CI](https://github.com/yukibtc/nostr-rs-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/yukibtc/nostr-rs-sdk/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/crates/l/nostr.svg)](../../LICENSE)
 
 ## Description
