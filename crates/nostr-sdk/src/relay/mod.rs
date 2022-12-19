@@ -193,7 +193,7 @@ impl Relay {
         self.set_status(RelayStatus::Connecting).await;
         log::debug!("Connecting to {}", url);
 
-        match net::get_connection(&self.url, self.proxy).await {
+        match net::get_connection(&self.url, self.proxy, None).await {
             Ok((mut ws_tx, mut ws_rx)) => {
                 self.set_status(RelayStatus::Connected).await;
                 log::info!("Connected to {}", url);

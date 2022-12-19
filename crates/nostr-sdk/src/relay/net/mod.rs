@@ -3,6 +3,7 @@
 
 use std::fmt;
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
@@ -30,6 +31,8 @@ pub enum Error {
     /// Ws error
     Ws(WsError),
     Socks(tokio_socks::Error),
+    /// Timeout
+    Timeout,
     /// Url parse error
     Url(nostr::url::ParseError),
 }
@@ -39,6 +42,7 @@ impl fmt::Display for Error {
         match self {
             Self::Ws(err) => write!(f, "ws error: {}", err),
             Self::Socks(err) => write!(f, "socks error: {}", err),
+            Self::Timeout => write!(f, "timeout"),
             Self::Url(err) => write!(f, "impossible to parse URL: {}", err),
         }
     }
@@ -98,27 +102,36 @@ impl Stream {
 pub(crate) async fn get_connection(
     url: &Url,
     proxy: Option<SocketAddr>,
+    timeout: Option<Duration>,
 ) -> Result<(Sink, Stream), Error> {
     match proxy {
         Some(proxy) => {
-            let stream = connect_proxy(url, proxy).await?;
+            let stream = connect_proxy(url, proxy, timeout).await?;
             let (sink, stream) = stream.split();
             Ok((Sink::Socks5(sink), Stream::Socks5(stream)))
         }
         None => {
-            let stream = connect(url).await?;
+            let stream = connect(url, timeout).await?;
             let (sink, stream) = stream.split();
             Ok((Sink::Direct(sink), Stream::Direct(stream)))
         }
     }
 }
 
-async fn connect(url: &Url) -> Result<WebSocket, Error> {
-    let (stream, _) = tokio_tungstenite::connect_async(url).await?;
+async fn connect(url: &Url, timeout: Option<Duration>) -> Result<WebSocket, Error> {
+    let timeout = timeout.unwrap_or(Duration::from_secs(60));
+    let (stream, _) = tokio::time::timeout(timeout, tokio_tungstenite::connect_async(url))
+        .await
+        .map_err(|_| Error::Timeout)??;
     Ok(stream)
 }
 
-async fn connect_proxy(url: &Url, proxy: SocketAddr) -> Result<WebSocketSocks5, Error> {
+async fn connect_proxy(
+    url: &Url,
+    proxy: SocketAddr,
+    timeout: Option<Duration>,
+) -> Result<WebSocketSocks5, Error> {
+    let timeout = timeout.unwrap_or(Duration::from_secs(60));
     let addr: String = match url.host_str() {
         Some(host) => match url.port_or_known_default() {
             Some(port) => format!("{}:{}", host, port),
@@ -130,6 +143,8 @@ async fn connect_proxy(url: &Url, proxy: SocketAddr) -> Result<WebSocketSocks5, 
     log::debug!("Addr: {}", addr);
 
     let conn = TpcSocks5Stream::connect(proxy, addr).await?;
-    let (stream, _response) = tokio_tungstenite::client_async(url, conn).await?;
+    let (stream, _) = tokio::time::timeout(timeout, tokio_tungstenite::client_async(url, conn))
+        .await
+        .map_err(|_| Error::Timeout)??;
     Ok(stream)
 }
