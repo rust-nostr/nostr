@@ -58,8 +58,12 @@ impl From<bitcoin::secp256k1::Error> for Error {
 }
 
 pub trait FromBech32: Sized {
-    fn from_bech32(secret_key: &str) -> Result<Self, Error>;
-    fn from_bech32_public_key(public_key: &str) -> Result<Self, Error>;
+    fn from_bech32<S>(secret_key: S) -> Result<Self, Error>
+    where
+        S: Into<String>;
+    fn from_bech32_public_key<S>(public_key: S) -> Result<Self, Error>
+    where
+        S: Into<String>;
 }
 
 pub trait ToBech32 {
@@ -175,9 +179,12 @@ impl FromStr for Keys {
 }
 
 impl FromBech32 for Keys {
-    fn from_bech32(secret_key: &str) -> Result<Self, Error> {
+    fn from_bech32<S>(secret_key: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
         let (hrp, data, checksum) =
-            bech32::decode(secret_key).map_err(|_| Error::Bech32SkParseError)?;
+            bech32::decode(&secret_key.into()).map_err(|_| Error::Bech32SkParseError)?;
 
         if hrp != PREFIX_BECH32_SECRET_KEY || checksum != Variant::Bech32 {
             return Err(Error::Bech32SkParseError);
@@ -199,9 +206,12 @@ impl FromBech32 for Keys {
         })
     }
 
-    fn from_bech32_public_key(public_key: &str) -> Result<Self, Error> {
+    fn from_bech32_public_key<S>(public_key: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
         let (hrp, data, checksum) =
-            bech32::decode(public_key).map_err(|_| Error::Bech32PkParseError)?;
+            bech32::decode(&public_key.into()).map_err(|_| Error::Bech32PkParseError)?;
 
         if hrp != PREFIX_BECH32_PUBLIC_KEY || checksum != Variant::Bech32 {
             return Err(Error::Bech32PkParseError);
