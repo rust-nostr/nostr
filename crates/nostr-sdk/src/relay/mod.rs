@@ -79,6 +79,7 @@ pub struct Relay {
     url: Url,
     proxy: Option<SocketAddr>,
     status: Arc<Mutex<RelayStatus>>,
+    scheduled_for_termination: Arc<Mutex<bool>>,
     pool_sender: Sender<RelayPoolEvent>,
     relay_sender: Sender<RelayEvent>,
     relay_receiver: Arc<Mutex<Receiver<RelayEvent>>>,
@@ -100,6 +101,7 @@ impl Relay {
             url: Url::parse(&url.into())?,
             proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
+            scheduled_for_termination: Arc::new(Mutex::new(false)),
             pool_sender,
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
@@ -121,6 +123,16 @@ impl Relay {
         *s = status;
     }
 
+    async fn is_scheduled_for_termination(&self) -> bool {
+        let value = self.scheduled_for_termination.lock().await;
+        *value
+    }
+
+    async fn schedule_for_termination(&self, value: bool) {
+        let mut s = self.scheduled_for_termination.lock().await;
+        *s = value;
+    }
+
     /// Connect to relay and keep alive connection
     pub async fn connect(&self, wait_for_connection: bool) {
         if let RelayStatus::Initialized | RelayStatus::Terminated = self.status().await {
@@ -134,16 +146,28 @@ impl Relay {
             let relay = self.clone();
             let connection_thread = async move {
                 loop {
+                    // Schedule relay for termination
+                    // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
+                    if relay.is_scheduled_for_termination().await {
+                        relay.set_status(RelayStatus::Terminated).await;
+                        relay.schedule_for_termination(false).await;
+                        log::debug!("Auto connect loop terminated for {}", relay.url);
+                        break;
+                    }
+
                     // Check status
                     match relay.status().await {
                         RelayStatus::Disconnected => relay.try_connect().await,
-                        RelayStatus::Terminated => break,
+                        RelayStatus::Terminated => {
+                            log::debug!("Auto connect loop terminated for {}", relay.url);
+                            break;
+                        }
                         _ => (),
                     };
 
                     // TODO: if disconnected and connected again, get subscription filters from store (sled or something else) and send it again
 
-                    tokio::time::sleep(Duration::from_secs(10)).await;
+                    tokio::time::sleep(Duration::from_secs(20)).await;
                 }
             };
 
@@ -204,6 +228,7 @@ impl Relay {
                                     log::error!("RelayEvent::Close error: {:?}", e);
                                 };
                                 relay.set_status(RelayStatus::Terminated).await;
+                                relay.schedule_for_termination(false).await;
                                 log::info!("Completely disconnected from {}", url);
                                 break;
                             }
@@ -259,6 +284,8 @@ impl Relay {
                         }
                     }
 
+                    log::debug!("Exited from Message Thread of {}", relay.url);
+
                     if relay.status().await != RelayStatus::Terminated {
                         if let Err(err) = relay.disconnect().await {
                             log::error!("Impossible to disconnect {}: {}", relay.url, err);
@@ -287,6 +314,9 @@ impl Relay {
 
                     loop {
                         tokio::time::sleep(Duration::from_secs(60)).await;
+                        if relay.status().await == RelayStatus::Terminated {
+                            break;
+                        }
                         match relay.ping().await {
                             Ok(_) => log::debug!("Ping {}", relay.url),
                             Err(err) => {
@@ -295,6 +325,8 @@ impl Relay {
                             }
                         }
                     }
+
+                    log::debug!("Exited from Ping Thread of {}", relay.url);
 
                     if relay.status().await != RelayStatus::Terminated {
                         if let Err(err) = relay.disconnect().await {
@@ -340,6 +372,7 @@ impl Relay {
 
     /// Disconnect from relay and set status to 'Terminated'
     pub async fn terminate(&self) -> Result<(), Error> {
+        self.schedule_for_termination(true).await;
         self.send_relay_event(RelayEvent::Terminate).await
     }
 
