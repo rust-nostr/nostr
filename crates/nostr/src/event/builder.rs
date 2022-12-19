@@ -85,11 +85,14 @@ pub struct EventBuilder {
 }
 
 impl EventBuilder {
-    pub fn new(kind: Kind, content: &str, tags: &[Tag]) -> Self {
+    pub fn new<S>(kind: Kind, content: S, tags: &[Tag]) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             kind,
             tags: tags.to_vec(),
-            content: content.to_string(),
+            content: content.into(),
         }
     }
 
@@ -184,8 +187,8 @@ impl EventBuilder {
     ///
     /// use nostr::key::{FromBech32, Keys};
     /// use nostr::metadata::Metadata;
+    /// use nostr::url::Url;
     /// use nostr::EventBuilder;
-    /// use url::Url;
     ///
     /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
     ///
@@ -212,11 +215,14 @@ impl EventBuilder {
         }
 
         let mut metadata: Value = json!({
-            "name": name.unwrap_or_else(|| "".into()),
-            "display_name": display_name.unwrap_or_else(|| "".into()),
-            "about": about.unwrap_or_else(|| "".into()),
-            "picture": picture.unwrap_or_else(|| "".into()),
+            "name": name.unwrap_or_default(),
+            "display_name": display_name.unwrap_or_default(),
+            "about": about.unwrap_or_default(),
         });
+
+        if let Some(picture) = picture {
+            metadata["picture"] = json!(picture);
+        }
 
         if let Some(nip05_str) = nip05_str {
             nips::nip05::verify(keys.public_key(), &nip05_str)?;
@@ -225,7 +231,7 @@ impl EventBuilder {
 
         Ok(Self::new(
             Kind::Base(KindBase::Metadata),
-            &metadata.to_string(),
+            metadata.to_string(),
             &[],
         ))
     }
@@ -245,7 +251,10 @@ impl EventBuilder {
     ///
     /// let builder = EventBuilder::new_text_note("My first text note from Nostr SDK!", &[]);
     /// ```
-    pub fn new_text_note(content: &str, tags: &[Tag]) -> Self {
+    pub fn new_text_note<S>(content: S, tags: &[Tag]) -> Self
+    where
+        S: Into<String>,
+    {
         Self::new(Kind::Base(KindBase::TextNote), content, tags)
     }
 
@@ -267,15 +276,18 @@ impl EventBuilder {
 
     /// Create encrypted direct msg event
     #[cfg(feature = "nip04")]
-    pub fn new_encrypted_direct_msg(
+    pub fn new_encrypted_direct_msg<S>(
         sender_keys: &Keys,
         receiver_keys: &Keys,
-        content: &str,
-    ) -> Result<Self, Error> {
+        content: S,
+    ) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
         let msg = nips::nip04::encrypt(
             &sender_keys.secret_key()?,
             &receiver_keys.public_key(),
-            content,
+            content.into(),
         )?;
 
         Ok(Self::new(
@@ -286,7 +298,10 @@ impl EventBuilder {
     }
 
     /// Create delete event
-    pub fn delete(ids: Vec<Sha256Hash>, reason: Option<&str>) -> Self {
+    pub fn delete<S>(ids: Vec<Sha256Hash>, reason: Option<S>) -> Self
+    where
+        S: Into<String>,
+    {
         let tags: Vec<Tag> = ids
             .iter()
             .map(|id| Tag::new(TagData::EventId(*id)))
@@ -294,7 +309,7 @@ impl EventBuilder {
 
         Self::new(
             Kind::Base(KindBase::EventDeletion),
-            reason.unwrap_or(""),
+            reason.map(|s| s.into()).unwrap_or_default(),
             &tags,
         )
     }
@@ -317,24 +332,31 @@ impl EventBuilder {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel(
-        name: &str,
-        about: Option<&str>,
-        picture: Option<&str>,
-    ) -> Result<Self, Error> {
-        if !REGEX_NAME.is_match(name) {
-            return Err(Error::InvalidName);
+    pub fn new_channel(metadata: Metadata) -> Result<Self, Error> {
+        let name = metadata.name;
+        let display_name = metadata.display_name;
+        let about = metadata.about;
+        let picture = metadata.picture;
+
+        if let Some(name) = name.as_ref() {
+            if !REGEX_NAME.is_match(name) {
+                return Err(Error::InvalidName);
+            }
         }
 
-        let metadata: Value = json!({
-            "name": name,
-            "about": about.unwrap_or(""),
-            "picture": picture.unwrap_or(""),
+        let mut metadata: Value = json!({
+            "name": name.unwrap_or_default(),
+            "display_name": display_name.unwrap_or_default(),
+            "about": about.unwrap_or_default(),
         });
+
+        if let Some(picture) = picture {
+            metadata["picture"] = json!(picture);
+        }
 
         Ok(Self::new(
             Kind::Base(KindBase::ChannelCreation),
-            &metadata.to_string(),
+            metadata.to_string(),
             &[],
         ))
     }
@@ -345,25 +367,32 @@ impl EventBuilder {
     pub fn set_channel_metadata(
         channel_id: Sha256Hash, // event id of kind 40
         relay_url: Url,
-        name: Option<&str>,
-        about: Option<&str>,
-        picture: Option<&str>,
+        metadata: Metadata,
     ) -> Result<Self, Error> {
-        if let Some(name) = name {
+        let name = metadata.name;
+        let display_name = metadata.display_name;
+        let about = metadata.about;
+        let picture = metadata.picture;
+
+        if let Some(name) = name.as_ref() {
             if !REGEX_NAME.is_match(name) {
                 return Err(Error::InvalidName);
             }
         }
 
-        let metadata: Value = json!({
-            "name": name.unwrap_or(""),
-            "about": about.unwrap_or(""),
-            "picture": picture.unwrap_or(""),
+        let mut metadata: Value = json!({
+            "name": name.unwrap_or_default(),
+            "display_name": display_name.unwrap_or_default(),
+            "about": about.unwrap_or_default(),
         });
+
+        if let Some(picture) = picture {
+            metadata["picture"] = json!(picture);
+        }
 
         Ok(Self::new(
             Kind::Base(KindBase::ChannelMetadata),
-            &metadata.to_string(),
+            metadata.to_string(),
             &[Tag::new(TagData::Nip10E(channel_id, relay_url, None))],
         ))
     }
@@ -371,11 +400,14 @@ impl EventBuilder {
     /// New channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel_msg(
+    pub fn new_channel_msg<S>(
         channel_id: Sha256Hash, // event id of kind 40
         relay_url: Url,
-        content: &str,
-    ) -> Self {
+        content: S,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
         Self::new(
             Kind::Base(KindBase::ChannelMessage),
             content,
@@ -390,12 +422,15 @@ impl EventBuilder {
     /// Hide message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn hide_channel_msg(
+    pub fn hide_channel_msg<S>(
         message_id: Sha256Hash, // event id of kind 42
-        reason: &str,
-    ) -> Self {
+        reason: Option<S>,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
         let content: Value = json!({
-            "reason": reason,
+            "reason": reason.map(|s| s.into()).unwrap_or_default(),
         });
 
         Self::new(
@@ -405,12 +440,15 @@ impl EventBuilder {
         )
     }
 
-    /// Hide message
+    /// Mute channel user
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn mute_channel_user(pubkey: XOnlyPublicKey, reason: &str) -> Self {
+    pub fn mute_channel_user<S>(pubkey: XOnlyPublicKey, reason: Option<S>) -> Self
+    where
+        S: Into<String>,
+    {
         let content: Value = json!({
-            "reason": reason,
+            "reason": reason.map(|s| s.into()).unwrap_or_default(),
         });
 
         Self::new(

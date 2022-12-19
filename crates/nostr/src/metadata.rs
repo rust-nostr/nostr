@@ -12,7 +12,7 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub about: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub picture: Option<String>,
+    pub picture: Option<Url>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nip05: Option<String>,
 }
@@ -35,7 +35,10 @@ impl Metadata {
     }
 
     /// Set name
-    pub fn name(self, name: impl Into<String>) -> Self {
+    pub fn name<S>(self, name: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             name: Some(name.into()),
             ..self
@@ -43,7 +46,10 @@ impl Metadata {
     }
 
     /// Set display_name
-    pub fn display_name(self, display_name: impl Into<String>) -> Self {
+    pub fn display_name<S>(self, display_name: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             display_name: Some(display_name.into()),
             ..self
@@ -51,7 +57,10 @@ impl Metadata {
     }
 
     /// Set about
-    pub fn about(self, about: impl Into<String>) -> Self {
+    pub fn about<S>(self, about: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             about: Some(about.into()),
             ..self
@@ -61,13 +70,16 @@ impl Metadata {
     /// Set name
     pub fn picture(self, picture: Url) -> Self {
         Self {
-            picture: Some(picture.to_string()),
+            picture: Some(picture),
             ..self
         }
     }
 
     /// Set nip05
-    pub fn nip05(self, nip05: impl Into<String>) -> Self {
+    pub fn nip05<S>(self, nip05: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             nip05: Some(nip05.into()),
             ..self

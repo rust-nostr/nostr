@@ -7,7 +7,7 @@ use std::str::FromStr;
 use nostr::key::{FromBech32, Keys, XOnlyPublicKey};
 use nostr::util::nips::nip04::decrypt;
 use nostr::util::time::timestamp;
-use nostr::{Entity, Kind, KindBase, SubscriptionFilter};
+use nostr::{Entity, Kind, KindBase, Sha256Hash, SubscriptionFilter};
 use nostr_sdk::{Client, RelayPoolNotifications, Result};
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
@@ -33,7 +33,12 @@ async fn main() -> Result<()> {
     client.connect().await?;
 
     client
-        .delete_event("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")
+        .delete_event(
+            Sha256Hash::from_str(
+                "57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc",
+            )?,
+            Some("reason"),
+        )
         .await?;
 
     let entity: Entity = client

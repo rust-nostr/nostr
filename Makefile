@@ -6,7 +6,8 @@ else
 endif
 
 precommit:
-	$(Q)cargo fmt --all && cargo clippy --all
+	$(Q)cargo fmt --all -- --config format_code_in_doc_comments=true
+	$(Q)cargo clippy --all
 	$(Q)cargo clippy -p nostr --no-default-features
 	$(Q)cargo clippy -p nostr --features all-nips
 	$(Q)cargo clippy -p nostr-sdk --no-default-features

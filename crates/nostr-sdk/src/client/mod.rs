@@ -117,7 +117,10 @@ impl Client {
     /// client.add_relay("wss://relay.nostr.info", None).unwrap();
     /// client.add_relay("wss://relay.damus.io", None).unwrap();
     /// ```
-    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<(), Error> {
+    pub fn add_relay<S>(&mut self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         Ok(self.pool.add_relay(url, proxy)?)
     }
 
@@ -134,7 +137,10 @@ impl Client {
     /// client.remove_relay("wss://relay.nostr.info").await.unwrap();
     /// # }
     /// ```
-    pub async fn remove_relay(&mut self, url: &str) -> Result<(), Error> {
+    pub async fn remove_relay<S>(&mut self, url: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         Ok(self.pool.remove_relay(url).await?)
     }
 
@@ -154,12 +160,11 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn connect_relay(
-        &mut self,
-        url: &str,
-        wait_for_connection: bool,
-    ) -> Result<(), Error> {
-        if let Some(relay) = self.pool.relays().get(url) {
+    pub async fn connect_relay<S>(&mut self, url: S, wait_for_connection: bool) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        if let Some(relay) = self.pool.relays().get(&url.into()) {
             return Ok(self.pool.connect_relay(relay, wait_for_connection).await?);
         }
 
@@ -182,8 +187,11 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn disconnect_relay(&mut self, url: &str) -> Result<(), Error> {
-        if let Some(relay) = self.pool.relays().get(url) {
+    pub async fn disconnect_relay<S>(&mut self, url: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        if let Some(relay) = self.pool.relays().get(&url.into()) {
             return Ok(self.pool.disconnect_relay(relay).await?);
         }
 
@@ -343,7 +351,10 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<(), Error> {
+    pub async fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         let event: Event = EventBuilder::new_text_note(content, tags).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -366,12 +377,15 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn publish_pow_text_note(
+    pub async fn publish_pow_text_note<S>(
         &self,
-        content: &str,
+        content: S,
         tags: &[Tag],
         difficulty: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         let event: Event =
             EventBuilder::new_text_note(content, tags).to_pow_event(&self.keys, difficulty)?;
         self.send_event(event).await
@@ -395,8 +409,11 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn add_recommended_relay(&self, url: &str) -> Result<(), Error> {
-        let url = Url::parse(url)?;
+    pub async fn add_recommended_relay<S>(&self, url: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        let url = Url::parse(&url.into())?;
         let event: Event = EventBuilder::add_recommended_relay(&url).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -481,7 +498,10 @@ impl Client {
     /// # }
     /// ```
     #[cfg(feature = "nip04")]
-    pub async fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<(), Error> {
+    pub async fn send_direct_msg<S>(&self, recipient: &Keys, msg: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, recipient, msg)?
             .to_event(&self.keys)?;
         self.send_event(event).await
@@ -490,9 +510,15 @@ impl Client {
     /// Delete event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    pub async fn delete_event(&self, event_id: &str) -> Result<(), Error> {
-        let event: Event = EventBuilder::delete(vec![Sha256Hash::from_str(event_id)?], None)
-            .to_event(&self.keys)?;
+    pub async fn delete_event<S>(
+        &self,
+        event_id: Sha256Hash,
+        reason: Option<S>,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        let event: Event = EventBuilder::delete(vec![event_id], reason).to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -561,13 +587,8 @@ impl Client {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn new_channel(
-        &self,
-        name: &str,
-        about: Option<&str>,
-        picture: Option<&str>,
-    ) -> Result<(), Error> {
-        let event: Event = EventBuilder::new_channel(name, about, picture)?.to_event(&self.keys)?;
+    pub async fn new_channel(&self, metadata: Metadata) -> Result<(), Error> {
+        let event: Event = EventBuilder::new_channel(metadata)?.to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -578,25 +599,25 @@ impl Client {
         &self,
         channel_id: Sha256Hash,
         relay_url: Url,
-        name: Option<&str>,
-        about: Option<&str>,
-        picture: Option<&str>,
+        metadata: Metadata,
     ) -> Result<(), Error> {
-        let event: Event =
-            EventBuilder::set_channel_metadata(channel_id, relay_url, name, about, picture)?
-                .to_event(&self.keys)?;
+        let event: Event = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata)?
+            .to_event(&self.keys)?;
         self.send_event(event).await
     }
 
     /// Send message to channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn send_channel_msg(
+    pub async fn send_channel_msg<S>(
         &self,
         channel_id: Sha256Hash,
         relay_url: Url,
-        msg: &str,
-    ) -> Result<(), Error> {
+        msg: S,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         let event: Event =
             EventBuilder::new_channel_msg(channel_id, relay_url, msg).to_event(&self.keys)?;
         self.send_event(event).await
@@ -605,11 +626,14 @@ impl Client {
     /// Hide channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn hide_channel_msg(
+    pub async fn hide_channel_msg<S>(
         &self,
         message_id: Sha256Hash,
-        reason: &str,
-    ) -> Result<(), Error> {
+        reason: Option<S>,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         let event: Event =
             EventBuilder::hide_channel_msg(message_id, reason).to_event(&self.keys)?;
         self.send_event(event).await
@@ -618,11 +642,14 @@ impl Client {
     /// Mute channel user
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn mute_channel_user(
+    pub async fn mute_channel_user<S>(
         &self,
         pubkey: XOnlyPublicKey,
-        reason: &str,
-    ) -> Result<(), Error> {
+        reason: Option<S>,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         let event: Event = EventBuilder::mute_channel_user(pubkey, reason).to_event(&self.keys)?;
         self.send_event(event).await
     }

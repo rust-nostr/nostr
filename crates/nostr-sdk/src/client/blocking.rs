@@ -32,19 +32,31 @@ impl Client {
         self.client.notifications()
     }
 
-    pub fn add_relay(&mut self, url: &str, proxy: Option<SocketAddr>) -> Result<(), Error> {
+    pub fn add_relay<S>(&mut self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         self.client.add_relay(url, proxy)
     }
 
-    pub fn remove_relay(&mut self, url: &str) -> Result<(), Error> {
+    pub fn remove_relay<S>(&mut self, url: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async { self.client.remove_relay(url).await })
     }
 
-    pub fn connect_relay(&mut self, url: &str, wait_for_connection: bool) -> Result<(), Error> {
+    pub fn connect_relay<S>(&mut self, url: S, wait_for_connection: bool) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async { self.client.connect_relay(url, wait_for_connection).await })
     }
 
-    pub fn disconnect_relay(&mut self, url: &str) -> Result<(), Error> {
+    pub fn disconnect_relay<S>(&mut self, url: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async { self.client.disconnect_relay(url).await })
     }
 
@@ -77,16 +89,22 @@ impl Client {
         RUNTIME.block_on(async { self.client.update_profile(metadata).await })
     }
 
-    pub fn publish_text_note(&self, content: &str, tags: &[Tag]) -> Result<(), Error> {
+    pub fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async { self.client.publish_text_note(content, tags).await })
     }
 
-    pub fn publish_pow_text_note(
+    pub fn publish_pow_text_note<S>(
         &self,
-        content: &str,
+        content: S,
         tags: &[Tag],
         difficulty: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async {
             self.client
                 .publish_pow_text_note(content, tags, difficulty)
@@ -94,7 +112,10 @@ impl Client {
         })
     }
 
-    pub fn add_recommended_relay(&self, url: &str) -> Result<(), Error> {
+    pub fn add_recommended_relay<S>(&self, url: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async { self.client.add_recommended_relay(url).await })
     }
 
@@ -107,12 +128,18 @@ impl Client {
     }
 
     #[cfg(feature = "nip04")]
-    pub fn send_direct_msg(&self, recipient: &Keys, msg: &str) -> Result<(), Error> {
+    pub fn send_direct_msg<S>(&self, recipient: &Keys, msg: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async { self.client.send_direct_msg(recipient, msg).await })
     }
 
-    pub fn delete_event(&self, event_id: &str) -> Result<(), Error> {
-        RUNTIME.block_on(async { self.client.delete_event(event_id).await })
+    pub fn delete_event<S>(&self, event_id: Sha256Hash, reason: Option<S>) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async { self.client.delete_event(event_id, reason).await })
     }
 
     pub fn like(&self, event: &Event) -> Result<(), Error> {
@@ -123,36 +150,32 @@ impl Client {
         RUNTIME.block_on(async { self.client.dislike(event).await })
     }
 
-    pub fn new_channel(
-        &self,
-        name: &str,
-        about: Option<&str>,
-        picture: Option<&str>,
-    ) -> Result<(), Error> {
-        RUNTIME.block_on(async { self.client.new_channel(name, about, picture).await })
+    pub fn new_channel(&self, metadata: Metadata) -> Result<(), Error> {
+        RUNTIME.block_on(async { self.client.new_channel(metadata).await })
     }
 
     pub fn update_channel(
         &self,
         channel_id: Sha256Hash,
         relay_url: Url,
-        name: Option<&str>,
-        about: Option<&str>,
-        picture: Option<&str>,
+        metadata: Metadata,
     ) -> Result<(), Error> {
         RUNTIME.block_on(async {
             self.client
-                .update_channel(channel_id, relay_url, name, about, picture)
+                .update_channel(channel_id, relay_url, metadata)
                 .await
         })
     }
 
-    pub fn send_channel_msg(
+    pub fn send_channel_msg<S>(
         &self,
         channel_id: Sha256Hash,
         relay_url: Url,
-        msg: &str,
-    ) -> Result<(), Error> {
+        msg: S,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async {
             self.client
                 .send_channel_msg(channel_id, relay_url, msg)
@@ -160,11 +183,25 @@ impl Client {
         })
     }
 
-    pub fn hide_channel_msg(&self, message_id: Sha256Hash, reason: &str) -> Result<(), Error> {
+    pub fn hide_channel_msg<S>(
+        &self,
+        message_id: Sha256Hash,
+        reason: Option<S>,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async { self.client.hide_channel_msg(message_id, reason).await })
     }
 
-    pub fn mute_channel_user(&self, pubkey: XOnlyPublicKey, reason: &str) -> Result<(), Error> {
+    pub fn mute_channel_user<S>(
+        &self,
+        pubkey: XOnlyPublicKey,
+        reason: Option<S>,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async { self.client.mute_channel_user(pubkey, reason).await })
     }
 

@@ -86,15 +86,18 @@ pub struct Relay {
 
 impl Relay {
     /// Create new `Relay`
-    pub fn new(
-        url: &str,
+    pub fn new<S>(
+        url: S,
         pool_sender: Sender<RelayPoolEvent>,
         proxy: Option<SocketAddr>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
         let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(64);
 
         Ok(Self {
-            url: Url::parse(url)?,
+            url: Url::parse(&url.into())?,
             proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
             pool_sender,

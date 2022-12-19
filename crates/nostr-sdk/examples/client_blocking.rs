@@ -1,12 +1,12 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-extern crate nostr_sdk;
+use std::str::FromStr;
 
 use nostr::key::{FromBech32, Keys};
 use nostr::util::nips::nip04::decrypt;
 use nostr::util::time::timestamp;
-use nostr::{Kind, KindBase, SubscriptionFilter};
+use nostr::{Kind, KindBase, Sha256Hash, SubscriptionFilter};
 use nostr_sdk::client::blocking::Client;
 use nostr_sdk::{RelayPoolNotifications, Result};
 
@@ -24,7 +24,10 @@ fn main() -> Result<()> {
 
     client.connect()?;
 
-    client.delete_event("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")?;
+    client.delete_event(
+        Sha256Hash::from_str("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")?,
+        Some("reason"),
+    )?;
 
     let subscription = SubscriptionFilter::new()
         .pubkey(my_keys.public_key())

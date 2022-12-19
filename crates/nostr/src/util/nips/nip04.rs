@@ -47,12 +47,15 @@ impl From<bitcoin::secp256k1::Error> for Error {
     }
 }
 
-pub fn encrypt(sk: &SecretKey, pk: &XOnlyPublicKey, text: &str) -> Result<String, Error> {
+pub fn encrypt<T>(sk: &SecretKey, pk: &XOnlyPublicKey, text: T) -> Result<String, Error>
+where
+    T: AsRef<[u8]>,
+{
     let key: Vec<u8> = generate_shared_key(sk, pk)?;
     let iv: [u8; 16] = bitcoin::secp256k1::rand::random();
 
     let cipher = Aes256CbcEnc::new(key.as_slice().into(), &iv.into());
-    let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
+    let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_ref());
 
     Ok(format!(
         "{}?iv={}",
@@ -61,11 +64,15 @@ pub fn encrypt(sk: &SecretKey, pk: &XOnlyPublicKey, text: &str) -> Result<String
     ))
 }
 
-pub fn decrypt(
+pub fn decrypt<S>(
     sk: &SecretKey,
     pk: &XOnlyPublicKey,
-    encrypted_content: &str,
-) -> Result<String, Error> {
+    encrypted_content: S,
+) -> Result<String, Error>
+where
+    S: Into<String>,
+{
+    let encrypted_content: String = encrypted_content.into();
     let parsed_content: Vec<&str> = encrypted_content.split("?iv=").collect();
     if parsed_content.len() != 2 {
         return Err(Error::InvalidContentFormat);
