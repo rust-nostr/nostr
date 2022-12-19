@@ -12,7 +12,7 @@ rust-version = "1.64"
 keywords = ["nostr", "protocol", "sdk", "rust"]
 
 [features]
-default = []
+default = ["all-nips"]
 all-nips = ["nip04", "nip06"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip06 = ["dep:bip39"]

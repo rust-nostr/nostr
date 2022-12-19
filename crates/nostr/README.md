@@ -70,9 +70,9 @@ The following crate feature flags are available:
 
 | Feature             | Default | Description                                                                                                                |
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
-| `all-nips`          |   No    | Enable all NIPs                                                                                                            |
-| `nip04`             |   No    | Enable NIP-04: Encrypted Direct Message                                                                                    |
-| `nip06`             |   No    | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
+| `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
+| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                                                    |
+| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
 
 ## Supported NIPs
 

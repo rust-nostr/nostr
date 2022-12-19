@@ -13,7 +13,7 @@ keywords = ["nostr", "rust", "ffi"]
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
-nostr  = { path = "../../crates/nostr", features = ["all-nips"] }
+nostr  = { path = "../../crates/nostr" }
 uniffi = "0.22.0"
 uniffi_macros = "0.22.0"
 

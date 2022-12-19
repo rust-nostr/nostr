@@ -12,7 +12,7 @@ rust-version = "1.64"
 keywords = ["nostr", "sdk", "rust"]
 
 [features]
-default = []
+default = ["all-nips"]
 blocking = ["dep:once_cell"]
 all-nips = ["nostr/all-nips"]
 nip04 = ["nostr/nip04"]
