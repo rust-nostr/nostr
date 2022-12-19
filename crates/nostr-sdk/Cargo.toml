@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 description = "High level Nostr client library."
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
