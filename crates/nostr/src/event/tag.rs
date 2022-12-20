@@ -13,7 +13,6 @@ use crate::Sha256Hash;
 #[derive(Debug)]
 pub enum Error {
     MarkerParseError,
-    KindParseError,
     KindNotFound,
 }
 
@@ -21,7 +20,6 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MarkerParseError => write!(f, "impossible to parse marker"),
-            Self::KindParseError => write!(f, "impossible to parse tag kind"),
             Self::KindNotFound => write!(f, "impossible to find kind"),
         }
     }
@@ -62,6 +60,8 @@ pub enum TagKind {
     E,
     Nonce,
     Delegation,
+    ContentWarning,
+    Custom(String),
 }
 
 impl fmt::Display for TagKind {
@@ -71,20 +71,25 @@ impl fmt::Display for TagKind {
             Self::E => write!(f, "e"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
+            Self::ContentWarning => write!(f, "content-warning"),
+            Self::Custom(tag) => write!(f, "{}", tag),
         }
     }
 }
 
-impl FromStr for TagKind {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "p" => Ok(Self::P),
-            "e" => Ok(Self::E),
-            "nonce" => Ok(Self::Nonce),
-            "delegation" => Ok(Self::Delegation),
-            _ => Err(Error::KindParseError),
+impl<S> From<S> for TagKind
+where
+    S: Into<String>,
+{
+    fn from(s: S) -> Self {
+        let s: String = s.into();
+        match s.as_str() {
+            "p" => Self::P,
+            "e" => Self::E,
+            "nonce" => Self::Nonce,
+            "delegation" => Self::Delegation,
+            "content-warning" => Self::ContentWarning,
+            tag => Self::Custom(tag.to_string()),
         }
     }
 }
@@ -107,6 +112,9 @@ pub enum TagData {
         delegator_pk: XOnlyPublicKey,
         conditions: String,
         sig: Signature,
+    },
+    ContentWarning {
+        reason: Option<String>,
     },
 }
 
@@ -147,6 +155,13 @@ impl From<TagData> for Vec<String> {
                 conditions,
                 sig.to_string(),
             ],
+            TagData::ContentWarning { reason } => {
+                let mut tag = vec![TagKind::ContentWarning.to_string()];
+                if let Some(reason) = reason {
+                    tag.push(reason);
+                }
+                tag
+            }
         }
     }
 }
@@ -166,8 +181,8 @@ impl Tag {
     }
 
     pub fn kind(&self) -> Result<TagKind, Error> {
-        match self.0.get(0) {
-            Some(kind) => Ok(TagKind::from_str(kind)?),
+        match self.0.first() {
+            Some(kind) => Ok(TagKind::from(kind)),
             None => Err(Error::KindNotFound),
         }
     }

@@ -29,8 +29,8 @@ impl std::error::Error for MessageHandleError {}
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayMessage {
     Event {
-        event: Box<Event>,
         subscription_id: String,
+        event: Box<Event>,
     },
     Notice {
         message: String,
@@ -48,10 +48,10 @@ pub enum RelayMessage {
 
 impl RelayMessage {
     // Relay is responsible for storing corresponding subscription id
-    pub fn new_event(event: Event, subscription_id: String) -> Self {
+    pub fn new_event(subscription_id: String, event: Event) -> Self {
         Self::Event {
-            event: Box::new(event),
             subscription_id,
+            event: Box::new(event),
         }
     }
 
@@ -116,12 +116,12 @@ impl RelayMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let event = Event::from_json(v[2].to_string())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
             let subscription_id: String = serde_json::from_value(v[1].clone())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let event = Event::from_json(v[2].to_string())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
-            return Ok(Self::new_event(event, subscription_id));
+            return Ok(Self::new_event(subscription_id, event));
         }
 
         // EOSE (NIP-15)
@@ -213,7 +213,7 @@ mod tests {
 
         assert_eq!(
             RelayMessage::from_json(valid_event_msg)?,
-            RelayMessage::new_event(handled_event?, "random_string".to_string())
+            RelayMessage::new_event("random_string".to_string(), handled_event?)
         );
 
         Ok(())

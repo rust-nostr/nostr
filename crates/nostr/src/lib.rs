@@ -57,7 +57,7 @@ mod tests {
 
         assert_eq!(
             parsed_event.expect("Failed to parse event"),
-            RelayMessage::new_event(event?, "random_string".to_string())
+            RelayMessage::new_event("random_string".to_string(), event?)
         );
 
         Ok(())
