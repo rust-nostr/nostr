@@ -121,6 +121,7 @@ impl Client {
     where
         S: Into<String>,
     {
+        let url = Url::parse(&url.into())?;
         Ok(self.pool.add_relay(url, proxy)?)
     }
 
@@ -141,6 +142,7 @@ impl Client {
     where
         S: Into<String>,
     {
+        let url = Url::parse(&url.into())?;
         Ok(self.pool.remove_relay(url).await?)
     }
 
@@ -164,10 +166,10 @@ impl Client {
     where
         S: Into<String>,
     {
-        if let Some(relay) = self.pool.relays().get(&url.into()) {
+        let url = Url::parse(&url.into())?;
+        if let Some(relay) = self.pool.relays().get(&url) {
             return Ok(self.pool.connect_relay(relay, wait_for_connection).await?);
         }
-
         Err(Error::RelayNotFound)
     }
 
@@ -191,10 +193,10 @@ impl Client {
     where
         S: Into<String>,
     {
-        if let Some(relay) = self.pool.relays().get(&url.into()) {
+        let url = Url::parse(&url.into())?;
+        if let Some(relay) = self.pool.relays().get(&url) {
             return Ok(self.pool.disconnect_relay(relay).await?);
         }
-
         Err(Error::RelayNotFound)
     }
 

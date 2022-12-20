@@ -23,27 +23,18 @@ use crate::new_current_thread;
 
 #[derive(Debug)]
 pub enum Error {
-    /// Url parse error
-    Url(nostr::url::ParseError),
     RelayEventSender(SendError<RelayEvent>),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Url(err) => write!(f, "impossible to parse URL: {}", err),
             Self::RelayEventSender(err) => write!(f, "impossible to send relay event: {}", err),
         }
     }
 }
 
 impl std::error::Error for Error {}
-
-impl From<nostr::url::ParseError> for Error {
-    fn from(err: nostr::url::ParseError) -> Self {
-        Self::Url(err)
-    }
-}
 
 impl From<SendError<RelayEvent>> for Error {
     fn from(err: SendError<RelayEvent>) -> Self {
@@ -87,18 +78,15 @@ pub struct Relay {
 
 impl Relay {
     /// Create new `Relay`
-    pub fn new<S>(
-        url: S,
+    pub fn new(
+        url: Url,
         pool_sender: Sender<RelayPoolEvent>,
         proxy: Option<SocketAddr>,
-    ) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
+    ) -> Result<Self, Error> {
         let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(64);
 
         Ok(Self {
-            url: Url::parse(&url.into())?,
+            url,
             proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
             scheduled_for_termination: Arc::new(Mutex::new(false)),

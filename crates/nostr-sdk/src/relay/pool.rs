@@ -116,7 +116,7 @@ impl RelayPoolTask {
 }
 
 pub struct RelayPool {
-    relays: HashMap<String, Relay>,
+    relays: HashMap<Url, Relay>,
     subscription: Subscription,
     pool_task_sender: Sender<RelayPoolEvent>,
     notification_sender: broadcast::Sender<RelayPoolNotifications>,
@@ -165,7 +165,7 @@ impl RelayPool {
     }
 
     /// Get relays
-    pub fn relays(&self) -> HashMap<String, Relay> {
+    pub fn relays(&self) -> HashMap<Url, Relay> {
         self.relays.clone()
     }
 
@@ -180,22 +180,14 @@ impl RelayPool {
     }
 
     /// Add new relay
-    pub fn add_relay<S>(&mut self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
-    where
-        S: Into<String>,
-    {
-        let url: String = url.into();
-        let relay = Relay::new(&url, self.pool_task_sender.clone(), proxy)?;
-        self.relays.insert(url, relay);
+    pub fn add_relay(&mut self, url: Url, proxy: Option<SocketAddr>) -> Result<(), Error> {
+        let relay = Relay::new(url, self.pool_task_sender.clone(), proxy)?;
+        self.relays.insert(relay.url(), relay);
         Ok(())
     }
 
     /// Disconnect and remove relay
-    pub async fn remove_relay<S>(&mut self, url: S) -> Result<(), Error>
-    where
-        S: Into<String>,
-    {
-        let url: String = url.into();
+    pub async fn remove_relay(&mut self, url: Url) -> Result<(), Error> {
         if let Some(relay) = self.relays.remove(&url) {
             if self.disconnect_relay(&relay).await.is_err() {
                 self.relays.insert(url, relay);
