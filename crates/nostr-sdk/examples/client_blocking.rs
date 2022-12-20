@@ -6,7 +6,7 @@ use std::str::FromStr;
 use nostr::key::{FromBech32, Keys};
 use nostr::util::nips::nip04::decrypt;
 use nostr::util::time::timestamp;
-use nostr::{Kind, KindBase, Sha256Hash, SubscriptionFilter};
+use nostr::{Entity, Kind, KindBase, Sha256Hash, SubscriptionFilter};
 use nostr_sdk::client::blocking::Client;
 use nostr_sdk::{RelayPoolNotifications, Result};
 
@@ -28,6 +28,10 @@ fn main() -> Result<()> {
         Sha256Hash::from_str("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")?,
         Some("reason"),
     )?;
+
+    let entity: Entity =
+        client.get_entity_of("25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb")?;
+    println!("Entity: {:?}", entity);
 
     let subscription = SubscriptionFilter::new()
         .pubkey(my_keys.public_key())

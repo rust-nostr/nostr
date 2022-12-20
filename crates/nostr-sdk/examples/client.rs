@@ -4,7 +4,7 @@
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::str::FromStr;
 
-use nostr::key::{FromBech32, Keys, XOnlyPublicKey};
+use nostr::key::{FromBech32, Keys};
 use nostr::util::nips::nip04::decrypt;
 use nostr::util::time::timestamp;
 use nostr::{Entity, Kind, KindBase, Sha256Hash, SubscriptionFilter};
@@ -42,9 +42,7 @@ async fn main() -> Result<()> {
         .await?;
 
     let entity: Entity = client
-        .get_entity_of_pubkey(XOnlyPublicKey::from_str(
-            "25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb",
-        )?)
+        .get_entity_of("25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb")
         .await?;
     println!("Entity: {:?}", entity);
 
@@ -54,21 +52,21 @@ async fn main() -> Result<()> {
 
     client.subscribe(vec![subscription]).await?;
 
-    let mut notifications = client.notifications();
-
-    while let Ok(notification) = notifications.recv().await {
-        if let RelayPoolNotifications::ReceivedEvent(event) = notification {
-            if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
-                if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content) {
-                    println!("New DM: {}", msg);
+    loop {
+        let mut notifications = client.notifications();
+        while let Ok(notification) = notifications.recv().await {
+            if let RelayPoolNotifications::ReceivedEvent(event) = notification {
+                if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
+                    if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
+                    {
+                        println!("New DM: {}", msg);
+                    } else {
+                        log::error!("Impossible to decrypt direct message");
+                    }
                 } else {
-                    log::error!("Impossible to decrypt direct message");
+                    println!("{:#?}", event);
                 }
-            } else {
-                println!("{:#?}", event);
             }
         }
     }
-
-    Ok(())
 }

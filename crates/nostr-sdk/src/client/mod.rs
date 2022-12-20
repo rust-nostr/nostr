@@ -661,14 +661,24 @@ impl Client {
         self.send_event(event).await
     }
 
+    #[deprecated = "Use `get_entity_of` instead"]
     pub async fn get_entity_of_pubkey(&self, pubkey: XOnlyPublicKey) -> Result<Entity, Error> {
+        self.get_entity_of(pubkey.to_string()).await
+    }
+
+    pub async fn get_entity_of<S>(&self, entity: S) -> Result<Entity, Error>
+    where
+        S: Into<String>,
+    {
+        let entity: String = entity.into();
         let events: Vec<Event> = self
             .get_events_of(vec![SubscriptionFilter::new()
-                .id(pubkey.to_string())
+                .id(&entity)
                 .kind(Kind::Base(KindBase::ChannelCreation))
                 .limit(1)])
             .await?;
         if events.is_empty() {
+            let pubkey = XOnlyPublicKey::from_str(&entity)?;
             let events: Vec<Event> = self
                 .get_events_of(vec![SubscriptionFilter::new().author(pubkey).limit(1)])
                 .await?;
