@@ -661,6 +661,14 @@ impl Client {
         self.send_event(event).await
     }
 
+    /// Get a list of channels
+    pub async fn get_channels(&self) -> Result<Vec<Event>, Error> {
+        self.get_events_of(vec![
+            SubscriptionFilter::new().kind(Kind::Base(KindBase::ChannelCreation))
+        ])
+        .await
+    }
+
     #[deprecated = "Use `get_entity_of` instead"]
     pub async fn get_entity_of_pubkey(&self, pubkey: XOnlyPublicKey) -> Result<Entity, Error> {
         self.get_entity_of(pubkey.to_string()).await
