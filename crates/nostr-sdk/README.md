@@ -26,6 +26,8 @@ tokio = { version = "1", features = ["full"] }
 ```
 
 ```rust,no_run
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+
 use nostr_sdk::nostr::{Keys, Metadata};
 use nostr_sdk::nostr::url::Url;
 use nostr_sdk::{Client, Result};
@@ -48,9 +50,15 @@ async fn main() -> Result<()> {
     // Create new client
     let mut client = Client::new(&my_keys);
 
+    let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
+
     // Add relays
     client.add_relay("wss://relay.damus.io", None)?;
-    client.add_relay("wss://nostr.openchain.fr", None)?;
+    client.add_relay("wss://relay.nostr.info", proxy)?;
+    client.add_relay(
+        "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
+        proxy,
+    )?;
 
     // Connect to relays and keep connection alive
     client.connect().await?;
@@ -72,12 +80,12 @@ async fn main() -> Result<()> {
     client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 20).await?;
 
     // Handle notifications
-    let mut notifications = client.notifications();
-    while let Ok(notification) = notifications.recv().await {
-        println!("{:?}", notification);
+    loop {
+        let mut notifications = client.notifications();
+        while let Ok(notification) = notifications.recv().await {
+            println!("{:?}", notification);
+        }
     }
-
-    Ok(())
 }
 ```
 
