@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::collections::HashMap;
 use std::fmt;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -18,6 +19,7 @@ use tokio::sync::broadcast;
 pub mod blocking;
 
 use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotifications};
+use crate::Relay;
 
 #[derive(Debug)]
 pub enum Error {
@@ -112,6 +114,10 @@ impl Client {
         self.pool.notifications()
     }
 
+    pub fn relays(&self) -> HashMap<Url, Relay> {
+        self.pool.relays()
+    }
+
     /// Add new relay
     ///
     /// # Example
@@ -127,7 +133,8 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        Ok(self.pool.add_relay(url, proxy)?)
+        self.pool.add_relay(url, proxy);
+        Ok(())
     }
 
     /// Disconnect and remove relay
@@ -148,7 +155,8 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        Ok(self.pool.remove_relay(url).await?)
+        self.pool.remove_relay(url).await;
+        Ok(())
     }
 
     /// Connect relay

@@ -79,14 +79,10 @@ pub struct Relay {
 
 impl Relay {
     /// Create new `Relay`
-    pub fn new(
-        url: Url,
-        pool_sender: Sender<RelayPoolEvent>,
-        proxy: Option<SocketAddr>,
-    ) -> Result<Self, Error> {
+    pub fn new(url: Url, pool_sender: Sender<RelayPoolEvent>, proxy: Option<SocketAddr>) -> Self {
         let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(64);
 
-        Ok(Self {
+        Self {
             url,
             proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
@@ -94,7 +90,7 @@ impl Relay {
             pool_sender,
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
-        })
+        }
     }
 
     /// Get relay url
@@ -102,7 +98,7 @@ impl Relay {
         self.url.clone()
     }
 
-    async fn status(&self) -> RelayStatus {
+    pub async fn status(&self) -> RelayStatus {
         let status = self.status.lock().await;
         status.clone()
     }
@@ -249,7 +245,7 @@ impl Relay {
                             match String::from_utf8(data) {
                                 Ok(data) => match RelayMessage::from_json(&data) {
                                     Ok(msg) => {
-                                        log::debug!("Received message to {}: {:?}", relay.url, msg);
+                                        log::trace!("Received message to {}: {:?}", relay.url, msg);
                                         if let Err(err) = relay
                                             .pool_sender
                                             .send(RelayPoolEvent::ReceivedMsg {
@@ -265,7 +261,7 @@ impl Relay {
                                         }
                                     }
                                     Err(err) => {
-                                        log::error!("{}", err);
+                                        log::error!("{}: {}", err, data);
                                     }
                                 },
                                 Err(err) => log::error!("{}", err),

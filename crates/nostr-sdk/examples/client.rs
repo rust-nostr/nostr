@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
                         log::error!("Impossible to decrypt direct message");
                     }
                 } else {
-                    println!("{:#?}", event);
+                    println!("{:?}", event);
                 }
             }
         }

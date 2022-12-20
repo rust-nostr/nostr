@@ -1,14 +1,14 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::net::SocketAddr;
 #[cfg(feature = "blocking")]
 use std::time::Duration;
 
 use nostr::url::Url;
-use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter};
+use nostr::{ClientMessage, Event, RelayMessage, Sha256Hash, SubscriptionFilter};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use uuid::Uuid;
@@ -58,8 +58,10 @@ pub enum RelayPoolNotifications {
 struct RelayPoolTask {
     receiver: Receiver<RelayPoolEvent>,
     notification_sender: broadcast::Sender<RelayPoolNotifications>,
-    events: HashMap<String, Box<Event>>,
+    events: VecDeque<Sha256Hash>,
 }
+
+const MAX_EVENTS: usize = 100000;
 
 impl RelayPoolTask {
     pub fn new(
@@ -68,7 +70,7 @@ impl RelayPoolTask {
     ) -> Self {
         Self {
             receiver: pool_task_receiver,
-            events: HashMap::new(),
+            events: VecDeque::new(),
             notification_sender,
         }
     }
@@ -95,11 +97,8 @@ impl RelayPoolTask {
                     //Verifies if the event is valid
                     if event.verify().is_ok() {
                         //Adds only new events
-                        if self
-                            .events
-                            .insert(event.id.to_string(), event.clone())
-                            .is_none()
-                        {
+                        if !self.events.contains(&event.id) {
+                            self.add_event(event.id);
                             let notification =
                                 RelayPoolNotifications::ReceivedEvent(event.as_ref().clone());
 
@@ -108,10 +107,17 @@ impl RelayPoolTask {
                     }
                 }
             }
-            RelayPoolEvent::EventSent(ev) => {
-                self.events.insert(ev.id.to_string(), Box::new(ev));
+            RelayPoolEvent::EventSent(event) => {
+                self.add_event(event.id);
             }
         }
+    }
+
+    fn add_event(&mut self, event_id: Sha256Hash) {
+        while self.events.len() >= MAX_EVENTS {
+            self.events.pop_front();
+        }
+        self.events.push_back(event_id);
     }
 }
 
@@ -180,21 +186,18 @@ impl RelayPool {
     }
 
     /// Add new relay
-    pub fn add_relay(&mut self, url: Url, proxy: Option<SocketAddr>) -> Result<(), Error> {
-        let relay = Relay::new(url, self.pool_task_sender.clone(), proxy)?;
+    pub fn add_relay(&mut self, url: Url, proxy: Option<SocketAddr>) {
+        let relay = Relay::new(url, self.pool_task_sender.clone(), proxy);
         self.relays.insert(relay.url(), relay);
-        Ok(())
     }
 
     /// Disconnect and remove relay
-    pub async fn remove_relay(&mut self, url: Url) -> Result<(), Error> {
+    pub async fn remove_relay(&mut self, url: Url) {
         if let Some(relay) = self.relays.remove(&url) {
             if self.disconnect_relay(&relay).await.is_err() {
                 self.relays.insert(url, relay);
             }
         }
-
-        Ok(())
     }
 
     /// Send event
