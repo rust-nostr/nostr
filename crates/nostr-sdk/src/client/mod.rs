@@ -114,8 +114,20 @@ impl Client {
         self.pool.notifications()
     }
 
+    /// Get relays
     pub fn relays(&self) -> HashMap<Url, Relay> {
         self.pool.relays()
+    }
+
+    /// Add multiple relays
+    pub fn add_relays<S>(&mut self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        for (url, proxy) in relays.into_iter() {
+            self.add_relay(url, proxy)?;
+        }
+        Ok(())
     }
 
     /// Add new relay

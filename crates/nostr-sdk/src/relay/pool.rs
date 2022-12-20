@@ -187,8 +187,10 @@ impl RelayPool {
 
     /// Add new relay
     pub fn add_relay(&mut self, url: Url, proxy: Option<SocketAddr>) {
-        let relay = Relay::new(url, self.pool_task_sender.clone(), proxy);
-        self.relays.insert(relay.url(), relay);
+        if !self.relays.contains_key(&url) {
+            let relay = Relay::new(url, self.pool_task_sender.clone(), proxy);
+            self.relays.insert(relay.url(), relay);
+        }
     }
 
     /// Disconnect and remove relay

@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::collections::HashMap;
 use std::net::SocketAddr;
 
 use nostr::key::XOnlyPublicKey;
@@ -11,6 +12,7 @@ use tokio::sync::broadcast;
 use super::Error;
 use crate::client::Entity;
 use crate::relay::pool::RelayPoolNotifications;
+use crate::relay::Relay;
 use crate::RUNTIME;
 
 pub struct Client {
@@ -35,6 +37,19 @@ impl Client {
 
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
         self.client.notifications()
+    }
+
+    /// Get relays
+    pub fn relays(&self) -> HashMap<Url, Relay> {
+        self.client.relays()
+    }
+
+    /// Add multiple relays
+    pub fn add_relays<S>(&mut self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        self.client.add_relays(relays)
     }
 
     pub fn add_relay<S>(&mut self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>

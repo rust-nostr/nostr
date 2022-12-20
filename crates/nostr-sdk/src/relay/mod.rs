@@ -66,7 +66,7 @@ pub enum RelayEvent {
     Terminate,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Relay {
     url: Url,
     proxy: Option<SocketAddr>,
