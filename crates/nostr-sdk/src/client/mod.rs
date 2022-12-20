@@ -102,6 +102,11 @@ impl Client {
         Keys::generate_from_os_random()
     }
 
+    /// Get current keys
+    pub fn keys(&self) -> Keys {
+        self.keys.clone()
+    }
+
     /// Get new notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
         self.pool.notifications()
