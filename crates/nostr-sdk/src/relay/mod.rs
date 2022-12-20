@@ -6,6 +6,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use futures_util::{SinkExt, StreamExt};
 use nostr::url::Url;
 use nostr::{ClientMessage, RelayMessage};
 use tokio::sync::mpsc::error::SendError;

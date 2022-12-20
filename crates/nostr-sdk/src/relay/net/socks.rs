@@ -13,7 +13,7 @@ impl TpcSocks5Stream {
     pub async fn connect<'a>(
         proxy: SocketAddr,
         dest: impl IntoTargetAddr<'a>,
-    ) -> Result<Socks5Stream<TcpStream>, tokio_socks::Error> {
-        Socks5Stream::connect(proxy, dest).await
+    ) -> Result<TcpStream, tokio_socks::Error> {
+        Ok(Socks5Stream::connect(proxy, dest).await?.into_inner())
     }
 }
