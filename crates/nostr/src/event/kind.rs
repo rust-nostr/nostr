@@ -25,5 +25,5 @@ pub enum KindBase {
 #[serde(untagged)]
 pub enum Kind {
     Base(KindBase),
-    Custom(u16),
+    Custom(u64),
 }
