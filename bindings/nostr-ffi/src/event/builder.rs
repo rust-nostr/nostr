@@ -56,12 +56,9 @@ impl EventBuilder {
 }
 
 impl EventBuilder {
-    pub fn set_metadata(keys: Arc<Keys>, metadata: Arc<Metadata>) -> Result<Self> {
+    pub fn set_metadata(metadata: Arc<Metadata>) -> Result<Self> {
         Ok(Self {
-            builder: EventBuilderSdk::set_metadata(
-                keys.deref(),
-                metadata.as_ref().deref().clone(),
-            )?,
+            builder: EventBuilderSdk::set_metadata(metadata.as_ref().deref().clone())?,
         })
     }
 

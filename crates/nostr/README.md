@@ -45,7 +45,7 @@ fn main() -> Result<()> {
         .picture(Url::parse("https://example.com/avatar.png")?)
         .nip05("username@example.com");
 
-    let event: Event = EventBuilder::set_metadata(&my_keys, metadata)?.to_event(&my_keys)?;
+    let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&my_keys)?;
 
     // New text note
     let event: Event = EventBuilder::new_text_note("Hello from Nostr SDK", &[]).to_event(&my_keys)?;

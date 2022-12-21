@@ -33,8 +33,6 @@ pub enum Error {
     /// NIP04 error
     #[cfg(feature = "nip04")]
     NIP04(nips::nip04::Error),
-    /// NIP05 error
-    NIP05(nips::nip05::Error),
 }
 
 impl fmt::Display for Error {
@@ -45,7 +43,6 @@ impl fmt::Display for Error {
             Self::InvalidName => write!(f, "invalid name"),
             #[cfg(feature = "nip04")]
             Self::NIP04(err) => write!(f, "nip04 error: {}", err),
-            Self::NIP05(err) => write!(f, "nip05 error: {}", err),
         }
     }
 }
@@ -68,12 +65,6 @@ impl From<bitcoin::secp256k1::Error> for Error {
 impl From<nips::nip04::Error> for Error {
     fn from(err: nips::nip04::Error) -> Self {
         Self::NIP04(err)
-    }
-}
-
-impl From<nips::nip05::Error> for Error {
-    fn from(err: nips::nip05::Error) -> Self {
-        Self::NIP05(err)
     }
 }
 
@@ -183,14 +174,9 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use std::str::FromStr;
-    ///
-    /// use nostr::key::{FromBech32, Keys};
     /// use nostr::metadata::Metadata;
     /// use nostr::url::Url;
     /// use nostr::EventBuilder;
-    ///
-    /// let my_keys = Keys::from_bech32("nsec1...").unwrap();
     ///
     /// let metadata = Metadata::new()
     ///     .name("username")
@@ -199,9 +185,9 @@ impl EventBuilder {
     ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
     ///     .nip05("username@example.com");
     ///
-    /// let builder = EventBuilder::set_metadata(&my_keys, metadata).unwrap();
+    /// let builder = EventBuilder::set_metadata(metadata).unwrap();
     /// ```
-    pub fn set_metadata(keys: &Keys, metadata: Metadata) -> Result<Self, Error> {
+    pub fn set_metadata(metadata: Metadata) -> Result<Self, Error> {
         let name = metadata.name;
         let display_name = metadata.display_name;
         let about = metadata.about;
@@ -225,7 +211,6 @@ impl EventBuilder {
         }
 
         if let Some(nip05_str) = nip05_str {
-            nips::nip05::verify(keys.public_key(), &nip05_str)?;
             metadata["nip05"] = json!(nip05_str);
         }
 

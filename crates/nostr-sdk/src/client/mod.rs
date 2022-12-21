@@ -355,8 +355,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn update_profile(&self, metadata: Metadata) -> Result<(), Error> {
-        let event: Event =
-            EventBuilder::set_metadata(&self.keys, metadata)?.to_event(&self.keys)?;
+        let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&self.keys)?;
         self.send_event(event).await
     }
 

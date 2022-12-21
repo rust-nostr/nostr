@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         .picture(Url::parse("https://example.com/avatar.png")?)
         .nip05("username@example.com");
 
-    let event: Event = EventBuilder::set_metadata(&my_keys, metadata)?.to_event(&my_keys)?;
+    let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&my_keys)?;
 
     socket
         .write_message(WsMessage::Text(ClientMessage::new_event(event).to_json()))
