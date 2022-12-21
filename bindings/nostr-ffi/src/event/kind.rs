@@ -5,7 +5,7 @@ use nostr::event::kind::{Kind as KindSdk, KindBase};
 
 pub enum Kind {
     Base { kind: KindBase },
-    Custom { kind: u16 },
+    Custom { kind: u64 },
 }
 
 impl From<KindSdk> for Kind {

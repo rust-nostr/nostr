@@ -27,7 +27,7 @@ enum KindBase {
 [Enum]
 interface Kind {
     Base(KindBase kind);
-    Custom(u16 kind);
+    Custom(u64 kind);
 };
 
 interface Keys {
