@@ -30,9 +30,14 @@ impl Client {
         super::Client::generate_keys()
     }
 
-    /// Get current keys
+    /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.client.keys()
+    }
+
+    /// Set [`Keys`]
+    pub fn set_keys(&mut self, keys: &Keys) {
+        self.client.set_keys(keys)
     }
 
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {

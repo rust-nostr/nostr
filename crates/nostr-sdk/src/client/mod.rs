@@ -104,9 +104,14 @@ impl Client {
         Keys::generate_from_os_random()
     }
 
-    /// Get current keys
+    /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.keys.clone()
+    }
+
+    /// Set [`Keys`]
+    pub fn set_keys(&mut self, keys: &Keys) {
+        self.keys = keys.clone()
     }
 
     /// Get new notification listener
