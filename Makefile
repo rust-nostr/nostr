@@ -5,7 +5,7 @@ else
   Q := @
 endif
 
-precommit:
+precommit: test
 	$(Q)cargo fmt --all -- --config format_code_in_doc_comments=true
 	$(Q)cargo clippy --all
 	$(Q)cargo clippy -p nostr --no-default-features
