@@ -20,7 +20,7 @@ pub mod pool;
 use self::pool::RelayPoolEvent;
 
 #[cfg(feature = "blocking")]
-use crate::new_current_thread;
+use crate::{new_current_thread, RUNTIME};
 
 #[derive(Debug)]
 pub enum Error {
@@ -56,6 +56,18 @@ pub enum RelayStatus {
     Disconnected,
     /// Relay completly disconnected
     Terminated,
+}
+
+impl fmt::Display for RelayStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Initialized => write!(f, "Initialized"),
+            Self::Connected => write!(f, "Connected"),
+            Self::Connecting => write!(f, "Connecting"),
+            Self::Disconnected => write!(f, "Disconnected"),
+            Self::Terminated => write!(f, "Terminated"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -96,6 +108,11 @@ impl Relay {
     /// Get relay url
     pub fn url(&self) -> Url {
         self.url.clone()
+    }
+
+    #[cfg(feature = "blocking")]
+    pub fn status_blocking(&self) -> RelayStatus {
+        RUNTIME.block_on(async { self.status().await })
     }
 
     pub async fn status(&self) -> RelayStatus {
