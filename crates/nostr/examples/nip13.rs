@@ -1,9 +1,8 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::str::FromStr;
-
 use nostr::event::{Event, EventBuilder};
+use nostr::key::FromSkStr;
 use nostr::{Keys, Kind, KindBase, Result};
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
@@ -11,7 +10,7 @@ const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88
 fn main() -> Result<()> {
     env_logger::init();
 
-    let alice_keys = Keys::from_str(ALICE_SK)?;
+    let alice_keys = Keys::from_sk_str(ALICE_SK)?;
 
     let difficulty = 20; // leading zero bits
     let msg_content = "This is a Nostr message with embedded proof-of-work";

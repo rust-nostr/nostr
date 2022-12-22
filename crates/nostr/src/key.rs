@@ -14,6 +14,7 @@ const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
+    InvalidSecretKey,
     SkParseError,
     PkParseError,
     /// Bech32 encoding error.
@@ -30,6 +31,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidSecretKey => write!(f, "Invalid secret key"),
             Self::SkParseError => write!(f, "Invalid secret key string"),
             Self::PkParseError => write!(f, "Invalid public key string"),
             Self::Bech32(err) => write!(f, "Bech32 key encoding error: {}", err),
@@ -55,6 +57,11 @@ impl From<bitcoin::secp256k1::Error> for Error {
     fn from(err: bitcoin::secp256k1::Error) -> Self {
         Self::Secp256k1(err)
     }
+}
+
+pub trait FromSkStr: Sized {
+    type Err;
+    fn from_sk_str(secret_key: &str) -> Result<Self, Self::Err>;
 }
 
 pub trait FromBech32: Sized {
@@ -169,12 +176,18 @@ impl Keys {
     }
 }
 
-impl FromStr for Keys {
+impl FromSkStr for Keys {
     type Err = Error;
 
-    fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
-        let secret_key = SecretKey::from_str(secret_key)?;
-        Ok(Self::new(secret_key))
+    /// Init [`Keys`] from `hex` or `bech32` secret key
+    fn from_sk_str(secret_key: &str) -> Result<Self, Self::Err> {
+        match SecretKey::from_str(secret_key) {
+            Ok(secret_key) => Ok(Self::new(secret_key)),
+            Err(_) => match Self::from_bech32(secret_key) {
+                Ok(keys) => Ok(keys),
+                Err(_) => Err(Error::InvalidSecretKey),
+            },
+        }
     }
 }
 

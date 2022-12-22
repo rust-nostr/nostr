@@ -2,10 +2,10 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::str::FromStr;
 use std::{thread, time};
 
 use nostr::event::KindBase;
+use nostr::key::FromSkStr;
 use nostr::url::Url;
 use nostr::util::nips::nip04::decrypt;
 use nostr::{ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter};
@@ -23,8 +23,8 @@ fn main() -> Result<()> {
     let (mut socket, _response) =
         connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect to relay");
 
-    let alice_keys = Keys::from_str(ALICE_SK)?;
-    let bob_keys = Keys::from_str(BOB_SK)?;
+    let alice_keys = Keys::from_sk_str(ALICE_SK)?;
+    let bob_keys = Keys::from_sk_str(BOB_SK)?;
 
     let alice_to_bob = "Hey bob this is alice (ping)";
     let bob_to_alice = "Hey alice this is bob (pong)";
