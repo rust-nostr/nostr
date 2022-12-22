@@ -16,7 +16,9 @@ default = ["all-nips"]
 blocking = ["dep:once_cell"]
 all-nips = ["nostr/all-nips"]
 nip04 = ["nostr/nip04"]
+nip05 = ["nostr/nip05"]
 nip06 = ["nostr/nip06"]
+nip11 = ["nostr/nip11"]
 
 [dependencies]
 futures-util = "0.3"
