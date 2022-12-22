@@ -110,6 +110,11 @@ impl Relay {
         self.url.clone()
     }
 
+    /// Get proxy
+    pub fn proxy(&self) -> Option<SocketAddr> {
+        self.proxy
+    }
+
     #[cfg(feature = "blocking")]
     pub fn status_blocking(&self) -> RelayStatus {
         RUNTIME.block_on(async { self.status().await })
