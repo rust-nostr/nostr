@@ -4,13 +4,14 @@
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::net::SocketAddr;
+use std::sync::Arc;
 #[cfg(feature = "blocking")]
 use std::time::Duration;
 
 use nostr::url::Url;
 use nostr::{ClientMessage, Event, RelayMessage, Sha256Hash, SubscriptionFilter};
-use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
+use tokio::sync::{broadcast, Mutex};
 use uuid::Uuid;
 
 use super::{Error as RelayError, Relay};
@@ -121,9 +122,10 @@ impl RelayPoolTask {
     }
 }
 
+#[derive(Clone)]
 pub struct RelayPool {
-    relays: HashMap<Url, Relay>,
-    subscription: Subscription,
+    relays: Arc<Mutex<HashMap<Url, Relay>>>,
+    subscription: Arc<Mutex<Subscription>>,
     pool_task_sender: Sender<RelayPoolEvent>,
     notification_sender: broadcast::Sender<RelayPoolNotifications>,
 }
@@ -158,8 +160,8 @@ impl RelayPool {
         tokio::task::spawn(async move { relay_pool_task.run().await });
 
         Self {
-            relays: HashMap::new(),
-            subscription: Subscription::new(),
+            relays: Arc::new(Mutex::new(HashMap::new())),
+            subscription: Arc::new(Mutex::new(Subscription::new())),
             pool_task_sender,
             notification_sender,
         }
@@ -171,41 +173,42 @@ impl RelayPool {
     }
 
     /// Get relays
-    pub fn relays(&self) -> HashMap<Url, Relay> {
-        self.relays.clone()
-    }
-
-    /// Get list of relays
-    pub fn list_relays(&self) -> Vec<Relay> {
-        self.relays.iter().map(|(_k, v)| v.clone()).collect()
+    pub async fn relays(&self) -> HashMap<Url, Relay> {
+        let relays = self.relays.lock().await;
+        relays.clone()
     }
 
     /// Get subscriptions
     pub async fn subscription(&self) -> Subscription {
-        self.subscription.clone()
+        let subscription = self.subscription.lock().await;
+        subscription.clone()
     }
 
     /// Add new relay
-    pub fn add_relay(&mut self, url: Url, proxy: Option<SocketAddr>) {
-        if !self.relays.contains_key(&url) {
+    pub async fn add_relay(&self, url: Url, proxy: Option<SocketAddr>) {
+        let mut relays = self.relays.lock().await;
+        if !relays.contains_key(&url) {
             let relay = Relay::new(url, self.pool_task_sender.clone(), proxy);
-            self.relays.insert(relay.url(), relay);
+            relays.insert(relay.url(), relay);
         }
     }
 
     /// Disconnect and remove relay
-    pub async fn remove_relay(&mut self, url: Url) {
-        if let Some(relay) = self.relays.remove(&url) {
+    pub async fn remove_relay(&self, url: Url) {
+        let mut relays = self.relays.lock().await;
+        if let Some(relay) = relays.remove(&url) {
             if self.disconnect_relay(&relay).await.is_err() {
-                self.relays.insert(url, relay);
+                relays.insert(url, relay);
             }
         }
     }
 
     /// Send event
     pub async fn send_event(&self, event: Event) -> Result<(), Error> {
+        let relays = self.relays.lock().await;
+
         //Send to pool task to save in all received events
-        if self.relays.is_empty() {
+        if relays.is_empty() {
             return Err(Error::NoRelayConnected);
         }
 
@@ -217,7 +220,7 @@ impl RelayPool {
             log::error!("send_event error: {}", err.to_string());
         };
 
-        for relay in self.relays.values() {
+        for relay in relays.values() {
             relay
                 .send_msg(ClientMessage::new_event(event.clone()))
                 .await?;
@@ -227,9 +230,15 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
-        self.subscription.update_filters(filters.clone());
-        for relay in self.relays.clone().values() {
+    pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
+        let relays = self.relays.lock().await;
+
+        {
+            let mut subscription = self.subscription.lock().await;
+            subscription.update_filters(filters.clone());
+        }
+
+        for relay in relays.values() {
             self.subscribe_relay(relay).await?;
         }
 
@@ -237,30 +246,33 @@ impl RelayPool {
     }
 
     /// Unsubscribe from filters
-    pub async fn unsubscribe(&mut self) -> Result<(), Error> {
-        for relay in self.relays.clone().values() {
+    pub async fn unsubscribe(&self) -> Result<(), Error> {
+        let relays = self.relays.lock().await;
+        for relay in relays.values() {
             self.unsubscribe_relay(relay).await?;
         }
 
         Ok(())
     }
 
-    async fn subscribe_relay(&mut self, relay: &Relay) -> Result<Uuid, Error> {
-        let channel = self.subscription.get_channel(&relay.url());
+    async fn subscribe_relay(&self, relay: &Relay) -> Result<Uuid, Error> {
+        let mut subscription = self.subscription.lock().await;
+        let channel = subscription.get_channel(&relay.url());
         let channel_id = channel.id();
 
         relay
             .send_msg(ClientMessage::new_req(
                 channel_id.to_string(),
-                self.subscription.get_filters(),
+                subscription.get_filters(),
             ))
             .await?;
 
         Ok(channel_id)
     }
 
-    async fn unsubscribe_relay(&mut self, relay: &Relay) -> Result<(), Error> {
-        if let Some(channel) = self.subscription.remove_channel(&relay.url()) {
+    async fn unsubscribe_relay(&self, relay: &Relay) -> Result<(), Error> {
+        let mut subscription = self.subscription.lock().await;
+        if let Some(channel) = subscription.remove_channel(&relay.url()) {
             relay
                 .send_msg(ClientMessage::close(channel.id().to_string()))
                 .await?;
@@ -277,8 +289,10 @@ impl RelayPool {
 
         let id = Uuid::new_v4();
 
+        let relays = self.relays.lock().await;
+
         // Subscribe
-        for relay in self.relays.values() {
+        for relay in relays.values() {
             relay
                 .send_msg(ClientMessage::new_req(id.to_string(), filters.clone()))
                 .await?;
@@ -308,7 +322,7 @@ impl RelayPool {
         }
 
         // Unsubscribe
-        for relay in self.relays.values() {
+        for relay in relays.values() {
             relay.send_msg(ClientMessage::close(id.to_string())).await?;
         }
 
@@ -316,8 +330,9 @@ impl RelayPool {
     }
 
     /// Connect to all added relays and keep connection alive
-    pub async fn connect(&mut self, wait_for_connection: bool) -> Result<(), Error> {
-        for relay in self.relays.clone().values() {
+    pub async fn connect(&self, wait_for_connection: bool) -> Result<(), Error> {
+        let relays = self.relays.lock().await;
+        for relay in relays.values() {
             self.connect_relay(relay, wait_for_connection).await?;
         }
 
@@ -325,8 +340,9 @@ impl RelayPool {
     }
 
     /// Disconnect from all relays
-    pub async fn disconnect(&mut self) -> Result<(), Error> {
-        for relay in self.relays.clone().values() {
+    pub async fn disconnect(&self) -> Result<(), Error> {
+        let relays = self.relays.lock().await;
+        for relay in relays.values() {
             self.disconnect_relay(relay).await?;
         }
 
@@ -335,7 +351,7 @@ impl RelayPool {
 
     /// Connect to relay
     pub async fn connect_relay(
-        &mut self,
+        &self,
         relay: &Relay,
         wait_for_connection: bool,
     ) -> Result<(), Error> {
@@ -345,7 +361,7 @@ impl RelayPool {
     }
 
     /// Disconnect from relay
-    pub async fn disconnect_relay(&mut self, relay: &Relay) -> Result<(), Error> {
+    pub async fn disconnect_relay(&self, relay: &Relay) -> Result<(), Error> {
         relay.terminate().await?;
         self.unsubscribe_relay(relay).await?;
         Ok(())

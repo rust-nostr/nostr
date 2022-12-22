@@ -77,6 +77,7 @@ impl From<nostr::hashes::hex::Error> for Error {
     }
 }
 
+#[derive(Clone)]
 pub struct Client {
     pool: RelayPool,
     keys: Keys,
@@ -90,7 +91,7 @@ impl Client {
     /// use nostr_sdk::Client;
     ///
     /// let my_keys = Client::generate_keys();
-    /// let mut client = Client::new(&my_keys);
+    /// let client = Client::new(&my_keys);
     /// ```
     pub fn new(keys: &Keys) -> Self {
         Self {
@@ -109,28 +110,23 @@ impl Client {
         self.keys.clone()
     }
 
-    /// Set [`Keys`]
-    pub fn set_keys(&mut self, keys: &Keys) {
-        self.keys = keys.clone()
-    }
-
     /// Get new notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
         self.pool.notifications()
     }
 
     /// Get relays
-    pub fn relays(&self) -> HashMap<Url, Relay> {
-        self.pool.relays()
+    pub async fn relays(&self) -> HashMap<Url, Relay> {
+        self.pool.relays().await
     }
 
     /// Add multiple relays
-    pub fn add_relays<S>(&mut self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
+    pub async fn add_relays<S>(&self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
     where
         S: Into<String>,
     {
         for (url, proxy) in relays.into_iter() {
-            self.add_relay(url, proxy)?;
+            self.add_relay(url, proxy).await?;
         }
         Ok(())
     }
@@ -140,17 +136,27 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// # use nostr_sdk::Client;
-    /// # let my_keys = Client::generate_keys();
-    /// # let mut client = Client::new(&my_keys);
-    /// client.add_relay("wss://relay.nostr.info", None).unwrap();
-    /// client.add_relay("wss://relay.damus.io", None).unwrap();
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let client = Client::new(&my_keys);
+    /// client
+    ///     .add_relay("wss://relay.nostr.info", None)
+    ///     .await
+    ///     .unwrap();
+    /// client
+    ///     .add_relay("wss://relay.damus.io", None)
+    ///     .await
+    ///     .unwrap();
+    /// # }
     /// ```
-    pub fn add_relay<S>(&mut self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
+    pub async fn add_relay<S>(&self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
     where
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        self.pool.add_relay(url, proxy);
+        self.pool.add_relay(url, proxy).await;
         Ok(())
     }
 
@@ -163,11 +169,11 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// client.remove_relay("wss://relay.nostr.info").await.unwrap();
     /// # }
     /// ```
-    pub async fn remove_relay<S>(&mut self, url: S) -> Result<(), Error>
+    pub async fn remove_relay<S>(&self, url: S) -> Result<(), Error>
     where
         S: Into<String>,
     {
@@ -185,19 +191,19 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// client
     ///     .connect_relay("wss://relay.nostr.info", true)
     ///     .await
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn connect_relay<S>(&mut self, url: S, wait_for_connection: bool) -> Result<(), Error>
+    pub async fn connect_relay<S>(&self, url: S, wait_for_connection: bool) -> Result<(), Error>
     where
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        if let Some(relay) = self.pool.relays().get(&url) {
+        if let Some(relay) = self.pool.relays().await.get(&url) {
             return Ok(self.pool.connect_relay(relay, wait_for_connection).await?);
         }
         Err(Error::RelayNotFound)
@@ -212,19 +218,19 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// client
     ///     .disconnect_relay("wss://relay.nostr.info")
     ///     .await
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn disconnect_relay<S>(&mut self, url: S) -> Result<(), Error>
+    pub async fn disconnect_relay<S>(&self, url: S) -> Result<(), Error>
     where
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        if let Some(relay) = self.pool.relays().get(&url) {
+        if let Some(relay) = self.pool.relays().await.get(&url) {
             return Ok(self.pool.disconnect_relay(relay).await?);
         }
         Err(Error::RelayNotFound)
@@ -239,11 +245,11 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// client.connect().await.unwrap();
     /// # }
     /// ```
-    pub async fn connect(&mut self) -> Result<(), Error> {
+    pub async fn connect(&self) -> Result<(), Error> {
         Ok(self.pool.connect(false).await?)
     }
 
@@ -256,11 +262,11 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// client.connect_and_wait().await.unwrap();
     /// # }
     /// ```
-    pub async fn connect_and_wait(&mut self) -> Result<(), Error> {
+    pub async fn connect_and_wait(&self) -> Result<(), Error> {
         Ok(self.pool.connect(true).await?)
     }
 
@@ -273,11 +279,11 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// client.disconnect().await.unwrap();
     /// # }
     /// ```
-    pub async fn disconnect(&mut self) -> Result<(), Error> {
+    pub async fn disconnect(&self) -> Result<(), Error> {
         Ok(self.pool.disconnect().await?)
     }
 
@@ -292,7 +298,7 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// let subscription = SubscriptionFilter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(time::timestamp());
@@ -300,7 +306,7 @@ impl Client {
     /// client.subscribe(vec![subscription]).await.unwrap();
     /// # }
     /// ```
-    pub async fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
+    pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
         Ok(self.pool.subscribe(filters).await?)
     }
 
@@ -315,7 +321,7 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// let subscription = SubscriptionFilter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(time::timestamp());
@@ -348,7 +354,7 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// let metadata = Metadata::new()
     ///     .name("username")
     ///     .display_name("My Username")
@@ -375,7 +381,7 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// client
     ///     .publish_text_note("My first text note from Nostr SDK!", &[])
     ///     .await
@@ -401,7 +407,7 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// client
     ///     .publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16)
     ///     .await
@@ -433,7 +439,7 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// client
     ///     .add_recommended_relay("wss://relay.damus.io")
     ///     .await
@@ -468,11 +474,11 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// let _list = client.get_contact_list().await.unwrap();
     /// # }
     /// ```
-    pub async fn get_contact_list(&mut self) -> Result<Vec<Contact>, Error> {
+    pub async fn get_contact_list(&self) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
 
         let filter = SubscriptionFilter::new()
@@ -512,9 +518,12 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     ///
-    /// client.add_relay("wss://relay.nostr.info", None).unwrap();
+    /// client
+    ///     .add_relay("wss://relay.nostr.info", None)
+    ///     .await
+    ///     .unwrap();
     /// client.connect().await.unwrap();
     ///
     /// let alice_keys = Keys::from_bech32_public_key(
@@ -565,7 +574,7 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// let event = Event::from_json(r#"{
     ///         "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
     ///         "content":"🔥 78,680 blocks to the next Halving 🔥",
@@ -596,7 +605,7 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
-    /// #   let mut client = Client::new(&my_keys);
+    /// #   let client = Client::new(&my_keys);
     /// let event = Event::from_json(r#"{
     ///     "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
     ///     "content":"🔥 78,680 blocks to the next Halving 🔥",

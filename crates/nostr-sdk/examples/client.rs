@@ -20,15 +20,17 @@ async fn main() -> Result<()> {
 
     let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
 
-    let mut client = Client::new(&my_keys);
-    client.add_relay("wss://relay.nostr.info", proxy)?;
-    client.add_relay("wss://rsslay.fiatjaf.com", None)?;
-    client.add_relay("wss://relay.damus.io", None)?;
-    client.add_relay("wss://nostr.openchain.fr", None)?;
-    client.add_relay(
-        "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
-        proxy,
-    )?;
+    let client = Client::new(&my_keys);
+    client.add_relay("wss://relay.nostr.info", proxy).await?;
+    client.add_relay("wss://rsslay.fiatjaf.com", None).await?;
+    client.add_relay("wss://relay.damus.io", None).await?;
+    client.add_relay("wss://nostr.openchain.fr", None).await?;
+    client
+        .add_relay(
+            "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
+            proxy,
+        )
+        .await?;
 
     client.connect().await?;
 

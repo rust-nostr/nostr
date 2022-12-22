@@ -48,17 +48,17 @@ async fn main() -> Result<()> {
     // let my_keys = Keys::from_str("hex-secret-key")?;
 
     // Create new client
-    let mut client = Client::new(&my_keys);
+    let client = Client::new(&my_keys);
 
     let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
 
     // Add relays
-    client.add_relay("wss://relay.damus.io", None)?;
-    client.add_relay("wss://relay.nostr.info", proxy)?;
+    client.add_relay("wss://relay.damus.io", None).await?;
+    client.add_relay("wss://relay.nostr.info", proxy).await?;
     client.add_relay(
         "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
         proxy,
-    )?;
+    ).await?;
 
     // Connect to relays and keep connection alive
     client.connect().await?;

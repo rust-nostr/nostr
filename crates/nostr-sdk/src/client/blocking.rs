@@ -15,6 +15,7 @@ use crate::relay::pool::RelayPoolNotifications;
 use crate::relay::Relay;
 use crate::RUNTIME;
 
+#[derive(Clone)]
 pub struct Client {
     client: super::Client,
 }
@@ -35,73 +36,68 @@ impl Client {
         self.client.keys()
     }
 
-    /// Set [`Keys`]
-    pub fn set_keys(&mut self, keys: &Keys) {
-        self.client.set_keys(keys)
-    }
-
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
         self.client.notifications()
     }
 
     /// Get relays
     pub fn relays(&self) -> HashMap<Url, Relay> {
-        self.client.relays()
+        RUNTIME.block_on(async { self.client.relays().await })
     }
 
     /// Add multiple relays
-    pub fn add_relays<S>(&mut self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
+    pub fn add_relays<S>(&self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
     where
         S: Into<String>,
     {
-        self.client.add_relays(relays)
+        RUNTIME.block_on(async { self.client.add_relays(relays).await })
     }
 
-    pub fn add_relay<S>(&mut self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
+    pub fn add_relay<S>(&self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
     where
         S: Into<String>,
     {
-        self.client.add_relay(url, proxy)
+        RUNTIME.block_on(async { self.client.add_relay(url, proxy).await })
     }
 
-    pub fn remove_relay<S>(&mut self, url: S) -> Result<(), Error>
+    pub fn remove_relay<S>(&self, url: S) -> Result<(), Error>
     where
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.remove_relay(url).await })
     }
 
-    pub fn connect_relay<S>(&mut self, url: S, wait_for_connection: bool) -> Result<(), Error>
+    pub fn connect_relay<S>(&self, url: S, wait_for_connection: bool) -> Result<(), Error>
     where
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.connect_relay(url, wait_for_connection).await })
     }
 
-    pub fn disconnect_relay<S>(&mut self, url: S) -> Result<(), Error>
+    pub fn disconnect_relay<S>(&self, url: S) -> Result<(), Error>
     where
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.disconnect_relay(url).await })
     }
 
-    pub fn connect(&mut self) -> Result<(), Error> {
+    pub fn connect(&self) -> Result<(), Error> {
         RUNTIME.block_on(async { self.client.connect().await })
     }
 
-    pub fn connect_and_wait(&mut self) -> Result<(), Error> {
+    pub fn connect_and_wait(&self) -> Result<(), Error> {
         RUNTIME.block_on(async { self.client.connect_and_wait().await })
     }
 
-    pub fn disconnect(&mut self) -> Result<(), Error> {
+    pub fn disconnect(&self) -> Result<(), Error> {
         RUNTIME.block_on(async { self.client.disconnect().await })
     }
 
-    pub fn subscribe(&mut self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
+    pub fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
         RUNTIME.block_on(async { self.client.subscribe(filters).await })
     }
 
-    pub fn get_events_of(&mut self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>, Error> {
+    pub fn get_events_of(&self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>, Error> {
         RUNTIME.block_on(async { self.client.get_events_of(filters).await })
     }
 
@@ -148,7 +144,7 @@ impl Client {
         RUNTIME.block_on(async { self.client.set_contact_list(list).await })
     }
 
-    pub fn get_contact_list(&mut self) -> Result<Vec<Contact>, Error> {
+    pub fn get_contact_list(&self) -> Result<Vec<Contact>, Error> {
         RUNTIME.block_on(async { self.client.get_contact_list().await })
     }
 
