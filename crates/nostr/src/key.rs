@@ -15,8 +15,7 @@ const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     InvalidSecretKey,
-    SkParseError,
-    PkParseError,
+    InvalidPublicKey,
     /// Bech32 encoding error.
     Bech32(bech32::Error),
     Bech32SkParseError,
@@ -32,11 +31,10 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidSecretKey => write!(f, "Invalid secret key"),
-            Self::SkParseError => write!(f, "Invalid secret key string"),
-            Self::PkParseError => write!(f, "Invalid public key string"),
+            Self::InvalidPublicKey => write!(f, "Invalid public key"),
             Self::Bech32(err) => write!(f, "Bech32 key encoding error: {}", err),
-            Self::Bech32SkParseError => write!(f, "Invalid bech32 secret key string"),
-            Self::Bech32PkParseError => write!(f, "Invalid bech32 public key string"),
+            Self::Bech32SkParseError => write!(f, "Invalid bech32 secret key"),
+            Self::Bech32PkParseError => write!(f, "Invalid bech32 public key"),
             Self::SkMissing => write!(f, "Secrete key missing"),
             Self::KeyPairMissing => write!(f, "Key pair missing"),
             Self::KeyGenerationFailure => write!(f, "Failed to generate new keys"),
@@ -62,6 +60,11 @@ impl From<bitcoin::secp256k1::Error> for Error {
 pub trait FromSkStr: Sized {
     type Err;
     fn from_sk_str(secret_key: &str) -> Result<Self, Self::Err>;
+}
+
+pub trait FromPkStr: Sized {
+    type Err;
+    fn from_pk_str(public_key: &str) -> Result<Self, Self::Err>;
 }
 
 pub trait FromBech32: Sized {
@@ -191,6 +194,21 @@ impl FromSkStr for Keys {
     }
 }
 
+impl FromPkStr for Keys {
+    type Err = Error;
+
+    /// Init [`Keys`] from `hex` or `bech32` public key
+    fn from_pk_str(public_key: &str) -> Result<Self, Self::Err> {
+        match XOnlyPublicKey::from_str(public_key) {
+            Ok(public_key) => Ok(Self::from_public_key(public_key)),
+            Err(_) => match Self::from_bech32_public_key(public_key) {
+                Ok(keys) => Ok(keys),
+                Err(_) => Err(Error::InvalidSecretKey),
+            },
+        }
+    }
+}
+
 impl FromBech32 for Keys {
     fn from_bech32<S>(secret_key: S) -> Result<Self, Error>
     where
@@ -232,8 +250,7 @@ impl FromBech32 for Keys {
 
         let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32PkParseError)?;
 
-        let public_key =
-            XOnlyPublicKey::from_slice(data.as_slice()).map_err(|_| Error::PkParseError)?;
+        let public_key = XOnlyPublicKey::from_slice(data.as_slice())?;
 
         Ok(Keys {
             public_key,
