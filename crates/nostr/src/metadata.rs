@@ -3,6 +3,13 @@
 
 use url::Url;
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    /// Error serializing or deserializing JSON data
+    #[error("json error: {0}")]
+    Json(#[from] serde_json::Error),
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -32,6 +39,17 @@ impl Metadata {
             picture: None,
             nip05: None,
         }
+    }
+
+    pub fn from_json<S>(json: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        Ok(serde_json::from_str(&json.into())?)
+    }
+
+    pub fn as_json(&self) -> Result<String, Error> {
+        Ok(serde_json::to_string(&self)?)
     }
 
     /// Set name
@@ -84,5 +102,23 @@ impl Metadata {
             nip05: Some(nip05.into()),
             ..self
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_metadata() {
+        let content = r#"{"name":"myname","about":"Description","display_name":""}"#;
+        let metadata = Metadata::from_json(content).unwrap();
+        assert_eq!(
+            metadata,
+            Metadata::new()
+                .name("myname")
+                .about("Description")
+                .display_name("")
+        );
     }
 }
