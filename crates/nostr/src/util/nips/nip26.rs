@@ -1,8 +1,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::fmt;
-
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
@@ -10,34 +8,13 @@ use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 use crate::key::{self, Keys};
 use crate::Sha256Hash;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
     /// Key error
-    Key(key::Error),
-    Secp256k1(bitcoin::secp256k1::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Key(err) => write!(f, "key error: {}", err),
-            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<key::Error> for Error {
-    fn from(err: key::Error) -> Self {
-        Self::Key(err)
-    }
-}
-
-impl From<bitcoin::secp256k1::Error> for Error {
-    fn from(err: bitcoin::secp256k1::Error) -> Self {
-        Self::Secp256k1(err)
-    }
+    #[error("key error: {0}")]
+    Key(#[from] key::Error),
+    #[error("secp256k1 error: {0}")]
+    Secp256k1(#[from] bitcoin::secp256k1::Error),
 }
 
 pub fn sign_delegation(

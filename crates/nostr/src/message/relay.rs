@@ -2,28 +2,17 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::fmt;
-
 use serde_json::{json, Value};
 
 use crate::{Event, Sha256Hash};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum MessageHandleError {
+    #[error("Message has an invalid format")]
     InvalidMessageFormat,
+    #[error("Json deserialization failed")]
     JsonDeserializationFailed,
 }
-
-impl fmt::Display for MessageHandleError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidMessageFormat => write!(f, "Message has an invalid format"),
-            Self::JsonDeserializationFailed => write!(f, "Json deserialization failed"),
-        }
-    }
-}
-
-impl std::error::Error for MessageHandleError {}
 
 /// Messages sent by relays, received by clients
 #[derive(Debug, Clone, Eq, PartialEq)]

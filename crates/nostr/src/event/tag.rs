@@ -10,22 +10,13 @@ use url::Url;
 
 use crate::Sha256Hash;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("impossible to parse marker")]
     MarkerParseError,
+    #[error("impossible to find kind")]
     KindNotFound,
 }
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MarkerParseError => write!(f, "impossible to parse marker"),
-            Self::KindNotFound => write!(f, "impossible to find kind"),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Marker {

@@ -2,7 +2,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::fmt;
 use std::str::FromStr;
 
 use bitcoin::hashes::hex::FromHex;
@@ -19,43 +18,16 @@ pub use self::kind::{Kind, KindBase};
 pub use self::tag::{Marker, Tag, TagData, TagKind};
 use crate::Sha256Hash;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Error serializing or deserializing JSON data
-    Json(serde_json::Error),
-    Secp256k1(bitcoin::secp256k1::Error),
+    #[error("json error: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("secp256k1 error: {0}")]
+    Secp256k1(#[from] bitcoin::secp256k1::Error),
     /// Hex decoding error
-    Hex(bitcoin::hashes::hex::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Json(err) => write!(f, "json error: {}", err),
-            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
-            Self::Hex(err) => write!(f, "hex decoding error: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<serde_json::Error> for Error {
-    fn from(err: serde_json::Error) -> Self {
-        Self::Json(err)
-    }
-}
-
-impl From<bitcoin::secp256k1::Error> for Error {
-    fn from(err: bitcoin::secp256k1::Error) -> Self {
-        Self::Secp256k1(err)
-    }
-}
-
-impl From<bitcoin::hashes::hex::Error> for Error {
-    fn from(err: bitcoin::hashes::hex::Error) -> Self {
-        Self::Hex(err)
-    }
+    #[error("hex decoding error: {0}")]
+    Hex(#[from] bitcoin::hashes::hex::Error),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

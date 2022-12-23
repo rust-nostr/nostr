@@ -1,7 +1,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -24,52 +23,25 @@ mod socks;
 
 use self::socks::TpcSocks5Stream;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// I/O error
-    IO(std::io::Error),
+    #[error("io error: {0}")]
+    IO(#[from] std::io::Error),
     /// Ws error
-    Ws(WsError),
-    Socks(tokio_socks::Error),
+    #[error("ws error: {0}")]
+    Ws(#[from] WsError),
+    #[error("socks error: {0}")]
+    Socks(#[from] tokio_socks::Error),
     /// Timeout
+    #[error("timeout")]
     Timeout,
     /// Invalid DNS name
+    #[error("invalid DNS name")]
     InvalidDNSName,
     /// Url parse error
-    Url(nostr::url::ParseError),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::IO(err) => write!(f, "io error: {}", err),
-            Self::Ws(err) => write!(f, "ws error: {}", err),
-            Self::Socks(err) => write!(f, "socks error: {}", err),
-            Self::Timeout => write!(f, "timeout"),
-            Self::InvalidDNSName => write!(f, "invalid DNS name"),
-            Self::Url(err) => write!(f, "impossible to parse URL: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self {
-        Self::IO(err)
-    }
-}
-
-impl From<WsError> for Error {
-    fn from(err: WsError) -> Self {
-        Self::Ws(err)
-    }
-}
-
-impl From<tokio_socks::Error> for Error {
-    fn from(err: tokio_socks::Error) -> Self {
-        Self::Socks(err)
-    }
+    #[error("impossible to parse URL: {0}")]
+    Url(#[from] nostr::url::ParseError),
 }
 
 pub(crate) async fn get_connection(

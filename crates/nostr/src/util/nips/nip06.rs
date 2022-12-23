@@ -1,7 +1,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::fmt;
 use std::str::FromStr;
 
 use bip39::Mnemonic;
@@ -14,35 +13,14 @@ use bitcoin::Network;
 use crate::key::Keys;
 use crate::util::time;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
     /// BIP32 error
-    BIP32(bitcoin::util::bip32::Error),
+    #[error("BIP32 error: {0}")]
+    BIP32(#[from] bitcoin::util::bip32::Error),
     /// BIP39 error
-    BIP39(bip39::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::BIP32(err) => write!(f, "BIP32 error: {}", err),
-            Self::BIP39(err) => write!(f, "BIP39 error: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<bitcoin::util::bip32::Error> for Error {
-    fn from(err: bitcoin::util::bip32::Error) -> Self {
-        Self::BIP32(err)
-    }
-}
-
-impl From<bip39::Error> for Error {
-    fn from(err: bip39::Error) -> Self {
-        Self::BIP39(err)
-    }
+    #[error("BIP39 error: {0}")]
+    BIP39(#[from] bip39::Error),
 }
 
 pub trait FromMnemonic: Sized {

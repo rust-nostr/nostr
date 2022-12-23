@@ -22,25 +22,10 @@ use self::pool::RelayPoolEvent;
 #[cfg(feature = "blocking")]
 use crate::{new_current_thread, RUNTIME};
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    RelayEventSender(SendError<RelayEvent>),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::RelayEventSender(err) => write!(f, "impossible to send relay event: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<SendError<RelayEvent>> for Error {
-    fn from(err: SendError<RelayEvent>) -> Self {
-        Self::RelayEventSender(err)
-    }
+    #[error("impossible to send relay event: {0}")]
+    RelayEventSender(#[from] SendError<RelayEvent>),
 }
 
 /// Relay connection status

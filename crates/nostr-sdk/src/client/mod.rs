@@ -2,7 +2,6 @@
 // Distributed under the MIT software license
 
 use std::collections::HashMap;
-use std::fmt;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
@@ -21,60 +20,21 @@ pub mod blocking;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotifications};
 use crate::Relay;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Url parse error
-    Url(nostr::url::ParseError),
-    RelayPool(RelayPoolError),
+    #[error("impossible to parse URL: {0}")]
+    Url(#[from] nostr::url::ParseError),
+    #[error("relay pool error: {0}")]
+    RelayPool(#[from] RelayPoolError),
+    #[error("relay not found")]
     RelayNotFound,
-    EventBuilder(EventBuilderError),
-    Secp256k1(nostr::secp256k1::Error),
-    Hex(nostr::hashes::hex::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Url(err) => write!(f, "impossible to parse URL: {}", err),
-            Self::RelayPool(err) => write!(f, "relay pool error: {}", err),
-            Self::RelayNotFound => write!(f, "relay not found"),
-            Self::EventBuilder(err) => write!(f, "event builder error: {}", err),
-            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
-            Self::Hex(err) => write!(f, "hex decoding error: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<nostr::url::ParseError> for Error {
-    fn from(err: nostr::url::ParseError) -> Self {
-        Self::Url(err)
-    }
-}
-
-impl From<RelayPoolError> for Error {
-    fn from(err: RelayPoolError) -> Self {
-        Self::RelayPool(err)
-    }
-}
-
-impl From<EventBuilderError> for Error {
-    fn from(err: EventBuilderError) -> Self {
-        Self::EventBuilder(err)
-    }
-}
-
-impl From<nostr::secp256k1::Error> for Error {
-    fn from(err: nostr::secp256k1::Error) -> Self {
-        Self::Secp256k1(err)
-    }
-}
-
-impl From<nostr::hashes::hex::Error> for Error {
-    fn from(err: nostr::hashes::hex::Error) -> Self {
-        Self::Hex(err)
-    }
+    #[error("event builder error: {0}")]
+    EventBuilder(#[from] EventBuilderError),
+    #[error("secp256k1 error: {0}")]
+    Secp256k1(#[from] nostr::secp256k1::Error),
+    #[error("hex decoding error: {0}")]
+    Hex(#[from] nostr::hashes::hex::Error),
 }
 
 #[derive(Clone)]

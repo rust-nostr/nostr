@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::convert::From;
-use std::fmt;
 use std::str::FromStr;
 
 use aes::cipher::block_padding::Pkcs7;
@@ -15,36 +14,18 @@ use cbc::{Decryptor, Encryptor};
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
+    #[error("Invalid content format")]
     InvalidContentFormat,
+    #[error("Error while decoding from base64")]
     Base64Decode,
+    #[error("Error while encoding to UTF-8")]
     Utf8Encode,
+    #[error("Wrong encryption block mode. The content must be encrypted using CBC mode!")]
     WrongBlockMode,
-    Secp256k1(bitcoin::secp256k1::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidContentFormat => write!(f, "Invalid content format"),
-            Self::Base64Decode => write!(f, "Error while decoding from base64"),
-            Self::Utf8Encode => write!(f, "Error while encoding to UTF-8"),
-            Self::WrongBlockMode => write!(
-                f,
-                "Wrong encryption block mode. The content must be encrypted using CBC mode!"
-            ),
-            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<bitcoin::secp256k1::Error> for Error {
-    fn from(err: bitcoin::secp256k1::Error) -> Self {
-        Self::Secp256k1(err)
-    }
+    #[error("secp256k1 error: {0}")]
+    Secp256k1(#[from] bitcoin::secp256k1::Error),
 }
 
 pub fn encrypt<T>(sk: &SecretKey, pk: &XOnlyPublicKey, text: T) -> Result<String, Error>

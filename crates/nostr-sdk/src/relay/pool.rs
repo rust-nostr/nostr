@@ -2,7 +2,6 @@
 // Distributed under the MIT software license
 
 use std::collections::{HashMap, VecDeque};
-use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
 #[cfg(feature = "blocking")]
@@ -19,29 +18,14 @@ use super::{Error as RelayError, Relay};
 use crate::new_current_thread;
 use crate::subscription::Subscription;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Relay error
-    Relay(RelayError),
+    #[error("relay error: {0}")]
+    Relay(#[from] RelayError),
     /// No relay connected
+    #[error("no relay connected")]
     NoRelayConnected,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Relay(err) => write!(f, "relay error: {}", err),
-            Self::NoRelayConnected => write!(f, "no relay connected"),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<RelayError> for Error {
-    fn from(err: RelayError) -> Self {
-        Self::Relay(err)
-    }
 }
 
 #[derive(Debug)]

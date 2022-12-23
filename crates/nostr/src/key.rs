@@ -2,7 +2,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::fmt;
 use std::str::FromStr;
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
@@ -12,49 +11,28 @@ pub use bitcoin::secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
+    #[error("Invalid secret key")]
     InvalidSecretKey,
+    #[error("Invalid public key")]
     InvalidPublicKey,
     /// Bech32 encoding error.
-    Bech32(bech32::Error),
+    #[error("Bech32 key encoding error: {0}")]
+    Bech32(#[from] bech32::Error),
+    #[error("Invalid bech32 secret key")]
     Bech32SkParseError,
+    #[error("Invalid bech32 public key")]
     Bech32PkParseError,
+    #[error("Secrete key missing")]
     SkMissing,
+    #[error("Key pair missing")]
     KeyPairMissing,
+    #[error("Failed to generate new keys")]
     KeyGenerationFailure,
     /// Secp256k1 error
-    Secp256k1(bitcoin::secp256k1::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidSecretKey => write!(f, "Invalid secret key"),
-            Self::InvalidPublicKey => write!(f, "Invalid public key"),
-            Self::Bech32(err) => write!(f, "Bech32 key encoding error: {}", err),
-            Self::Bech32SkParseError => write!(f, "Invalid bech32 secret key"),
-            Self::Bech32PkParseError => write!(f, "Invalid bech32 public key"),
-            Self::SkMissing => write!(f, "Secrete key missing"),
-            Self::KeyPairMissing => write!(f, "Key pair missing"),
-            Self::KeyGenerationFailure => write!(f, "Failed to generate new keys"),
-            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<bech32::Error> for Error {
-    fn from(err: bech32::Error) -> Self {
-        Self::Bech32(err)
-    }
-}
-
-impl From<bitcoin::secp256k1::Error> for Error {
-    fn from(err: bitcoin::secp256k1::Error) -> Self {
-        Self::Secp256k1(err)
-    }
+    #[error("secp256k1 error: {0}")]
+    Secp256k1(#[from] bitcoin::secp256k1::Error),
 }
 
 pub trait FromSkStr: Sized {

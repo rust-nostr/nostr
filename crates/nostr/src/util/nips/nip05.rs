@@ -1,53 +1,25 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::fmt;
 use std::str::FromStr;
 
 use bitcoin::secp256k1::XOnlyPublicKey;
 use reqwest::blocking::Client;
 use serde_json::Value;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("invalid format")]
     InvalidFormat,
+    #[error("impossible to verify")]
     ImpossibleToVerify,
-    Reqwest(reqwest::Error),
+    #[error("reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
     /// Error serializing or deserializing JSON data
-    Json(serde_json::Error),
-    Secp256k1(bitcoin::secp256k1::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidFormat => write!(f, "invalid format"),
-            Self::ImpossibleToVerify => write!(f, "impossible to verify"),
-            Self::Reqwest(err) => write!(f, "reqwest error: {}", err),
-            Self::Json(err) => write!(f, "JSON error: {}", err),
-            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<reqwest::Error> for Error {
-    fn from(err: reqwest::Error) -> Self {
-        Self::Reqwest(err)
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(err: serde_json::Error) -> Self {
-        Self::Json(err)
-    }
-}
-
-impl From<bitcoin::secp256k1::Error> for Error {
-    fn from(err: bitcoin::secp256k1::Error) -> Self {
-        Self::Secp256k1(err)
-    }
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("secp256k1 error: {0}")]
+    Secp256k1(#[from] bitcoin::secp256k1::Error),
 }
 
 /// Verify NIP-05

@@ -1,7 +1,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::fmt;
 use std::time::Instant;
 
 use bitcoin::hashes::Hash;
@@ -23,49 +22,20 @@ use crate::{Contact, Sha256Hash};
 static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Key error
-    Key(key::Error),
-    Secp256k1(bitcoin::secp256k1::Error),
+    #[error("key error: {0}")]
+    Key(#[from] key::Error),
+    #[error("secp256k1 error: {0}")]
+    Secp256k1(#[from] bitcoin::secp256k1::Error),
     /// Invalid metadata name
+    #[error("invalid name")]
     InvalidName,
     /// NIP04 error
     #[cfg(feature = "nip04")]
-    NIP04(nips::nip04::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Key(err) => write!(f, "key error: {}", err),
-            Self::Secp256k1(err) => write!(f, "secp256k1 error: {}", err),
-            Self::InvalidName => write!(f, "invalid name"),
-            #[cfg(feature = "nip04")]
-            Self::NIP04(err) => write!(f, "nip04 error: {}", err),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<key::Error> for Error {
-    fn from(err: key::Error) -> Self {
-        Self::Key(err)
-    }
-}
-
-impl From<bitcoin::secp256k1::Error> for Error {
-    fn from(err: bitcoin::secp256k1::Error) -> Self {
-        Self::Secp256k1(err)
-    }
-}
-
-#[cfg(feature = "nip04")]
-impl From<nips::nip04::Error> for Error {
-    fn from(err: nips::nip04::Error) -> Self {
-        Self::NIP04(err)
-    }
+    #[error("nip04 error: {0}")]
+    NIP04(#[from] nips::nip04::Error),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
