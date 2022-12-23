@@ -39,13 +39,19 @@ async fn main() -> Result<()> {
     //
     // or use your already existing
     //
+    // From HEX or Bech32
+    // use nostr_sdk::nostr::key::FromSkStr;
+    // let my_keys = Keys::from_sk_str("hex-or-bech32-secret-key")?;
+    //
     // From Bech32
-    // use nostr::key::FromBech32;
+    // use nostr_sdk::nostr::key::FromBech32;
     // let my_keys = Keys::from_bech32("nsec1...")?;
     //
-    // From hex string
+    // From HEX
     // use std::str::FromStr;
-    // let my_keys = Keys::from_str("hex-secret-key")?;
+    // use nostr_sdk::nostr::secp256k1::SecretKey;
+    // let secret_key = SecretKey::from_str("hex-secret-key")?;
+    // let my_keys = Keys::from_bech32("nsec1...")?;
 
     // Create new client
     let client = Client::new(&my_keys);
