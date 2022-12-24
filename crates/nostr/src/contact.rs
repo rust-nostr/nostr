@@ -3,7 +3,7 @@
 
 use bitcoin::secp256k1::XOnlyPublicKey;
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Deserialize, Serialize)]
 pub struct Contact {
     pub pk: XOnlyPublicKey,
     pub relay_url: String,

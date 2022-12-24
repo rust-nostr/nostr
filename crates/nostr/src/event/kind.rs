@@ -3,7 +3,7 @@
 
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize_repr, Deserialize_repr)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
 pub enum KindBase {
     Metadata = 0,
@@ -21,7 +21,7 @@ pub enum KindBase {
     ChannelMuteUser = 44,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Kind {
     Base(KindBase),

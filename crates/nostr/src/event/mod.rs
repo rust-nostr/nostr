@@ -30,7 +30,7 @@ pub enum Error {
     Hex(#[from] bitcoin::hashes::hex::Error),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Event {
     pub id: Sha256Hash, // hash of serialized event with id 0
     pub pubkey: XOnlyPublicKey,

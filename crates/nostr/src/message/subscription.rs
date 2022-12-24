@@ -9,23 +9,23 @@ use crate::{Kind, Sha256Hash};
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct SubscriptionFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
-    ids: Option<Vec<String>>,
+    pub ids: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    authors: Option<Vec<XOnlyPublicKey>>,
+    pub authors: Option<Vec<XOnlyPublicKey>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    kinds: Option<Vec<Kind>>,
+    pub kinds: Option<Vec<Kind>>,
     #[serde(rename = "#e")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    events: Option<Vec<Sha256Hash>>,
+    pub events: Option<Vec<Sha256Hash>>,
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pubkeys: Option<Vec<XOnlyPublicKey>>,
+    pub pubkeys: Option<Vec<XOnlyPublicKey>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    since: Option<u64>, // unix timestamp seconds
+    pub since: Option<u64>, // unix timestamp seconds
     #[serde(skip_serializing_if = "Option::is_none")]
-    until: Option<u64>, // unix timestamp seconds
+    pub until: Option<u64>, // unix timestamp seconds
     #[serde(skip_serializing_if = "Option::is_none")]
-    limit: Option<u16>,
+    pub limit: Option<u16>,
 }
 
 impl Default for SubscriptionFilter {

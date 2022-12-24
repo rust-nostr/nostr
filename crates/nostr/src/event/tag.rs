@@ -18,7 +18,7 @@ pub enum Error {
     KindNotFound,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Marker {
     Root,
     Reply,
@@ -45,7 +45,7 @@ impl FromStr for Marker {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TagKind {
     P,
     E,
@@ -157,7 +157,7 @@ impl From<TagData> for Vec<String> {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Tag(Vec<String>);
 
 impl From<Vec<String>> for Tag {

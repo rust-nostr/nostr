@@ -10,7 +10,7 @@ pub enum Error {
     Json(#[from] serde_json::Error),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
