@@ -7,7 +7,7 @@ use nostr::url::Url;
 use nostr::SubscriptionFilter;
 use uuid::Uuid;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Subscription {
     filters: Vec<SubscriptionFilter>,
     channels: HashMap<Url, Channel>,

@@ -37,7 +37,7 @@ pub enum Error {
     Hex(#[from] nostr::hashes::hex::Error),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
     keys: Keys,

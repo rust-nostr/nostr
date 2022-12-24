@@ -15,7 +15,7 @@ use crate::relay::pool::RelayPoolNotifications;
 use crate::relay::Relay;
 use crate::RUNTIME;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Client {
     client: super::Client,
 }

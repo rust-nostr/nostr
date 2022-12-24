@@ -106,7 +106,7 @@ impl RelayPoolTask {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct RelayPool {
     relays: Arc<Mutex<HashMap<Url, Relay>>>,
     subscription: Arc<Mutex<Subscription>>,
