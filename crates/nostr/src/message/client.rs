@@ -7,7 +7,7 @@ use serde_json::json;
 use crate::{Event, SubscriptionFilter};
 
 /// Messages sent by clients, received by relays
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClientMessage {
     Event {
         event: Event,

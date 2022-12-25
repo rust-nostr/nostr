@@ -187,27 +187,26 @@ impl RelayPool {
         }
     }
 
-    /// Send event
-    pub async fn send_event(&self, event: Event) -> Result<(), Error> {
+    /// Send client message
+    pub async fn send_client_msg(&self, msg: ClientMessage) -> Result<(), Error> {
         let relays = self.relays.lock().await;
 
-        //Send to pool task to save in all received events
         if relays.is_empty() {
             return Err(Error::NoRelayConnected);
         }
 
-        if let Err(err) = self
-            .pool_task_sender
-            .send(RelayPoolEvent::EventSent(event.clone()))
-            .await
-        {
-            log::error!("send_event error: {}", err.to_string());
-        };
+        if let ClientMessage::Event { event } = &msg {
+            if let Err(err) = self
+                .pool_task_sender
+                .send(RelayPoolEvent::EventSent(event.clone()))
+                .await
+            {
+                log::error!("{}", err.to_string());
+            };
+        }
 
         for relay in relays.values() {
-            relay
-                .send_msg(ClientMessage::new_event(event.clone()))
-                .await?;
+            relay.send_msg(msg.clone()).await?;
         }
 
         Ok(())

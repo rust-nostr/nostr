@@ -9,8 +9,8 @@ use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{
-    Contact, Entity, Event, EventBuilder, Keys, Kind, KindBase, Metadata, Sha256Hash,
-    SubscriptionFilter, Tag,
+    ClientMessage, Contact, Entity, Event, EventBuilder, Keys, Kind, KindBase, Metadata,
+    Sha256Hash, SubscriptionFilter, Tag,
 };
 use tokio::sync::broadcast;
 
@@ -296,9 +296,17 @@ impl Client {
         Ok(self.pool.get_events_of(filters).await?)
     }
 
+    /// Send client message
+    pub async fn send_client_msg(&self, msg: ClientMessage) -> Result<(), Error> {
+        Ok(self.pool.send_client_msg(msg).await?)
+    }
+
     /// Send event
     pub async fn send_event(&self, event: Event) -> Result<(), Error> {
-        Ok(self.pool.send_event(event).await?)
+        Ok(self
+            .pool
+            .send_client_msg(ClientMessage::new_event(event))
+            .await?)
     }
 
     /// Update profile metadata
