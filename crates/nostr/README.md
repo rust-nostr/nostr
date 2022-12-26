@@ -49,7 +49,8 @@ fn main() -> Result<()> {
         .display_name("My Username")
         .about("Description")
         .picture(Url::parse("https://example.com/avatar.png")?)
-        .nip05("username@example.com");
+        .nip05("username@example.com")
+        .lud16("yuki@stacker.news");
 
     let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&my_keys)?;
 

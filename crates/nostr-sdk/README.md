@@ -74,7 +74,8 @@ async fn main() -> Result<()> {
         .display_name("My Username")
         .about("Description")
         .picture(Url::parse("https://example.com/avatar.png")?)
-        .nip05("username@example.com");
+        .nip05("username@example.com")
+        .lud16("yuki@stacker.news");
 
     // Update profile metadata
     client.update_profile(metadata).await?;

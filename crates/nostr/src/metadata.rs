@@ -19,9 +19,15 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub about: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub website: Option<Url>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub picture: Option<Url>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nip05: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lud06: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lud16: Option<String>,
 }
 
 impl Default for Metadata {
@@ -36,8 +42,11 @@ impl Metadata {
             name: None,
             display_name: None,
             about: None,
+            website: None,
             picture: None,
             nip05: None,
+            lud06: None,
+            lud16: None,
         }
     }
 
@@ -85,7 +94,15 @@ impl Metadata {
         }
     }
 
-    /// Set name
+    /// Set website
+    pub fn website(self, url: Url) -> Self {
+        Self {
+            website: Some(url),
+            ..self
+        }
+    }
+
+    /// Set picture
     pub fn picture(self, picture: Url) -> Self {
         Self {
             picture: Some(picture),
@@ -100,6 +117,28 @@ impl Metadata {
     {
         Self {
             nip05: Some(nip05.into()),
+            ..self
+        }
+    }
+
+    /// Set lud06 (LNURL)
+    pub fn lud06<S>(self, lud06: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            lud06: Some(lud06.into()),
+            ..self
+        }
+    }
+
+    /// Set lud16 (Lightning Address)
+    pub fn lud16<S>(self, lud16: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            lud16: Some(lud16.into()),
             ..self
         }
     }
