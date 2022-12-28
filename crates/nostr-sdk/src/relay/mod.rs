@@ -77,7 +77,7 @@ pub struct Relay {
 impl Relay {
     /// Create new `Relay`
     pub fn new(url: Url, pool_sender: Sender<RelayPoolEvent>, proxy: Option<SocketAddr>) -> Self {
-        let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(64);
+        let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(1024);
 
         Self {
             url,

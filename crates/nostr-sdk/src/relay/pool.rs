@@ -123,8 +123,8 @@ impl Default for RelayPool {
 impl RelayPool {
     /// Create new `RelayPool`
     pub fn new() -> Self {
-        let (notification_sender, _) = broadcast::channel(64);
-        let (pool_task_sender, pool_task_receiver) = mpsc::channel(64);
+        let (notification_sender, _) = broadcast::channel(1024);
+        let (pool_task_sender, pool_task_receiver) = mpsc::channel(1024);
 
         let mut relay_pool_task =
             RelayPoolTask::new(pool_task_receiver, notification_sender.clone());
