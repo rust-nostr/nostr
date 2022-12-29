@@ -457,16 +457,13 @@ impl Client {
 
         for event in events.into_iter() {
             for tag in event.tags.into_iter() {
-                let tag: Vec<String> = tag.as_vec();
-                if let Some(pk) = tag.get(1) {
-                    let pk = XOnlyPublicKey::from_str(pk)?;
-                    let relay_url = tag.get(2).cloned();
-                    let alias = tag.get(3).cloned();
-                    contact_list.push(Contact::new(
-                        pk,
-                        relay_url.unwrap_or_default(),
-                        alias.unwrap_or_default(),
-                    ));
+                if let Tag::ContactList {
+                    pk,
+                    relay_url,
+                    alias,
+                } = tag
+                {
+                    contact_list.push(Contact::new(pk, relay_url, alias));
                 }
             }
         }

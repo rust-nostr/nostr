@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use url::Url;
 
 pub use super::kind::{Kind, KindBase};
-pub use super::tag::{Marker, Tag, TagData, TagKind};
+pub use super::tag::{Marker, Tag, TagKind};
 use super::Event;
 use crate::key::{self, Keys};
 use crate::metadata::Metadata;
@@ -103,7 +103,7 @@ impl EventBuilder {
         loop {
             nonce += 1;
 
-            tags.push(Tag::new(TagData::POW { nonce, difficulty }));
+            tags.push(Tag::POW { nonce, difficulty });
 
             let created_at: u64 = timestamp();
             let id: Sha256Hash =
@@ -217,12 +217,10 @@ impl EventBuilder {
     pub fn set_contact_list(list: Vec<Contact>) -> Self {
         let tags: Vec<Tag> = list
             .iter()
-            .map(|contact| {
-                Tag::new(TagData::ContactList {
-                    pk: contact.pk,
-                    relay_url: contact.relay_url.clone(),
-                    alias: contact.alias.clone(),
-                })
+            .map(|contact| Tag::ContactList {
+                pk: contact.pk,
+                relay_url: contact.relay_url.clone(),
+                alias: contact.alias.clone(),
             })
             .collect();
 
@@ -248,7 +246,7 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::Base(KindBase::EncryptedDirectMessage),
             &msg,
-            &[Tag::new(TagData::PubKey(receiver_keys.public_key()))],
+            &[Tag::PubKey(receiver_keys.public_key())],
         ))
     }
 
@@ -257,10 +255,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let tags: Vec<Tag> = ids
-            .iter()
-            .map(|id| Tag::new(TagData::EventId(*id)))
-            .collect();
+        let tags: Vec<Tag> = ids.iter().map(|id| Tag::EventId(*id)).collect();
 
         Self::new(
             Kind::Base(KindBase::EventDeletion),
@@ -271,10 +266,7 @@ impl EventBuilder {
 
     /// Add reaction (like/upvote, dislike/downvote) to an event
     pub fn new_reaction(event: &Event, positive: bool) -> Self {
-        let tags: &[Tag] = &[
-            Tag::new(TagData::EventId(event.id)),
-            Tag::new(TagData::PubKey(event.pubkey)),
-        ];
+        let tags: &[Tag] = &[Tag::EventId(event.id), Tag::PubKey(event.pubkey)];
 
         let content: &str = match positive {
             true => "+",
@@ -348,7 +340,7 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::Base(KindBase::ChannelMetadata),
             metadata.to_string(),
-            &[Tag::new(TagData::Nip10E(channel_id, relay_url, None))],
+            &[Tag::Nip10E(channel_id, relay_url, None)],
         ))
     }
 
@@ -366,11 +358,7 @@ impl EventBuilder {
         Self::new(
             Kind::Base(KindBase::ChannelMessage),
             content,
-            &[Tag::new(TagData::Nip10E(
-                channel_id,
-                relay_url,
-                Some(Marker::Root),
-            ))],
+            &[Tag::Nip10E(channel_id, relay_url, Some(Marker::Root))],
         )
     }
 
@@ -391,7 +379,7 @@ impl EventBuilder {
         Self::new(
             Kind::Base(KindBase::ChannelHideMessage),
             &content.to_string(),
-            &[Tag::new(TagData::EventId(message_id))],
+            &[Tag::EventId(message_id)],
         )
     }
 
@@ -409,7 +397,7 @@ impl EventBuilder {
         Self::new(
             Kind::Base(KindBase::ChannelMuteUser),
             &content.to_string(),
-            &[Tag::new(TagData::PubKey(pubkey))],
+            &[Tag::PubKey(pubkey)],
         )
     }
 }

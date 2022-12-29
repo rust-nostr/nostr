@@ -4,7 +4,7 @@
 
 use std::{thread, time};
 
-use nostr::event::KindBase;
+use nostr::event::{KindBase, Tag};
 use nostr::key::FromSkStr;
 use nostr::url::Url;
 use nostr::util::nips::nip04::decrypt;
@@ -82,48 +82,50 @@ fn main() -> Result<()> {
                     subscription_id: _,
                 } => {
                     if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
-                        if event.tags[0].content() == Some(&alice_keys.public_key_as_str()) {
-                            println!("New DM to alice");
-                            println!("Encrypted: {}", event.content);
-                            println!(
-                                "Decrypted: {}",
-                                decrypt(
-                                    &alice_keys.secret_key()?,
-                                    &bob_keys.public_key(),
-                                    &event.content
+                        if let Some(Tag::PubKey(pubkey)) = event.tags.first() {
+                            if pubkey == &alice_keys.public_key() {
+                                println!("New DM to alice");
+                                println!("Encrypted: {}", event.content);
+                                println!(
+                                    "Decrypted: {}",
+                                    decrypt(
+                                        &alice_keys.secret_key()?,
+                                        &bob_keys.public_key(),
+                                        &event.content
+                                    )?
+                                );
+                                thread::sleep(time::Duration::from_millis(5000));
+                                let alice_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
+                                    &alice_keys,
+                                    &bob_keys,
+                                    alice_to_bob,
                                 )?
-                            );
-                            thread::sleep(time::Duration::from_millis(5000));
-                            let alice_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
-                                &alice_keys,
-                                &bob_keys,
-                                alice_to_bob,
-                            )?
-                            .to_event(&alice_keys)?;
-                            socket.write_message(WsMessage::Text(
-                                ClientMessage::new_event(alice_encrypted_msg).to_json(),
-                            ))?;
-                        } else if event.tags[0].content() == Some(&bob_keys.public_key_as_str()) {
-                            println!("New DM to bob");
-                            println!("Encrypted: {}", event.content);
-                            println!(
-                                "Decrypted: {}",
-                                decrypt(
-                                    &alice_keys.secret_key()?,
-                                    &bob_keys.public_key(),
-                                    &event.content
+                                .to_event(&alice_keys)?;
+                                socket.write_message(WsMessage::Text(
+                                    ClientMessage::new_event(alice_encrypted_msg).to_json(),
+                                ))?;
+                            } else if pubkey == &bob_keys.public_key() {
+                                println!("New DM to bob");
+                                println!("Encrypted: {}", event.content);
+                                println!(
+                                    "Decrypted: {}",
+                                    decrypt(
+                                        &alice_keys.secret_key()?,
+                                        &bob_keys.public_key(),
+                                        &event.content
+                                    )?
+                                );
+                                thread::sleep(time::Duration::from_millis(5000));
+                                let bob_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
+                                    &bob_keys,
+                                    &alice_keys,
+                                    bob_to_alice,
                                 )?
-                            );
-                            thread::sleep(time::Duration::from_millis(5000));
-                            let bob_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
-                                &bob_keys,
-                                &alice_keys,
-                                bob_to_alice,
-                            )?
-                            .to_event(&bob_keys)?;
-                            socket.write_message(WsMessage::Text(
-                                ClientMessage::new_event(bob_encrypted_msg).to_json(),
-                            ))?;
+                                .to_event(&bob_keys)?;
+                                socket.write_message(WsMessage::Text(
+                                    ClientMessage::new_event(bob_encrypted_msg).to_json(),
+                                ))?;
+                            }
                         }
                     } else {
                         println!("{:#?}", event);

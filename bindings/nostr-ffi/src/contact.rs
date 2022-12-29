@@ -5,6 +5,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use nostr::secp256k1::XOnlyPublicKey;
+use nostr::url::Url;
 use nostr::Contact as ContactSdk;
 
 use crate::error::Result;
@@ -23,9 +24,10 @@ impl Deref for Contact {
 impl Contact {
     pub fn new(alias: String, pk: String, relay_url: String) -> Result<Self> {
         let pk = XOnlyPublicKey::from_str(&pk)?;
+        let relay_url = Url::parse(&relay_url)?;
 
         Ok(Self {
-            contact: ContactSdk::new(pk, &relay_url, &alias),
+            contact: ContactSdk::new(pk, relay_url, &alias),
         })
     }
 
@@ -38,6 +40,6 @@ impl Contact {
     }
 
     pub fn relay_url(&self) -> String {
-        self.contact.relay_url.clone()
+        self.contact.relay_url.to_string()
     }
 }

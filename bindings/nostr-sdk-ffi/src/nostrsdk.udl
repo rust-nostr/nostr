@@ -72,6 +72,7 @@ interface Event {
 };
 
 interface EventBuilder {
+    [Throws=NostrError]
     constructor(Kind kind, string content, sequence<sequence<string>> tags);
     [Throws=NostrError]
     Event to_event(Keys keys);
@@ -81,7 +82,7 @@ interface EventBuilder {
     constructor(AccountMetadata metadata);
     [Throws=NostrError, Name=add_recommended_relay]
     constructor(string url);
-    [Name=new_text_note]
+    [Throws=NostrError, Name=new_text_note]
     constructor(string content, sequence<sequence<string>> tags);
     [Name=set_contact_list]
     constructor(sequence<Contact> list);

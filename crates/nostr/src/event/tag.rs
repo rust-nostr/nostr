@@ -2,20 +2,34 @@
 // Distributed under the MIT software license
 
 use std::fmt;
+use std::num::ParseIntError;
 use std::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::XOnlyPublicKey;
+use serde::de::Error as DeserializerError;
+use serde::ser::SerializeSeq;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
 
 use crate::Sha256Hash;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
     #[error("impossible to parse marker")]
     MarkerParseError,
     #[error("impossible to find kind")]
     KindNotFound,
+    #[error(transparent)]
+    ParseIntError(#[from] ParseIntError),
+    #[error("secp256k1 error: {0}")]
+    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    /// Hex decoding error
+    #[error("hex decoding error: {0}")]
+    Hex(#[from] bitcoin::hashes::hex::Error),
+    /// Url parse error
+    #[error("impossible to parse url: {0}")]
+    Url(#[from] url::ParseError),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -85,13 +99,14 @@ where
     }
 }
 
-pub enum TagData {
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+pub enum Tag {
     Generic(TagKind, Vec<String>),
     EventId(Sha256Hash),
     PubKey(XOnlyPublicKey),
     ContactList {
         pk: XOnlyPublicKey,
-        relay_url: String,
+        relay_url: Url,
         alias: String,
     },
     POW {
@@ -109,23 +124,101 @@ pub enum TagData {
     },
 }
 
-impl From<TagData> for Vec<String> {
-    fn from(data: TagData) -> Self {
+impl Tag {
+    pub fn parse(data: Vec<String>) -> Result<Self, Error> {
+        Tag::try_from(data)
+    }
+
+    pub fn as_vec(&self) -> Vec<String> {
+        self.clone().into()
+    }
+}
+
+impl TryFrom<Vec<String>> for Tag {
+    type Error = Error;
+
+    fn try_from(tag: Vec<String>) -> Result<Self, Self::Error> {
+        let tag_len: usize = tag.len();
+        let tag_kind: TagKind = match tag.first() {
+            Some(kind) => TagKind::from(kind),
+            None => return Err(Error::KindNotFound),
+        };
+
+        if tag_len == 1 {
+            match tag_kind {
+                TagKind::ContentWarning => Ok(Self::ContentWarning { reason: None }),
+                _ => Ok(Self::Generic(tag_kind, Vec::new())),
+            }
+        } else if tag_len == 2 {
+            let content: &str = &tag[1];
+            match tag_kind {
+                TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?)),
+                TagKind::E => Ok(Self::EventId(Sha256Hash::from_str(content)?)),
+                TagKind::ContentWarning => Ok(Self::ContentWarning {
+                    reason: Some(content.to_string()),
+                }),
+                _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
+            }
+        } else if tag_len == 3 {
+            match tag_kind {
+                TagKind::E => Ok(Self::Nip10E(
+                    Sha256Hash::from_str(&tag[1])?,
+                    Url::parse(&tag[2])?,
+                    None,
+                )),
+                TagKind::Nonce => Ok(Self::POW {
+                    nonce: tag[1].parse()?,
+                    difficulty: tag[2].parse()?,
+                }),
+                _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
+            }
+        } else if tag_len == 4 {
+            match tag_kind {
+                TagKind::P => Ok(Self::ContactList {
+                    pk: XOnlyPublicKey::from_str(&tag[1])?,
+                    relay_url: Url::parse(&tag[2])?,
+                    alias: tag[3].clone(),
+                }),
+                TagKind::E => Ok(Self::Nip10E(
+                    Sha256Hash::from_str(&tag[1])?,
+                    Url::parse(&tag[2])?,
+                    Some(Marker::from_str(&tag[3])?),
+                )),
+                TagKind::Delegation => Ok(Self::Delegation {
+                    delegator_pk: XOnlyPublicKey::from_str(&tag[1])?,
+                    conditions: tag[2].clone(),
+                    sig: Signature::from_str(&tag[3])?,
+                }),
+                _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
+            }
+        } else {
+            Ok(Self::Generic(tag_kind, tag[1..].to_vec()))
+        }
+    }
+}
+
+impl From<Tag> for Vec<String> {
+    fn from(data: Tag) -> Self {
         match data {
-            TagData::Generic(kind, data) => vec![vec![kind.to_string()], data].concat(),
-            TagData::EventId(id) => vec![TagKind::E.to_string(), id.to_string()],
-            TagData::PubKey(pk) => vec![TagKind::P.to_string(), pk.to_string()],
-            TagData::ContactList {
+            Tag::Generic(kind, data) => vec![vec![kind.to_string()], data].concat(),
+            Tag::EventId(id) => vec![TagKind::E.to_string(), id.to_string()],
+            Tag::PubKey(pk) => vec![TagKind::P.to_string(), pk.to_string()],
+            Tag::ContactList {
                 pk,
                 relay_url,
                 alias,
-            } => vec![TagKind::P.to_string(), pk.to_string(), relay_url, alias],
-            TagData::POW { nonce, difficulty } => vec![
+            } => vec![
+                TagKind::P.to_string(),
+                pk.to_string(),
+                relay_url.to_string(),
+                alias,
+            ],
+            Tag::POW { nonce, difficulty } => vec![
                 TagKind::Nonce.to_string(),
                 nonce.to_string(),
                 difficulty.to_string(),
             ],
-            TagData::Nip10E(id, relay_url, marker) => {
+            Tag::Nip10E(id, relay_url, marker) => {
                 let mut tag = vec![
                     TagKind::E.to_string(),
                     id.to_string(),
@@ -136,7 +229,7 @@ impl From<TagData> for Vec<String> {
                 }
                 tag
             }
-            TagData::Delegation {
+            Tag::Delegation {
                 delegator_pk,
                 conditions,
                 sig,
@@ -146,7 +239,7 @@ impl From<TagData> for Vec<String> {
                 conditions,
                 sig.to_string(),
             ],
-            TagData::ContentWarning { reason } => {
+            Tag::ContentWarning { reason } => {
                 let mut tag = vec![TagKind::ContentWarning.to_string()];
                 if let Some(reason) = reason {
                     tag.push(reason);
@@ -157,32 +250,195 @@ impl From<TagData> for Vec<String> {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
-pub struct Tag(Vec<String>);
-
-impl From<Vec<String>> for Tag {
-    fn from(list: Vec<String>) -> Self {
-        Self(list)
+impl Serialize for Tag {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let data: Vec<String> = self.as_vec();
+        let mut seq = serializer.serialize_seq(Some(data.len()))?;
+        for element in data.into_iter() {
+            seq.serialize_element(&element)?;
+        }
+        seq.end()
     }
 }
 
-impl Tag {
-    pub fn new(data: TagData) -> Self {
-        Self(data.into())
+impl<'de> Deserialize<'de> for Tag {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        type Data = Vec<String>;
+        let vec: Vec<String> = Data::deserialize(deserializer)?;
+        Self::try_from(vec).map_err(DeserializerError::custom)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Event, Result};
+
+    #[test]
+    fn test_deserialize_tag_from_event() -> Result<()> {
+        // Got this fresh off the wire
+        let event: &str = r#"{"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","created_at":1640839235,"kind":4,"tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]],"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"}"#;
+        let event = Event::from_json(event)?;
+        let tag = event.tags.first().unwrap();
+
+        assert_eq!(
+            tag,
+            &Tag::PubKey(XOnlyPublicKey::from_str(
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            )?)
+        );
+
+        Ok(())
     }
 
-    pub fn kind(&self) -> Result<TagKind, Error> {
-        match self.0.first() {
-            Some(kind) => Ok(TagKind::from(kind)),
-            None => Err(Error::KindNotFound),
-        }
+    #[test]
+    fn test_serialize_tag_to_event() -> Result<()> {
+        let pubkey = XOnlyPublicKey::from_str(
+            "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
+        )?;
+        let event = Event::new_dummy(
+            "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+            "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3",
+            1671739153,
+            4,
+            vec![Tag::PubKey(pubkey)],
+            "8y4MRYrb4ztvXO2NmsHvUA==?iv=MplZo7oSdPfH/vdMC8Hmwg==",
+            "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8"
+        )?;
+
+        let event_json: &str = r#"{"id":"378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7","pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","created_at":1671739153,"kind":4,"tags":[["p","68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272"]],"content":"8y4MRYrb4ztvXO2NmsHvUA==?iv=MplZo7oSdPfH/vdMC8Hmwg==","sig":"fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8"}"#;
+
+        assert_eq!(&event.as_json()?, event_json);
+
+        Ok(())
     }
 
-    pub fn content(&self) -> Option<&str> {
-        self.0.get(1).map(|x| &**x)
-    }
+    #[test]
+    fn test_tag_parse() -> Result<()> {
+        assert_eq!(Tag::parse(vec![]).unwrap_err(), Error::KindNotFound);
 
-    pub fn as_vec(&self) -> Vec<String> {
-        self.0.clone()
+        assert_eq!(
+            vec!["content-warning"],
+            Tag::ContentWarning { reason: None }.as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            ],
+            Tag::PubKey(XOnlyPublicKey::from_str(
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            )?)
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+            ],
+            Tag::EventId(Sha256Hash::from_str(
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+            )?)
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec!["content-warning", "reason"],
+            Tag::ContentWarning {
+                reason: Some(String::from("reason"))
+            }
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec!["client", "nostr-sdk"],
+            Tag::Generic(
+                TagKind::Custom("client".to_string()),
+                vec!["nostr-sdk".to_string()]
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "wss://relay.damus.io/"
+            ],
+            Tag::Nip10E(
+                Sha256Hash::from_str(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                Url::parse("wss://relay.damus.io")?,
+                None
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec!["nonce", "1", "20"],
+            Tag::POW {
+                nonce: 1,
+                difficulty: 20
+            }
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "wss://relay.damus.io/",
+                "alias",
+            ],
+            Tag::ContactList {
+                pk: XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                relay_url: Url::parse("wss://relay.damus.io")?,
+                alias: String::from("alias")
+            }
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "wss://relay.damus.io/",
+                "reply"
+            ],
+            Tag::Nip10E(
+                Sha256Hash::from_str(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                Url::parse("wss://relay.damus.io")?,
+                Some(Marker::Reply)
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "delegation",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "kind=1",
+                "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
+            ],
+            Tag::Delegation { delegator_pk: XOnlyPublicKey::from_str(
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            )?, conditions: String::from("kind=1"), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8")? }
+            .as_vec()
+        );
+
+        Ok(())
     }
 }

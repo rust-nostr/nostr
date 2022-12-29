@@ -33,11 +33,15 @@ impl Deref for EventBuilder {
 }
 
 impl EventBuilder {
-    pub fn new(kind: Kind, content: String, tags: Vec<Vec<String>>) -> Self {
-        let tags: Vec<Tag> = tags.into_iter().map(|tag| tag.into()).collect();
-        Self {
-            builder: EventBuilderSdk::new(kind.into(), &content, &tags),
+    pub fn new(kind: Kind, content: String, tags: Vec<Vec<String>>) -> Result<Self> {
+        let mut new_tags: Vec<Tag> = Vec::new();
+        for tag in tags.into_iter() {
+            new_tags.push(Tag::try_from(tag)?);
         }
+
+        Ok(Self {
+            builder: EventBuilderSdk::new(kind.into(), &content, &new_tags),
+        })
     }
 
     pub fn to_event(&self, keys: Arc<Keys>) -> Result<Arc<Event>> {
@@ -70,11 +74,15 @@ impl EventBuilder {
         })
     }
 
-    pub fn new_text_note(content: String, tags: Vec<Vec<String>>) -> Self {
-        let tags: Vec<Tag> = tags.into_iter().map(|tag| tag.into()).collect();
-        Self {
-            builder: EventBuilderSdk::new_text_note(&content, &tags),
+    pub fn new_text_note(content: String, tags: Vec<Vec<String>>) -> Result<Self> {
+        let mut new_tags: Vec<Tag> = Vec::new();
+        for tag in tags.into_iter() {
+            new_tags.push(Tag::try_from(tag)?);
         }
+
+        Ok(Self {
+            builder: EventBuilderSdk::new_text_note(&content, &new_tags),
+        })
     }
 
     pub fn set_contact_list(list: Vec<Arc<Contact>>) -> Self {

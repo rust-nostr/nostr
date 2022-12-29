@@ -15,7 +15,7 @@ pub mod tag;
 
 pub use self::builder::EventBuilder;
 pub use self::kind::{Kind, KindBase};
-pub use self::tag::{Marker, Tag, TagData, TagKind};
+pub use self::tag::{Marker, Tag, TagKind};
 use crate::Sha256Hash;
 
 #[derive(Debug, thiserror::Error)]
