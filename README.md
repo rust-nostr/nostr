@@ -3,8 +3,9 @@
 ## Structure
 
 - [bindings](./bindings/):
-    - [nostr-ffi](./bindings/nostr-ffi/): UniFFI bindings of the [nostr][] crate
-    - [nostr-sdk-ffi](./bindings/nostr-sdk-ffi/): UniFFI bindings of the [nostr-sdk][] crate
+    - UniFFI (Kotlin, Swift, Python, Ruby):
+        * [nostr-ffi](./bindings/nostr-ffi/): UniFFI bindings of the [nostr][] crate
+        * [nostr-sdk-ffi](./bindings/nostr-sdk-ffi/): UniFFI bindings of the [nostr-sdk][] crate
 - [crates](./crates/):
     - [nostr][]: Rust implementation of Nostr protocol.
     - [nostr-sdk][]: High level client library.
