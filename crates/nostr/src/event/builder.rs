@@ -250,6 +250,18 @@ impl EventBuilder {
         ))
     }
 
+    /// Boost event
+    pub fn boost(event: &Event) -> Self {
+        Self::new(
+            Kind::Base(KindBase::Boost),
+            event.content.clone(),
+            &[
+                Tag::Event(event.id, None, Some(Marker::Root)),
+                Tag::PubKey(event.pubkey, None),
+            ],
+        )
+    }
+
     /// Create delete event
     pub fn delete<S>(ids: Vec<Sha256Hash>, reason: Option<S>) -> Self
     where

@@ -512,6 +512,12 @@ impl Client {
         self.send_event(event).await
     }
 
+    /// Boost event
+    pub async fn boost_event(&self, event: &Event) -> Result<(), Error> {
+        let event: Event = EventBuilder::boost(event).to_event(&self.keys)?;
+        self.send_event(event).await
+    }
+
     /// Delete event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
