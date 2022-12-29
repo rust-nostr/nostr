@@ -147,11 +147,13 @@ impl Keys {
     }
 
     /// Get secret key as string
+    #[deprecated]
     pub fn secret_key_as_str(&self) -> Result<String, Error> {
         Ok(self.secret_key()?.display_secret().to_string())
     }
 
     /// Get public key as string
+    #[deprecated]
     pub fn public_key_as_str(&self) -> String {
         self.public_key.to_string()
     }

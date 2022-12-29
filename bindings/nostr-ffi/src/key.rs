@@ -65,10 +65,10 @@ impl Keys {
     }
 
     pub fn public_key(&self) -> String {
-        self.keys.public_key_as_str()
+        self.keys.public_key().to_string()
     }
 
     pub fn secret_key(&self) -> Result<String> {
-        Ok(self.keys.secret_key_as_str()?)
+        Ok(self.keys.secret_key()?.display_secret().to_string())
     }
 }
