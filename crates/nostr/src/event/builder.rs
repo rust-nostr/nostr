@@ -246,7 +246,7 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::Base(KindBase::EncryptedDirectMessage),
             &msg,
-            &[Tag::PubKey(receiver_keys.public_key())],
+            &[Tag::PubKey(receiver_keys.public_key(), None)],
         ))
     }
 
@@ -255,7 +255,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let tags: Vec<Tag> = ids.iter().map(|id| Tag::EventId(*id)).collect();
+        let tags: Vec<Tag> = ids.iter().map(|id| Tag::Event(*id, None, None)).collect();
 
         Self::new(
             Kind::Base(KindBase::EventDeletion),
@@ -266,7 +266,10 @@ impl EventBuilder {
 
     /// Add reaction (like/upvote, dislike/downvote) to an event
     pub fn new_reaction(event: &Event, positive: bool) -> Self {
-        let tags: &[Tag] = &[Tag::EventId(event.id), Tag::PubKey(event.pubkey)];
+        let tags: &[Tag] = &[
+            Tag::Event(event.id, None, None),
+            Tag::PubKey(event.pubkey, None),
+        ];
 
         let content: &str = match positive {
             true => "+",
@@ -340,7 +343,7 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::Base(KindBase::ChannelMetadata),
             metadata.to_string(),
-            &[Tag::Nip10E(channel_id, relay_url, None)],
+            &[Tag::Event(channel_id, Some(relay_url), None)],
         ))
     }
 
@@ -358,7 +361,7 @@ impl EventBuilder {
         Self::new(
             Kind::Base(KindBase::ChannelMessage),
             content,
-            &[Tag::Nip10E(channel_id, relay_url, Some(Marker::Root))],
+            &[Tag::Event(channel_id, Some(relay_url), Some(Marker::Root))],
         )
     }
 
@@ -379,7 +382,7 @@ impl EventBuilder {
         Self::new(
             Kind::Base(KindBase::ChannelHideMessage),
             &content.to_string(),
-            &[Tag::EventId(message_id)],
+            &[Tag::Event(message_id, None, None)],
         )
     }
 
@@ -397,7 +400,7 @@ impl EventBuilder {
         Self::new(
             Kind::Base(KindBase::ChannelMuteUser),
             &content.to_string(),
-            &[Tag::PubKey(pubkey)],
+            &[Tag::PubKey(pubkey, None)],
         )
     }
 }

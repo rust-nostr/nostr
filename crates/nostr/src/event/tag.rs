@@ -102,18 +102,17 @@ where
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Tag {
     Generic(TagKind, Vec<String>),
-    EventId(Sha256Hash),
-    PubKey(XOnlyPublicKey),
+    Event(Sha256Hash, Option<Url>, Option<Marker>),
+    PubKey(XOnlyPublicKey, Option<Url>),
     ContactList {
         pk: XOnlyPublicKey,
-        relay_url: Url,
-        alias: String,
+        relay_url: Option<Url>,
+        alias: Option<String>,
     },
     POW {
         nonce: u128,
         difficulty: u8,
     },
-    Nip10E(Sha256Hash, Url, Option<Marker>),
     Delegation {
         delegator_pk: XOnlyPublicKey,
         conditions: String,
@@ -152,8 +151,8 @@ impl TryFrom<Vec<String>> for Tag {
         } else if tag_len == 2 {
             let content: &str = &tag[1];
             match tag_kind {
-                TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?)),
-                TagKind::E => Ok(Self::EventId(Sha256Hash::from_str(content)?)),
+                TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?, None)),
+                TagKind::E => Ok(Self::Event(Sha256Hash::from_str(content)?, None, None)),
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(content.to_string()),
                 }),
@@ -161,9 +160,13 @@ impl TryFrom<Vec<String>> for Tag {
             }
         } else if tag_len == 3 {
             match tag_kind {
-                TagKind::E => Ok(Self::Nip10E(
+                TagKind::P => Ok(Self::PubKey(
+                    XOnlyPublicKey::from_str(&tag[1])?,
+                    Url::parse(&tag[2]).ok(),
+                )),
+                TagKind::E => Ok(Self::Event(
                     Sha256Hash::from_str(&tag[1])?,
-                    Url::parse(&tag[2])?,
+                    Url::parse(&tag[2]).ok(),
                     None,
                 )),
                 TagKind::Nonce => Ok(Self::POW {
@@ -176,13 +179,13 @@ impl TryFrom<Vec<String>> for Tag {
             match tag_kind {
                 TagKind::P => Ok(Self::ContactList {
                     pk: XOnlyPublicKey::from_str(&tag[1])?,
-                    relay_url: Url::parse(&tag[2])?,
-                    alias: tag[3].clone(),
+                    relay_url: Url::parse(&tag[2]).ok(),
+                    alias: tag[3].is_empty().then_some(tag[3].clone()),
                 }),
-                TagKind::E => Ok(Self::Nip10E(
+                TagKind::E => Ok(Self::Event(
                     Sha256Hash::from_str(&tag[1])?,
-                    Url::parse(&tag[2])?,
-                    Some(Marker::from_str(&tag[3])?),
+                    Url::parse(&tag[2]).ok(),
+                    Marker::from_str(&tag[3]).ok(),
                 )),
                 TagKind::Delegation => Ok(Self::Delegation {
                     delegator_pk: XOnlyPublicKey::from_str(&tag[1])?,
@@ -201,8 +204,26 @@ impl From<Tag> for Vec<String> {
     fn from(data: Tag) -> Self {
         match data {
             Tag::Generic(kind, data) => vec![vec![kind.to_string()], data].concat(),
-            Tag::EventId(id) => vec![TagKind::E.to_string(), id.to_string()],
-            Tag::PubKey(pk) => vec![TagKind::P.to_string(), pk.to_string()],
+            Tag::Event(id, relay_url, marker) => {
+                let mut tag = vec![TagKind::E.to_string(), id.to_string()];
+                if let Some(relay_url) = relay_url {
+                    tag.push(relay_url.to_string());
+                }
+                if let Some(marker) = marker {
+                    if tag.len() == 2 {
+                        tag.push(String::new());
+                    }
+                    tag.push(marker.to_string());
+                }
+                tag
+            }
+            Tag::PubKey(pk, relay_url) => {
+                let mut tag = vec![TagKind::P.to_string(), pk.to_string()];
+                if let Some(relay_url) = relay_url {
+                    tag.push(relay_url.to_string());
+                }
+                tag
+            }
             Tag::ContactList {
                 pk,
                 relay_url,
@@ -210,25 +231,14 @@ impl From<Tag> for Vec<String> {
             } => vec![
                 TagKind::P.to_string(),
                 pk.to_string(),
-                relay_url.to_string(),
-                alias,
+                relay_url.map(|u| u.to_string()).unwrap_or_default(),
+                alias.unwrap_or_default(),
             ],
             Tag::POW { nonce, difficulty } => vec![
                 TagKind::Nonce.to_string(),
                 nonce.to_string(),
                 difficulty.to_string(),
             ],
-            Tag::Nip10E(id, relay_url, marker) => {
-                let mut tag = vec![
-                    TagKind::E.to_string(),
-                    id.to_string(),
-                    relay_url.to_string(),
-                ];
-                if let Some(marker) = marker {
-                    tag.push(marker.to_string());
-                }
-                tag
-            }
             Tag::Delegation {
                 delegator_pk,
                 conditions,
@@ -289,9 +299,12 @@ mod tests {
 
         assert_eq!(
             tag,
-            &Tag::PubKey(XOnlyPublicKey::from_str(
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            )?)
+            &Tag::PubKey(
+                XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                None
+            )
         );
 
         Ok(())
@@ -307,7 +320,7 @@ mod tests {
             "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3",
             1671739153,
             4,
-            vec![Tag::PubKey(pubkey)],
+            vec![Tag::PubKey(pubkey, None)],
             "8y4MRYrb4ztvXO2NmsHvUA==?iv=MplZo7oSdPfH/vdMC8Hmwg==",
             "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8"
         )?;
@@ -333,9 +346,12 @@ mod tests {
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ],
-            Tag::PubKey(XOnlyPublicKey::from_str(
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            )?)
+            Tag::PubKey(
+                XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                None
+            )
             .as_vec()
         );
 
@@ -344,9 +360,13 @@ mod tests {
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
             ],
-            Tag::EventId(Sha256Hash::from_str(
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-            )?)
+            Tag::Event(
+                Sha256Hash::from_str(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                None,
+                None
+            )
             .as_vec()
         );
 
@@ -369,15 +389,30 @@ mod tests {
 
         assert_eq!(
             vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "wss://relay.damus.io/"
+            ],
+            Tag::PubKey(
+                XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                Some(Url::parse("wss://relay.damus.io")?)
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 "wss://relay.damus.io/"
             ],
-            Tag::Nip10E(
+            Tag::Event(
                 Sha256Hash::from_str(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
-                Url::parse("wss://relay.damus.io")?,
+                Some(Url::parse("wss://relay.damus.io")?),
                 None
             )
             .as_vec()
@@ -403,8 +438,8 @@ mod tests {
                 pk: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )?,
-                relay_url: Url::parse("wss://relay.damus.io")?,
-                alias: String::from("alias")
+                relay_url: Some(Url::parse("wss://relay.damus.io")?),
+                alias: Some(String::from("alias"))
             }
             .as_vec()
         );
@@ -413,14 +448,14 @@ mod tests {
             vec![
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io/",
+                "",
                 "reply"
             ],
-            Tag::Nip10E(
+            Tag::Event(
                 Sha256Hash::from_str(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
-                Url::parse("wss://relay.damus.io")?,
+                None,
                 Some(Marker::Reply)
             )
             .as_vec()

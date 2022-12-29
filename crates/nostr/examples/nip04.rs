@@ -82,7 +82,7 @@ fn main() -> Result<()> {
                     subscription_id: _,
                 } => {
                     if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
-                        if let Some(Tag::PubKey(pubkey)) = event.tags.first() {
+                        if let Some(Tag::PubKey(pubkey, _)) = event.tags.first() {
                             if pubkey == &alice_keys.public_key() {
                                 println!("New DM to alice");
                                 println!("Encrypted: {}", event.content);

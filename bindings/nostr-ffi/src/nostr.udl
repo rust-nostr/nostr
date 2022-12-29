@@ -104,10 +104,10 @@ interface EventBuilder {
 
 interface Contact {
     [Throws=NostrError]
-    constructor(string alias, string pk, string relay_url);
-    string alias();
+    constructor(string pk, optional string? relay_url = null, optional string? alias = null);
+    string? alias();
     string public_key();
-    string relay_url();
+    string? relay_url();
 };
 
 interface AccountMetadata {

@@ -22,16 +22,20 @@ impl Deref for Contact {
 }
 
 impl Contact {
-    pub fn new(alias: String, pk: String, relay_url: String) -> Result<Self> {
+    pub fn new(pk: String, relay_url: Option<String>, alias: Option<String>) -> Result<Self> {
         let pk = XOnlyPublicKey::from_str(&pk)?;
-        let relay_url = Url::parse(&relay_url)?;
+        let relay_url: Option<Url> = if let Some(url) = relay_url {
+            Some(Url::parse(&url)?)
+        } else {
+            None
+        };
 
         Ok(Self {
-            contact: ContactSdk::new(pk, relay_url, &alias),
+            contact: ContactSdk::new(pk, relay_url, alias),
         })
     }
 
-    pub fn alias(&self) -> String {
+    pub fn alias(&self) -> Option<String> {
         self.contact.alias.clone()
     }
 
@@ -39,7 +43,7 @@ impl Contact {
         self.contact.pk.to_string()
     }
 
-    pub fn relay_url(&self) -> String {
-        self.contact.relay_url.to_string()
+    pub fn relay_url(&self) -> Option<String> {
+        self.contact.relay_url.clone().map(|u| u.to_string())
     }
 }
