@@ -6,6 +6,8 @@ use std::str::FromStr;
 use bip39::Mnemonic;
 use bitcoin::hashes::hmac::{Hmac, HmacEngine};
 use bitcoin::hashes::{sha512, Hash, HashEngine};
+use bitcoin::secp256k1::rand::rngs::OsRng;
+use bitcoin::secp256k1::rand::RngCore;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use bitcoin::Network;
@@ -58,8 +60,9 @@ impl GenerateMnemonic for Keys {
 
     fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err> {
         let mut h = HmacEngine::<sha512::Hash>::new(b"nostr");
-        let random: [u8; 32] = bitcoin::secp256k1::rand::random();
-        h.input(&random);
+        let mut os_random = [0u8; 32];
+        OsRng.fill_bytes(&mut os_random);
+        h.input(&os_random);
         h.input(&time::timestamp_nanos().to_be_bytes());
         let entropy: [u8; 64] = Hmac::from_engine(h).into_inner();
         let len: usize = word_count * 4 / 3;

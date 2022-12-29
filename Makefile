@@ -10,6 +10,7 @@ precommit: test
 	$(Q)cargo clippy --all
 	$(Q)cargo clippy -p nostr --no-default-features
 	$(Q)cargo clippy -p nostr --features all-nips
+	$(Q)cargo clippy -p nostr --features blocking
 	$(Q)cargo clippy -p nostr-sdk --no-default-features
 	$(Q)cargo clippy -p nostr-sdk --features all-nips
 	$(Q)cargo clippy -p nostr-sdk --features blocking

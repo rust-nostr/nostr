@@ -13,7 +13,7 @@ keywords = ["nostr", "sdk", "rust"]
 
 [features]
 default = ["all-nips"]
-blocking = ["dep:once_cell"]
+blocking = ["dep:once_cell", "nostr/blocking"]
 all-nips = ["nostr/all-nips"]
 nip04 = ["nostr/nip04"]
 nip05 = ["nostr/nip05"]

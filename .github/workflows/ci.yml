@@ -29,6 +29,7 @@ jobs:
           [
             -p nostr --no-default-features,
             -p nostr --features all-nips,
+            -p nostr --features blocking,
             -p nostr-sdk --no-default-features,
             -p nostr-sdk --features all-nips,
             -p nostr-sdk --features blocking,

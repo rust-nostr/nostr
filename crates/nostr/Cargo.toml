@@ -18,6 +18,7 @@ nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip05 = ["dep:reqwest"]
 nip06 = ["dep:bip39"]
 nip11 = ["dep:reqwest"]
+blocking = ["reqwest?/blocking"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
@@ -28,7 +29,7 @@ cbc = { version = "0.1", features = ["alloc"], optional = true }
 log = "0.4"
 once_cell = "1"
 regex = "1.7"
-reqwest = { version = "0.11", default-features = false, features = ["blocking", "json", "rustls-tls-webpki-roots", "socks"], optional = true }
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_repr = "0.1"
@@ -46,7 +47,7 @@ required-features = ["nip04"]
 
 [[example]]
 name = "nip05"
-required-features = ["nip05"]
+required-features = ["nip05", "blocking"]
 
 [[example]]
 name = "nip06"
@@ -54,4 +55,4 @@ required-features = ["nip06"]
 
 [[example]]
 name = "nip11"
-required-features = ["nip11"]
+required-features = ["nip11", "blocking"]
