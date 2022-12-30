@@ -48,12 +48,12 @@ fn main() -> Result<()> {
     );
 
     println!("Subscribing to Alice");
-    socket.write_message(WsMessage::Text(subscribe_to_alice.to_json()))?;
+    socket.write_message(WsMessage::Text(subscribe_to_alice.as_json()))?;
     println!("Subscribing to Bob");
-    socket.write_message(WsMessage::Text(subscribe_to_bob.to_json()))?;
+    socket.write_message(WsMessage::Text(subscribe_to_bob.as_json()))?;
 
     socket.write_message(WsMessage::Text(
-        ClientMessage::new_event(alice_encrypted_msg).to_json(),
+        ClientMessage::new_event(alice_encrypted_msg).as_json(),
     ))?;
 
     loop {
@@ -102,7 +102,7 @@ fn main() -> Result<()> {
                                 )?
                                 .to_event(&alice_keys)?;
                                 socket.write_message(WsMessage::Text(
-                                    ClientMessage::new_event(alice_encrypted_msg).to_json(),
+                                    ClientMessage::new_event(alice_encrypted_msg).as_json(),
                                 ))?;
                             } else if pubkey == &bob_keys.public_key() {
                                 println!("New DM to bob");
@@ -123,7 +123,7 @@ fn main() -> Result<()> {
                                 )?
                                 .to_event(&bob_keys)?;
                                 socket.write_message(WsMessage::Text(
-                                    ClientMessage::new_event(bob_encrypted_msg).to_json(),
+                                    ClientMessage::new_event(bob_encrypted_msg).as_json(),
                                 ))?;
                             }
                         }

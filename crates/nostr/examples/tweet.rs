@@ -52,11 +52,11 @@ fn main() -> Result<()> {
             .kind(Kind::Base(KindBase::TextNote))],
     );
 
-    socket.write_message(WsMessage::Text(subscribe_to_alice.to_json()))?;
-    socket.write_message(WsMessage::Text(subscribe_to_bob.to_json()))?;
+    socket.write_message(WsMessage::Text(subscribe_to_alice.as_json()))?;
+    socket.write_message(WsMessage::Text(subscribe_to_bob.as_json()))?;
 
-    socket.write_message(WsMessage::Text(alice_says_hi.to_json()))?;
-    socket.write_message(WsMessage::Text(bob_says_hi.to_json()))?;
+    socket.write_message(WsMessage::Text(alice_says_hi.as_json()))?;
+    socket.write_message(WsMessage::Text(bob_says_hi.as_json()))?;
 
     loop {
         let msg = socket.read_message().expect("Error reading message");

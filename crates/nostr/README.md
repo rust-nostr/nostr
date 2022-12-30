@@ -64,7 +64,7 @@ fn main() -> Result<()> {
     let (mut socket, _) = tungstenite::connect(Url::parse("wss://relay.damus.io")?).expect("Can't connect to relay");
 
     // Send msg
-    let msg = ClientMessage::new_event(event).to_json();
+    let msg = ClientMessage::new_event(event).as_json();
     socket.write_message(WsMessage::Text(msg)).expect("Impossible to send message");
 
     Ok(())

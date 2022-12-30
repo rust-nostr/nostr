@@ -30,30 +30,46 @@ pub enum RelayMessage {
 
 impl RelayMessage {
     // Relay is responsible for storing corresponding subscription id
-    pub fn new_event(subscription_id: String, event: Event) -> Self {
+    pub fn new_event<S>(subscription_id: S, event: Event) -> Self
+    where
+        S: Into<String>,
+    {
         Self::Event {
-            subscription_id,
+            subscription_id: subscription_id.into(),
             event: Box::new(event),
         }
     }
 
-    pub fn new_notice(message: String) -> Self {
-        Self::Notice { message }
-    }
-
-    pub fn new_eose(subscription_id: String) -> Self {
-        Self::EndOfStoredEvents { subscription_id }
-    }
-
-    pub fn new_ok(event_id: Sha256Hash, status: bool, message: String) -> Self {
-        Self::Ok {
-            event_id,
-            status,
-            message,
+    pub fn new_notice<S>(message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::Notice {
+            message: message.into(),
         }
     }
 
-    pub fn to_json(&self) -> String {
+    pub fn new_eose<S>(subscription_id: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::EndOfStoredEvents {
+            subscription_id: subscription_id.into(),
+        }
+    }
+
+    pub fn new_ok<S>(event_id: Sha256Hash, status: bool, message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::Ok {
+            event_id,
+            status,
+            message: message.into(),
+        }
+    }
+
+    pub fn as_json(&self) -> String {
         match self {
             Self::Event {
                 event,
@@ -72,7 +88,12 @@ impl RelayMessage {
         }
     }
 
-    pub fn from_json(msg: &str) -> Result<Self, MessageHandleError> {
+    pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
+    where
+        S: Into<String>,
+    {
+        let msg: &str = &msg.into();
+
         if msg.is_empty() {
             return Ok(Self::Empty);
         }
@@ -84,10 +105,12 @@ impl RelayMessage {
             return Ok(Self::Empty);
         }
 
+        let v_len: usize = v.len();
+
         // Notice
         // Relay response format: ["NOTICE", <message>]
         if v[0] == "NOTICE" {
-            if v.len() != 2 {
+            if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
             let v_notice: String = serde_json::from_value(v[1].clone())
@@ -98,7 +121,7 @@ impl RelayMessage {
         // Event
         // Relay response format: ["EVENT", <subscription id>, <event JSON>]
         if v[0] == "EVENT" {
-            if v.len() != 3 {
+            if v_len != 3 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
@@ -113,7 +136,7 @@ impl RelayMessage {
         // EOSE (NIP-15)
         // Relay response format: ["EOSE", <subscription_id>]
         if v[0] == "EOSE" {
-            if v.len() != 2 {
+            if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
@@ -126,7 +149,7 @@ impl RelayMessage {
         // OK (NIP-20)
         // Relay response format: ["OK", <event_id>, <true|false>, <message>]
         if v[0] == "OK" {
-            if v.len() != 4 {
+            if v_len != 4 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
@@ -258,7 +281,7 @@ mod tests {
                 "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30",
             )?,
             true,
-            "pow: difficulty 25>=24".into(),
+            "pow: difficulty 25>=24",
         );
 
         assert_eq!(RelayMessage::from_json(valid_ok_msg)?, handled_valid_ok_msg);

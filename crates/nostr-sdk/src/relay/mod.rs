@@ -196,8 +196,8 @@ impl Relay {
                     while let Some(relay_event) = relay.relay_receiver.lock().await.recv().await {
                         match relay_event {
                             RelayEvent::SendMsg(msg) => {
-                                log::trace!("Sending message {}", msg.to_json());
-                                if let Err(e) = ws_tx.send(Message::Text(msg.to_json())).await {
+                                log::trace!("Sending message {}", msg.as_json());
+                                if let Err(e) = ws_tx.send(Message::Text(msg.as_json())).await {
                                     log::error!("RelayEvent::SendMsg error: {:?}", e);
                                 };
                             }

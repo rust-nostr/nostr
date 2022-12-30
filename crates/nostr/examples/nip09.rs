@@ -29,7 +29,7 @@ fn main() -> Result<()> {
     )
     .to_event(&my_keys)?;
 
-    socket.write_message(WsMessage::Text(ClientMessage::new_event(event).to_json()))?;
+    socket.write_message(WsMessage::Text(ClientMessage::new_event(event).as_json()))?;
 
     Ok(())
 }

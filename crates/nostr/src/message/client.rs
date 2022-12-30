@@ -27,18 +27,31 @@ impl ClientMessage {
         Self::Event { event }
     }
 
-    pub fn new_req(subscription_id: impl Into<String>, filters: Vec<SubscriptionFilter>) -> Self {
+    pub fn new_req<S>(subscription_id: S, filters: Vec<SubscriptionFilter>) -> Self
+    where
+        S: Into<String>,
+    {
         Self::Req {
             subscription_id: subscription_id.into(),
             filters,
         }
     }
 
-    pub fn close(subscription_id: String) -> Self {
-        Self::Close { subscription_id }
+    pub fn close<S>(subscription_id: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::Close {
+            subscription_id: subscription_id.into(),
+        }
     }
 
+    #[deprecated = "use .as_json() instead"]
     pub fn to_json(&self) -> String {
+        self.as_json()
+    }
+
+    pub fn as_json(&self) -> String {
         match self {
             Self::Event { event } => json!(["EVENT", event]).to_string(),
             Self::Req {
@@ -60,7 +73,12 @@ impl ClientMessage {
         }
     }
 
-    pub fn from_json(msg: &str) -> Result<Self, MessageHandleError> {
+    pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
+    where
+        S: Into<String>,
+    {
+        let msg: &str = &msg.into();
+
         log::trace!("{}", msg);
 
         let v: Vec<Value> =
@@ -70,10 +88,12 @@ impl ClientMessage {
             return Err(MessageHandleError::InvalidMessageFormat);
         }
 
+        let v_len: usize = v.len();
+
         // Event
         // ["EVENT", <event JSON>]
         if v[0] == "EVENT" {
-            if v.len() != 2 {
+            if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
             let event = Event::from_json(v[1].to_string())
@@ -82,22 +102,28 @@ impl ClientMessage {
         }
 
         // Req
-        // ["REQ", <subscription_id>, <filters JSON>...]
+        // ["REQ", <subscription_id>, <filter JSON>, <filter JSON>...]
         if v[0] == "REQ" {
-            if v.len() != 3 {
+            if v_len == 2 {
+                let subscription_id: String = serde_json::from_value(v[1].clone())
+                    .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+                return Ok(Self::new_req(subscription_id, Vec::new()));
+            } else if v_len == 3 {
+                let subscription_id: String = serde_json::from_value(v[1].clone())
+                    .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+                let filters: Vec<SubscriptionFilter> =
+                    serde_json::from_value(Value::Array(v[2..].to_vec()))
+                        .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+                return Ok(Self::new_req(subscription_id, filters));
+            } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let subscription_id: String = serde_json::from_value(v[1].clone())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-            let filters: Vec<SubscriptionFilter> = serde_json::from_value(v[2].clone())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-            return Ok(Self::new_req(subscription_id, filters));
         }
 
         // Close
         // ["CLOSE", <subscription_id>]
         if v[0] == "CLOSE" {
-            if v.len() != 2 {
+            if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
@@ -134,7 +160,7 @@ mod tests {
 
         let client_req = ClientMessage::new_req("test", filters);
         assert_eq!(
-            client_req.to_json(),
+            client_req.as_json(),
             r##"["REQ","test",{"kinds":[4]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
         );
     }
@@ -152,7 +178,7 @@ mod tests {
 
         let client_req = ClientMessage::new_req("test", filters);
         assert_eq!(
-            client_req.to_json(),
+            client_req.as_json(),
             r##"["REQ","test",{"kinds":[22]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
         );
     }

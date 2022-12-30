@@ -26,7 +26,7 @@ fn main() -> Result<()> {
     let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&my_keys)?;
 
     socket
-        .write_message(WsMessage::Text(ClientMessage::new_event(event).to_json()))
+        .write_message(WsMessage::Text(ClientMessage::new_event(event).as_json()))
         .unwrap();
 
     Ok(())
