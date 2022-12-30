@@ -27,3 +27,12 @@ pub enum Kind {
     Base(KindBase),
     Custom(u64),
 }
+
+impl Kind {
+    pub fn as_u64(&self) -> u64 {
+        match *self {
+            Self::Base(kind) => kind as u64,
+            Self::Custom(kind) => kind,
+        }
+    }
+}
