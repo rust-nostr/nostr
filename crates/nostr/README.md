@@ -14,7 +14,7 @@ Rust implementation of Nostr protocol.
 
 ```toml
 [dependencies]
-nostr = "0.9"
+nostr = "0.10"
 tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"]}
 ```
 
