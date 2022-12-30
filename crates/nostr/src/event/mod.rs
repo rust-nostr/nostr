@@ -20,6 +20,8 @@ use crate::Sha256Hash;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("invalid signature")]
+    InvalidSignature,
     /// Error serializing or deserializing JSON data
     #[error("json error: {0}")]
     Json(#[from] serde_json::Error),
@@ -63,7 +65,8 @@ impl Event {
             &self.content,
         );
         let message = bitcoin::secp256k1::Message::from_slice(&id)?;
-        Ok(secp.verify_schnorr(&self.sig, &message, &self.pubkey)?)
+        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
+            .map_err(|_| Error::InvalidSignature)
     }
 
     /// New event from json string
