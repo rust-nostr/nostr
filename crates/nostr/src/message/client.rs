@@ -2,8 +2,9 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use serde_json::json;
+use serde_json::{json, Value};
 
+use super::MessageHandleError;
 use crate::{Event, SubscriptionFilter};
 
 /// Messages sent by clients, received by relays
@@ -57,6 +58,56 @@ impl ClientMessage {
             }
             Self::Close { subscription_id } => json!(["CLOSE", subscription_id]).to_string(),
         }
+    }
+
+    pub fn from_json(msg: &str) -> Result<Self, MessageHandleError> {
+        log::trace!("{}", msg);
+
+        let v: Vec<Value> =
+            serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+        if v.is_empty() {
+            return Err(MessageHandleError::InvalidMessageFormat);
+        }
+
+        // Event
+        // ["EVENT", <event JSON>]
+        if v[0] == "EVENT" {
+            if v.len() != 2 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+            let event = Event::from_json(v[1].to_string())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            return Ok(Self::new_event(event));
+        }
+
+        // Req
+        // ["REQ", <subscription_id>, <filters JSON>...]
+        if v[0] == "REQ" {
+            if v.len() != 3 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+            let subscription_id: String = serde_json::from_value(v[1].clone())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let filters: Vec<SubscriptionFilter> = serde_json::from_value(v[2].clone())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            return Ok(Self::new_req(subscription_id, filters));
+        }
+
+        // Close
+        // ["CLOSE", <subscription_id>]
+        if v[0] == "CLOSE" {
+            if v.len() != 2 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+
+            let subscription_id: String = serde_json::from_value(v[1].clone())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+            return Ok(Self::close(subscription_id));
+        }
+
+        Err(MessageHandleError::InvalidMessageFormat)
     }
 }
 

@@ -8,3 +8,11 @@ pub mod subscription;
 pub use self::client::ClientMessage;
 pub use self::relay::RelayMessage;
 pub use self::subscription::SubscriptionFilter;
+
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+pub enum MessageHandleError {
+    #[error("Message has an invalid format")]
+    InvalidMessageFormat,
+    #[error("Json deserialization failed")]
+    JsonDeserializationFailed,
+}

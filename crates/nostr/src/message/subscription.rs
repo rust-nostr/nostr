@@ -6,7 +6,7 @@ use bitcoin::secp256k1::XOnlyPublicKey;
 
 use crate::{Kind, Sha256Hash};
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SubscriptionFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ids: Option<Vec<String>>,

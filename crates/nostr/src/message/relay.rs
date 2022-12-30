@@ -4,15 +4,8 @@
 
 use serde_json::{json, Value};
 
+use super::MessageHandleError;
 use crate::{Event, Sha256Hash};
-
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
-pub enum MessageHandleError {
-    #[error("Message has an invalid format")]
-    InvalidMessageFormat,
-    #[error("Json deserialization failed")]
-    JsonDeserializationFailed,
-}
 
 /// Messages sent by relays, received by clients
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -86,6 +79,10 @@ impl RelayMessage {
 
         let v: Vec<Value> =
             serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+        if v.is_empty() {
+            return Ok(Self::Empty);
+        }
 
         // Notice
         // Relay response format: ["NOTICE", <message>]
