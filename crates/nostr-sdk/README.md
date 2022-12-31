@@ -102,9 +102,13 @@ The following crate feature flags are available:
 | `blocking`          |   No    | Needed to use this library in not async/await context                                                                      |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                                                    |
-| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers |
+| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                                                        |
 | `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
-| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document |
+| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                                                  |
+
+## Supported NIPs
+
+Look at https://github.com/yukibtc/nostr-rs-sdk/tree/master/crates/nostr#supported-nips
 
 ## State
 
