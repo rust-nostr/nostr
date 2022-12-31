@@ -40,15 +40,17 @@ impl Keys {
         })
     }
 
-    pub fn from_bech32_public_key(pk: String) -> Result<Self> {
+    pub fn from_bech32(sk: String) -> Result<Self> {
+        let sk = SecretKey::from_bech32(sk)?;
         Ok(Self {
-            keys: KeysSdk::from_bech32_public_key(&pk)?,
+            keys: KeysSdk::new(sk),
         })
     }
 
-    pub fn from_bech32(sk: String) -> Result<Self> {
+    pub fn from_bech32_public_key(pk: String) -> Result<Self> {
+        let pk = XOnlyPublicKey::from_bech32(pk)?;
         Ok(Self {
-            keys: KeysSdk::from_bech32(&sk)?,
+            keys: KeysSdk::from_public_key(pk),
         })
     }
 

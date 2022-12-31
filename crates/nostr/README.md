@@ -33,16 +33,6 @@ fn main() -> Result<()> {
     // From HEX or Bech32
     // use nostr::key::FromSkStr;
     // let my_keys = Keys::from_sk_str("hex-or-bech32-secret-key")?;
-    //
-    // From Bech32
-    // use nostr::util::nips::nip19::FromBech32;
-    // let my_keys = Keys::from_bech32("nsec1...")?;
-    //
-    // From HEX
-    // use std::str::FromStr;
-    // use nostr::secp256k1::SecretKey;
-    // let secret_key = SecretKey::from_str("hex-secret-key")?;
-    // let my_keys = Keys::from_bech32("nsec1...")?;
 
     // Show bech32 public key
     use nostr::util::nips::nip19::ToBech32;

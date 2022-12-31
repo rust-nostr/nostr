@@ -66,6 +66,25 @@ impl Keys {
         }
     }
 
+    #[deprecated]
+    pub fn from_bech32<S>(secret_key: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        let secret_key = SecretKey::from_bech32(secret_key).map_err(|_| Error::InvalidSecretKey)?;
+        Ok(Self::new(secret_key))
+    }
+
+    #[deprecated]
+    pub fn from_bech32_public_key<S>(public_key: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        let public_key =
+            XOnlyPublicKey::from_bech32(public_key).map_err(|_| Error::InvalidPublicKey)?;
+        Ok(Self::from_public_key(public_key))
+    }
+
     /// Generate a new random keys
     pub fn generate_from_os_random() -> Self {
         let secp = Secp256k1::new();
@@ -105,8 +124,8 @@ impl FromSkStr for Keys {
     fn from_sk_str(secret_key: &str) -> Result<Self, Self::Err> {
         match SecretKey::from_str(secret_key) {
             Ok(secret_key) => Ok(Self::new(secret_key)),
-            Err(_) => match Self::from_bech32(secret_key) {
-                Ok(keys) => Ok(keys),
+            Err(_) => match SecretKey::from_bech32(secret_key) {
+                Ok(secret_key) => Ok(Self::new(secret_key)),
                 Err(_) => Err(Error::InvalidSecretKey),
             },
         }
@@ -120,8 +139,8 @@ impl FromPkStr for Keys {
     fn from_pk_str(public_key: &str) -> Result<Self, Self::Err> {
         match XOnlyPublicKey::from_str(public_key) {
             Ok(public_key) => Ok(Self::from_public_key(public_key)),
-            Err(_) => match Self::from_bech32_public_key(public_key) {
-                Ok(keys) => Ok(keys),
+            Err(_) => match XOnlyPublicKey::from_bech32(public_key) {
+                Ok(public_key) => Ok(Self::from_public_key(public_key)),
                 Err(_) => Err(Error::InvalidSecretKey),
             },
         }

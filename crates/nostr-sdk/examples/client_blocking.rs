@@ -3,6 +3,7 @@
 
 use std::str::FromStr;
 
+use nostr::secp256k1::SecretKey;
 use nostr::util::nips::nip04::decrypt;
 use nostr::util::nips::nip19::FromBech32;
 use nostr::util::time::timestamp;
@@ -15,7 +16,8 @@ const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9
 fn main() -> Result<()> {
     env_logger::init();
 
-    let my_keys = Keys::from_bech32(BECH32_SK)?;
+    let secret_key = SecretKey::from_bech32(BECH32_SK)?;
+    let my_keys = Keys::new(secret_key);
 
     let client = Client::new(&my_keys);
     client.add_relay("wss://relay.nostr.info", None)?;

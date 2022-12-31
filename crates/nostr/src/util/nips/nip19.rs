@@ -4,7 +4,7 @@
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
 
-use crate::{Keys, Sha256Hash};
+use crate::Sha256Hash;
 
 const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
@@ -27,15 +27,12 @@ pub enum Error {
 }
 
 pub trait FromBech32: Sized {
-    fn from_bech32<S>(secret_key: S) -> Result<Self, Error>
-    where
-        S: Into<String>;
-    fn from_bech32_public_key<S>(public_key: S) -> Result<Self, Error>
+    fn from_bech32<S>(s: S) -> Result<Self, Error>
     where
         S: Into<String>;
 }
 
-impl FromBech32 for Keys {
+impl FromBech32 for SecretKey {
     fn from_bech32<S>(secret_key: S) -> Result<Self, Error>
     where
         S: Into<String>,
@@ -48,12 +45,12 @@ impl FromBech32 for Keys {
         }
 
         let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32SkParseError)?;
-        let secret_key =
-            SecretKey::from_slice(data.as_slice()).map_err(|_| Error::Bech32SkParseError)?;
-        Ok(Self::new(secret_key))
+        SecretKey::from_slice(data.as_slice()).map_err(|_| Error::Bech32SkParseError)
     }
+}
 
-    fn from_bech32_public_key<S>(public_key: S) -> Result<Self, Error>
+impl FromBech32 for XOnlyPublicKey {
+    fn from_bech32<S>(public_key: S) -> Result<Self, Error>
     where
         S: Into<String>,
     {
@@ -65,8 +62,7 @@ impl FromBech32 for Keys {
         }
 
         let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32PkParseError)?;
-        let public_key = XOnlyPublicKey::from_slice(data.as_slice())?;
-        Ok(Self::from_public_key(public_key))
+        Ok(XOnlyPublicKey::from_slice(data.as_slice())?)
     }
 }
 
@@ -198,25 +194,25 @@ mod tests {
 
     #[test]
     fn to_bech32_public_key() -> Result<()> {
-        let bech32_pubkey_str: &str =
-            "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy";
-        let keys = Keys::from_bech32_public_key(bech32_pubkey_str)?;
-        let public_key: XOnlyPublicKey = keys.public_key();
-
-        assert_eq!(bech32_pubkey_str.to_string(), public_key.to_bech32()?);
-
+        let public_key = XOnlyPublicKey::from_str(
+            "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4",
+        )?;
+        assert_eq!(
+            "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy".to_string(),
+            public_key.to_bech32()?
+        );
         Ok(())
     }
 
     #[test]
     fn to_bech32_secret_key() -> Result<()> {
-        let bech32_secret_key_str: &str =
-            "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
-        let keys = Keys::from_bech32(bech32_secret_key_str)?;
-        let secret_key: SecretKey = keys.secret_key()?;
-
-        assert_eq!(bech32_secret_key_str.to_string(), secret_key.to_bech32()?);
-
+        let secret_key = SecretKey::from_str(
+            "9571a568a42b9e05646a349c783159b906b498119390df9a5a02667155128028",
+        )?;
+        assert_eq!(
+            "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99".to_string(),
+            secret_key.to_bech32()?
+        );
         Ok(())
     }
 

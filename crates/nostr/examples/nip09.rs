@@ -3,6 +3,7 @@
 
 use std::str::FromStr;
 
+use nostr::secp256k1::SecretKey;
 use nostr::url::Url;
 use nostr::util::nips::nip19::FromBech32;
 use nostr::{ClientMessage, Event, EventBuilder, Keys, Result, Sha256Hash};
@@ -18,7 +19,8 @@ fn main() -> Result<()> {
     let (mut socket, _response) =
         connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect to relay");
 
-    let my_keys = Keys::from_bech32(MY_BECH32_SK)?;
+    let secret_key = SecretKey::from_bech32(MY_BECH32_SK)?;
+    let my_keys = Keys::new(secret_key);
 
     let event_id =
         Sha256Hash::from_str("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?;
