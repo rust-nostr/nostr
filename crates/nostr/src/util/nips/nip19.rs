@@ -4,11 +4,13 @@
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
 
-use crate::{Sha256Hash, Keys};
+use crate::{Keys, Sha256Hash};
 
 const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 const PREFIX_BECH32_NOTE_ID: &str = "note";
+const PREFIX_BECH32_PROFILE: &str = "nprofile";
+const PREFIX_BECH32_EVENT: &str = "nevent";
 
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
@@ -113,6 +115,80 @@ impl ToBech32 for Sha256Hash {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+pub struct Profile {
+    public_key: XOnlyPublicKey,
+    relays: Vec<String>,
+}
+
+impl Profile {
+    pub fn new<S>(public_key: XOnlyPublicKey, relays: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            public_key,
+            relays: relays.into_iter().map(|u| u.into()).collect(),
+        }
+    }
+}
+
+impl ToBech32 for Profile {
+    type Err = Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        let mut bytes: Vec<u8> = vec![0, 32];
+        bytes.extend(self.public_key.serialize());
+
+        for relay in self.relays.iter() {
+            bytes.extend([1, relay.len() as u8]);
+            bytes.extend(relay.as_bytes());
+        }
+
+        let data = bytes.to_base32();
+        Ok(bech32::encode(
+            PREFIX_BECH32_PROFILE,
+            data,
+            Variant::Bech32,
+        )?)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+pub struct Event {
+    event_id: Sha256Hash,
+    relays: Vec<String>,
+}
+
+impl Event {
+    pub fn new<S>(event_id: Sha256Hash, relays: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            event_id,
+            relays: relays.into_iter().map(|u| u.into()).collect(),
+        }
+    }
+}
+
+impl ToBech32 for Event {
+    type Err = Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        let mut bytes: Vec<u8> = vec![0, 32];
+        bytes.extend(self.event_id.iter());
+
+        for relay in self.relays.iter() {
+            bytes.extend([1, relay.len() as u8]);
+            bytes.extend(relay.as_bytes());
+        }
+
+        let data = bytes.to_base32();
+        Ok(bech32::encode(PREFIX_BECH32_EVENT, data, Variant::Bech32)?)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -146,8 +222,28 @@ mod tests {
 
     #[test]
     fn to_bech32_note() -> Result<()> {
-        let event_id = Sha256Hash::from_str("d94a3f4dd87b9a3b0bed183b32e916fa29c8020107845d1752d72697fe5309a5")?;
-        assert_eq!("note1m99r7nwc0wdrkzldrqan96gklg5usqspq7z9696j6unf0ljnpxjspqfw99".to_string(), event_id.to_bech32()?);
+        let event_id = Sha256Hash::from_str(
+            "d94a3f4dd87b9a3b0bed183b32e916fa29c8020107845d1752d72697fe5309a5",
+        )?;
+        assert_eq!(
+            "note1m99r7nwc0wdrkzldrqan96gklg5usqspq7z9696j6unf0ljnpxjspqfw99".to_string(),
+            event_id.to_bech32()?
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn to_bech32_profile() -> Result<()> {
+        let profile = Profile::new(
+            XOnlyPublicKey::from_str(
+                "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
+            )?,
+            vec![
+                String::from("wss://r.x.com"),
+                String::from("wss://djbas.sadkb.com"),
+            ],
+        );
+        assert_eq!("nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p".to_string(), profile.to_bech32()?);
         Ok(())
     }
 }
