@@ -3,10 +3,10 @@
 
 use std::str::FromStr;
 
-use nostr::key::{FromBech32, Keys};
 use nostr::util::nips::nip04::decrypt;
+use nostr::util::nips::nip19::FromBech32;
 use nostr::util::time::timestamp;
-use nostr::{Entity, Kind, KindBase, Sha256Hash, SubscriptionFilter};
+use nostr::{Entity, Keys, Kind, KindBase, Sha256Hash, SubscriptionFilter};
 use nostr_sdk::client::blocking::Client;
 use nostr_sdk::{RelayPoolNotifications, Result};
 

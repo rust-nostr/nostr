@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
     // let my_keys = Keys::from_sk_str("hex-or-bech32-secret-key")?;
     //
     // From Bech32
-    // use nostr_sdk::nostr::key::FromBech32;
+    // use nostr_sdk::nostr::util::nips::nip19::FromBech32;
     // let my_keys = Keys::from_bech32("nsec1...")?;
     //
     // From HEX
@@ -52,6 +52,11 @@ async fn main() -> Result<()> {
     // use nostr_sdk::nostr::secp256k1::SecretKey;
     // let secret_key = SecretKey::from_str("hex-secret-key")?;
     // let my_keys = Keys::from_bech32("nsec1...")?;
+
+    // Show bech32 public key
+    use nostr_sdk::nostr::util::nips::nip19::ToBech32;
+    let bech32_pubkey: String = my_keys.public_key().to_bech32()?;
+    println!("Bech32 PubKey: {}", bech32_pubkey);
 
     // Create new client
     let client = Client::new(&my_keys);

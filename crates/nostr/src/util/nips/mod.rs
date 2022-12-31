@@ -10,4 +10,5 @@ pub mod nip06;
 #[cfg(feature = "nip11")]
 pub mod nip11;
 pub mod nip13;
+pub mod nip19;
 pub mod nip26;

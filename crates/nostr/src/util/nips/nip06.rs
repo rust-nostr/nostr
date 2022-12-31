@@ -74,7 +74,7 @@ impl GenerateMnemonic for Keys {
 mod tests {
     use super::*;
 
-    use crate::key::ToBech32;
+    use crate::util::nips::nip19::ToBech32;
 
     type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 

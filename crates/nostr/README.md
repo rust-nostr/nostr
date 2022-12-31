@@ -35,7 +35,7 @@ fn main() -> Result<()> {
     // let my_keys = Keys::from_sk_str("hex-or-bech32-secret-key")?;
     //
     // From Bech32
-    // use nostr::key::FromBech32;
+    // use nostr::util::nips::nip19::FromBech32;
     // let my_keys = Keys::from_bech32("nsec1...")?;
     //
     // From HEX
@@ -43,6 +43,11 @@ fn main() -> Result<()> {
     // use nostr::secp256k1::SecretKey;
     // let secret_key = SecretKey::from_str("hex-secret-key")?;
     // let my_keys = Keys::from_bech32("nsec1...")?;
+
+    // Show bech32 public key
+    use nostr::util::nips::nip19::ToBech32;
+    let bech32_pubkey: String = my_keys.public_key().to_bech32()?;
+    println!("Bech32 PubKey: {}", bech32_pubkey);
 
     let metadata = Metadata::new()
         .name("username")
@@ -105,7 +110,7 @@ The following crate feature flags are available:
 | ❌         | [14 - Subject tag in text events](https://github.com/nostr-protocol/nips/blob/master/14.md)                                         |
 | ✅         | [15 - End of Stored Events Notice](https://github.com/nostr-protocol/nips/blob/master/15.md)                                        |
 | ❌         | [16 - Event Treatment](https://github.com/nostr-protocol/nips/blob/master/16.md)                                                    |
-| ❌         | [19 - bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)                                            |
+| ✅         | [19 - bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)                                            |
 | ✅         | [20 - Command Results](https://github.com/nostr-protocol/nips/blob/master/20.md)                                                    |
 | ❌         | [22 - Event created_at Limits](https://github.com/nostr-protocol/nips/blob/master/22.md)                                            |
 | ✅         | [25 - Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)                                                          |

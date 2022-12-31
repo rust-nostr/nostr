@@ -1,8 +1,8 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr::key::{FromBech32, Keys, ToBech32};
-use nostr::Result;
+use nostr::util::nips::nip19::{FromBech32, ToBech32};
+use nostr::{Keys, Result};
 
 fn main() -> Result<()> {
     //  Random keys

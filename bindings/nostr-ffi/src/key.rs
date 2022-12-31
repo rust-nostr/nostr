@@ -4,9 +4,10 @@
 use std::ops::Deref;
 use std::str::FromStr;
 
-use nostr::key::{FromBech32, Keys as KeysSdk, XOnlyPublicKey};
+use nostr::key::{Keys as KeysSdk, XOnlyPublicKey};
 use nostr::secp256k1::SecretKey;
 use nostr::util::nips::nip06::FromMnemonic;
+use nostr::util::nips::nip19::{FromBech32, ToBech32};
 
 use crate::error::{NostrError, Result};
 
@@ -68,7 +69,15 @@ impl Keys {
         self.keys.public_key().to_string()
     }
 
+    pub fn public_key_bech32(&self) -> Result<String> {
+        Ok(self.keys.public_key().to_bech32()?)
+    }
+
     pub fn secret_key(&self) -> Result<String> {
         Ok(self.keys.secret_key()?.display_secret().to_string())
+    }
+
+    pub fn secret_key_bech32(&self) -> Result<String> {
+        Ok(self.keys.secret_key()?.to_bech32()?)
     }
 }

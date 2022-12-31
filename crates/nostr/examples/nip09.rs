@@ -3,9 +3,9 @@
 
 use std::str::FromStr;
 
-use nostr::key::{FromBech32, Keys};
 use nostr::url::Url;
-use nostr::{ClientMessage, Event, EventBuilder, Result, Sha256Hash};
+use nostr::util::nips::nip19::FromBech32;
+use nostr::{ClientMessage, Event, EventBuilder, Keys, Result, Sha256Hash};
 use tungstenite::{connect, Message as WsMessage};
 
 const MY_BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";

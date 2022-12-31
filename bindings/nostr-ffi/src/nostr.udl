@@ -45,7 +45,11 @@ interface Keys {
     constructor(string mnemonic, optional string? passphrase = null);
     string public_key();
     [Throws=NostrError]
+    string public_key_bech32();
+    [Throws=NostrError]
     string secret_key();
+    [Throws=NostrError]
+    string secret_key_bech32();
 };
 
 interface SubscriptionFilter {
