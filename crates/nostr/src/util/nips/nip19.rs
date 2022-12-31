@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
+use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
 
 use crate::Sha256Hash;
@@ -14,26 +15,36 @@ const PREFIX_BECH32_EVENT: &str = "nevent";
 
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
-    /// Bech32 encoding error.
-    #[error("Bech32 key encoding error: {0}")]
+    /// Bech32 error.
+    #[error("Bech32 error: {0}")]
     Bech32(#[from] bech32::Error),
     #[error("Invalid bech32 secret key")]
     Bech32SkParseError,
     #[error("Invalid bech32 public key")]
     Bech32PkParseError,
+    #[error("Invalid bech32 note id")]
+    Bech32NoteParseError,
+    #[error("Invalid bech32 profile")]
+    Bech32ProfileParseError,
+    #[error("Invalid bech32 event")]
+    Bech32EventParseError,
     /// Secp256k1 error
     #[error("secp256k1 error: {0}")]
     Secp256k1(#[from] bitcoin::secp256k1::Error),
+    #[error("hash error: {0}")]
+    Hash(#[from] bitcoin::hashes::Error),
 }
 
 pub trait FromBech32: Sized {
-    fn from_bech32<S>(s: S) -> Result<Self, Error>
+    type Err;
+    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
         S: Into<String>;
 }
 
 impl FromBech32 for SecretKey {
-    fn from_bech32<S>(secret_key: S) -> Result<Self, Error>
+    type Err = Error;
+    fn from_bech32<S>(secret_key: S) -> Result<Self, Self::Err>
     where
         S: Into<String>,
     {
@@ -50,7 +61,8 @@ impl FromBech32 for SecretKey {
 }
 
 impl FromBech32 for XOnlyPublicKey {
-    fn from_bech32<S>(public_key: S) -> Result<Self, Error>
+    type Err = Error;
+    fn from_bech32<S>(public_key: S) -> Result<Self, Self::Err>
     where
         S: Into<String>,
     {
@@ -63,6 +75,24 @@ impl FromBech32 for XOnlyPublicKey {
 
         let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32PkParseError)?;
         Ok(XOnlyPublicKey::from_slice(data.as_slice())?)
+    }
+}
+
+impl FromBech32 for Sha256Hash {
+    type Err = Error;
+    fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
+    where
+        S: Into<String>,
+    {
+        let (hrp, data, checksum) =
+            bech32::decode(&hash.into()).map_err(|_| Error::Bech32NoteParseError)?;
+
+        if hrp != PREFIX_BECH32_NOTE_ID || checksum != Variant::Bech32 {
+            return Err(Error::Bech32NoteParseError);
+        }
+
+        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32NoteParseError)?;
+        Ok(Sha256Hash::from_slice(data.as_slice())?)
     }
 }
 
@@ -113,8 +143,8 @@ impl ToBech32 for Sha256Hash {
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Profile {
-    public_key: XOnlyPublicKey,
-    relays: Vec<String>,
+    pub public_key: XOnlyPublicKey,
+    pub relays: Vec<String>,
 }
 
 impl Profile {
@@ -126,6 +156,63 @@ impl Profile {
             public_key,
             relays: relays.into_iter().map(|u| u.into()).collect(),
         }
+    }
+}
+
+impl FromBech32 for Profile {
+    type Err = Error;
+    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
+    where
+        S: Into<String>,
+    {
+        let (hrp, data, checksum) =
+            bech32::decode(&s.into()).map_err(|_| Error::Bech32ProfileParseError)?;
+
+        if hrp != PREFIX_BECH32_PROFILE || checksum != Variant::Bech32 {
+            return Err(Error::Bech32ProfileParseError);
+        }
+
+        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32ProfileParseError)?;
+
+        let t = data.first().ok_or(Error::Bech32ProfileParseError)?;
+        if *t != 0 {
+            return Err(Error::Bech32ProfileParseError);
+        }
+
+        let l = data.get(1).ok_or(Error::Bech32ProfileParseError)?;
+        if *l != 32 {
+            return Err(Error::Bech32ProfileParseError);
+        }
+
+        let public_key = data.get(2..34).ok_or(Error::Bech32ProfileParseError)?;
+        let public_key = XOnlyPublicKey::from_slice(public_key)?;
+
+        let mut relays: Vec<String> = Vec::new();
+        let mut relays_data: Vec<u8> = data
+            .get(34..)
+            .ok_or(Error::Bech32ProfileParseError)?
+            .to_vec();
+
+        while !relays_data.is_empty() {
+            let t = relays_data.first().ok_or(Error::Bech32ProfileParseError)?;
+            if *t != 1 {
+                return Err(Error::Bech32ProfileParseError);
+            }
+
+            let l = relays_data.get(1).ok_or(Error::Bech32ProfileParseError)?;
+            let l = *l as usize;
+
+            let data = relays_data
+                .get(2..l + 2)
+                .ok_or(Error::Bech32ProfileParseError)?;
+
+            relays.push(
+                String::from_utf8(data.to_vec()).map_err(|_| Error::Bech32ProfileParseError)?,
+            );
+            relays_data.drain(..l + 2);
+        }
+
+        Ok(Self { public_key, relays })
     }
 }
 
@@ -165,6 +252,59 @@ impl Event {
             event_id,
             relays: relays.into_iter().map(|u| u.into()).collect(),
         }
+    }
+}
+
+impl FromBech32 for Event {
+    type Err = Error;
+    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
+    where
+        S: Into<String>,
+    {
+        let (hrp, data, checksum) =
+            bech32::decode(&s.into()).map_err(|_| Error::Bech32EventParseError)?;
+
+        if hrp != PREFIX_BECH32_EVENT || checksum != Variant::Bech32 {
+            return Err(Error::Bech32EventParseError);
+        }
+
+        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32EventParseError)?;
+
+        let t = data.first().ok_or(Error::Bech32EventParseError)?;
+        if *t != 0 {
+            return Err(Error::Bech32EventParseError);
+        }
+
+        let l = data.get(1).ok_or(Error::Bech32EventParseError)?;
+        if *l != 32 {
+            return Err(Error::Bech32EventParseError);
+        }
+
+        let event_id = data.get(2..34).ok_or(Error::Bech32EventParseError)?;
+        let event_id = Sha256Hash::from_slice(event_id)?;
+
+        let mut relays: Vec<String> = Vec::new();
+        let mut relays_data: Vec<u8> = data.get(34..).ok_or(Error::Bech32EventParseError)?.to_vec();
+
+        while !relays_data.is_empty() {
+            let t = relays_data.first().ok_or(Error::Bech32EventParseError)?;
+            if *t != 1 {
+                return Err(Error::Bech32EventParseError);
+            }
+
+            let l = relays_data.get(1).ok_or(Error::Bech32EventParseError)?;
+            let l = *l as usize;
+
+            let data = relays_data
+                .get(2..l + 2)
+                .ok_or(Error::Bech32EventParseError)?;
+
+            relays
+                .push(String::from_utf8(data.to_vec()).map_err(|_| Error::Bech32EventParseError)?);
+            relays_data.drain(..l + 2);
+        }
+
+        Ok(Self { event_id, relays })
     }
 }
 
@@ -240,6 +380,24 @@ mod tests {
             ],
         );
         assert_eq!("nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p".to_string(), profile.to_bech32()?);
+        Ok(())
+    }
+
+    #[test]
+    fn from_bech32_profile() -> Result<()> {
+        let bech32_profile = "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p";
+        let profile = Profile::from_bech32(bech32_profile)?;
+        assert_eq!(
+            "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d".to_string(),
+            profile.public_key.to_string()
+        );
+        assert_eq!(
+            vec![
+                "wss://r.x.com".to_string(),
+                "wss://djbas.sadkb.com".to_string()
+            ],
+            profile.relays
+        );
         Ok(())
     }
 }
