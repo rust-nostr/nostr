@@ -31,7 +31,7 @@ pub enum Error {
 #[derive(Debug)]
 pub enum RelayPoolEvent {
     ReceivedMsg { relay_url: Url, msg: RelayMessage },
-    EventSent(Event),
+    EventSent(Box<Event>),
 }
 
 #[derive(Debug, Clone)]

@@ -91,6 +91,7 @@ impl EventBuilder {
             tags: self.tags,
             content: self.content,
             sig: secp.sign_schnorr(&message, keypair),
+            ots: None,
         })
     }
 
@@ -132,6 +133,7 @@ impl EventBuilder {
                     tags,
                     content: self.content,
                     sig: secp.sign_schnorr(&message, keypair),
+                    ots: None,
                 });
             }
 

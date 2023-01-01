@@ -42,6 +42,8 @@ pub struct Event {
     pub content: String,
     #[serde(deserialize_with = "sig_string")]
     pub sig: Signature,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ots: Option<String>,
 }
 
 fn sig_string<'de, D>(deserializer: D) -> Result<Signature, D::Error>
@@ -110,6 +112,7 @@ impl Event {
             tags,
             content: content.to_string(),
             sig,
+            ots: None,
         };
 
         event.verify()?;

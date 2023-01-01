@@ -11,7 +11,7 @@ use crate::{Event, SubscriptionFilter};
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClientMessage {
     Event {
-        event: Event,
+        event: Box<Event>,
     },
     Req {
         subscription_id: String,
@@ -24,7 +24,9 @@ pub enum ClientMessage {
 
 impl ClientMessage {
     pub fn new_event(event: Event) -> Self {
-        Self::Event { event }
+        Self::Event {
+            event: Box::new(event),
+        }
     }
 
     pub fn new_req<S>(subscription_id: S, filters: Vec<SubscriptionFilter>) -> Self
