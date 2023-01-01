@@ -46,11 +46,6 @@ impl ClientMessage {
         }
     }
 
-    #[deprecated = "use .as_json() instead"]
-    pub fn to_json(&self) -> String {
-        self.as_json()
-    }
-
     pub fn as_json(&self) -> String {
         match self {
             Self::Event { event } => json!(["EVENT", event]).to_string(),

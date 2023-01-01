@@ -234,11 +234,6 @@ impl Client {
         RUNTIME.block_on(async { self.client.get_channels().await })
     }
 
-    #[deprecated = "Use `get_entity_of` instead"]
-    pub fn get_entity_of_pubkey(&self, pubkey: XOnlyPublicKey) -> Result<Entity, Error> {
-        RUNTIME.block_on(async { self.client.get_entity_of(pubkey.to_string()).await })
-    }
-
     pub fn get_entity_of<S>(&self, entity: S) -> Result<Entity, Error>
     where
         S: Into<String>,

@@ -66,7 +66,7 @@ impl Keys {
         }
     }
 
-    #[deprecated]
+    #[deprecated(since = "0.11.0")]
     pub fn from_bech32<S>(secret_key: S) -> Result<Self, Error>
     where
         S: Into<String>,
@@ -75,7 +75,7 @@ impl Keys {
         Ok(Self::new(secret_key))
     }
 
-    #[deprecated]
+    #[deprecated(since = "0.11.0")]
     pub fn from_bech32_public_key<S>(public_key: S) -> Result<Self, Error>
     where
         S: Into<String>,
