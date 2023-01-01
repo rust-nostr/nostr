@@ -36,6 +36,9 @@ serde_repr = "0.1"
 thiserror = "1.0"
 url = { version = "2", features = ["serde"] }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+instant = { version = "0.1", features = [ "stdweb", "inaccurate" ] }
+
 [dev-dependencies]
 csv = "1.1.5"
 env_logger = "0.8.2"
