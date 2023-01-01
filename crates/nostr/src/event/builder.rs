@@ -360,7 +360,7 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::Base(KindBase::ChannelMetadata),
             metadata.to_string(),
-            &[Tag::Event(channel_id, Some(relay_url), None)],
+            &[Tag::Event(channel_id, Some(relay_url.to_string()), None)],
         ))
     }
 
@@ -378,7 +378,11 @@ impl EventBuilder {
         Self::new(
             Kind::Base(KindBase::ChannelMessage),
             content,
-            &[Tag::Event(channel_id, Some(relay_url), Some(Marker::Root))],
+            &[Tag::Event(
+                channel_id,
+                Some(relay_url.to_string()),
+                Some(Marker::Root),
+            )],
         )
     }
 

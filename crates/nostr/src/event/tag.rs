@@ -10,7 +10,6 @@ use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use url::Url;
 
 use crate::Sha256Hash;
 
@@ -27,9 +26,6 @@ pub enum Error {
     /// Hex decoding error
     #[error("hex decoding error: {0}")]
     Hex(#[from] bitcoin::hashes::hex::Error),
-    /// Url parse error
-    #[error("impossible to parse url: {0}")]
-    Url(#[from] url::ParseError),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -102,11 +98,11 @@ where
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Tag {
     Generic(TagKind, Vec<String>),
-    Event(Sha256Hash, Option<Url>, Option<Marker>),
-    PubKey(XOnlyPublicKey, Option<Url>),
+    Event(Sha256Hash, Option<String>, Option<Marker>),
+    PubKey(XOnlyPublicKey, Option<String>),
     ContactList {
         pk: XOnlyPublicKey,
-        relay_url: Option<Url>,
+        relay_url: Option<String>,
         alias: Option<String>,
     },
     POW {
@@ -162,11 +158,11 @@ impl TryFrom<Vec<String>> for Tag {
             match tag_kind {
                 TagKind::P => Ok(Self::PubKey(
                     XOnlyPublicKey::from_str(&tag[1])?,
-                    Url::parse(&tag[2]).ok(),
+                    Some(tag[2].clone()),
                 )),
                 TagKind::E => Ok(Self::Event(
                     Sha256Hash::from_str(&tag[1])?,
-                    Url::parse(&tag[2]).ok(),
+                    Some(tag[2].clone()),
                     None,
                 )),
                 TagKind::Nonce => Ok(Self::POW {
@@ -179,12 +175,12 @@ impl TryFrom<Vec<String>> for Tag {
             match tag_kind {
                 TagKind::P => Ok(Self::ContactList {
                     pk: XOnlyPublicKey::from_str(&tag[1])?,
-                    relay_url: Url::parse(&tag[2]).ok(),
+                    relay_url: Some(tag[2].clone()),
                     alias: tag[3].is_empty().then_some(tag[3].clone()),
                 }),
                 TagKind::E => Ok(Self::Event(
                     Sha256Hash::from_str(&tag[1])?,
-                    Url::parse(&tag[2]).ok(),
+                    Some(tag[2].clone()),
                     Marker::from_str(&tag[3]).ok(),
                 )),
                 TagKind::Delegation => Ok(Self::Delegation {
@@ -207,7 +203,7 @@ impl From<Tag> for Vec<String> {
             Tag::Event(id, relay_url, marker) => {
                 let mut tag = vec![TagKind::E.to_string(), id.to_string()];
                 if let Some(relay_url) = relay_url {
-                    tag.push(relay_url.to_string());
+                    tag.push(relay_url);
                 }
                 if let Some(marker) = marker {
                     if tag.len() == 2 {
@@ -220,7 +216,7 @@ impl From<Tag> for Vec<String> {
             Tag::PubKey(pk, relay_url) => {
                 let mut tag = vec![TagKind::P.to_string(), pk.to_string()];
                 if let Some(relay_url) = relay_url {
-                    tag.push(relay_url.to_string());
+                    tag.push(relay_url);
                 }
                 tag
             }
@@ -231,7 +227,7 @@ impl From<Tag> for Vec<String> {
             } => vec![
                 TagKind::P.to_string(),
                 pk.to_string(),
-                relay_url.map(|u| u.to_string()).unwrap_or_default(),
+                relay_url.unwrap_or_default(),
                 alias.unwrap_or_default(),
             ],
             Tag::POW { nonce, difficulty } => vec![
@@ -371,6 +367,22 @@ mod tests {
         );
 
         assert_eq!(
+            vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                ""
+            ],
+            Tag::Event(
+                Sha256Hash::from_str(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                Some(String::new()),
+                None
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
             vec!["content-warning", "reason"],
             Tag::ContentWarning {
                 reason: Some(String::from("reason"))
@@ -391,13 +403,13 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io/"
+                "wss://relay.damus.io"
             ],
             Tag::PubKey(
                 XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )?,
-                Some(Url::parse("wss://relay.damus.io")?)
+                Some(String::from("wss://relay.damus.io"))
             )
             .as_vec()
         );
@@ -406,13 +418,13 @@ mod tests {
             vec![
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io/"
+                "wss://relay.damus.io"
             ],
             Tag::Event(
                 Sha256Hash::from_str(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
-                Some(Url::parse("wss://relay.damus.io")?),
+                Some(String::from("wss://relay.damus.io")),
                 None
             )
             .as_vec()
@@ -431,14 +443,14 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io/",
+                "wss://relay.damus.io",
                 "alias",
             ],
             Tag::ContactList {
                 pk: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )?,
-                relay_url: Some(Url::parse("wss://relay.damus.io")?),
+                relay_url: Some(String::from("wss://relay.damus.io")),
                 alias: Some(String::from("alias"))
             }
             .as_vec()
