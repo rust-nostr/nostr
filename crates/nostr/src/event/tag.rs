@@ -63,6 +63,7 @@ pub enum TagKind {
     Delegation,
     ContentWarning,
     Expiration,
+    Subject,
     Custom(String),
 }
 
@@ -75,6 +76,7 @@ impl fmt::Display for TagKind {
             Self::Delegation => write!(f, "delegation"),
             Self::ContentWarning => write!(f, "content-warning"),
             Self::Expiration => write!(f, "expiration"),
+            Self::Subject => write!(f, "subject"),
             Self::Custom(tag) => write!(f, "{}", tag),
         }
     }
@@ -93,6 +95,7 @@ where
             "delegation" => Self::Delegation,
             "content-warning" => Self::ContentWarning,
             "expiration" => Self::Expiration,
+            "subject" => Self::Subject,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -121,6 +124,7 @@ pub enum Tag {
         reason: Option<String>,
     },
     Expiration(u64),
+    Subject(String),
 }
 
 impl Tag {
@@ -164,6 +168,7 @@ where
                     reason: Some(content.to_string()),
                 }),
                 TagKind::Expiration => Ok(Self::Expiration(content.parse::<u64>()?)),
+                TagKind::Subject => Ok(Self::Subject(content.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -267,6 +272,7 @@ impl From<Tag> for Vec<String> {
             Tag::Expiration(timestamp) => {
                 vec![TagKind::Expiration.to_string(), timestamp.to_string()]
             }
+            Tag::Subject(sub) => vec![TagKind::Subject.to_string(), sub],
         }
     }
 }
@@ -390,6 +396,11 @@ mod tests {
                 reason: Some(String::from("reason"))
             }
             .as_vec()
+        );
+
+        assert_eq!(
+            vec!["subject", "textnote with subject"],
+            Tag::Subject(String::from("textnote with subject")).as_vec()
         );
 
         assert_eq!(
@@ -556,6 +567,11 @@ mod tests {
             Tag::ContentWarning {
                 reason: Some(String::from("reason"))
             }
+        );
+
+        assert_eq!(
+            Tag::parse(vec!["subject", "textnote with subject"])?,
+            Tag::Subject(String::from("textnote with subject"))
         );
 
         assert_eq!(
