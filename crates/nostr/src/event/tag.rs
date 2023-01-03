@@ -62,6 +62,7 @@ pub enum TagKind {
     Nonce,
     Delegation,
     ContentWarning,
+    Expiration,
     Custom(String),
 }
 
@@ -73,6 +74,7 @@ impl fmt::Display for TagKind {
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
             Self::ContentWarning => write!(f, "content-warning"),
+            Self::Expiration => write!(f, "expiration"),
             Self::Custom(tag) => write!(f, "{}", tag),
         }
     }
@@ -90,6 +92,7 @@ where
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,
             "content-warning" => Self::ContentWarning,
+            "expiration" => Self::Expiration,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -117,10 +120,14 @@ pub enum Tag {
     ContentWarning {
         reason: Option<String>,
     },
+    Expiration(u64),
 }
 
 impl Tag {
-    pub fn parse(data: Vec<String>) -> Result<Self, Error> {
+    pub fn parse<S>(data: Vec<S>) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
         Tag::try_from(data)
     }
 
@@ -129,10 +136,14 @@ impl Tag {
     }
 }
 
-impl TryFrom<Vec<String>> for Tag {
+impl<S> TryFrom<Vec<S>> for Tag
+where
+    S: Into<String>,
+{
     type Error = Error;
 
-    fn try_from(tag: Vec<String>) -> Result<Self, Self::Error> {
+    fn try_from(tag: Vec<S>) -> Result<Self, Self::Error> {
+        let tag: Vec<String> = tag.into_iter().map(|v| v.into()).collect();
         let tag_len: usize = tag.len();
         let tag_kind: TagKind = match tag.first() {
             Some(kind) => TagKind::from(kind),
@@ -152,6 +163,7 @@ impl TryFrom<Vec<String>> for Tag {
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(content.to_string()),
                 }),
+                TagKind::Expiration => Ok(Self::Expiration(content.parse::<u64>()?)),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -176,11 +188,11 @@ impl TryFrom<Vec<String>> for Tag {
                 TagKind::P => Ok(Self::ContactList {
                     pk: XOnlyPublicKey::from_str(&tag[1])?,
                     relay_url: Some(tag[2].clone()),
-                    alias: tag[3].is_empty().then_some(tag[3].clone()),
+                    alias: (!tag[3].is_empty()).then_some(tag[3].clone()),
                 }),
                 TagKind::E => Ok(Self::Event(
                     Sha256Hash::from_str(&tag[1])?,
-                    Some(tag[2].clone()),
+                    (!tag[2].is_empty()).then_some(tag[2].clone()),
                     Marker::from_str(&tag[3]).ok(),
                 )),
                 TagKind::Delegation => Ok(Self::Delegation {
@@ -251,6 +263,9 @@ impl From<Tag> for Vec<String> {
                     tag.push(reason);
                 }
                 tag
+            }
+            Tag::Expiration(timestamp) => {
+                vec![TagKind::Expiration.to_string(), timestamp.to_string()]
             }
         }
     }
@@ -329,9 +344,7 @@ mod tests {
     }
 
     #[test]
-    fn test_tag_parse() -> Result<()> {
-        assert_eq!(Tag::parse(vec![]).unwrap_err(), Error::KindNotFound);
-
+    fn test_tag_as_vec() -> Result<()> {
         assert_eq!(
             vec!["content-warning"],
             Tag::ContentWarning { reason: None }.as_vec()
@@ -367,19 +380,8 @@ mod tests {
         );
 
         assert_eq!(
-            vec![
-                "e",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                ""
-            ],
-            Tag::Event(
-                Sha256Hash::from_str(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )?,
-                Some(String::new()),
-                None
-            )
-            .as_vec()
+            vec!["expiration", "1600000000"],
+            Tag::Expiration(1600000000).as_vec()
         );
 
         assert_eq!(
@@ -410,6 +412,22 @@ mod tests {
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )?,
                 Some(String::from("wss://relay.damus.io"))
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                ""
+            ],
+            Tag::Event(
+                Sha256Hash::from_str(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                Some(String::new()),
+                None
             )
             .as_vec()
         );
@@ -484,6 +502,164 @@ mod tests {
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             )?, conditions: String::from("kind=1"), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8")? }
             .as_vec()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_tag_parser() -> Result<()> {
+        assert_eq!(
+            Tag::parse::<String>(vec![]).unwrap_err(),
+            Error::KindNotFound
+        );
+
+        assert_eq!(
+            Tag::parse(vec!["content-warning"])?,
+            Tag::ContentWarning { reason: None }
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            ])?,
+            Tag::PubKey(
+                XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                None
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+            ])?,
+            Tag::Event(
+                Sha256Hash::from_str(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                None,
+                None
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec!["expiration", "1600000000"])?,
+            Tag::Expiration(1600000000)
+        );
+
+        assert_eq!(
+            Tag::parse(vec!["content-warning", "reason"])?,
+            Tag::ContentWarning {
+                reason: Some(String::from("reason"))
+            }
+        );
+
+        assert_eq!(
+            Tag::parse(vec!["client", "nostr-sdk"])?,
+            Tag::Generic(
+                TagKind::Custom("client".to_string()),
+                vec!["nostr-sdk".to_string()]
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "wss://relay.damus.io"
+            ])?,
+            Tag::PubKey(
+                XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                Some(String::from("wss://relay.damus.io"))
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                ""
+            ])?,
+            Tag::Event(
+                Sha256Hash::from_str(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                Some(String::new()),
+                None
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "wss://relay.damus.io"
+            ])?,
+            Tag::Event(
+                Sha256Hash::from_str(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                Some(String::from("wss://relay.damus.io")),
+                None
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec!["nonce", "1", "20"])?,
+            Tag::POW {
+                nonce: 1,
+                difficulty: 20
+            }
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "wss://relay.damus.io",
+                "alias",
+            ])?,
+            Tag::ContactList {
+                pk: XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                relay_url: Some(String::from("wss://relay.damus.io")),
+                alias: Some(String::from("alias"))
+            }
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "",
+                "reply"
+            ])?,
+            Tag::Event(
+                Sha256Hash::from_str(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                None,
+                Some(Marker::Reply)
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "delegation",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "kind=1",
+                "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
+            ])?,
+            Tag::Delegation { delegator_pk: XOnlyPublicKey::from_str(
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            )?, conditions: String::from("kind=1"), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8")? }
         );
 
         Ok(())
