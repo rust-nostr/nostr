@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 use bitcoin::secp256k1::XOnlyPublicKey;
@@ -11,13 +11,13 @@ pub struct Contact {
 }
 
 impl Contact {
-    pub fn new<S>(pk: XOnlyPublicKey, relay_url: Option<String>, alias: Option<S>) -> Self
+    pub fn new<S>(pk: XOnlyPublicKey, relay_url: Option<S>, alias: Option<S>) -> Self
     where
         S: Into<String>,
     {
         Self {
             pk,
-            relay_url,
+            relay_url: relay_url.map(|a| a.into()),
             alias: alias.map(|a| a.into()),
         }
     }

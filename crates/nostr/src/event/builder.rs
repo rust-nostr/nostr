@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 #[cfg(target_arch = "wasm32")]
@@ -259,9 +259,9 @@ impl EventBuilder {
     pub fn boost(event: &Event) -> Self {
         Self::new(
             Kind::Base(KindBase::Boost),
-            event.content.clone(),
+            String::new(),
             &[
-                Tag::Event(event.id, None, Some(Marker::Root)),
+                Tag::Event(event.id, None, None),
                 Tag::PubKey(event.pubkey, None),
             ],
         )
