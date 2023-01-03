@@ -20,6 +20,9 @@ pub struct SubscriptionFilter {
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pubkeys: Option<Vec<XOnlyPublicKey>>,
+    #[serde(rename = "#r")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub references: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub since: Option<u64>, // unix timestamp seconds
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -41,6 +44,7 @@ impl SubscriptionFilter {
             kinds: None,
             events: None,
             pubkeys: None,
+            references: None,
             since: None,
             until: None,
             authors: None,
@@ -124,6 +128,26 @@ impl SubscriptionFilter {
     pub fn pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
         Self {
             pubkeys: Some(pubkeys),
+            ..self
+        }
+    }
+
+    /// Set reference
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    pub fn reference(self, v: impl Into<String>) -> Self {
+        Self {
+            references: Some(vec![v.into()]),
+            ..self
+        }
+    }
+
+    /// Set references
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    pub fn references(self, v: impl Into<Vec<String>>) -> Self {
+        Self {
+            references: Some(v.into()),
             ..self
         }
     }
