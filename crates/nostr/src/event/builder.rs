@@ -32,6 +32,8 @@ pub enum Error {
     Key(#[from] key::Error),
     #[error("secp256k1 error: {0}")]
     Secp256k1(#[from] bitcoin::secp256k1::Error),
+    #[error("json error: {0}")]
+    Json(#[from] serde_json::Error),
     /// Invalid metadata name
     #[error("invalid name")]
     InvalidName,
@@ -158,40 +160,21 @@ impl EventBuilder {
     ///     .display_name("My Username")
     ///     .about("Description")
     ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
-    ///     .nip05("username@example.com");
+    ///     .nip05("username@example.com")
+    ///     .lud16("yuki@stacker.news");
     ///
     /// let builder = EventBuilder::set_metadata(metadata).unwrap();
     /// ```
     pub fn set_metadata(metadata: Metadata) -> Result<Self, Error> {
-        let name = metadata.name;
-        let display_name = metadata.display_name;
-        let about = metadata.about;
-        let picture = metadata.picture;
-        let nip05_str = metadata.nip05;
-
-        if let Some(name) = name.clone() {
+        if let Some(name) = metadata.name.clone() {
             if !REGEX_NAME.is_match(&name) {
                 return Err(Error::InvalidName);
             }
         }
 
-        let mut metadata: Value = json!({
-            "name": name.unwrap_or_default(),
-            "display_name": display_name.unwrap_or_default(),
-            "about": about.unwrap_or_default(),
-        });
-
-        if let Some(picture) = picture {
-            metadata["picture"] = json!(picture);
-        }
-
-        if let Some(nip05_str) = nip05_str {
-            metadata["nip05"] = json!(nip05_str);
-        }
-
         Ok(Self::new(
             Kind::Base(KindBase::Metadata),
-            metadata.to_string(),
+            serde_json::to_string(&metadata)?,
             &[],
         ))
     }
