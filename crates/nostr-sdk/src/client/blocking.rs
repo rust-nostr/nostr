@@ -3,6 +3,8 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+#[cfg(feature = "sqlite")]
+use std::path::Path;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
@@ -25,6 +27,16 @@ impl Client {
         Self {
             client: super::Client::new(keys),
         }
+    }
+
+    #[cfg(feature = "sqlite")]
+    pub fn new_with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(Self {
+            client: super::Client::new_with_store(keys, path)?,
+        })
     }
 
     pub fn generate_keys() -> Keys {

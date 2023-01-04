@@ -32,6 +32,7 @@ jobs:
             -p nostr --features blocking,
             -p nostr-sdk --no-default-features,
             -p nostr-sdk --features all-nips,
+            -p nostr-sdk --features sqlite,
             -p nostr-sdk --features blocking,
             -p nostr-ffi,
             -p nostr-sdk-ffi,

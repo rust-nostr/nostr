@@ -13,6 +13,7 @@ precommit: test
 	$(Q)cargo clippy -p nostr --features blocking
 	$(Q)cargo clippy -p nostr-sdk --no-default-features
 	$(Q)cargo clippy -p nostr-sdk --features all-nips
+	$(Q)cargo clippy -p nostr-sdk --features sqlite
 	$(Q)cargo clippy -p nostr-sdk --features blocking
 	$(Q)cargo clippy -p nostr-ffi
 	$(Q)cargo clippy -p nostr-sdk-ffi

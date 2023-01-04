@@ -3,6 +3,8 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+#[cfg(feature = "sqlite")]
+use std::path::Path;
 use std::str::FromStr;
 
 use nostr::event::builder::Error as EventBuilderError;
@@ -12,6 +14,8 @@ use nostr::{
     ClientMessage, Contact, Entity, Event, EventBuilder, Keys, Kind, KindBase, Metadata,
     Sha256Hash, SubscriptionFilter, Tag,
 };
+#[cfg(feature = "sqlite")]
+use nostr_sdk_sqlite::Store;
 use tokio::sync::broadcast;
 
 #[cfg(feature = "blocking")]
@@ -35,12 +39,20 @@ pub enum Error {
     Secp256k1(#[from] nostr::secp256k1::Error),
     #[error("hex decoding error: {0}")]
     Hex(#[from] nostr::hashes::hex::Error),
+    #[cfg(feature = "sqlite")]
+    #[error(transparent)]
+    Store(#[from] nostr_sdk_sqlite::Error),
+    /// Store not initialized
+    #[error("store not initialized")]
+    StoreNotInitialized,
 }
 
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
     keys: Keys,
+    #[cfg(feature = "sqlite")]
+    store: Option<Store>,
 }
 
 impl Client {
@@ -57,7 +69,21 @@ impl Client {
         Self {
             pool: RelayPool::new(),
             keys: keys.clone(),
+            #[cfg(feature = "sqlite")]
+            store: None,
         }
+    }
+
+    #[cfg(feature = "sqlite")]
+    pub fn new_with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(Self {
+            pool: RelayPool::new(),
+            keys: keys.clone(),
+            store: Some(Store::open(path, keys.public_key())?),
+        })
     }
 
     /// Generate new random keys using entorpy from OS
@@ -68,6 +94,11 @@ impl Client {
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.keys.clone()
+    }
+
+    #[cfg(feature = "sqlite")]
+    pub fn store(&self) -> Result<Store, Error> {
+        self.store.clone().ok_or(Error::StoreNotInitialized)
     }
 
     /// Completly shutdown [`Client`]
@@ -83,17 +114,6 @@ impl Client {
     /// Get relays
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         self.pool.relays().await
-    }
-
-    /// Add multiple relays
-    pub async fn add_relays<S>(&self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
-    where
-        S: Into<String>,
-    {
-        for (url, proxy) in relays.into_iter() {
-            self.add_relay(url, proxy).await?;
-        }
-        Ok(())
     }
 
     /// Add new relay
@@ -121,6 +141,8 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
+        #[cfg(feature = "sqlite")]
+        self.store()?.insert_relay(url.clone(), proxy)?;
         self.pool.add_relay(url, proxy).await;
         Ok(())
     }
@@ -143,7 +165,30 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
+        #[cfg(feature = "sqlite")]
+        self.store()?.delete_relay(url.clone())?;
         self.pool.remove_relay(url).await;
+        Ok(())
+    }
+
+    /// Add multiple relays
+    pub async fn add_relays<S>(&self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        for (url, proxy) in relays.into_iter() {
+            self.add_relay(url, proxy).await?;
+        }
+        Ok(())
+    }
+
+    /// Restore previous added relays from store
+    #[cfg(feature = "sqlite")]
+    pub async fn restore_relays(&self) -> Result<(), Error> {
+        let relays = self.store()?.get_relays()?;
+        for (url, proxy) in relays.into_iter() {
+            self.pool.add_relay(url, proxy).await;
+        }
         Ok(())
     }
 
@@ -169,7 +214,10 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
-            return Ok(self.pool.connect_relay(relay, wait_for_connection).await?);
+            #[cfg(feature = "sqlite")]
+            self.store()?.enable_relay(url)?;
+            self.pool.connect_relay(relay, wait_for_connection).await?;
+            return Ok(());
         }
         Err(Error::RelayNotFound)
     }
@@ -196,7 +244,10 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
-            return Ok(self.pool.disconnect_relay(relay).await?);
+            #[cfg(feature = "sqlite")]
+            self.store()?.disable_relay(url)?;
+            self.pool.disconnect_relay(relay).await?;
+            return Ok(());
         }
         Err(Error::RelayNotFound)
     }
@@ -482,25 +533,16 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::util::nips::nip19::FromBech32;
-    /// use nostr::Keys;
+    /// use nostr::key::{FromSkStr, Keys};
     /// use nostr_sdk::Client;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
     /// #   let client = Client::new(&my_keys);
-    ///
-    /// client
-    ///     .add_relay("wss://relay.nostr.info", None)
-    ///     .await
-    ///     .unwrap();
-    /// client.connect().await.unwrap();
-    ///
-    /// let alice_keys = Keys::from_bech32_public_key(
-    ///     "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
-    /// )
-    /// .unwrap();
+    /// let alice_keys =
+    ///     Keys::from_sk_str("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
+    ///         .unwrap();
     ///
     /// client
     ///     .send_direct_msg(&alice_keys, "My first DM fro Nostr SDK!")
