@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 use std::fmt;
@@ -17,7 +17,7 @@ use tokio_tungstenite::tungstenite::Message;
 mod net;
 pub mod pool;
 
-use self::pool::RelayPoolEvent;
+use self::pool::RelayPoolMessage;
 
 #[cfg(feature = "blocking")]
 use crate::{new_current_thread, RUNTIME};
@@ -69,14 +69,14 @@ pub struct Relay {
     proxy: Option<SocketAddr>,
     status: Arc<Mutex<RelayStatus>>,
     scheduled_for_termination: Arc<Mutex<bool>>,
-    pool_sender: Sender<RelayPoolEvent>,
+    pool_sender: Sender<RelayPoolMessage>,
     relay_sender: Sender<RelayEvent>,
     relay_receiver: Arc<Mutex<Receiver<RelayEvent>>>,
 }
 
 impl Relay {
     /// Create new `Relay`
-    pub fn new(url: Url, pool_sender: Sender<RelayPoolEvent>, proxy: Option<SocketAddr>) -> Self {
+    pub fn new(url: Url, pool_sender: Sender<RelayPoolMessage>, proxy: Option<SocketAddr>) -> Self {
         let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(1024);
 
         Self {
@@ -255,7 +255,7 @@ impl Relay {
                                         log::trace!("Received message to {}: {:?}", relay.url, msg);
                                         if let Err(err) = relay
                                             .pool_sender
-                                            .send(RelayPoolEvent::ReceivedMsg {
+                                            .send(RelayPoolMessage::ReceivedMsg {
                                                 relay_url: relay.url(),
                                                 msg,
                                             })

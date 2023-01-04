@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 use std::collections::{HashMap, VecDeque};
@@ -29,7 +29,7 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub enum RelayPoolEvent {
+pub enum RelayPoolMessage {
     ReceivedMsg { relay_url: Url, msg: RelayMessage },
     EventSent(Box<Event>),
 }
@@ -41,7 +41,7 @@ pub enum RelayPoolNotifications {
 }
 
 struct RelayPoolTask {
-    receiver: Receiver<RelayPoolEvent>,
+    receiver: Receiver<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotifications>,
     events: VecDeque<Sha256Hash>,
 }
@@ -50,7 +50,7 @@ const MAX_EVENTS: usize = 100000;
 
 impl RelayPoolTask {
     pub fn new(
-        pool_task_receiver: Receiver<RelayPoolEvent>,
+        pool_task_receiver: Receiver<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotifications>,
     ) -> Self {
         Self {
@@ -63,37 +63,33 @@ impl RelayPoolTask {
     pub async fn run(&mut self) {
         log::debug!("RelayPoolTask Thread Started");
         while let Some(msg) = self.receiver.recv().await {
-            self.handle_message(msg).await;
-        }
-    }
+            match msg {
+                RelayPoolMessage::ReceivedMsg { relay_url: _, msg } => {
+                    let _ = self
+                        .notification_sender
+                        .send(RelayPoolNotifications::ReceivedMessage(msg.clone()));
 
-    async fn handle_message(&mut self, msg: RelayPoolEvent) {
-        match msg {
-            RelayPoolEvent::ReceivedMsg { relay_url: _, msg } => {
-                let _ = self
-                    .notification_sender
-                    .send(RelayPoolNotifications::ReceivedMessage(msg.clone()));
+                    if let RelayMessage::Event {
+                        subscription_id: _,
+                        event,
+                    } = msg
+                    {
+                        //Verifies if the event is valid
+                        if event.verify().is_ok() {
+                            //Adds only new events
+                            if !self.events.contains(&event.id) {
+                                self.add_event(event.id);
+                                let notification =
+                                    RelayPoolNotifications::ReceivedEvent(event.as_ref().clone());
 
-                if let RelayMessage::Event {
-                    subscription_id: _,
-                    event,
-                } = msg
-                {
-                    //Verifies if the event is valid
-                    if event.verify().is_ok() {
-                        //Adds only new events
-                        if !self.events.contains(&event.id) {
-                            self.add_event(event.id);
-                            let notification =
-                                RelayPoolNotifications::ReceivedEvent(event.as_ref().clone());
-
-                            let _ = self.notification_sender.send(notification);
+                                let _ = self.notification_sender.send(notification);
+                            }
                         }
                     }
                 }
-            }
-            RelayPoolEvent::EventSent(event) => {
-                self.add_event(event.id);
+                RelayPoolMessage::EventSent(event) => {
+                    self.add_event(event.id);
+                }
             }
         }
     }
@@ -110,7 +106,7 @@ impl RelayPoolTask {
 pub struct RelayPool {
     relays: Arc<Mutex<HashMap<Url, Relay>>>,
     subscription: Arc<Mutex<Subscription>>,
-    pool_task_sender: Sender<RelayPoolEvent>,
+    pool_task_sender: Sender<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotifications>,
 }
 
@@ -198,7 +194,7 @@ impl RelayPool {
         if let ClientMessage::Event { event } = &msg {
             if let Err(err) = self
                 .pool_task_sender
-                .send(RelayPoolEvent::EventSent(event.clone()))
+                .send(RelayPoolMessage::EventSent(event.clone()))
                 .await
             {
                 log::error!("{}", err.to_string());
