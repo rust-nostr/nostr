@@ -9,9 +9,11 @@
 - [crates](./crates/):
     - [nostr][]: Rust implementation of Nostr protocol.
     - [nostr-sdk][]: High level client library.
+    - [nostr-sdk-sqlite][]: SQLite for [nostr-sdk][]
 
 [nostr]: ./crates/nostr/
 [nostr-sdk]: ./crates/nostr-sdk/
+[nostr-sdk-sqlite]: ./crates/nostr-sdk-sqlite/
 
 ## Minimum Supported Rust Version (MSRV)
 
