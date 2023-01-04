@@ -17,6 +17,7 @@ pub mod event;
 pub mod key;
 pub mod message;
 pub mod metadata;
+pub mod prelude;
 pub mod util;
 
 pub use self::contact::Contact;
