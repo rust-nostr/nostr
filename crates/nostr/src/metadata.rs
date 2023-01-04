@@ -19,9 +19,9 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub about: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub website: Option<Url>,
+    pub website: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub picture: Option<Url>,
+    pub picture: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nip05: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -97,7 +97,7 @@ impl Metadata {
     /// Set website
     pub fn website(self, url: Url) -> Self {
         Self {
-            website: Some(url),
+            website: Some(url.to_string()),
             ..self
         }
     }
@@ -105,7 +105,7 @@ impl Metadata {
     /// Set picture
     pub fn picture(self, picture: Url) -> Self {
         Self {
-            picture: Some(picture),
+            picture: Some(picture.to_string()),
             ..self
         }
     }
