@@ -13,7 +13,7 @@ keywords = ["nostr", "sdk", "rust"]
 
 [features]
 default = ["all-nips"]
-blocking = ["dep:once_cell", "nostr/blocking"]
+blocking = ["nostr/blocking"]
 all-nips = ["nostr/all-nips"]
 nip04 = ["nostr/nip04"]
 nip05 = ["nostr/nip05"]
@@ -24,7 +24,7 @@ nip11 = ["nostr/nip11"]
 futures-util = "0.3"
 log = "0.4"
 nostr = { version = "0.12", path = "../nostr" }
-once_cell = { version = "1", optional = true }
+once_cell = "1"
 thiserror = "1.0"
 tokio = { version = "1", features = ["full"] }
 tokio-rustls = "0.23.4"

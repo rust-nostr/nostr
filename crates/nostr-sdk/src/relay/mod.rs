@@ -13,11 +13,13 @@ use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
+use uuid::Uuid;
 
 mod net;
 pub mod pool;
 
 use self::pool::RelayPoolMessage;
+use self::pool::SUBSCRIPTION;
 
 #[cfg(feature = "blocking")]
 use crate::{new_current_thread, RUNTIME};
@@ -157,8 +159,6 @@ impl Relay {
                         _ => (),
                     };
 
-                    // TODO: if disconnected and connected again, get subscription filters from store (sled or something else) and send it again
-
                     tokio::time::sleep(Duration::from_secs(20)).await;
                 }
             };
@@ -216,6 +216,15 @@ impl Relay {
                                 break;
                             }
                             RelayEvent::Terminate => {
+                                // Unsubscribe from relay
+                                if let Err(e) = relay.unsubscribe().await {
+                                    log::error!(
+                                        "Impossible to unsubscribe from {}: {}",
+                                        relay.url(),
+                                        e.to_string()
+                                    )
+                                }
+                                // Close stream
                                 if let Err(e) = ws_tx.close().await {
                                     log::error!("RelayEvent::Close error: {:?}", e);
                                 };
@@ -340,6 +349,15 @@ impl Relay {
 
                 #[cfg(not(feature = "blocking"))]
                 tokio::task::spawn(func_relay_ping);
+
+                // Subscribe to relay
+                if let Err(e) = self.subscribe().await {
+                    log::error!(
+                        "Impossible to subscribe to {}: {}",
+                        self.url(),
+                        e.to_string()
+                    )
+                }
             }
             Err(err) => {
                 self.set_status(RelayStatus::Disconnected).await;
@@ -372,5 +390,26 @@ impl Relay {
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
         self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)))
             .await
+    }
+
+    pub async fn subscribe(&self) -> Result<Uuid, Error> {
+        let mut subscription = SUBSCRIPTION.lock().await;
+        let channel = subscription.get_channel(&self.url());
+        let channel_id = channel.id();
+        self.send_msg(ClientMessage::new_req(
+            channel_id.to_string(),
+            subscription.get_filters(),
+        ))
+        .await?;
+        Ok(channel_id)
+    }
+
+    pub async fn unsubscribe(&self) -> Result<(), Error> {
+        let mut subscription = SUBSCRIPTION.lock().await;
+        if let Some(channel) = subscription.remove_channel(&self.url()) {
+            self.send_msg(ClientMessage::close(channel.id().to_string()))
+                .await?;
+        }
+        Ok(())
     }
 }

@@ -4,19 +4,22 @@
 use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
 use std::sync::Arc;
-#[cfg(feature = "blocking")]
 use std::time::Duration;
 
 use nostr::url::Url;
 use nostr::{ClientMessage, Event, RelayMessage, Sha256Hash, SubscriptionFilter};
+use once_cell::sync::Lazy;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
+use tokio::time;
 use uuid::Uuid;
 
 use super::{Error as RelayError, Relay};
 #[cfg(feature = "blocking")]
 use crate::new_current_thread;
 use crate::subscription::Subscription;
+
+pub static SUBSCRIPTION: Lazy<Mutex<Subscription>> = Lazy::new(|| Mutex::new(Subscription::new()));
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -32,6 +35,7 @@ pub enum Error {
 pub enum RelayPoolMessage {
     ReceivedMsg { relay_url: Url, msg: RelayMessage },
     EventSent(Box<Event>),
+    Shutdown,
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +94,11 @@ impl RelayPoolTask {
                 RelayPoolMessage::EventSent(event) => {
                     self.add_event(event.id);
                 }
+                RelayPoolMessage::Shutdown => {
+                    log::debug!("Exited from RelayPoolTask thread");
+                    self.receiver.close();
+                    break;
+                }
             }
         }
     }
@@ -105,7 +114,6 @@ impl RelayPoolTask {
 #[derive(Debug, Clone)]
 pub struct RelayPool {
     relays: Arc<Mutex<HashMap<Url, Relay>>>,
-    subscription: Arc<Mutex<Subscription>>,
     pool_task_sender: Sender<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotifications>,
 }
@@ -141,7 +149,6 @@ impl RelayPool {
 
         Self {
             relays: Arc::new(Mutex::new(HashMap::new())),
-            subscription: Arc::new(Mutex::new(Subscription::new())),
             pool_task_sender,
             notification_sender,
         }
@@ -160,7 +167,7 @@ impl RelayPool {
 
     /// Get subscriptions
     pub async fn subscription(&self) -> Subscription {
-        let subscription = self.subscription.lock().await;
+        let subscription = SUBSCRIPTION.lock().await;
         subscription.clone()
     }
 
@@ -213,12 +220,12 @@ impl RelayPool {
         let relays = self.relays.lock().await;
 
         {
-            let mut subscription = self.subscription.lock().await;
+            let mut subscription = SUBSCRIPTION.lock().await;
             subscription.update_filters(filters.clone());
         }
 
         for relay in relays.values() {
-            self.subscribe_relay(relay).await?;
+            relay.subscribe().await?;
         }
 
         Ok(())
@@ -228,33 +235,7 @@ impl RelayPool {
     pub async fn unsubscribe(&self) -> Result<(), Error> {
         let relays = self.relays.lock().await;
         for relay in relays.values() {
-            self.unsubscribe_relay(relay).await?;
-        }
-
-        Ok(())
-    }
-
-    async fn subscribe_relay(&self, relay: &Relay) -> Result<Uuid, Error> {
-        let mut subscription = self.subscription.lock().await;
-        let channel = subscription.get_channel(&relay.url());
-        let channel_id = channel.id();
-
-        relay
-            .send_msg(ClientMessage::new_req(
-                channel_id.to_string(),
-                subscription.get_filters(),
-            ))
-            .await?;
-
-        Ok(channel_id)
-    }
-
-    async fn unsubscribe_relay(&self, relay: &Relay) -> Result<(), Error> {
-        let mut subscription = self.subscription.lock().await;
-        if let Some(channel) = subscription.remove_channel(&relay.url()) {
-            relay
-                .send_msg(ClientMessage::close(channel.id().to_string()))
-                .await?;
+            relay.unsubscribe().await?;
         }
 
         Ok(())
@@ -335,14 +316,22 @@ impl RelayPool {
         wait_for_connection: bool,
     ) -> Result<(), Error> {
         relay.connect(wait_for_connection).await;
-        self.subscribe_relay(relay).await?;
         Ok(())
     }
 
     /// Disconnect from relay
     pub async fn disconnect_relay(&self, relay: &Relay) -> Result<(), Error> {
         relay.terminate().await?;
-        self.unsubscribe_relay(relay).await?;
+        Ok(())
+    }
+
+    /// Completly shutdown pool
+    pub async fn shutdown(self) -> Result<(), Error> {
+        self.disconnect().await?;
+        time::sleep(Duration::from_secs(3)).await;
+        if let Err(e) = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await {
+            log::error!("Impossible to shutdown pool: {}", e.to_string());
+        };
         Ok(())
     }
 }

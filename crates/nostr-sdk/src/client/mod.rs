@@ -70,6 +70,11 @@ impl Client {
         self.keys.clone()
     }
 
+    /// Completly shutdown [`Client`]
+    pub async fn shutdown(self) -> Result<(), Error> {
+        Ok(self.pool.shutdown().await?)
+    }
+
     /// Get new notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
         self.pool.notifications()
