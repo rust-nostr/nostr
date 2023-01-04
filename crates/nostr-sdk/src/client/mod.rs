@@ -142,7 +142,10 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         #[cfg(feature = "sqlite")]
-        self.store()?.insert_relay(url.clone(), proxy)?;
+        {
+            self.store()?.insert_relay(url.clone(), proxy)?;
+            self.store()?.enable_relay(url.clone())?;
+        }
         self.pool.add_relay(url, proxy).await;
         Ok(())
     }

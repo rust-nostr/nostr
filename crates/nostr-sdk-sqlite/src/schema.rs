@@ -50,7 +50,6 @@ CREATE INDEX IF NOT EXISTS event_composite_index ON event(kind,created_at);
 -- Profile Table
 CREATE TABLE IF NOT EXISTS profile (
 pubkey TEXT PRIMARY KEY NOT NULL,
-alias TEXT DEFAULT NULL,
 name TEXT DEFAULT NULL,
 display_name TEXT DEFAULT NULL,
 about TEXT DEFAULT NULL,
@@ -66,7 +65,7 @@ metadata_at INTEGER DEFAULT 0
 -- Reactions Table
 CREATE TABLE IF NOT EXISTS reaction (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
-event_id TEXT NOT NULL REFERENCES event(id),
+event_id TEXT NOT NULL,
 pubkey TEXT NOT NULL REFERENCES profile(pubkey),
 content TEXT NOT NULL
 );
@@ -85,12 +84,12 @@ enabled BOOLEAN DEFAULT TRUE
 CREATE UNIQUE INDEX IF NOT EXISTS relay_url_index ON relay(url);
 
 INSERT OR IGNORE INTO relay (url, enabled) values
-('wss://relay.damus.io', 0),
-('wss://relay.nostr.ch', 0),
-('wss://relay.nostr.info', 0),
-('wss://relay.nostr.bg', 0),
-('wss://nostr.bitcoiner.social', 0),
-('wss://nostr.openchain.fr', 0),
+('wss://relay.damus.io', 1),
+('wss://relay.nostr.ch', 1),
+('wss://relay.nostr.info', 1),
+('wss://relay.nostr.bg', 1),
+('wss://nostr.bitcoiner.social', 1),
+('wss://nostr.openchain.fr', 1),
 ('wss://nostr-relay.wlvs.space', 0),
 ('wss://nostr-pub.semisol.dev', 0),
 ('wss://nostr.oxtr.dev', 0),

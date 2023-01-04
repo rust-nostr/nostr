@@ -11,7 +11,9 @@ use r2d2_sqlite::SqliteConnectionManager;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-pub mod relay;
+mod profile;
+mod reaction;
+mod relay;
 
 use crate::error::Error;
 use crate::model::Profile;
@@ -133,155 +135,10 @@ impl Store {
         Ok(())
     }
 
-    pub fn insert_profile(&self, profile: Profile) -> Result<(), Error> {
-        let conn = self.pool.get()?;
-        conn.execute(
-            "INSERT INTO profile (pubkey, name, display_name, about, website, picture, nip05, lud06, lud16, metadata_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-            (
-                profile.pubkey.to_string(),
-                profile.name,
-                profile.display_name,
-                profile.about,
-                profile.website,
-                profile.picture,
-                profile.nip05,
-                profile.lud06,
-                profile.lud16,
-                profile.metadata_at,
-            ),
-        )?;
-
-        Ok(())
-    }
-
-    pub fn update_profile(&self, profile: Profile) -> Result<(), Error> {
-        let conn = self.pool.get()?;
-        conn.execute(
-            "UPDATE profile SET name=?, display_name=?, about=?, website=?, picture=?, nip05=?, lud06=?, lud16=?, followed=?, metadata_at=? WHERE pubkey = ?;",
-            (
-                profile.name,
-                profile.display_name,
-                profile.about,
-                profile.website,
-                profile.picture,
-                profile.nip05,
-                profile.lud06,
-                profile.lud16,
-                profile.followed,
-                profile.metadata_at,
-                profile.pubkey.to_string(),
-            ),
-        )?;
-
-        Ok(())
-    }
-
-    pub fn get_profile(&self, public_key: XOnlyPublicKey) -> Result<Profile, Error> {
-        let conn = self.pool.get()?;
-        let mut stmt = conn.prepare("SELECT * FROM profile WHERE pubkey = ?")?;
-        let mut rows = stmt.query([public_key.to_string()])?;
-
-        match rows.next()? {
-            Some(row) => {
-                let pubkey: String = row.get(0)?;
-                Ok(Profile {
-                    pubkey: XOnlyPublicKey::from_str(&pubkey)?,
-                    name: row.get(1)?,
-                    display_name: row.get(2)?,
-                    about: row.get(3)?,
-                    website: row.get(4)?,
-                    picture: row.get(5)?,
-                    nip05: row.get(6)?,
-                    lud06: row.get(7)?,
-                    lud16: row.get(8)?,
-                    followed: row.get(9)?,
-                    metadata_at: row.get(10)?,
-                })
-            }
-            None => Err(Error::ValueNotFound),
-        }
-    }
-
-    pub fn set_contacts(&self, list: Vec<Contact>) -> Result<(), Error> {
-        let conn = self.pool.get()?;
-        let mut stmt = conn.prepare("INSERT INTO profile (pubkey, followed) VALUES(?, ?) ON CONFLICT(pubkey) DO UPDATE SET followed=excluded.followed;")?;
-        for contact in list.into_iter() {
-            stmt.execute((contact.pk.to_string(), true))?;
-        }
-        Ok(())
-    }
-
-    pub fn get_contacts(&self) -> Result<Vec<Profile>, Error> {
-        let conn = self.pool.get()?;
-        let mut stmt = conn.prepare("SELECT * FROM profile WHERE followed = ?")?;
-        let mut rows = stmt.query([true])?;
-
-        let mut profiles = Vec::new();
-
-        while let Ok(Some(row)) = rows.next() {
-            let pubkey: String = row.get(0)?;
-            profiles.push(Profile {
-                pubkey: XOnlyPublicKey::from_str(&pubkey)?,
-                name: row.get(1)?,
-                display_name: row.get(2)?,
-                about: row.get(3)?,
-                website: row.get(4)?,
-                picture: row.get(5)?,
-                nip05: row.get(6)?,
-                lud06: row.get(7)?,
-                lud16: row.get(8)?,
-                followed: row.get(9)?,
-                metadata_at: row.get(10)?,
-            })
-        }
-
-        Ok(profiles)
-    }
-
-    pub fn set_authors(&self, authors: Vec<XOnlyPublicKey>) -> Result<(), Error> {
-        let conn = self.pool.get()?;
-        let mut stmt = conn.prepare("INSERT OR IGNORE INTO profile (pubkey) VALUES (?)")?;
-
-        for author in authors.into_iter() {
-            stmt.insert([author.to_string()])?;
-        }
-
-        Ok(())
-    }
-
-    pub fn get_authors(&self) -> Result<Vec<XOnlyPublicKey>, Error> {
-        let conn = self.pool.get()?;
-        let mut stmt = conn.prepare("SELECT pubkey FROM profile")?;
-        let mut rows = stmt.query([])?;
-
-        let mut authors = Vec::new();
-
-        while let Ok(Some(row)) = rows.next() {
-            let pubkey: String = row.get(0)?;
-            authors.push(XOnlyPublicKey::from_str(&pubkey)?);
-        }
-
-        Ok(authors)
-    }
-
-    pub fn insert_reaction(&self, event: &Event) -> Result<(), Error> {
-        let conn = self.pool.get()?;
-        conn.execute(
-            "INSERT OR IGNORE INTO reaction (event_id, pubkey, contente) VALUES (?, ?, ?);",
-            (
-                event.id.to_string(),
-                event.pubkey.to_string(),
-                event.content.clone(),
-            ),
-        )?;
-        Ok(())
-    }
-
     pub fn get_feed(&self, limit: usize, _page: usize) -> Result<Vec<Event>, Error> {
         let conn = self.pool.get()?;
-        let mut stmt = conn.prepare(
-            "SELECT * FROM event WHERE kind = ? OR kind = ? ORDER BY created_at DESC LIMIT ?",
-        )?;
+        let mut stmt = conn
+            .prepare("SELECT * FROM event WHERE kind IN (?, ?) ORDER BY created_at DESC LIMIT ?")?;
         let mut rows = stmt.query([1, 6, limit])?;
 
         let mut events = Vec::new();
