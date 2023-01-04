@@ -10,6 +10,8 @@ use tokio::runtime::{Builder, Runtime};
 
 pub use nostr;
 pub use nostr::Result;
+#[cfg(feature = "sqlite")]
+pub use nostr_sdk_sqlite as sqlite;
 
 pub mod client;
 pub mod relay;
