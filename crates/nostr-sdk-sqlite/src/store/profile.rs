@@ -14,7 +14,7 @@ impl Store {
     pub fn insert_profile(&self, profile: Profile) -> Result<(), Error> {
         let conn = self.pool.get()?;
         conn.execute(
-            "INSERT INTO profile (pubkey, name, display_name, about, website, picture, nip05, lud06, lud16, metadata_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            "INSERT INTO profile (pubkey, name, display_name, about, website, picture, nip05, lud06, lud16, followed, metadata_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             (
                 profile.pubkey.to_string(),
                 profile.name,
@@ -25,6 +25,7 @@ impl Store {
                 profile.nip05,
                 profile.lud06,
                 profile.lud16,
+                if profile.pubkey == self.owner_pubkey {true} else {profile.followed},
                 profile.metadata_at,
             ),
         )?;
@@ -46,7 +47,11 @@ impl Store {
                 profile.nip05,
                 profile.lud06,
                 profile.lud16,
-                profile.followed,
+                if profile.pubkey == self.owner_pubkey {
+                    true
+                } else {
+                    profile.followed
+                },
                 profile.metadata_at,
                 profile.pubkey.to_string(),
             ),
@@ -87,6 +92,7 @@ impl Store {
         for contact in list.into_iter() {
             stmt.execute((contact.pk.to_string(), true))?;
         }
+        // TODO: update filters with new pubkeys
         Ok(())
     }
 
