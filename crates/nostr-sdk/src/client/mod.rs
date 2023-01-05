@@ -356,6 +356,12 @@ impl Client {
         Ok(self.pool.get_events_of(filters).await?)
     }
 
+    /// Request events of filters
+    /// All events will be received on notification listener (`client.notifications()`)
+    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
+        self.pool.req_events_of(filters);
+    }
+
     /// Send client message
     pub async fn send_client_msg(&self, msg: ClientMessage) -> Result<(), Error> {
         Ok(self.pool.send_client_msg(msg).await?)
@@ -749,6 +755,11 @@ impl Client {
         } else {
             Ok(Entity::Channel)
         }
+    }
+
+    #[cfg(feature = "sqlite")]
+    pub async fn sync(&self) {
+        // Subscribe to default filters and save to store
     }
 
     pub async fn handle_notifications<F>(&self, func: F) -> Result<(), Error>

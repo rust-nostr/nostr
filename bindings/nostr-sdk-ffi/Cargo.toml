@@ -17,7 +17,7 @@ crate-type = ["cdylib", "staticlib"]
 log = "0.4"
 nostr  = { path = "../../crates/nostr" }
 nostr-ffi  = { path = "../nostr-ffi" }
-nostr-sdk  = { path = "../../crates/nostr-sdk", features = ["blocking"] }
+nostr-sdk  = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "blocking"] }
 parking_lot = "0.12.1"
 uniffi = "0.22.0"
 uniffi_macros = "0.22.0"

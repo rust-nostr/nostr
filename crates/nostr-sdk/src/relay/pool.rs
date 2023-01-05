@@ -289,6 +289,67 @@ impl RelayPool {
         Ok(events)
     }
 
+    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
+        let this = self.clone();
+        let req_events_thread = async move {
+            let id = Uuid::new_v4();
+
+            let relays = this.relays().await;
+
+            // Subscribe
+            for relay in relays.values() {
+                if let Err(e) = relay
+                    .send_msg(ClientMessage::new_req(id.to_string(), filters.clone()))
+                    .await
+                {
+                    log::error!(
+                        "Impossible to send REQ to {}: {}",
+                        relay.url(),
+                        e.to_string()
+                    );
+                };
+            }
+
+            let mut notifications = this.notifications();
+
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotifications::ReceivedMessage(RelayMessage::EndOfStoredEvents {
+                    subscription_id,
+                }) = notification
+                {
+                    if subscription_id == id.to_string() {
+                        break;
+                    }
+                }
+            }
+
+            // Unsubscribe
+            for relay in relays.values() {
+                if let Err(e) = relay.send_msg(ClientMessage::close(id.to_string())).await {
+                    log::error!(
+                        "Impossible to close subscription with {}: {}",
+                        relay.url(),
+                        e.to_string()
+                    );
+                }
+            }
+        };
+
+        #[cfg(feature = "blocking")]
+        match new_current_thread() {
+            Ok(rt) => {
+                std::thread::spawn(move || {
+                    rt.block_on(async move { req_events_thread.await });
+                    rt.shutdown_timeout(Duration::from_millis(100));
+                });
+            }
+            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
+        };
+
+        #[cfg(not(feature = "blocking"))]
+        tokio::task::spawn(async move { req_events_thread.await });
+    }
+
     /// Connect to all added relays and keep connection alive
     pub async fn connect(&self, wait_for_connection: bool) {
         let relays = self.relays.lock().await;
