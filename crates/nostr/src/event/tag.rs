@@ -32,6 +32,7 @@ pub enum Error {
 pub enum Marker {
     Root,
     Reply,
+    Custom(String),
 }
 
 impl fmt::Display for Marker {
@@ -39,18 +40,21 @@ impl fmt::Display for Marker {
         match self {
             Self::Root => write!(f, "root"),
             Self::Reply => write!(f, "reply"),
+            Self::Custom(m) => write!(f, "{}", m),
         }
     }
 }
 
-impl FromStr for Marker {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "root" => Ok(Self::Root),
-            "reply" => Ok(Self::Reply),
-            _ => Err(Error::MarkerParseError),
+impl<S> From<S> for Marker
+where
+    S: Into<String>,
+{
+    fn from(s: S) -> Self {
+        let s: String = s.into();
+        match s.as_str() {
+            "root" => Self::Root,
+            "reply" => Self::Reply,
+            m => Self::Custom(m.to_string()),
         }
     }
 }
@@ -198,7 +202,7 @@ where
                 TagKind::E => Ok(Self::Event(
                     Sha256Hash::from_str(&tag[1])?,
                     (!tag[2].is_empty()).then_some(tag[2].clone()),
-                    Marker::from_str(&tag[3]).ok(),
+                    (!tag[3].is_empty()).then_some(Marker::from(&tag[3])),
                 )),
                 TagKind::Delegation => Ok(Self::Delegation {
                     delegator_pk: XOnlyPublicKey::from_str(&tag[1])?,
