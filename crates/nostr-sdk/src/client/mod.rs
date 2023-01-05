@@ -6,9 +6,11 @@ use std::net::SocketAddr;
 #[cfg(feature = "sqlite")]
 use std::path::Path;
 use std::str::FromStr;
-#[cfg(all(feature = "sqlite", feature = "blocking"))]
+#[cfg(feature = "sqlite")]
 use std::time::Duration;
 
+#[cfg(feature = "sqlite")]
+use futures_util::future::abortable;
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
@@ -764,32 +766,70 @@ impl Client {
     #[cfg(feature = "sqlite")]
     pub async fn sync(&self) -> Result<(), Error> {
         let store: Store = self.store()?;
+        let client = self.clone();
+        let (update_subscription_thread, handle) = abortable(async move {
+            let my_public_key: XOnlyPublicKey = client.keys.public_key();
 
-        let my_public_key: XOnlyPublicKey = self.keys.public_key();
+            let contact_filters = SubscriptionFilter::new()
+                .author(my_public_key)
+                .kind(Kind::Base(KindBase::ContactList))
+                .limit(1);
 
-        let contact_filters = SubscriptionFilter::new()
-            .author(my_public_key)
-            .kind(Kind::Base(KindBase::ContactList))
-            .limit(1);
+            let dm_filters = SubscriptionFilter::new()
+                .pubkey(my_public_key)
+                .kind(Kind::Base(KindBase::EncryptedDirectMessage));
 
-        let dm_filters = SubscriptionFilter::new()
-            .pubkey(my_public_key)
-            .kind(Kind::Base(KindBase::EncryptedDirectMessage));
-
-        let following_authors = SubscriptionFilter::new()
-            .authors(store.get_contacts_pubkeys().unwrap_or_default())
-            .kinds(vec![
+            let mut following_authors = SubscriptionFilter::new().kinds(vec![
                 Kind::Base(KindBase::Metadata),
                 Kind::Base(KindBase::TextNote),
                 Kind::Base(KindBase::Boost),
                 Kind::Base(KindBase::Reaction),
             ]);
 
-        self.subscribe(vec![contact_filters, dm_filters, following_authors])
-            .await?;
+            loop {
+                if let Ok(pubkeys) = store.get_contacts_pubkeys() {
+                    if following_authors.authors.as_ref() != Some(&pubkeys) {
+                        let new_filter = following_authors.clone().authors(pubkeys);
+                        match client
+                            .subscribe(vec![
+                                contact_filters.clone(),
+                                dm_filters.clone(),
+                                new_filter.clone(),
+                            ])
+                            .await
+                        {
+                            Ok(_) => {
+                                following_authors = new_filter;
+                                log::debug!("Subscription filters updated");
+                            }
+                            Err(e) => log::error!("Impossible to subscribe to new filters: {}", e),
+                        }
+                    }
+                } else {
+                    log::error!("Impossible to get contacts");
+                }
+                log::debug!("Wait for new subscription check...");
+                tokio::time::sleep(Duration::from_secs(30)).await;
+            }
+        });
 
-        // TODO: subscribe to contacts added later
+        #[cfg(feature = "blocking")]
+        match new_current_thread() {
+            Ok(rt) => {
+                std::thread::spawn(move || {
+                    rt.block_on(async move {
+                        let _ = update_subscription_thread.await;
+                    });
+                    rt.shutdown_timeout(Duration::from_millis(100));
+                });
+            }
+            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
+        };
 
+        #[cfg(not(feature = "blocking"))]
+        tokio::task::spawn(async move { update_subscription_thread.await });
+
+        let store: Store = self.store()?;
         let client = self.clone();
         let sync_thread = async move {
             let mut notifications = client.notifications();
@@ -801,6 +841,7 @@ impl Client {
                         }
                     }
                     RelayPoolNotifications::Shutdown => {
+                        handle.abort();
                         store.close();
                         break;
                     }
