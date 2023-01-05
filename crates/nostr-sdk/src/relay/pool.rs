@@ -42,6 +42,7 @@ pub enum RelayPoolMessage {
 pub enum RelayPoolNotifications {
     ReceivedEvent(Event),
     ReceivedMessage(RelayMessage),
+    Shutdown,
 }
 
 struct RelayPoolTask {
@@ -95,6 +96,12 @@ impl RelayPoolTask {
                     self.add_event(event.id);
                 }
                 RelayPoolMessage::Shutdown => {
+                    if let Err(e) = self
+                        .notification_sender
+                        .send(RelayPoolNotifications::Shutdown)
+                    {
+                        log::error!("Impossible to send shutdown notification: {}", e);
+                    }
                     log::debug!("Exited from RelayPoolTask thread");
                     self.receiver.close();
                     break;
