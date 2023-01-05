@@ -290,13 +290,11 @@ impl RelayPool {
     }
 
     /// Connect to all added relays and keep connection alive
-    pub async fn connect(&self, wait_for_connection: bool) -> Result<(), Error> {
+    pub async fn connect(&self, wait_for_connection: bool) {
         let relays = self.relays.lock().await;
         for relay in relays.values() {
-            self.connect_relay(relay, wait_for_connection).await?;
+            self.connect_relay(relay, wait_for_connection).await;
         }
-
-        Ok(())
     }
 
     /// Disconnect from all relays
@@ -310,13 +308,8 @@ impl RelayPool {
     }
 
     /// Connect to relay
-    pub async fn connect_relay(
-        &self,
-        relay: &Relay,
-        wait_for_connection: bool,
-    ) -> Result<(), Error> {
+    pub async fn connect_relay(&self, relay: &Relay, wait_for_connection: bool) {
         relay.connect(wait_for_connection).await;
-        Ok(())
     }
 
     /// Disconnect from relay

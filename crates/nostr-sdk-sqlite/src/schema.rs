@@ -84,20 +84,20 @@ enabled BOOLEAN DEFAULT TRUE
 CREATE UNIQUE INDEX IF NOT EXISTS relay_url_index ON relay(url);
 
 INSERT OR IGNORE INTO relay (url, enabled) values
-('wss://relay.damus.io', 1),
-('wss://relay.nostr.ch', 1),
-('wss://relay.nostr.info', 1),
-('wss://relay.nostr.bg', 1),
-('wss://nostr.bitcoiner.social', 1),
-('wss://nostr.openchain.fr', 1),
-('wss://nostr-relay.wlvs.space', 0),
-('wss://nostr-pub.semisol.dev', 0),
-('wss://nostr.oxtr.dev', 0),
-('wss://brb.io', 0),
-('wss://relay.grunch.dev', 0),
-('wss://nostr-pub.wellorder.net', 0),
-('wss://nostr.sandwich.farm', 0),
-('wss://nostr.orangepill.dev', 0);
+('wss://relay.damus.io/', 1),
+('wss://relay.nostr.ch/', 1),
+('wss://relay.nostr.info/', 1),
+('wss://relay.nostr.bg/', 1),
+('wss://nostr.bitcoiner.social/', 1),
+('wss://nostr.openchain.fr/', 1),
+('wss://nostr-relay.wlvs.space/', 0),
+('wss://nostr-pub.semisol.dev/', 0),
+('wss://nostr.oxtr.dev/', 0),
+('wss://brb.io/', 0),
+('wss://relay.grunch.dev/', 0),
+('wss://nostr-pub.wellorder.net/', 0),
+('wss://nostr.sandwich.farm/', 0),
+('wss://nostr.orangepill.dev/', 0);
 "##,
     DB_VERSION
 );

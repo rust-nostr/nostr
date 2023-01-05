@@ -151,7 +151,6 @@ interface Client {
     void add_relay(string url, optional string? proxy = null);
     [Throws=NostrSdkError]
     void connect_relay(string url, boolean wait_for_connection);
-    [Throws=NostrSdkError]
     void connect();
     [Throws=NostrSdkError]
     void subscribe(sequence<SubscriptionFilter> filters);

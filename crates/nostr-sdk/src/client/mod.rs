@@ -143,8 +143,9 @@ impl Client {
         let url = Url::parse(&url.into())?;
         #[cfg(feature = "sqlite")]
         {
-            self.store()?.insert_relay(url.clone(), proxy)?;
-            self.store()?.enable_relay(url.clone())?;
+            let store = self.store()?;
+            store.insert_relay(url.clone(), proxy)?;
+            store.enable_relay(url.clone())?;
         }
         self.pool.add_relay(url, proxy).await;
         Ok(())
@@ -188,7 +189,7 @@ impl Client {
     /// Restore previous added relays from store
     #[cfg(feature = "sqlite")]
     pub async fn restore_relays(&self) -> Result<(), Error> {
-        let relays = self.store()?.get_relays()?;
+        let relays = self.store()?.get_relays(true)?;
         for (url, proxy) in relays.into_iter() {
             self.pool.add_relay(url, proxy).await;
         }
@@ -219,7 +220,7 @@ impl Client {
         if let Some(relay) = self.pool.relays().await.get(&url) {
             #[cfg(feature = "sqlite")]
             self.store()?.enable_relay(url)?;
-            self.pool.connect_relay(relay, wait_for_connection).await?;
+            self.pool.connect_relay(relay, wait_for_connection).await;
             return Ok(());
         }
         Err(Error::RelayNotFound)
@@ -265,11 +266,11 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
     /// #   let client = Client::new(&my_keys);
-    /// client.connect().await.unwrap();
+    /// client.connect().await;
     /// # }
     /// ```
-    pub async fn connect(&self) -> Result<(), Error> {
-        Ok(self.pool.connect(false).await?)
+    pub async fn connect(&self) {
+        self.pool.connect(false).await;
     }
 
     /// Connect to all added relays waiting for initial connection and keep connection alive
@@ -282,11 +283,11 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
     /// #   let client = Client::new(&my_keys);
-    /// client.connect_and_wait().await.unwrap();
+    /// client.connect_and_wait().await;
     /// # }
     /// ```
-    pub async fn connect_and_wait(&self) -> Result<(), Error> {
-        Ok(self.pool.connect(true).await?)
+    pub async fn connect_and_wait(&self) {
+        self.pool.connect(true).await;
     }
 
     /// Disconnect from all relays

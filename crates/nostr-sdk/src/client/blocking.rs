@@ -93,12 +93,16 @@ impl Client {
         RUNTIME.block_on(async { self.client.disconnect_relay(url).await })
     }
 
-    pub fn connect(&self) -> Result<(), Error> {
-        RUNTIME.block_on(async { self.client.connect().await })
+    pub fn connect(&self) {
+        RUNTIME.block_on(async {
+            self.client.connect().await;
+        })
     }
 
-    pub fn connect_and_wait(&self) -> Result<(), Error> {
-        RUNTIME.block_on(async { self.client.connect_and_wait().await })
+    pub fn connect_and_wait(&self) {
+        RUNTIME.block_on(async {
+            self.client.connect_and_wait().await;
+        })
     }
 
     pub fn disconnect(&self) -> Result<(), Error> {

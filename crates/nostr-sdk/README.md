@@ -61,8 +61,8 @@ async fn main() -> Result<()> {
         proxy,
     ).await?;
 
-    // Connect to relays and keep connection alive
-    client.connect().await?;
+    // Connect to relays
+    client.connect().await;
 
     let metadata = Metadata::new()
         .name("username")

@@ -39,8 +39,8 @@ impl Client {
             .connect_relay(&url, wait_for_connection)?)
     }
 
-    pub fn connect(&self) -> Result<()> {
-        Ok(self.client.lock().connect()?)
+    pub fn connect(&self) {
+        self.client.lock().connect()
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) -> Result<()> {

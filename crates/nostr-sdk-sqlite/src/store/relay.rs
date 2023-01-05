@@ -18,10 +18,10 @@ impl Store {
         Ok(())
     }
 
-    pub fn get_relays(&self) -> Result<Vec<(Url, Option<SocketAddr>)>, Error> {
+    pub fn get_relays(&self, enabled: bool) -> Result<Vec<(Url, Option<SocketAddr>)>, Error> {
         let conn = self.pool.get()?;
-        let mut stmt = conn.prepare("SELECT url, proxy FROM relay WHERE enabled = 1")?;
-        let mut rows = stmt.query([])?;
+        let mut stmt = conn.prepare("SELECT url, proxy FROM relay WHERE enabled = ?")?;
+        let mut rows = stmt.query([enabled])?;
 
         let mut relays: Vec<(Url, Option<SocketAddr>)> = Vec::new();
         while let Ok(Some(row)) = rows.next() {
@@ -46,13 +46,13 @@ impl Store {
 
     pub fn enable_relay(&self, url: Url) -> Result<(), Error> {
         let conn = self.pool.get()?;
-        conn.execute("UPDATE relay SET enabled = ? WHERE url = ?;", (true, url))?;
+        conn.execute("UPDATE relay SET enabled = ? WHERE url = ?;", (1, url))?;
         Ok(())
     }
 
     pub fn disable_relay(&self, url: Url) -> Result<(), Error> {
         let conn = self.pool.get()?;
-        conn.execute("UPDATE relay SET enabled = ? WHERE url = ?;", (false, url))?;
+        conn.execute("UPDATE relay SET enabled = ? WHERE url = ?;", (0, url))?;
         Ok(())
     }
 }

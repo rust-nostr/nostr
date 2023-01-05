@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
         )
         .await?;
 
-    client.connect().await?;
+    client.connect().await;
 
     let subscription = SubscriptionFilter::new()
         .pubkey(my_keys.public_key())
