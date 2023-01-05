@@ -6,6 +6,8 @@ use std::net::SocketAddr;
 #[cfg(feature = "sqlite")]
 use std::path::Path;
 use std::str::FromStr;
+#[cfg(all(feature = "sqlite", feature = "blocking"))]
+use std::time::Duration;
 
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
@@ -21,6 +23,8 @@ use tokio::sync::broadcast;
 #[cfg(feature = "blocking")]
 pub mod blocking;
 
+#[cfg(all(feature = "sqlite", feature = "blocking"))]
+use crate::new_current_thread;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotifications};
 use crate::Relay;
 
@@ -758,8 +762,69 @@ impl Client {
     }
 
     #[cfg(feature = "sqlite")]
-    pub async fn sync(&self) {
-        // Subscribe to default filters and save to store
+    pub async fn sync(&self) -> Result<(), Error> {
+        let store: Store = self.store()?;
+
+        let my_public_key: XOnlyPublicKey = self.keys.public_key();
+
+        let contact_filters = SubscriptionFilter::new()
+            .author(my_public_key)
+            .kind(Kind::Base(KindBase::ContactList))
+            .limit(1);
+
+        let dm_filters = SubscriptionFilter::new()
+            .pubkey(my_public_key)
+            .kind(Kind::Base(KindBase::EncryptedDirectMessage));
+
+        let following_authors = SubscriptionFilter::new()
+            .authors(store.get_contacts_pubkeys().unwrap_or_default())
+            .kinds(vec![
+                Kind::Base(KindBase::Metadata),
+                Kind::Base(KindBase::TextNote),
+                Kind::Base(KindBase::Boost),
+                Kind::Base(KindBase::Reaction),
+            ]);
+
+        self.subscribe(vec![contact_filters, dm_filters, following_authors])
+            .await?;
+
+        // TODO: subscribe to contacts added later
+
+        let client = self.clone();
+        let sync_thread = async move {
+            let mut notifications = client.notifications();
+            while let Ok(notification) = notifications.recv().await {
+                match notification {
+                    RelayPoolNotifications::ReceivedEvent(event) => {
+                        if let Err(e) = store.handle_event(&event) {
+                            log::error!("Impossible to handle event: {}", e.to_string());
+                        }
+                    }
+                    RelayPoolNotifications::Shutdown => {
+                        store.close();
+                        break;
+                    }
+                    _ => (),
+                }
+            }
+            log::debug!("Exited from SQLite sync thread");
+        };
+
+        #[cfg(feature = "blocking")]
+        match new_current_thread() {
+            Ok(rt) => {
+                std::thread::spawn(move || {
+                    rt.block_on(async move { sync_thread.await });
+                    rt.shutdown_timeout(Duration::from_millis(100));
+                });
+            }
+            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
+        };
+
+        #[cfg(not(feature = "blocking"))]
+        tokio::task::spawn(async move { sync_thread.await });
+
+        Ok(())
     }
 
     pub async fn handle_notifications<F>(&self, func: F) -> Result<(), Error>

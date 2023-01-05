@@ -93,7 +93,8 @@ impl Store {
     /// Get contacts
     pub fn get_contacts(&self) -> Result<Vec<Profile>, Error> {
         let conn = self.pool.get()?;
-        let mut stmt = conn.prepare("SELECT * FROM profile WHERE followed = ?")?;
+        let mut stmt =
+            conn.prepare("SELECT * FROM profile WHERE followed = ? ORDER BY name ASC")?;
         let mut rows = stmt.query([true])?;
 
         let mut profiles = Vec::new();
@@ -118,6 +119,25 @@ impl Store {
         Ok(profiles)
     }
 
+    pub fn get_contacts_pubkeys(&self) -> Result<Vec<XOnlyPublicKey>, Error> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare("SELECT pubkey FROM profile WHERE followed = ?")?;
+        let mut rows = stmt.query([true])?;
+
+        let mut authors: Vec<XOnlyPublicKey> = Vec::new();
+
+        while let Ok(Some(row)) = rows.next() {
+            let pubkey: String = row.get(0)?;
+            authors.push(XOnlyPublicKey::from_str(&pubkey)?);
+        }
+
+        if !authors.contains(&self.owner_pubkey) {
+            authors.push(self.owner_pubkey);
+        }
+
+        Ok(authors)
+    }
+
     /// Get all pubkeys seen
     pub fn get_authors(&self) -> Result<Vec<XOnlyPublicKey>, Error> {
         let conn = self.pool.get()?;
@@ -129,6 +149,10 @@ impl Store {
         while let Ok(Some(row)) = rows.next() {
             let pubkey: String = row.get(0)?;
             authors.push(XOnlyPublicKey::from_str(&pubkey)?);
+        }
+
+        if !authors.contains(&self.owner_pubkey) {
+            authors.push(self.owner_pubkey);
         }
 
         Ok(authors)

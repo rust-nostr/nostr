@@ -8,6 +8,7 @@ use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Contact, Event, Kind, KindBase, Metadata, Sha256Hash, Tag};
 use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::OpenFlags;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -17,7 +18,7 @@ mod relay;
 
 use crate::error::Error;
 use crate::model::Profile;
-use crate::schema;
+use crate::schema::{self, STARTUP_SQL};
 
 pub(crate) type SqlitePool = r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>;
 pub(crate) type PooledConnection = r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
@@ -28,16 +29,26 @@ pub struct Store {
     pool: SqlitePool,
 }
 
+impl Drop for Store {
+    fn drop(&mut self) {}
+}
+
 impl Store {
     pub fn open<P>(path: P, owner_pubkey: XOnlyPublicKey) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
         let path = path.as_ref().join(format!("{}.db", owner_pubkey));
-        let manager = SqliteConnectionManager::file(path);
+        let manager = SqliteConnectionManager::file(path)
+            .with_flags(OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE)
+            .with_init(|c| c.execute_batch(STARTUP_SQL));
         let pool = r2d2::Pool::new(manager)?;
         schema::upgrade_db(&mut pool.get()?)?;
         Ok(Self { pool, owner_pubkey })
+    }
+
+    pub fn close(self) {
+        drop(self);
     }
 
     fn serialize<T>(&self, data: T) -> Result<Vec<u8>, Error>
