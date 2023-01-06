@@ -9,7 +9,7 @@ use nostr::util::nips::nip04::decrypt;
 use nostr::util::nips::nip19::FromBech32;
 use nostr::util::time::timestamp;
 use nostr::{Entity, Event, Keys, Kind, KindBase, Sha256Hash, SubscriptionFilter};
-use nostr_sdk::{Client, RelayPoolNotifications, Result};
+use nostr_sdk::{Client, RelayPoolNotification, Result};
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
     loop {
         let mut notifications = client.notifications();
         while let Ok(notification) = notifications.recv().await {
-            if let RelayPoolNotifications::ReceivedEvent(event) = notification {
+            if let RelayPoolNotification::Event(_url, event) = notification {
                 if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
                     if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
                     {

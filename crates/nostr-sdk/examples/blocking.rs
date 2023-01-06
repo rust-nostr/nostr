@@ -9,7 +9,7 @@ use nostr::util::nips::nip19::FromBech32;
 use nostr::util::time::timestamp;
 use nostr::{Entity, Keys, Kind, KindBase, Sha256Hash, SubscriptionFilter};
 use nostr_sdk::client::blocking::Client;
-use nostr_sdk::{RelayPoolNotifications, Result};
+use nostr_sdk::{RelayPoolNotification, Result};
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
     client.disconnect_relay("wss://relay.nostr.info")?;
 
     client.handle_notifications(|notification| {
-        if let RelayPoolNotifications::ReceivedEvent(event) = notification {
+        if let RelayPoolNotification::Event(_url, event) = notification {
             if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
                 if let Ok(msg) = decrypt(
                     &my_keys.secret_key().unwrap(),

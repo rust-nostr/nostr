@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use nostr_ffi::{Event, Keys, SubscriptionFilter};
 use nostr_sdk::client::blocking::Client as ClientSdk;
-use nostr_sdk::relay::pool::RelayPoolNotifications as RelayPoolNotificationsSdk;
+use nostr_sdk::relay::pool::RelayPoolNotification as RelayPoolNotificationSdk;
 use parking_lot::Mutex;
 
 use crate::error::Result;
@@ -62,7 +62,7 @@ impl Client {
         crate::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
             Ok(self.client.lock().handle_notifications(|notification| {
-                if let RelayPoolNotificationsSdk::ReceivedEvent(event) = notification {
+                if let RelayPoolNotificationSdk::Event(_url, event) = notification {
                     handler.handle(Arc::new(event.into()));
                 }
 

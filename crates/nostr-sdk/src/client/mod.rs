@@ -27,7 +27,7 @@ pub mod blocking;
 
 #[cfg(all(feature = "sqlite", feature = "blocking"))]
 use crate::new_current_thread;
-use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotifications};
+use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotification};
 use crate::Relay;
 
 #[derive(Debug, thiserror::Error)]
@@ -113,7 +113,7 @@ impl Client {
     }
 
     /// Get new notification listener
-    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
+    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.pool.notifications()
     }
 
@@ -835,12 +835,12 @@ impl Client {
             let mut notifications = client.notifications();
             while let Ok(notification) = notifications.recv().await {
                 match notification {
-                    RelayPoolNotifications::ReceivedEvent(event) => {
+                    RelayPoolNotification::Event(_url, event) => {
                         if let Err(e) = store.handle_event(&event) {
                             log::error!("Impossible to handle event: {}", e.to_string());
                         }
                     }
-                    RelayPoolNotifications::Shutdown => {
+                    RelayPoolNotification::Shutdown => {
                         handle.abort();
                         store.close();
                         break;
@@ -870,7 +870,7 @@ impl Client {
 
     pub async fn handle_notifications<F>(&self, func: F) -> Result<(), Error>
     where
-        F: Fn(RelayPoolNotifications) -> Result<(), Error>,
+        F: Fn(RelayPoolNotification) -> Result<(), Error>,
     {
         loop {
             let mut notifications = self.notifications();

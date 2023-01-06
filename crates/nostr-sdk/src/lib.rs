@@ -20,7 +20,7 @@ pub mod subscription;
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;
 pub use self::client::Client;
-pub use self::relay::pool::{RelayPool, RelayPoolNotifications};
+pub use self::relay::pool::{RelayPool, RelayPoolNotification};
 pub use self::relay::{Relay, RelayStatus};
 
 #[cfg(feature = "blocking")]

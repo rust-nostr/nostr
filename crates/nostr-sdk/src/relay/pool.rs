@@ -39,15 +39,15 @@ pub enum RelayPoolMessage {
 }
 
 #[derive(Debug, Clone)]
-pub enum RelayPoolNotifications {
-    ReceivedEvent(Event),
-    ReceivedMessage(RelayMessage),
+pub enum RelayPoolNotification {
+    Event(Url, Event),
+    Message(Url, RelayMessage),
     Shutdown,
 }
 
 struct RelayPoolTask {
     receiver: Receiver<RelayPoolMessage>,
-    notification_sender: broadcast::Sender<RelayPoolNotifications>,
+    notification_sender: broadcast::Sender<RelayPoolNotification>,
     events: VecDeque<Sha256Hash>,
 }
 
@@ -56,7 +56,7 @@ const MAX_EVENTS: usize = 100000;
 impl RelayPoolTask {
     pub fn new(
         pool_task_receiver: Receiver<RelayPoolMessage>,
-        notification_sender: broadcast::Sender<RelayPoolNotifications>,
+        notification_sender: broadcast::Sender<RelayPoolNotification>,
     ) -> Self {
         Self {
             receiver: pool_task_receiver,
@@ -69,10 +69,13 @@ impl RelayPoolTask {
         log::debug!("RelayPoolTask Thread Started");
         while let Some(msg) = self.receiver.recv().await {
             match msg {
-                RelayPoolMessage::ReceivedMsg { relay_url: _, msg } => {
+                RelayPoolMessage::ReceivedMsg { relay_url, msg } => {
                     let _ = self
                         .notification_sender
-                        .send(RelayPoolNotifications::ReceivedMessage(msg.clone()));
+                        .send(RelayPoolNotification::Message(
+                            relay_url.clone(),
+                            msg.clone(),
+                        ));
 
                     if let RelayMessage::Event {
                         subscription_id: _,
@@ -85,7 +88,7 @@ impl RelayPoolTask {
                             if !self.events.contains(&event.id) {
                                 self.add_event(event.id);
                                 let notification =
-                                    RelayPoolNotifications::ReceivedEvent(event.as_ref().clone());
+                                    RelayPoolNotification::Event(relay_url, event.as_ref().clone());
 
                                 let _ = self.notification_sender.send(notification);
                             }
@@ -98,7 +101,7 @@ impl RelayPoolTask {
                 RelayPoolMessage::Shutdown => {
                     if let Err(e) = self
                         .notification_sender
-                        .send(RelayPoolNotifications::Shutdown)
+                        .send(RelayPoolNotification::Shutdown)
                     {
                         log::error!("Impossible to send shutdown notification: {}", e);
                     }
@@ -122,7 +125,7 @@ impl RelayPoolTask {
 pub struct RelayPool {
     relays: Arc<Mutex<HashMap<Url, Relay>>>,
     pool_task_sender: Sender<RelayPoolMessage>,
-    notification_sender: broadcast::Sender<RelayPoolNotifications>,
+    notification_sender: broadcast::Sender<RelayPoolNotification>,
 }
 
 impl Default for RelayPool {
@@ -162,7 +165,7 @@ impl RelayPool {
     }
 
     /// Get new notification listener
-    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
+    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.notification_sender.subscribe()
     }
 
@@ -268,7 +271,7 @@ impl RelayPool {
         let mut notifications = self.notifications();
 
         while let Ok(notification) = notifications.recv().await {
-            if let RelayPoolNotifications::ReceivedMessage(msg) = notification {
+            if let RelayPoolNotification::Message(_, msg) = notification {
                 match msg {
                     RelayMessage::Event {
                         subscription_id,
@@ -320,9 +323,10 @@ impl RelayPool {
             let mut notifications = this.notifications();
 
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotifications::ReceivedMessage(RelayMessage::EndOfStoredEvents {
-                    subscription_id,
-                }) = notification
+                if let RelayPoolNotification::Message(
+                    _,
+                    RelayMessage::EndOfStoredEvents { subscription_id },
+                ) = notification
                 {
                     if subscription_id == id.to_string() {
                         break;

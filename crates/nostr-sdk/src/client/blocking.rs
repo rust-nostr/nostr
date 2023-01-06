@@ -13,7 +13,7 @@ use tokio::sync::broadcast;
 
 use super::Error;
 use crate::client::Entity;
-use crate::relay::pool::RelayPoolNotifications;
+use crate::relay::pool::RelayPoolNotification;
 use crate::relay::Relay;
 use crate::RUNTIME;
 
@@ -48,7 +48,7 @@ impl Client {
         self.client.keys()
     }
 
-    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotifications> {
+    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.client.notifications()
     }
 
@@ -265,7 +265,7 @@ impl Client {
 
     pub fn handle_notifications<F>(&self, func: F) -> Result<(), Error>
     where
-        F: Fn(RelayPoolNotifications) -> Result<(), Error>,
+        F: Fn(RelayPoolNotification) -> Result<(), Error>,
     {
         RUNTIME.block_on(async { self.client.handle_notifications(func).await })
     }
