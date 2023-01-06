@@ -185,7 +185,12 @@ impl RelayPool {
     pub async fn add_relay(&self, url: Url, proxy: Option<SocketAddr>) {
         let mut relays = self.relays.lock().await;
         if !relays.contains_key(&url) {
-            let relay = Relay::new(url, self.pool_task_sender.clone(), proxy);
+            let relay = Relay::new(
+                url,
+                self.pool_task_sender.clone(),
+                self.notification_sender.clone(),
+                proxy,
+            );
             relays.insert(relay.url(), relay);
         }
     }
@@ -269,7 +274,6 @@ impl RelayPool {
         }
 
         let mut notifications = self.notifications();
-
         while let Ok(notification) = notifications.recv().await {
             if let RelayPoolNotification::Message(_, msg) = notification {
                 match msg {

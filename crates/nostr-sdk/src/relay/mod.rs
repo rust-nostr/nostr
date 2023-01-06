@@ -8,7 +8,8 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use nostr::url::Url;
-use nostr::{ClientMessage, RelayMessage};
+use nostr::{ClientMessage, RelayMessage, SubscriptionFilter};
+use tokio::sync::broadcast;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
@@ -20,9 +21,9 @@ pub mod pool;
 
 use self::pool::RelayPoolMessage;
 use self::pool::SUBSCRIPTION;
-
 #[cfg(feature = "blocking")]
-use crate::{new_current_thread, RUNTIME};
+use crate::new_current_thread;
+use crate::RelayPoolNotification;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -74,11 +75,17 @@ pub struct Relay {
     pool_sender: Sender<RelayPoolMessage>,
     relay_sender: Sender<RelayEvent>,
     relay_receiver: Arc<Mutex<Receiver<RelayEvent>>>,
+    notification_sender: broadcast::Sender<RelayPoolNotification>,
 }
 
 impl Relay {
     /// Create new `Relay`
-    pub fn new(url: Url, pool_sender: Sender<RelayPoolMessage>, proxy: Option<SocketAddr>) -> Self {
+    pub fn new(
+        url: Url,
+        pool_sender: Sender<RelayPoolMessage>,
+        notification_sender: broadcast::Sender<RelayPoolNotification>,
+        proxy: Option<SocketAddr>,
+    ) -> Self {
         let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(1024);
 
         Self {
@@ -89,6 +96,7 @@ impl Relay {
             pool_sender,
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
+            notification_sender,
         }
     }
 
@@ -100,11 +108,6 @@ impl Relay {
     /// Get proxy
     pub fn proxy(&self) -> Option<SocketAddr> {
         self.proxy
-    }
-
-    #[cfg(feature = "blocking")]
-    pub fn status_blocking(&self) -> RelayStatus {
-        RUNTIME.block_on(async { self.status().await })
     }
 
     pub async fn status(&self) -> RelayStatus {
@@ -274,7 +277,7 @@ impl Relay {
                                                 "Impossible to send ReceivedMsg to pool: {}",
                                                 &err
                                             );
-                                        }
+                                        };
                                     }
                                     Err(err) => {
                                         log::error!("{}: {}", err, data);
@@ -411,5 +414,60 @@ impl Relay {
                 .await?;
         }
         Ok(())
+    }
+
+    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
+        let relay = self.clone();
+        let req_events_thread = async move {
+            let id = Uuid::new_v4();
+
+            // Subscribe
+            if let Err(e) = relay
+                .send_msg(ClientMessage::new_req(id.to_string(), filters.clone()))
+                .await
+            {
+                log::error!(
+                    "Impossible to send REQ to {}: {}",
+                    relay.url(),
+                    e.to_string()
+                );
+            };
+
+            let mut notifications = relay.notification_sender.subscribe();
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(
+                    _,
+                    RelayMessage::EndOfStoredEvents { subscription_id },
+                ) = notification
+                {
+                    if subscription_id == id.to_string() {
+                        break;
+                    }
+                }
+            }
+
+            // Unsubscribe
+            if let Err(e) = relay.send_msg(ClientMessage::close(id.to_string())).await {
+                log::error!(
+                    "Impossible to close subscription with {}: {}",
+                    relay.url(),
+                    e.to_string()
+                );
+            }
+        };
+
+        #[cfg(feature = "blocking")]
+        match new_current_thread() {
+            Ok(rt) => {
+                std::thread::spawn(move || {
+                    rt.block_on(async move { req_events_thread.await });
+                    rt.shutdown_timeout(Duration::from_millis(100));
+                });
+            }
+            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
+        };
+
+        #[cfg(not(feature = "blocking"))]
+        tokio::task::spawn(async move { req_events_thread.await });
     }
 }
