@@ -5,6 +5,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use nostr::secp256k1::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, Sha256Hash, Tag};
 
@@ -99,13 +100,13 @@ impl EventBuilder {
     /// Create encrypted direct msg event
     pub fn new_encrypted_direct_msg(
         sender_keys: Arc<Keys>,
-        receiver_keys: Arc<Keys>,
+        receiver_pubkey: String,
         content: String,
     ) -> Result<Self> {
         Ok(Self {
             builder: EventBuilderSdk::new_encrypted_direct_msg(
                 sender_keys.deref(),
-                receiver_keys.deref(),
+                XOnlyPublicKey::from_str(&receiver_pubkey)?,
                 &content,
             )?,
         })

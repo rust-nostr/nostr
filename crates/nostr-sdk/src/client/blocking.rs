@@ -171,11 +171,11 @@ impl Client {
     }
 
     #[cfg(feature = "nip04")]
-    pub fn send_direct_msg<S>(&self, recipient: &Keys, msg: S) -> Result<(), Error>
+    pub fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<(), Error>
     where
         S: Into<String>,
     {
-        RUNTIME.block_on(async { self.client.send_direct_msg(recipient, msg).await })
+        RUNTIME.block_on(async { self.client.send_direct_msg(receiver, msg).await })
     }
 
     pub fn boost_event(&self, event: &Event) -> Result<(), Error> {

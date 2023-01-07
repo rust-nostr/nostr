@@ -549,29 +549,31 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::key::{FromSkStr, Keys};
+    /// use nostr::secp256k1::XOnlyPublicKey;
+    /// use nostr::util::nips::nip19::FromBech32;
     /// use nostr_sdk::Client;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
     /// #   let client = Client::new(&my_keys);
-    /// let alice_keys =
-    ///     Keys::from_sk_str("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
-    ///         .unwrap();
+    /// let alice_pubkey = XOnlyPublicKey::from_bech32(
+    ///     "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
+    /// )
+    /// .unwrap();
     ///
     /// client
-    ///     .send_direct_msg(&alice_keys, "My first DM fro Nostr SDK!")
+    ///     .send_direct_msg(alice_pubkey, "My first DM fro Nostr SDK!")
     ///     .await
     ///     .unwrap();
     /// # }
     /// ```
     #[cfg(feature = "nip04")]
-    pub async fn send_direct_msg<S>(&self, recipient: &Keys, msg: S) -> Result<(), Error>
+    pub async fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<(), Error>
     where
         S: Into<String>,
     {
-        let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, recipient, msg)?
+        let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg)?
             .to_event(&self.keys)?;
         self.send_event(event).await
     }

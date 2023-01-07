@@ -219,22 +219,19 @@ impl EventBuilder {
     #[cfg(feature = "nip04")]
     pub fn new_encrypted_direct_msg<S>(
         sender_keys: &Keys,
-        receiver_keys: &Keys,
+        receiver_pubkey: XOnlyPublicKey,
         content: S,
     ) -> Result<Self, Error>
     where
         S: Into<String>,
     {
-        let msg = nips::nip04::encrypt(
-            &sender_keys.secret_key()?,
-            &receiver_keys.public_key(),
-            content.into(),
-        )?;
+        let msg =
+            nips::nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, content.into())?;
 
         Ok(Self::new(
             Kind::Base(KindBase::EncryptedDirectMessage),
             &msg,
-            &[Tag::PubKey(receiver_keys.public_key(), None)],
+            &[Tag::PubKey(receiver_pubkey, None)],
         ))
     }
 

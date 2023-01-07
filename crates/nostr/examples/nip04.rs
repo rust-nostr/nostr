@@ -30,7 +30,7 @@ fn main() -> Result<()> {
     let bob_to_alice = "Hey alice this is bob (pong)";
 
     let alice_encrypted_msg =
-        EventBuilder::new_encrypted_direct_msg(&alice_keys, &bob_keys, alice_to_bob)?
+        EventBuilder::new_encrypted_direct_msg(&alice_keys, bob_keys.public_key(), alice_to_bob)?
             .to_event(&alice_keys)?;
 
     let subscribe_to_alice = ClientMessage::new_req(
@@ -97,7 +97,7 @@ fn main() -> Result<()> {
                                 thread::sleep(time::Duration::from_millis(5000));
                                 let alice_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
                                     &alice_keys,
-                                    &bob_keys,
+                                    bob_keys.public_key(),
                                     alice_to_bob,
                                 )?
                                 .to_event(&alice_keys)?;
@@ -118,7 +118,7 @@ fn main() -> Result<()> {
                                 thread::sleep(time::Duration::from_millis(5000));
                                 let bob_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
                                     &bob_keys,
-                                    &alice_keys,
+                                    alice_keys.public_key(),
                                     bob_to_alice,
                                 )?
                                 .to_event(&bob_keys)?;

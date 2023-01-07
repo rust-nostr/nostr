@@ -91,8 +91,12 @@ mod tests {
         )?);
 
         let content = "Mercury, the Winged Messenger";
-        let event = EventBuilder::new_encrypted_direct_msg(&sender_keys, &receiver_keys, content)?
-            .to_event(&sender_keys)?;
+        let event = EventBuilder::new_encrypted_direct_msg(
+            &sender_keys,
+            receiver_keys.public_key(),
+            content,
+        )?
+        .to_event(&sender_keys)?;
 
         Ok(event.verify()?)
     }
