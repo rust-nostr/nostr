@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 use std::collections::HashMap;
@@ -25,8 +25,6 @@ use tokio::sync::broadcast;
 #[cfg(feature = "blocking")]
 pub mod blocking;
 
-#[cfg(all(feature = "sqlite", feature = "blocking"))]
-use crate::new_current_thread;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotification};
 use crate::Relay;
 
@@ -815,25 +813,11 @@ impl Client {
             }
         });
 
-        #[cfg(feature = "blocking")]
-        match new_current_thread() {
-            Ok(rt) => {
-                std::thread::spawn(move || {
-                    rt.block_on(async move {
-                        let _ = update_subscription_thread.await;
-                    });
-                    rt.shutdown_timeout(Duration::from_millis(100));
-                });
-            }
-            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
-        };
-
-        #[cfg(not(feature = "blocking"))]
-        tokio::task::spawn(async move { update_subscription_thread.await });
+        crate::thread::spawn(update_subscription_thread);
 
         let store: Store = self.store()?;
         let client = self.clone();
-        let sync_thread = async move {
+        crate::thread::spawn(async move {
             let mut notifications = client.notifications();
             while let Ok(notification) = notifications.recv().await {
                 match notification {
@@ -851,21 +835,7 @@ impl Client {
                 }
             }
             log::debug!("Exited from SQLite sync thread");
-        };
-
-        #[cfg(feature = "blocking")]
-        match new_current_thread() {
-            Ok(rt) => {
-                std::thread::spawn(move || {
-                    rt.block_on(async move { sync_thread.await });
-                    rt.shutdown_timeout(Duration::from_millis(100));
-                });
-            }
-            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
-        };
-
-        #[cfg(not(feature = "blocking"))]
-        tokio::task::spawn(async move { sync_thread.await });
+        });
 
         Ok(())
     }

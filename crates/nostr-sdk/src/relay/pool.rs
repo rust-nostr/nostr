@@ -15,9 +15,8 @@ use tokio::time;
 use uuid::Uuid;
 
 use super::{Error as RelayError, Relay};
-#[cfg(feature = "blocking")]
-use crate::new_current_thread;
 use crate::subscription::Subscription;
+use crate::thread;
 
 pub static SUBSCRIPTION: Lazy<Mutex<Subscription>> = Lazy::new(|| Mutex::new(Subscription::new()));
 
@@ -143,19 +142,7 @@ impl RelayPool {
         let mut relay_pool_task =
             RelayPoolTask::new(pool_task_receiver, notification_sender.clone());
 
-        #[cfg(feature = "blocking")]
-        match new_current_thread() {
-            Ok(rt) => {
-                std::thread::spawn(move || {
-                    rt.block_on(async move { relay_pool_task.run().await });
-                    rt.shutdown_timeout(Duration::from_millis(100));
-                });
-            }
-            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
-        };
-
-        #[cfg(not(feature = "blocking"))]
-        tokio::task::spawn(async move { relay_pool_task.run().await });
+        thread::spawn(async move { relay_pool_task.run().await });
 
         Self {
             relays: Arc::new(Mutex::new(HashMap::new())),
@@ -207,7 +194,7 @@ impl RelayPool {
 
     /// Send client message
     pub async fn send_client_msg(&self, msg: ClientMessage) -> Result<(), Error> {
-        let relays = self.relays.lock().await;
+        let relays = self.relays().await;
 
         if relays.is_empty() {
             return Err(Error::NoRelayConnected);
@@ -223,7 +210,7 @@ impl RelayPool {
             };
         }
 
-        for (url, relay) in relays.iter() {
+        for (url, relay) in relays.into_iter() {
             if let Err(e) = relay.send_msg(msg.clone()).await {
                 log::error!("Impossible to send msg to {}: {}", url, e.to_string());
             }
@@ -234,7 +221,7 @@ impl RelayPool {
 
     /// Subscribe to filters
     pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
-        let relays = self.relays.lock().await;
+        let relays = self.relays().await;
 
         {
             let mut subscription = SUBSCRIPTION.lock().await;
@@ -250,7 +237,7 @@ impl RelayPool {
 
     /// Unsubscribe from filters
     pub async fn unsubscribe(&self) -> Result<(), Error> {
-        let relays = self.relays.lock().await;
+        let relays = self.relays().await;
         for relay in relays.values() {
             relay.unsubscribe().await?;
         }
@@ -266,7 +253,7 @@ impl RelayPool {
 
         let id = Uuid::new_v4();
 
-        let relays = self.relays.lock().await;
+        let relays = self.relays().await;
 
         // Subscribe
         for relay in relays.values() {
@@ -352,24 +339,12 @@ impl RelayPool {
             }
         };
 
-        #[cfg(feature = "blocking")]
-        match new_current_thread() {
-            Ok(rt) => {
-                std::thread::spawn(move || {
-                    rt.block_on(async move { req_events_thread.await });
-                    rt.shutdown_timeout(Duration::from_millis(100));
-                });
-            }
-            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
-        };
-
-        #[cfg(not(feature = "blocking"))]
-        tokio::task::spawn(async move { req_events_thread.await });
+        thread::spawn(async move { req_events_thread.await });
     }
 
     /// Connect to all added relays and keep connection alive
     pub async fn connect(&self, wait_for_connection: bool) {
-        let relays = self.relays.lock().await;
+        let relays = self.relays().await;
         for relay in relays.values() {
             self.connect_relay(relay, wait_for_connection).await;
         }
@@ -377,7 +352,7 @@ impl RelayPool {
 
     /// Disconnect from all relays
     pub async fn disconnect(&self) -> Result<(), Error> {
-        let relays = self.relays.lock().await;
+        let relays = self.relays().await;
         for relay in relays.values() {
             self.disconnect_relay(relay).await?;
         }

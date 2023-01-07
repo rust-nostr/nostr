@@ -21,8 +21,7 @@ pub mod pool;
 
 use self::pool::RelayPoolMessage;
 use self::pool::SUBSCRIPTION;
-#[cfg(feature = "blocking")]
-use crate::new_current_thread;
+use crate::thread;
 use crate::RelayPoolNotification;
 
 #[derive(Debug, thiserror::Error)]
@@ -141,7 +140,7 @@ impl Relay {
             }
 
             let relay = self.clone();
-            let connection_thread = async move {
+            thread::spawn(async move {
                 loop {
                     // Schedule relay for termination
                     // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
@@ -164,21 +163,7 @@ impl Relay {
 
                     tokio::time::sleep(Duration::from_secs(20)).await;
                 }
-            };
-
-            #[cfg(feature = "blocking")]
-            match new_current_thread() {
-                Ok(rt) => {
-                    std::thread::spawn(move || {
-                        rt.block_on(async move { connection_thread.await });
-                        rt.shutdown_timeout(Duration::from_millis(100));
-                    });
-                }
-                Err(e) => log::error!("Impossible to create new thread: {:?}", e),
-            };
-
-            #[cfg(not(feature = "blocking"))]
-            tokio::task::spawn(connection_thread);
+            });
         }
     }
 
@@ -194,7 +179,7 @@ impl Relay {
                 log::info!("Connected to {}", url);
 
                 let relay = self.clone();
-                let func_relay_event = async move {
+                thread::spawn(async move {
                     log::debug!("Relay Event Thread Started");
                     while let Some(relay_event) = relay.relay_receiver.lock().await.recv().await {
                         match relay_event {
@@ -216,9 +201,7 @@ impl Relay {
                                 }
                             }
                             RelayEvent::Close => {
-                                if let Err(e) = ws_tx.close().await {
-                                    log::error!("RelayEvent::Close error: {:?}", e);
-                                };
+                                let _ = ws_tx.close().await;
                                 relay.set_status(RelayStatus::Disconnected).await;
                                 log::info!("Disconnected from {}", url);
                                 break;
@@ -233,9 +216,7 @@ impl Relay {
                                     )
                                 }
                                 // Close stream
-                                if let Err(e) = ws_tx.close().await {
-                                    log::error!("RelayEvent::Close error: {:?}", e);
-                                };
+                                let _ = ws_tx.close().await;
                                 relay.set_status(RelayStatus::Terminated).await;
                                 relay.schedule_for_termination(false).await;
                                 log::info!("Completely disconnected from {}", url);
@@ -243,24 +224,10 @@ impl Relay {
                             }
                         }
                     }
-                };
-
-                #[cfg(feature = "blocking")]
-                match new_current_thread() {
-                    Ok(rt) => {
-                        std::thread::spawn(move || {
-                            rt.block_on(async move { func_relay_event.await });
-                            rt.shutdown_timeout(Duration::from_millis(100));
-                        });
-                    }
-                    Err(e) => log::error!("Impossible to create new thread: {:?}", e),
-                };
-
-                #[cfg(not(feature = "blocking"))]
-                tokio::task::spawn(func_relay_event);
+                });
 
                 let relay = self.clone();
-                let func_relay_msg = async move {
+                thread::spawn(async move {
                     log::debug!("Relay Message Thread Started");
                     while let Some(msg_res) = ws_rx.next().await {
                         if let Ok(msg) = msg_res {
@@ -300,25 +267,11 @@ impl Relay {
                             log::error!("Impossible to disconnect {}: {}", relay.url, err);
                         }
                     }
-                };
-
-                #[cfg(feature = "blocking")]
-                match new_current_thread() {
-                    Ok(rt) => {
-                        std::thread::spawn(move || {
-                            rt.block_on(async move { func_relay_msg.await });
-                            rt.shutdown_timeout(Duration::from_millis(100));
-                        });
-                    }
-                    Err(e) => log::error!("Impossible to create new thread: {:?}", e),
-                };
-
-                #[cfg(not(feature = "blocking"))]
-                tokio::task::spawn(func_relay_msg);
+                });
 
                 // Ping thread
                 let relay = self.clone();
-                let func_relay_ping = async move {
+                thread::spawn(async move {
                     log::debug!("Relay Ping Thread Started");
 
                     loop {
@@ -342,21 +295,7 @@ impl Relay {
                             log::error!("Impossible to disconnect {}: {}", relay.url, err);
                         }
                     }
-                };
-
-                #[cfg(feature = "blocking")]
-                match new_current_thread() {
-                    Ok(rt) => {
-                        std::thread::spawn(move || {
-                            rt.block_on(async move { func_relay_ping.await });
-                            rt.shutdown_timeout(Duration::from_millis(100));
-                        });
-                    }
-                    Err(e) => log::error!("Impossible to create new thread: {:?}", e),
-                };
-
-                #[cfg(not(feature = "blocking"))]
-                tokio::task::spawn(func_relay_ping);
+                });
 
                 // Subscribe to relay
                 if let Err(e) = self.subscribe().await {
@@ -423,7 +362,7 @@ impl Relay {
 
     pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
         let relay = self.clone();
-        let req_events_thread = async move {
+        thread::spawn(async move {
             let id = Uuid::new_v4();
 
             // Subscribe
@@ -459,20 +398,6 @@ impl Relay {
                     e.to_string()
                 );
             }
-        };
-
-        #[cfg(feature = "blocking")]
-        match new_current_thread() {
-            Ok(rt) => {
-                std::thread::spawn(move || {
-                    rt.block_on(async move { req_events_thread.await });
-                    rt.shutdown_timeout(Duration::from_millis(100));
-                });
-            }
-            Err(e) => log::error!("Impossible to create new thread: {:?}", e),
-        };
-
-        #[cfg(not(feature = "blocking"))]
-        tokio::task::spawn(async move { req_events_thread.await });
+        });
     }
 }
