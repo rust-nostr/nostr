@@ -223,8 +223,10 @@ impl RelayPool {
             };
         }
 
-        for relay in relays.values() {
-            relay.send_msg(msg.clone()).await?;
+        for (url, relay) in relays.iter() {
+            if let Err(e) = relay.send_msg(msg.clone()).await {
+                log::error!("Impossible to send msg to {}: {}", url, e.to_string());
+            }
         }
 
         Ok(())
