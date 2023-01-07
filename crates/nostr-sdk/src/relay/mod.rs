@@ -200,12 +200,17 @@ impl Relay {
                         match relay_event {
                             RelayEvent::SendMsg(msg) => {
                                 log::trace!("Sending message {}", msg.as_json());
-                                if let Err(e) = ws_tx.send(Message::Text(msg.as_json())).await {
-                                    log::error!("RelayEvent::SendMsg error: {:?}", e);
+                                if let Err(e) = ws_tx.feed(Message::Text(msg.as_json())).await {
+                                    log::error!(
+                                        "Impossible to send msg to {}: {}",
+                                        relay.url(),
+                                        e.to_string()
+                                    );
+                                    break;
                                 };
                             }
                             RelayEvent::Ping => {
-                                if let Err(e) = ws_tx.send(Message::Ping(Vec::new())).await {
+                                if let Err(e) = ws_tx.feed(Message::Ping(Vec::new())).await {
                                     log::error!("Ping error: {:?}", e);
                                     break;
                                 }
