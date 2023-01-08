@@ -3,14 +3,8 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-#[cfg(feature = "sqlite")]
-use std::path::Path;
 use std::str::FromStr;
-#[cfg(feature = "sqlite")]
-use std::time::Duration;
 
-#[cfg(feature = "sqlite")]
-use futures_util::future::abortable;
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
@@ -18,8 +12,6 @@ use nostr::{
     ClientMessage, Contact, Entity, Event, EventBuilder, Keys, Kind, KindBase, Metadata,
     Sha256Hash, SubscriptionFilter, Tag,
 };
-#[cfg(feature = "sqlite")]
-use nostr_sdk_sqlite::Store;
 use tokio::sync::broadcast;
 
 #[cfg(feature = "blocking")]
@@ -43,20 +35,12 @@ pub enum Error {
     Secp256k1(#[from] nostr::secp256k1::Error),
     #[error("hex decoding error: {0}")]
     Hex(#[from] nostr::hashes::hex::Error),
-    #[cfg(feature = "sqlite")]
-    #[error(transparent)]
-    Store(#[from] nostr_sdk_sqlite::Error),
-    /// Store not initialized
-    #[error("store not initialized")]
-    StoreNotInitialized,
 }
 
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
     keys: Keys,
-    #[cfg(feature = "sqlite")]
-    store: Option<Store>,
 }
 
 impl Client {
@@ -73,21 +57,7 @@ impl Client {
         Self {
             pool: RelayPool::new(),
             keys: keys.clone(),
-            #[cfg(feature = "sqlite")]
-            store: None,
         }
-    }
-
-    #[cfg(feature = "sqlite")]
-    pub fn new_with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
-    where
-        P: AsRef<Path>,
-    {
-        Ok(Self {
-            pool: RelayPool::new(),
-            keys: keys.clone(),
-            store: Some(Store::open(path, keys.public_key())?),
-        })
     }
 
     /// Generate new random keys using entorpy from OS
@@ -98,11 +68,6 @@ impl Client {
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.keys.clone()
-    }
-
-    #[cfg(feature = "sqlite")]
-    pub fn store(&self) -> Result<Store, Error> {
-        self.store.clone().ok_or(Error::StoreNotInitialized)
     }
 
     /// Completly shutdown [`Client`]
@@ -145,12 +110,6 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        #[cfg(feature = "sqlite")]
-        {
-            let store = self.store()?;
-            store.insert_relay(url.clone(), proxy)?;
-            store.enable_relay(url.clone())?;
-        }
         self.pool.add_relay(url, proxy).await;
         Ok(())
     }
@@ -173,8 +132,6 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        #[cfg(feature = "sqlite")]
-        self.store()?.delete_relay(url.clone())?;
         self.pool.remove_relay(url).await;
         Ok(())
     }
@@ -186,16 +143,6 @@ impl Client {
     {
         for (url, proxy) in relays.into_iter() {
             self.add_relay(url, proxy).await?;
-        }
-        Ok(())
-    }
-
-    /// Restore previous added relays from store
-    #[cfg(feature = "sqlite")]
-    pub async fn restore_relays(&self) -> Result<(), Error> {
-        let relays = self.store()?.get_relays(true)?;
-        for (url, proxy) in relays.into_iter() {
-            self.pool.add_relay(url, proxy).await;
         }
         Ok(())
     }
@@ -222,8 +169,6 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
-            #[cfg(feature = "sqlite")]
-            self.store()?.enable_relay(url)?;
             self.pool.connect_relay(relay, wait_for_connection).await;
             return Ok(());
         }
@@ -252,8 +197,6 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
-            #[cfg(feature = "sqlite")]
-            self.store()?.disable_relay(url)?;
             self.pool.disconnect_relay(relay).await?;
             return Ok(());
         }
@@ -761,94 +704,6 @@ impl Client {
         } else {
             Ok(Entity::Channel)
         }
-    }
-
-    #[cfg(feature = "sqlite")]
-    pub async fn sync(&self) -> Result<(), Error> {
-        use crate::thread;
-        use nostr::util::time;
-
-        let store: Store = self.store()?;
-        let client = self.clone();
-        let (update_subscription_thread, handle) = abortable(async move {
-            let my_public_key: XOnlyPublicKey = client.keys.public_key();
-
-            let contact_filters = SubscriptionFilter::new()
-                .author(my_public_key)
-                .kind(Kind::Base(KindBase::ContactList))
-                .limit(1);
-
-            let dm_filters = SubscriptionFilter::new()
-                .pubkey(my_public_key)
-                .kind(Kind::Base(KindBase::EncryptedDirectMessage));
-
-            let mut contacts_metadata =
-                SubscriptionFilter::new().kind(Kind::Base(KindBase::Metadata));
-
-            let mut feed_filters = SubscriptionFilter::new().kinds(vec![
-                Kind::Base(KindBase::TextNote),
-                Kind::Base(KindBase::Boost),
-                Kind::Base(KindBase::Reaction),
-            ]);
-
-            loop {
-                if let Ok(pubkeys) = store.get_contacts_pubkeys() {
-                    if contacts_metadata.authors.as_ref() != Some(&pubkeys) {
-                        let now = time::timestamp();
-                        let new_metadata_filter =
-                            contacts_metadata.clone().authors(pubkeys.clone());
-                        let new_feed_filters =
-                            feed_filters.clone().authors(pubkeys).since(now - 86400);
-                        match client
-                            .subscribe(vec![
-                                contact_filters.clone(),
-                                dm_filters.clone(),
-                                new_metadata_filter.clone(),
-                                new_feed_filters.clone(),
-                            ])
-                            .await
-                        {
-                            Ok(_) => {
-                                contacts_metadata = new_metadata_filter;
-                                feed_filters = new_feed_filters;
-                                log::debug!("Subscription filters updated");
-                            }
-                            Err(e) => log::error!("Impossible to subscribe to new filters: {}", e),
-                        }
-                    }
-                } else {
-                    log::error!("Impossible to get contacts");
-                }
-                log::debug!("Wait for new subscription check...");
-                tokio::time::sleep(Duration::from_secs(30)).await;
-            }
-        });
-
-        thread::spawn(update_subscription_thread);
-
-        let store: Store = self.store()?;
-        let client = self.clone();
-        thread::spawn(async move {
-            let mut notifications = client.notifications();
-            while let Ok(notification) = notifications.recv().await {
-                match notification {
-                    RelayPoolNotification::Event(_url, event) => {
-                        if let Err(e) = store.handle_event(&event) {
-                            log::error!("Impossible to handle event: {}", e.to_string());
-                        }
-                    }
-                    RelayPoolNotification::Shutdown => {
-                        handle.abort();
-                        store.close();
-                        break;
-                    }
-                    _ => (),
-                }
-            }
-            log::debug!("Exited from SQLite sync thread");
-        });
-
-        Ok(())
     }
 
     pub async fn handle_notifications<F>(&self, func: F) -> Result<(), Error>

@@ -4,7 +4,6 @@ members = [
     "bindings/nostr-sdk-ffi",
     "crates/nostr",
     "crates/nostr-sdk",
-    "crates/nostr-sdk-sqlite",
 ]
 
 [workspace.package]

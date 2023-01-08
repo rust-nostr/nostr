@@ -13,7 +13,6 @@ keywords = ["nostr", "sdk", "rust"]
 
 [features]
 default = ["all-nips"]
-sqlite = ["dep:nostr-sdk-sqlite"]
 blocking = ["nostr/blocking"]
 all-nips = ["nip04", "nip05", "nip06", "nip11"]
 nip04 = ["nostr/nip04"]
@@ -25,7 +24,6 @@ nip11 = ["nostr/nip11"]
 futures-util = "0.3"
 log = "0.4"
 nostr = { version = "0.12", path = "../nostr" }
-nostr-sdk-sqlite = { version = "0.12", path = "../nostr-sdk-sqlite", optional = true }
 once_cell = "1"
 thiserror = "1.0"
 tokio = { version = "1", features = ["full"] }
@@ -41,10 +39,6 @@ env_logger = "0.8"
 [[example]]
 name = "client"
 required-features = ["all-nips"]
-
-[[example]]
-name = "sqlite"
-required-features = ["all-nips", "sqlite"]
 
 [[example]]
 name = "blocking"
