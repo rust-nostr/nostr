@@ -34,7 +34,7 @@ PRAGMA user_version = {};
 -- Event Table
 CREATE TABLE IF NOT EXISTS event (
 id TEXT PRIMARY KEY,
-pubkey TEXT NOT NULL REFERENCES profile(pubkey),
+pubkey TEXT NOT NULL,
 created_at INTEGER NOT NULL,
 kind INTEGER NOT NULL,
 tags BLOB NOT NULL,
@@ -66,7 +66,7 @@ metadata_at INTEGER DEFAULT 0
 CREATE TABLE IF NOT EXISTS reaction (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 event_id TEXT NOT NULL,
-pubkey TEXT NOT NULL REFERENCES profile(pubkey),
+pubkey TEXT NOT NULL,
 content TEXT NOT NULL
 );
 
