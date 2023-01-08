@@ -20,6 +20,9 @@ pub struct SubscriptionFilter {
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pubkeys: Option<Vec<XOnlyPublicKey>>,
+    #[serde(rename = "#t")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hashtags: Option<Vec<String>>,
     #[serde(rename = "#r")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub references: Option<Vec<String>>,
@@ -44,6 +47,7 @@ impl SubscriptionFilter {
             kinds: None,
             events: None,
             pubkeys: None,
+            hashtags: None,
             references: None,
             since: None,
             until: None,
@@ -128,6 +132,26 @@ impl SubscriptionFilter {
     pub fn pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
         Self {
             pubkeys: Some(pubkeys),
+            ..self
+        }
+    }
+
+    /// Set hashtag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    pub fn hashtag(self, hashtag: impl Into<String>) -> Self {
+        Self {
+            hashtags: Some(vec![hashtag.into()]),
+            ..self
+        }
+    }
+
+    /// Set hashtags
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    pub fn hashtags(self, hashtags: impl Into<Vec<String>>) -> Self {
+        Self {
+            hashtags: Some(hashtags.into()),
             ..self
         }
     }
