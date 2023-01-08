@@ -765,6 +765,9 @@ impl Client {
 
     #[cfg(feature = "sqlite")]
     pub async fn sync(&self) -> Result<(), Error> {
+        use crate::thread;
+        use nostr::util::time;
+
         let store: Store = self.store()?;
         let client = self.clone();
         let (update_subscription_thread, handle) = abortable(async move {
@@ -779,8 +782,10 @@ impl Client {
                 .pubkey(my_public_key)
                 .kind(Kind::Base(KindBase::EncryptedDirectMessage));
 
-            let mut following_authors = SubscriptionFilter::new().kinds(vec![
-                Kind::Base(KindBase::Metadata),
+            let mut contacts_metadata =
+                SubscriptionFilter::new().kind(Kind::Base(KindBase::Metadata));
+
+            let mut feed_filters = SubscriptionFilter::new().kinds(vec![
                 Kind::Base(KindBase::TextNote),
                 Kind::Base(KindBase::Boost),
                 Kind::Base(KindBase::Reaction),
@@ -788,18 +793,24 @@ impl Client {
 
             loop {
                 if let Ok(pubkeys) = store.get_contacts_pubkeys() {
-                    if following_authors.authors.as_ref() != Some(&pubkeys) {
-                        let new_filter = following_authors.clone().authors(pubkeys);
+                    if contacts_metadata.authors.as_ref() != Some(&pubkeys) {
+                        let now = time::timestamp();
+                        let new_metadata_filter =
+                            contacts_metadata.clone().authors(pubkeys.clone());
+                        let new_feed_filters =
+                            feed_filters.clone().authors(pubkeys).since(now - 86400);
                         match client
                             .subscribe(vec![
                                 contact_filters.clone(),
                                 dm_filters.clone(),
-                                new_filter.clone(),
+                                new_metadata_filter.clone(),
+                                new_feed_filters.clone(),
                             ])
                             .await
                         {
                             Ok(_) => {
-                                following_authors = new_filter;
+                                contacts_metadata = new_metadata_filter;
+                                feed_filters = new_feed_filters;
                                 log::debug!("Subscription filters updated");
                             }
                             Err(e) => log::error!("Impossible to subscribe to new filters: {}", e),
@@ -813,11 +824,11 @@ impl Client {
             }
         });
 
-        crate::thread::spawn(update_subscription_thread);
+        thread::spawn(update_subscription_thread);
 
         let store: Store = self.store()?;
         let client = self.clone();
-        crate::thread::spawn(async move {
+        thread::spawn(async move {
             let mut notifications = client.notifications();
             while let Ok(notification) = notifications.recv().await {
                 match notification {
