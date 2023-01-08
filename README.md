@@ -31,3 +31,9 @@ Please, explore the [`bindings/`](./bindings/) directory to learn more.
 ## License
 
 This project is distributed under the MIT software license - see the [LICENSE](LICENSE) file for details
+
+## Donations
+
+🔗 Bitcoin Address: bc1qmxcg6v75jzet2nxrz35pwq4vkg847exf04gwrh
+
+⚡ Lightning Address: yuki@stacker.news
