@@ -1,38 +1,110 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::fmt;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum KindBase {
-    Metadata = 0,
-    TextNote = 1,
-    RecommendRelay = 2,
-    ContactList = 3,
-    EncryptedDirectMessage = 4,
-    EventDeletion = 5,
-    Boost = 6,
-    Reaction = 7,
-    ChannelCreation = 40,
-    ChannelMetadata = 41,
-    ChannelMessage = 42,
-    ChannelHideMessage = 43,
-    ChannelMuteUser = 44,
-}
+use serde::de::{Deserialize, Deserializer, Error, Visitor};
+use serde::{Serialize, Serializer};
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Kind {
-    Base(KindBase),
+    Metadata,
+    TextNote,
+    RecommendRelay,
+    ContactList,
+    EncryptedDirectMessage,
+    EventDeletion,
+    Boost,
+    Reaction,
+    ChannelCreation,
+    ChannelMetadata,
+    ChannelMessage,
+    ChannelHideMessage,
+    ChannelMuteUser,
+    /// Replacabe event (must be between 10000 and <20000)
+    Replaceable(u16),
+    /// Ephemeral event (must be between 20000 and <30000)
+    Ephemeral(u16),
     Custom(u64),
 }
 
-impl Kind {
-    pub fn as_u64(&self) -> u64 {
-        match *self {
-            Self::Base(kind) => kind as u64,
-            Self::Custom(kind) => kind,
+impl From<u64> for Kind {
+    fn from(u: u64) -> Self {
+        match u {
+            0 => Self::Metadata,
+            1 => Self::TextNote,
+            2 => Self::RecommendRelay,
+            3 => Self::ContactList,
+            4 => Self::EncryptedDirectMessage,
+            5 => Self::EventDeletion,
+            6 => Self::Boost,
+            7 => Self::Reaction,
+            40 => Self::ChannelCreation,
+            41 => Self::ChannelMetadata,
+            42 => Self::ChannelMessage,
+            43 => Self::ChannelHideMessage,
+            44 => Self::ChannelMuteUser,
+            x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
+            x if (20_000..30_000).contains(&x) => Self::Ephemeral(x as u16),
+            x => Self::Custom(x),
         }
+    }
+}
+
+impl From<Kind> for u64 {
+    fn from(e: Kind) -> u64 {
+        match e {
+            Kind::Metadata => 0,
+            Kind::TextNote => 1,
+            Kind::RecommendRelay => 2,
+            Kind::ContactList => 3,
+            Kind::EncryptedDirectMessage => 4,
+            Kind::EventDeletion => 5,
+            Kind::Boost => 6,
+            Kind::Reaction => 7,
+            Kind::ChannelCreation => 40,
+            Kind::ChannelMetadata => 41,
+            Kind::ChannelMessage => 42,
+            Kind::ChannelHideMessage => 43,
+            Kind::ChannelMuteUser => 44,
+            Kind::Replaceable(u) => u as u64,
+            Kind::Ephemeral(u) => u as u64,
+            Kind::Custom(u) => u,
+        }
+    }
+}
+
+impl Serialize for Kind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u64(From::from(*self))
+    }
+}
+
+impl<'de> Deserialize<'de> for Kind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_u64(KindVisitor)
+    }
+}
+
+struct KindVisitor;
+
+impl Visitor<'_> for KindVisitor {
+    type Value = Kind;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "an unsigned number")
+    }
+
+    fn visit_u64<E>(self, v: u64) -> Result<Kind, E>
+    where
+        E: Error,
+    {
+        Ok(From::<u64>::from(v))
     }
 }

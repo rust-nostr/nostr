@@ -13,7 +13,7 @@ use regex::Regex;
 use serde_json::{json, Value};
 use url::Url;
 
-pub use super::kind::{Kind, KindBase};
+pub use super::kind::Kind;
 pub use super::tag::{Marker, Tag, TagKind};
 use super::Event;
 use crate::key::{self, Keys};
@@ -173,7 +173,7 @@ impl EventBuilder {
         }
 
         Ok(Self::new(
-            Kind::Base(KindBase::Metadata),
+            Kind::Metadata,
             serde_json::to_string(&metadata)?,
             &[],
         ))
@@ -181,7 +181,7 @@ impl EventBuilder {
 
     /// Add recommended relay
     pub fn add_recommended_relay(url: &Url) -> Self {
-        Self::new(Kind::Base(KindBase::RecommendRelay), url.as_ref(), &[])
+        Self::new(Kind::RecommendRelay, url.as_ref(), &[])
     }
 
     /// Text note
@@ -198,7 +198,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::new(Kind::Base(KindBase::TextNote), content, tags)
+        Self::new(Kind::TextNote, content, tags)
     }
 
     /// Set contact list
@@ -212,7 +212,7 @@ impl EventBuilder {
             })
             .collect();
 
-        Self::new(Kind::Base(KindBase::ContactList), "", &tags)
+        Self::new(Kind::ContactList, "", &tags)
     }
 
     /// Create encrypted direct msg event
@@ -229,7 +229,7 @@ impl EventBuilder {
             nips::nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, content.into())?;
 
         Ok(Self::new(
-            Kind::Base(KindBase::EncryptedDirectMessage),
+            Kind::EncryptedDirectMessage,
             &msg,
             &[Tag::PubKey(receiver_pubkey, None)],
         ))
@@ -238,7 +238,7 @@ impl EventBuilder {
     /// Boost event
     pub fn boost(event: &Event) -> Self {
         Self::new(
-            Kind::Base(KindBase::Boost),
+            Kind::Boost,
             String::new(),
             &[
                 Tag::Event(event.id, None, None),
@@ -255,7 +255,7 @@ impl EventBuilder {
         let tags: Vec<Tag> = ids.iter().map(|id| Tag::Event(*id, None, None)).collect();
 
         Self::new(
-            Kind::Base(KindBase::EventDeletion),
+            Kind::EventDeletion,
             reason.map(|s| s.into()).unwrap_or_default(),
             &tags,
         )
@@ -273,7 +273,7 @@ impl EventBuilder {
             false => "-",
         };
 
-        Self::new(Kind::Base(KindBase::Reaction), content, tags)
+        Self::new(Kind::Reaction, content, tags)
     }
 
     /// Create new channel
@@ -301,11 +301,7 @@ impl EventBuilder {
             metadata["picture"] = json!(picture);
         }
 
-        Ok(Self::new(
-            Kind::Base(KindBase::ChannelCreation),
-            metadata.to_string(),
-            &[],
-        ))
+        Ok(Self::new(Kind::ChannelCreation, metadata.to_string(), &[]))
     }
 
     /// Set channel metadata
@@ -338,7 +334,7 @@ impl EventBuilder {
         }
 
         Ok(Self::new(
-            Kind::Base(KindBase::ChannelMetadata),
+            Kind::ChannelMetadata,
             metadata.to_string(),
             &[Tag::Event(channel_id, Some(relay_url.to_string()), None)],
         ))
@@ -356,7 +352,7 @@ impl EventBuilder {
         S: Into<String>,
     {
         Self::new(
-            Kind::Base(KindBase::ChannelMessage),
+            Kind::ChannelMessage,
             content,
             &[Tag::Event(
                 channel_id,
@@ -381,7 +377,7 @@ impl EventBuilder {
         });
 
         Self::new(
-            Kind::Base(KindBase::ChannelHideMessage),
+            Kind::ChannelHideMessage,
             &content.to_string(),
             &[Tag::Event(message_id, None, None)],
         )
@@ -399,7 +395,7 @@ impl EventBuilder {
         });
 
         Self::new(
-            Kind::Base(KindBase::ChannelMuteUser),
+            Kind::ChannelMuteUser,
             &content.to_string(),
             &[Tag::PubKey(pubkey, None)],
         )

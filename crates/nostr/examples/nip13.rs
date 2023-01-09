@@ -3,7 +3,7 @@
 
 use nostr::event::{Event, EventBuilder};
 use nostr::key::FromSkStr;
-use nostr::{Keys, Kind, KindBase, Result};
+use nostr::{Keys, Kind, Result};
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 
@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     let difficulty = 20; // leading zero bits
     let msg_content = "This is a Nostr message with embedded proof-of-work";
 
-    let builder = EventBuilder::new(Kind::Base(KindBase::TextNote), msg_content, &[]);
+    let builder = EventBuilder::new(Kind::TextNote, msg_content, &[]);
     // or
     // let builder = EventBuilder::new_text_note(msg_content, &[]);
 

@@ -16,9 +16,7 @@ trait FromResult<T>: Sized {
 mod ffi {
     // Extenal
     pub use nostr::util::time::timestamp;
-    pub use nostr_ffi::{
-        AccountMetadata, Contact, Event, EventBuilder, Keys, Kind, KindBase, SubscriptionFilter,
-    };
+    pub use nostr_ffi::{AccountMetadata, Contact, Event, EventBuilder, Keys, SubscriptionFilter};
 
     // Namespace
     pub use crate::logger::init_logger;

@@ -9,7 +9,6 @@ use nostr::secp256k1::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, Sha256Hash, Tag};
 
-use super::kind::Kind;
 use super::Event;
 use crate::contact::Contact;
 use crate::error::Result;
@@ -34,7 +33,7 @@ impl Deref for EventBuilder {
 }
 
 impl EventBuilder {
-    pub fn new(kind: Kind, content: String, tags: Vec<Vec<String>>) -> Result<Self> {
+    pub fn new(kind: u64, content: String, tags: Vec<Vec<String>>) -> Result<Self> {
         let mut new_tags: Vec<Tag> = Vec::new();
         for tag in tags.into_iter() {
             new_tags.push(Tag::try_from(tag)?);

@@ -22,7 +22,7 @@ pub mod util;
 
 pub use self::contact::Contact;
 pub use self::entity::Entity;
-pub use self::event::{Event, EventBuilder, Kind, KindBase, Tag};
+pub use self::event::{Event, EventBuilder, Kind, Tag};
 pub use self::key::Keys;
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
 pub use self::metadata::Metadata;

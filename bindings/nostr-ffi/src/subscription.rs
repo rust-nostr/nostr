@@ -9,7 +9,6 @@ use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Sha256Hash, SubscriptionFilter as SubscriptionFilterSdk};
 
 use crate::error::Result;
-use crate::event::kind::Kind;
 use crate::helper::unwrap_or_clone_arc;
 
 #[derive(Clone)]
@@ -57,7 +56,7 @@ impl SubscriptionFilter {
         Ok(Arc::new(builder))
     }
 
-    pub fn kind(self: Arc<Self>, kind: Kind) -> Arc<Self> {
+    pub fn kind(self: Arc<Self>, kind: u64) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.sub_filter = builder.sub_filter.kind(kind.into());
 

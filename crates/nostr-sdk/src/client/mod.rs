@@ -9,8 +9,8 @@ use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{
-    ClientMessage, Contact, Entity, Event, EventBuilder, Keys, Kind, KindBase, Metadata,
-    Sha256Hash, SubscriptionFilter, Tag,
+    ClientMessage, Contact, Entity, Event, EventBuilder, Keys, Kind, Metadata, Sha256Hash,
+    SubscriptionFilter, Tag,
 };
 use tokio::sync::broadcast;
 
@@ -464,7 +464,7 @@ impl Client {
 
         let filter = SubscriptionFilter::new()
             .authors(vec![self.keys.public_key()])
-            .kind(Kind::Base(KindBase::ContactList))
+            .kind(Kind::ContactList)
             .limit(1);
         let events: Vec<Event> = self.get_events_of(vec![filter]).await?;
 
@@ -674,10 +674,8 @@ impl Client {
 
     /// Get a list of channels
     pub async fn get_channels(&self) -> Result<Vec<Event>, Error> {
-        self.get_events_of(vec![
-            SubscriptionFilter::new().kind(Kind::Base(KindBase::ChannelCreation))
-        ])
-        .await
+        self.get_events_of(vec![SubscriptionFilter::new().kind(Kind::ChannelCreation)])
+            .await
     }
 
     pub async fn get_entity_of<S>(&self, entity: S) -> Result<Entity, Error>
@@ -688,7 +686,7 @@ impl Client {
         let events: Vec<Event> = self
             .get_events_of(vec![SubscriptionFilter::new()
                 .id(&entity)
-                .kind(Kind::Base(KindBase::ChannelCreation))
+                .kind(Kind::ChannelCreation)
                 .limit(1)])
             .await?;
         if events.is_empty() {

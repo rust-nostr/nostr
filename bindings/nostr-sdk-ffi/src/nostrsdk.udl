@@ -16,12 +16,6 @@ interface NostrSdkError {
 [External="nostr-ffi"]
 typedef extern NostrError;
 
-[External="nostr-ffi"]
-typedef extern KindBase;
-
-[External="nostr-ffi"]
-typedef extern Kind;
-
 interface Keys {
     [Throws=NostrError]
     constructor(string sk);
@@ -51,7 +45,7 @@ interface SubscriptionFilter {
     [Throws=NostrError, Self=ByArc]
     SubscriptionFilter ids(sequence<string> ids);
     [Self=ByArc]
-    SubscriptionFilter kind(Kind kind);
+    SubscriptionFilter kind(u64 kind);
     [Throws=NostrError, Self=ByArc]
     SubscriptionFilter event(string event_id);
     [Throws=NostrError, Self=ByArc]
@@ -66,7 +60,7 @@ interface SubscriptionFilter {
 
 interface Event {
     string pubkey();
-    Kind kind();
+    u64 kind();
     string content();
     boolean verify();
     [Throws=NostrError, Name=from_json]
@@ -77,7 +71,7 @@ interface Event {
 
 interface EventBuilder {
     [Throws=NostrError]
-    constructor(Kind kind, string content, sequence<sequence<string>> tags);
+    constructor(u64 kind, string content, sequence<sequence<string>> tags);
     [Throws=NostrError]
     Event to_event(Keys keys);
     [Throws=NostrError]

@@ -4,10 +4,9 @@
 
 use std::str::FromStr;
 
-use nostr::event::{Kind, KindBase};
 use nostr::secp256k1::SecretKey;
 use nostr::url::Url;
-use nostr::{ClientMessage, EventBuilder, Keys, RelayMessage, Result, SubscriptionFilter};
+use nostr::{ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter};
 use tungstenite::{connect, Message as WsMessage};
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
@@ -42,14 +41,14 @@ fn main() -> Result<()> {
         "abcdefgh",
         vec![SubscriptionFilter::new()
             .authors(vec![alice_keys.public_key()])
-            .kind(Kind::Base(KindBase::TextNote))],
+            .kind(Kind::TextNote)],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         "1234567",
         vec![SubscriptionFilter::new()
             .authors(vec![bob_keys.public_key()])
-            .kind(Kind::Base(KindBase::TextNote))],
+            .kind(Kind::TextNote)],
     );
 
     socket.write_message(WsMessage::Text(subscribe_to_alice.as_json()))?;

@@ -4,11 +4,12 @@
 
 use std::{thread, time};
 
-use nostr::event::{KindBase, Tag};
 use nostr::key::FromSkStr;
 use nostr::url::Url;
 use nostr::util::nips::nip04::decrypt;
-use nostr::{ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter};
+use nostr::{
+    ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter, Tag,
+};
 use tungstenite::{connect, Message as WsMessage};
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
@@ -81,7 +82,7 @@ fn main() -> Result<()> {
                     event,
                     subscription_id: _,
                 } => {
-                    if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
+                    if event.kind == Kind::EncryptedDirectMessage {
                         if let Some(Tag::PubKey(pubkey, _)) = event.tags.first() {
                             if pubkey == &alice_keys.public_key() {
                                 println!("New DM to alice");

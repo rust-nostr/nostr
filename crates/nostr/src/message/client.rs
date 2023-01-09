@@ -142,7 +142,7 @@ mod tests {
 
     use bitcoin::secp256k1::XOnlyPublicKey;
 
-    use crate::{Kind, KindBase};
+    use crate::Kind;
 
     #[test]
     fn test_client_message_req() {
@@ -151,7 +151,7 @@ mod tests {
         )
         .unwrap();
         let filters = vec![
-            SubscriptionFilter::new().kind(Kind::Base(KindBase::EncryptedDirectMessage)),
+            SubscriptionFilter::new().kind(Kind::EncryptedDirectMessage),
             SubscriptionFilter::new().pubkey(pk),
         ];
 

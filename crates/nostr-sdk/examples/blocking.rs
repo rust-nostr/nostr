@@ -7,7 +7,7 @@ use nostr::secp256k1::SecretKey;
 use nostr::util::nips::nip04::decrypt;
 use nostr::util::nips::nip19::FromBech32;
 use nostr::util::time::timestamp;
-use nostr::{Entity, Keys, Kind, KindBase, Sha256Hash, SubscriptionFilter};
+use nostr::{Entity, Keys, Kind, Sha256Hash, SubscriptionFilter};
 use nostr_sdk::client::blocking::Client;
 use nostr_sdk::{RelayPoolNotification, Result};
 
@@ -45,7 +45,7 @@ fn main() -> Result<()> {
 
     client.handle_notifications(|notification| {
         if let RelayPoolNotification::Event(_url, event) = notification {
-            if event.kind == Kind::Base(KindBase::EncryptedDirectMessage) {
+            if event.kind == Kind::EncryptedDirectMessage {
                 if let Ok(msg) = decrypt(
                     &my_keys.secret_key().unwrap(),
                     &event.pubkey,

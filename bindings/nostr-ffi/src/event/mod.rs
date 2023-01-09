@@ -6,9 +6,7 @@ use std::ops::Deref;
 use nostr::Event as EventSdk;
 
 pub mod builder;
-pub mod kind;
 
-use self::kind::Kind;
 use crate::error::Result;
 
 pub struct Event {
@@ -33,7 +31,7 @@ impl Event {
         self.event.pubkey.to_string()
     }
 
-    pub fn kind(&self) -> Kind {
+    pub fn kind(&self) -> u64 {
         self.event.kind.into()
     }
 
