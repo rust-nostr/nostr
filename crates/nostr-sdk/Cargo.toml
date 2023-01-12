@@ -34,7 +34,7 @@ uuid = { version = "1", features = ["v4", "fast-rng", "macro-diagnostics"] }
 webpki-roots = "0.22.6"
 
 [dev-dependencies]
-env_logger = "0.8"
+env_logger = "0.10"
 
 [[example]]
 name = "client"

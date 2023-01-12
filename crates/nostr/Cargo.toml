@@ -40,7 +40,7 @@ instant = { version = "0.1", features = [ "stdweb", "inaccurate" ] }
 
 [dev-dependencies]
 csv = "1.1.5"
-env_logger = "0.8.2"
+env_logger = "0.10.0"
 tungstenite = { version = "0.17", features = ["rustls-tls-webpki-roots"] }
 
 [[example]]
