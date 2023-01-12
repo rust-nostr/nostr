@@ -29,14 +29,11 @@ impl Client {
             None => None,
         };
 
-        Ok(self.client.lock().add_relay(&url, proxy)?)
+        Ok(self.client.lock().add_relay(url, proxy)?)
     }
 
     pub fn connect_relay(&self, url: String, wait_for_connection: bool) -> Result<()> {
-        Ok(self
-            .client
-            .lock()
-            .connect_relay(&url, wait_for_connection)?)
+        Ok(self.client.lock().connect_relay(url, wait_for_connection)?)
     }
 
     pub fn connect(&self) {

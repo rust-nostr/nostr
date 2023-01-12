@@ -40,7 +40,7 @@ impl EventBuilder {
         }
 
         Ok(Self {
-            builder: EventBuilderSdk::new(kind.into(), &content, &new_tags),
+            builder: EventBuilderSdk::new(kind.into(), content, &new_tags),
         })
     }
 
@@ -81,7 +81,7 @@ impl EventBuilder {
         }
 
         Ok(Self {
-            builder: EventBuilderSdk::new_text_note(&content, &new_tags),
+            builder: EventBuilderSdk::new_text_note(content, &new_tags),
         })
     }
 
@@ -106,7 +106,7 @@ impl EventBuilder {
             builder: EventBuilderSdk::new_encrypted_direct_msg(
                 sender_keys.deref(),
                 XOnlyPublicKey::from_str(&receiver_pubkey)?,
-                &content,
+                content,
             )?,
         })
     }

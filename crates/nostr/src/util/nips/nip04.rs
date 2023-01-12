@@ -8,6 +8,7 @@ use std::str::FromStr;
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
+use base64::engine::{general_purpose, Engine};
 use bitcoin::secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
 use cbc::{Decryptor, Encryptor};
 
@@ -40,8 +41,8 @@ where
 
     Ok(format!(
         "{}?iv={}",
-        base64::encode(result),
-        base64::encode(iv)
+        general_purpose::STANDARD.encode(result),
+        general_purpose::STANDARD.encode(iv)
     ))
 }
 
@@ -59,9 +60,12 @@ where
         return Err(Error::InvalidContentFormat);
     }
 
-    let encrypted_content: Vec<u8> =
-        base64::decode(parsed_content[0]).map_err(|_| Error::Base64Decode)?;
-    let iv: Vec<u8> = base64::decode(parsed_content[1]).map_err(|_| Error::Base64Decode)?;
+    let encrypted_content: Vec<u8> = general_purpose::STANDARD
+        .decode(parsed_content[0])
+        .map_err(|_| Error::Base64Decode)?;
+    let iv: Vec<u8> = general_purpose::STANDARD
+        .decode(parsed_content[1])
+        .map_err(|_| Error::Base64Decode)?;
     let key: Vec<u8> = generate_shared_key(sk, pk)?;
 
     let cipher = Aes256CbcDec::new(key.as_slice().into(), iv.as_slice().into());

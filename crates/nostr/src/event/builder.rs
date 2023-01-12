@@ -230,7 +230,7 @@ impl EventBuilder {
 
         Ok(Self::new(
             Kind::EncryptedDirectMessage,
-            &msg,
+            msg,
             &[Tag::PubKey(receiver_pubkey, None)],
         ))
     }
@@ -378,7 +378,7 @@ impl EventBuilder {
 
         Self::new(
             Kind::ChannelHideMessage,
-            &content.to_string(),
+            content.to_string(),
             &[Tag::Event(message_id, None, None)],
         )
     }
@@ -396,7 +396,7 @@ impl EventBuilder {
 
         Self::new(
             Kind::ChannelMuteUser,
-            &content.to_string(),
+            content.to_string(),
             &[Tag::PubKey(pubkey, None)],
         )
     }
