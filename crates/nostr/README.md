@@ -91,7 +91,6 @@ The following crate feature flags are available:
 | ✅         | [04 - Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)                                           |
 | ✅         | [05 - Mapping Nostr keys to DNS-based internet identifiers](https://github.com/nostr-protocol/nips/blob/master/05.md)               |
 | ✅         | [06 - Basic key derivation from mnemonic seed phrase](https://github.com/nostr-protocol/nips/blob/master/06.md)                     |
-| ❌         | [08 - Handling Mentions](https://github.com/nostr-protocol/nips/blob/master/08.md)                                                  |
 | ✅         | [09 - Event Deletion](https://github.com/nostr-protocol/nips/blob/master/09.md)                                                     |
 | ✅         | [10 - Conventions for clients' use of `e` and `p` tags in text events](https://github.com/nostr-protocol/nips/blob/master/10.md)    |
 | ✅         | [11 - Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)                                         |
@@ -103,7 +102,6 @@ The following crate feature flags are available:
 | ✅         | [18 - Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)                                                            |
 | ✅         | [19 - bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)                                            |
 | ✅         | [20 - Command Results](https://github.com/nostr-protocol/nips/blob/master/20.md)                                                    |
-| ❌         | [22 - Event created_at Limits](https://github.com/nostr-protocol/nips/blob/master/22.md)                                            |
 | ✅         | [25 - Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)                                                          |
 | ✅         | [26 - Delegated Event Signing](https://github.com/nostr-protocol/nips/blob/master/26.md)                                            |
 | ✅         | [28 - Public Chat](https://github.com/nostr-protocol/nips/blob/master/28.md)                                                        |
