@@ -12,16 +12,18 @@ rust-version.workspace = true
 keywords = ["nostr", "protocol", "sdk", "rust"]
 
 [features]
-default = ["all-nips"]
-all-nips = ["nip04", "nip05", "nip06", "nip11", "nip13", "nip19", "nip26"]
-nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
-nip05 = ["dep:reqwest"]
-nip06 = ["dep:bip39"]
-nip11 = ["dep:reqwest"]
-nip13 = []
-nip19 = []
-nip26 = []
+default = ["full"]
+full = ["all-nips", "event"]
 blocking = ["reqwest?/blocking"]
+all-nips = ["nip04", "nip05", "nip06", "nip11", "nip13", "nip19", "nip26"]
+event = ["dep:once_cell", "dep:regex", "dep:serde", "dep:serde_json", "dep:url"]
+nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
+nip05 = ["dep:reqwest", "dep:serde_json"]
+nip06 = ["dep:bip39"]
+nip11 = ["dep:reqwest", "dep:serde", "dep:url"]
+nip13 = ["dep:log"]
+nip19 = ["dep:serde"]
+nip26 = []
 
 [dependencies]
 aes = { version = "0.8", optional = true }
@@ -29,14 +31,14 @@ base64 = { version = "0.21", optional = true }
 bip39 = { version = "1.0", optional = true }
 bitcoin = { version = "0.29", features = ["rand", "serde"] }
 cbc = { version = "0.1", features = ["alloc"], optional = true }
-log = "0.4"
-once_cell = "1"
-regex = "1.7"
+log = { version = "0.4", optional = true }
+once_cell = { version = "1.17", optional = true }
+regex = { version = "1.7", optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
 thiserror = "1.0"
-url = { version = "2", features = ["serde"] }
+url = { version = "2", features = ["serde"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 instant = { version = "0.1", features = [ "stdweb", "inaccurate" ] }
@@ -45,6 +47,18 @@ instant = { version = "0.1", features = [ "stdweb", "inaccurate" ] }
 csv = "1.1.5"
 env_logger = "0.10.0"
 tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"] }
+
+[[example]]
+name = "keys"
+required-features = ["nip19"]
+
+[[example]]
+name = "metadata"
+required-features = ["event"]
+
+[[example]]
+name = "tweet"
+required-features = ["event"]
 
 [[example]]
 name = "nip04"
@@ -57,6 +71,10 @@ required-features = ["nip05", "blocking"]
 [[example]]
 name = "nip06"
 required-features = ["nip06"]
+
+[[example]]
+name = "nip09"
+required-features = ["nip19"]
 
 [[example]]
 name = "nip11"

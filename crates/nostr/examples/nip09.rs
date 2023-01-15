@@ -4,7 +4,6 @@
 use std::str::FromStr;
 
 use nostr::secp256k1::SecretKey;
-use nostr::url::Url;
 use nostr::util::nips::nip19::FromBech32;
 use nostr::{ClientMessage, Event, EventBuilder, Keys, Result, Sha256Hash};
 use tungstenite::{connect, Message as WsMessage};
@@ -16,8 +15,7 @@ const WS_ENDPOINT: &str = "wss://relay.damus.io";
 fn main() -> Result<()> {
     env_logger::init();
 
-    let (mut socket, _response) =
-        connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect to relay");
+    let (mut socket, _response) = connect(WS_ENDPOINT).expect("Can't connect to relay");
 
     let secret_key = SecretKey::from_bech32(MY_BECH32_SK)?;
     let my_keys = Keys::new(secret_key);

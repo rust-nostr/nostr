@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 use bitcoin::secp256k1::XOnlyPublicKey;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Deserialize, Serialize)]
 pub struct Contact {

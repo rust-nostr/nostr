@@ -1,9 +1,10 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
+use serde::{Deserialize, Serialize};
 
 use crate::Sha256Hash;
 

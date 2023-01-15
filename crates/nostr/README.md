@@ -74,7 +74,9 @@ The following crate feature flags are available:
 
 | Feature             | Default | Description                                                                                                                |
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
+| `full`              |   Yes   | Enable all main features: `all-nips` and `event`                                                                           |
 | `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11`features in not async/await context                                                     |
+| `event`             |   Yes   | Enable `event`, `message` and `types` modules                                                                              |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                                                    |
 | `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                                                        |

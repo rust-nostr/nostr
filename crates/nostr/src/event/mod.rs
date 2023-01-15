@@ -7,7 +7,7 @@ use std::str::FromStr;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{Secp256k1, XOnlyPublicKey};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 pub mod builder;
 pub mod kind;

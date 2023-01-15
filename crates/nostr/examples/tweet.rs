@@ -5,7 +5,6 @@
 use std::str::FromStr;
 
 use nostr::secp256k1::SecretKey;
-use nostr::url::Url;
 use nostr::{ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter};
 use tungstenite::{connect, Message as WsMessage};
 
@@ -17,7 +16,7 @@ const WS_ENDPOINT: &str = "wss://nostr-relay-dev.wlvs.space";
 fn main() -> Result<()> {
     env_logger::init();
 
-    let (mut socket, response) = connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect");
+    let (mut socket, response) = connect(WS_ENDPOINT).expect("Can't connect");
 
     println!("Connected to the server");
     println!("Response HTTP code: {}", response.status());

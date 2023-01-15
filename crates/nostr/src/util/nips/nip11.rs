@@ -1,5 +1,5 @@
 // Copyright (c) 2022 Thomas (0xtlt)
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 use std::net::SocketAddr;
@@ -9,6 +9,7 @@ use reqwest::blocking::Client;
 #[cfg(not(feature = "blocking"))]
 use reqwest::Client;
 use reqwest::Proxy;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 #[derive(Debug, thiserror::Error)]

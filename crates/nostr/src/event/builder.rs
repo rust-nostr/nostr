@@ -403,3 +403,49 @@ impl EventBuilder {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use bitcoin::secp256k1::SecretKey;
+
+    use crate::{Event, EventBuilder, Keys, Result};
+
+    #[test]
+    fn round_trip() -> Result<()> {
+        let keys = Keys::new(SecretKey::from_str(
+            "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?);
+
+        let event = EventBuilder::new_text_note("hello", &vec![]).to_event(&keys)?;
+
+        let serialized = event.as_json().unwrap();
+        let deserialized = Event::from_json(serialized)?;
+
+        assert_eq!(event, deserialized);
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(feature = "nip04")]
+    fn test_encrypted_direct_msg() -> Result<()> {
+        let sender_keys = Keys::new(SecretKey::from_str(
+            "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?);
+        let receiver_keys = Keys::new(SecretKey::from_str(
+            "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
+        )?);
+
+        let content = "Mercury, the Winged Messenger";
+        let event = EventBuilder::new_encrypted_direct_msg(
+            &sender_keys,
+            receiver_keys.public_key(),
+            content,
+        )?
+        .to_event(&sender_keys)?;
+
+        Ok(event.verify()?)
+    }
+}

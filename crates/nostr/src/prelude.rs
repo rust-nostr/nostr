@@ -4,12 +4,16 @@
 // External crates
 pub use bitcoin::hashes::*;
 pub use bitcoin::secp256k1::*;
+#[cfg(feature = "event")]
 pub use url::*;
 
 // Internal modules
+#[cfg(feature = "event")]
 pub use crate::event::*;
 pub use crate::key::*;
+#[cfg(feature = "event")]
 pub use crate::message::*;
+#[cfg(feature = "event")]
 pub use crate::types::*;
 pub use crate::Sha256Hash;
 
