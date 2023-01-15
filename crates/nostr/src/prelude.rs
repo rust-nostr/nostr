@@ -7,12 +7,10 @@ pub use bitcoin::secp256k1::*;
 pub use url::*;
 
 // Internal modules
-pub use crate::contact::*;
-pub use crate::entity::*;
 pub use crate::event::*;
 pub use crate::key::*;
 pub use crate::message::*;
-pub use crate::metadata::*;
+pub use crate::types::*;
 pub use crate::Sha256Hash;
 
 // NIPs

@@ -11,21 +11,17 @@ pub use bitcoin::hashes::sha256::Hash as Sha256Hash;
 pub use bitcoin::secp256k1;
 pub use url;
 
-pub mod contact;
-pub mod entity;
 pub mod event;
 pub mod key;
 pub mod message;
-pub mod metadata;
 pub mod prelude;
+pub mod types;
 pub mod util;
 
-pub use self::contact::Contact;
-pub use self::entity::Entity;
 pub use self::event::{Event, EventBuilder, Kind, Tag};
 pub use self::key::Keys;
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
-pub use self::metadata::Metadata;
+pub use self::types::{Contact, Entity, Metadata};
 
 pub type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;
 

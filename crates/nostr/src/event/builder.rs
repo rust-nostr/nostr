@@ -12,13 +12,13 @@ pub use super::kind::Kind;
 pub use super::tag::{Marker, Tag, TagKind};
 use super::Event;
 use crate::key::{self, Keys};
-use crate::metadata::Metadata;
+use crate::types::{Contact, Metadata};
 #[cfg(feature = "nip04")]
 use crate::util::nips::nip04;
 #[cfg(feature = "nip13")]
 use crate::util::nips::nip13;
 use crate::util::time::timestamp;
-use crate::{Contact, Sha256Hash};
+use crate::Sha256Hash;
 
 static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
@@ -155,9 +155,8 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::metadata::Metadata;
     /// use nostr::url::Url;
-    /// use nostr::EventBuilder;
+    /// use nostr::{EventBuilder, Metadata};
     ///
     /// let metadata = Metadata::new()
     ///     .name("username")

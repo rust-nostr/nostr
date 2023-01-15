@@ -1,8 +1,6 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use url::Url;
-
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Error serializing or deserializing JSON data
@@ -95,17 +93,23 @@ impl Metadata {
     }
 
     /// Set website
-    pub fn website(self, url: Url) -> Self {
+    pub fn website<S>(self, url: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
-            website: Some(url.to_string()),
+            website: Some(url.into()),
             ..self
         }
     }
 
     /// Set picture
-    pub fn picture(self, picture: Url) -> Self {
+    pub fn picture<S>(self, picture: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
-            picture: Some(picture.to_string()),
+            picture: Some(picture.into()),
             ..self
         }
     }
