@@ -1,8 +1,6 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-#![doc = include_str!("../README.md")]
-
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
@@ -12,6 +10,8 @@ pub use nostr;
 pub use nostr::Result;
 
 pub mod client;
+#[cfg(feature = "all-nips")]
+mod doctest;
 pub mod relay;
 pub mod subscription;
 mod thread;
