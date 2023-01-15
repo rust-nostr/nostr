@@ -395,6 +395,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
+    #[cfg(feature = "nip13")]
     pub async fn publish_pow_text_note<S>(
         &self,
         content: S,

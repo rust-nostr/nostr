@@ -72,9 +72,9 @@ impl GenerateMnemonic for Keys {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use bitcoin::secp256k1::SecretKey;
 
-    use crate::util::nips::nip19::ToBech32;
+    use super::*;
 
     type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -84,8 +84,10 @@ mod tests {
         let keys = Keys::from_mnemonic(mnemonic, None)?;
 
         assert_eq!(
-            keys.secret_key()?.to_bech32()?,
-            "nsec1q6vjgxdgl6ppmkx7q02vxqrpf687a7674ymtwmufjaku4n52a0hq9glmaf".to_string()
+            keys.secret_key()?,
+            SecretKey::from_str(
+                "06992419a8fe821dd8de03d4c300614e8feefb5ea936b76f89976dcace8aebee"
+            )?
         );
 
         Ok(())

@@ -1,11 +1,6 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-#[cfg(target_arch = "wasm32")]
-use instant::Instant;
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::Instant;
-
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 use once_cell::sync::Lazy;
@@ -18,7 +13,10 @@ pub use super::tag::{Marker, Tag, TagKind};
 use super::Event;
 use crate::key::{self, Keys};
 use crate::metadata::Metadata;
-use crate::util::nips;
+#[cfg(feature = "nip04")]
+use crate::util::nips::nip04;
+#[cfg(feature = "nip13")]
+use crate::util::nips::nip13;
 use crate::util::time::timestamp;
 use crate::{Contact, Sha256Hash};
 
@@ -40,7 +38,7 @@ pub enum Error {
     /// NIP04 error
     #[cfg(feature = "nip04")]
     #[error("nip04 error: {0}")]
-    NIP04(#[from] nips::nip04::Error),
+    NIP04(#[from] nip04::Error),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -98,7 +96,13 @@ impl EventBuilder {
     }
 
     /// Build POW `Event`
+    #[cfg(feature = "nip13")]
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
+        #[cfg(target_arch = "wasm32")]
+        use instant::Instant;
+        #[cfg(not(target_arch = "wasm32"))]
+        use std::time::Instant;
+
         let mut nonce: u128 = 0;
         let mut tags: Vec<Tag> = self.tags;
 
@@ -115,7 +119,7 @@ impl EventBuilder {
             let id: Sha256Hash =
                 Self::gen_id(&pubkey, created_at, &self.kind, &tags, &self.content);
 
-            if nips::nip13::get_leading_zero_bits(id) >= difficulty {
+            if nip13::get_leading_zero_bits(id) >= difficulty {
                 log::debug!(
                     "{} iterations in {} ms. Avg rate {} hashes/second",
                     nonce,
@@ -225,8 +229,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let msg =
-            nips::nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, content.into())?;
+        let msg = nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, content.into())?;
 
         Ok(Self::new(
             Kind::EncryptedDirectMessage,

@@ -2,11 +2,13 @@
 // Copyright (c) 2022 Yuki Kishimoto
 // Distributed under the MIT software license
 
+#[cfg(feature = "nip19")]
 use std::str::FromStr;
 
 use bitcoin::secp256k1::rand::rngs::OsRng;
 pub use bitcoin::secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 
+#[cfg(feature = "nip19")]
 use crate::util::nips::nip19::FromBech32;
 
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
@@ -66,25 +68,6 @@ impl Keys {
         }
     }
 
-    #[deprecated(since = "0.11.0")]
-    pub fn from_bech32<S>(secret_key: S) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        let secret_key = SecretKey::from_bech32(secret_key).map_err(|_| Error::InvalidSecretKey)?;
-        Ok(Self::new(secret_key))
-    }
-
-    #[deprecated(since = "0.11.0")]
-    pub fn from_bech32_public_key<S>(public_key: S) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        let public_key =
-            XOnlyPublicKey::from_bech32(public_key).map_err(|_| Error::InvalidPublicKey)?;
-        Ok(Self::from_public_key(public_key))
-    }
-
     /// Generate a new random keys
     pub fn generate_from_os_random() -> Self {
         let secp = Secp256k1::new();
@@ -117,6 +100,7 @@ impl Keys {
     }
 }
 
+#[cfg(feature = "nip19")]
 impl FromSkStr for Keys {
     type Err = Error;
 
@@ -132,6 +116,7 @@ impl FromSkStr for Keys {
     }
 }
 
+#[cfg(feature = "nip19")]
 impl FromPkStr for Keys {
     type Err = Error;
 

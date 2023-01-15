@@ -13,11 +13,14 @@ keywords = ["nostr", "protocol", "sdk", "rust"]
 
 [features]
 default = ["all-nips"]
-all-nips = ["nip04", "nip05", "nip06", "nip11"]
+all-nips = ["nip04", "nip05", "nip06", "nip11", "nip13", "nip19", "nip26"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip05 = ["dep:reqwest"]
 nip06 = ["dep:bip39"]
 nip11 = ["dep:reqwest"]
+nip13 = []
+nip19 = []
+nip26 = []
 blocking = ["reqwest?/blocking"]
 
 [dependencies]
@@ -58,3 +61,11 @@ required-features = ["nip06"]
 [[example]]
 name = "nip11"
 required-features = ["nip11", "blocking"]
+
+[[example]]
+name = "nip13"
+required-features = ["nip13"]
+
+[[example]]
+name = "nip19"
+required-features = ["nip19"]
