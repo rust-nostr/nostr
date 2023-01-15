@@ -519,9 +519,9 @@ impl Client {
         self.send_event(event).await
     }
 
-    /// Boost event
-    pub async fn boost_event(&self, event: &Event) -> Result<(), Error> {
-        let event: Event = EventBuilder::boost(event).to_event(&self.keys)?;
+    /// Repost event
+    pub async fn repost_event(&self, event: &Event) -> Result<(), Error> {
+        let event: Event = EventBuilder::repost(event).to_event(&self.keys)?;
         self.send_event(event).await
     }
 

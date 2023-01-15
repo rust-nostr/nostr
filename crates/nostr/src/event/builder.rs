@@ -235,10 +235,10 @@ impl EventBuilder {
         ))
     }
 
-    /// Boost event
-    pub fn boost(event: &Event) -> Self {
+    /// Repost event
+    pub fn repost(event: &Event) -> Self {
         Self::new(
-            Kind::Boost,
+            Kind::Repost,
             String::new(),
             &[
                 Tag::Event(event.id, None, None),

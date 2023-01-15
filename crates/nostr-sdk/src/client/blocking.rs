@@ -166,8 +166,8 @@ impl Client {
         RUNTIME.block_on(async { self.client.send_direct_msg(receiver, msg).await })
     }
 
-    pub fn boost_event(&self, event: &Event) -> Result<(), Error> {
-        RUNTIME.block_on(async { self.client.boost_event(event).await })
+    pub fn repost_event(&self, event: &Event) -> Result<(), Error> {
+        RUNTIME.block_on(async { self.client.repost_event(event).await })
     }
 
     pub fn delete_event<S>(&self, event_id: Sha256Hash, reason: Option<S>) -> Result<(), Error>
