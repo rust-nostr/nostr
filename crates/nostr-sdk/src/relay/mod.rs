@@ -10,7 +10,6 @@ use futures_util::{SinkExt, StreamExt};
 use nostr::url::Url;
 use nostr::{ClientMessage, RelayMessage, SubscriptionFilter};
 use tokio::sync::broadcast;
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
@@ -26,8 +25,8 @@ use crate::RelayPoolNotification;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("impossible to send relay event: {0}")]
-    RelayEventSender(#[from] SendError<RelayEvent>),
+    #[error("timeout")]
+    Timeout,
 }
 
 /// Relay connection status
@@ -275,16 +274,17 @@ impl Relay {
                     log::debug!("Relay Ping Thread Started");
 
                     loop {
-                        tokio::time::sleep(Duration::from_secs(60)).await;
-                        if relay.status().await == RelayStatus::Terminated {
-                            break;
-                        }
-                        match relay.ping().await {
-                            Ok(_) => log::debug!("Ping {}", relay.url),
-                            Err(err) => {
-                                log::error!("Impossible to ping {}: {}", relay.url, err);
-                                break;
-                            }
+                        tokio::time::sleep(Duration::from_secs(120)).await;
+                        match relay.status().await {
+                            RelayStatus::Terminated => break,
+                            RelayStatus::Connected => match relay.ping().await {
+                                Ok(_) => log::debug!("Ping {}", relay.url),
+                                Err(err) => {
+                                    log::error!("Impossible to ping {}: {}", relay.url, err);
+                                    break;
+                                }
+                            },
+                            _ => (),
                         }
                     }
 
@@ -314,7 +314,10 @@ impl Relay {
     }
 
     async fn send_relay_event(&self, relay_msg: RelayEvent) -> Result<(), Error> {
-        Ok(self.relay_sender.send(relay_msg).await?)
+        self.relay_sender
+            .send_timeout(relay_msg, Duration::from_secs(60))
+            .await
+            .map_err(|_| Error::Timeout)
     }
 
     /// Ping relay
@@ -324,13 +327,20 @@ impl Relay {
 
     /// Disconnect from relay and set status to 'Disconnected'
     async fn disconnect(&self) -> Result<(), Error> {
-        self.send_relay_event(RelayEvent::Close).await
+        if self.status().await.ne(&RelayStatus::Disconnected) {
+            self.send_relay_event(RelayEvent::Close).await?;
+        }
+        Ok(())
     }
 
     /// Disconnect from relay and set status to 'Terminated'
     pub async fn terminate(&self) -> Result<(), Error> {
         self.schedule_for_termination(true).await;
-        self.send_relay_event(RelayEvent::Terminate).await
+        let status = self.status().await;
+        if status.ne(&RelayStatus::Disconnected) && status.ne(&RelayStatus::Terminated) {
+            self.send_relay_event(RelayEvent::Terminate).await?;
+        }
+        Ok(())
     }
 
     /// Send msg to relay
