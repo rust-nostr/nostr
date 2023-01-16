@@ -21,7 +21,6 @@ tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"]}
 ```rust,no_run
 use nostr::{Event, EventBuilder, Metadata, Keys, Result};
 use nostr::message::ClientMessage;
-use nostr::url::Url;
 use tungstenite::{Message as WsMessage};
 
 fn main() -> Result<()> {
@@ -43,7 +42,8 @@ fn main() -> Result<()> {
         .name("username")
         .display_name("My Username")
         .about("Description")
-        .picture(Url::parse("https://example.com/avatar.png")?)
+        .picture("https://example.com/avatar.png")
+        .banner("https://example.com/banner.png")
         .nip05("username@example.com")
         .lud16("yuki@stacker.news");
 
@@ -56,7 +56,7 @@ fn main() -> Result<()> {
     let event: Event = EventBuilder::new_text_note("My first POW text note from Nostr SDK", &[]).to_pow_event(&my_keys, 20)?;
 
     // Connect to relay
-    let (mut socket, _) = tungstenite::connect(Url::parse("wss://relay.damus.io")?).expect("Can't connect to relay");
+    let (mut socket, _) = tungstenite::connect("wss://relay.damus.io").expect("Can't connect to relay");
 
     // Send msg
     let msg = ClientMessage::new_event(event).as_json();

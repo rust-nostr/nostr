@@ -23,6 +23,8 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub picture: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub banner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub nip05: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lud06: Option<String>,
@@ -44,6 +46,7 @@ impl Metadata {
             about: None,
             website: None,
             picture: None,
+            banner: None,
             nip05: None,
             lud06: None,
             lud16: None,
@@ -112,6 +115,17 @@ impl Metadata {
     {
         Self {
             picture: Some(picture.into()),
+            ..self
+        }
+    }
+
+    /// Set banner
+    pub fn banner<S>(self, banner: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            banner: Some(banner.into()),
             ..self
         }
     }
