@@ -12,6 +12,7 @@ pub use nostr::Result;
 pub mod client;
 #[cfg(feature = "all-nips")]
 mod doctest;
+pub mod prelude;
 pub mod relay;
 pub mod subscription;
 mod thread;
