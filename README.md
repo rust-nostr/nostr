@@ -32,6 +32,6 @@ This project is distributed under the MIT software license - see the [LICENSE](L
 
 ## Donations
 
-🔗 Bitcoin Address: bc1qmxcg6v75jzet2nxrz35pwq4vkg847exf04gwrh
+⚡ Tips: https://getalby.com/p/yuki
 
-⚡ Lightning Address: yuki@stacker.news
+⚡ Lightning Address: yuki@getalby.com
