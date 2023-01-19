@@ -141,6 +141,12 @@ impl Relay {
             let relay = self.clone();
             thread::spawn(async move {
                 loop {
+                    log::info!(
+                        "{} channel capacity: {}",
+                        relay.url(),
+                        relay.relay_sender.capacity()
+                    );
+
                     // Schedule relay for termination
                     // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
                     if relay.is_scheduled_for_termination().await {
