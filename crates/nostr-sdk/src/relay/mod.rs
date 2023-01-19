@@ -25,8 +25,8 @@ use crate::RelayPoolNotification;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("timeout")]
-    Timeout,
+    #[error("channel timeout")]
+    ChannelTimeout,
 }
 
 /// Relay connection status
@@ -195,7 +195,7 @@ impl Relay {
                             }
                             RelayEvent::Ping => {
                                 if let Err(e) = ws_tx.feed(Message::Ping(Vec::new())).await {
-                                    log::error!("Ping error: {:?}", e);
+                                    log::error!("Ping error: {}", e);
                                     break;
                                 }
                             }
@@ -317,7 +317,7 @@ impl Relay {
         self.relay_sender
             .send_timeout(relay_msg, Duration::from_secs(60))
             .await
-            .map_err(|_| Error::Timeout)
+            .map_err(|_| Error::ChannelTimeout)
     }
 
     /// Ping relay
@@ -327,7 +327,8 @@ impl Relay {
 
     /// Disconnect from relay and set status to 'Disconnected'
     async fn disconnect(&self) -> Result<(), Error> {
-        if self.status().await.ne(&RelayStatus::Disconnected) {
+        let status = self.status().await;
+        if status.ne(&RelayStatus::Disconnected) && status.ne(&RelayStatus::Terminated) {
             self.send_relay_event(RelayEvent::Close).await?;
         }
         Ok(())
