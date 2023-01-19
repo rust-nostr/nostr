@@ -59,7 +59,7 @@ impl fmt::Display for RelayStatus {
 #[derive(Debug)]
 pub enum RelayEvent {
     SendMsg(Box<ClientMessage>),
-    Ping,
+    // Ping,
     Close,
     Terminate,
 }
@@ -180,11 +180,12 @@ impl Relay {
                 let relay = self.clone();
                 thread::spawn(async move {
                     log::debug!("Relay Event Thread Started");
-                    while let Some(relay_event) = relay.relay_receiver.lock().await.recv().await {
+                    let mut rx = relay.relay_receiver.lock().await;
+                    while let Some(relay_event) = rx.recv().await {
                         match relay_event {
                             RelayEvent::SendMsg(msg) => {
                                 log::trace!("Sending message {}", msg.as_json());
-                                if let Err(e) = ws_tx.feed(Message::Text(msg.as_json())).await {
+                                if let Err(e) = ws_tx.send(Message::Text(msg.as_json())).await {
                                     log::error!(
                                         "Impossible to send msg to {}: {}",
                                         relay.url(),
@@ -193,12 +194,12 @@ impl Relay {
                                     break;
                                 };
                             }
-                            RelayEvent::Ping => {
+                            /* RelayEvent::Ping => {
                                 if let Err(e) = ws_tx.feed(Message::Ping(Vec::new())).await {
                                     log::error!("Ping error: {}", e);
                                     break;
                                 }
-                            }
+                            } */
                             RelayEvent::Close => {
                                 let _ = ws_tx.close().await;
                                 relay.set_status(RelayStatus::Disconnected).await;
@@ -269,7 +270,7 @@ impl Relay {
                 });
 
                 // Ping thread
-                let relay = self.clone();
+                /* let relay = self.clone();
                 thread::spawn(async move {
                     log::debug!("Relay Ping Thread Started");
 
@@ -295,7 +296,7 @@ impl Relay {
                             log::error!("Impossible to disconnect {}: {}", relay.url, err);
                         }
                     }
-                });
+                }); */
 
                 // Subscribe to relay
                 if let Err(e) = self.subscribe().await {
@@ -321,9 +322,9 @@ impl Relay {
     }
 
     /// Ping relay
-    async fn ping(&self) -> Result<(), Error> {
+    /* async fn ping(&self) -> Result<(), Error> {
         self.send_relay_event(RelayEvent::Ping).await
-    }
+    } */
 
     /// Disconnect from relay and set status to 'Disconnected'
     async fn disconnect(&self) -> Result<(), Error> {
