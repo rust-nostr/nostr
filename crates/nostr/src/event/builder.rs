@@ -12,11 +12,11 @@ pub use super::kind::Kind;
 pub use super::tag::{Marker, Tag, TagKind};
 use super::Event;
 use crate::key::{self, Keys};
-use crate::types::{Contact, Metadata};
 #[cfg(feature = "nip04")]
-use crate::util::nips::nip04;
+use crate::nips::nip04;
 #[cfg(feature = "nip13")]
-use crate::util::nips::nip13;
+use crate::nips::nip13;
+use crate::types::{Contact, Metadata};
 use crate::util::time::timestamp;
 use crate::Sha256Hash;
 

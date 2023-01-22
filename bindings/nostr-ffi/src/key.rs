@@ -5,9 +5,9 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use nostr::key::{Keys as KeysSdk, XOnlyPublicKey};
+use nostr::nips::nip06::FromMnemonic;
+use nostr::nips::nip19::{FromBech32, ToBech32};
 use nostr::secp256k1::SecretKey;
-use nostr::util::nips::nip06::FromMnemonic;
-use nostr::util::nips::nip19::{FromBech32, ToBech32};
 
 use crate::error::{NostrError, Result};
 

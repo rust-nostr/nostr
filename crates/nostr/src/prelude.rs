@@ -19,16 +19,16 @@ pub use crate::Sha256Hash;
 
 // NIPs
 #[cfg(feature = "nip04")]
-pub use crate::util::nips::nip04::*;
+pub use crate::nips::nip04::*;
 #[cfg(feature = "nip05")]
-pub use crate::util::nips::nip05::*;
+pub use crate::nips::nip05::*;
 #[cfg(feature = "nip06")]
-pub use crate::util::nips::nip06::*;
+pub use crate::nips::nip06::*;
 #[cfg(feature = "nip11")]
-pub use crate::util::nips::nip11::*;
+pub use crate::nips::nip11::*;
 #[cfg(feature = "nip13")]
-pub use crate::util::nips::nip13::*;
+pub use crate::nips::nip13::*;
 #[cfg(feature = "nip19")]
-pub use crate::util::nips::nip19::*;
+pub use crate::nips::nip19::*;
 #[cfg(feature = "nip26")]
-pub use crate::util::nips::nip26::*;
+pub use crate::nips::nip26::*;

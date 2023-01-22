@@ -1,10 +1,10 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 use std::str::FromStr;
 
+use nostr::nips::nip19::{Profile, ToBech32};
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::util::nips::nip19::{Profile, ToBech32};
 use nostr::Result;
 
 fn main() -> Result<()> {

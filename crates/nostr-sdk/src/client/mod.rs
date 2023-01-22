@@ -491,8 +491,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+    /// use nostr::nips::nip19::FromBech32;
     /// use nostr::secp256k1::XOnlyPublicKey;
-    /// use nostr::util::nips::nip19::FromBech32;
     /// use nostr_sdk::Client;
     ///
     /// # #[tokio::main]

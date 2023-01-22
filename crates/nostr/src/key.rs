@@ -9,7 +9,7 @@ use bitcoin::secp256k1::rand::rngs::OsRng;
 pub use bitcoin::secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 
 #[cfg(feature = "nip19")]
-use crate::util::nips::nip19::FromBech32;
+use crate::nips::nip19::FromBech32;
 
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {

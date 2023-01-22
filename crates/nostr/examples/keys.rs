@@ -1,8 +1,8 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use nostr::nips::nip19::{FromBech32, ToBech32};
 use nostr::secp256k1::{SecretKey, XOnlyPublicKey};
-use nostr::util::nips::nip19::{FromBech32, ToBech32};
 use nostr::{Keys, Result};
 
 fn main() -> Result<()> {

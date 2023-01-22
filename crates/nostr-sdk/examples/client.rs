@@ -1,12 +1,12 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::str::FromStr;
 
+use nostr::nips::nip04::decrypt;
+use nostr::nips::nip19::FromBech32;
 use nostr::secp256k1::SecretKey;
-use nostr::util::nips::nip04::decrypt;
-use nostr::util::nips::nip19::FromBech32;
 use nostr::util::time::timestamp;
 use nostr::{Entity, Event, Keys, Kind, Sha256Hash, SubscriptionFilter};
 use nostr_sdk::{Client, RelayPoolNotification, Result};

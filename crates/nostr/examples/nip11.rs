@@ -1,8 +1,8 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use nostr::nips::nip11::{self, RelayInformationDocument};
 use nostr::url::Url;
-use nostr::util::nips::nip11::{self, RelayInformationDocument};
 use nostr::Result;
 
 fn main() -> Result<()> {

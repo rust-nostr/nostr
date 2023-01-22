@@ -14,6 +14,7 @@ pub mod event;
 pub mod key;
 #[cfg(feature = "event")]
 pub mod message;
+pub mod nips;
 pub mod prelude;
 #[cfg(feature = "event")]
 pub mod types;
