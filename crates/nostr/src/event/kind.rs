@@ -28,6 +28,12 @@ pub enum Kind {
     Custom(u64),
 }
 
+impl Kind {
+    pub fn as_u64(&self) -> u64 {
+        (*self).into()
+    }
+}
+
 impl From<u64> for Kind {
     fn from(u: u64) -> Self {
         match u {
