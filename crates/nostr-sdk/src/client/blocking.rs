@@ -124,15 +124,15 @@ impl Client {
     }
 
     /// Send event
-    pub fn send_event(&self, event: Event) -> Result<(), Error> {
+    pub fn send_event(&self, event: Event) -> Result<Sha256Hash, Error> {
         RUNTIME.block_on(async { self.client.send_event(event).await })
     }
 
-    pub fn update_profile(&self, metadata: Metadata) -> Result<(), Error> {
+    pub fn update_profile(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
         RUNTIME.block_on(async { self.client.update_profile(metadata).await })
     }
 
-    pub fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<(), Error>
+    pub fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -145,7 +145,7 @@ impl Client {
         content: S,
         tags: &[Tag],
         difficulty: u8,
-    ) -> Result<(), Error>
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -156,14 +156,14 @@ impl Client {
         })
     }
 
-    pub fn add_recommended_relay<S>(&self, url: S) -> Result<(), Error>
+    pub fn add_recommended_relay<S>(&self, url: S) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.add_recommended_relay(url).await })
     }
 
-    pub fn set_contact_list(&self, list: Vec<Contact>) -> Result<(), Error> {
+    pub fn set_contact_list(&self, list: Vec<Contact>) -> Result<Sha256Hash, Error> {
         RUNTIME.block_on(async { self.client.set_contact_list(list).await })
     }
 
@@ -172,33 +172,37 @@ impl Client {
     }
 
     #[cfg(feature = "nip04")]
-    pub fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<(), Error>
+    pub fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.send_direct_msg(receiver, msg).await })
     }
 
-    pub fn repost_event(&self, event: &Event) -> Result<(), Error> {
+    pub fn repost_event(&self, event: &Event) -> Result<Sha256Hash, Error> {
         RUNTIME.block_on(async { self.client.repost_event(event).await })
     }
 
-    pub fn delete_event<S>(&self, event_id: Sha256Hash, reason: Option<S>) -> Result<(), Error>
+    pub fn delete_event<S>(
+        &self,
+        event_id: Sha256Hash,
+        reason: Option<S>,
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.delete_event(event_id, reason).await })
     }
 
-    pub fn like(&self, event: &Event) -> Result<(), Error> {
+    pub fn like(&self, event: &Event) -> Result<Sha256Hash, Error> {
         RUNTIME.block_on(async { self.client.like(event).await })
     }
 
-    pub fn dislike(&self, event: &Event) -> Result<(), Error> {
+    pub fn dislike(&self, event: &Event) -> Result<Sha256Hash, Error> {
         RUNTIME.block_on(async { self.client.dislike(event).await })
     }
 
-    pub fn new_channel(&self, metadata: Metadata) -> Result<(), Error> {
+    pub fn new_channel(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
         RUNTIME.block_on(async { self.client.new_channel(metadata).await })
     }
 
@@ -207,7 +211,7 @@ impl Client {
         channel_id: Sha256Hash,
         relay_url: Url,
         metadata: Metadata,
-    ) -> Result<(), Error> {
+    ) -> Result<Sha256Hash, Error> {
         RUNTIME.block_on(async {
             self.client
                 .update_channel(channel_id, relay_url, metadata)
@@ -220,7 +224,7 @@ impl Client {
         channel_id: Sha256Hash,
         relay_url: Url,
         msg: S,
-    ) -> Result<(), Error>
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -235,7 +239,7 @@ impl Client {
         &self,
         message_id: Sha256Hash,
         reason: Option<S>,
-    ) -> Result<(), Error>
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -246,7 +250,7 @@ impl Client {
         &self,
         pubkey: XOnlyPublicKey,
         reason: Option<S>,
-    ) -> Result<(), Error>
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {

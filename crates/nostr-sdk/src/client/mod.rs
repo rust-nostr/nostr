@@ -343,11 +343,12 @@ impl Client {
     }
 
     /// Send event
-    pub async fn send_event(&self, event: Event) -> Result<(), Error> {
-        Ok(self
-            .pool
+    pub async fn send_event(&self, event: Event) -> Result<Sha256Hash, Error> {
+        let event_id = event.id;
+        self.pool
             .send_client_msg(ClientMessage::new_event(event), self.opts.wait_for_sent)
-            .await?)
+            .await?;
+        Ok(event_id)
     }
 
     /// Update profile metadata
@@ -374,7 +375,7 @@ impl Client {
     /// client.update_profile(metadata).await.unwrap();
     /// # }
     /// ```
-    pub async fn update_profile(&self, metadata: Metadata) -> Result<(), Error> {
+    pub async fn update_profile(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
         let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -397,7 +398,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<(), Error>
+    pub async fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -429,7 +430,7 @@ impl Client {
         content: S,
         tags: &[Tag],
         difficulty: u8,
-    ) -> Result<(), Error>
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -456,7 +457,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn add_recommended_relay<S>(&self, url: S) -> Result<(), Error>
+    pub async fn add_recommended_relay<S>(&self, url: S) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -468,7 +469,7 @@ impl Client {
     /// Set contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<(), Error> {
+    pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<Sha256Hash, Error> {
         let event: Event = EventBuilder::set_contact_list(list).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -539,7 +540,11 @@ impl Client {
     /// # }
     /// ```
     #[cfg(feature = "nip04")]
-    pub async fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<(), Error>
+    pub async fn send_direct_msg<S>(
+        &self,
+        receiver: XOnlyPublicKey,
+        msg: S,
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -549,7 +554,7 @@ impl Client {
     }
 
     /// Repost event
-    pub async fn repost_event(&self, event: &Event) -> Result<(), Error> {
+    pub async fn repost_event(&self, event: &Event) -> Result<Sha256Hash, Error> {
         let event: Event = EventBuilder::repost(event).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -561,7 +566,7 @@ impl Client {
         &self,
         event_id: Sha256Hash,
         reason: Option<S>,
-    ) -> Result<(), Error>
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -595,7 +600,7 @@ impl Client {
     /// client.like(&event).await.unwrap();
     /// # }
     /// ```
-    pub async fn like(&self, event: &Event) -> Result<(), Error> {
+    pub async fn like(&self, event: &Event) -> Result<Sha256Hash, Error> {
         let event: Event = EventBuilder::new_reaction(event, true).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -626,7 +631,7 @@ impl Client {
     /// client.dislike(&event).await.unwrap();
     /// # }
     /// ```
-    pub async fn dislike(&self, event: &Event) -> Result<(), Error> {
+    pub async fn dislike(&self, event: &Event) -> Result<Sha256Hash, Error> {
         let event: Event = EventBuilder::new_reaction(event, false).to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -634,7 +639,7 @@ impl Client {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn new_channel(&self, metadata: Metadata) -> Result<(), Error> {
+    pub async fn new_channel(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
         let event: Event = EventBuilder::new_channel(metadata)?.to_event(&self.keys)?;
         self.send_event(event).await
     }
@@ -647,7 +652,7 @@ impl Client {
         channel_id: Sha256Hash,
         relay_url: Url,
         metadata: Metadata,
-    ) -> Result<(), Error> {
+    ) -> Result<Sha256Hash, Error> {
         let event: Event = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata)?
             .to_event(&self.keys)?;
         self.send_event(event).await
@@ -661,7 +666,7 @@ impl Client {
         channel_id: Sha256Hash,
         relay_url: Url,
         msg: S,
-    ) -> Result<(), Error>
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -677,7 +682,7 @@ impl Client {
         &self,
         message_id: Sha256Hash,
         reason: Option<S>,
-    ) -> Result<(), Error>
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {
@@ -693,7 +698,7 @@ impl Client {
         &self,
         pubkey: XOnlyPublicKey,
         reason: Option<S>,
-    ) -> Result<(), Error>
+    ) -> Result<Sha256Hash, Error>
     where
         S: Into<String>,
     {

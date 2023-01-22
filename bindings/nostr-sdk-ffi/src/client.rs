@@ -49,10 +49,10 @@ impl Client {
     }
 
     pub fn send_event(&self, event: Arc<Event>) -> Result<()> {
-        Ok(self
-            .client
+        self.client
             .lock()
-            .send_event(event.as_ref().deref().clone())?)
+            .send_event(event.as_ref().deref().clone())?;
+        Ok(())
     }
 
     pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
