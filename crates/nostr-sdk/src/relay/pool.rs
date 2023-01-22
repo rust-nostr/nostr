@@ -193,7 +193,7 @@ impl RelayPool {
     }
 
     /// Send client message
-    pub async fn send_client_msg(&self, msg: ClientMessage) -> Result<(), Error> {
+    pub async fn send_client_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
         let relays = self.relays().await;
 
         if relays.is_empty() {
@@ -211,7 +211,7 @@ impl RelayPool {
         }
 
         for (url, relay) in relays.into_iter() {
-            if let Err(e) = relay.send_msg(msg.clone()).await {
+            if let Err(e) = relay.send_msg(msg.clone(), wait).await {
                 log::error!("Impossible to send msg to {}: {}", url, e.to_string());
             }
         }
@@ -220,7 +220,11 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
+    pub async fn subscribe(
+        &self,
+        filters: Vec<SubscriptionFilter>,
+        wait: bool,
+    ) -> Result<(), Error> {
         let relays = self.relays().await;
 
         {
@@ -229,17 +233,17 @@ impl RelayPool {
         }
 
         for relay in relays.values() {
-            relay.subscribe().await?;
+            relay.subscribe(wait).await?;
         }
 
         Ok(())
     }
 
     /// Unsubscribe from filters
-    pub async fn unsubscribe(&self) -> Result<(), Error> {
+    pub async fn unsubscribe(&self, wait: bool) -> Result<(), Error> {
         let relays = self.relays().await;
         for relay in relays.values() {
-            relay.unsubscribe().await?;
+            relay.unsubscribe(wait).await?;
         }
 
         Ok(())
@@ -258,7 +262,10 @@ impl RelayPool {
         // Subscribe
         for relay in relays.values() {
             relay
-                .send_msg(ClientMessage::new_req(id.to_string(), filters.clone()))
+                .send_msg(
+                    ClientMessage::new_req(id.to_string(), filters.clone()),
+                    false,
+                )
                 .await?;
         }
 
@@ -286,7 +293,9 @@ impl RelayPool {
 
         // Unsubscribe
         for relay in relays.values() {
-            relay.send_msg(ClientMessage::close(id.to_string())).await?;
+            relay
+                .send_msg(ClientMessage::close(id.to_string()), false)
+                .await?;
         }
 
         Ok(events)
@@ -302,7 +311,10 @@ impl RelayPool {
             // Subscribe
             for relay in relays.values() {
                 if let Err(e) = relay
-                    .send_msg(ClientMessage::new_req(id.to_string(), filters.clone()))
+                    .send_msg(
+                        ClientMessage::new_req(id.to_string(), filters.clone()),
+                        false,
+                    )
                     .await
                 {
                     log::error!(
@@ -329,7 +341,10 @@ impl RelayPool {
 
             // Unsubscribe
             for relay in relays.values() {
-                if let Err(e) = relay.send_msg(ClientMessage::close(id.to_string())).await {
+                if let Err(e) = relay
+                    .send_msg(ClientMessage::close(id.to_string()), false)
+                    .await
+                {
                     log::error!(
                         "Impossible to close subscription with {}: {}",
                         relay.url(),

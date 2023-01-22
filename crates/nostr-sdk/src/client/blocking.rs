@@ -6,10 +6,10 @@ use std::net::SocketAddr;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{Contact, Event, Keys, Metadata, Sha256Hash, SubscriptionFilter, Tag};
+use nostr::{ClientMessage, Contact, Event, Keys, Metadata, Sha256Hash, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 
-use super::Error;
+use super::{Error, Options};
 use crate::client::Entity;
 use crate::relay::pool::RelayPoolNotification;
 use crate::relay::Relay;
@@ -24,6 +24,12 @@ impl Client {
     pub fn new(keys: &Keys) -> Self {
         Self {
             client: super::Client::new(keys),
+        }
+    }
+
+    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
+        Self {
+            client: super::Client::new_with_opts(keys, opts),
         }
     }
 
@@ -87,8 +93,10 @@ impl Client {
         })
     }
 
+    #[deprecated]
     pub fn connect_and_wait(&self) {
         RUNTIME.block_on(async {
+            #[allow(deprecated)]
             self.client.connect_and_wait().await;
         })
     }
@@ -109,6 +117,10 @@ impl Client {
         RUNTIME.block_on(async {
             self.client.req_events_of(filters);
         })
+    }
+
+    pub fn send_client_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
+        RUNTIME.block_on(async { self.client.send_client_msg(msg, wait).await })
     }
 
     /// Send event

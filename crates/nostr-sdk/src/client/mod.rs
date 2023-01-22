@@ -38,9 +38,28 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone)]
+pub struct Options {
+    /// Wait for connection
+    pub wait_for_connection: bool,
+    /// Wait for the msg to be sent
+    pub wait_for_sent: bool,
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            wait_for_connection: false,
+            wait_for_sent: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
     keys: Keys,
+    opts: Options,
 }
 
 impl Client {
@@ -54,9 +73,14 @@ impl Client {
     /// let client = Client::new(&my_keys);
     /// ```
     pub fn new(keys: &Keys) -> Self {
+        Self::new_with_opts(keys, Options::default())
+    }
+
+    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
             pool: RelayPool::new(),
             keys: keys.clone(),
+            opts,
         }
     }
 
@@ -217,7 +241,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn connect(&self) {
-        self.pool.connect(false).await;
+        self.pool.connect(self.opts.wait_for_connection).await;
     }
 
     /// Connect to all added relays waiting for initial connection and keep connection alive
@@ -233,6 +257,7 @@ impl Client {
     /// client.connect_and_wait().await;
     /// # }
     /// ```
+    #[deprecated]
     pub async fn connect_and_wait(&self) {
         self.pool.connect(true).await;
     }
@@ -274,7 +299,10 @@ impl Client {
     /// # }
     /// ```
     pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
-        Ok(self.pool.subscribe(filters).await?)
+        Ok(self
+            .pool
+            .subscribe(filters, self.opts.wait_for_sent)
+            .await?)
     }
 
     /// Get events of filters
@@ -310,15 +338,15 @@ impl Client {
     }
 
     /// Send client message
-    pub async fn send_client_msg(&self, msg: ClientMessage) -> Result<(), Error> {
-        Ok(self.pool.send_client_msg(msg).await?)
+    pub async fn send_client_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
+        Ok(self.pool.send_client_msg(msg, wait).await?)
     }
 
     /// Send event
     pub async fn send_event(&self, event: Event) -> Result<(), Error> {
         Ok(self
             .pool
-            .send_client_msg(ClientMessage::new_event(event))
+            .send_client_msg(ClientMessage::new_event(event), self.opts.wait_for_sent)
             .await?)
     }
 

@@ -19,7 +19,7 @@ mod thread;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;
-pub use self::client::Client;
+pub use self::client::{Client, Options};
 pub use self::relay::pool::{RelayPool, RelayPoolNotification};
 pub use self::relay::{Relay, RelayStatus};
 

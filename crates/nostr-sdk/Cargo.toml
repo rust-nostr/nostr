@@ -44,5 +44,9 @@ name = "client"
 required-features = ["all-nips"]
 
 [[example]]
+name = "client_with_opts"
+required-features = ["all-nips"]
+
+[[example]]
 name = "blocking"
 required-features = ["all-nips", "blocking"]

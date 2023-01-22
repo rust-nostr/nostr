@@ -12,7 +12,8 @@ use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 use tokio_rustls::rustls::{ClientConfig, OwnedTrustAnchor, RootCertStore, ServerName};
 use tokio_rustls::TlsConnector;
-use tokio_tungstenite::tungstenite::{Error as WsError, Message};
+use tokio_tungstenite::tungstenite::Error as WsError;
+pub use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;

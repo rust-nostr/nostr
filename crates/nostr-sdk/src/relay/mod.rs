@@ -7,26 +7,34 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use nostr::url::Url;
-use nostr::{ClientMessage, RelayMessage, SubscriptionFilter};
+use nostr::{ClientMessage, RelayMessage, SubscriptionFilter, Url};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
+use tokio::sync::oneshot;
 use tokio::sync::Mutex;
-use tokio_tungstenite::tungstenite::Message;
 use uuid::Uuid;
 
 mod net;
 pub mod pool;
 
+use self::net::Message as WsMessage;
 use self::pool::RelayPoolMessage;
 use self::pool::SUBSCRIPTION;
 use crate::thread;
 use crate::RelayPoolNotification;
 
+type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("channel timeout")]
     ChannelTimeout,
+    #[error("recv message response timeout")]
+    RecvTimeout,
+    #[error("message not sent")]
+    MessagetNotSent,
+    #[error("impossible to recv msg")]
+    OneShotRecvError,
 }
 
 /// Relay connection status
@@ -71,8 +79,8 @@ pub struct Relay {
     status: Arc<Mutex<RelayStatus>>,
     scheduled_for_termination: Arc<Mutex<bool>>,
     pool_sender: Sender<RelayPoolMessage>,
-    relay_sender: Sender<RelayEvent>,
-    relay_receiver: Arc<Mutex<Receiver<RelayEvent>>>,
+    relay_sender: Sender<Message>,
+    relay_receiver: Arc<Mutex<Receiver<Message>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
 }
 
@@ -84,7 +92,7 @@ impl Relay {
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         proxy: Option<SocketAddr>,
     ) -> Self {
-        let (relay_sender, relay_receiver) = mpsc::channel::<RelayEvent>(1024);
+        let (relay_sender, relay_receiver) = mpsc::channel::<Message>(1024);
 
         Self {
             url,
@@ -187,18 +195,28 @@ impl Relay {
                 thread::spawn(async move {
                     log::debug!("Relay Event Thread Started");
                     let mut rx = relay.relay_receiver.lock().await;
-                    while let Some(relay_event) = rx.recv().await {
+                    while let Some((relay_event, oneshot_sender)) = rx.recv().await {
                         match relay_event {
                             RelayEvent::SendMsg(msg) => {
                                 log::trace!("Sending message {}", msg.as_json());
-                                if let Err(e) = ws_tx.send(Message::Text(msg.as_json())).await {
+                                if let Err(e) = ws_tx.send(WsMessage::Text(msg.as_json())).await {
                                     log::error!(
                                         "Impossible to send msg to {}: {}",
                                         relay.url(),
                                         e.to_string()
                                     );
+                                    if let Some(sender) = oneshot_sender {
+                                        if let Err(e) = sender.send(false) {
+                                            log::error!("Impossible to send oneshot msg: {}", e);
+                                        }
+                                    }
                                     break;
                                 };
+                                if let Some(sender) = oneshot_sender {
+                                    if let Err(e) = sender.send(true) {
+                                        log::error!("Impossible to send oneshot msg: {}", e);
+                                    }
+                                }
                             }
                             /* RelayEvent::Ping => {
                                 if let Err(e) = ws_tx.feed(Message::Ping(Vec::new())).await {
@@ -214,7 +232,7 @@ impl Relay {
                             }
                             RelayEvent::Terminate => {
                                 // Unsubscribe from relay
-                                if let Err(e) = relay.unsubscribe().await {
+                                if let Err(e) = relay.unsubscribe(false).await {
                                     log::error!(
                                         "Impossible to unsubscribe from {}: {}",
                                         relay.url(),
@@ -305,7 +323,7 @@ impl Relay {
                 }); */
 
                 // Subscribe to relay
-                if let Err(e) = self.subscribe().await {
+                if let Err(e) = self.subscribe(false).await {
                     log::error!(
                         "Impossible to subscribe to {}: {}",
                         self.url(),
@@ -320,9 +338,13 @@ impl Relay {
         };
     }
 
-    async fn send_relay_event(&self, relay_msg: RelayEvent) -> Result<(), Error> {
+    async fn send_relay_event(
+        &self,
+        relay_msg: RelayEvent,
+        sender: Option<oneshot::Sender<bool>>,
+    ) -> Result<(), Error> {
         self.relay_sender
-            .send_timeout(relay_msg, Duration::from_secs(60))
+            .send_timeout((relay_msg, sender), Duration::from_secs(60))
             .await
             .map_err(|_| Error::ChannelTimeout)
     }
@@ -336,7 +358,7 @@ impl Relay {
     async fn disconnect(&self) -> Result<(), Error> {
         let status = self.status().await;
         if status.ne(&RelayStatus::Disconnected) && status.ne(&RelayStatus::Terminated) {
-            self.send_relay_event(RelayEvent::Close).await?;
+            self.send_relay_event(RelayEvent::Close, None).await?;
         }
         Ok(())
     }
@@ -346,33 +368,54 @@ impl Relay {
         self.schedule_for_termination(true).await;
         let status = self.status().await;
         if status.ne(&RelayStatus::Disconnected) && status.ne(&RelayStatus::Terminated) {
-            self.send_relay_event(RelayEvent::Terminate).await?;
+            self.send_relay_event(RelayEvent::Terminate, None).await?;
         }
         Ok(())
     }
 
     /// Send msg to relay
-    pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
-        self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)))
-            .await
+    ///
+    /// if `wait` arg is true, this method will wait for the msg to be sent
+    pub async fn send_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
+        if wait {
+            let (tx, rx) = oneshot::channel::<bool>();
+            self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)), Some(tx))
+                .await?;
+            match tokio::time::timeout(Duration::from_secs(60), rx).await {
+                Ok(result) => match result {
+                    Ok(val) => {
+                        if val {
+                            Ok(())
+                        } else {
+                            Err(Error::MessagetNotSent)
+                        }
+                    }
+                    Err(_) => Err(Error::OneShotRecvError),
+                },
+                Err(_) => Err(Error::RecvTimeout),
+            }
+        } else {
+            self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)), None)
+                .await
+        }
     }
 
-    pub async fn subscribe(&self) -> Result<Uuid, Error> {
+    pub async fn subscribe(&self, wait: bool) -> Result<Uuid, Error> {
         let mut subscription = SUBSCRIPTION.lock().await;
         let channel = subscription.get_channel(&self.url());
         let channel_id = channel.id();
-        self.send_msg(ClientMessage::new_req(
-            channel_id.to_string(),
-            subscription.get_filters(),
-        ))
+        self.send_msg(
+            ClientMessage::new_req(channel_id.to_string(), subscription.get_filters()),
+            wait,
+        )
         .await?;
         Ok(channel_id)
     }
 
-    pub async fn unsubscribe(&self) -> Result<(), Error> {
+    pub async fn unsubscribe(&self, wait: bool) -> Result<(), Error> {
         let mut subscription = SUBSCRIPTION.lock().await;
         if let Some(channel) = subscription.remove_channel(&self.url()) {
-            self.send_msg(ClientMessage::close(channel.id().to_string()))
+            self.send_msg(ClientMessage::close(channel.id().to_string()), wait)
                 .await?;
         }
         Ok(())
@@ -385,7 +428,10 @@ impl Relay {
 
             // Subscribe
             if let Err(e) = relay
-                .send_msg(ClientMessage::new_req(id.to_string(), filters.clone()))
+                .send_msg(
+                    ClientMessage::new_req(id.to_string(), filters.clone()),
+                    false,
+                )
                 .await
             {
                 log::error!(
@@ -409,7 +455,10 @@ impl Relay {
             }
 
             // Unsubscribe
-            if let Err(e) = relay.send_msg(ClientMessage::close(id.to_string())).await {
+            if let Err(e) = relay
+                .send_msg(ClientMessage::close(id.to_string()), false)
+                .await
+            {
                 log::error!(
                     "Impossible to close subscription with {}: {}",
                     relay.url(),
