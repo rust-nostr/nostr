@@ -28,7 +28,7 @@ tokio = { version = "1", features = ["full"] }
 ```rust,no_run
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use nostr_sdk::nostr::{Keys, Metadata};
+use nostr_sdk::nostr::{Keys, Metadata, Url};
 use nostr_sdk::{Client, Result};
 
 #[tokio::main]
@@ -67,8 +67,8 @@ async fn main() -> Result<()> {
         .name("username")
         .display_name("My Username")
         .about("Description")
-        .picture("https://example.com/avatar.png")
-        .banner("https://example.com/banner.png")
+        .picture(Url::parse("https://example.com/avatar.png")?)
+        .banner(Url::parse("https://example.com/banner.png")?)
         .nip05("username@example.com")
         .lud16("yuki@stacker.news");
 

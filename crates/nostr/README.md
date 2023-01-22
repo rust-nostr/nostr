@@ -19,7 +19,7 @@ tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"]}
 ```
 
 ```rust,no_run
-use nostr::{Event, EventBuilder, Metadata, Keys, Result};
+use nostr::{Event, EventBuilder, Metadata, Keys, Result, Url};
 use nostr::message::ClientMessage;
 use tungstenite::{Message as WsMessage};
 
@@ -42,8 +42,8 @@ fn main() -> Result<()> {
         .name("username")
         .display_name("My Username")
         .about("Description")
-        .picture("https://example.com/avatar.png")
-        .banner("https://example.com/banner.png")
+        .picture(Url::parse("https://example.com/avatar.png")?)
+        .banner(Url::parse("https://example.com/banner.png")?)
         .nip05("username@example.com")
         .lud16("yuki@stacker.news");
 

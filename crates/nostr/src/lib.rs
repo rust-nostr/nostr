@@ -5,7 +5,7 @@ pub use bitcoin::hashes;
 pub use bitcoin::hashes::sha256::Hash as Sha256Hash;
 pub use bitcoin::secp256k1;
 #[cfg(feature = "event")]
-pub use url;
+pub use url::{self, Url};
 
 #[cfg(feature = "full")]
 mod doctest;

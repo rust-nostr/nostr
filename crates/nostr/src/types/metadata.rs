@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -98,10 +99,7 @@ impl Metadata {
     }
 
     /// Set website
-    pub fn website<S>(self, url: S) -> Self
-    where
-        S: Into<String>,
-    {
+    pub fn website(self, url: Url) -> Self {
         Self {
             website: Some(url.into()),
             ..self
@@ -109,23 +107,17 @@ impl Metadata {
     }
 
     /// Set picture
-    pub fn picture<S>(self, picture: S) -> Self
-    where
-        S: Into<String>,
-    {
+    pub fn picture(self, url: Url) -> Self {
         Self {
-            picture: Some(picture.into()),
+            picture: Some(url.into()),
             ..self
         }
     }
 
     /// Set banner
-    pub fn banner<S>(self, banner: S) -> Self
-    where
-        S: Into<String>,
-    {
+    pub fn banner(self, url: Url) -> Self {
         Self {
-            banner: Some(banner.into()),
+            banner: Some(url.into()),
             ..self
         }
     }

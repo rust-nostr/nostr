@@ -2,7 +2,7 @@
 // Distributed under the MIT software license
 
 use nostr::key::Keys;
-use nostr::{ClientMessage, Event, EventBuilder, Metadata, Result};
+use nostr::{ClientMessage, Event, EventBuilder, Metadata, Result, Url};
 use tungstenite::{connect, Message as WsMessage};
 
 const WS_ENDPOINT: &str = "wss://relay.damus.io";
@@ -18,7 +18,8 @@ fn main() -> Result<()> {
         .name("username")
         .display_name("My Username")
         .about("Description")
-        .picture("https://example.com/avatar.png")
+        .picture(Url::parse("https://example.com/avatar.png")?)
+        .banner(Url::parse("https://example.com/banner.png")?)
         .nip05("username@example.com")
         .lud16("yuki@stacker.news");
 
