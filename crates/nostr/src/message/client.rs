@@ -20,6 +20,9 @@ pub enum ClientMessage {
     Close {
         subscription_id: String,
     },
+    Auth {
+        event: Box<Event>,
+    },
 }
 
 impl ClientMessage {
@@ -48,6 +51,12 @@ impl ClientMessage {
         }
     }
 
+    pub fn new_auth(event: Event) -> Self {
+        Self::Auth {
+            event: Box::new(event),
+        }
+    }
+
     pub fn as_json(&self) -> String {
         match self {
             Self::Event { event } => json!(["EVENT", event]).to_string(),
@@ -67,6 +76,7 @@ impl ClientMessage {
                 json.to_string()
             }
             Self::Close { subscription_id } => json!(["CLOSE", subscription_id]).to_string(),
+            Self::Auth { event } => json!(["AUTH", event]).to_string(),
         }
     }
 
@@ -128,6 +138,17 @@ impl ClientMessage {
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
             return Ok(Self::close(subscription_id));
+        }
+
+        // Auth
+        // ["AUTH", <event JSON>]
+        if v[0] == "AUTH" {
+            if v_len != 2 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+            let event = Event::from_json(v[1].to_string())
+                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            return Ok(Self::new_auth(event));
         }
 
         Err(MessageHandleError::InvalidMessageFormat)

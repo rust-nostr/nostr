@@ -80,6 +80,9 @@ fn main() -> Result<()> {
                 } => {
                     println!("Got OK message: {} - {} - {}", event_id, status, message);
                 }
+                RelayMessage::Auth { challenge } => {
+                    println!("Got a auth challenge: {}", challenge);
+                }
                 RelayMessage::Empty => {
                     println!("Empty message");
                 }

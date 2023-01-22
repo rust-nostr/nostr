@@ -25,6 +25,9 @@ pub enum RelayMessage {
         status: bool,
         message: String,
     },
+    Auth {
+        challenge: String,
+    },
     Empty,
 }
 
@@ -69,6 +72,15 @@ impl RelayMessage {
         }
     }
 
+    pub fn new_auth<S>(challenge: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::Auth {
+            challenge: challenge.into(),
+        }
+    }
+
     pub fn as_json(&self) -> String {
         match self {
             Self::Event {
@@ -84,6 +96,7 @@ impl RelayMessage {
                 status,
                 message,
             } => json!(["OK", event_id, status, message]).to_string(),
+            Self::Auth { challenge } => json!(["AUTH", challenge]).to_string(),
             Self::Empty => String::new(),
         }
     }

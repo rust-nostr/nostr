@@ -132,6 +132,9 @@ fn main() -> Result<()> {
                         println!("{:#?}", event);
                     }
                 }
+                RelayMessage::Auth { challenge } => {
+                    println!("Got a auth challenge: {}", challenge);
+                }
             }
         } else {
             println!("Received unexpected message: {}", msg_text);

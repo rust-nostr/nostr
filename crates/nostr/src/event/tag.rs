@@ -10,6 +10,7 @@ use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use url::Url;
 
 use crate::Sha256Hash;
 
@@ -26,6 +27,8 @@ pub enum Error {
     /// Hex decoding error
     #[error("hex decoding error: {0}")]
     Hex(#[from] bitcoin::hashes::hex::Error),
+    #[error("invalid url")]
+    Url(#[from] url::ParseError),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -63,11 +66,13 @@ where
 pub enum TagKind {
     P,
     E,
+    Relay,
     Nonce,
     Delegation,
     ContentWarning,
     Expiration,
     Subject,
+    Challenge,
     Custom(String),
 }
 
@@ -76,11 +81,13 @@ impl fmt::Display for TagKind {
         match self {
             Self::P => write!(f, "p"),
             Self::E => write!(f, "e"),
+            Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
             Self::ContentWarning => write!(f, "content-warning"),
             Self::Expiration => write!(f, "expiration"),
             Self::Subject => write!(f, "subject"),
+            Self::Challenge => write!(f, "challenge"),
             Self::Custom(tag) => write!(f, "{}", tag),
         }
     }
@@ -95,11 +102,13 @@ where
         match s.as_str() {
             "p" => Self::P,
             "e" => Self::E,
+            "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,
             "content-warning" => Self::ContentWarning,
             "expiration" => Self::Expiration,
             "subject" => Self::Subject,
+            "challenge" => Self::Challenge,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -110,6 +119,7 @@ pub enum Tag {
     Generic(TagKind, Vec<String>),
     Event(Sha256Hash, Option<String>, Option<Marker>),
     PubKey(XOnlyPublicKey, Option<String>),
+    Relay(Url),
     ContactList {
         pk: XOnlyPublicKey,
         relay_url: Option<String>,
@@ -129,6 +139,7 @@ pub enum Tag {
     },
     Expiration(u64),
     Subject(String),
+    Challenge(String),
 }
 
 impl Tag {
@@ -168,11 +179,13 @@ where
             match tag_kind {
                 TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?, None)),
                 TagKind::E => Ok(Self::Event(Sha256Hash::from_str(content)?, None, None)),
+                TagKind::Relay => Ok(Self::Relay(Url::parse(content)?)),
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(content.to_string()),
                 }),
                 TagKind::Expiration => Ok(Self::Expiration(content.parse::<u64>()?)),
                 TagKind::Subject => Ok(Self::Subject(content.to_string())),
+                TagKind::Challenge => Ok(Self::Challenge(content.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -241,6 +254,7 @@ impl From<Tag> for Vec<String> {
                 }
                 tag
             }
+            Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
             Tag::ContactList {
                 pk,
                 relay_url,
@@ -277,6 +291,7 @@ impl From<Tag> for Vec<String> {
                 vec![TagKind::Expiration.to_string(), timestamp.to_string()]
             }
             Tag::Subject(sub) => vec![TagKind::Subject.to_string(), sub],
+            Tag::Challenge(challenge) => vec![TagKind::Challenge.to_string(), challenge],
         }
     }
 }

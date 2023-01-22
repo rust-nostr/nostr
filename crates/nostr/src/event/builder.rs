@@ -402,6 +402,20 @@ impl EventBuilder {
             &[Tag::PubKey(pubkey, None)],
         )
     }
+
+    /// Create an auth event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    pub fn auth<S>(challenge: S, relay: Url) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(
+            Kind::Authentication,
+            "",
+            &[Tag::Challenge(challenge.into()), Tag::Relay(relay)],
+        )
+    }
 }
 
 #[cfg(test)]
