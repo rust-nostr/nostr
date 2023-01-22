@@ -66,6 +66,7 @@ where
 pub enum TagKind {
     P,
     E,
+    D,
     Relay,
     Nonce,
     Delegation,
@@ -81,6 +82,7 @@ impl fmt::Display for TagKind {
         match self {
             Self::P => write!(f, "p"),
             Self::E => write!(f, "e"),
+            Self::D => write!(f, "d"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
@@ -102,6 +104,7 @@ where
         match s.as_str() {
             "p" => Self::P,
             "e" => Self::E,
+            "d" => Self::D,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,

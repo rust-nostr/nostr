@@ -26,6 +26,8 @@ pub enum Kind {
     Replaceable(u16),
     /// Ephemeral event (must be between 20000 and <30000)
     Ephemeral(u16),
+    /// Parameterized Replacabe event (must be between 30000 and <40000)
+    ParameterizedReplaceable(u16),
     Custom(u64),
 }
 
@@ -54,6 +56,7 @@ impl From<u64> for Kind {
             22242 => Self::Authentication,
             x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
             x if (20_000..30_000).contains(&x) => Self::Ephemeral(x as u16),
+            x if (30_000..40_000).contains(&x) => Self::ParameterizedReplaceable(x as u16),
             x => Self::Custom(x),
         }
     }
@@ -78,6 +81,7 @@ impl From<Kind> for u64 {
             Kind::Authentication => 22242,
             Kind::Replaceable(u) => u as u64,
             Kind::Ephemeral(u) => u as u64,
+            Kind::ParameterizedReplaceable(u) => u as u64,
             Kind::Custom(u) => u,
         }
     }
