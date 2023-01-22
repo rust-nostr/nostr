@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk"
-version = "0.14.2"
+version = "0.15.0"
 edition = "2021"
 description = "High level Nostr client library."
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
@@ -26,7 +26,7 @@ nip26 = ["nostr/nip26"]
 [dependencies]
 futures-util = "0.3"
 log = "0.4"
-nostr = { version = "0.14", path = "../nostr" }
+nostr = { version = "0.15", path = "../nostr" }
 once_cell = "1"
 thiserror = "1.0"
 tokio = { version = "1", features = ["full"] }
