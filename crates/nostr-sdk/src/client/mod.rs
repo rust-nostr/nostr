@@ -43,6 +43,10 @@ pub struct Options {
     pub wait_for_connection: bool,
     /// Wait for the msg to be sent
     pub wait_for_sent: bool,
+    /// Create always POW events
+    pub always_pow_events: bool,
+    /// POW difficulty
+    pub difficulty: u8,
 }
 
 #[allow(clippy::derivable_impls)]
@@ -51,6 +55,8 @@ impl Default for Options {
         Self {
             wait_for_connection: false,
             wait_for_sent: false,
+            always_pow_events: false,
+            difficulty: 0,
         }
     }
 }
@@ -351,6 +357,15 @@ impl Client {
         Ok(event_id)
     }
 
+    async fn send_event_builder(&self, builder: EventBuilder) -> Result<Sha256Hash, Error> {
+        let event: Event = if self.opts.always_pow_events {
+            builder.to_pow_event(&self.keys, self.opts.difficulty)?
+        } else {
+            builder.to_event(&self.keys)?
+        };
+        self.send_event(event).await
+    }
+
     /// Update profile metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -376,8 +391,8 @@ impl Client {
     /// # }
     /// ```
     pub async fn update_profile(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
-        let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::set_metadata(metadata)?;
+        self.send_event_builder(builder).await
     }
 
     /// Publish text note
@@ -402,8 +417,8 @@ impl Client {
     where
         S: Into<String>,
     {
-        let event: Event = EventBuilder::new_text_note(content, tags).to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::new_text_note(content, tags);
+        self.send_event_builder(builder).await
     }
 
     /// Publish POW text note
@@ -462,16 +477,16 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        let event: Event = EventBuilder::add_recommended_relay(&url).to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::add_recommended_relay(&url);
+        self.send_event_builder(builder).await
     }
 
     /// Set contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<Sha256Hash, Error> {
-        let event: Event = EventBuilder::set_contact_list(list).to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::set_contact_list(list);
+        self.send_event_builder(builder).await
     }
 
     /// Get contact list
@@ -548,15 +563,14 @@ impl Client {
     where
         S: Into<String>,
     {
-        let event: Event = EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg)?
-            .to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg)?;
+        self.send_event_builder(builder).await
     }
 
     /// Repost event
     pub async fn repost_event(&self, event: &Event) -> Result<Sha256Hash, Error> {
-        let event: Event = EventBuilder::repost(event).to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::repost(event);
+        self.send_event_builder(builder).await
     }
 
     /// Delete event
@@ -570,8 +584,8 @@ impl Client {
     where
         S: Into<String>,
     {
-        let event: Event = EventBuilder::delete(vec![event_id], reason).to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::delete(vec![event_id], reason);
+        self.send_event_builder(builder).await
     }
 
     /// Like event
@@ -604,9 +618,8 @@ impl Client {
         event_id: Sha256Hash,
         public_key: XOnlyPublicKey,
     ) -> Result<Sha256Hash, Error> {
-        let event: Event =
-            EventBuilder::new_reaction(event_id, public_key, "+").to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::new_reaction(event_id, public_key, "+");
+        self.send_event_builder(builder).await
     }
 
     /// Disike event
@@ -639,9 +652,8 @@ impl Client {
         event_id: Sha256Hash,
         public_key: XOnlyPublicKey,
     ) -> Result<Sha256Hash, Error> {
-        let event: Event =
-            EventBuilder::new_reaction(event_id, public_key, "-").to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::new_reaction(event_id, public_key, "-");
+        self.send_event_builder(builder).await
     }
 
     pub async fn reaction<S>(
@@ -653,17 +665,16 @@ impl Client {
     where
         S: Into<String>,
     {
-        let event: Event =
-            EventBuilder::new_reaction(event_id, public_key, content).to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::new_reaction(event_id, public_key, content);
+        self.send_event_builder(builder).await
     }
 
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn new_channel(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
-        let event: Event = EventBuilder::new_channel(metadata)?.to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::new_channel(metadata)?;
+        self.send_event_builder(builder).await
     }
 
     /// Update channel metadata
@@ -675,9 +686,8 @@ impl Client {
         relay_url: Url,
         metadata: Metadata,
     ) -> Result<Sha256Hash, Error> {
-        let event: Event = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata)?
-            .to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata)?;
+        self.send_event_builder(builder).await
     }
 
     /// Send message to channel
@@ -692,9 +702,8 @@ impl Client {
     where
         S: Into<String>,
     {
-        let event: Event =
-            EventBuilder::new_channel_msg(channel_id, relay_url, msg).to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::new_channel_msg(channel_id, relay_url, msg);
+        self.send_event_builder(builder).await
     }
 
     /// Hide channel message
@@ -708,9 +717,8 @@ impl Client {
     where
         S: Into<String>,
     {
-        let event: Event =
-            EventBuilder::hide_channel_msg(message_id, reason).to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::hide_channel_msg(message_id, reason);
+        self.send_event_builder(builder).await
     }
 
     /// Mute channel user
@@ -724,8 +732,8 @@ impl Client {
     where
         S: Into<String>,
     {
-        let event: Event = EventBuilder::mute_channel_user(pubkey, reason).to_event(&self.keys)?;
-        self.send_event(event).await
+        let builder = EventBuilder::mute_channel_user(pubkey, reason);
+        self.send_event_builder(builder).await
     }
 
     /// Get a list of channels
