@@ -6,9 +6,13 @@
     - UniFFI (Kotlin, Swift, Python, Ruby):
         * [nostr-ffi](./bindings/nostr-ffi/): UniFFI bindings of the [nostr][] crate
         * [nostr-sdk-ffi](./bindings/nostr-sdk-ffi/): UniFFI bindings of the [nostr-sdk][] crate
+    - Flutter:
+        * nostr-flutter: Flutter bindings of the [nostr][] crate (TODO)
+        * nostr-sdk-flutter: Flutter bindings of the [nostr-sdk][] crate (TODO)
 - [crates](./crates/):
     - [nostr][]: Rust implementation of Nostr protocol.
     - [nostr-sdk][]: High level client library.
+    - nostr-sdk-sqlite: SQLite for [nostr-sdk][] (WIP)
 
 [nostr]: ./crates/nostr/
 [nostr-sdk]: ./crates/nostr-sdk/
