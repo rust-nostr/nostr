@@ -141,7 +141,7 @@ impl Relay {
             let relay = self.clone();
             thread::spawn(async move {
                 loop {
-                    log::info!(
+                    log::debug!(
                         "{} channel capacity: {}",
                         relay.url(),
                         relay.relay_sender.capacity()
