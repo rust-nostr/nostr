@@ -580,28 +580,32 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
-    /// use nostr::Event;
+    /// use std::str::FromStr;
+    ///
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
     /// #   let client = Client::new(&my_keys);
-    /// let event = Event::from_json(r#"{
-    ///         "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
-    ///         "content":"🔥 78,680 blocks to the next Halving 🔥",
-    ///         "id":"3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21",
-    ///         "created_at":1667337749,
-    ///         "sig":"96e0a125e15ecc889757a1b517fdab0223a9ceae22d2591536b5f5186599b50cb1c5f20c2d0d06cdd5cd75368529e33bac4fcd3b321db9865d47785b95b72625",
-    ///         "kind":1,
-    ///         "tags":[]
-    ///     }"#).unwrap();
+    /// let event_id =
+    ///     Sha256Hash::from_str("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
+    ///         .unwrap();
+    /// let public_key = XOnlyPublicKey::from_str(
+    ///     "a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
+    /// )
+    /// .unwrap();
     ///
-    /// client.like(&event).await.unwrap();
+    /// client.like(event_id, public_key).await.unwrap();
     /// # }
     /// ```
-    pub async fn like(&self, event: &Event) -> Result<Sha256Hash, Error> {
-        let event: Event = EventBuilder::new_reaction(event, true).to_event(&self.keys)?;
+    pub async fn like(
+        &self,
+        event_id: Sha256Hash,
+        public_key: XOnlyPublicKey,
+    ) -> Result<Sha256Hash, Error> {
+        let event: Event =
+            EventBuilder::new_reaction(event_id, public_key, "+").to_event(&self.keys)?;
         self.send_event(event).await
     }
 
@@ -611,28 +615,46 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
-    /// use nostr::Event;
+    /// use std::str::FromStr;
+    ///
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Client::generate_keys();
     /// #   let client = Client::new(&my_keys);
-    /// let event = Event::from_json(r#"{
-    ///     "pubkey":"a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
-    ///     "content":"🔥 78,680 blocks to the next Halving 🔥",
-    ///     "id":"3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21",
-    ///     "created_at":1667337749,
-    ///     "sig":"96e0a125e15ecc889757a1b517fdab0223a9ceae22d2591536b5f5186599b50cb1c5f20c2d0d06cdd5cd75368529e33bac4fcd3b321db9865d47785b95b72625",
-    ///     "kind":1,
-    ///     "tags":[]
-    /// }"#).unwrap();
+    /// let event_id =
+    ///     Sha256Hash::from_str("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
+    ///         .unwrap();
+    /// let public_key = XOnlyPublicKey::from_str(
+    ///     "a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
+    /// )
+    /// .unwrap();
     ///
-    /// client.dislike(&event).await.unwrap();
+    /// client.dislike(event_id, public_key).await.unwrap();
     /// # }
     /// ```
-    pub async fn dislike(&self, event: &Event) -> Result<Sha256Hash, Error> {
-        let event: Event = EventBuilder::new_reaction(event, false).to_event(&self.keys)?;
+    pub async fn dislike(
+        &self,
+        event_id: Sha256Hash,
+        public_key: XOnlyPublicKey,
+    ) -> Result<Sha256Hash, Error> {
+        let event: Event =
+            EventBuilder::new_reaction(event_id, public_key, "-").to_event(&self.keys)?;
+        self.send_event(event).await
+    }
+
+    pub async fn reaction<S>(
+        &self,
+        event_id: Sha256Hash,
+        public_key: XOnlyPublicKey,
+        content: S,
+    ) -> Result<Sha256Hash, Error>
+    where
+        S: Into<String>,
+    {
+        let event: Event =
+            EventBuilder::new_reaction(event_id, public_key, content).to_event(&self.keys)?;
         self.send_event(event).await
     }
 

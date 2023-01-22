@@ -263,19 +263,19 @@ impl EventBuilder {
         )
     }
 
-    /// Add reaction (like/upvote, dislike/downvote) to an event
-    pub fn new_reaction(event: &Event, positive: bool) -> Self {
-        let tags: &[Tag] = &[
-            Tag::Event(event.id, None, None),
-            Tag::PubKey(event.pubkey, None),
-        ];
-
-        let content: &str = match positive {
-            true => "+",
-            false => "-",
-        };
-
-        Self::new(Kind::Reaction, content, tags)
+    /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    pub fn new_reaction<S>(event_id: Sha256Hash, public_key: XOnlyPublicKey, content: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(
+            Kind::Reaction,
+            content,
+            &[
+                Tag::Event(event_id, None, None),
+                Tag::PubKey(public_key, None),
+            ],
+        )
     }
 
     /// Create new channel

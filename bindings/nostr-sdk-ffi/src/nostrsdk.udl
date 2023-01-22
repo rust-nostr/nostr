@@ -88,8 +88,8 @@ interface EventBuilder {
     constructor(Keys sender_keys, string receiver_pubkey, string content);
     [Throws=NostrError, Name=delete]
     constructor(sequence<string> ids, optional string? reason = null);
-    [Name=new_reaction]
-    constructor(Event event, boolean positive);
+    [Throws=NostrError, Name=new_reaction]
+    constructor(string event_id, string public_key, string content);
 };
 
 interface Contact {

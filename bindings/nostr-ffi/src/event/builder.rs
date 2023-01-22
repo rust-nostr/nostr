@@ -124,10 +124,11 @@ impl EventBuilder {
         })
     }
 
-    /// Add reaction (like/upvote, dislike/downvote) to an event
-    pub fn new_reaction(event: Arc<Event>, positive: bool) -> Self {
-        Self {
-            builder: EventBuilderSdk::new_reaction(event.deref(), positive),
-        }
+    pub fn new_reaction(event_id: String, public_key: String, content: String) -> Result<Self> {
+        let event_id = Sha256Hash::from_str(&event_id)?;
+        let public_key = XOnlyPublicKey::from_str(&public_key)?;
+        Ok(Self {
+            builder: EventBuilderSdk::new_reaction(event_id, public_key, content),
+        })
     }
 }

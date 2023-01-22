@@ -194,12 +194,32 @@ impl Client {
         RUNTIME.block_on(async { self.client.delete_event(event_id, reason).await })
     }
 
-    pub fn like(&self, event: &Event) -> Result<Sha256Hash, Error> {
-        RUNTIME.block_on(async { self.client.like(event).await })
+    pub fn like(
+        &self,
+        event_id: Sha256Hash,
+        public_key: XOnlyPublicKey,
+    ) -> Result<Sha256Hash, Error> {
+        RUNTIME.block_on(async { self.client.like(event_id, public_key).await })
     }
 
-    pub fn dislike(&self, event: &Event) -> Result<Sha256Hash, Error> {
-        RUNTIME.block_on(async { self.client.dislike(event).await })
+    pub fn dislike(
+        &self,
+        event_id: Sha256Hash,
+        public_key: XOnlyPublicKey,
+    ) -> Result<Sha256Hash, Error> {
+        RUNTIME.block_on(async { self.client.dislike(event_id, public_key).await })
+    }
+
+    pub fn reaction<S>(
+        &self,
+        event_id: Sha256Hash,
+        public_key: XOnlyPublicKey,
+        content: S,
+    ) -> Result<Sha256Hash, Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async { self.client.reaction(event_id, public_key, content).await })
     }
 
     pub fn new_channel(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
