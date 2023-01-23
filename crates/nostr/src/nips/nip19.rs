@@ -239,12 +239,12 @@ impl ToBech32 for Profile {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
-pub struct Event {
+pub struct Nip19Event {
     event_id: Sha256Hash,
     relays: Vec<String>,
 }
 
-impl Event {
+impl Nip19Event {
     pub fn new<S>(event_id: Sha256Hash, relays: Vec<S>) -> Self
     where
         S: Into<String>,
@@ -256,7 +256,7 @@ impl Event {
     }
 }
 
-impl FromBech32 for Event {
+impl FromBech32 for Nip19Event {
     type Err = Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
@@ -309,7 +309,7 @@ impl FromBech32 for Event {
     }
 }
 
-impl ToBech32 for Event {
+impl ToBech32 for Nip19Event {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
