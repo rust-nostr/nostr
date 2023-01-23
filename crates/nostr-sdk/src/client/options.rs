@@ -9,7 +9,7 @@ pub struct Options {
     /// Wait for connection
     pub wait_for_connection: Arc<AtomicBool>,
     /// Wait for the msg to be sent
-    pub wait_for_sent: Arc<AtomicBool>,
+    pub wait_for_send: Arc<AtomicBool>,
     /// POW difficulty (for all events)
     pub difficulty: Arc<AtomicU8>,
 }
@@ -18,7 +18,7 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             wait_for_connection: Arc::new(AtomicBool::new(false)),
-            wait_for_sent: Arc::new(AtomicBool::new(false)),
+            wait_for_send: Arc::new(AtomicBool::new(false)),
             difficulty: Arc::new(AtomicU8::new(0)),
         }
     }
@@ -40,15 +40,15 @@ impl Options {
         self.wait_for_connection.load(Ordering::SeqCst)
     }
 
-    pub fn wait_for_sent(self, wait: bool) -> Self {
+    pub fn wait_for_send(self, wait: bool) -> Self {
         Self {
-            wait_for_sent: Arc::new(AtomicBool::new(wait)),
+            wait_for_send: Arc::new(AtomicBool::new(wait)),
             ..self
         }
     }
 
-    pub(crate) fn get_wait_for_sent(&self) -> bool {
-        self.wait_for_sent.load(Ordering::SeqCst)
+    pub(crate) fn get_wait_for_send(&self) -> bool {
+        self.wait_for_send.load(Ordering::SeqCst)
     }
 
     pub fn difficulty(self, difficulty: u8) -> Self {
@@ -69,9 +69,9 @@ impl Options {
                 Some(new_opts.get_wait_for_connection())
             });
         let _ = self
-            .wait_for_sent
+            .wait_for_send
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
-                Some(new_opts.get_wait_for_sent())
+                Some(new_opts.get_wait_for_send())
             });
         let _ = self
             .difficulty

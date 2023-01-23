@@ -289,7 +289,7 @@ impl Client {
     pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
         Ok(self
             .pool
-            .subscribe(filters, self.opts.get_wait_for_sent())
+            .subscribe(filters, self.opts.get_wait_for_send())
             .await?)
     }
 
@@ -336,7 +336,7 @@ impl Client {
         self.pool
             .send_client_msg(
                 ClientMessage::new_event(event),
-                self.opts.get_wait_for_sent(),
+                self.opts.get_wait_for_send(),
             )
             .await?;
         Ok(event_id)

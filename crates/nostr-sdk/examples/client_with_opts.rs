@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
     let secret_key = SecretKey::from_bech32(BECH32_SK)?;
     let my_keys = Keys::new(secret_key);
 
-    let opts = Options::new().wait_for_sent(true);
+    let opts = Options::new().wait_for_send(true);
 
     let client = Client::new_with_opts(&my_keys, opts);
     client.add_relay("wss://relay.nostr.info", None).await?;
