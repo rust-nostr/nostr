@@ -23,15 +23,14 @@ other lower-level crates. If you're attempting something more custom, you might 
 
 ```toml
 [dependencies]
-nostr-sdk = "0.15"
+nostr-sdk = "0.16"
 tokio = { version = "1", features = ["full"] }
 ```
 
 ```rust,no_run
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use nostr_sdk::nostr::{Keys, Metadata, Url};
-use nostr_sdk::{Client, Result};
+use nostr_sdk::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -41,11 +40,9 @@ async fn main() -> Result<()> {
     // or use your already existing
     //
     // From HEX or Bech32
-    // use nostr_sdk::nostr::key::FromSkStr;
     // let my_keys = Keys::from_sk_str("hex-or-bech32-secret-key")?;
 
     // Show bech32 public key
-    use nostr_sdk::nostr::nips::nip19::ToBech32;
     let bech32_pubkey: String = my_keys.public_key().to_bech32()?;
     println!("Bech32 PubKey: {}", bech32_pubkey);
 
