@@ -16,13 +16,12 @@ Rust implementation of Nostr protocol.
 
 ```toml
 [dependencies]
-nostr = "0.15"
+nostr = "0.16"
 tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"]}
 ```
 
 ```rust,no_run
-use nostr::{Event, EventBuilder, Metadata, Keys, Result, Url};
-use nostr::message::ClientMessage;
+use nostr::prelude::*;
 use tungstenite::{Message as WsMessage};
 
 fn main() -> Result<()> {
@@ -32,11 +31,9 @@ fn main() -> Result<()> {
     // or use your already existing
     //
     // From HEX or Bech32
-    // use nostr::key::FromSkStr;
     // let my_keys = Keys::from_sk_str("hex-or-bech32-secret-key")?;
 
     // Show bech32 public key
-    use nostr::nips::nip19::ToBech32;
     let bech32_pubkey: String = my_keys.public_key().to_bech32()?;
     println!("Bech32 PubKey: {}", bech32_pubkey);
 
