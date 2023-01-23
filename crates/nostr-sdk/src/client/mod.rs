@@ -16,7 +16,9 @@ use tokio::sync::broadcast;
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
+mod options;
 
+pub use self::options::Options;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotification};
 use crate::Relay;
 
@@ -35,30 +37,6 @@ pub enum Error {
     Secp256k1(#[from] nostr::secp256k1::Error),
     #[error("hex decoding error: {0}")]
     Hex(#[from] nostr::hashes::hex::Error),
-}
-
-#[derive(Debug, Clone)]
-pub struct Options {
-    /// Wait for connection
-    pub wait_for_connection: bool,
-    /// Wait for the msg to be sent
-    pub wait_for_sent: bool,
-    /// Create always POW events
-    pub always_pow_events: bool,
-    /// POW difficulty
-    pub difficulty: u8,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for Options {
-    fn default() -> Self {
-        Self {
-            wait_for_connection: false,
-            wait_for_sent: false,
-            always_pow_events: false,
-            difficulty: 0,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -88,6 +66,10 @@ impl Client {
             keys: keys.clone(),
             opts,
         }
+    }
+
+    pub fn update_opts(&self, new_opts: Options) {
+        self.opts.update_opts(new_opts);
     }
 
     /// Generate new random keys using entorpy from OS
@@ -247,7 +229,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn connect(&self) {
-        self.pool.connect(self.opts.wait_for_connection).await;
+        self.pool.connect(self.opts.get_wait_for_connection()).await;
     }
 
     /// Connect to all added relays waiting for initial connection and keep connection alive
@@ -307,7 +289,7 @@ impl Client {
     pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
         Ok(self
             .pool
-            .subscribe(filters, self.opts.wait_for_sent)
+            .subscribe(filters, self.opts.get_wait_for_sent())
             .await?)
     }
 
@@ -352,14 +334,18 @@ impl Client {
     pub async fn send_event(&self, event: Event) -> Result<Sha256Hash, Error> {
         let event_id = event.id;
         self.pool
-            .send_client_msg(ClientMessage::new_event(event), self.opts.wait_for_sent)
+            .send_client_msg(
+                ClientMessage::new_event(event),
+                self.opts.get_wait_for_sent(),
+            )
             .await?;
         Ok(event_id)
     }
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<Sha256Hash, Error> {
-        let event: Event = if self.opts.always_pow_events {
-            builder.to_pow_event(&self.keys, self.opts.difficulty)?
+        let difficulty: u8 = self.opts.get_difficulty();
+        let event: Event = if difficulty > 0 {
+            builder.to_pow_event(&self.keys, difficulty)?
         } else {
             builder.to_event(&self.keys)?
         };
