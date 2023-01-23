@@ -5,22 +5,8 @@ else
   Q := @
 endif
 
-precommit: test
-	$(Q)cargo fmt --all -- --config format_code_in_doc_comments=true
-	$(Q)cargo clippy --all
-	$(Q)cargo clippy -p nostr
-	$(Q)cargo clippy -p nostr --no-default-features
-	$(Q)cargo clippy -p nostr --no-default-features --features all-nips
-	$(Q)cargo clippy -p nostr --no-default-features --features base
-	$(Q)cargo clippy -p nostr --features blocking
-	$(Q)cargo clippy -p nostr-sdk
-	$(Q)cargo clippy -p nostr-sdk --no-default-features
-	$(Q)cargo clippy -p nostr-sdk --features blocking
-	$(Q)cargo clippy -p nostr-ffi
-	$(Q)cargo clippy -p nostr-sdk-ffi
-
-test:
-	$(Q)cargo test --all --all-features
+precommit:
+	$(Q)sh .githooks/pre-push
 
 clean:
 	$(Q)cargo clean
