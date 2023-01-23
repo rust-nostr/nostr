@@ -3,8 +3,10 @@
 [![crates.io](https://img.shields.io/crates/v/nostr-sdk.svg)](https://crates.io/crates/nostr-sdk)
 [![crates.io - Downloads](https://img.shields.io/crates/d/nostr-sdk)](https://crates.io/crates/nostr-sdk)
 [![Documentation](https://docs.rs/nostr-sdk/badge.svg)](https://docs.rs/nostr-sdk)
-[![CI](https://github.com/yukibtc/nostr-rs-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/yukibtc/nostr-rs-sdk/actions/workflows/ci.yml)
+[![Rustc Version 1.64.0+](https://img.shields.io/badge/rustc-1.64.0%2B-lightgrey.svg)](https://blog.rust-lang.org/2022/09/22/Rust-1.64.0.html)
+[![CI](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/crates/l/nostr-sdk.svg)](../../LICENSE)
+![Lines of code](https://img.shields.io/tokei/lines/github/rust-nostr/nostr)
 
 ## Description
 
@@ -91,7 +93,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-More examples can be found in the [examples](https://github.com/yukibtc/nostr-rs-sdk/tree/master/crates/nostr-sdk/examples) directory.
+More examples can be found in the [examples](https://github.com/rust-nostr/nostr/tree/master/crates/nostr-sdk/examples) directory.
 
 ## Crate Feature Flags
 
@@ -111,7 +113,7 @@ The following crate feature flags are available:
 
 ## Supported NIPs
 
-Look at https://github.com/yukibtc/nostr-rs-sdk/tree/master/crates/nostr#supported-nips
+Look at https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips
 
 ## State
 

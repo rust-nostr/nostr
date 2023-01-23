@@ -7,8 +7,8 @@ members = [
 ]
 
 [workspace.package]
-homepage = "https://github.com/yukibtc/nostr-rs-sdk"
-repository = "https://github.com/yukibtc/nostr-rs-sdk.git"
+homepage = "https://github.com/rust-nostr/nostr"
+repository = "https://github.com/rust-nostr/nostr.git"
 license = "MIT"
 rust-version = "1.64.0"
 
