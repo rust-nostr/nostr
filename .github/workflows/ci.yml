@@ -27,13 +27,13 @@ jobs:
           - version: 1.64.0 #MSRV
         build-args:
           [
+            -p nostr,
             -p nostr --no-default-features,
-            -p nostr --features full,
-            -p nostr --features all-nips,
-            -p nostr --features event,
-            -p nostr --features "full blocking",
+            -p nostr --no-default-features --features all-nips,
+            -p nostr --no-default-features --features base,
+            -p nostr --features blocking,
+            -p nostr-sdk,
             -p nostr-sdk --no-default-features,
-            -p nostr-sdk --features all-nips,
             -p nostr-sdk --features blocking,
             -p nostr-ffi,
             -p nostr-sdk-ffi,

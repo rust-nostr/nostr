@@ -4,28 +4,28 @@
 pub use bitcoin::hashes;
 pub use bitcoin::hashes::sha256::Hash as Sha256Hash;
 pub use bitcoin::secp256k1;
-#[cfg(feature = "event")]
+#[cfg(feature = "base")]
 pub use url::{self, Url};
 
-#[cfg(feature = "full")]
+#[cfg(feature = "default")]
 mod doctest;
-#[cfg(feature = "event")]
+#[cfg(feature = "base")]
 pub mod event;
 pub mod key;
-#[cfg(feature = "event")]
+#[cfg(feature = "base")]
 pub mod message;
 pub mod nips;
 pub mod prelude;
-#[cfg(feature = "event")]
+#[cfg(feature = "base")]
 pub mod types;
 pub mod util;
 
-#[cfg(feature = "event")]
+#[cfg(feature = "base")]
 pub use self::event::{Event, EventBuilder, Kind, Tag};
 pub use self::key::Keys;
-#[cfg(feature = "event")]
+#[cfg(feature = "base")]
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
-#[cfg(feature = "event")]
+#[cfg(feature = "base")]
 pub use self::types::{Contact, Entity, Metadata};
 
 pub type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;

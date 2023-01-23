@@ -8,13 +8,13 @@ endif
 precommit: test
 	$(Q)cargo fmt --all -- --config format_code_in_doc_comments=true
 	$(Q)cargo clippy --all
+	$(Q)cargo clippy -p nostr
 	$(Q)cargo clippy -p nostr --no-default-features
-	$(Q)cargo clippy -p nostr --features full
-	$(Q)cargo clippy -p nostr --features all-nips
-	$(Q)cargo clippy -p nostr --features event
-	$(Q)cargo clippy -p nostr --features "full blocking"
+	$(Q)cargo clippy -p nostr --no-default-features --features all-nips
+	$(Q)cargo clippy -p nostr --no-default-features --features base
+	$(Q)cargo clippy -p nostr --features blocking
+	$(Q)cargo clippy -p nostr-sdk
 	$(Q)cargo clippy -p nostr-sdk --no-default-features
-	$(Q)cargo clippy -p nostr-sdk --features all-nips
 	$(Q)cargo clippy -p nostr-sdk --features blocking
 	$(Q)cargo clippy -p nostr-ffi
 	$(Q)cargo clippy -p nostr-sdk-ffi

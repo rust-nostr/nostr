@@ -12,11 +12,10 @@ rust-version.workspace = true
 keywords = ["nostr", "protocol", "sdk", "rust"]
 
 [features]
-default = ["full"]
-full = ["all-nips", "event"]
+default = ["all-nips", "base"]
 blocking = ["reqwest?/blocking"]
+base = ["dep:log", "dep:once_cell", "dep:regex", "dep:serde", "dep:serde_json", "dep:url"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip13", "nip19", "nip26"]
-event = ["dep:once_cell", "dep:regex", "dep:serde", "dep:serde_json", "dep:url"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip05 = ["dep:reqwest", "dep:serde_json"]
 nip06 = ["dep:bip39"]
@@ -54,15 +53,15 @@ required-features = ["nip19"]
 
 [[example]]
 name = "metadata"
-required-features = ["event"]
+required-features = ["base"]
 
 [[example]]
 name = "tweet"
-required-features = ["event"]
+required-features = ["base"]
 
 [[example]]
 name = "nip04"
-required-features = ["nip04"]
+required-features = ["base", "nip04"]
 
 [[example]]
 name = "nip05"
@@ -74,7 +73,7 @@ required-features = ["nip06"]
 
 [[example]]
 name = "nip09"
-required-features = ["nip19"]
+required-features = ["base", "nip19"]
 
 [[example]]
 name = "nip11"
@@ -82,7 +81,7 @@ required-features = ["nip11", "blocking"]
 
 [[example]]
 name = "nip13"
-required-features = ["nip13"]
+required-features = ["base", "nip13"]
 
 [[example]]
 name = "nip19"

@@ -6,9 +6,8 @@ use std::{thread, time};
 
 use nostr::key::FromSkStr;
 use nostr::nips::nip04::decrypt;
-use nostr::url::Url;
 use nostr::{
-    ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter, Tag,
+    ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter, Tag, Url,
 };
 use tungstenite::{connect, Message as WsMessage};
 
