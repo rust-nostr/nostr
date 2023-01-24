@@ -26,17 +26,19 @@ pub enum Error {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayInformationDocument {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub pubkey: String,
-    pub contact: String,
-    pub supported_nips: Vec<u16>,
-    pub software: String,
-    pub version: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub pubkey: Option<String>,
+    pub contact: Option<String>,
+    pub supported_nips: Option<Vec<u16>>,
+    pub software: Option<String>,
+    pub version: Option<String>,
 }
 
-/// Get Relay Information Document
+/// Get Relay Information Document.
+///
+/// NIP-11 expects the `url` to be HTTP(S). When WSS is passed, it is converted
+/// to HTTPS.
 #[cfg(not(feature = "blocking"))]
 pub async fn get_relay_information_document(
     url: Url,
@@ -48,6 +50,17 @@ pub async fn get_relay_information_document(
         builder = builder.proxy(Proxy::all(proxy)?);
     }
     let client: Client = builder.build()?;
+    let url = {
+        if url.scheme() == "wss" {
+            let mut http_url = url;
+            http_url
+                .set_scheme("https")
+                .expect("'https' is a valid scheme.");
+            http_url
+        } else {
+            url
+        }
+    };
     let req = client.get(url).header("Accept", "application/nostr+json");
     match req.send().await {
         Ok(response) => match response.json().await {
@@ -59,6 +72,9 @@ pub async fn get_relay_information_document(
 }
 
 /// Get Relay Information Document
+///
+/// NIP-11 expects the `url` to be HTTP(S). When WSS is passed, it is converted
+/// to HTTPS.
 #[cfg(feature = "blocking")]
 pub fn get_relay_information_document(
     url: Url,
@@ -70,6 +86,17 @@ pub fn get_relay_information_document(
         builder = builder.proxy(Proxy::all(proxy)?);
     }
     let client: Client = builder.build()?;
+    let url = {
+        if url.scheme() == "wss" {
+            let mut http_url = url;
+            http_url
+                .set_scheme("https")
+                .expect("'https' is a valid scheme.");
+            http_url
+        } else {
+            url
+        }
+    };
     let req = client.get(url).header("Accept", "application/nostr+json");
     match req.send() {
         Ok(response) => match response.json() {
