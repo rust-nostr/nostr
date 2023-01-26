@@ -1,6 +1,8 @@
 // Copyright (c) 2021 Paul Miller
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! Client messages
 
 use serde_json::{json, Value};
 
@@ -8,30 +10,31 @@ use super::MessageHandleError;
 use crate::{Event, SubscriptionFilter};
 
 /// Messages sent by clients, received by relays
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClientMessage {
-    Event {
-        event: Box<Event>,
-    },
+    /// Event
+    Event { event: Box<Event> },
+    /// Req
     Req {
         subscription_id: String,
         filters: Vec<SubscriptionFilter>,
     },
-    Close {
-        subscription_id: String,
-    },
-    Auth {
-        event: Box<Event>,
-    },
+    /// Close
+    Close { subscription_id: String },
+    /// Auth
+    Auth { event: Box<Event> },
 }
 
 impl ClientMessage {
+    /// Create new `EVENT` message
     pub fn new_event(event: Event) -> Self {
         Self::Event {
             event: Box::new(event),
         }
     }
 
+    /// Create new `REQ` message
     pub fn new_req<S>(subscription_id: S, filters: Vec<SubscriptionFilter>) -> Self
     where
         S: Into<String>,
@@ -42,6 +45,7 @@ impl ClientMessage {
         }
     }
 
+    /// Create new `CLOSE` message
     pub fn close<S>(subscription_id: S) -> Self
     where
         S: Into<String>,
@@ -51,12 +55,14 @@ impl ClientMessage {
         }
     }
 
+    /// Create new `AUTH` message
     pub fn new_auth(event: Event) -> Self {
         Self::Auth {
             event: Box::new(event),
         }
     }
 
+    /// Serialize [`ClientMessage`] as JSON string
     pub fn as_json(&self) -> String {
         match self {
             Self::Event { event } => json!(["EVENT", event]).to_string(),
@@ -80,6 +86,7 @@ impl ClientMessage {
         }
     }
 
+    /// Deserialize [`ClientMessage`] from JSON string
     pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
     where
         S: Into<String>,

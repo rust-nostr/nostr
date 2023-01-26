@@ -2,6 +2,10 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! Subscription filters
+
+#![allow(missing_docs)]
+
 use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 

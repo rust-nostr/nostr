@@ -1,6 +1,10 @@
 // Copyright (c) 2021 Paul Miller
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! NIP04
+//!
+//! https://github.com/nostr-protocol/nips/blob/master/04.md
 
 use std::convert::From;
 use std::str::FromStr;
@@ -15,20 +19,27 @@ use cbc::{Decryptor, Encryptor};
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
 
+/// `NIP04` error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
+    /// Invalid content format
     #[error("Invalid content format")]
     InvalidContentFormat,
+    /// Error while decoding from base64
     #[error("Error while decoding from base64")]
     Base64Decode,
+    /// Error while encoding to UTF-8
     #[error("Error while encoding to UTF-8")]
     Utf8Encode,
+    /// Wrong encryption block mode
     #[error("Wrong encryption block mode. The content must be encrypted using CBC mode!")]
     WrongBlockMode,
+    /// Secp256k1 error
     #[error("secp256k1 error: {0}")]
     Secp256k1(#[from] bitcoin::secp256k1::Error),
 }
 
+/// Entrypt
 pub fn encrypt<T>(sk: &SecretKey, pk: &XOnlyPublicKey, text: T) -> Result<String, Error>
 where
     T: AsRef<[u8]>,
@@ -46,6 +57,7 @@ where
     ))
 }
 
+/// Dectypt
 pub fn decrypt<S>(
     sk: &SecretKey,
     pk: &XOnlyPublicKey,

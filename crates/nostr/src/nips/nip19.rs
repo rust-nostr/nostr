@@ -1,6 +1,12 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! NIP19
+//!
+//! https://github.com/nostr-protocol/nips/blob/master/19.md
+
+#![allow(missing_docs)]
+
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
@@ -14,25 +20,32 @@ const PREFIX_BECH32_NOTE_ID: &str = "note";
 const PREFIX_BECH32_PROFILE: &str = "nprofile";
 const PREFIX_BECH32_EVENT: &str = "nevent";
 
+/// `NIP19` error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
     /// Bech32 error.
-    #[error("Bech32 error: {0}")]
+    #[error(transparent)]
     Bech32(#[from] bech32::Error),
+    /// Invalid bec32 secret key
     #[error("Invalid bech32 secret key")]
     Bech32SkParseError,
+    /// Invalid bec32 public key
     #[error("Invalid bech32 public key")]
     Bech32PkParseError,
+    /// Invalid bec32 note id
     #[error("Invalid bech32 note id")]
     Bech32NoteParseError,
+    /// Invalid bec32 profile
     #[error("Invalid bech32 profile")]
     Bech32ProfileParseError,
+    /// Invalid bec32 event
     #[error("Invalid bech32 event")]
     Bech32EventParseError,
     /// Secp256k1 error
-    #[error("secp256k1 error: {0}")]
+    #[error(transparent)]
     Secp256k1(#[from] bitcoin::secp256k1::Error),
-    #[error("hash error: {0}")]
+    /// Hash error
+    #[error(transparent)]
     Hash(#[from] bitcoin::hashes::Error),
 }
 

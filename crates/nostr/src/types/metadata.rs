@@ -1,9 +1,12 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! Metadata
+
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+/// [`Metadata`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Error serializing or deserializing JSON data
@@ -11,24 +14,34 @@ pub enum Error {
     Json(#[from] serde_json::Error),
 }
 
+/// Metadata
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Metadata {
+    /// Name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// Display name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
+    /// Description
     #[serde(skip_serializing_if = "Option::is_none")]
     pub about: Option<String>,
+    /// Website url
     #[serde(skip_serializing_if = "Option::is_none")]
     pub website: Option<String>,
+    /// Picture url
     #[serde(skip_serializing_if = "Option::is_none")]
     pub picture: Option<String>,
+    /// Banner url
     #[serde(skip_serializing_if = "Option::is_none")]
     pub banner: Option<String>,
+    /// NIP05 (ex. name@example.com)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nip05: Option<String>,
+    /// LNURL
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lud06: Option<String>,
+    /// Lightning Address
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lud16: Option<String>,
 }
@@ -40,6 +53,7 @@ impl Default for Metadata {
 }
 
 impl Metadata {
+    /// New empty [`Metadata`]
     pub fn new() -> Self {
         Self {
             name: None,
@@ -54,6 +68,7 @@ impl Metadata {
         }
     }
 
+    /// Deserialize [`Metadata`] from `JSON` string
     pub fn from_json<S>(json: S) -> Result<Self, Error>
     where
         S: Into<String>,
@@ -61,6 +76,7 @@ impl Metadata {
         Ok(serde_json::from_str(&json.into())?)
     }
 
+    /// Serialize [`Metadata`] to `JSON` string
     pub fn as_json(&self) -> Result<String, Error> {
         Ok(serde_json::to_string(&self)?)
     }

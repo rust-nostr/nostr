@@ -1,5 +1,9 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! NIP05
+//!
+//! https://github.com/nostr-protocol/nips/blob/master/05.md
 
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -12,18 +16,23 @@ use reqwest::Client;
 use reqwest::Proxy;
 use serde_json::Value;
 
+/// `NIP05` error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Invalid format
     #[error("invalid format")]
     InvalidFormat,
+    /// Impossible to verify
     #[error("impossible to verify")]
     ImpossibleToVerify,
-    #[error("reqwest error: {0}")]
+    /// Reqwest error
+    #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
     /// Error serializing or deserializing JSON data
-    #[error("JSON error: {0}")]
+    #[error(transparent)]
     Json(#[from] serde_json::Error),
-    #[error("secp256k1 error: {0}")]
+    /// Secp256k1 error
+    #[error(transparent)]
     Secp256k1(#[from] bitcoin::secp256k1::Error),
 }
 
@@ -52,7 +61,7 @@ fn verify_json(public_key: XOnlyPublicKey, json: Value, name: &str) -> Result<()
     Err(Error::ImpossibleToVerify)
 }
 
-/// Verify NIP-05
+/// Verify NIP05
 #[cfg(not(feature = "blocking"))]
 pub async fn verify(
     public_key: XOnlyPublicKey,
@@ -71,7 +80,7 @@ pub async fn verify(
     verify_json(public_key, json, name)
 }
 
-/// Verify NIP-05
+/// Verify NIP05
 #[cfg(feature = "blocking")]
 pub fn verify(
     public_key: XOnlyPublicKey,

@@ -1,6 +1,8 @@
 // Copyright (c) 2021 Paul Miller
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! Event
 
 use std::str::FromStr;
 
@@ -18,30 +20,42 @@ pub use self::kind::Kind;
 pub use self::tag::{Marker, Tag, TagKind};
 use crate::Sha256Hash;
 
+/// [`Event`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Invalid signature
     #[error("invalid signature")]
     InvalidSignature,
     /// Error serializing or deserializing JSON data
-    #[error("json error: {0}")]
+    #[error(transparent)]
     Json(#[from] serde_json::Error),
-    #[error("secp256k1 error: {0}")]
+    /// Secp256k1 error
+    #[error(transparent)]
     Secp256k1(#[from] bitcoin::secp256k1::Error),
     /// Hex decoding error
-    #[error("hex decoding error: {0}")]
+    #[error(transparent)]
     Hex(#[from] bitcoin::hashes::hex::Error),
 }
 
+/// [`Event`] struct
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Event {
-    pub id: Sha256Hash, // hash of serialized event with id 0
+    /// Id
+    pub id: Sha256Hash,
+    /// Author
     pub pubkey: XOnlyPublicKey,
-    pub created_at: u64, // unix timestamp seconds
+    /// Timestamp (seconds)
+    pub created_at: u64,
+    /// Kind
     pub kind: Kind,
+    /// Vector of [`Tag`]
     pub tags: Vec<Tag>,
+    /// Content
     pub content: String,
+    /// Signature
     #[serde(deserialize_with = "sig_string")]
     pub sig: Signature,
+    /// OpenTimestamps Attestations
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ots: Option<String>,
 }

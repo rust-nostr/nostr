@@ -1,11 +1,14 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! Kind
 
 use std::fmt;
 
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::{Serialize, Serializer};
 
+#[allow(missing_docs)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Kind {
     Metadata,
@@ -32,6 +35,7 @@ pub enum Kind {
 }
 
 impl Kind {
+    /// Get [`Kind`] as `u64`
     pub fn as_u64(&self) -> u64 {
         (*self).into()
     }

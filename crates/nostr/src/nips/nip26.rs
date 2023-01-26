@@ -1,5 +1,9 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! NIP26
+//!
+//! https://github.com/nostr-protocol/nips/blob/master/26.md
 
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::schnorr::Signature;
@@ -8,15 +12,18 @@ use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 use crate::key::{self, Keys};
 use crate::Sha256Hash;
 
+/// `NIP26` error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
     /// Key error
-    #[error("key error: {0}")]
+    #[error(transparent)]
     Key(#[from] key::Error),
-    #[error("secp256k1 error: {0}")]
+    #[error(transparent)]
+    /// Secp256k1 error
     Secp256k1(#[from] bitcoin::secp256k1::Error),
 }
 
+/// Sign delegation
 pub fn sign_delegation(
     keys: &Keys,
     delegatee_pk: XOnlyPublicKey,

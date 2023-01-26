@@ -1,6 +1,10 @@
 // Copyright (c) 2021 Paul Miller
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! Keys
+//!
+//! This module defines the [`Keys`] structure.
 
 #[cfg(feature = "nip19")]
 use std::str::FromStr;
@@ -11,33 +15,46 @@ pub use bitcoin::secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 #[cfg(feature = "nip19")]
 use crate::nips::nip19::FromBech32;
 
+/// [`Keys`] error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
+    /// Invalid secret key
     #[error("Invalid secret key")]
     InvalidSecretKey,
+    /// Invalid public key
     #[error("Invalid public key")]
     InvalidPublicKey,
+    /// Secrete key missing
     #[error("Secrete key missing")]
     SkMissing,
+    /// Key pair missing
     #[error("Key pair missing")]
     KeyPairMissing,
+    /// Failed to generate new keys
     #[error("Failed to generate new keys")]
     KeyGenerationFailure,
     /// Secp256k1 error
-    #[error("secp256k1 error: {0}")]
+    #[error(transparent)]
     Secp256k1(#[from] bitcoin::secp256k1::Error),
 }
 
+/// Trait for [`Keys`]
 pub trait FromSkStr: Sized {
+    /// Error
     type Err;
+    /// Init [`Keys`] from `hex` or `bech32` secret key string
     fn from_sk_str(secret_key: &str) -> Result<Self, Self::Err>;
 }
 
+/// Trait for [`Keys`]
 pub trait FromPkStr: Sized {
+    /// Error
     type Err;
+    /// Init [`Keys`] from `hex` or `bech32` public key string
     fn from_pk_str(public_key: &str) -> Result<Self, Self::Err>;
 }
 
+/// Keys
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Keys {
     public_key: XOnlyPublicKey,
@@ -68,6 +85,7 @@ impl Keys {
         }
     }
 
+    /// Generate new random keys
     pub fn generate() -> Self {
         let secp = Secp256k1::new();
         let mut rng = OsRng::default();

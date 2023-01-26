@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! Event builder
+
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 use once_cell::sync::Lazy;
@@ -23,24 +25,28 @@ use crate::Sha256Hash;
 static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
 
+/// [`EventBuilder`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Key error
-    #[error("key error: {0}")]
+    #[error(transparent)]
     Key(#[from] key::Error),
-    #[error("secp256k1 error: {0}")]
+    #[error(transparent)]
+    /// Secp256k1 error
     Secp256k1(#[from] bitcoin::secp256k1::Error),
-    #[error("json error: {0}")]
+    /// JSON error
+    #[error(transparent)]
     Json(#[from] serde_json::Error),
     /// Invalid metadata name
     #[error("invalid name")]
     InvalidName,
     /// NIP04 error
     #[cfg(feature = "nip04")]
-    #[error("nip04 error: {0}")]
+    #[error(transparent)]
     NIP04(#[from] nip04::Error),
 }
 
+/// [`Event`] builder
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct EventBuilder {
     kind: Kind,
@@ -49,6 +55,7 @@ pub struct EventBuilder {
 }
 
 impl EventBuilder {
+    /// New [`EventBuilder`]
     pub fn new<S>(kind: Kind, content: S, tags: &[Tag]) -> Self
     where
         S: Into<String>,
@@ -60,6 +67,7 @@ impl EventBuilder {
         }
     }
 
+    /// Generate [`Event`] id
     pub fn gen_id(
         pubkey: &XOnlyPublicKey,
         created_at: u64,
@@ -72,7 +80,7 @@ impl EventBuilder {
         Sha256Hash::hash(event_str.as_bytes())
     }
 
-    /// Build `Event`
+    /// Build [`Event`]
     pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
         let secp = Secp256k1::new();
         let keypair: &KeyPair = &keys.key_pair()?;
@@ -95,7 +103,7 @@ impl EventBuilder {
         })
     }
 
-    /// Build POW `Event`
+    /// Build POW [`Event`]
     #[cfg(feature = "nip13")]
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
         #[cfg(target_arch = "wasm32")]
@@ -238,13 +246,13 @@ impl EventBuilder {
     }
 
     /// Repost event
-    pub fn repost(event: &Event) -> Self {
+    pub fn repost(event_id: Sha256Hash, public_key: XOnlyPublicKey) -> Self {
         Self::new(
             Kind::Repost,
             String::new(),
             &[
-                Tag::Event(event.id, None, None),
-                Tag::PubKey(event.pubkey, None),
+                Tag::Event(event_id, None, None),
+                Tag::PubKey(public_key, None),
             ],
         )
     }

@@ -2,6 +2,10 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! NIP11
+//!
+//! https://github.com/nostr-protocol/nips/blob/master/11.md
+
 use std::net::SocketAddr;
 
 #[cfg(feature = "blocking")]
@@ -12,9 +16,11 @@ use reqwest::Proxy;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+/// `NIP11` error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("reqwest error: {0}")]
+    /// Reqwest error
+    #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
     /// The relay information document is invalid
     #[error("The relay information document is invalid")]
@@ -24,15 +30,24 @@ pub enum Error {
     InaccessibleInformationDocument,
 }
 
+/// Relay information document
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayInformationDocument {
+    ///
     pub id: String,
+    /// Name
     pub name: String,
+    /// Description
     pub description: String,
+    /// Owner public key
     pub pubkey: String,
+    /// Owner contact
     pub contact: String,
+    /// Supported NIPs
     pub supported_nips: Vec<u16>,
+    /// Software
     pub software: String,
+    /// Software version
     pub version: String,
 }
 

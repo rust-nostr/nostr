@@ -1,6 +1,10 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+#![warn(missing_docs)]
+
+//! Rust implementation of the Nostr protocol.
+
 pub use bitcoin::hashes;
 pub use bitcoin::hashes::sha256::Hash as Sha256Hash;
 pub use bitcoin::secp256k1;
@@ -28,4 +32,5 @@ pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
 #[cfg(feature = "base")]
 pub use self::types::{Contact, Entity, Metadata};
 
+/// Result
 pub type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;

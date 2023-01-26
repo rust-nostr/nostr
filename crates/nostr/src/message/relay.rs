@@ -2,12 +2,15 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! Relay messages
+
 use serde_json::{json, Value};
 
 use super::MessageHandleError;
 use crate::{Event, Sha256Hash};
 
 /// Messages sent by relays, received by clients
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayMessage {
     Event {
@@ -32,7 +35,7 @@ pub enum RelayMessage {
 }
 
 impl RelayMessage {
-    // Relay is responsible for storing corresponding subscription id
+    /// Create new `EVENT` message
     pub fn new_event<S>(subscription_id: S, event: Event) -> Self
     where
         S: Into<String>,
@@ -43,6 +46,7 @@ impl RelayMessage {
         }
     }
 
+    /// Create new `NOTICE` message
     pub fn new_notice<S>(message: S) -> Self
     where
         S: Into<String>,
@@ -52,6 +56,7 @@ impl RelayMessage {
         }
     }
 
+    /// Create new `EOSE` message
     pub fn new_eose<S>(subscription_id: S) -> Self
     where
         S: Into<String>,
@@ -61,6 +66,7 @@ impl RelayMessage {
         }
     }
 
+    /// Create new `OK` message
     pub fn new_ok<S>(event_id: Sha256Hash, status: bool, message: S) -> Self
     where
         S: Into<String>,
@@ -72,6 +78,7 @@ impl RelayMessage {
         }
     }
 
+    /// Create new `AUTH` message
     pub fn new_auth<S>(challenge: S) -> Self
     where
         S: Into<String>,
@@ -81,6 +88,7 @@ impl RelayMessage {
         }
     }
 
+    /// Serialize [`RelayMessage`] as JSON string
     pub fn as_json(&self) -> String {
         match self {
             Self::Event {
@@ -101,6 +109,7 @@ impl RelayMessage {
         }
     }
 
+    /// Deserialize [`RelayMessage`] as JSON string
     pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
     where
         S: Into<String>,

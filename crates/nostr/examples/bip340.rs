@@ -1,5 +1,5 @@
 // Copyright (c) 2021 Paul Miller
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 use std::collections::HashMap;

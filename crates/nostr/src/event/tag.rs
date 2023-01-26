@@ -1,5 +1,7 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! Tag
 
 use std::fmt;
 use std::num::ParseIntError;
@@ -14,27 +16,37 @@ use url::Url;
 
 use crate::Sha256Hash;
 
+/// [`Tag`] error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
+    /// Impossible to parse [`Marker`]
     #[error("impossible to parse marker")]
     MarkerParseError,
-    #[error("impossible to find kind")]
+    /// Impossible to find tag kind
+    #[error("impossible to find tag kind")]
     KindNotFound,
+    /// Impossible to parse integer
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
-    #[error("secp256k1 error: {0}")]
+    /// Secp256k1
+    #[error(transparent)]
     Secp256k1(#[from] bitcoin::secp256k1::Error),
     /// Hex decoding error
-    #[error("hex decoding error: {0}")]
+    #[error(transparent)]
     Hex(#[from] bitcoin::hashes::hex::Error),
+    /// Url parse error
     #[error("invalid url")]
     Url(#[from] url::ParseError),
 }
 
+/// Marker
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Marker {
+    /// Root
     Root,
+    /// Reply
     Reply,
+    /// Custom
     Custom(String),
 }
 
@@ -62,18 +74,30 @@ where
     }
 }
 
+/// Tag kind
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TagKind {
+    /// Public key
     P,
+    /// Event id
     E,
+    /// Identifier
     D,
+    /// Relay
     Relay,
+    /// Nonce
     Nonce,
+    /// Delegation
     Delegation,
+    /// Content warning
     ContentWarning,
+    /// Expiration
     Expiration,
+    /// Subject
     Subject,
+    /// Auth challenge
     Challenge,
+    /// Custom tag kind
     Custom(String),
 }
 
@@ -117,6 +141,7 @@ where
     }
 }
 
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Tag {
     Generic(TagKind, Vec<String>),
@@ -146,6 +171,7 @@ pub enum Tag {
 }
 
 impl Tag {
+    /// Parse [`Tag`] from string vector
     pub fn parse<S>(data: Vec<S>) -> Result<Self, Error>
     where
         S: Into<String>,
@@ -153,6 +179,7 @@ impl Tag {
         Tag::try_from(data)
     }
 
+    /// Get [`Tag`] as string vector
     pub fn as_vec(&self) -> Vec<String> {
         self.clone().into()
     }

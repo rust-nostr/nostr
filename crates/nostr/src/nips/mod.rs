@@ -1,5 +1,9 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! NIPs
+//!
+//! See all at https://github.com/nostr-protocol/nips
 
 #[cfg(feature = "nip04")]
 pub mod nip04;

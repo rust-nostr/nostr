@@ -1,5 +1,9 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
+
+//! NIP06
+//!
+//! https://github.com/nostr-protocol/nips/blob/master/06.md
 
 use std::str::FromStr;
 
@@ -15,16 +19,18 @@ use bitcoin::Network;
 use crate::key::Keys;
 use crate::util::time;
 
+/// `NIP06` error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
     /// BIP32 error
-    #[error("BIP32 error: {0}")]
+    #[error(transparent)]
     BIP32(#[from] bitcoin::util::bip32::Error),
     /// BIP39 error
-    #[error("BIP39 error: {0}")]
+    #[error(transparent)]
     BIP39(#[from] bip39::Error),
 }
 
+#[allow(missing_docs)]
 pub trait FromMnemonic: Sized {
     type Err;
     fn from_mnemonic<S>(mnemonic: S, passphrase: Option<S>) -> Result<Self, Self::Err>
@@ -32,6 +38,7 @@ pub trait FromMnemonic: Sized {
         S: Into<String>;
 }
 
+#[allow(missing_docs)]
 pub trait GenerateMnemonic {
     type Err;
     fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err>;
@@ -58,6 +65,7 @@ impl FromMnemonic for Keys {
 impl GenerateMnemonic for Keys {
     type Err = Error;
 
+    /// Generate new `mnemonic`
     fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err> {
         let mut h = HmacEngine::<sha512::Hash>::new(b"nostr");
         let mut os_random = [0u8; 32];
