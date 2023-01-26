@@ -1,3 +1,9 @@
 [bindings.kotlin]
 package_name = "com.p2kishimoto.nostr"
 cdylib_name = "nostr"
+
+[bindings.swift]
+cdylib_name = "nostr"
+
+[bindings.python]
+cdylib_name = "nostr"

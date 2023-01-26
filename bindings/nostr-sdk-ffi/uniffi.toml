@@ -1,3 +1,9 @@
 [bindings.kotlin]
 package_name = "com.p2kishimoto.nostr.sdk"
 cdylib_name = "nostrsdk"
+
+[bindings.swift]
+cdylib_name = "nostrsdk"
+
+[bindings.python]
+cdylib_name = "nostrsdk"

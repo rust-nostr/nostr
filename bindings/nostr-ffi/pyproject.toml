@@ -1,0 +1,32 @@
+[build-system]
+requires = ["maturin>=0.14,<0.15"]
+build-backend = "maturin"
+
+[tool.maturin]
+bindings = "uniffi"
+profile = "release"
+strip = true
+exclude = ["Makefile"]
+
+[project]
+name = "nostr"
+version = "0.1.0"
+description = "High level Nostr client library."
+urls = { Homepage = "https://github.com/rust-nostr/nostr" }
+requires-python = ">=3.7"
+license = { file = "LICENSE" }
+keywords = ["nostr"]
+authors = [
+  { name = "Yuki Kishimoto", email = "yukikishimoto@protonmail.com" }
+]
+maintainers = [
+  { name = "Yuki Kishimoto", email = "yukikishimoto@protonmail.com" }
+]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    'Operating System :: POSIX :: Linux',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: MacOS :: MacOS X',
+]
