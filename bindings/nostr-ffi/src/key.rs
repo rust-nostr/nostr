@@ -54,9 +54,9 @@ impl Keys {
         })
     }
 
-    pub fn generate_from_os_random() -> Self {
+    pub fn generate() -> Self {
         Self {
-            keys: KeysSdk::generate_from_os_random(),
+            keys: KeysSdk::generate(),
         }
     }
 

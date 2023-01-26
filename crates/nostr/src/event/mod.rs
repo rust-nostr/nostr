@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_custom_kind() {
-        let keys = Keys::generate_from_os_random();
+        let keys = Keys::generate();
         let e: Event = EventBuilder::new(Kind::Custom(123), "my content", &[])
             .to_event(&keys)
             .unwrap();

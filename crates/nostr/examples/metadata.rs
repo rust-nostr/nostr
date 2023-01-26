@@ -12,7 +12,7 @@ fn main() -> Result<()> {
 
     let (mut socket, _response) = connect(WS_ENDPOINT).expect("Can't connect to relay");
 
-    let my_keys = Keys::generate_from_os_random();
+    let my_keys = Keys::generate();
 
     let metadata = Metadata::new()
         .name("username")

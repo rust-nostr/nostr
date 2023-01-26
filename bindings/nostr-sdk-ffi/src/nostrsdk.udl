@@ -25,7 +25,7 @@ interface Keys {
     constructor(string pk);
     [Throws=NostrError, Name=from_bech32]
     constructor(string sk);
-    [Name=generate_from_os_random]
+    [Name=generate]
     constructor();
     [Throws=NostrError, Name=from_mnemonic]
     constructor(string mnemonic, optional string? passphrase = null);

@@ -68,12 +68,17 @@ impl Keys {
         }
     }
 
-    /// Generate a new random keys
-    pub fn generate_from_os_random() -> Self {
+    pub fn generate() -> Self {
         let secp = Secp256k1::new();
         let mut rng = OsRng::default();
         let (secret_key, _) = secp.generate_keypair(&mut rng);
         Self::new(secret_key)
+    }
+
+    /// Generate a new random keys
+    #[deprecated = "use `generate` method"]
+    pub fn generate_from_os_random() -> Self {
+        Self::generate()
     }
 
     /// Get public key

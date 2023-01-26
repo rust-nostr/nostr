@@ -7,7 +7,7 @@ use nostr::{Keys, Result};
 
 fn main() -> Result<()> {
     //  Random keys
-    let keys = Keys::generate_from_os_random();
+    let keys = Keys::generate();
     let public_key = keys.public_key();
     let secret_key = keys.secret_key()?;
 

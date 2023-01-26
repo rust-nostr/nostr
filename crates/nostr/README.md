@@ -26,7 +26,7 @@ use tungstenite::{Message as WsMessage};
 
 fn main() -> Result<()> {
     // Generate new random keys
-    let my_keys = Keys::generate_from_os_random();
+    let my_keys = Keys::generate();
 
     // or use your already existing
     //
