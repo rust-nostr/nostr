@@ -47,7 +47,7 @@ pub struct Client {
 }
 
 impl Client {
-    /// Create a new `Client`
+    /// Create a new [`Client`]
     ///
     /// # Example
     /// ```rust,no_run
@@ -60,6 +60,16 @@ impl Client {
         Self::new_with_opts(keys, Options::default())
     }
 
+    /// Create a new [`Client`] with [`Options`]
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr_sdk::{Client, Options};
+    ///
+    /// let my_keys = Client::generate_keys();
+    /// let opts = Options::new().wait_for_send(true);
+    /// let client = Client::new_with_opts(&my_keys, opts);
+    /// ```
     pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
             pool: RelayPool::new(),
@@ -73,8 +83,9 @@ impl Client {
     }
 
     /// Generate new random keys using entorpy from OS
+    #[deprecated = "use `Keys::generate()`"]
     pub fn generate_keys() -> Keys {
-        Keys::generate_from_os_random()
+        Keys::generate()
     }
 
     /// Get current [`Keys`]
@@ -230,24 +241,6 @@ impl Client {
     /// ```
     pub async fn connect(&self) {
         self.pool.connect(self.opts.get_wait_for_connection()).await;
-    }
-
-    /// Connect to all added relays waiting for initial connection and keep connection alive
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// # use nostr_sdk::Client;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
-    /// #   let client = Client::new(&my_keys);
-    /// client.connect_and_wait().await;
-    /// # }
-    /// ```
-    #[deprecated]
-    pub async fn connect_and_wait(&self) {
-        self.pool.connect(true).await;
     }
 
     /// Disconnect from all relays

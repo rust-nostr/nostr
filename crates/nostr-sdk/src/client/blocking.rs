@@ -33,7 +33,9 @@ impl Client {
         }
     }
 
+    #[deprecated]
     pub fn generate_keys() -> Keys {
+        #[allow(deprecated)]
         super::Client::generate_keys()
     }
 
@@ -90,14 +92,6 @@ impl Client {
     pub fn connect(&self) {
         RUNTIME.block_on(async {
             self.client.connect().await;
-        })
-    }
-
-    #[deprecated]
-    pub fn connect_and_wait(&self) {
-        RUNTIME.block_on(async {
-            #[allow(deprecated)]
-            self.client.connect_and_wait().await;
         })
     }
 

@@ -35,7 +35,7 @@ use nostr_sdk::prelude::*;
 #[tokio::main]
 async fn main() -> Result<()> {
     // Generate new keys
-    let my_keys: Keys = Client::generate_keys();
+    let my_keys: Keys = Keys::generate();
     //
     // or use your already existing
     //
