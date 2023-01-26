@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! Client
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -22,23 +24,30 @@ pub use self::options::Options;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotification};
 use crate::Relay;
 
+/// [`Client`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Url parse error
     #[error("impossible to parse URL: {0}")]
     Url(#[from] nostr::url::ParseError),
+    /// [`RelayPool`] error
     #[error("relay pool error: {0}")]
     RelayPool(#[from] RelayPoolError),
+    /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
+    /// [`EventBuilder`] error
     #[error("event builder error: {0}")]
     EventBuilder(#[from] EventBuilderError),
+    /// Secp256k1 error
     #[error("secp256k1 error: {0}")]
     Secp256k1(#[from] nostr::secp256k1::Error),
+    /// Hex error
     #[error("hex decoding error: {0}")]
     Hex(#[from] nostr::hashes::hex::Error),
 }
 
+/// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
@@ -78,10 +87,12 @@ impl Client {
         }
     }
 
+    /// Update default difficulty for new [`Event`]
     pub fn update_difficulty(&self, difficulty: u8) {
         self.opts.update_difficulty(difficulty);
     }
 
+    /// Update current [`Options`]
     pub fn update_opts(&self, new_opts: Options) {
         self.opts.update_opts(new_opts);
     }
@@ -551,8 +562,12 @@ impl Client {
     }
 
     /// Repost event
-    pub async fn repost_event(&self, event: &Event) -> Result<Sha256Hash, Error> {
-        let builder = EventBuilder::repost(event);
+    pub async fn repost_event(
+        &self,
+        event_id: Sha256Hash,
+        public_key: XOnlyPublicKey,
+    ) -> Result<Sha256Hash, Error> {
+        let builder = EventBuilder::repost(event_id, public_key);
         self.send_event_builder(builder).await
     }
 
@@ -639,6 +654,31 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
+    /// React to an [`Event`]
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use std::str::FromStr;
+    ///
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Client::generate_keys();
+    /// #   let client = Client::new(&my_keys);
+    /// let event_id =
+    ///     Sha256Hash::from_str("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
+    ///         .unwrap();
+    /// let public_key = XOnlyPublicKey::from_str(
+    ///     "a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
+    /// )
+    /// .unwrap();
+    ///
+    /// client.reaction(event_id, public_key, "🐻").await.unwrap();
+    /// # }
+    /// ```
     pub async fn reaction<S>(
         &self,
         event_id: Sha256Hash,
@@ -725,6 +765,7 @@ impl Client {
             .await
     }
 
+    /// Get entity of hex string
     pub async fn get_entity_of<S>(&self, entity: S) -> Result<Entity, Error>
     where
         S: Into<String>,
@@ -751,6 +792,7 @@ impl Client {
         }
     }
 
+    /// Handle notifications
     pub async fn handle_notifications<F>(&self, func: F) -> Result<(), Error>
     where
         F: Fn(RelayPoolNotification) -> Result<(), Error>,

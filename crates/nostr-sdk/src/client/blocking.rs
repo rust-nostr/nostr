@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+#![allow(missing_docs)]
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
@@ -173,8 +175,12 @@ impl Client {
         RUNTIME.block_on(async { self.client.send_direct_msg(receiver, msg).await })
     }
 
-    pub fn repost_event(&self, event: &Event) -> Result<Sha256Hash, Error> {
-        RUNTIME.block_on(async { self.client.repost_event(event).await })
+    pub fn repost_event(
+        &self,
+        event_id: Sha256Hash,
+        public_key: XOnlyPublicKey,
+    ) -> Result<Sha256Hash, Error> {
+        RUNTIME.block_on(async { self.client.repost_event(event_id, public_key).await })
     }
 
     pub fn delete_event<S>(

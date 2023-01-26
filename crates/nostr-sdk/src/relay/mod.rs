@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! Relay
+
 use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -25,14 +27,19 @@ use crate::RelayPoolNotification;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 
+/// [`Relay`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Channel timeout
     #[error("channel timeout")]
     ChannelTimeout,
+    /// Message response timeout
     #[error("recv message response timeout")]
     RecvTimeout,
+    /// Message not sent
     #[error("message not sent")]
     MessagetNotSent,
+    /// Impossible to receive oneshot message
     #[error("impossible to recv msg")]
     OneShotRecvError,
 }
@@ -64,14 +71,19 @@ impl fmt::Display for RelayStatus {
     }
 }
 
+/// Relay event
 #[derive(Debug)]
 pub enum RelayEvent {
+    /// Send [`ClientMessage`]
     SendMsg(Box<ClientMessage>),
     // Ping,
+    /// Close
     Close,
+    /// Completly disconnect
     Terminate,
 }
 
+/// Relay
 #[derive(Debug, Clone)]
 pub struct Relay {
     url: Url,
@@ -116,6 +128,7 @@ impl Relay {
         self.proxy
     }
 
+    /// Get [`RelayStatus`]
     pub async fn status(&self) -> RelayStatus {
         let status = self.status.lock().await;
         status.clone()
@@ -400,6 +413,7 @@ impl Relay {
         }
     }
 
+    /// Subscribe
     pub async fn subscribe(&self, wait: bool) -> Result<Uuid, Error> {
         let mut subscription = SUBSCRIPTION.lock().await;
         let channel = subscription.get_channel(&self.url());
@@ -412,6 +426,7 @@ impl Relay {
         Ok(channel_id)
     }
 
+    /// Unsubscribe
     pub async fn unsubscribe(&self, wait: bool) -> Result<(), Error> {
         let mut subscription = SUBSCRIPTION.lock().await;
         if let Some(channel) = subscription.remove_channel(&self.url()) {
@@ -421,6 +436,7 @@ impl Relay {
         Ok(())
     }
 
+    /// Request events of filter. All events will be sent to notification listener
     pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
         let relay = self.clone();
         thread::spawn(async move {

@@ -4,6 +4,7 @@
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 
+/// Options
 #[derive(Debug, Clone)]
 pub struct Options {
     /// Wait for connection
@@ -25,10 +26,12 @@ impl Default for Options {
 }
 
 impl Options {
+    /// Create new (default) [`Options`]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// If set to `true`, [`Client`] wait that `Relay` try at least one time to enstablish a connection before continue.
     pub fn wait_for_connection(self, wait: bool) -> Self {
         Self {
             wait_for_connection: Arc::new(AtomicBool::new(wait)),
@@ -40,6 +43,7 @@ impl Options {
         self.wait_for_connection.load(Ordering::SeqCst)
     }
 
+    /// If set to `true`, [`Client`] wait that an event is sent before continue.
     pub fn wait_for_send(self, wait: bool) -> Self {
         Self {
             wait_for_send: Arc::new(AtomicBool::new(wait)),
@@ -51,6 +55,7 @@ impl Options {
         self.wait_for_send.load(Ordering::SeqCst)
     }
 
+    /// Set default POW diffficulty for [`Event`]
     pub fn difficulty(self, difficulty: u8) -> Self {
         Self {
             difficulty: Arc::new(AtomicU8::new(difficulty)),
@@ -68,6 +73,7 @@ impl Options {
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(difficulty));
     }
 
+    /// Update [`Options`]
     pub fn update_opts(&self, new_opts: Options) {
         let _ = self
             .wait_for_connection

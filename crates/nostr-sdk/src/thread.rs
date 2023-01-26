@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! Thread
+
 #[cfg(feature = "blocking")]
 use std::time::Duration;
 

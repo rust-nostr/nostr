@@ -1,6 +1,10 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+#![warn(missing_docs)]
+
+//! High level Nostr client library.
+
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]

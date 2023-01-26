@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! Relay Pool
+
 use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -18,8 +20,10 @@ use super::{Error as RelayError, Relay};
 use crate::subscription::Subscription;
 use crate::thread;
 
-pub static SUBSCRIPTION: Lazy<Mutex<Subscription>> = Lazy::new(|| Mutex::new(Subscription::new()));
+pub(crate) static SUBSCRIPTION: Lazy<Mutex<Subscription>> =
+    Lazy::new(|| Mutex::new(Subscription::new()));
 
+/// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Relay error
@@ -30,17 +34,30 @@ pub enum Error {
     NoRelayConnected,
 }
 
+/// Relay Pool Message
 #[derive(Debug)]
 pub enum RelayPoolMessage {
-    ReceivedMsg { relay_url: Url, msg: RelayMessage },
+    /// Received new message
+    ReceivedMsg {
+        /// Relay url
+        relay_url: Url,
+        /// Relay message
+        msg: RelayMessage,
+    },
+    /// Event sent
     EventSent(Box<Event>),
+    /// Shutdown
     Shutdown,
 }
 
+/// Relay Pool Notification
 #[derive(Debug, Clone)]
 pub enum RelayPoolNotification {
+    /// Received an [`Event`]
     Event(Url, Event),
+    /// Received a [`RelayMessage`]
     Message(Url, RelayMessage),
+    /// Shutdown
     Shutdown,
 }
 
@@ -120,6 +137,7 @@ impl RelayPoolTask {
     }
 }
 
+/// Relay Pool
 #[derive(Debug, Clone)]
 pub struct RelayPool {
     relays: Arc<Mutex<HashMap<Url, Relay>>>,
@@ -249,6 +267,7 @@ impl RelayPool {
         Ok(())
     }
 
+    /// Get events of filters
     pub async fn get_events_of(
         &self,
         filters: Vec<SubscriptionFilter>,
@@ -301,6 +320,7 @@ impl RelayPool {
         Ok(events)
     }
 
+    /// Request events of filter. All events will be sent to notification listener
     pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
         let this = self.clone();
         let req_events_thread = async move {
