@@ -62,6 +62,12 @@ impl Options {
         self.difficulty.load(Ordering::SeqCst)
     }
 
+    pub(crate) fn update_difficulty(&self, difficulty: u8) {
+        let _ = self
+            .difficulty
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(difficulty));
+    }
+
     pub fn update_opts(&self, new_opts: Options) {
         let _ = self
             .wait_for_connection
@@ -73,10 +79,6 @@ impl Options {
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
                 Some(new_opts.get_wait_for_send())
             });
-        let _ = self
-            .difficulty
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
-                Some(new_opts.get_difficulty())
-            });
+        self.update_difficulty(new_opts.get_difficulty());
     }
 }

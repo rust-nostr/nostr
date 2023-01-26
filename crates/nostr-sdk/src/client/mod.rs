@@ -78,6 +78,10 @@ impl Client {
         }
     }
 
+    pub fn update_difficulty(&self, difficulty: u8) {
+        self.opts.update_difficulty(difficulty);
+    }
+
     pub fn update_opts(&self, new_opts: Options) {
         self.opts.update_opts(new_opts);
     }
