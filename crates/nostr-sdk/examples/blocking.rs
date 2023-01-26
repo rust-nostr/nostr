@@ -3,13 +3,9 @@
 
 use std::str::FromStr;
 
-use nostr::nips::nip04::decrypt;
-use nostr::nips::nip19::FromBech32;
-use nostr::secp256k1::SecretKey;
-use nostr::util::time::timestamp;
-use nostr::{Entity, Keys, Kind, Sha256Hash, SubscriptionFilter};
 use nostr_sdk::client::blocking::Client;
-use nostr_sdk::{RelayPoolNotification, Result};
+use nostr_sdk::nostr::util::time;
+use nostr_sdk::prelude::*;
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
@@ -37,7 +33,7 @@ fn main() -> Result<()> {
 
     let subscription = SubscriptionFilter::new()
         .pubkey(my_keys.public_key())
-        .since(timestamp());
+        .since(time::timestamp());
 
     client.subscribe(vec![subscription])?;
 
