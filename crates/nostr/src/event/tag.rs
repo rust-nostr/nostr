@@ -55,7 +55,7 @@ impl fmt::Display for Marker {
         match self {
             Self::Root => write!(f, "root"),
             Self::Reply => write!(f, "reply"),
-            Self::Custom(m) => write!(f, "{}", m),
+            Self::Custom(m) => write!(f, "{m}"),
         }
     }
 }
@@ -114,7 +114,7 @@ impl fmt::Display for TagKind {
             Self::Expiration => write!(f, "expiration"),
             Self::Subject => write!(f, "subject"),
             Self::Challenge => write!(f, "challenge"),
-            Self::Custom(tag) => write!(f, "{}", tag),
+            Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
 }

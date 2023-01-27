@@ -31,7 +31,7 @@ pub fn sign_delegation(
 ) -> Result<Signature, Error> {
     let secp = Secp256k1::new();
     let keypair: &KeyPair = &keys.key_pair()?;
-    let unhashed_token: String = format!("nostr:delegation:{}:{}", delegatee_pk, conditions);
+    let unhashed_token: String = format!("nostr:delegation:{delegatee_pk}:{conditions}");
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
     Ok(secp.sign_schnorr(&message, keypair))

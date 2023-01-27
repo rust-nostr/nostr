@@ -13,7 +13,7 @@ pub enum NostrError {
 impl fmt::Display for NostrError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Generic { err } => write!(f, "{}", err),
+            Self::Generic { err } => write!(f, "{err}"),
         }
     }
 }

@@ -43,7 +43,7 @@ fn compose_url(nip05: &str) -> Result<(String, &str), Error> {
     }
     let name: &str = data[0];
     let domain: &str = data[1];
-    let url = format!("https://{}/.well-known/nostr.json?name={}", domain, name);
+    let url = format!("https://{domain}/.well-known/nostr.json?name={name}");
     Ok((url, name))
 }
 
@@ -71,7 +71,7 @@ pub async fn verify(
     let (url, name) = compose_url(nip05)?;
     let mut builder = Client::builder();
     if let Some(proxy) = proxy {
-        let proxy = format!("socks5h://{}", proxy);
+        let proxy = format!("socks5h://{proxy}");
         builder = builder.proxy(Proxy::all(proxy)?);
     }
     let client: Client = builder.build()?;
@@ -90,7 +90,7 @@ pub fn verify(
     let (url, name) = compose_url(nip05)?;
     let mut builder = Client::builder();
     if let Some(proxy) = proxy {
-        let proxy = format!("socks5h://{}", proxy);
+        let proxy = format!("socks5h://{proxy}");
         builder = builder.proxy(Proxy::all(proxy)?);
     }
     let client: Client = builder.build()?;

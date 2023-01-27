@@ -62,7 +62,7 @@ impl RelayInformationDocument {
     pub async fn get(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
         let mut builder = Client::builder();
         if let Some(proxy) = proxy {
-            let proxy = format!("socks5h://{}", proxy);
+            let proxy = format!("socks5h://{proxy}");
             builder = builder.proxy(Proxy::all(proxy)?);
         }
         let client: Client = builder.build()?;
@@ -81,7 +81,7 @@ impl RelayInformationDocument {
     pub fn get(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
         let mut builder = Client::builder();
         if let Some(proxy) = proxy {
-            let proxy = format!("socks5h://{}", proxy);
+            let proxy = format!("socks5h://{proxy}");
             builder = builder.proxy(Proxy::all(proxy)?);
         }
         let client: Client = builder.build()?;

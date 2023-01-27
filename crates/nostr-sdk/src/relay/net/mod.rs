@@ -75,7 +75,7 @@ async fn connect_proxy(
     let timeout = timeout.unwrap_or(Duration::from_secs(60));
     let addr: String = match url.host_str() {
         Some(host) => match url.port_or_known_default() {
-            Some(port) => format!("{}:{}", host, port),
+            Some(port) => format!("{host}:{port}"),
             None => return Err(Error::Url(ParseError::EmptyHost)),
         },
         None => return Err(Error::Url(ParseError::InvalidPort)),
