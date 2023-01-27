@@ -31,7 +31,7 @@ pub enum Error {
 }
 
 /// Relay information document
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RelayInformationDocument {
     ///
     pub id: String,
@@ -51,46 +51,67 @@ pub struct RelayInformationDocument {
     pub version: String,
 }
 
+impl RelayInformationDocument {
+    /// Create new empty [`RelayInformationDocument`]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Get Relay Information Document
+    #[cfg(not(feature = "blocking"))]
+    pub async fn get(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
+        let mut builder = Client::builder();
+        if let Some(proxy) = proxy {
+            let proxy = format!("socks5h://{}", proxy);
+            builder = builder.proxy(Proxy::all(proxy)?);
+        }
+        let client: Client = builder.build()?;
+        let req = client.get(url).header("Accept", "application/nostr+json");
+        match req.send().await {
+            Ok(response) => match response.json().await {
+                Ok(json) => Ok(json),
+                Err(_) => Err(Error::InvalidInformationDocument),
+            },
+            Err(_) => Err(Error::InaccessibleInformationDocument),
+        }
+    }
+
+    /// Get Relay Information Document
+    #[cfg(feature = "blocking")]
+    pub fn get(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
+        let mut builder = Client::builder();
+        if let Some(proxy) = proxy {
+            let proxy = format!("socks5h://{}", proxy);
+            builder = builder.proxy(Proxy::all(proxy)?);
+        }
+        let client: Client = builder.build()?;
+        let req = client.get(url).header("Accept", "application/nostr+json");
+        match req.send() {
+            Ok(response) => match response.json() {
+                Ok(json) => Ok(json),
+                Err(_) => Err(Error::InvalidInformationDocument),
+            },
+            Err(_) => Err(Error::InaccessibleInformationDocument),
+        }
+    }
+}
+
 /// Get Relay Information Document
+#[deprecated]
 #[cfg(not(feature = "blocking"))]
 pub async fn get_relay_information_document(
     url: Url,
     proxy: Option<SocketAddr>,
 ) -> Result<RelayInformationDocument, Error> {
-    let mut builder = Client::builder();
-    if let Some(proxy) = proxy {
-        let proxy = format!("socks5h://{}", proxy);
-        builder = builder.proxy(Proxy::all(proxy)?);
-    }
-    let client: Client = builder.build()?;
-    let req = client.get(url).header("Accept", "application/nostr+json");
-    match req.send().await {
-        Ok(response) => match response.json().await {
-            Ok(json) => Ok(json),
-            Err(_) => Err(Error::InvalidInformationDocument),
-        },
-        Err(_) => Err(Error::InaccessibleInformationDocument),
-    }
+    RelayInformationDocument::get(url, proxy).await
 }
 
 /// Get Relay Information Document
 #[cfg(feature = "blocking")]
+#[deprecated]
 pub fn get_relay_information_document(
     url: Url,
     proxy: Option<SocketAddr>,
 ) -> Result<RelayInformationDocument, Error> {
-    let mut builder = Client::builder();
-    if let Some(proxy) = proxy {
-        let proxy = format!("socks5h://{}", proxy);
-        builder = builder.proxy(Proxy::all(proxy)?);
-    }
-    let client: Client = builder.build()?;
-    let req = client.get(url).header("Accept", "application/nostr+json");
-    match req.send() {
-        Ok(response) => match response.json() {
-            Ok(json) => Ok(json),
-            Err(_) => Err(Error::InvalidInformationDocument),
-        },
-        Err(_) => Err(Error::InaccessibleInformationDocument),
-    }
+    RelayInformationDocument::get(url, proxy)
 }
