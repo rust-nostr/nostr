@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use nostr::{ClientMessage, RelayMessage, SubscriptionFilter, Url};
+use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter, Url};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::oneshot;
@@ -36,6 +36,9 @@ pub enum Error {
     /// Message response timeout
     #[error("recv message response timeout")]
     RecvTimeout,
+    /// Generic timeout
+    #[error("timeout")]
+    Timeout,
     /// Message not sent
     #[error("message not sent")]
     MessagetNotSent,
@@ -434,6 +437,57 @@ impl Relay {
                 .await?;
         }
         Ok(())
+    }
+
+    /// Get events of filters
+    pub async fn get_events_of(
+        &self,
+        filters: Vec<SubscriptionFilter>,
+        timeout: Duration,
+    ) -> Result<Vec<Event>, Error> {
+        let mut events: Vec<Event> = Vec::new();
+
+        let id = Uuid::new_v4();
+
+        self.send_msg(
+            ClientMessage::new_req(id.to_string(), filters.clone()),
+            false,
+        )
+        .await?;
+
+        let mut notifications = self.notification_sender.subscribe();
+        let recv = async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(_, msg) = notification {
+                    match msg {
+                        RelayMessage::Event {
+                            subscription_id,
+                            event,
+                        } => {
+                            if subscription_id == id.to_string() {
+                                events.push(event.as_ref().clone());
+                            }
+                        }
+                        RelayMessage::EndOfStoredEvents { subscription_id } => {
+                            if subscription_id == id.to_string() {
+                                break;
+                            }
+                        }
+                        _ => (),
+                    };
+                }
+            }
+        };
+
+        if tokio::time::timeout(timeout, recv).await.is_err() {
+            return Err(Error::Timeout);
+        }
+
+        // Unsubscribe
+        self.send_msg(ClientMessage::close(id.to_string()), false)
+            .await?;
+
+        Ok(events)
     }
 
     /// Request events of filter. All events will be sent to notification listener
