@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
@@ -109,9 +110,9 @@ impl Client {
         RUNTIME.block_on(async { self.client.get_events_of(filters).await })
     }
 
-    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
+    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Duration) {
         RUNTIME.block_on(async {
-            self.client.req_events_of(filters);
+            self.client.req_events_of(filters, timeout).await;
         })
     }
 

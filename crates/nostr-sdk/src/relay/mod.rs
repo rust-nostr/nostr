@@ -437,7 +437,7 @@ impl Relay {
     }
 
     /// Request events of filter. All events will be sent to notification listener
-    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
+    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Duration) {
         let relay = self.clone();
         thread::spawn(async move {
             let id = Uuid::new_v4();
@@ -458,16 +458,22 @@ impl Relay {
             };
 
             let mut notifications = relay.notification_sender.subscribe();
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message(
-                    _,
-                    RelayMessage::EndOfStoredEvents { subscription_id },
-                ) = notification
-                {
-                    if subscription_id == id.to_string() {
-                        break;
+            let recv = async {
+                while let Ok(notification) = notifications.recv().await {
+                    if let RelayPoolNotification::Message(
+                        _,
+                        RelayMessage::EndOfStoredEvents { subscription_id },
+                    ) = notification
+                    {
+                        if subscription_id == id.to_string() {
+                            break;
+                        }
                     }
                 }
+            };
+
+            if let Err(e) = tokio::time::timeout(timeout, recv).await {
+                log::error!("{e}");
             }
 
             // Unsubscribe

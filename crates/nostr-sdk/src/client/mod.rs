@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::time::Duration;
 
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
@@ -329,8 +330,8 @@ impl Client {
 
     /// Request events of filters
     /// All events will be received on notification listener (`client.notifications()`)
-    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
-        self.pool.req_events_of(filters);
+    pub async fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Duration) {
+        self.pool.req_events_of(filters, timeout).await;
     }
 
     /// Send client message

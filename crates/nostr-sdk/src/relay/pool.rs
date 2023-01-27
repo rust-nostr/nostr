@@ -321,60 +321,11 @@ impl RelayPool {
     }
 
     /// Request events of filter. All events will be sent to notification listener
-    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>) {
-        let this = self.clone();
-        let req_events_thread = async move {
-            let id = Uuid::new_v4();
-
-            let relays = this.relays().await;
-
-            // Subscribe
-            for relay in relays.values() {
-                if let Err(e) = relay
-                    .send_msg(
-                        ClientMessage::new_req(id.to_string(), filters.clone()),
-                        false,
-                    )
-                    .await
-                {
-                    log::error!(
-                        "Impossible to send REQ to {}: {}",
-                        relay.url(),
-                        e.to_string()
-                    );
-                };
-            }
-
-            let mut notifications = this.notifications();
-
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message(
-                    _,
-                    RelayMessage::EndOfStoredEvents { subscription_id },
-                ) = notification
-                {
-                    if subscription_id == id.to_string() {
-                        break;
-                    }
-                }
-            }
-
-            // Unsubscribe
-            for relay in relays.values() {
-                if let Err(e) = relay
-                    .send_msg(ClientMessage::close(id.to_string()), false)
-                    .await
-                {
-                    log::error!(
-                        "Impossible to close subscription with {}: {}",
-                        relay.url(),
-                        e.to_string()
-                    );
-                }
-            }
-        };
-
-        thread::spawn(async move { req_events_thread.await });
+    pub async fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Duration) {
+        let relays = self.relays().await;
+        for relay in relays.values() {
+            relay.req_events_of(filters.clone(), timeout);
+        }
     }
 
     /// Connect to all added relays and keep connection alive
