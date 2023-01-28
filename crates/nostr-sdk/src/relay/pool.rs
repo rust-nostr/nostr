@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::url::Url;
-use nostr::{ClientMessage, Event, RelayMessage, Sha256Hash, SubscriptionFilter};
+use nostr::{ClientMessage, Event, EventId, RelayMessage, SubscriptionFilter};
 use once_cell::sync::Lazy;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
@@ -64,7 +64,7 @@ pub enum RelayPoolNotification {
 struct RelayPoolTask {
     receiver: Receiver<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
-    events: VecDeque<Sha256Hash>,
+    events: VecDeque<EventId>,
 }
 
 const MAX_EVENTS: usize = 100000;
@@ -129,7 +129,7 @@ impl RelayPoolTask {
         }
     }
 
-    fn add_event(&mut self, event_id: Sha256Hash) {
+    fn add_event(&mut self, event_id: EventId) {
         while self.events.len() >= MAX_EVENTS {
             self.events.pop_front();
         }

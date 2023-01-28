@@ -5,12 +5,12 @@
 //!
 //! https://github.com/nostr-protocol/nips/blob/master/26.md
 
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 
 use crate::key::{self, Keys};
-use crate::Sha256Hash;
 
 /// `NIP26` error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]

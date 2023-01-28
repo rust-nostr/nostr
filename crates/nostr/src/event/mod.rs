@@ -6,19 +6,19 @@
 
 use std::str::FromStr;
 
-use bitcoin::hashes::hex::FromHex;
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{Secp256k1, XOnlyPublicKey};
+use bitcoin::secp256k1::{Message, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize};
 
 pub mod builder;
+pub mod id;
 pub mod kind;
 pub mod tag;
 
 pub use self::builder::EventBuilder;
+pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::tag::{Marker, Tag, TagKind};
-use crate::Sha256Hash;
 
 /// [`Event`] error
 #[derive(Debug, thiserror::Error)]
@@ -41,7 +41,7 @@ pub enum Error {
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Event {
     /// Id
-    pub id: Sha256Hash,
+    pub id: EventId,
     /// Author
     pub pubkey: XOnlyPublicKey,
     /// Timestamp (seconds)
@@ -73,14 +73,14 @@ impl Event {
     /// Verify event
     pub fn verify(&self) -> Result<(), Error> {
         let secp = Secp256k1::new();
-        let id = EventBuilder::gen_id(
+        let id = EventId::new(
             &self.pubkey,
             self.created_at,
             &self.kind,
             &self.tags,
             &self.content,
         );
-        let message = bitcoin::secp256k1::Message::from_slice(&id)?;
+        let message = Message::from_slice(id.as_bytes())?;
         secp.verify_schnorr(&self.sig, &message, &self.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }
@@ -113,7 +113,7 @@ impl Event {
         content: &str,
         sig: &str,
     ) -> Result<Self, Error> {
-        let id = Sha256Hash::from_hex(id)?;
+        let id = EventId::from_hex(id).unwrap();
         let pubkey = XOnlyPublicKey::from_str(pubkey)?;
         let kind = serde_json::from_str(&kind.to_string())?;
         let sig = Signature::from_str(sig)?;

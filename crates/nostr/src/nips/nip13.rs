@@ -6,7 +6,7 @@
 //!
 //! https://github.com/nostr-protocol/nips/blob/master/13.md
 
-use crate::Sha256Hash;
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
 
 /// Gets the number of leading zero bits of a hash. Result is between 0 and 255.
 pub fn get_leading_zero_bits(h: Sha256Hash) -> u8 {

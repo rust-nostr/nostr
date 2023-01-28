@@ -8,17 +8,17 @@
 #![allow(missing_docs)]
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
-use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 
-use crate::Sha256Hash;
+#[cfg(feature = "base")]
+use crate::event::id::{self, EventId};
 
-const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
-const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
-const PREFIX_BECH32_NOTE_ID: &str = "note";
-const PREFIX_BECH32_PROFILE: &str = "nprofile";
-const PREFIX_BECH32_EVENT: &str = "nevent";
+pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
+pub const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
+pub const PREFIX_BECH32_NOTE_ID: &str = "note";
+pub const PREFIX_BECH32_PROFILE: &str = "nprofile";
+pub const PREFIX_BECH32_EVENT: &str = "nevent";
 
 /// `NIP19` error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
@@ -47,6 +47,10 @@ pub enum Error {
     /// Hash error
     #[error(transparent)]
     Hash(#[from] bitcoin::hashes::Error),
+    /// EventId error
+    #[cfg(feature = "base")]
+    #[error(transparent)]
+    EventId(#[from] id::Error),
 }
 
 pub trait FromBech32: Sized {
@@ -92,7 +96,8 @@ impl FromBech32 for XOnlyPublicKey {
     }
 }
 
-impl FromBech32 for Sha256Hash {
+#[cfg(feature = "base")]
+impl FromBech32 for EventId {
     type Err = Error;
     fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
     where
@@ -106,7 +111,7 @@ impl FromBech32 for Sha256Hash {
         }
 
         let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32NoteParseError)?;
-        Ok(Sha256Hash::from_slice(data.as_slice())?)
+        Ok(EventId::from_slice(data.as_slice())?)
     }
 }
 
@@ -142,7 +147,8 @@ impl ToBech32 for SecretKey {
 }
 
 // Note ID
-impl ToBech32 for Sha256Hash {
+#[cfg(feature = "base")]
+impl ToBech32 for EventId {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
@@ -251,14 +257,16 @@ impl ToBech32 for Profile {
     }
 }
 
+#[cfg(feature = "base")]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Nip19Event {
-    event_id: Sha256Hash,
+    event_id: EventId,
     relays: Vec<String>,
 }
 
+#[cfg(feature = "base")]
 impl Nip19Event {
-    pub fn new<S>(event_id: Sha256Hash, relays: Vec<S>) -> Self
+    pub fn new<S>(event_id: EventId, relays: Vec<S>) -> Self
     where
         S: Into<String>,
     {
@@ -269,6 +277,7 @@ impl Nip19Event {
     }
 }
 
+#[cfg(feature = "base")]
 impl FromBech32 for Nip19Event {
     type Err = Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
@@ -295,7 +304,7 @@ impl FromBech32 for Nip19Event {
         }
 
         let event_id = data.get(2..34).ok_or(Error::Bech32EventParseError)?;
-        let event_id = Sha256Hash::from_slice(event_id)?;
+        let event_id = EventId::from_slice(event_id)?;
 
         let mut relays: Vec<String> = Vec::new();
         let mut relays_data: Vec<u8> = data.get(34..).ok_or(Error::Bech32EventParseError)?.to_vec();
@@ -322,12 +331,13 @@ impl FromBech32 for Nip19Event {
     }
 }
 
+#[cfg(feature = "base")]
 impl ToBech32 for Nip19Event {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
         let mut bytes: Vec<u8> = vec![0, 32];
-        bytes.extend(self.event_id.iter());
+        bytes.extend(self.event_id.inner().iter());
 
         for relay in self.relays.iter() {
             bytes.extend([1, relay.len() as u8]);
@@ -370,11 +380,11 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "base")]
     #[test]
     fn to_bech32_note() -> Result<()> {
-        let event_id = Sha256Hash::from_str(
-            "d94a3f4dd87b9a3b0bed183b32e916fa29c8020107845d1752d72697fe5309a5",
-        )?;
+        let event_id =
+            EventId::from_hex("d94a3f4dd87b9a3b0bed183b32e916fa29c8020107845d1752d72697fe5309a5")?;
         assert_eq!(
             "note1m99r7nwc0wdrkzldrqan96gklg5usqspq7z9696j6unf0ljnpxjspqfw99".to_string(),
             event_id.to_bech32()?

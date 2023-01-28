@@ -17,7 +17,7 @@ pub use crate::key::*;
 pub use crate::message::*;
 #[cfg(feature = "base")]
 pub use crate::types::*;
-pub use crate::{Result, Sha256Hash};
+pub use crate::Result;
 
 // NIPs
 #[cfg(feature = "nip04")]

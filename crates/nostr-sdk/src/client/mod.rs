@@ -12,7 +12,7 @@ use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{
-    ClientMessage, Contact, Entity, Event, EventBuilder, Keys, Kind, Metadata, Sha256Hash,
+    ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Keys, Kind, Metadata,
     SubscriptionFilter, Tag,
 };
 use tokio::sync::broadcast;
@@ -340,7 +340,7 @@ impl Client {
     }
 
     /// Send event
-    pub async fn send_event(&self, event: Event) -> Result<Sha256Hash, Error> {
+    pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
         let event_id = event.id;
         self.pool
             .send_client_msg(
@@ -351,7 +351,7 @@ impl Client {
         Ok(event_id)
     }
 
-    async fn send_event_builder(&self, builder: EventBuilder) -> Result<Sha256Hash, Error> {
+    async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
         let difficulty: u8 = self.opts.get_difficulty();
         let event: Event = if difficulty > 0 {
             builder.to_pow_event(&self.keys, difficulty)?
@@ -385,7 +385,7 @@ impl Client {
     /// client.update_profile(metadata).await.unwrap();
     /// # }
     /// ```
-    pub async fn update_profile(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
+    pub async fn update_profile(&self, metadata: Metadata) -> Result<EventId, Error> {
         let builder = EventBuilder::set_metadata(metadata)?;
         self.send_event_builder(builder).await
     }
@@ -408,7 +408,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<Sha256Hash, Error>
+    pub async fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -440,7 +440,7 @@ impl Client {
         content: S,
         tags: &[Tag],
         difficulty: u8,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -467,7 +467,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn add_recommended_relay<S>(&self, url: S) -> Result<Sha256Hash, Error>
+    pub async fn add_recommended_relay<S>(&self, url: S) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -479,7 +479,7 @@ impl Client {
     /// Set contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<Sha256Hash, Error> {
+    pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<EventId, Error> {
         let builder = EventBuilder::set_contact_list(list);
         self.send_event_builder(builder).await
     }
@@ -554,7 +554,7 @@ impl Client {
         &self,
         receiver: XOnlyPublicKey,
         msg: S,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -565,9 +565,9 @@ impl Client {
     /// Repost event
     pub async fn repost_event(
         &self,
-        event_id: Sha256Hash,
+        event_id: EventId,
         public_key: XOnlyPublicKey,
-    ) -> Result<Sha256Hash, Error> {
+    ) -> Result<EventId, Error> {
         let builder = EventBuilder::repost(event_id, public_key);
         self.send_event_builder(builder).await
     }
@@ -577,9 +577,9 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     pub async fn delete_event<S>(
         &self,
-        event_id: Sha256Hash,
+        event_id: EventId,
         reason: Option<S>,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -602,7 +602,7 @@ impl Client {
     /// #   let my_keys = Client::generate_keys();
     /// #   let client = Client::new(&my_keys);
     /// let event_id =
-    ///     Sha256Hash::from_str("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
+    ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
     ///         .unwrap();
     /// let public_key = XOnlyPublicKey::from_str(
     ///     "a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
@@ -614,9 +614,9 @@ impl Client {
     /// ```
     pub async fn like(
         &self,
-        event_id: Sha256Hash,
+        event_id: EventId,
         public_key: XOnlyPublicKey,
-    ) -> Result<Sha256Hash, Error> {
+    ) -> Result<EventId, Error> {
         let builder = EventBuilder::new_reaction(event_id, public_key, "+");
         self.send_event_builder(builder).await
     }
@@ -636,7 +636,7 @@ impl Client {
     /// #   let my_keys = Client::generate_keys();
     /// #   let client = Client::new(&my_keys);
     /// let event_id =
-    ///     Sha256Hash::from_str("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
+    ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
     ///         .unwrap();
     /// let public_key = XOnlyPublicKey::from_str(
     ///     "a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
@@ -648,9 +648,9 @@ impl Client {
     /// ```
     pub async fn dislike(
         &self,
-        event_id: Sha256Hash,
+        event_id: EventId,
         public_key: XOnlyPublicKey,
-    ) -> Result<Sha256Hash, Error> {
+    ) -> Result<EventId, Error> {
         let builder = EventBuilder::new_reaction(event_id, public_key, "-");
         self.send_event_builder(builder).await
     }
@@ -670,7 +670,7 @@ impl Client {
     /// #   let my_keys = Client::generate_keys();
     /// #   let client = Client::new(&my_keys);
     /// let event_id =
-    ///     Sha256Hash::from_str("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
+    ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
     ///         .unwrap();
     /// let public_key = XOnlyPublicKey::from_str(
     ///     "a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
@@ -682,10 +682,10 @@ impl Client {
     /// ```
     pub async fn reaction<S>(
         &self,
-        event_id: Sha256Hash,
+        event_id: EventId,
         public_key: XOnlyPublicKey,
         content: S,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -696,7 +696,7 @@ impl Client {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn new_channel(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
+    pub async fn new_channel(&self, metadata: Metadata) -> Result<EventId, Error> {
         let builder = EventBuilder::new_channel(metadata)?;
         self.send_event_builder(builder).await
     }
@@ -706,10 +706,10 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn update_channel(
         &self,
-        channel_id: Sha256Hash,
+        channel_id: EventId,
         relay_url: Url,
         metadata: Metadata,
-    ) -> Result<Sha256Hash, Error> {
+    ) -> Result<EventId, Error> {
         let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata)?;
         self.send_event_builder(builder).await
     }
@@ -719,10 +719,10 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn send_channel_msg<S>(
         &self,
-        channel_id: Sha256Hash,
+        channel_id: EventId,
         relay_url: Url,
         msg: S,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -735,9 +735,9 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn hide_channel_msg<S>(
         &self,
-        message_id: Sha256Hash,
+        message_id: EventId,
         reason: Option<S>,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -752,7 +752,7 @@ impl Client {
         &self,
         pubkey: XOnlyPublicKey,
         reason: Option<S>,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {

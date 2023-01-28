@@ -3,7 +3,6 @@
 
 //! Event builder
 
-use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -12,7 +11,7 @@ use url::Url;
 
 pub use super::kind::Kind;
 pub use super::tag::{Marker, Tag, TagKind};
-use super::Event;
+use super::{Event, EventId};
 use crate::key::{self, Keys};
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
@@ -20,7 +19,6 @@ use crate::nips::nip04;
 use crate::nips::nip13;
 use crate::types::{Contact, Metadata};
 use crate::util::time::timestamp;
-use crate::Sha256Hash;
 
 static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
@@ -67,19 +65,6 @@ impl EventBuilder {
         }
     }
 
-    /// Generate [`Event`] id
-    pub fn gen_id(
-        pubkey: &XOnlyPublicKey,
-        created_at: u64,
-        kind: &Kind,
-        tags: &[Tag],
-        content: &str,
-    ) -> Sha256Hash {
-        let json: Value = json!([0, pubkey, created_at, kind, tags, content]);
-        let event_str: String = json.to_string();
-        Sha256Hash::hash(event_str.as_bytes())
-    }
-
     /// Build [`Event`]
     pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
         let secp = Secp256k1::new();
@@ -87,9 +72,8 @@ impl EventBuilder {
         let pubkey: XOnlyPublicKey = keys.public_key();
         let created_at: u64 = timestamp();
 
-        let id: Sha256Hash =
-            Self::gen_id(&pubkey, created_at, &self.kind, &self.tags, &self.content);
-        let message = Message::from_slice(&id)?;
+        let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
+        let message = Message::from_slice(id.as_bytes())?;
 
         Ok(Event {
             id,
@@ -124,10 +108,9 @@ impl EventBuilder {
             tags.push(Tag::POW { nonce, difficulty });
 
             let created_at: u64 = timestamp();
-            let id: Sha256Hash =
-                Self::gen_id(&pubkey, created_at, &self.kind, &tags, &self.content);
+            let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
 
-            if nip13::get_leading_zero_bits(id) >= difficulty {
+            if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
                 log::debug!(
                     "{} iterations in {} ms. Avg rate {} hashes/second",
                     nonce,
@@ -137,7 +120,7 @@ impl EventBuilder {
 
                 let secp = Secp256k1::new();
                 let keypair: &KeyPair = &keys.key_pair()?;
-                let message = Message::from_slice(&id)?;
+                let message = Message::from_slice(id.as_bytes())?;
 
                 return Ok(Event {
                     id,
@@ -246,7 +229,7 @@ impl EventBuilder {
     }
 
     /// Repost event
-    pub fn repost(event_id: Sha256Hash, public_key: XOnlyPublicKey) -> Self {
+    pub fn repost(event_id: EventId, public_key: XOnlyPublicKey) -> Self {
         Self::new(
             Kind::Repost,
             String::new(),
@@ -258,7 +241,7 @@ impl EventBuilder {
     }
 
     /// Create delete event
-    pub fn delete<S>(ids: Vec<Sha256Hash>, reason: Option<S>) -> Self
+    pub fn delete<S>(ids: Vec<EventId>, reason: Option<S>) -> Self
     where
         S: Into<String>,
     {
@@ -272,7 +255,7 @@ impl EventBuilder {
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
-    pub fn new_reaction<S>(event_id: Sha256Hash, public_key: XOnlyPublicKey, content: S) -> Self
+    pub fn new_reaction<S>(event_id: EventId, public_key: XOnlyPublicKey, content: S) -> Self
     where
         S: Into<String>,
     {
@@ -318,7 +301,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn set_channel_metadata(
-        channel_id: Sha256Hash, // event id of kind 40
+        channel_id: EventId, // event id of kind 40
         relay_url: Url,
         metadata: Metadata,
     ) -> Result<Self, Error> {
@@ -354,7 +337,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn new_channel_msg<S>(
-        channel_id: Sha256Hash, // event id of kind 40
+        channel_id: EventId, // event id of kind 40
         relay_url: Url,
         content: S,
     ) -> Self
@@ -376,7 +359,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn hide_channel_msg<S>(
-        message_id: Sha256Hash, // event id of kind 42
+        message_id: EventId, // event id of kind 42
         reason: Option<S>,
     ) -> Self
     where

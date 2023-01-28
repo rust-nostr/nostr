@@ -1,11 +1,9 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::str::FromStr;
-
 use nostr::nips::nip19::FromBech32;
 use nostr::secp256k1::SecretKey;
-use nostr::{ClientMessage, Event, EventBuilder, Keys, Result, Sha256Hash};
+use nostr::{ClientMessage, Event, EventBuilder, EventId, Keys, Result};
 use tungstenite::{connect, Message as WsMessage};
 
 const MY_BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
@@ -21,7 +19,7 @@ fn main() -> Result<()> {
     let my_keys = Keys::new(secret_key);
 
     let event_id =
-        Sha256Hash::from_str("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?;
+        EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?;
 
     let event: Event = EventBuilder::delete(
         vec![event_id],

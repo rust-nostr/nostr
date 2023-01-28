@@ -7,7 +7,7 @@
 use serde_json::{json, Value};
 
 use super::MessageHandleError;
-use crate::{Event, Sha256Hash};
+use crate::{Event, EventId};
 
 /// Messages sent by relays, received by clients
 #[allow(missing_docs)]
@@ -24,7 +24,7 @@ pub enum RelayMessage {
         subscription_id: String,
     },
     Ok {
-        event_id: Sha256Hash,
+        event_id: EventId,
         status: bool,
         message: String,
     },
@@ -67,7 +67,7 @@ impl RelayMessage {
     }
 
     /// Create new `OK` message
-    pub fn new_ok<S>(event_id: Sha256Hash, status: bool, message: S) -> Self
+    pub fn new_ok<S>(event_id: EventId, status: bool, message: S) -> Self
     where
         S: Into<String>,
     {
@@ -175,7 +175,7 @@ impl RelayMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let event_id: Sha256Hash = serde_json::from_value(v[1].clone())
+            let event_id: EventId = serde_json::from_value(v[1].clone())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
             let status: bool = serde_json::from_value(v[2].clone())
@@ -193,8 +193,6 @@ impl RelayMessage {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
     use crate::Result;
 
@@ -299,9 +297,7 @@ mod tests {
     fn test_handle_valid_ok() -> Result<()> {
         let valid_ok_msg = r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, "pow: difficulty 25>=24"]"#;
         let handled_valid_ok_msg = RelayMessage::new_ok(
-            Sha256Hash::from_str(
-                "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30",
-            )?,
+            EventId::from_hex("b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30")?,
             true,
             "pow: difficulty 25>=24",
         );

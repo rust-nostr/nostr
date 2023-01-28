@@ -6,7 +6,6 @@
 //! Rust implementation of the Nostr protocol.
 
 pub use bitcoin::hashes;
-pub use bitcoin::hashes::sha256::Hash as Sha256Hash;
 pub use bitcoin::secp256k1;
 #[cfg(feature = "base")]
 pub use url::{self, Url};
@@ -25,7 +24,7 @@ pub mod types;
 pub mod util;
 
 #[cfg(feature = "base")]
-pub use self::event::{Event, EventBuilder, Kind, Tag};
+pub use self::event::{Event, EventBuilder, EventId, Kind, Tag};
 pub use self::key::Keys;
 #[cfg(feature = "base")]
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};

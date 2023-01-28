@@ -14,7 +14,7 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
 
-use crate::Sha256Hash;
+use super::id::{self, EventId};
 
 /// [`Tag`] error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
@@ -37,6 +37,9 @@ pub enum Error {
     /// Url parse error
     #[error("invalid url")]
     Url(#[from] url::ParseError),
+    /// EventId error
+    #[error(transparent)]
+    EventId(#[from] id::Error),
 }
 
 /// Marker
@@ -145,7 +148,7 @@ where
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Tag {
     Generic(TagKind, Vec<String>),
-    Event(Sha256Hash, Option<String>, Option<Marker>),
+    Event(EventId, Option<String>, Option<Marker>),
     PubKey(XOnlyPublicKey, Option<String>),
     Relay(Url),
     ContactList {
@@ -208,7 +211,7 @@ where
             let content: &str = &tag[1];
             match tag_kind {
                 TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?, None)),
-                TagKind::E => Ok(Self::Event(Sha256Hash::from_str(content)?, None, None)),
+                TagKind::E => Ok(Self::Event(EventId::from_hex(content)?, None, None)),
                 TagKind::Relay => Ok(Self::Relay(Url::parse(content)?)),
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(content.to_string()),
@@ -225,7 +228,7 @@ where
                     Some(tag[2].clone()),
                 )),
                 TagKind::E => Ok(Self::Event(
-                    Sha256Hash::from_str(&tag[1])?,
+                    EventId::from_hex(&tag[1])?,
                     Some(tag[2].clone()),
                     None,
                 )),
@@ -243,7 +246,7 @@ where
                     alias: (!tag[3].is_empty()).then_some(tag[3].clone()),
                 }),
                 TagKind::E => Ok(Self::Event(
-                    Sha256Hash::from_str(&tag[1])?,
+                    EventId::from_hex(&tag[1])?,
                     (!tag[2].is_empty()).then_some(tag[2].clone()),
                     (!tag[3].is_empty()).then_some(Marker::from(&tag[3])),
                 )),
@@ -265,7 +268,7 @@ impl From<Tag> for Vec<String> {
         match data {
             Tag::Generic(kind, data) => vec![vec![kind.to_string()], data].concat(),
             Tag::Event(id, relay_url, marker) => {
-                let mut tag = vec![TagKind::E.to_string(), id.to_string()];
+                let mut tag = vec![TagKind::E.to_string(), id.to_hex()];
                 if let Some(relay_url) = relay_url {
                     tag.push(relay_url);
                 }
@@ -425,7 +428,7 @@ mod tests {
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
             ],
             Tag::Event(
-                Sha256Hash::from_str(
+                EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
                 None,
@@ -483,7 +486,7 @@ mod tests {
                 ""
             ],
             Tag::Event(
-                Sha256Hash::from_str(
+                EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
                 Some(String::new()),
@@ -499,7 +502,7 @@ mod tests {
                 "wss://relay.damus.io"
             ],
             Tag::Event(
-                Sha256Hash::from_str(
+                EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
                 Some(String::from("wss://relay.damus.io")),
@@ -542,7 +545,7 @@ mod tests {
                 "reply"
             ],
             Tag::Event(
-                Sha256Hash::from_str(
+                EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
                 None,
@@ -598,7 +601,7 @@ mod tests {
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
             ])?,
             Tag::Event(
-                Sha256Hash::from_str(
+                EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
                 None,
@@ -652,7 +655,7 @@ mod tests {
                 ""
             ])?,
             Tag::Event(
-                Sha256Hash::from_str(
+                EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
                 Some(String::new()),
@@ -667,7 +670,7 @@ mod tests {
                 "wss://relay.damus.io"
             ])?,
             Tag::Event(
-                Sha256Hash::from_str(
+                EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
                 Some(String::from("wss://relay.damus.io")),
@@ -707,7 +710,7 @@ mod tests {
                 "reply"
             ])?,
             Tag::Event(
-                Sha256Hash::from_str(
+                EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
                 None,

@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, Sha256Hash, Tag};
+use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, EventId, Tag};
 
 use super::Event;
 use crate::contact::Contact;
@@ -113,10 +113,10 @@ impl EventBuilder {
 
     /// Create delete event
     pub fn delete(ids: Vec<String>, reason: Option<String>) -> Result<Self> {
-        let mut new_ids: Vec<Sha256Hash> = Vec::with_capacity(ids.len());
+        let mut new_ids: Vec<EventId> = Vec::with_capacity(ids.len());
 
         for id in ids.into_iter() {
-            new_ids.push(Sha256Hash::from_str(&id)?);
+            new_ids.push(EventId::from_hex(&id)?);
         }
 
         Ok(Self {
@@ -125,7 +125,7 @@ impl EventBuilder {
     }
 
     pub fn new_reaction(event_id: String, public_key: String, content: String) -> Result<Self> {
-        let event_id = Sha256Hash::from_str(&event_id)?;
+        let event_id = EventId::from_hex(event_id)?;
         let public_key = XOnlyPublicKey::from_str(&public_key)?;
         Ok(Self {
             builder: EventBuilderSdk::new_reaction(event_id, public_key, content),

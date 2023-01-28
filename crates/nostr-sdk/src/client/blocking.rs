@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{ClientMessage, Contact, Event, Keys, Metadata, Sha256Hash, SubscriptionFilter, Tag};
+use nostr::{ClientMessage, Contact, Event, EventId, Keys, Metadata, SubscriptionFilter, Tag};
 use tokio::sync::broadcast;
 
 use super::{Error, Options};
@@ -121,15 +121,15 @@ impl Client {
     }
 
     /// Send event
-    pub fn send_event(&self, event: Event) -> Result<Sha256Hash, Error> {
+    pub fn send_event(&self, event: Event) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.send_event(event).await })
     }
 
-    pub fn update_profile(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
+    pub fn update_profile(&self, metadata: Metadata) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.update_profile(metadata).await })
     }
 
-    pub fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<Sha256Hash, Error>
+    pub fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -142,7 +142,7 @@ impl Client {
         content: S,
         tags: &[Tag],
         difficulty: u8,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -153,14 +153,14 @@ impl Client {
         })
     }
 
-    pub fn add_recommended_relay<S>(&self, url: S) -> Result<Sha256Hash, Error>
+    pub fn add_recommended_relay<S>(&self, url: S) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.add_recommended_relay(url).await })
     }
 
-    pub fn set_contact_list(&self, list: Vec<Contact>) -> Result<Sha256Hash, Error> {
+    pub fn set_contact_list(&self, list: Vec<Contact>) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.set_contact_list(list).await })
     }
 
@@ -169,7 +169,7 @@ impl Client {
     }
 
     #[cfg(feature = "nip04")]
-    pub fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<Sha256Hash, Error>
+    pub fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -178,61 +178,49 @@ impl Client {
 
     pub fn repost_event(
         &self,
-        event_id: Sha256Hash,
+        event_id: EventId,
         public_key: XOnlyPublicKey,
-    ) -> Result<Sha256Hash, Error> {
+    ) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.repost_event(event_id, public_key).await })
     }
 
-    pub fn delete_event<S>(
-        &self,
-        event_id: Sha256Hash,
-        reason: Option<S>,
-    ) -> Result<Sha256Hash, Error>
+    pub fn delete_event<S>(&self, event_id: EventId, reason: Option<S>) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.delete_event(event_id, reason).await })
     }
 
-    pub fn like(
-        &self,
-        event_id: Sha256Hash,
-        public_key: XOnlyPublicKey,
-    ) -> Result<Sha256Hash, Error> {
+    pub fn like(&self, event_id: EventId, public_key: XOnlyPublicKey) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.like(event_id, public_key).await })
     }
 
-    pub fn dislike(
-        &self,
-        event_id: Sha256Hash,
-        public_key: XOnlyPublicKey,
-    ) -> Result<Sha256Hash, Error> {
+    pub fn dislike(&self, event_id: EventId, public_key: XOnlyPublicKey) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.dislike(event_id, public_key).await })
     }
 
     pub fn reaction<S>(
         &self,
-        event_id: Sha256Hash,
+        event_id: EventId,
         public_key: XOnlyPublicKey,
         content: S,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.reaction(event_id, public_key, content).await })
     }
 
-    pub fn new_channel(&self, metadata: Metadata) -> Result<Sha256Hash, Error> {
+    pub fn new_channel(&self, metadata: Metadata) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.new_channel(metadata).await })
     }
 
     pub fn update_channel(
         &self,
-        channel_id: Sha256Hash,
+        channel_id: EventId,
         relay_url: Url,
         metadata: Metadata,
-    ) -> Result<Sha256Hash, Error> {
+    ) -> Result<EventId, Error> {
         RUNTIME.block_on(async {
             self.client
                 .update_channel(channel_id, relay_url, metadata)
@@ -242,10 +230,10 @@ impl Client {
 
     pub fn send_channel_msg<S>(
         &self,
-        channel_id: Sha256Hash,
+        channel_id: EventId,
         relay_url: Url,
         msg: S,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -258,9 +246,9 @@ impl Client {
 
     pub fn hide_channel_msg<S>(
         &self,
-        message_id: Sha256Hash,
+        message_id: EventId,
         reason: Option<S>,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
@@ -271,7 +259,7 @@ impl Client {
         &self,
         pubkey: XOnlyPublicKey,
         reason: Option<S>,
-    ) -> Result<Sha256Hash, Error>
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {

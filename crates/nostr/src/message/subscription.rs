@@ -9,7 +9,7 @@
 use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 
-use crate::{Kind, Sha256Hash};
+use crate::{EventId, Kind};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SubscriptionFilter {
@@ -21,7 +21,7 @@ pub struct SubscriptionFilter {
     pub kinds: Option<Vec<Kind>>,
     #[serde(rename = "#e")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub events: Option<Vec<Sha256Hash>>,
+    pub events: Option<Vec<EventId>>,
     #[serde(rename = "#p")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pubkeys: Option<Vec<XOnlyPublicKey>>,
@@ -110,7 +110,7 @@ impl SubscriptionFilter {
     }
 
     /// Set event
-    pub fn event(self, id: Sha256Hash) -> Self {
+    pub fn event(self, id: EventId) -> Self {
         Self {
             events: Some(vec![id]),
             ..self
@@ -118,7 +118,7 @@ impl SubscriptionFilter {
     }
 
     /// Set events
-    pub fn events(self, ids: Vec<Sha256Hash>) -> Self {
+    pub fn events(self, ids: Vec<EventId>) -> Self {
         Self {
             events: Some(ids),
             ..self

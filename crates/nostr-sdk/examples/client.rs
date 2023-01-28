@@ -2,7 +2,6 @@
 // Distributed under the MIT software license
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use std::str::FromStr;
 
 use nostr_sdk::nostr::util::time;
 use nostr_sdk::prelude::*;
@@ -37,9 +36,7 @@ async fn main() -> Result<()> {
 
     client
         .delete_event(
-            Sha256Hash::from_str(
-                "57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc",
-            )?,
+            EventId::from_hex("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")?,
             Some("reason"),
         )
         .await?;
