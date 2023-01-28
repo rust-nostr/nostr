@@ -61,6 +61,8 @@ pub struct SubscriptionFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub references: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub search: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub since: Option<Timestamp>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub until: Option<Timestamp>,
@@ -83,6 +85,7 @@ impl SubscriptionFilter {
             pubkeys: None,
             hashtags: None,
             references: None,
+            search: None,
             since: None,
             until: None,
             authors: None,
@@ -206,6 +209,17 @@ impl SubscriptionFilter {
     pub fn references(self, v: impl Into<Vec<String>>) -> Self {
         Self {
             references: Some(v.into()),
+            ..self
+        }
+    }
+
+    /// Set search field
+    pub fn search<S>(self, value: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            search: Some(value.into()),
             ..self
         }
     }
