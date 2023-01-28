@@ -357,7 +357,7 @@ impl<'de> Deserialize<'de> for Tag {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Event, Result};
+    use crate::{Event, Result, Timestamp};
 
     #[test]
     fn test_deserialize_tag_from_event() -> Result<()> {
@@ -387,7 +387,7 @@ mod tests {
         let event = Event::new_dummy(
             "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
             "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3",
-            1671739153,
+            Timestamp::from(1671739153),
             4,
             vec![Tag::PubKey(pubkey, None)],
             "8y4MRYrb4ztvXO2NmsHvUA==?iv=MplZo7oSdPfH/vdMC8Hmwg==",

@@ -17,7 +17,6 @@ use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use bitcoin::Network;
 
 use crate::key::Keys;
-use crate::util::time;
 
 /// `NIP06` error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
@@ -71,7 +70,6 @@ impl GenerateMnemonic for Keys {
         let mut os_random = [0u8; 32];
         OsRng.fill_bytes(&mut os_random);
         h.input(&os_random);
-        h.input(&time::timestamp_nanos().to_be_bytes());
         let entropy: [u8; 64] = Hmac::from_engine(h).into_inner();
         let len: usize = word_count * 4 / 3;
         Ok(Mnemonic::from_entropy(&entropy[0..len])?)

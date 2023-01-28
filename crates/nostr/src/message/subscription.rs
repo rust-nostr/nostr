@@ -9,7 +9,7 @@
 use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 
-use crate::{EventId, Kind};
+use crate::{EventId, Kind, Timestamp};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SubscriptionFilter {
@@ -32,11 +32,11 @@ pub struct SubscriptionFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub references: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub since: Option<u64>, // unix timestamp seconds
+    pub since: Option<Timestamp>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub until: Option<u64>, // unix timestamp seconds
+    pub until: Option<Timestamp>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u16>,
+    pub limit: Option<usize>,
 }
 
 impl Default for SubscriptionFilter {
@@ -182,7 +182,7 @@ impl SubscriptionFilter {
     }
 
     /// Set since unix timestamp
-    pub fn since(self, since: u64) -> Self {
+    pub fn since(self, since: Timestamp) -> Self {
         Self {
             since: Some(since),
             ..self
@@ -190,7 +190,7 @@ impl SubscriptionFilter {
     }
 
     /// Set until unix timestamp
-    pub fn until(self, until: u64) -> Self {
+    pub fn until(self, until: Timestamp) -> Self {
         Self {
             until: Some(until),
             ..self
@@ -198,7 +198,7 @@ impl SubscriptionFilter {
     }
 
     /// Set limit
-    pub fn limit(self, limit: u16) -> Self {
+    pub fn limit(self, limit: usize) -> Self {
         Self {
             limit: Some(limit),
             ..self

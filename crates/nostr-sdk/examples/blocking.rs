@@ -2,7 +2,6 @@
 // Distributed under the MIT software license
 
 use nostr_sdk::client::blocking::Client;
-use nostr_sdk::nostr::util::time;
 use nostr_sdk::prelude::*;
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
@@ -31,7 +30,7 @@ fn main() -> Result<()> {
 
     let subscription = SubscriptionFilter::new()
         .pubkey(my_keys.public_key())
-        .since(time::timestamp());
+        .since(Timestamp::now());
 
     client.subscribe(vec![subscription])?;
 

@@ -3,7 +3,6 @@
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use nostr_sdk::nostr::util::time;
 use nostr_sdk::prelude::*;
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
@@ -48,7 +47,7 @@ async fn main() -> Result<()> {
 
     let subscription = SubscriptionFilter::new()
         .pubkey(my_keys.public_key())
-        .since(time::timestamp());
+        .since(Timestamp::now());
 
     client.subscribe(vec![subscription]).await?;
 

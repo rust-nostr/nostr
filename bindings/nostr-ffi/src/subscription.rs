@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{EventId, SubscriptionFilter as SubscriptionFilterSdk};
+use nostr::{EventId, SubscriptionFilter as SubscriptionFilterSdk, Timestamp};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
@@ -83,14 +83,14 @@ impl SubscriptionFilter {
 
     pub fn since(self: Arc<Self>, timestamp: u64) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.since(timestamp);
+        builder.sub_filter = builder.sub_filter.since(Timestamp::from(timestamp));
 
         Arc::new(builder)
     }
 
     pub fn until(self: Arc<Self>, timestamp: u64) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.until(timestamp);
+        builder.sub_filter = builder.sub_filter.until(Timestamp::from(timestamp));
 
         Arc::new(builder)
     }

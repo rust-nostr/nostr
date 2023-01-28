@@ -116,7 +116,7 @@ impl EventBuilder {
         let mut new_ids: Vec<EventId> = Vec::with_capacity(ids.len());
 
         for id in ids.into_iter() {
-            new_ids.push(EventId::from_hex(&id)?);
+            new_ids.push(EventId::from_hex(id)?);
         }
 
         Ok(Self {

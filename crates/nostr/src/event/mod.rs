@@ -19,6 +19,7 @@ pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::tag::{Marker, Tag, TagKind};
+use crate::Timestamp;
 
 /// [`Event`] error
 #[derive(Debug, thiserror::Error)]
@@ -45,7 +46,7 @@ pub struct Event {
     /// Author
     pub pubkey: XOnlyPublicKey,
     /// Timestamp (seconds)
-    pub created_at: u64,
+    pub created_at: Timestamp,
     /// Kind
     pub kind: Kind,
     /// Vector of [`Tag`]
@@ -107,7 +108,7 @@ impl Event {
     pub(crate) fn new_dummy(
         id: &str,
         pubkey: &str,
-        created_at: u64,
+        created_at: Timestamp,
         kind: u8,
         tags: Vec<Tag>,
         content: &str,

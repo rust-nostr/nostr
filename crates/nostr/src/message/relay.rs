@@ -194,7 +194,7 @@ impl RelayMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Result;
+    use crate::{Result, Timestamp};
 
     #[test]
     fn test_handle_valid_notice() -> Result<()> {
@@ -232,7 +232,7 @@ mod tests {
 
         let id = "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5";
         let pubkey = "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe";
-        let created_at = 1612809991;
+        let created_at = Timestamp::from(1612809991);
         let kind = 1;
         let tags = vec![];
         let content = "test";
@@ -347,7 +347,7 @@ mod tests {
         // Hand parsed version as a sanity check
         let id = "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5";
         let pubkey = "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe";
-        let created_at = 1612809991;
+        let created_at = Timestamp::from(1612809991);
         let kind = 1;
         let tags = vec![];
         let content = "test";

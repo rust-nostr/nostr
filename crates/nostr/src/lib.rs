@@ -21,6 +21,7 @@ pub mod nips;
 pub mod prelude;
 #[cfg(feature = "base")]
 pub mod types;
+#[deprecated]
 pub mod util;
 
 #[cfg(feature = "base")]
@@ -29,7 +30,7 @@ pub use self::key::Keys;
 #[cfg(feature = "base")]
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
 #[cfg(feature = "base")]
-pub use self::types::{Contact, Entity, Metadata};
+pub use self::types::{Contact, Entity, Metadata, Timestamp};
 
 /// Result
 pub type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;

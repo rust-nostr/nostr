@@ -15,6 +15,7 @@ use serde_json::{json, Value};
 use super::{Kind, Tag};
 #[cfg(feature = "nip19")]
 use crate::nips::nip19::ToBech32;
+use crate::Timestamp;
 
 /// [`EventId`] error
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -39,7 +40,7 @@ impl EventId {
     /// Generate [`EventId`]
     pub fn new(
         pubkey: &XOnlyPublicKey,
-        created_at: u64,
+        created_at: Timestamp,
         kind: &Kind,
         tags: &[Tag],
         content: &str,

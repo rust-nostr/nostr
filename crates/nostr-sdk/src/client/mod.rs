@@ -280,9 +280,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
-    /// use nostr::util::time;
-    /// use nostr::SubscriptionFilter;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -290,7 +288,7 @@ impl Client {
     /// #   let client = Client::new(&my_keys);
     /// let subscription = SubscriptionFilter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
-    ///     .since(time::timestamp());
+    ///     .since(Timestamp::now());
     ///
     /// client.subscribe(vec![subscription]).await.unwrap();
     /// # }
@@ -306,9 +304,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
-    /// use nostr::util::time;
-    /// use nostr::SubscriptionFilter;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
@@ -316,7 +312,7 @@ impl Client {
     /// #   let client = Client::new(&my_keys);
     /// let subscription = SubscriptionFilter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
-    ///     .since(time::timestamp());
+    ///     .since(Timestamp::now());
     ///
     /// let _events = client.get_events_of(vec![subscription]).await.unwrap();
     /// # }

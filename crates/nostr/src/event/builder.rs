@@ -17,8 +17,7 @@ use crate::key::{self, Keys};
 use crate::nips::nip04;
 #[cfg(feature = "nip13")]
 use crate::nips::nip13;
-use crate::types::{Contact, Metadata};
-use crate::util::time::timestamp;
+use crate::types::{Contact, Metadata, Timestamp};
 
 static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
@@ -70,7 +69,7 @@ impl EventBuilder {
         let secp = Secp256k1::new();
         let keypair: &KeyPair = &keys.key_pair()?;
         let pubkey: XOnlyPublicKey = keys.public_key();
-        let created_at: u64 = timestamp();
+        let created_at: Timestamp = Timestamp::now();
 
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
         let message = Message::from_slice(id.as_bytes())?;
@@ -107,7 +106,7 @@ impl EventBuilder {
 
             tags.push(Tag::POW { nonce, difficulty });
 
-            let created_at: u64 = timestamp();
+            let created_at: Timestamp = Timestamp::now();
             let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
