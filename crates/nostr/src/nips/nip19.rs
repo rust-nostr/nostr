@@ -9,10 +9,13 @@
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
+#[cfg(feature = "base")]
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "base")]
 use crate::event::id::{self, EventId};
+#[cfg(feature = "base")]
+use crate::Profile;
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
@@ -161,24 +164,7 @@ impl ToBech32 for EventId {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
-pub struct Profile {
-    pub public_key: XOnlyPublicKey,
-    pub relays: Vec<String>,
-}
-
-impl Profile {
-    pub fn new<S>(public_key: XOnlyPublicKey, relays: Vec<S>) -> Self
-    where
-        S: Into<String>,
-    {
-        Self {
-            public_key,
-            relays: relays.into_iter().map(|u| u.into()).collect(),
-        }
-    }
-}
-
+#[cfg(feature = "base")]
 impl FromBech32 for Profile {
     type Err = Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
@@ -236,6 +222,7 @@ impl FromBech32 for Profile {
     }
 }
 
+#[cfg(feature = "base")]
 impl ToBech32 for Profile {
     type Err = Error;
 
@@ -392,6 +379,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "base")]
     #[test]
     fn to_bech32_profile() -> Result<()> {
         let profile = Profile::new(
@@ -407,6 +395,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "base")]
     #[test]
     fn from_bech32_profile() -> Result<()> {
         let bech32_profile = "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p";

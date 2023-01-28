@@ -85,4 +85,4 @@ required-features = ["base", "nip13"]
 
 [[example]]
 name = "nip19"
-required-features = ["nip19"]
+required-features = ["base", "nip19"]

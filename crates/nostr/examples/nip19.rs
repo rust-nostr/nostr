@@ -3,9 +3,7 @@
 
 use std::str::FromStr;
 
-use nostr::nips::nip19::{Profile, ToBech32};
-use nostr::secp256k1::XOnlyPublicKey;
-use nostr::Result;
+use nostr::prelude::*;
 
 fn main() -> Result<()> {
     env_logger::init();
