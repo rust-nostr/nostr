@@ -14,7 +14,7 @@ use crate::Event;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClientMessage {
     /// Event
-    Event { event: Box<Event> },
+    Event(Box<Event>),
     /// Req
     Req {
         subscription_id: SubscriptionId,
@@ -23,15 +23,13 @@ pub enum ClientMessage {
     /// Close
     Close(SubscriptionId),
     /// Auth
-    Auth { event: Box<Event> },
+    Auth(Box<Event>),
 }
 
 impl ClientMessage {
     /// Create new `EVENT` message
     pub fn new_event(event: Event) -> Self {
-        Self::Event {
-            event: Box::new(event),
-        }
+        Self::Event(Box::new(event))
     }
 
     /// Create new `REQ` message
@@ -49,15 +47,13 @@ impl ClientMessage {
 
     /// Create new `AUTH` message
     pub fn new_auth(event: Event) -> Self {
-        Self::Auth {
-            event: Box::new(event),
-        }
+        Self::Auth(Box::new(event))
     }
 
     /// Serialize [`ClientMessage`] as JSON string
     pub fn as_json(&self) -> String {
         match self {
-            Self::Event { event } => json!(["EVENT", event]).to_string(),
+            Self::Event(event) => json!(["EVENT", event]).to_string(),
             Self::Req {
                 subscription_id,
                 filters,
@@ -74,7 +70,7 @@ impl ClientMessage {
                 json.to_string()
             }
             Self::Close(subscription_id) => json!(["CLOSE", subscription_id]).to_string(),
-            Self::Auth { event } => json!(["AUTH", event]).to_string(),
+            Self::Auth(event) => json!(["AUTH", event]).to_string(),
         }
     }
 

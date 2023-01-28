@@ -217,7 +217,7 @@ impl RelayPool {
             return Err(Error::NoRelayConnected);
         }
 
-        if let ClientMessage::Event { event } = &msg {
+        if let ClientMessage::Event(event) = &msg {
             if let Err(err) = self
                 .pool_task_sender
                 .send(RelayPoolMessage::EventSent(event.clone()))
