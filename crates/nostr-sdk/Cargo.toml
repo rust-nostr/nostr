@@ -33,7 +33,6 @@ tokio = { version = "1", features = ["full"] }
 tokio-rustls = "0.23"
 tokio-socks = "0.5"
 tokio-tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"] }
-uuid = { version = "1", features = ["v4", "fast-rng", "macro-diagnostics"] }
 webpki-roots = "0.22"
 
 [dev-dependencies]

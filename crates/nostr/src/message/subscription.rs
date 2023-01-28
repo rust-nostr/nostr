@@ -6,10 +6,39 @@
 
 #![allow(missing_docs)]
 
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::rand::rngs::OsRng;
+use bitcoin::secp256k1::rand::RngCore;
 use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 
 use crate::{EventId, Kind, Timestamp};
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct SubscriptionId(String);
+
+impl SubscriptionId {
+    pub fn new<S>(id: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self(id.into())
+    }
+
+    /// Generate new random [`SubscriptionId`]
+    pub fn generate() -> Self {
+        let mut os_random = [0u8; 32];
+        OsRng.fill_bytes(&mut os_random);
+        Self(Sha256Hash::hash(&os_random).to_string())
+    }
+}
+
+impl ToString for SubscriptionId {
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SubscriptionFilter {

@@ -28,7 +28,7 @@ pub mod util;
 pub use self::event::{Event, EventBuilder, EventId, Kind, Tag};
 pub use self::key::Keys;
 #[cfg(feature = "base")]
-pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter};
+pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter, SubscriptionId};
 #[cfg(feature = "base")]
 pub use self::types::{Contact, Entity, Metadata, Timestamp};
 

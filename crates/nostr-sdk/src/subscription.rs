@@ -7,9 +7,7 @@
 
 use std::collections::HashMap;
 
-use nostr::url::Url;
-use nostr::SubscriptionFilter;
-use uuid::Uuid;
+use nostr::{SubscriptionFilter, SubscriptionId, Url};
 
 #[derive(Debug, Clone)]
 pub struct Subscription {
@@ -62,7 +60,7 @@ impl Subscription {
 
 #[derive(Debug, Clone)]
 pub struct Channel {
-    id: Uuid,
+    id: SubscriptionId,
     relay_url: Url,
 }
 
@@ -70,14 +68,14 @@ impl Channel {
     /// Create new subscription channel
     pub fn new(relay_url: Url) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: SubscriptionId::generate(),
             relay_url,
         }
     }
 
     /// Get channel id
-    pub fn id(&self) -> Uuid {
-        self.id
+    pub fn id(&self) -> SubscriptionId {
+        self.id.clone()
     }
 
     /// Get channel relay url

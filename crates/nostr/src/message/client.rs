@@ -6,8 +6,8 @@
 
 use serde_json::{json, Value};
 
-use super::MessageHandleError;
-use crate::{Event, SubscriptionFilter};
+use super::{MessageHandleError, SubscriptionFilter, SubscriptionId};
+use crate::Event;
 
 /// Messages sent by clients, received by relays
 #[allow(missing_docs)]
@@ -17,11 +17,11 @@ pub enum ClientMessage {
     Event { event: Box<Event> },
     /// Req
     Req {
-        subscription_id: String,
+        subscription_id: SubscriptionId,
         filters: Vec<SubscriptionFilter>,
     },
     /// Close
-    Close { subscription_id: String },
+    Close(SubscriptionId),
     /// Auth
     Auth { event: Box<Event> },
 }
@@ -35,24 +35,16 @@ impl ClientMessage {
     }
 
     /// Create new `REQ` message
-    pub fn new_req<S>(subscription_id: S, filters: Vec<SubscriptionFilter>) -> Self
-    where
-        S: Into<String>,
-    {
+    pub fn new_req(subscription_id: SubscriptionId, filters: Vec<SubscriptionFilter>) -> Self {
         Self::Req {
-            subscription_id: subscription_id.into(),
+            subscription_id,
             filters,
         }
     }
 
     /// Create new `CLOSE` message
-    pub fn close<S>(subscription_id: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::Close {
-            subscription_id: subscription_id.into(),
-        }
+    pub fn close(subscription_id: SubscriptionId) -> Self {
+        Self::Close(subscription_id)
     }
 
     /// Create new `AUTH` message
@@ -81,7 +73,7 @@ impl ClientMessage {
 
                 json.to_string()
             }
-            Self::Close { subscription_id } => json!(["CLOSE", subscription_id]).to_string(),
+            Self::Close(subscription_id) => json!(["CLOSE", subscription_id]).to_string(),
             Self::Auth { event } => json!(["AUTH", event]).to_string(),
         }
     }
@@ -119,11 +111,11 @@ impl ClientMessage {
         // ["REQ", <subscription_id>, <filter JSON>, <filter JSON>...]
         if v[0] == "REQ" {
             if v_len == 2 {
-                let subscription_id: String = serde_json::from_value(v[1].clone())
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
                     .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
                 return Ok(Self::new_req(subscription_id, Vec::new()));
             } else if v_len == 3 {
-                let subscription_id: String = serde_json::from_value(v[1].clone())
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
                     .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
                 let filters: Vec<SubscriptionFilter> =
                     serde_json::from_value(Value::Array(v[2..].to_vec()))
@@ -141,7 +133,7 @@ impl ClientMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let subscription_id: String = serde_json::from_value(v[1].clone())
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
             return Ok(Self::close(subscription_id));
@@ -183,7 +175,7 @@ mod tests {
             SubscriptionFilter::new().pubkey(pk),
         ];
 
-        let client_req = ClientMessage::new_req("test", filters);
+        let client_req = ClientMessage::new_req(SubscriptionId::new("test"), filters);
         assert_eq!(
             client_req.as_json(),
             r##"["REQ","test",{"kinds":[4]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
@@ -201,7 +193,7 @@ mod tests {
             SubscriptionFilter::new().pubkey(pk),
         ];
 
-        let client_req = ClientMessage::new_req("test", filters);
+        let client_req = ClientMessage::new_req(SubscriptionId::new("test"), filters);
         assert_eq!(
             client_req.as_json(),
             r##"["REQ","test",{"kinds":[22]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##

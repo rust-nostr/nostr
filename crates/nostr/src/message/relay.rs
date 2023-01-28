@@ -7,22 +7,20 @@
 use serde_json::{json, Value};
 
 use super::MessageHandleError;
-use crate::{Event, EventId};
+use crate::{Event, EventId, SubscriptionId};
 
 /// Messages sent by relays, received by clients
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayMessage {
     Event {
-        subscription_id: String,
+        subscription_id: SubscriptionId,
         event: Box<Event>,
     },
     Notice {
         message: String,
     },
-    EndOfStoredEvents {
-        subscription_id: String,
-    },
+    EndOfStoredEvents(SubscriptionId),
     Ok {
         event_id: EventId,
         status: bool,
@@ -36,12 +34,9 @@ pub enum RelayMessage {
 
 impl RelayMessage {
     /// Create new `EVENT` message
-    pub fn new_event<S>(subscription_id: S, event: Event) -> Self
-    where
-        S: Into<String>,
-    {
+    pub fn new_event(subscription_id: SubscriptionId, event: Event) -> Self {
         Self::Event {
-            subscription_id: subscription_id.into(),
+            subscription_id,
             event: Box::new(event),
         }
     }
@@ -57,13 +52,8 @@ impl RelayMessage {
     }
 
     /// Create new `EOSE` message
-    pub fn new_eose<S>(subscription_id: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::EndOfStoredEvents {
-            subscription_id: subscription_id.into(),
-        }
+    pub fn new_eose(subscription_id: SubscriptionId) -> Self {
+        Self::EndOfStoredEvents(subscription_id)
     }
 
     /// Create new `OK` message
@@ -96,7 +86,7 @@ impl RelayMessage {
                 subscription_id,
             } => json!(["EVENT", subscription_id, event]).to_string(),
             Self::Notice { message } => json!(["NOTICE", message]).to_string(),
-            Self::EndOfStoredEvents { subscription_id } => {
+            Self::EndOfStoredEvents(subscription_id) => {
                 json!(["EOSE", subscription_id]).to_string()
             }
             Self::Ok {
@@ -147,7 +137,7 @@ impl RelayMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let subscription_id: String = serde_json::from_value(v[1].clone())
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
             let event = Event::from_json(v[2].to_string())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
@@ -162,7 +152,7 @@ impl RelayMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let subscription_id: String = serde_json::from_value(v[1].clone())
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
                 .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
 
             return Ok(Self::new_eose(subscription_id));
@@ -242,7 +232,7 @@ mod tests {
 
         assert_eq!(
             RelayMessage::from_json(valid_event_msg)?,
-            RelayMessage::new_event("random_string".to_string(), handled_event?)
+            RelayMessage::new_event(SubscriptionId::new("random_string"), handled_event?)
         );
 
         Ok(())
@@ -269,7 +259,8 @@ mod tests {
     #[test]
     fn test_handle_valid_eose() -> Result<()> {
         let valid_eose_msg = r#"["EOSE","random-subscription-id"]"#;
-        let handled_valid_eose_msg = RelayMessage::new_eose(String::from("random-subscription-id"));
+        let handled_valid_eose_msg =
+            RelayMessage::new_eose(SubscriptionId::new("random-subscription-id"));
 
         assert_eq!(
             RelayMessage::from_json(valid_eose_msg)?,
@@ -359,7 +350,7 @@ mod tests {
 
         assert_eq!(
             parsed_event.expect("Failed to parse event"),
-            RelayMessage::new_event("random_string".to_string(), event?)
+            RelayMessage::new_event(SubscriptionId::new("random_string"), event?)
         );
 
         Ok(())

@@ -5,7 +5,10 @@
 use std::str::FromStr;
 
 use nostr::secp256k1::SecretKey;
-use nostr::{ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter};
+use nostr::{
+    ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter,
+    SubscriptionId,
+};
 use tungstenite::{connect, Message as WsMessage};
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
@@ -37,14 +40,14 @@ fn main() -> Result<()> {
     );
 
     let subscribe_to_alice = ClientMessage::new_req(
-        "abcdefgh",
+        SubscriptionId::new("abcdefgh"),
         vec![SubscriptionFilter::new()
             .authors(vec![alice_keys.public_key()])
             .kind(Kind::TextNote)],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
-        "1234567",
+        SubscriptionId::new("1234567"),
         vec![SubscriptionFilter::new()
             .authors(vec![bob_keys.public_key()])
             .kind(Kind::TextNote)],
@@ -70,7 +73,7 @@ fn main() -> Result<()> {
                 } => {
                     println!("Got an event!");
                 }
-                RelayMessage::EndOfStoredEvents { subscription_id: _ } => {
+                RelayMessage::EndOfStoredEvents(_subscription_id) => {
                     println!("Relay signalled End of Stored Events");
                 }
                 RelayMessage::Ok {

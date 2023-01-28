@@ -9,12 +9,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::url::Url;
-use nostr::{ClientMessage, Event, EventId, RelayMessage, SubscriptionFilter};
+use nostr::{ClientMessage, Event, EventId, RelayMessage, SubscriptionFilter, SubscriptionId};
 use once_cell::sync::Lazy;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 use tokio::time;
-use uuid::Uuid;
 
 use super::{Error as RelayError, Relay};
 use crate::subscription::Subscription;
@@ -274,17 +273,14 @@ impl RelayPool {
     ) -> Result<Vec<Event>, Error> {
         let mut events: Vec<Event> = Vec::new();
 
-        let id = Uuid::new_v4();
+        let id = SubscriptionId::generate();
 
         let relays = self.relays().await;
 
         // Subscribe
         for relay in relays.values() {
             relay
-                .send_msg(
-                    ClientMessage::new_req(id.to_string(), filters.clone()),
-                    false,
-                )
+                .send_msg(ClientMessage::new_req(id.clone(), filters.clone()), false)
                 .await?;
         }
 
@@ -296,12 +292,12 @@ impl RelayPool {
                         subscription_id,
                         event,
                     } => {
-                        if subscription_id == id.to_string() {
+                        if subscription_id == id {
                             events.push(event.as_ref().clone());
                         }
                     }
-                    RelayMessage::EndOfStoredEvents { subscription_id } => {
-                        if subscription_id == id.to_string() {
+                    RelayMessage::EndOfStoredEvents(subscription_id) => {
+                        if subscription_id == id {
                             break;
                         }
                     }
@@ -313,7 +309,7 @@ impl RelayPool {
         // Unsubscribe
         for relay in relays.values() {
             relay
-                .send_msg(ClientMessage::close(id.to_string()), false)
+                .send_msg(ClientMessage::close(id.clone()), false)
                 .await?;
         }
 

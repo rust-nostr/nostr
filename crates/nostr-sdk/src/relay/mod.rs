@@ -9,12 +9,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter, Url};
+use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter, SubscriptionId, Url};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::sync::Mutex;
-use uuid::Uuid;
 
 mod net;
 pub mod pool;
@@ -417,12 +416,12 @@ impl Relay {
     }
 
     /// Subscribe
-    pub async fn subscribe(&self, wait: bool) -> Result<Uuid, Error> {
+    pub async fn subscribe(&self, wait: bool) -> Result<SubscriptionId, Error> {
         let mut subscription = SUBSCRIPTION.lock().await;
         let channel = subscription.get_channel(&self.url());
         let channel_id = channel.id();
         self.send_msg(
-            ClientMessage::new_req(channel_id.to_string(), subscription.get_filters()),
+            ClientMessage::new_req(channel_id.clone(), subscription.get_filters()),
             wait,
         )
         .await?;
@@ -433,7 +432,7 @@ impl Relay {
     pub async fn unsubscribe(&self, wait: bool) -> Result<(), Error> {
         let mut subscription = SUBSCRIPTION.lock().await;
         if let Some(channel) = subscription.remove_channel(&self.url()) {
-            self.send_msg(ClientMessage::close(channel.id().to_string()), wait)
+            self.send_msg(ClientMessage::close(channel.id()), wait)
                 .await?;
         }
         Ok(())
@@ -447,13 +446,10 @@ impl Relay {
     ) -> Result<Vec<Event>, Error> {
         let mut events: Vec<Event> = Vec::new();
 
-        let id = Uuid::new_v4();
+        let id = SubscriptionId::generate();
 
-        self.send_msg(
-            ClientMessage::new_req(id.to_string(), filters.clone()),
-            false,
-        )
-        .await?;
+        self.send_msg(ClientMessage::new_req(id.clone(), filters.clone()), false)
+            .await?;
 
         let mut notifications = self.notification_sender.subscribe();
         let recv = async {
@@ -464,12 +460,12 @@ impl Relay {
                             subscription_id,
                             event,
                         } => {
-                            if subscription_id == id.to_string() {
+                            if subscription_id == id {
                                 events.push(event.as_ref().clone());
                             }
                         }
-                        RelayMessage::EndOfStoredEvents { subscription_id } => {
-                            if subscription_id == id.to_string() {
+                        RelayMessage::EndOfStoredEvents(subscription_id) => {
+                            if subscription_id == id {
                                 break;
                             }
                         }
@@ -484,8 +480,7 @@ impl Relay {
         }
 
         // Unsubscribe
-        self.send_msg(ClientMessage::close(id.to_string()), false)
-            .await?;
+        self.send_msg(ClientMessage::close(id), false).await?;
 
         Ok(events)
     }
@@ -494,14 +489,11 @@ impl Relay {
     pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Duration) {
         let relay = self.clone();
         thread::spawn(async move {
-            let id = Uuid::new_v4();
+            let id = SubscriptionId::generate();
 
             // Subscribe
             if let Err(e) = relay
-                .send_msg(
-                    ClientMessage::new_req(id.to_string(), filters.clone()),
-                    false,
-                )
+                .send_msg(ClientMessage::new_req(id.clone(), filters.clone()), false)
                 .await
             {
                 log::error!(
@@ -516,10 +508,10 @@ impl Relay {
                 while let Ok(notification) = notifications.recv().await {
                     if let RelayPoolNotification::Message(
                         _,
-                        RelayMessage::EndOfStoredEvents { subscription_id },
+                        RelayMessage::EndOfStoredEvents(subscription_id),
                     ) = notification
                     {
-                        if subscription_id == id.to_string() {
+                        if subscription_id == id {
                             break;
                         }
                     }
@@ -531,10 +523,7 @@ impl Relay {
             }
 
             // Unsubscribe
-            if let Err(e) = relay
-                .send_msg(ClientMessage::close(id.to_string()), false)
-                .await
-            {
+            if let Err(e) = relay.send_msg(ClientMessage::close(id), false).await {
                 log::error!(
                     "Impossible to close subscription with {}: {}",
                     relay.url(),

@@ -9,7 +9,7 @@ pub mod subscription;
 
 pub use self::client::ClientMessage;
 pub use self::relay::RelayMessage;
-pub use self::subscription::SubscriptionFilter;
+pub use self::subscription::{SubscriptionFilter, SubscriptionId};
 
 /// Messages error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]

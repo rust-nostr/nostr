@@ -7,7 +7,8 @@ use std::{thread, time};
 use nostr::key::FromSkStr;
 use nostr::nips::nip04::decrypt;
 use nostr::{
-    ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter, Tag, Url,
+    ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter,
+    SubscriptionId, Tag, Url,
 };
 use tungstenite::{connect, Message as WsMessage};
 
@@ -34,14 +35,14 @@ fn main() -> Result<()> {
             .to_event(&alice_keys)?;
 
     let subscribe_to_alice = ClientMessage::new_req(
-        "abcdefg",
+        SubscriptionId::new("abcdefg"),
         vec![SubscriptionFilter::new()
             .authors(vec![alice_keys.public_key()])
             .pubkey(bob_keys.public_key())],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
-        "123456",
+        SubscriptionId::new("123456"),
         vec![SubscriptionFilter::new()
             .authors(vec![bob_keys.public_key()])
             .pubkey(alice_keys.public_key())],
@@ -67,7 +68,7 @@ fn main() -> Result<()> {
                 RelayMessage::Notice { message } => {
                     println!("Got a notice: {}", message);
                 }
-                RelayMessage::EndOfStoredEvents { subscription_id: _ } => {
+                RelayMessage::EndOfStoredEvents(_subscription_id) => {
                     println!("Relay signalled End of Stored Events");
                 }
                 RelayMessage::Ok {
