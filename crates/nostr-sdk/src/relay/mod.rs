@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
+use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter, SubscriptionId, Url};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -23,6 +24,8 @@ use self::pool::RelayPoolMessage;
 use self::pool::SUBSCRIPTION;
 use crate::thread;
 use crate::RelayPoolNotification;
+#[cfg(feature = "blocking")]
+use crate::RUNTIME;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 
@@ -91,6 +94,7 @@ pub struct Relay {
     url: Url,
     proxy: Option<SocketAddr>,
     status: Arc<Mutex<RelayStatus>>,
+    document: Arc<Mutex<RelayInformationDocument>>,
     scheduled_for_termination: Arc<Mutex<bool>>,
     pool_sender: Sender<RelayPoolMessage>,
     relay_sender: Sender<Message>,
@@ -112,6 +116,7 @@ impl Relay {
             url,
             proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
+            document: Arc::new(Mutex::new(RelayInformationDocument::new())),
             scheduled_for_termination: Arc::new(Mutex::new(false)),
             pool_sender,
             relay_sender,
@@ -136,9 +141,32 @@ impl Relay {
         status.clone()
     }
 
+    /// Get [`RelayStatus`]
+    #[cfg(feature = "blocking")]
+    pub fn status_blocking(&self) -> RelayStatus {
+        RUNTIME.block_on(async { self.status().await })
+    }
+
     async fn set_status(&self, status: RelayStatus) {
         let mut s = self.status.lock().await;
         *s = status;
+    }
+
+    /// Get [`RelayInformationDocument`]
+    pub async fn document(&self) -> RelayInformationDocument {
+        let document = self.document.lock().await;
+        document.clone()
+    }
+
+    /// Get [`RelayInformationDocument`]
+    #[cfg(feature = "blocking")]
+    pub fn document_blocking(&self) -> RelayInformationDocument {
+        RUNTIME.block_on(async { self.document().await })
+    }
+
+    async fn set_document(&self, document: RelayInformationDocument) {
+        let mut d = self.document.lock().await;
+        *d = document;
     }
 
     async fn is_scheduled_for_termination(&self) -> bool {
@@ -198,9 +226,24 @@ impl Relay {
     async fn try_connect(&self) {
         let url: String = self.url.to_string();
 
+        // Set RelayStatus to `Connecting`
         self.set_status(RelayStatus::Connecting).await;
         log::debug!("Connecting to {}", url);
 
+        // Request `RelayInformationDocument`
+        let relay = self.clone();
+        thread::spawn(async move {
+            match RelayInformationDocument::get(relay.url(), relay.proxy()).await {
+                Ok(document) => relay.set_document(document).await,
+                Err(e) => log::error!(
+                    "Impossible to get information document from {}: {}",
+                    relay.url,
+                    e
+                ),
+            };
+        });
+
+        // Connect
         match net::get_connection(&self.url, self.proxy, None).await {
             Ok((mut ws_tx, mut ws_rx)) => {
                 self.set_status(RelayStatus::Connected).await;
