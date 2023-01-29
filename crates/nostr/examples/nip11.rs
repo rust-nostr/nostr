@@ -8,7 +8,7 @@ fn main() -> Result<()> {
 
     let relay_url = Url::parse("wss://relay.damus.io")?;
 
-    let info = RelayInformationDocument::get(relay_url, None)?;
+    let info = RelayInformationDocument::get_blocking(relay_url, None)?;
 
     println!("{:#?}", info);
 

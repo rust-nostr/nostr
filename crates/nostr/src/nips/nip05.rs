@@ -9,10 +9,6 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 
 use bitcoin::secp256k1::XOnlyPublicKey;
-#[cfg(feature = "blocking")]
-use reqwest::blocking::Client;
-#[cfg(not(feature = "blocking"))]
-use reqwest::Client;
 use reqwest::Proxy;
 use serde_json::Value;
 
@@ -62,12 +58,13 @@ fn verify_json(public_key: XOnlyPublicKey, json: Value, name: &str) -> Result<()
 }
 
 /// Verify NIP05
-#[cfg(not(feature = "blocking"))]
 pub async fn verify(
     public_key: XOnlyPublicKey,
     nip05: &str,
     proxy: Option<SocketAddr>,
 ) -> Result<(), Error> {
+    use reqwest::Client;
+
     let (url, name) = compose_url(nip05)?;
     let mut builder = Client::builder();
     if let Some(proxy) = proxy {
@@ -82,11 +79,13 @@ pub async fn verify(
 
 /// Verify NIP05
 #[cfg(feature = "blocking")]
-pub fn verify(
+pub fn verify_blocking(
     public_key: XOnlyPublicKey,
     nip05: &str,
     proxy: Option<SocketAddr>,
 ) -> Result<(), Error> {
+    use reqwest::blocking::Client;
+
     let (url, name) = compose_url(nip05)?;
     let mut builder = Client::builder();
     if let Some(proxy) = proxy {

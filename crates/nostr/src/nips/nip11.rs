@@ -8,10 +8,6 @@
 
 use std::net::SocketAddr;
 
-#[cfg(feature = "blocking")]
-use reqwest::blocking::Client;
-#[cfg(not(feature = "blocking"))]
-use reqwest::Client;
 use reqwest::Proxy;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -59,8 +55,9 @@ impl RelayInformationDocument {
     }
 
     /// Get Relay Information Document
-    #[cfg(not(feature = "blocking"))]
     pub async fn get(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
+        use reqwest::Client;
+
         let mut builder = Client::builder();
         if let Some(proxy) = proxy {
             let proxy = format!("socks5h://{proxy}");
@@ -80,7 +77,9 @@ impl RelayInformationDocument {
 
     /// Get Relay Information Document
     #[cfg(feature = "blocking")]
-    pub fn get(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
+    pub fn get_blocking(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
+        use reqwest::blocking::Client;
+
         let mut builder = Client::builder();
         if let Some(proxy) = proxy {
             let proxy = format!("socks5h://{proxy}");
@@ -128,5 +127,5 @@ pub fn get_relay_information_document(
     url: Url,
     proxy: Option<SocketAddr>,
 ) -> Result<RelayInformationDocument, Error> {
-    RelayInformationDocument::get(url, proxy)
+    RelayInformationDocument::get_blocking(url, proxy)
 }
