@@ -1,6 +1,6 @@
 [package]
 name = "nostr"
-version = "0.16.2"
+version = "0.17.0"
 edition = "2021"
 description = "Rust implementation of the Nostr protocol."
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
