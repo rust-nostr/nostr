@@ -36,22 +36,20 @@ pub enum Error {
 /// Relay information document
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RelayInformationDocument {
-    ///
-    pub id: String,
     /// Name
-    pub name: String,
+    pub name: Option<String>,
     /// Description
-    pub description: String,
+    pub description: Option<String>,
     /// Owner public key
-    pub pubkey: String,
+    pub pubkey: Option<String>,
     /// Owner contact
-    pub contact: String,
+    pub contact: Option<String>,
     /// Supported NIPs
-    pub supported_nips: Vec<u16>,
+    pub supported_nips: Option<Vec<u16>>,
     /// Software
-    pub software: String,
+    pub software: Option<String>,
     /// Software version
-    pub version: String,
+    pub version: Option<String>,
 }
 
 impl RelayInformationDocument {
