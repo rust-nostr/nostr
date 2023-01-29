@@ -28,6 +28,9 @@ pub enum Error {
     /// The relay information document is not accessible
     #[error("The relay information document is not accessible")]
     InaccessibleInformationDocument,
+    /// Provided URL scheme is not valid
+    #[error("Provided URL scheme is not valid")]
+    InvalidScheme,
 }
 
 /// Relay information document
@@ -66,6 +69,7 @@ impl RelayInformationDocument {
             builder = builder.proxy(Proxy::all(proxy)?);
         }
         let client: Client = builder.build()?;
+        let url = Self::with_http_scheme(url)?;
         let req = client.get(url).header("Accept", "application/nostr+json");
         match req.send().await {
             Ok(response) => match response.json().await {
@@ -85,6 +89,7 @@ impl RelayInformationDocument {
             builder = builder.proxy(Proxy::all(proxy)?);
         }
         let client: Client = builder.build()?;
+        let url = Self::with_http_scheme(url)?;
         let req = client.get(url).header("Accept", "application/nostr+json");
         match req.send() {
             Ok(response) => match response.json() {
@@ -93,6 +98,18 @@ impl RelayInformationDocument {
             },
             Err(_) => Err(Error::InaccessibleInformationDocument),
         }
+    }
+
+    /// Returns new URL with scheme substituted to HTTP(S) if WS(S) was provided,
+    /// other schemes leaves untouched.
+    fn with_http_scheme(url: Url) -> Result<Url, Error> {
+        let mut url = url;
+        match url.scheme() {
+            "wss" => url.set_scheme("https").map_err(|_| Error::InvalidScheme)?,
+            "ws" => url.set_scheme("http").map_err(|_| Error::InvalidScheme)?,
+            _ => {}
+        }
+        Ok(url)
     }
 }
 
