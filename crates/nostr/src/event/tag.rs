@@ -15,6 +15,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
 
 use super::id::{self, EventId};
+use crate::Timestamp;
 
 /// [`Tag`] error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
@@ -168,7 +169,7 @@ pub enum Tag {
     ContentWarning {
         reason: Option<String>,
     },
-    Expiration(u64),
+    Expiration(Timestamp),
     Subject(String),
     Challenge(String),
 }
@@ -216,7 +217,7 @@ where
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(content.to_string()),
                 }),
-                TagKind::Expiration => Ok(Self::Expiration(content.parse::<u64>()?)),
+                TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(content)?)),
                 TagKind::Subject => Ok(Self::Subject(content.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(content.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
@@ -439,7 +440,7 @@ mod tests {
 
         assert_eq!(
             vec!["expiration", "1600000000"],
-            Tag::Expiration(1600000000).as_vec()
+            Tag::Expiration(Timestamp::from(1600000000)).as_vec()
         );
 
         assert_eq!(
@@ -611,7 +612,7 @@ mod tests {
 
         assert_eq!(
             Tag::parse(vec!["expiration", "1600000000"])?,
-            Tag::Expiration(1600000000)
+            Tag::Expiration(Timestamp::from(1600000000))
         );
 
         assert_eq!(

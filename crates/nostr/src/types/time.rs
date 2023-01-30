@@ -3,9 +3,12 @@
 
 //! Time
 
-use std::ops::{Add, Sub};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    ops::{Add, Sub},
+    str::FromStr,
+};
 
 #[cfg(target_arch = "wasm32")]
 use instant::SystemTime;
@@ -42,6 +45,19 @@ impl Timestamp {
 impl From<u64> for Timestamp {
     fn from(timestamp: u64) -> Self {
         Self(timestamp)
+    }
+}
+
+impl FromStr for Timestamp {
+    type Err = std::num::ParseIntError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from(s.parse::<u64>()?))
+    }
+}
+
+impl ToString for Timestamp {
+    fn to_string(&self) -> String {
+        self.0.to_string()
     }
 }
 
