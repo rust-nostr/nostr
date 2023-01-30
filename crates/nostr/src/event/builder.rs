@@ -301,7 +301,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn set_channel_metadata(
         channel_id: EventId, // event id of kind 40
-        relay_url: Url,
+        relay_url: Option<Url>,
         metadata: Metadata,
     ) -> Result<Self, Error> {
         let name = metadata.name;
@@ -328,7 +328,11 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::ChannelMetadata,
             metadata.to_string(),
-            &[Tag::Event(channel_id, Some(relay_url.to_string()), None)],
+            &[Tag::Event(
+                channel_id,
+                relay_url.map(|u| u.to_string()),
+                None,
+            )],
         ))
     }
 
@@ -337,7 +341,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn new_channel_msg<S>(
         channel_id: EventId, // event id of kind 40
-        relay_url: Url,
+        relay_url: Option<Url>,
         content: S,
     ) -> Self
     where
@@ -348,7 +352,7 @@ impl EventBuilder {
             content,
             &[Tag::Event(
                 channel_id,
-                Some(relay_url.to_string()),
+                relay_url.map(|u| u.to_string()),
                 Some(Marker::Root),
             )],
         )

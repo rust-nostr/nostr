@@ -703,7 +703,7 @@ impl Client {
     pub async fn update_channel(
         &self,
         channel_id: EventId,
-        relay_url: Url,
+        relay_url: Option<Url>,
         metadata: Metadata,
     ) -> Result<EventId, Error> {
         let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata)?;
@@ -716,7 +716,7 @@ impl Client {
     pub async fn send_channel_msg<S>(
         &self,
         channel_id: EventId,
-        relay_url: Url,
+        relay_url: Option<Url>,
         msg: S,
     ) -> Result<EventId, Error>
     where

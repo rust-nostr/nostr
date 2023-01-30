@@ -218,7 +218,7 @@ impl Client {
     pub fn update_channel(
         &self,
         channel_id: EventId,
-        relay_url: Url,
+        relay_url: Option<Url>,
         metadata: Metadata,
     ) -> Result<EventId, Error> {
         RUNTIME.block_on(async {
@@ -231,7 +231,7 @@ impl Client {
     pub fn send_channel_msg<S>(
         &self,
         channel_id: EventId,
-        relay_url: Url,
+        relay_url: Option<Url>,
         msg: S,
     ) -> Result<EventId, Error>
     where
