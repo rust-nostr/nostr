@@ -12,6 +12,9 @@ use std::str::FromStr;
 use bitcoin::secp256k1::rand::rngs::OsRng;
 pub use bitcoin::secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 
+#[cfg(feature = "vanity")]
+pub mod vanity;
+
 #[cfg(feature = "nip19")]
 use crate::nips::nip19::FromBech32;
 
@@ -33,6 +36,9 @@ pub enum Error {
     /// Failed to generate new keys
     #[error("Failed to generate new keys")]
     KeyGenerationFailure,
+    /// Unsupported char
+    #[error("Unsupported char: {0}")]
+    InvalidChar(char),
     /// Secp256k1 error
     #[error(transparent)]
     Secp256k1(#[from] bitcoin::secp256k1::Error),

@@ -99,6 +99,7 @@ The following crate feature flags are available:
 | Feature             | Default | Description                                                                                                                |
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
 | `blocking`          |   No    | Needed to use this library in not async/await context                                                                      |
+| `vanity`            |   No    | Enable vanity public key mining module                                                                                     |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                                                    |
 | `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                                                        |
