@@ -31,6 +31,9 @@ pub enum Error {
     /// No relay connected
     #[error("no relay connected")]
     NoRelayConnected,
+    /// Relay not found
+    #[error("relay not found")]
+    RelayNotFound,
 }
 
 /// Relay Pool Message
@@ -240,6 +243,17 @@ impl RelayPool {
         }
 
         Ok(())
+    }
+
+    /// Send client message
+    pub async fn send_msg_to(&self, url: Url, msg: ClientMessage, wait: bool) -> Result<(), Error> {
+        let relays = self.relays().await;
+        if let Some(relay) = relays.get(&url) {
+            relay.send_msg(msg, wait).await?;
+            Ok(())
+        } else {
+            Err(Error::RelayNotFound)
+        }
     }
 
     /// Subscribe to filters

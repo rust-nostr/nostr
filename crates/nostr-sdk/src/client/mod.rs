@@ -331,18 +331,40 @@ impl Client {
     }
 
     /// Send client message
-    pub async fn send_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
-        Ok(self.pool.send_msg(msg, wait).await?)
+    pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
+        Ok(self
+            .pool
+            .send_msg(msg, self.opts.get_wait_for_send())
+            .await?)
+    }
+
+    /// Send client message to a specific relay
+    pub async fn send_msg_to<S>(&self, url: S, msg: ClientMessage) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        let url = Url::parse(&url.into())?;
+        Ok(self
+            .pool
+            .send_msg_to(url, msg, self.opts.get_wait_for_send())
+            .await?)
     }
 
     /// Send event
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
         let event_id = event.id;
-        self.send_msg(
-            ClientMessage::new_event(event),
-            self.opts.get_wait_for_send(),
-        )
-        .await?;
+        self.send_msg(ClientMessage::new_event(event)).await?;
+        Ok(event_id)
+    }
+
+    /// Send event to specific relay
+    pub async fn send_event_to<S>(&self, url: S, event: Event) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        let event_id = event.id;
+        self.send_msg_to(url, ClientMessage::new_event(event))
+            .await?;
         Ok(event_id)
     }
 

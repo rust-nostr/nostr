@@ -112,16 +112,31 @@ impl Client {
 
     #[deprecated]
     pub fn send_client_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
-        RUNTIME.block_on(async { self.client.send_msg(msg, wait).await })
+        #[allow(deprecated)]
+        RUNTIME.block_on(async { self.client.send_client_msg(msg, wait).await })
     }
 
-    pub fn send_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
-        RUNTIME.block_on(async { self.client.send_msg(msg, wait).await })
+    pub fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
+        RUNTIME.block_on(async { self.client.send_msg(msg).await })
+    }
+
+    pub fn send_msg_to<S>(&self, url: S, msg: ClientMessage) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async { self.client.send_msg_to(url, msg).await })
     }
 
     /// Send event
     pub fn send_event(&self, event: Event) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.send_event(event).await })
+    }
+
+    pub fn send_event_to<S>(&self, url: S, event: Event) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async { self.client.send_event_to(url, event).await })
     }
 
     pub fn update_profile(&self, metadata: Metadata) -> Result<EventId, Error> {
