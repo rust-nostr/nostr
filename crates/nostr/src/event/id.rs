@@ -33,7 +33,7 @@ pub enum Error {
 /// 32-bytes lowercase hex-encoded sha256 of the the serialized event data
 ///
 /// https://github.com/nostr-protocol/nips/blob/master/01.md
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct EventId(Sha256Hash);
 
 impl EventId {
