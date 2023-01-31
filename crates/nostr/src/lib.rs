@@ -21,8 +21,6 @@ pub mod nips;
 pub mod prelude;
 #[cfg(feature = "base")]
 pub mod types;
-#[deprecated]
-pub mod util;
 
 #[cfg(feature = "base")]
 pub use self::event::{Event, EventBuilder, EventId, Kind, Tag};

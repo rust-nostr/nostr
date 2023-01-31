@@ -36,12 +36,6 @@ impl Client {
         }
     }
 
-    #[deprecated]
-    pub fn generate_keys() -> Keys {
-        #[allow(deprecated)]
-        super::Client::generate_keys()
-    }
-
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.client.keys()

@@ -61,9 +61,9 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
-    /// let my_keys = Client::generate_keys();
+    /// let my_keys = Keys::generate();
     /// let client = Client::new(&my_keys);
     /// ```
     pub fn new(keys: &Keys) -> Self {
@@ -74,9 +74,9 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr_sdk::{Client, Options};
+    /// use nostr_sdk::prelude::*;
     ///
-    /// let my_keys = Client::generate_keys();
+    /// let my_keys = Keys::generate();
     /// let opts = Options::new().wait_for_send(true);
     /// let client = Client::new_with_opts(&my_keys, opts);
     /// ```
@@ -96,12 +96,6 @@ impl Client {
     /// Update current [`Options`]
     pub fn update_opts(&self, new_opts: Options) {
         self.opts.update_opts(new_opts);
-    }
-
-    /// Generate new random keys using entorpy from OS
-    #[deprecated = "use `Keys::generate()`"]
-    pub fn generate_keys() -> Keys {
-        Keys::generate()
     }
 
     /// Get current [`Keys`]
@@ -128,11 +122,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client
     ///     .add_relay("wss://relay.nostr.info", None)
@@ -157,11 +151,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client.remove_relay("wss://relay.nostr.info").await.unwrap();
     /// # }
@@ -190,11 +184,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client
     ///     .connect_relay("wss://relay.nostr.info", true)
@@ -218,11 +212,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client
     ///     .disconnect_relay("wss://relay.nostr.info")
@@ -246,11 +240,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client.connect().await;
     /// # }
@@ -263,11 +257,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client.disconnect().await.unwrap();
     /// # }
@@ -284,7 +278,7 @@ impl Client {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let subscription = SubscriptionFilter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
@@ -308,7 +302,7 @@ impl Client {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let subscription = SubscriptionFilter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
@@ -363,13 +357,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
-    /// use nostr::url::Url;
-    /// use nostr_sdk::nostr::Metadata;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let metadata = Metadata::new()
     ///     .name("username")
@@ -392,11 +384,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client
     ///     .publish_text_note("My first text note from Nostr SDK!", &[])
@@ -418,11 +410,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client
     ///     .publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16)
@@ -451,11 +443,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client
     ///     .add_recommended_relay("wss://relay.damus.io")
@@ -486,11 +478,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let _list = client.get_contact_list().await.unwrap();
     /// # }
@@ -526,13 +518,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::nips::nip19::FromBech32;
-    /// use nostr::secp256k1::XOnlyPublicKey;
-    /// use nostr_sdk::Client;
+    /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let alice_pubkey = XOnlyPublicKey::from_bech32(
     ///     "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
@@ -595,7 +585,7 @@ impl Client {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let event_id =
     ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
@@ -629,7 +619,7 @@ impl Client {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let event_id =
     ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
@@ -663,7 +653,7 @@ impl Client {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Client::generate_keys();
+    /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let event_id =
     ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")

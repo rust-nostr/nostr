@@ -109,23 +109,3 @@ impl RelayInformationDocument {
         Ok(url)
     }
 }
-
-/// Get Relay Information Document
-#[deprecated]
-#[cfg(not(feature = "blocking"))]
-pub async fn get_relay_information_document(
-    url: Url,
-    proxy: Option<SocketAddr>,
-) -> Result<RelayInformationDocument, Error> {
-    RelayInformationDocument::get(url, proxy).await
-}
-
-/// Get Relay Information Document
-#[cfg(feature = "blocking")]
-#[deprecated]
-pub fn get_relay_information_document(
-    url: Url,
-    proxy: Option<SocketAddr>,
-) -> Result<RelayInformationDocument, Error> {
-    RelayInformationDocument::get_blocking(url, proxy)
-}

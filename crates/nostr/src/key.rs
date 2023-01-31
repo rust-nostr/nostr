@@ -93,12 +93,6 @@ impl Keys {
         Self::new(secret_key)
     }
 
-    /// Generate a new random keys
-    #[deprecated = "use `generate` method"]
-    pub fn generate_from_os_random() -> Self {
-        Self::generate()
-    }
-
     /// Get public key
     pub fn public_key(&self) -> XOnlyPublicKey {
         self.public_key
