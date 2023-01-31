@@ -325,19 +325,24 @@ impl Client {
     }
 
     /// Send client message
+    #[deprecated]
     pub async fn send_client_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
-        Ok(self.pool.send_client_msg(msg, wait).await?)
+        Ok(self.pool.send_msg(msg, wait).await?)
+    }
+
+    /// Send client message
+    pub async fn send_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
+        Ok(self.pool.send_msg(msg, wait).await?)
     }
 
     /// Send event
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
         let event_id = event.id;
-        self.pool
-            .send_client_msg(
-                ClientMessage::new_event(event),
-                self.opts.get_wait_for_send(),
-            )
-            .await?;
+        self.send_msg(
+            ClientMessage::new_event(event),
+            self.opts.get_wait_for_send(),
+        )
+        .await?;
         Ok(event_id)
     }
 

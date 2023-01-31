@@ -110,8 +110,13 @@ impl Client {
         })
     }
 
+    #[deprecated]
     pub fn send_client_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
-        RUNTIME.block_on(async { self.client.send_client_msg(msg, wait).await })
+        RUNTIME.block_on(async { self.client.send_msg(msg, wait).await })
+    }
+
+    pub fn send_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
+        RUNTIME.block_on(async { self.client.send_msg(msg, wait).await })
     }
 
     /// Send event
