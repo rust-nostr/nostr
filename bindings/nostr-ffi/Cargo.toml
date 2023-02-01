@@ -14,7 +14,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 nostr  = { path = "../../crates/nostr" }
-uniffi = "0.22.0"
+uniffi = "0.23.0"
 uniffi_macros = "0.22.0"
 
 [build-dependencies]
