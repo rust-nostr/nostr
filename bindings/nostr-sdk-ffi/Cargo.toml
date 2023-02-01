@@ -23,7 +23,7 @@ uniffi = "0.23"
 uniffi_macros = "0.23"
 
 [target.'cfg(target_os = "android")'.dependencies]
-android_logger = "0.11"
+android_logger = "0.12"
 
 [build-dependencies]
 uniffi_build = { version = "0.23", features = ["builtin-bindgen"] }
