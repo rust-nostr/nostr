@@ -85,6 +85,12 @@ pub enum TagKind {
     P,
     /// Event id
     E,
+    /// Reference (URL, etc.)
+    R,
+    /// Hashtag
+    T,
+    /// Geohash
+    G,
     /// Identifier
     D,
     /// Relay
@@ -110,6 +116,9 @@ impl fmt::Display for TagKind {
         match self {
             Self::P => write!(f, "p"),
             Self::E => write!(f, "e"),
+            Self::R => write!(f, "r"),
+            Self::T => write!(f, "t"),
+            Self::G => write!(f, "g"),
             Self::D => write!(f, "d"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
@@ -132,6 +141,9 @@ where
         match s.as_str() {
             "p" => Self::P,
             "e" => Self::E,
+            "r" => Self::R,
+            "t" => Self::T,
+            "g" => Self::G,
             "d" => Self::D,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
@@ -151,6 +163,9 @@ pub enum Tag {
     Generic(TagKind, Vec<String>),
     Event(EventId, Option<String>, Option<Marker>),
     PubKey(XOnlyPublicKey, Option<String>),
+    Reference(String),
+    Hashtag(String),
+    Geohash(String),
     Relay(Url),
     ContactList {
         pk: XOnlyPublicKey,
@@ -213,6 +228,9 @@ where
             match tag_kind {
                 TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?, None)),
                 TagKind::E => Ok(Self::Event(EventId::from_hex(content)?, None, None)),
+                TagKind::R => Ok(Self::Reference(content.to_string())),
+                TagKind::T => Ok(Self::Hashtag(content.to_string())),
+                TagKind::G => Ok(Self::Geohash(content.to_string())),
                 TagKind::Relay => Ok(Self::Relay(Url::parse(content)?)),
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(content.to_string()),
@@ -288,6 +306,9 @@ impl From<Tag> for Vec<String> {
                 }
                 tag
             }
+            Tag::Reference(r) => vec![TagKind::R.to_string(), r],
+            Tag::Hashtag(t) => vec![TagKind::T.to_string(), t],
+            Tag::Geohash(g) => vec![TagKind::G.to_string(), g],
             Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
             Tag::ContactList {
                 pk,
