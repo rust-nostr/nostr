@@ -6,7 +6,7 @@ else
 endif
 
 uniffideps:
-	$(Q)cargo install uniffi_bindgen --version 0.22.0
+	$(Q)cargo install uniffi_bindgen --version 0.23
 
 publish-python: uniffideps python-deps
 	$(Q)maturin publish
