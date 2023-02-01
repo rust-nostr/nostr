@@ -272,28 +272,17 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn new_channel(metadata: Metadata) -> Result<Self, Error> {
-        let name = metadata.name;
-        let display_name = metadata.display_name;
-        let about = metadata.about;
-        let picture = metadata.picture;
-
-        if let Some(name) = name.as_ref() {
+        if let Some(name) = metadata.name.as_ref() {
             if !REGEX_NAME.is_match(name) {
                 return Err(Error::InvalidName);
             }
         }
 
-        let mut metadata: Value = json!({
-            "name": name.unwrap_or_default(),
-            "display_name": display_name.unwrap_or_default(),
-            "about": about.unwrap_or_default(),
-        });
-
-        if let Some(picture) = picture {
-            metadata["picture"] = json!(picture);
-        }
-
-        Ok(Self::new(Kind::ChannelCreation, metadata.to_string(), &[]))
+        Ok(Self::new(
+            Kind::ChannelCreation,
+            serde_json::to_string(&metadata)?,
+            &[],
+        ))
     }
 
     /// Set channel metadata
@@ -304,30 +293,15 @@ impl EventBuilder {
         relay_url: Option<Url>,
         metadata: Metadata,
     ) -> Result<Self, Error> {
-        let name = metadata.name;
-        let display_name = metadata.display_name;
-        let about = metadata.about;
-        let picture = metadata.picture;
-
-        if let Some(name) = name.as_ref() {
+        if let Some(name) = metadata.name.as_ref() {
             if !REGEX_NAME.is_match(name) {
                 return Err(Error::InvalidName);
             }
         }
 
-        let mut metadata: Value = json!({
-            "name": name.unwrap_or_default(),
-            "display_name": display_name.unwrap_or_default(),
-            "about": about.unwrap_or_default(),
-        });
-
-        if let Some(picture) = picture {
-            metadata["picture"] = json!(picture);
-        }
-
         Ok(Self::new(
             Kind::ChannelMetadata,
-            metadata.to_string(),
+            serde_json::to_string(&metadata)?,
             &[Tag::Event(
                 channel_id,
                 relay_url.map(|u| u.to_string()),
