@@ -4,6 +4,8 @@
 //! Prelude
 
 // External crates
+#[cfg(feature = "nip06")]
+pub use bip39::*;
 pub use bitcoin::hashes::*;
 pub use bitcoin::secp256k1::*;
 #[cfg(feature = "base")]
