@@ -12,7 +12,7 @@ use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{
-    ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Keys, Kind, Metadata,
+    ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Keys, Kind, Metadata,
     SubscriptionFilter, Tag,
 };
 use tokio::sync::broadcast;
@@ -719,7 +719,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn update_channel(
         &self,
-        channel_id: EventId,
+        channel_id: ChannelId,
         relay_url: Option<Url>,
         metadata: Metadata,
     ) -> Result<EventId, Error> {
@@ -732,7 +732,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn send_channel_msg<S>(
         &self,
-        channel_id: EventId,
+        channel_id: ChannelId,
         relay_url: Option<Url>,
         msg: S,
     ) -> Result<EventId, Error>

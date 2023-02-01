@@ -3,12 +3,14 @@
 
 //! Types
 
+pub mod channel_id;
 pub mod contact;
 pub mod entity;
 pub mod metadata;
 pub mod profile;
 pub mod time;
 
+pub use self::channel_id::ChannelId;
 pub use self::contact::Contact;
 pub use self::entity::Entity;
 pub use self::metadata::Metadata;

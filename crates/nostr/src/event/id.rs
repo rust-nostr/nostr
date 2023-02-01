@@ -97,3 +97,9 @@ impl fmt::Display for EventId {
         write!(f, "{}", self.to_hex())
     }
 }
+
+impl From<Sha256Hash> for EventId {
+    fn from(hash: Sha256Hash) -> Self {
+        Self(hash)
+    }
+}

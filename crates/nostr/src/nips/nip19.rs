@@ -20,6 +20,7 @@ use crate::Profile;
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 pub const PREFIX_BECH32_NOTE_ID: &str = "note";
+pub const PREFIX_BECH32_CHANNEL: &str = "nchannel";
 pub const PREFIX_BECH32_PROFILE: &str = "nprofile";
 pub const PREFIX_BECH32_EVENT: &str = "nevent";
 

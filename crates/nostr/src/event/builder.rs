@@ -17,7 +17,7 @@ use crate::key::{self, Keys};
 use crate::nips::nip04;
 #[cfg(feature = "nip13")]
 use crate::nips::nip13;
-use crate::types::{Contact, Metadata, Timestamp};
+use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 
 static REGEX_NAME: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
@@ -289,7 +289,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn set_channel_metadata(
-        channel_id: EventId, // event id of kind 40
+        channel_id: ChannelId,
         relay_url: Option<Url>,
         metadata: Metadata,
     ) -> Result<Self, Error> {
@@ -303,7 +303,7 @@ impl EventBuilder {
             Kind::ChannelMetadata,
             serde_json::to_string(&metadata)?,
             &[Tag::Event(
-                channel_id,
+                channel_id.into(),
                 relay_url.map(|u| u.to_string()),
                 None,
             )],
@@ -313,11 +313,7 @@ impl EventBuilder {
     /// New channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel_msg<S>(
-        channel_id: EventId, // event id of kind 40
-        relay_url: Option<Url>,
-        content: S,
-    ) -> Self
+    pub fn new_channel_msg<S>(channel_id: ChannelId, relay_url: Option<Url>, content: S) -> Self
     where
         S: Into<String>,
     {
@@ -325,7 +321,7 @@ impl EventBuilder {
             Kind::ChannelMessage,
             content,
             &[Tag::Event(
-                channel_id,
+                channel_id.into(),
                 relay_url.map(|u| u.to_string()),
                 Some(Marker::Root),
             )],

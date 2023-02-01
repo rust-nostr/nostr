@@ -9,7 +9,9 @@ use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{ClientMessage, Contact, Event, EventId, Keys, Metadata, SubscriptionFilter, Tag};
+use nostr::{
+    ChannelId, ClientMessage, Contact, Event, EventId, Keys, Metadata, SubscriptionFilter, Tag,
+};
 use tokio::sync::broadcast;
 
 use super::{Error, Options};
@@ -231,7 +233,7 @@ impl Client {
 
     pub fn update_channel(
         &self,
-        channel_id: EventId,
+        channel_id: ChannelId,
         relay_url: Option<Url>,
         metadata: Metadata,
     ) -> Result<EventId, Error> {
@@ -244,7 +246,7 @@ impl Client {
 
     pub fn send_channel_msg<S>(
         &self,
-        channel_id: EventId,
+        channel_id: ChannelId,
         relay_url: Option<Url>,
         msg: S,
     ) -> Result<EventId, Error>
