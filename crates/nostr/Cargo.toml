@@ -14,7 +14,7 @@ keywords = ["nostr", "protocol", "sdk", "rust"]
 [features]
 default = ["all-nips", "base"]
 blocking = ["reqwest?/blocking"]
-base = ["dep:log", "dep:once_cell", "dep:regex", "dep:serde", "dep:serde_json", "dep:url"]
+base = ["dep:instant", "dep:log", "dep:once_cell", "dep:regex", "dep:serde", "dep:serde_json", "dep:url"]
 vanity = ["nip19"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip13", "nip19", "nip26"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
@@ -41,7 +41,7 @@ thiserror = "1.0"
 url = { version = "2", features = ["serde"], optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-instant = { version = "0.1", features = [ "stdweb", "inaccurate" ] }
+instant = { version = "0.1", features = [ "stdweb", "inaccurate" ], optional = true }
 
 [dev-dependencies]
 csv = "1.1.5"
