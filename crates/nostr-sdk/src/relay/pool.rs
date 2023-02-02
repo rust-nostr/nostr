@@ -338,7 +338,7 @@ impl RelayPool {
     }
 
     /// Request events of filter. All events will be sent to notification listener
-    pub async fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Duration) {
+    pub async fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Option<Duration>) {
         let relays = self.relays().await;
         for relay in relays.values() {
             relay.req_events_of(filters.clone(), timeout);

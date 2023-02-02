@@ -142,7 +142,8 @@ impl Client {
     where
         S: Into<String>,
     {
-        self.add_relay_with_opts(url, proxy, RelayOptions::default()).await
+        self.add_relay_with_opts(url, proxy, RelayOptions::default())
+            .await
     }
 
     /// Add new relay
@@ -351,7 +352,7 @@ impl Client {
 
     /// Request events of filters
     /// All events will be received on notification listener (`client.notifications()`)
-    pub async fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Duration) {
+    pub async fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Option<Duration>) {
         self.pool.req_events_of(filters, timeout).await;
     }
 

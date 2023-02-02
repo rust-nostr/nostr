@@ -584,7 +584,7 @@ impl Relay {
     }
 
     /// Request events of filter. All events will be sent to notification listener
-    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Duration) {
+    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Option<Duration>) {
         if !self.opts.read() {
             log::error!("{}", Error::ReadDisabled);
         }
@@ -620,8 +620,12 @@ impl Relay {
                 }
             };
 
-            if let Err(e) = tokio::time::timeout(timeout, recv).await {
-                log::error!("{e}");
+            if let Some(timeout) = timeout {
+                if let Err(e) = tokio::time::timeout(timeout, recv).await {
+                    log::error!("{e}");
+                }
+            } else {
+                recv.await;
             }
 
             // Unsubscribe
