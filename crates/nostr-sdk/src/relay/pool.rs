@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::url::Url;
-use nostr::{ClientMessage, Event, EventId, RelayMessage, SubscriptionFilter, SubscriptionId};
+use nostr::{ClientMessage, Event, EventId, RelayMessage, SubscriptionFilter};
 use once_cell::sync::Lazy;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
@@ -26,7 +26,7 @@ pub(crate) static SUBSCRIPTION: Lazy<Mutex<Subscription>> =
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Relay error
-    #[error("relay error: {0}")]
+    #[error(transparent)]
     Relay(#[from] RelayError),
     /// No relay connected
     #[error("no relay connected")]
@@ -34,6 +34,9 @@ pub enum Error {
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
+    /// Thread error
+    #[error(transparent)]
+    Thread(#[from] thread::Error),
 }
 
 /// Relay Pool Message
@@ -107,7 +110,6 @@ impl RelayPoolTask {
                                 self.add_event(event.id);
                                 let notification =
                                     RelayPoolNotification::Event(relay_url, event.as_ref().clone());
-
                                 let _ = self.notification_sender.send(notification);
                             }
                         }
@@ -228,18 +230,18 @@ impl RelayPool {
         }
 
         if let ClientMessage::Event(event) = &msg {
-            if let Err(err) = self
+            if let Err(e) = self
                 .pool_task_sender
                 .send(RelayPoolMessage::EventSent(event.clone()))
                 .await
             {
-                log::error!("{}", err.to_string());
+                log::error!("{e}");
             };
         }
 
         for (url, relay) in relays.into_iter() {
             if let Err(e) = relay.send_msg(msg.clone(), wait).await {
-                log::error!("Impossible to send msg to {}: {}", url, e.to_string());
+                log::error!("Impossible to send msg to {url}: {e}");
             }
         }
 
@@ -258,11 +260,7 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(
-        &self,
-        filters: Vec<SubscriptionFilter>,
-        wait: bool,
-    ) -> Result<(), Error> {
+    pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>, wait: bool) {
         let relays = self.relays().await;
 
         {
@@ -271,70 +269,52 @@ impl RelayPool {
         }
 
         for relay in relays.values() {
-            relay.subscribe(wait).await?;
+            if let Err(e) = relay.subscribe(wait).await {
+                log::error!("{e}");
+            }
         }
-
-        Ok(())
     }
 
     /// Unsubscribe from filters
-    pub async fn unsubscribe(&self, wait: bool) -> Result<(), Error> {
+    pub async fn unsubscribe(&self, wait: bool) {
         let relays = self.relays().await;
         for relay in relays.values() {
-            relay.unsubscribe(wait).await?;
+            if let Err(e) = relay.unsubscribe(wait).await {
+                log::error!("{e}");
+            }
         }
-
-        Ok(())
     }
 
     /// Get events of filters
     pub async fn get_events_of(
         &self,
         filters: Vec<SubscriptionFilter>,
+        timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
-        let mut events: Vec<Event> = Vec::new();
-
-        let id = SubscriptionId::generate();
-
+        let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
+        let mut handles = Vec::new();
         let relays = self.relays().await;
-
-        // Subscribe
-        for relay in relays.values() {
-            relay
-                .send_msg(ClientMessage::new_req(id.clone(), filters.clone()), false)
-                .await?;
+        for (url, relay) in relays.into_iter() {
+            let filters = filters.clone();
+            let events = events.clone();
+            let handle = thread::spawn(async move {
+                if let Err(e) = relay
+                    .get_events_of_with_callback(filters, timeout, |event| async {
+                        events.lock().await.push(event);
+                    })
+                    .await
+                {
+                    log::error!("Failed to get events from {url}: {e}");
+                }
+            });
+            handles.push(handle);
         }
 
-        let mut notifications = self.notifications();
-        while let Ok(notification) = notifications.recv().await {
-            if let RelayPoolNotification::Message(_, msg) = notification {
-                match msg {
-                    RelayMessage::Event {
-                        subscription_id,
-                        event,
-                    } => {
-                        if subscription_id == id {
-                            events.push(event.as_ref().clone());
-                        }
-                    }
-                    RelayMessage::EndOfStoredEvents(subscription_id) => {
-                        if subscription_id == id {
-                            break;
-                        }
-                    }
-                    _ => (),
-                };
-            }
+        for handle in handles.into_iter().flatten() {
+            handle.join().await?;
         }
 
-        // Unsubscribe
-        for relay in relays.values() {
-            relay
-                .send_msg(ClientMessage::close(id.clone()), false)
-                .await?;
-        }
-
-        Ok(events)
+        Ok(events.lock_owned().await.clone())
     }
 
     /// Request events of filter. All events will be sent to notification listener
@@ -379,7 +359,7 @@ impl RelayPool {
         self.disconnect().await?;
         time::sleep(Duration::from_secs(3)).await;
         if let Err(e) = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await {
-            log::error!("Impossible to shutdown pool: {}", e.to_string());
+            log::error!("Impossible to shutdown pool: {e}");
         };
         Ok(())
     }

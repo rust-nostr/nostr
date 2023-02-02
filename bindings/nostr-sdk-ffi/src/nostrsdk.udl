@@ -146,7 +146,6 @@ interface Client {
     [Throws=NostrSdkError]
     void connect_relay(string url, boolean wait_for_connection);
     void connect();
-    [Throws=NostrSdkError]
     void subscribe(sequence<SubscriptionFilter> filters);
     [Throws=NostrSdkError]
     void send_event(Event event);

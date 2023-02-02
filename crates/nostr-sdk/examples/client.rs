@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::time::Duration;
 
 use nostr_sdk::prelude::*;
 
@@ -19,9 +20,12 @@ async fn main() -> Result<()> {
     let client = Client::new(&my_keys);
     client.add_relay("ws://127.0.0.1:8080", None).await?;
     client.add_relay("wss://relay.nostr.info", proxy).await?;
-    client.add_relay("wss://rsslay.fiatjaf.com", None).await?;
+    client.add_relay("wss://nostr.oxtr.dev", None).await?;
     client.add_relay("wss://relay.damus.io", None).await?;
     client.add_relay("wss://nostr.openchain.fr", None).await?;
+    client
+        .add_relay_with_opts("wss://nostr.mom", None, RelayOptions::new(true, false))
+        .await?;
     client
         .add_relay(
             "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
@@ -41,7 +45,10 @@ async fn main() -> Result<()> {
         .await?;
 
     let entity: Entity = client
-        .get_entity_of("25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb")
+        .get_entity_of(
+            "25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb",
+            Some(Duration::from_secs(5)),
+        )
         .await?;
     println!("Entity: {:?}", entity);
 
@@ -49,7 +56,7 @@ async fn main() -> Result<()> {
         .pubkey(my_keys.public_key())
         .since(Timestamp::now());
 
-    client.subscribe(vec![subscription]).await?;
+    client.subscribe(vec![subscription]).await;
 
     loop {
         let mut notifications = client.notifications();

@@ -24,15 +24,11 @@ fn main() -> Result<()> {
         Some("reason"),
     )?;
 
-    let entity: Entity =
-        client.get_entity_of("25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb")?;
-    println!("Entity: {:?}", entity);
-
     let subscription = SubscriptionFilter::new()
         .pubkey(my_keys.public_key())
         .since(Timestamp::now());
 
-    client.subscribe(vec![subscription])?;
+    client.subscribe(vec![subscription]);
 
     client.disconnect_relay("wss://relay.nostr.info")?;
 

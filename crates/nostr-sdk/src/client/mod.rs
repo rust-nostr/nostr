@@ -316,20 +316,26 @@ impl Client {
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
-    /// client.subscribe(vec![subscription]).await.unwrap();
+    /// client.subscribe(vec![subscription]).await;
     /// # }
     /// ```
-    pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
-        Ok(self
-            .pool
+    pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) {
+        self.pool
             .subscribe(filters, self.opts.get_wait_for_send())
-            .await?)
+            .await;
+    }
+
+    /// Unsubscribe
+    pub async fn unsubscribe(&self) {
+        self.pool.unsubscribe(self.opts.get_wait_for_send()).await;
     }
 
     /// Get events of filters
     ///
     /// # Example
     /// ```rust,no_run
+    /// use std::time::Duration;
+    ///
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
@@ -340,14 +346,19 @@ impl Client {
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
-    /// let _events = client.get_events_of(vec![subscription]).await.unwrap();
+    /// let timeout = Duration::from_secs(10);
+    /// let _events = client
+    ///     .get_events_of(vec![subscription], Some(timeout))
+    ///     .await
+    ///     .unwrap();
     /// # }
     /// ```
     pub async fn get_events_of(
         &self,
         filters: Vec<SubscriptionFilter>,
+        timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
-        Ok(self.pool.get_events_of(filters).await?)
+        Ok(self.pool.get_events_of(filters, timeout).await?)
     }
 
     /// Request events of filters
@@ -537,23 +548,26 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+    /// use std::time::Duration;
+    ///
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let _list = client.get_contact_list().await.unwrap();
+    /// let timeout = Duration::from_secs(10);
+    /// let _list = client.get_contact_list(Some(timeout)).await.unwrap();
     /// # }
     /// ```
-    pub async fn get_contact_list(&self) -> Result<Vec<Contact>, Error> {
+    pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
 
         let filter = SubscriptionFilter::new()
             .authors(vec![self.keys.public_key()])
             .kind(Kind::ContactList)
             .limit(1);
-        let events: Vec<Event> = self.get_events_of(vec![filter]).await?;
+        let events: Vec<Event> = self.get_events_of(vec![filter], timeout).await?;
 
         for event in events.into_iter() {
             for tag in event.tags.into_iter() {
@@ -806,27 +820,40 @@ impl Client {
     }
 
     /// Get a list of channels
-    pub async fn get_channels(&self) -> Result<Vec<Event>, Error> {
-        self.get_events_of(vec![SubscriptionFilter::new().kind(Kind::ChannelCreation)])
-            .await
+    pub async fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
+        self.get_events_of(
+            vec![SubscriptionFilter::new().kind(Kind::ChannelCreation)],
+            timeout,
+        )
+        .await
     }
 
     /// Get entity of hex string
-    pub async fn get_entity_of<S>(&self, entity: S) -> Result<Entity, Error>
+    pub async fn get_entity_of<S>(
+        &self,
+        entity: S,
+        timeout: Option<Duration>,
+    ) -> Result<Entity, Error>
     where
         S: Into<String>,
     {
         let entity: String = entity.into();
         let events: Vec<Event> = self
-            .get_events_of(vec![SubscriptionFilter::new()
-                .id(&entity)
-                .kind(Kind::ChannelCreation)
-                .limit(1)])
+            .get_events_of(
+                vec![SubscriptionFilter::new()
+                    .id(&entity)
+                    .kind(Kind::ChannelCreation)
+                    .limit(1)],
+                timeout,
+            )
             .await?;
         if events.is_empty() {
             let pubkey = XOnlyPublicKey::from_str(&entity)?;
             let events: Vec<Event> = self
-                .get_events_of(vec![SubscriptionFilter::new().author(pubkey).limit(1)])
+                .get_events_of(
+                    vec![SubscriptionFilter::new().author(pubkey).limit(1)],
+                    timeout,
+                )
                 .await?;
             if events.is_empty() {
                 Ok(Entity::Unknown)

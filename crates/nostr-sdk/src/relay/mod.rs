@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{Future, SinkExt, StreamExt};
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter, SubscriptionId, Url};
 use tokio::sync::broadcast;
@@ -532,21 +532,23 @@ impl Relay {
         Ok(())
     }
 
-    /// Get events of filters
-    pub async fn get_events_of(
+    /// Get events of filters with custom callback
+    pub async fn get_events_of_with_callback<F>(
         &self,
         filters: Vec<SubscriptionFilter>,
-        timeout: Duration,
-    ) -> Result<Vec<Event>, Error> {
+        timeout: Option<Duration>,
+        callback: impl Fn(Event) -> F,
+    ) -> Result<(), Error>
+    where
+        F: Future<Output = ()>,
+    {
         if !self.opts.read() {
             return Err(Error::ReadDisabled);
         }
 
-        let mut events: Vec<Event> = Vec::new();
-
         let id = SubscriptionId::generate();
 
-        self.send_msg(ClientMessage::new_req(id.clone(), filters.clone()), false)
+        self.send_msg(ClientMessage::new_req(id.clone(), filters), false)
             .await?;
 
         let mut notifications = self.notification_sender.subscribe();
@@ -558,12 +560,12 @@ impl Relay {
                             subscription_id,
                             event,
                         } => {
-                            if subscription_id == id {
-                                events.push(event.as_ref().clone());
+                            if subscription_id.eq(&id) {
+                                callback(*event).await;
                             }
                         }
                         RelayMessage::EndOfStoredEvents(subscription_id) => {
-                            if subscription_id == id {
+                            if subscription_id.eq(&id) {
                                 break;
                             }
                         }
@@ -573,14 +575,33 @@ impl Relay {
             }
         };
 
-        if tokio::time::timeout(timeout, recv).await.is_err() {
-            return Err(Error::Timeout);
+        if let Some(timeout) = timeout {
+            if tokio::time::timeout(timeout, recv).await.is_err() {
+                return Err(Error::Timeout);
+            }
+        } else {
+            recv.await;
         }
 
         // Unsubscribe
         self.send_msg(ClientMessage::close(id), false).await?;
 
-        Ok(events)
+        Ok(())
+    }
+
+    /// Get events of filters
+    pub async fn get_events_of(
+        &self,
+        filters: Vec<SubscriptionFilter>,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<Event>, Error> {
+        let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
+        self.get_events_of_with_callback(filters, timeout, |event| async {
+            let mut events = events.lock().await;
+            events.push(event);
+        })
+        .await?;
+        Ok(events.into_inner())
     }
 
     /// Request events of filter. All events will be sent to notification listener
@@ -595,7 +616,7 @@ impl Relay {
 
             // Subscribe
             if let Err(e) = relay
-                .send_msg(ClientMessage::new_req(id.clone(), filters.clone()), false)
+                .send_msg(ClientMessage::new_req(id.clone(), filters), false)
                 .await
             {
                 log::error!(
@@ -613,7 +634,7 @@ impl Relay {
                         RelayMessage::EndOfStoredEvents(subscription_id),
                     ) = notification
                     {
-                        if subscription_id == id {
+                        if subscription_id.eq(&id) {
                             break;
                         }
                     }
@@ -621,8 +642,8 @@ impl Relay {
             };
 
             if let Some(timeout) = timeout {
-                if let Err(e) = tokio::time::timeout(timeout, recv).await {
-                    log::error!("{e}");
+                if tokio::time::timeout(timeout, recv).await.is_err() {
+                    log::error!("{}", Error::Timeout);
                 }
             } else {
                 recv.await;

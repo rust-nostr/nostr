@@ -110,12 +110,24 @@ impl Client {
         RUNTIME.block_on(async { self.client.disconnect().await })
     }
 
-    pub fn subscribe(&self, filters: Vec<SubscriptionFilter>) -> Result<(), Error> {
-        RUNTIME.block_on(async { self.client.subscribe(filters).await })
+    pub fn subscribe(&self, filters: Vec<SubscriptionFilter>) {
+        RUNTIME.block_on(async {
+            self.client.subscribe(filters).await;
+        })
     }
 
-    pub fn get_events_of(&self, filters: Vec<SubscriptionFilter>) -> Result<Vec<Event>, Error> {
-        RUNTIME.block_on(async { self.client.get_events_of(filters).await })
+    pub fn unsubscribe(&self) {
+        RUNTIME.block_on(async {
+            self.client.unsubscribe().await;
+        })
+    }
+
+    pub fn get_events_of(
+        &self,
+        filters: Vec<SubscriptionFilter>,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<Event>, Error> {
+        RUNTIME.block_on(async { self.client.get_events_of(filters, timeout).await })
     }
 
     pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Option<Duration>) {
@@ -192,8 +204,8 @@ impl Client {
         RUNTIME.block_on(async { self.client.set_contact_list(list).await })
     }
 
-    pub fn get_contact_list(&self) -> Result<Vec<Contact>, Error> {
-        RUNTIME.block_on(async { self.client.get_contact_list().await })
+    pub fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
+        RUNTIME.block_on(async { self.client.get_contact_list(timeout).await })
     }
 
     #[cfg(feature = "nip04")]
@@ -294,15 +306,15 @@ impl Client {
         RUNTIME.block_on(async { self.client.mute_channel_user(pubkey, reason).await })
     }
 
-    pub fn get_channels(&self) -> Result<Vec<Event>, Error> {
-        RUNTIME.block_on(async { self.client.get_channels().await })
+    pub fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
+        RUNTIME.block_on(async { self.client.get_channels(timeout).await })
     }
 
-    pub fn get_entity_of<S>(&self, entity: S) -> Result<Entity, Error>
+    pub fn get_entity_of<S>(&self, entity: S, timeout: Option<Duration>) -> Result<Entity, Error>
     where
         S: Into<String>,
     {
-        RUNTIME.block_on(async { self.client.get_entity_of(entity).await })
+        RUNTIME.block_on(async { self.client.get_entity_of(entity, timeout).await })
     }
 
     pub fn handle_notifications<F>(&self, func: F) -> Result<(), Error>

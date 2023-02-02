@@ -40,12 +40,12 @@ impl Client {
         self.client.lock().connect()
     }
 
-    pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) -> Result<()> {
+    pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) {
         let mut new_filters: Vec<nostr::SubscriptionFilter> = Vec::with_capacity(filters.len());
         for filter in filters.into_iter() {
             new_filters.push(filter.as_ref().deref().clone());
         }
-        Ok(self.client.lock().subscribe(new_filters)?)
+        self.client.lock().subscribe(new_filters);
     }
 
     pub fn send_event(&self, event: Arc<Event>) -> Result<()> {
