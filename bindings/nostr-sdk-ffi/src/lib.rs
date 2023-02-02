@@ -21,7 +21,9 @@ pub fn timestamp() -> u64 {
 #[allow(unused_imports)]
 mod ffi {
     // Extenal
-    pub use nostr_ffi::{AccountMetadata, Contact, Event, EventBuilder, Keys, SubscriptionFilter};
+    pub use nostr_ffi::{
+        AccountMetadata, Contact, Event, EventBuilder, Keys, NostrError, SubscriptionFilter,
+    };
 
     // Namespace
     pub use crate::logger::init_logger;
