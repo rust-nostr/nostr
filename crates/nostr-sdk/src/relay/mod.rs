@@ -5,6 +5,7 @@
 
 use std::fmt;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -47,6 +48,12 @@ pub enum Error {
     /// Impossible to receive oneshot message
     #[error("impossible to recv msg")]
     OneShotRecvError,
+    /// Read actions disabled
+    #[error("read actions are disabled for this relay")]
+    ReadDisabled,
+    /// Write actions disabled
+    #[error("write actions are disabled for this relay")]
+    WriteDisabled,
 }
 
 /// Relay connection status
@@ -88,6 +95,55 @@ pub enum RelayEvent {
     Terminate,
 }
 
+/// [`Relay`] options
+#[derive(Debug, Clone)]
+pub struct RelayOptions {
+    /// Allow/disallow read actions
+    read: Arc<AtomicBool>,
+    /// Allow/disallow write actions
+    write: Arc<AtomicBool>,
+}
+
+impl Default for RelayOptions {
+    fn default() -> Self {
+        Self::new(true, true)
+    }
+}
+
+impl RelayOptions {
+    /// New [`RelayOptions`]
+    pub fn new(read: bool, write: bool) -> Self {
+        Self {
+            read: Arc::new(AtomicBool::new(read)),
+            write: Arc::new(AtomicBool::new(write)),
+        }
+    }
+
+    /// Get read option
+    pub fn read(&self) -> bool {
+        self.read.load(Ordering::SeqCst)
+    }
+
+    /// Set read option
+    pub fn set_read(&self, read: bool) {
+        let _ = self
+            .read
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(read));
+    }
+
+    /// Get write option
+    pub fn write(&self) -> bool {
+        self.write.load(Ordering::SeqCst)
+    }
+
+    /// Set write option
+    pub fn set_write(&self, write: bool) {
+        let _ = self
+            .write
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(write));
+    }
+}
+
 /// Relay
 #[derive(Debug, Clone)]
 pub struct Relay {
@@ -95,6 +151,7 @@ pub struct Relay {
     proxy: Option<SocketAddr>,
     status: Arc<Mutex<RelayStatus>>,
     document: Arc<Mutex<RelayInformationDocument>>,
+    opts: RelayOptions,
     scheduled_for_termination: Arc<Mutex<bool>>,
     pool_sender: Sender<RelayPoolMessage>,
     relay_sender: Sender<Message>,
@@ -109,6 +166,7 @@ impl Relay {
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         proxy: Option<SocketAddr>,
+        opts: RelayOptions,
     ) -> Self {
         let (relay_sender, relay_receiver) = mpsc::channel::<Message>(1024);
 
@@ -117,6 +175,7 @@ impl Relay {
             proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
             document: Arc::new(Mutex::new(RelayInformationDocument::new())),
+            opts,
             scheduled_for_termination: Arc::new(Mutex::new(false)),
             pool_sender,
             relay_sender,
@@ -167,6 +226,11 @@ impl Relay {
     async fn set_document(&self, document: RelayInformationDocument) {
         let mut d = self.document.lock().await;
         *d = document;
+    }
+
+    /// Get [`RelayOptions`]
+    pub fn opts(&self) -> RelayOptions {
+        self.opts.clone()
     }
 
     async fn is_scheduled_for_termination(&self) -> bool {
@@ -276,12 +340,6 @@ impl Relay {
                                     }
                                 }
                             }
-                            /* RelayEvent::Ping => {
-                                if let Err(e) = ws_tx.feed(Message::Ping(Vec::new())).await {
-                                    log::error!("Ping error: {}", e);
-                                    break;
-                                }
-                            } */
                             RelayEvent::Close => {
                                 let _ = ws_tx.close().await;
                                 relay.set_status(RelayStatus::Disconnected).await;
@@ -351,42 +409,15 @@ impl Relay {
                     }
                 });
 
-                // Ping thread
-                /* let relay = self.clone();
-                thread::spawn(async move {
-                    log::debug!("Relay Ping Thread Started");
-
-                    loop {
-                        tokio::time::sleep(Duration::from_secs(120)).await;
-                        match relay.status().await {
-                            RelayStatus::Terminated => break,
-                            RelayStatus::Connected => match relay.ping().await {
-                                Ok(_) => log::debug!("Ping {}", relay.url),
-                                Err(err) => {
-                                    log::error!("Impossible to ping {}: {}", relay.url, err);
-                                    break;
-                                }
-                            },
-                            _ => (),
-                        }
-                    }
-
-                    log::debug!("Exited from Ping Thread of {}", relay.url);
-
-                    if relay.status().await != RelayStatus::Terminated {
-                        if let Err(err) = relay.disconnect().await {
-                            log::error!("Impossible to disconnect {}: {}", relay.url, err);
-                        }
-                    }
-                }); */
-
                 // Subscribe to relay
-                if let Err(e) = self.subscribe(false).await {
-                    log::error!(
-                        "Impossible to subscribe to {}: {}",
-                        self.url(),
-                        e.to_string()
-                    )
+                if self.opts.read() {
+                    if let Err(e) = self.subscribe(false).await {
+                        log::error!(
+                            "Impossible to subscribe to {}: {}",
+                            self.url(),
+                            e.to_string()
+                        )
+                    }
                 }
             }
             Err(err) => {
@@ -406,11 +437,6 @@ impl Relay {
             .await
             .map_err(|_| Error::ChannelTimeout)
     }
-
-    /// Ping relay
-    /* async fn ping(&self) -> Result<(), Error> {
-        self.send_relay_event(RelayEvent::Ping).await
-    } */
 
     /// Disconnect from relay and set status to 'Disconnected'
     async fn disconnect(&self) -> Result<(), Error> {
@@ -435,6 +461,23 @@ impl Relay {
     ///
     /// if `wait` arg is true, this method will wait for the msg to be sent
     pub async fn send_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
+        if !self.opts.write() {
+            if let ClientMessage::Event(_) = msg {
+                return Err(Error::WriteDisabled);
+            }
+        }
+
+        if !self.opts.read() {
+            if let ClientMessage::Req {
+                subscription_id: _,
+                filters: _,
+            }
+            | ClientMessage::Close(_) = msg
+            {
+                return Err(Error::ReadDisabled);
+            }
+        }
+
         if wait {
             let (tx, rx) = oneshot::channel::<bool>();
             self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)), Some(tx))
@@ -460,6 +503,10 @@ impl Relay {
 
     /// Subscribe
     pub async fn subscribe(&self, wait: bool) -> Result<SubscriptionId, Error> {
+        if !self.opts.read() {
+            return Err(Error::ReadDisabled);
+        }
+
         let mut subscription = SUBSCRIPTION.lock().await;
         let channel = subscription.get_channel(&self.url());
         let channel_id = channel.id();
@@ -473,6 +520,10 @@ impl Relay {
 
     /// Unsubscribe
     pub async fn unsubscribe(&self, wait: bool) -> Result<(), Error> {
+        if !self.opts.read() {
+            return Err(Error::ReadDisabled);
+        }
+
         let mut subscription = SUBSCRIPTION.lock().await;
         if let Some(channel) = subscription.remove_channel(&self.url()) {
             self.send_msg(ClientMessage::close(channel.id()), wait)
@@ -487,6 +538,10 @@ impl Relay {
         filters: Vec<SubscriptionFilter>,
         timeout: Duration,
     ) -> Result<Vec<Event>, Error> {
+        if !self.opts.read() {
+            return Err(Error::ReadDisabled);
+        }
+
         let mut events: Vec<Event> = Vec::new();
 
         let id = SubscriptionId::generate();
@@ -530,6 +585,10 @@ impl Relay {
 
     /// Request events of filter. All events will be sent to notification listener
     pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Duration) {
+        if !self.opts.read() {
+            log::error!("{}", Error::ReadDisabled);
+        }
+
         let relay = self.clone();
         thread::spawn(async move {
             let id = SubscriptionId::generate();

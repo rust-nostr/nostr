@@ -15,7 +15,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 use tokio::time;
 
-use super::{Error as RelayError, Relay};
+use super::{Error as RelayError, Relay, RelayOptions};
 use crate::subscription::Subscription;
 use crate::thread;
 
@@ -189,7 +189,7 @@ impl RelayPool {
     }
 
     /// Add new relay
-    pub async fn add_relay(&self, url: Url, proxy: Option<SocketAddr>) {
+    pub async fn add_relay(&self, url: Url, proxy: Option<SocketAddr>, opts: RelayOptions) {
         let mut relays = self.relays.lock().await;
         if !relays.contains_key(&url) {
             let relay = Relay::new(
@@ -197,6 +197,7 @@ impl RelayPool {
                 self.pool_task_sender.clone(),
                 self.notification_sender.clone(),
                 proxy,
+                opts,
             );
             relays.insert(relay.url(), relay);
         }

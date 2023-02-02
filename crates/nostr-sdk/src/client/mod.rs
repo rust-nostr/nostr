@@ -23,7 +23,7 @@ mod options;
 
 pub use self::options::Options;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotification};
-use crate::Relay;
+use crate::{Relay, RelayOptions};
 
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
@@ -142,8 +142,39 @@ impl Client {
     where
         S: Into<String>,
     {
+        self.add_relay_with_opts(url, proxy, RelayOptions::default()).await
+    }
+
+    /// Add new relay
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Keys::generate();
+    /// #   let client = Client::new(&my_keys);
+    /// let read = true;
+    /// let write = false;
+    /// let opts = RelayOptions::new(read, write);
+    /// client
+    ///     .add_relay_with_opts("wss://relay.nostr.info", None, opts)
+    ///     .await
+    ///     .unwrap();
+    /// # }
+    /// ```
+    pub async fn add_relay_with_opts<S>(
+        &self,
+        url: S,
+        proxy: Option<SocketAddr>,
+        opts: RelayOptions,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         let url = Url::parse(&url.into())?;
-        self.pool.add_relay(url, proxy).await;
+        self.pool.add_relay(url, proxy, opts).await;
         Ok(())
     }
 

@@ -17,7 +17,7 @@ use tokio::sync::broadcast;
 use super::{Error, Options};
 use crate::client::Entity;
 use crate::relay::pool::RelayPoolNotification;
-use crate::relay::Relay;
+use crate::relay::{Relay, RelayOptions};
 use crate::RUNTIME;
 
 #[derive(Debug, Clone)]
@@ -65,6 +65,18 @@ impl Client {
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.add_relay(url, proxy).await })
+    }
+
+    pub fn add_relay_with_opts<S>(
+        &self,
+        url: S,
+        proxy: Option<SocketAddr>,
+        opts: RelayOptions,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async { self.client.add_relay_with_opts(url, proxy, opts).await })
     }
 
     pub fn remove_relay<S>(&self, url: S) -> Result<(), Error>
