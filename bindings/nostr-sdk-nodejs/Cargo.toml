@@ -1,0 +1,15 @@
+[package]
+edition = "2021"
+name = "nostr-sdk-nodejs"
+version = "0.0.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2.10.14", default-features = false, features = ["napi4"] }
+napi-derive = "2.10.1"
+nostr-sdk = { path = "../../crates/nostr-sdk" }
+
+[build-dependencies]
+napi-build = "2.0.1"
