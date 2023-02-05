@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{Message, Secp256k1, XOnlyPublicKey};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 pub mod builder;
 pub mod id;
@@ -54,20 +54,10 @@ pub struct Event {
     /// Content
     pub content: String,
     /// Signature
-    #[serde(deserialize_with = "sig_string")]
     pub sig: Signature,
     /// OpenTimestamps Attestations
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ots: Option<String>,
-}
-
-fn sig_string<'de, D>(deserializer: D) -> Result<Signature, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: String = Deserialize::deserialize(deserializer)?;
-    let sig = Signature::from_str(&s);
-    sig.map_err(serde::de::Error::custom)
 }
 
 impl Event {
