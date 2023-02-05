@@ -1,33 +1,18 @@
 # Nostr
 
-## Structure
+## Project structure
 
-- [bindings](./bindings/):
-    - UniFFI (Kotlin, Swift, Python, Ruby):
-        * [nostr-ffi](./bindings/nostr-ffi/): UniFFI bindings of the [nostr][] crate
-        * [nostr-sdk-ffi](./bindings/nostr-sdk-ffi/): UniFFI bindings of the [nostr-sdk][] crate
-    - NodeJS:
-        * nostr-nodejs: NodeJS bindings of the [nostr][] crate (TODO)
-        * [nostr-sdk-nodejs](./bindings/nostr-sdk-nodejs/): NodeJS bindings of the [nostr-sdk][] crate (WIP)
-    - Flutter:
-        * nostr-flutter: Flutter bindings of the [nostr][] crate (TODO)
-        * nostr-sdk-flutter: Flutter bindings of the [nostr-sdk][] crate (TODO)
-- [crates](./crates/):
-    - [nostr][]: Rust implementation of Nostr protocol.
-    - [nostr-sdk][]: High level client library.
-    - nostr-sdk-sqlite: SQLite for [nostr-sdk][] (WIP)
+* [**nostr**](./crates/nostr/): Rust implementation of Nostr protocol.
+* [**nostr-sdk**](./crates/nostr-sdk/): High level client library.
 
-[nostr]: ./crates/nostr/
-[nostr-sdk]: ./crates/nostr-sdk/
+## Bindings
+
+**nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift, Kotlin, Python, Flutter and JavaScript. 
+Please, explore the [`bindings/`](./bindings/) directory to learn more.
 
 ## Minimum Supported Rust Version (MSRV)
 
 These crates are built with the Rust language version 2021 and require a minimum compiler version of `1.64`
-
-## Bindings
-
-**nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift and Kotlin. 
-Please, explore the [`bindings/`](./bindings/) directory to learn more.
 
 ## State
 

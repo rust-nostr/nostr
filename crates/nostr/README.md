@@ -12,6 +12,8 @@
 
 Rust implementation of Nostr protocol.
 
+If you're writing a typical Nostr client or bot, you may be interested in [nostr-sdk](https://crates.io/crates/nostr-sdk).
+
 ## Getting started
 
 ```toml
