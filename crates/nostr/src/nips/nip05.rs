@@ -5,10 +5,12 @@
 //!
 //! https://github.com/nostr-protocol/nips/blob/master/05.md
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::str::FromStr;
 
 use bitcoin::secp256k1::XOnlyPublicKey;
+#[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
 use serde_json::Value;
 
@@ -58,6 +60,7 @@ fn verify_json(public_key: XOnlyPublicKey, json: Value, name: &str) -> Result<()
 }
 
 /// Verify NIP05
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn verify(
     public_key: XOnlyPublicKey,
     nip05: &str,
@@ -78,6 +81,7 @@ pub async fn verify(
 }
 
 /// Verify NIP05
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "blocking")]
 pub fn verify_blocking(
     public_key: XOnlyPublicKey,
@@ -95,5 +99,17 @@ pub fn verify_blocking(
     let client: Client = builder.build()?;
     let res = client.get(url).send()?;
     let json: Value = serde_json::from_str(&res.text()?)?;
+    verify_json(public_key, json, name)
+}
+
+/// Verify NIP05
+#[cfg(target_arch = "wasm32")]
+pub async fn verify(public_key: XOnlyPublicKey, nip05: &str) -> Result<(), Error> {
+    use reqwest::Client;
+
+    let (url, name) = compose_url(nip05)?;
+    let client: Client = Client::new();
+    let res = client.get(url).send().await?;
+    let json: Value = serde_json::from_str(&res.text().await?)?;
     verify_json(public_key, json, name)
 }

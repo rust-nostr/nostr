@@ -3,8 +3,9 @@
 
 //! Time
 
+use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{
     ops::{Add, Sub},
     str::FromStr,

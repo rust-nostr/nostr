@@ -87,6 +87,18 @@ The following crate feature flags are available:
 | `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
 | `nip26`             |   Yes   | Enable NIP-26: Delegated Event Signing                                                                                     |
 
+## WASM
+
+This crate supports the `wasm32` targets.
+
+On macOS you need to install `llvm`:
+
+```shell
+brew install llvm
+LLVM_PATH=$(brew --prefix llvm)
+AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target wasm32-unknown-unknown
+```
+
 ## Supported NIPs
 
 | Supported  | NIP                                                                                                                                |

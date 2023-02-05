@@ -6,8 +6,10 @@
 //!
 //! https://github.com/nostr-protocol/nips/blob/master/11.md
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 
+#[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -55,6 +57,7 @@ impl RelayInformationDocument {
     }
 
     /// Get Relay Information Document
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn get(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
         use reqwest::Client;
 
@@ -76,6 +79,7 @@ impl RelayInformationDocument {
     }
 
     /// Get Relay Information Document
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg(feature = "blocking")]
     pub fn get_blocking(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
         use reqwest::blocking::Client;
@@ -90,6 +94,23 @@ impl RelayInformationDocument {
         let req = client.get(url).header("Accept", "application/nostr+json");
         match req.send() {
             Ok(response) => match response.json() {
+                Ok(json) => Ok(json),
+                Err(_) => Err(Error::InvalidInformationDocument),
+            },
+            Err(_) => Err(Error::InaccessibleInformationDocument),
+        }
+    }
+
+    /// Get Relay Information Document
+    #[cfg(target_arch = "wasm32")]
+    pub async fn get(url: Url) -> Result<Self, Error> {
+        use reqwest::Client;
+
+        let client: Client = Client::new();
+        let url = Self::with_http_scheme(url)?;
+        let req = client.get(url).header("Accept", "application/nostr+json");
+        match req.send().await {
+            Ok(response) => match response.json().await {
                 Ok(json) => Ok(json),
                 Err(_) => Err(Error::InvalidInformationDocument),
             },
