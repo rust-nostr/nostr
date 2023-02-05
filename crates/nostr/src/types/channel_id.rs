@@ -40,21 +40,29 @@ pub enum Error {
 /// Kind 40 event id (32-bytes lowercase hex-encoded)
 ///
 /// https://github.com/nostr-protocol/nips/blob/master/19.md
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ChannelId(Sha256Hash);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct ChannelId {
+    hash: Sha256Hash,
+    relays: Vec<String>,
+}
 
 impl ChannelId {
+    /// New [`ChannelId`]
+    pub fn new(hash: Sha256Hash, relays: Vec<String>) -> Self {
+        Self { hash, relays }
+    }
+
     /// [`ChannelId`] hex string
     pub fn from_hex<S>(hex: S) -> Result<Self, Error>
     where
         S: Into<String>,
     {
-        Ok(Self(Sha256Hash::from_hex(&hex.into())?))
+        Ok(Self::new(Sha256Hash::from_hex(&hex.into())?, Vec::new()))
     }
 
     /// [`ChannelId`] from bytes
     pub fn from_slice(sl: &[u8]) -> Result<Self, Error> {
-        Ok(Self(Sha256Hash::from_slice(sl)?))
+        Ok(Self::new(Sha256Hash::from_slice(sl)?, Vec::new()))
     }
 
     /// Get as bytes
@@ -64,36 +72,73 @@ impl ChannelId {
 
     /// Get as hex string
     pub fn to_hex(&self) -> String {
-        self.0.to_string()
+        self.hash.to_string()
     }
 
     /// Get [`ChannelId`] as [`Sha256Hash`]
-    pub fn inner(&self) -> Sha256Hash {
-        self.0
+    pub fn hash(&self) -> Sha256Hash {
+        self.hash
+    }
+
+    /// Get relays
+    pub fn relays(&self) -> Vec<String> {
+        self.relays.clone()
     }
 }
 
 impl AsRef<[u8]> for ChannelId {
     fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
+        self.hash.as_ref()
     }
 }
 
 #[cfg(feature = "nip19")]
 impl FromBech32 for ChannelId {
     type Err = Error;
-    fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
+    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
         S: Into<String>,
     {
-        let (hrp, data, checksum) = bech32::decode(&hash.into())?;
+        let (hrp, data, checksum) = bech32::decode(&s.into())?;
 
         if hrp != PREFIX_BECH32_CHANNEL || checksum != Variant::Bech32 {
             return Err(Error::Bech32ParseError);
         }
 
-        let data = Vec::<u8>::from_base32(&data)?;
-        Self::from_slice(data.as_slice())
+        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32ParseError)?;
+
+        let t = data.first().ok_or(Error::Bech32ParseError)?;
+        if *t != 0 {
+            return Err(Error::Bech32ParseError);
+        }
+
+        let l = data.get(1).ok_or(Error::Bech32ParseError)?;
+        if *l != 32 {
+            return Err(Error::Bech32ParseError);
+        }
+
+        let channel_id = data.get(2..34).ok_or(Error::Bech32ParseError)?;
+        let hash = Sha256Hash::from_slice(channel_id)?;
+
+        let mut relays: Vec<String> = Vec::new();
+        let mut relays_data: Vec<u8> = data.get(34..).ok_or(Error::Bech32ParseError)?.to_vec();
+
+        while !relays_data.is_empty() {
+            let t = relays_data.first().ok_or(Error::Bech32ParseError)?;
+            if *t != 1 {
+                return Err(Error::Bech32ParseError);
+            }
+
+            let l = relays_data.get(1).ok_or(Error::Bech32ParseError)?;
+            let l = *l as usize;
+
+            let data = relays_data.get(2..l + 2).ok_or(Error::Bech32ParseError)?;
+
+            relays.push(String::from_utf8(data.to_vec()).map_err(|_| Error::Bech32ParseError)?);
+            relays_data.drain(..l + 2);
+        }
+
+        Ok(Self::new(hash, relays))
     }
 }
 
@@ -101,7 +146,15 @@ impl FromBech32 for ChannelId {
 impl ToBech32 for ChannelId {
     type Err = Error;
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let data = self.to_base32();
+        let mut bytes: Vec<u8> = vec![0, 32];
+        bytes.extend(self.hash().iter());
+
+        for relay in self.relays.iter() {
+            bytes.extend([1, relay.len() as u8]);
+            bytes.extend(relay.as_bytes());
+        }
+
+        let data = bytes.to_base32();
         Ok(bech32::encode(
             PREFIX_BECH32_CHANNEL,
             data,
@@ -125,12 +178,43 @@ impl fmt::Display for ChannelId {
 
 impl From<ChannelId> for EventId {
     fn from(value: ChannelId) -> Self {
-        Self::from(value.inner())
+        Self::from(value.hash())
     }
 }
 
 impl From<EventId> for ChannelId {
     fn from(value: EventId) -> Self {
-        Self(value.inner())
+        Self::new(value.inner(), Vec::new())
+    }
+}
+
+#[cfg(feature = "nip19")]
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Result;
+
+    #[test]
+    fn to_bech32_channel() -> Result<()> {
+        let channel_id = ChannelId::from_hex(
+            "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
+        )?;
+        assert_eq!(
+            "nchannel1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gg07hju".to_string(),
+            channel_id.to_bech32()?
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn from_bech32_channel() -> Result<()> {
+        let channel_id = ChannelId::from_bech32(
+            "nchannel1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gg07hju",
+        )?;
+        assert_eq!(
+            "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d".to_string(),
+            channel_id.to_hex()
+        );
+        Ok(())
     }
 }
