@@ -165,8 +165,13 @@ impl Client {
         RUNTIME.block_on(async { self.client.send_event_to(url, event).await })
     }
 
+    #[deprecated = "Use `set_metadata` method"]
     pub fn update_profile(&self, metadata: Metadata) -> Result<EventId, Error> {
-        RUNTIME.block_on(async { self.client.update_profile(metadata).await })
+        RUNTIME.block_on(async { self.client.set_metadata(metadata).await })
+    }
+
+    pub fn set_metadata(&self, metadata: Metadata) -> Result<EventId, Error> {
+        RUNTIME.block_on(async { self.client.set_metadata(metadata).await })
     }
 
     pub fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<EventId, Error>
@@ -255,6 +260,7 @@ impl Client {
         RUNTIME.block_on(async { self.client.new_channel(metadata).await })
     }
 
+    #[deprecated = "Use `set_channel_metadata` method"]
     pub fn update_channel(
         &self,
         channel_id: ChannelId,
@@ -263,7 +269,20 @@ impl Client {
     ) -> Result<EventId, Error> {
         RUNTIME.block_on(async {
             self.client
-                .update_channel(channel_id, relay_url, metadata)
+                .set_channel_metadata(channel_id, relay_url, metadata)
+                .await
+        })
+    }
+
+    pub fn set_channel_metadata(
+        &self,
+        channel_id: ChannelId,
+        relay_url: Option<Url>,
+        metadata: Metadata,
+    ) -> Result<EventId, Error> {
+        RUNTIME.block_on(async {
+            self.client
+                .set_channel_metadata(channel_id, relay_url, metadata)
                 .await
         })
     }

@@ -71,8 +71,8 @@ async fn main() -> Result<()> {
         .nip05("username@example.com")
         .lud16("yuki@stacker.news");
 
-    // Update profile metadata
-    client.update_profile(metadata).await?;
+    // Update metadata
+    client.set_metadata(metadata).await?;
 
     // Publish a text note
     client.publish_text_note("My first text note from Nostr SDK!", &[]).await?;

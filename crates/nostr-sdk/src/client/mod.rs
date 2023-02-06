@@ -422,6 +422,12 @@ impl Client {
     }
 
     /// Update profile metadata
+    #[deprecated = "Use `set_metadata` method"]
+    pub async fn update_profile(&self, metadata: Metadata) -> Result<EventId, Error> {
+        self.set_metadata(metadata).await
+    }
+
+    /// Update metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     ///
@@ -440,10 +446,10 @@ impl Client {
     ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
     ///     .nip05("username@example.com");
     ///
-    /// client.update_profile(metadata).await.unwrap();
+    /// client.set_metadata(metadata).await.unwrap();
     /// # }
     /// ```
-    pub async fn update_profile(&self, metadata: Metadata) -> Result<EventId, Error> {
+    pub async fn set_metadata(&self, metadata: Metadata) -> Result<EventId, Error> {
         let builder = EventBuilder::set_metadata(metadata)?;
         self.send_event_builder(builder).await
     }
@@ -763,7 +769,21 @@ impl Client {
     /// Update channel metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[deprecated = "Use `set_channel_metadata` method"]
     pub async fn update_channel(
+        &self,
+        channel_id: ChannelId,
+        relay_url: Option<Url>,
+        metadata: Metadata,
+    ) -> Result<EventId, Error> {
+        let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata)?;
+        self.send_event_builder(builder).await
+    }
+
+    /// Update channel metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    pub async fn set_channel_metadata(
         &self,
         channel_id: ChannelId,
         relay_url: Option<Url>,
