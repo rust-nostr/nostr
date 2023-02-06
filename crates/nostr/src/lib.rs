@@ -10,6 +10,10 @@ pub use bip39;
 pub use bitcoin::hashes;
 pub use bitcoin::secp256k1;
 #[cfg(feature = "base")]
+pub use once_cell;
+#[cfg(feature = "base")]
+pub use regex;
+#[cfg(feature = "base")]
 pub use url::{self, Url};
 
 #[cfg(feature = "default")]
