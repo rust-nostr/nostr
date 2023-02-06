@@ -46,7 +46,7 @@ fn main() -> Result<()> {
         .picture(Url::parse("https://example.com/avatar.png")?)
         .banner(Url::parse("https://example.com/banner.png")?)
         .nip05("username@example.com")
-        .lud16("yuki@stacker.news");
+        .lud16("yuki@getalby.com");
 
     let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&my_keys)?;
 
@@ -69,6 +69,18 @@ fn main() -> Result<()> {
 
 More examples can be found in the [examples](https://github.com/rust-nostr/nostr/tree/master/crates/nostr/examples) directory.
 
+## WASM
+
+This crate supports the `wasm32` targets.
+
+On macOS you need to install `llvm`:
+
+```shell
+brew install llvm
+LLVM_PATH=$(brew --prefix llvm)
+AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target wasm32-unknown-unknown
+```
+
 ## Crate Feature Flags
 
 The following crate feature flags are available:
@@ -86,18 +98,6 @@ The following crate feature flags are available:
 | `nip13`             |   Yes   | Enable NIP-13: Proof of Work                                                                                               |
 | `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
 | `nip26`             |   Yes   | Enable NIP-26: Delegated Event Signing                                                                                     |
-
-## WASM
-
-This crate supports the `wasm32` targets.
-
-On macOS you need to install `llvm`:
-
-```shell
-brew install llvm
-LLVM_PATH=$(brew --prefix llvm)
-AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target wasm32-unknown-unknown
-```
 
 ## Supported NIPs
 

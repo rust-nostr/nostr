@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
         .picture(Url::parse("https://example.com/avatar.png")?)
         .banner(Url::parse("https://example.com/banner.png")?)
         .nip05("username@example.com")
-        .lud16("yuki@stacker.news");
+        .lud16("yuki@getalby.com");
 
     // Update metadata
     client.set_metadata(metadata).await?;
@@ -80,11 +80,22 @@ async fn main() -> Result<()> {
     // Publish a POW text note
     client.publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 20).await?;
 
+    // Send custom event
+    let event_id = EventId::from_bech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r")?;
+    let public_key = XOnlyPublicKey::from_bech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz")?;
+    let event: Event = EventBuilder::new_reaction(event_id, public_key, "🧡").to_event(&my_keys)?;
+
+    // Send custom event to all relays
+    // client.send_event(event).await?;
+
+    // Send custom event to a specific previously added relay
+    client.send_event_to("wss://relay.damus.io", event).await?;
+
     // Handle notifications
     loop {
         let mut notifications = client.notifications();
         while let Ok(notification) = notifications.recv().await {
-            println!("{:?}", notification);
+            println!("{notification:?}");
         }
     }
 }

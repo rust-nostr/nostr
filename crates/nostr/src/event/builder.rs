@@ -154,7 +154,7 @@ impl EventBuilder {
     ///     .about("Description")
     ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
     ///     .nip05("username@example.com")
-    ///     .lud16("yuki@stacker.news");
+    ///     .lud16("yuki@getalby.com");
     ///
     /// let builder = EventBuilder::set_metadata(metadata).unwrap();
     /// ```

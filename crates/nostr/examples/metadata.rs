@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         .picture(Url::parse("https://example.com/avatar.png")?)
         .banner(Url::parse("https://example.com/banner.png")?)
         .nip05("username@example.com")
-        .lud16("yuki@stacker.news");
+        .lud16("yuki@getalby.com");
 
     let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&my_keys)?;
 
