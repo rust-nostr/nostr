@@ -1,7 +1,8 @@
 import test from 'ava'
 
-import { sum } from '../index.js'
+import { Keys } from '../index.js'
 
-test('sum from native', (t) => {
-  t.is(sum(1, 2), 3)
+test('should be able to generate', (t) => {
+  t.true(Keys.generate() instanceof Keys)
+  t.is(typeof Keys.generate().publicKey(), 'string')
 })
