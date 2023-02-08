@@ -1,6 +1,6 @@
 {
-  "name": "nostr-sdk-linux-arm64-gnu",
-  "version": "0.0.0",
+  "name": "@rust-nostr/nostr-sdk-linux-arm64-gnu",
+  "version": "0.1.0",
   "os": [
     "linux"
   ],

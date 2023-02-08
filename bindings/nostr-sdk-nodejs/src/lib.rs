@@ -4,5 +4,7 @@
 #[macro_use]
 extern crate napi_derive;
 
-mod base;
+pub use nostr_nodejs;
+
+pub mod client;
 mod error;

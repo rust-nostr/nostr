@@ -1,5 +1,5 @@
 {
-  "name": "nostr-sdk",
+  "name": "@rust-nostr/nostr-sdk",
   "version": "0.1.0",
   "main": "index.js",
   "types": "index.d.ts",
@@ -21,11 +21,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@napi-rs/cli": "^2.14.6",
-    "ava": "^5.1.1"
-  },
-  "ava": {
-    "timeout": "3m"
+    "@napi-rs/cli": "^2.14.6"
   },
   "engines": {
     "node": ">= 10"
@@ -35,7 +31,6 @@
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
-    "test": "ava",
     "version": "napi version"
   },
   "packageManager": "yarn@3.4.1"
