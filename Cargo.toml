@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "bindings/nostr-ffi",
+    "bindings/nostr-nodejs",
     "bindings/nostr-sdk-ffi",
     "bindings/nostr-sdk-nodejs",
     "crates/nostr",
