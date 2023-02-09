@@ -7,3 +7,4 @@ extern crate napi_derive;
 mod error;
 pub mod event;
 pub mod key;
+pub mod types;
