@@ -246,6 +246,10 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { Keys } = nativeBinding
+const { EventBuilder, Event, Keys, Contact, Metadata } = nativeBinding
 
+module.exports.EventBuilder = EventBuilder
+module.exports.Event = Event
 module.exports.Keys = Keys
+module.exports.Contact = Contact
+module.exports.Metadata = Metadata
