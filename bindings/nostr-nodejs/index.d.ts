@@ -71,6 +71,69 @@ export class Keys {
   publicKey(): PublicKey
   secretKey(): SecretKey
 }
+export type JsSubscriptionId = SubscriptionId
+export class SubscriptionId {
+  constructor(id: string)
+  /** Generate new random [`SubscriptionId`] */
+  static generate(): JsSubscriptionId
+  get get(): string
+}
+export type JsSubscriptionFilter = SubscriptionFilter
+export class SubscriptionFilter {
+  constructor()
+  /** Set subscription id */
+  id(id: string): SubscriptionFilter
+  /** Set subscription ids */
+  ids(ids: Array<string>): SubscriptionFilter
+  /** Set author */
+  author(author: PublicKey): SubscriptionFilter
+  /** Set authors */
+  authors(authors: Array<PublicKey>): SubscriptionFilter
+  /** Set kind */
+  kind(kind: bigint): SubscriptionFilter
+  /** Set kinds */
+  kinds(kinds: Array<bigint>): SubscriptionFilter
+  /** Set event */
+  event(id: EventId): SubscriptionFilter
+  /** Set events */
+  events(ids: Array<EventId>): SubscriptionFilter
+  /** Set pubkey */
+  pubkey(pubkey: PublicKey): SubscriptionFilter
+  /** Set pubkeys */
+  pubkeys(pubkeys: Array<PublicKey>): SubscriptionFilter
+  /**
+   * Set hashtag
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/12.md>
+   */
+  hashtag(hashtag: string): SubscriptionFilter
+  /**
+   * Set hashtags
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/12.md>
+   */
+  hashtags(hashtags: Array<string>): SubscriptionFilter
+  /**
+   * Set reference
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/12.md>
+   */
+  reference(v: string): SubscriptionFilter
+  /**
+   * Set references
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/12.md>
+   */
+  references(v: Array<string>): SubscriptionFilter
+  /** Set search field */
+  search(value: string): SubscriptionFilter
+  /** Set since unix timestamp */
+  since(since: bigint): SubscriptionFilter
+  /** Set until unix timestamp */
+  until(until: bigint): SubscriptionFilter
+  /** Set limit */
+  limit(limit: bigint): SubscriptionFilter
+}
 export type JsContact = Contact
 export class Contact {
   constructor(publicKey: PublicKey, relayUrl?: string | undefined | null, alias?: string | undefined | null)
