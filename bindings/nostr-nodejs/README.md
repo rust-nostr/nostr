@@ -15,18 +15,20 @@ const { Keys } = require("@rust-nostr/nostr");
 
 async function main() {
      let keys = Keys.generate();
-    
-    // Hex keys
-    console.log("Public key (hex): ", keys.publicKey());
-    console.log("Secret key (hex): ", keys.secretKey());
-    
+
+     // Hex keys
+    console.log("Public key (hex): ", keys.publicKey().toHex());
+    console.log("Secret key (hex): ", keys.secretKey().toHex());
+
     // Bech32 keys
-    console.log("Public key (bech32): ", keys.publicKeyBech32());
-    console.log("Secret key (bech32): ", keys.secretKeyBech32());
+    console.log("Public key (bech32): ", keys.publicKey().toBech32());
+    console.log("Secret key (bech32): ", keys.secretKey().toBech32());
 }
 
 main();
 ```
+
+More examples can be found in the [examples](https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-nodejs/examples) directory.
 
 ## Supported NIPs
 
