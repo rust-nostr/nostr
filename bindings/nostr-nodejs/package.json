@@ -2,6 +2,7 @@
   "name": "@rust-nostr/nostr",
   "version": "0.1.0",
   "description": "Rust implementation of the Nostr protocol.",
+  "keywords": ["nostr", "protocol", "rust", "napi"],
   "license": "MIT",
   "homepage": "https://github.com/rust-nostr/nostr",
   "repository": {
