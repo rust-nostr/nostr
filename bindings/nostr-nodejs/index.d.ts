@@ -8,20 +8,20 @@ export class EventBuilder {
   constructor(kind: bigint, content: string, tags: Array<Array<string>>)
   toEvent(keys: JsKeys): JsEvent
   toPowEvent(keys: JsKeys, difficulty: number): JsEvent
-  static setMetadata(metadata: JsMetadata): this
-  static addRecommendedRelay(url: string): this
-  static newTextNote(content: string, tags: Array<Array<string>>): this
-  static setContactList(list: Array<JsContact>): EventBuilder
-  static newEncryptedDirectMsg(senderKeys: JsKeys, receiverPubkey: JsPublicKey, content: string): this
-  static repost(eventId: JsEventId, publicKey: JsPublicKey): EventBuilder
-  static delete(ids: Array<JsEventId>, reason?: string | undefined | null): EventBuilder
-  static newReaction(eventId: JsEventId, publicKey: JsPublicKey, content: string): EventBuilder
-  static newChannel(metadata: JsMetadata): this
-  static setChannelMetadata(channelId: JsChannelId, relayUrl: string | undefined | null, metadata: JsMetadata): this
-  static newChannelMsg(channelId: JsChannelId, relayUrl: string | undefined | null, content: string): this
-  static hideChannelMsg(messageId: JsEventId, reason?: string | undefined | null): EventBuilder
-  static muteChannelUser(pubkey: JsPublicKey, reason?: string | undefined | null): EventBuilder
-  static auth(challenge: string, relay: string): this
+  static setMetadata(metadata: JsMetadata): JsEventBuilder
+  static addRecommendedRelay(url: string): JsEventBuilder
+  static newTextNote(content: string, tags: Array<Array<string>>): JsEventBuilder
+  static setContactList(list: Array<JsContact>): JsEventBuilder
+  static newEncryptedDirectMsg(senderKeys: JsKeys, receiverPubkey: JsPublicKey, content: string): JsEventBuilder
+  static repost(eventId: JsEventId, publicKey: JsPublicKey): JsEventBuilder
+  static delete(ids: Array<JsEventId>, reason?: string | undefined | null): JsEventBuilder
+  static newReaction(eventId: JsEventId, publicKey: JsPublicKey, content: string): JsEventBuilder
+  static newChannel(metadata: JsMetadata): JsEventBuilder
+  static setChannelMetadata(channelId: JsChannelId, relayUrl: string | undefined | null, metadata: JsMetadata): JsEventBuilder
+  static newChannelMsg(channelId: JsChannelId, relayUrl: string | undefined | null, content: string): JsEventBuilder
+  static hideChannelMsg(messageId: JsEventId, reason?: string | undefined | null): JsEventBuilder
+  static muteChannelUser(pubkey: JsPublicKey, reason?: string | undefined | null): JsEventBuilder
+  static auth(challenge: string, relay: string): JsEventBuilder
 }
 export type JsEventId = EventId
 export class EventId {

@@ -60,14 +60,14 @@ impl JsEventBuilder {
             .into())
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn set_metadata(metadata: &JsMetadata) -> Result<Self> {
         Ok(Self {
             builder: EventBuilder::set_metadata(metadata.deref().clone()).map_err(into_err)?,
         })
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn add_recommended_relay(url: String) -> Result<Self> {
         let url = Url::parse(&url).map_err(into_err)?;
         Ok(Self {
@@ -75,7 +75,7 @@ impl JsEventBuilder {
         })
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn new_text_note(content: String, tags: Vec<Vec<String>>) -> Result<Self> {
         let mut new_tags: Vec<Tag> = Vec::new();
         for tag in tags.into_iter() {
@@ -87,7 +87,7 @@ impl JsEventBuilder {
         })
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn set_contact_list(list: Vec<&JsContact>) -> Self {
         let list: Vec<Contact> = list.into_iter().map(|c| c.deref().clone()).collect();
         Self {
@@ -95,7 +95,7 @@ impl JsEventBuilder {
         }
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn new_encrypted_direct_msg(
         sender_keys: &JsKeys,
         receiver_pubkey: &JsPublicKey,
@@ -111,14 +111,14 @@ impl JsEventBuilder {
         })
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn repost(event_id: &JsEventId, public_key: &JsPublicKey) -> Self {
         Self {
             builder: EventBuilder::repost(event_id.into(), public_key.into()),
         }
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn delete(ids: Vec<&JsEventId>, reason: Option<String>) -> Self {
         let ids: Vec<EventId> = ids.into_iter().map(|id| id.into()).collect();
         Self {
@@ -126,21 +126,21 @@ impl JsEventBuilder {
         }
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn new_reaction(event_id: &JsEventId, public_key: &JsPublicKey, content: String) -> Self {
         Self {
             builder: EventBuilder::new_reaction(event_id.into(), public_key.into(), content),
         }
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn new_channel(metadata: &JsMetadata) -> Result<Self> {
         Ok(Self {
             builder: EventBuilder::new_channel(metadata.deref().clone()).map_err(into_err)?,
         })
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn set_channel_metadata(
         channel_id: &JsChannelId,
         relay_url: Option<String>,
@@ -160,7 +160,7 @@ impl JsEventBuilder {
         })
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn new_channel_msg(
         channel_id: &JsChannelId,
         relay_url: Option<String>,
@@ -175,21 +175,21 @@ impl JsEventBuilder {
         })
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn hide_channel_msg(message_id: &JsEventId, reason: Option<String>) -> Self {
         Self {
             builder: EventBuilder::hide_channel_msg(message_id.into(), reason),
         }
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn mute_channel_user(pubkey: &JsPublicKey, reason: Option<String>) -> Self {
         Self {
             builder: EventBuilder::mute_channel_user(pubkey.into(), reason),
         }
     }
 
-    #[napi]
+    #[napi(factory)]
     pub fn auth(challenge: String, relay: String) -> Result<Self> {
         let url = Url::parse(&relay).map_err(into_err)?;
         Ok(Self {
