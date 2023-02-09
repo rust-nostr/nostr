@@ -62,13 +62,21 @@ export class SecretKey {
 }
 export type JsKeys = Keys
 export class Keys {
+  /** Initialize from secret key. */
   constructor(secretKey: SecretKey)
+  /** Initialize with public key only (no secret key). */
   static fromPublicKey(publicKey: PublicKey): JsKeys
+  /** Init [`Keys`] from `hex` or `bech32` secret key string */
   static fromSkStr(secretKey: string): JsKeys
+  /** Init [`Keys`] from `hex` or `bech32` public key string */
   static fromPkStr(publicKey: string): JsKeys
+  /** Generate new random keys */
   static generate(): JsKeys
+  /** Derive keys from BIP-39 mnemonics (ENGLISH wordlist). */
   static fromMnemonic(mnemonic: string, passphrase?: string | undefined | null): JsKeys
+  /** Get public key */
   publicKey(): PublicKey
+  /** Get secret key */
   secretKey(): SecretKey
 }
 export type JsSubscriptionId = SubscriptionId

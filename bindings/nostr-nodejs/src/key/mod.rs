@@ -27,6 +27,7 @@ impl Deref for JsKeys {
 
 #[napi]
 impl JsKeys {
+    /// Initialize from secret key.
     #[napi(constructor)]
     pub fn new(secret_key: &JsSecretKey) -> Self {
         Self {
@@ -34,6 +35,7 @@ impl JsKeys {
         }
     }
 
+    /// Initialize with public key only (no secret key).
     #[napi(factory)]
     pub fn from_public_key(public_key: &JsPublicKey) -> Self {
         Self {
@@ -41,6 +43,7 @@ impl JsKeys {
         }
     }
 
+    /// Init [`Keys`] from `hex` or `bech32` secret key string
     #[napi(factory)]
     pub fn from_sk_str(secret_key: String) -> Result<Self> {
         Ok(Self {
@@ -48,6 +51,7 @@ impl JsKeys {
         })
     }
 
+    /// Init [`Keys`] from `hex` or `bech32` public key string
     #[napi(factory)]
     pub fn from_pk_str(public_key: String) -> Result<Self> {
         Ok(Self {
@@ -55,6 +59,7 @@ impl JsKeys {
         })
     }
 
+    /// Generate new random keys
     #[napi(factory)]
     pub fn generate() -> Self {
         Self {
@@ -62,6 +67,7 @@ impl JsKeys {
         }
     }
 
+    /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
     #[napi(factory)]
     pub fn from_mnemonic(mnemonic: String, passphrase: Option<String>) -> Result<Self> {
         Ok(Self {
@@ -69,11 +75,13 @@ impl JsKeys {
         })
     }
 
+    /// Get public key
     #[napi]
     pub fn public_key(&self) -> JsPublicKey {
         self.inner.public_key().into()
     }
 
+    /// Get secret key
     #[napi]
     pub fn secret_key(&self) -> Result<JsSecretKey> {
         Ok(self.inner.secret_key().map_err(into_err)?.into())
