@@ -4,7 +4,6 @@
 use std::net::SocketAddr;
 use std::ops::Deref;
 
-use napi::bindgen_prelude::*;
 use napi::Result;
 use nostr_nodejs::key::JsKeys;
 use nostr_sdk::Client;
@@ -19,7 +18,7 @@ pub struct JsClient {
 #[napi]
 impl JsClient {
     #[napi(constructor)]
-    pub fn new(keys: External<JsKeys>) -> Self {
+    pub fn new(keys: &JsKeys) -> Self {
         Self {
             client: Client::new(keys.deref()),
         }
