@@ -7,7 +7,7 @@
   "homepage": "https://github.com/rust-nostr/nostr",
   "repository": {
     "type": "git",
-    "url": "git@github.com:rust-nostr/nostr.git"
+    "url": "git+https://github.com/rust-nostr/nostr.git"
   },
   "bugs": {
     "url": "https://github.com/rust-nostr/nostr/issues"
