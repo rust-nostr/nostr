@@ -17,8 +17,8 @@ export class EventBuilder {
   static delete(ids: Array<JsEventId>, reason?: string | undefined | null): EventBuilder
   static newReaction(eventId: JsEventId, publicKey: JsPublicKey, content: string): EventBuilder
   static newChannel(metadata: JsMetadata): this
-  static setChannelMetadata(channelId: string, relayUrl: string | undefined | null, metadata: JsMetadata): this
-  static newChannelMsg(channelId: string, relayUrl: string | undefined | null, content: string): this
+  static setChannelMetadata(channelId: JsChannelId, relayUrl: string | undefined | null, metadata: JsMetadata): this
+  static newChannelMsg(channelId: JsChannelId, relayUrl: string | undefined | null, content: string): this
   static hideChannelMsg(messageId: JsEventId, reason?: string | undefined | null): EventBuilder
   static muteChannelUser(pubkey: JsPublicKey, reason?: string | undefined | null): EventBuilder
   static auth(challenge: string, relay: string): this
@@ -133,6 +133,32 @@ export class SubscriptionFilter {
   until(until: bigint): SubscriptionFilter
   /** Set limit */
   limit(limit: bigint): SubscriptionFilter
+}
+export type JsChannelId = ChannelId
+/**
+ * Channel Id
+ *
+ * Kind 40 event id (32-bytes lowercase hex-encoded)
+ *
+ * https://github.com/nostr-protocol/nips/blob/master/19.md
+ */
+export class ChannelId {
+  /** New [`ChannelId`] */
+  constructor(eventId: EventId, relays: Array<string>)
+  /** [`ChannelId`] from bytes */
+  static fromSlice(sl: Array<number>): JsChannelId
+  /** [`ChannelId`] hex string */
+  static fromHex(hex: string): JsChannelId
+  /** [`ChannelId`] bech32 string */
+  static fromBech32(id: string): JsChannelId
+  /** Get as bytes */
+  get asBytes(): Array<number>
+  /** Get as hex string */
+  get toHex(): string
+  /** Get as bech32 string */
+  get toBech32(): string
+  /** Get relays */
+  get relays(): Array<string>
 }
 export type JsContact = Contact
 export class Contact {

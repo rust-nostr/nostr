@@ -9,7 +9,7 @@ use nostr::prelude::*;
 
 use super::{JsEvent, JsEventId};
 use crate::key::{JsKeys, JsPublicKey};
-use crate::types::{JsContact, JsMetadata};
+use crate::types::{JsChannelId, JsContact, JsMetadata};
 
 use crate::error::into_err;
 
@@ -142,18 +142,17 @@ impl JsEventBuilder {
 
     #[napi]
     pub fn set_channel_metadata(
-        channel_id: String,
+        channel_id: &JsChannelId,
         relay_url: Option<String>,
         metadata: &JsMetadata,
     ) -> Result<Self> {
-        let channel_id = ChannelId::from_hex(channel_id).map_err(into_err)?;
         let relay_url: Option<Url> = match relay_url {
             Some(relay_url) => Some(Url::parse(&relay_url).map_err(into_err)?),
             None => None,
         };
         Ok(Self {
             builder: EventBuilder::set_channel_metadata(
-                channel_id,
+                channel_id.into(),
                 relay_url,
                 metadata.deref().clone(),
             )
@@ -163,17 +162,16 @@ impl JsEventBuilder {
 
     #[napi]
     pub fn new_channel_msg(
-        channel_id: String,
+        channel_id: &JsChannelId,
         relay_url: Option<String>,
         content: String,
     ) -> Result<Self> {
-        let channel_id = ChannelId::from_hex(channel_id).map_err(into_err)?;
         let relay_url: Option<Url> = match relay_url {
             Some(relay_url) => Some(Url::parse(&relay_url).map_err(into_err)?),
             None => None,
         };
         Ok(Self {
-            builder: EventBuilder::new_channel_msg(channel_id, relay_url, content),
+            builder: EventBuilder::new_channel_msg(channel_id.into(), relay_url, content),
         })
     }
 
