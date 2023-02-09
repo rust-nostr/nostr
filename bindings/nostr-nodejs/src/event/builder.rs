@@ -132,4 +132,70 @@ impl JsEventBuilder {
             builder: EventBuilder::new_reaction(event_id.into(), public_key.into(), content),
         }
     }
+
+    #[napi]
+    pub fn new_channel(metadata: &JsMetadata) -> Result<Self> {
+        Ok(Self {
+            builder: EventBuilder::new_channel(metadata.deref().clone()).map_err(into_err)?,
+        })
+    }
+
+    #[napi]
+    pub fn set_channel_metadata(
+        channel_id: String,
+        relay_url: Option<String>,
+        metadata: &JsMetadata,
+    ) -> Result<Self> {
+        let channel_id = ChannelId::from_hex(channel_id).map_err(into_err)?;
+        let relay_url: Option<Url> = match relay_url {
+            Some(relay_url) => Some(Url::parse(&relay_url).map_err(into_err)?),
+            None => None,
+        };
+        Ok(Self {
+            builder: EventBuilder::set_channel_metadata(
+                channel_id,
+                relay_url,
+                metadata.deref().clone(),
+            )
+            .map_err(into_err)?,
+        })
+    }
+
+    #[napi]
+    pub fn new_channel_msg(
+        channel_id: String,
+        relay_url: Option<String>,
+        content: String,
+    ) -> Result<Self> {
+        let channel_id = ChannelId::from_hex(channel_id).map_err(into_err)?;
+        let relay_url: Option<Url> = match relay_url {
+            Some(relay_url) => Some(Url::parse(&relay_url).map_err(into_err)?),
+            None => None,
+        };
+        Ok(Self {
+            builder: EventBuilder::new_channel_msg(channel_id, relay_url, content),
+        })
+    }
+
+    #[napi]
+    pub fn hide_channel_msg(message_id: &JsEventId, reason: Option<String>) -> Self {
+        Self {
+            builder: EventBuilder::hide_channel_msg(message_id.into(), reason),
+        }
+    }
+
+    #[napi]
+    pub fn mute_channel_user(pubkey: &JsPublicKey, reason: Option<String>) -> Self {
+        Self {
+            builder: EventBuilder::mute_channel_user(pubkey.into(), reason),
+        }
+    }
+
+    #[napi]
+    pub fn auth(challenge: String, relay: String) -> Result<Self> {
+        let url = Url::parse(&relay).map_err(into_err)?;
+        Ok(Self {
+            builder: EventBuilder::auth(challenge, url),
+        })
+    }
 }

@@ -16,6 +16,12 @@ export class EventBuilder {
   static repost(eventId: JsEventId, publicKey: JsPublicKey): EventBuilder
   static delete(ids: Array<JsEventId>, reason?: string | undefined | null): EventBuilder
   static newReaction(eventId: JsEventId, publicKey: JsPublicKey, content: string): EventBuilder
+  static newChannel(metadata: JsMetadata): this
+  static setChannelMetadata(channelId: string, relayUrl: string | undefined | null, metadata: JsMetadata): this
+  static newChannelMsg(channelId: string, relayUrl: string | undefined | null, content: string): this
+  static hideChannelMsg(messageId: JsEventId, reason?: string | undefined | null): EventBuilder
+  static muteChannelUser(pubkey: JsPublicKey, reason?: string | undefined | null): EventBuilder
+  static auth(challenge: string, relay: string): this
 }
 export type JsEventId = EventId
 export class EventId {
