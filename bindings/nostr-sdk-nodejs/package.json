@@ -1,6 +1,23 @@
 {
   "name": "@rust-nostr/nostr-sdk",
   "version": "0.1.0",
+  "description": "High level Nostr client library.",
+  "license": "MIT",
+  "homepage": "https://github.com/rust-nostr/nostr",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:rust-nostr/nostr.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rust-nostr/nostr/issues"
+  },
+  "author": { "name" : "Yuki Kishimoto", "email" : "yukikishimoto@protonmail.com", "url" : "https://github.com/yukibtc" },
+  "funding":[
+    {
+      "type": "individual",
+      "url": "https://getalby.com/p/yuki"
+    }
+  ],
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -19,7 +36,6 @@
       ]
     }
   },
-  "license": "MIT",
   "devDependencies": {
     "@napi-rs/cli": "^2.14.6"
   },
