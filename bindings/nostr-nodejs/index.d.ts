@@ -12,14 +12,14 @@ export class EventBuilder {
   static addRecommendedRelay(url: string): this
   static newTextNote(content: string, tags: Array<Array<string>>): this
   static setContactList(list: Array<JsContact>): EventBuilder
-  static newEncryptedDirectMsg(senderKeys: JsKeys, receiverPubkey: string, content: string): this
-  static repost(eventId: JsEventId, publicKey: string): this
-  static delete(ids: Array<JsEventId>, reason?: string | undefined | null): this
-  static newReaction(eventId: JsEventId, publicKey: string, content: string): this
+  static newEncryptedDirectMsg(senderKeys: JsKeys, receiverPubkey: JsPublicKey, content: string): this
+  static repost(eventId: JsEventId, publicKey: JsPublicKey): EventBuilder
+  static delete(ids: Array<JsEventId>, reason?: string | undefined | null): EventBuilder
+  static newReaction(eventId: JsEventId, publicKey: JsPublicKey, content: string): EventBuilder
 }
 export type JsEventId = EventId
 export class EventId {
-  constructor(pubkey: string, createdAt: bigint, kind: bigint, tags: Array<Array<string>>, content: string)
+  constructor(pubkey: JsPublicKey, createdAt: bigint, kind: bigint, tags: Array<Array<string>>, content: string)
   static fromSlice(bytes: Array<number>): JsEventId
   static fromHex(hex: string): JsEventId
   static fromBech32(id: string): JsEventId
@@ -30,7 +30,7 @@ export class EventId {
 export type JsEvent = Event
 export class Event {
   get id(): EventId
-  get pubkey(): string
+  get pubkey(): JsPublicKey
   get createdAt(): bigint
   get kind(): bigint
   get tags(): Array<Array<string>>
@@ -40,20 +40,34 @@ export class Event {
   static fromJson(json: string): JsEvent
   asJson(): string
 }
+export type JsPublicKey = PublicKey
+export class PublicKey {
+  static fromHex(hex: string): JsPublicKey
+  static fromBech32(pk: string): JsPublicKey
+  toHex(): string
+  toBech32(): string
+}
+export type JsSecretKey = SecretKey
+export class SecretKey {
+  static fromHex(hex: string): JsSecretKey
+  static fromBech32(sk: string): JsSecretKey
+  toHex(): string
+  toBech32(): string
+}
 export type JsKeys = Keys
 export class Keys {
-  static fromSecretKey(secretKey: string): JsKeys
-  static fromPublicKey(publicKey: string): JsKeys
+  constructor(secretKey: SecretKey)
+  static fromPublicKey(publicKey: PublicKey): JsKeys
+  static fromSkStr(secretKey: string): JsKeys
+  static fromPkStr(publicKey: string): JsKeys
   static generate(): JsKeys
   static fromMnemonic(mnemonic: string, passphrase?: string | undefined | null): JsKeys
-  publicKey(): string
-  publicKeyBech32(): string
-  secretKey(): string
-  secretKeyBech32(): string
+  publicKey(): PublicKey
+  secretKey(): SecretKey
 }
 export type JsContact = Contact
 export class Contact {
-  constructor(publicKey: string, relayUrl?: string | undefined | null, alias?: string | undefined | null)
+  constructor(publicKey: PublicKey, relayUrl?: string | undefined | null, alias?: string | undefined | null)
 }
 export type JsMetadata = Metadata
 export class Metadata {

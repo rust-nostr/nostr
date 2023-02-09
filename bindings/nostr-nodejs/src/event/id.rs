@@ -1,13 +1,12 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::str::FromStr;
-
 use napi::bindgen_prelude::BigInt;
 use napi::Result;
 use nostr::prelude::*;
 
 use crate::error::into_err;
+use crate::key::JsPublicKey;
 
 #[napi(js_name = "EventId")]
 pub struct JsEventId {
@@ -30,13 +29,12 @@ impl From<&JsEventId> for EventId {
 impl JsEventId {
     #[napi(constructor)]
     pub fn new(
-        pubkey: String,
+        pubkey: &JsPublicKey,
         created_at: BigInt,
         kind: BigInt,
         tags: Vec<Vec<String>>,
         content: String,
     ) -> Result<Self> {
-        let pubkey = XOnlyPublicKey::from_str(&pubkey).map_err(into_err)?;
         let created_at = Timestamp::from(created_at.get_u64().1);
         let kind = Kind::from(kind.get_u64().1);
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
@@ -44,7 +42,7 @@ impl JsEventId {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }
         Ok(Self {
-            inner: EventId::new(&pubkey, created_at, &kind, &new_tags, &content),
+            inner: EventId::new(&pubkey.into(), created_at, &kind, &new_tags, &content),
         })
     }
 

@@ -2,14 +2,13 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 
 use napi::bindgen_prelude::BigInt;
 use napi::Result;
 use nostr::prelude::*;
 
 use super::{JsEvent, JsEventId};
-use crate::key::JsKeys;
+use crate::key::{JsKeys, JsPublicKey};
 use crate::types::{JsContact, JsMetadata};
 
 use crate::error::into_err;
@@ -91,7 +90,6 @@ impl JsEventBuilder {
     #[napi]
     pub fn set_contact_list(list: Vec<&JsContact>) -> Self {
         let list: Vec<Contact> = list.into_iter().map(|c| c.deref().clone()).collect();
-
         Self {
             builder: EventBuilder::set_contact_list(list),
         }
@@ -100,13 +98,13 @@ impl JsEventBuilder {
     #[napi]
     pub fn new_encrypted_direct_msg(
         sender_keys: &JsKeys,
-        receiver_pubkey: String,
+        receiver_pubkey: &JsPublicKey,
         content: String,
     ) -> Result<Self> {
         Ok(Self {
             builder: EventBuilder::new_encrypted_direct_msg(
                 sender_keys.deref(),
-                XOnlyPublicKey::from_str(&receiver_pubkey).map_err(into_err)?,
+                receiver_pubkey.into(),
                 content,
             )
             .map_err(into_err)?,
@@ -114,28 +112,24 @@ impl JsEventBuilder {
     }
 
     #[napi]
-    pub fn repost(event_id: &JsEventId, public_key: String) -> Result<Self> {
-        Ok(Self {
-            builder: EventBuilder::repost(
-                event_id.into(),
-                XOnlyPublicKey::from_str(&public_key).map_err(into_err)?,
-            ),
-        })
+    pub fn repost(event_id: &JsEventId, public_key: &JsPublicKey) -> Self {
+        Self {
+            builder: EventBuilder::repost(event_id.into(), public_key.into()),
+        }
     }
 
     #[napi]
-    pub fn delete(ids: Vec<&JsEventId>, reason: Option<String>) -> Result<Self> {
+    pub fn delete(ids: Vec<&JsEventId>, reason: Option<String>) -> Self {
         let ids: Vec<EventId> = ids.into_iter().map(|id| id.into()).collect();
-        Ok(Self {
+        Self {
             builder: EventBuilder::delete(ids, reason.as_deref()),
-        })
+        }
     }
 
     #[napi]
-    pub fn new_reaction(event_id: &JsEventId, public_key: String, content: String) -> Result<Self> {
-        let public_key = XOnlyPublicKey::from_str(&public_key).map_err(into_err)?;
-        Ok(Self {
-            builder: EventBuilder::new_reaction(event_id.into(), public_key, content),
-        })
+    pub fn new_reaction(event_id: &JsEventId, public_key: &JsPublicKey, content: String) -> Self {
+        Self {
+            builder: EventBuilder::new_reaction(event_id.into(), public_key.into(), content),
+        }
     }
 }

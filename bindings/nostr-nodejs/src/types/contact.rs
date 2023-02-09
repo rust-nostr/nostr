@@ -2,12 +2,10 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 
-use napi::Result;
 use nostr::prelude::*;
 
-use crate::error::into_err;
+use crate::key::JsPublicKey;
 
 #[napi(js_name = "Contact")]
 pub struct JsContact {
@@ -24,14 +22,9 @@ impl Deref for JsContact {
 #[napi]
 impl JsContact {
     #[napi(constructor)]
-    pub fn new(
-        public_key: String,
-        relay_url: Option<String>,
-        alias: Option<String>,
-    ) -> Result<Self> {
-        let pk = XOnlyPublicKey::from_str(&public_key).map_err(into_err)?;
-        Ok(Self {
-            contact: Contact::new(pk, relay_url, alias),
-        })
+    pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
+        Self {
+            contact: Contact::new(public_key.into(), relay_url, alias),
+        }
     }
 }

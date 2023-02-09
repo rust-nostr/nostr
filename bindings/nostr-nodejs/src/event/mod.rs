@@ -11,6 +11,7 @@ pub mod id;
 
 use self::id::JsEventId;
 use crate::error::into_err;
+use crate::key::JsPublicKey;
 
 #[napi(js_name = "Event")]
 pub struct JsEvent {
@@ -38,8 +39,8 @@ impl JsEvent {
     }
 
     #[napi(getter)]
-    pub fn pubkey(&self) -> String {
-        self.event.pubkey.to_string()
+    pub fn pubkey(&self) -> JsPublicKey {
+        self.event.pubkey.into()
     }
 
     #[napi(getter)]
