@@ -52,7 +52,7 @@ pub fn verify_delegation_signature(
     let unhashed_token: String = delegation_token(&delegatee_pk, &conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
-    secp.verify_schnorr(&signature, &message, &keys.public_key())?;
+    secp.verify_schnorr(signature, &message, &keys.public_key())?;
     Ok(())
 }
 
