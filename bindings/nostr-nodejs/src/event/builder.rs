@@ -8,7 +8,7 @@ use napi::bindgen_prelude::BigInt;
 use napi::Result;
 use nostr::prelude::*;
 
-use super::JsEvent;
+use super::{JsEvent, JsEventId};
 use crate::key::JsKeys;
 use crate::types::{JsContact, JsMetadata};
 
@@ -114,34 +114,28 @@ impl JsEventBuilder {
     }
 
     #[napi]
-    pub fn repost(event_id: String, public_key: String) -> Result<Self> {
+    pub fn repost(event_id: &JsEventId, public_key: String) -> Result<Self> {
         Ok(Self {
             builder: EventBuilder::repost(
-                EventId::from_hex(event_id).map_err(into_err)?,
+                event_id.into(),
                 XOnlyPublicKey::from_str(&public_key).map_err(into_err)?,
             ),
         })
     }
 
     #[napi]
-    pub fn delete(ids: Vec<String>, reason: Option<String>) -> Result<Self> {
-        let mut new_ids: Vec<EventId> = Vec::with_capacity(ids.len());
-
-        for id in ids.into_iter() {
-            new_ids.push(EventId::from_hex(id).map_err(into_err)?);
-        }
-
+    pub fn delete(ids: Vec<&JsEventId>, reason: Option<String>) -> Result<Self> {
+        let ids: Vec<EventId> = ids.into_iter().map(|id| id.into()).collect();
         Ok(Self {
-            builder: EventBuilder::delete(new_ids, reason.as_deref()),
+            builder: EventBuilder::delete(ids, reason.as_deref()),
         })
     }
 
     #[napi]
-    pub fn new_reaction(event_id: String, public_key: String, content: String) -> Result<Self> {
-        let event_id = EventId::from_hex(event_id).map_err(into_err)?;
+    pub fn new_reaction(event_id: &JsEventId, public_key: String, content: String) -> Result<Self> {
         let public_key = XOnlyPublicKey::from_str(&public_key).map_err(into_err)?;
         Ok(Self {
-            builder: EventBuilder::new_reaction(event_id, public_key, content),
+            builder: EventBuilder::new_reaction(event_id.into(), public_key, content),
         })
     }
 }

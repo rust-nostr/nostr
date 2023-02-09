@@ -7,7 +7,9 @@ use napi::Result;
 use nostr::prelude::*;
 
 pub mod builder;
+pub mod id;
 
+use self::id::JsEventId;
 use crate::error::into_err;
 
 #[napi(js_name = "Event")]
@@ -31,8 +33,8 @@ impl Deref for JsEvent {
 #[napi]
 impl JsEvent {
     #[napi(getter)]
-    pub fn id(&self) -> String {
-        self.event.id.to_hex()
+    pub fn id(&self) -> JsEventId {
+        self.event.id.into()
     }
 
     #[napi(getter)]

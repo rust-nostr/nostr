@@ -13,13 +13,23 @@ export class EventBuilder {
   static newTextNote(content: string, tags: Array<Array<string>>): this
   static setContactList(list: Array<JsContact>): EventBuilder
   static newEncryptedDirectMsg(senderKeys: JsKeys, receiverPubkey: string, content: string): this
-  static repost(eventId: string, publicKey: string): this
-  static delete(ids: Array<string>, reason?: string | undefined | null): this
-  static newReaction(eventId: string, publicKey: string, content: string): this
+  static repost(eventId: JsEventId, publicKey: string): this
+  static delete(ids: Array<JsEventId>, reason?: string | undefined | null): this
+  static newReaction(eventId: JsEventId, publicKey: string, content: string): this
+}
+export type JsEventId = EventId
+export class EventId {
+  constructor(pubkey: string, createdAt: bigint, kind: bigint, tags: Array<Array<string>>, content: string)
+  static fromSlice(bytes: Array<number>): JsEventId
+  static fromHex(hex: string): JsEventId
+  static fromBech32(id: string): JsEventId
+  asBytes(): Array<number>
+  toHex(): string
+  toBech32(): string
 }
 export type JsEvent = Event
 export class Event {
-  get id(): string
+  get id(): EventId
   get pubkey(): string
   get createdAt(): bigint
   get kind(): bigint
