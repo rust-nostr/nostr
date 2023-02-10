@@ -152,6 +152,17 @@ export class SubscriptionFilter {
   /** Set limit */
   limit(limit: bigint): SubscriptionFilter
 }
+export type JsRelayInformationDocument = RelayInformationDocument
+export class RelayInformationDocument {
+  constructor()
+  get name(): string | null
+  get description(): string | null
+  get pubkey(): string | null
+  get contact(): string | null
+  get supportedNips(): Array<number> | null
+  get software(): string | null
+  get version(): string | null
+}
 export type JsChannelId = ChannelId
 /**
  * Channel Id
