@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use std::ops::Deref;
 
 use napi::Result;
-use nostr_nodejs::key::JsKeys;
+use nostr_nodejs::JsKeys;
 use nostr_sdk::prelude::*;
 
 use crate::error::into_err;
