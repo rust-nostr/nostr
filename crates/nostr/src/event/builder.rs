@@ -380,6 +380,16 @@ impl EventBuilder {
             &[Tag::Challenge(challenge.into()), Tag::Relay(relay)],
         )
     }
+
+    /// Create report event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    pub fn report<S>(tags: &[Tag], content: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(Kind::Reporting, content, tags)
+    }
 }
 
 #[cfg(test)]

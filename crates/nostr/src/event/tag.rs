@@ -23,6 +23,9 @@ pub enum Error {
     /// Impossible to parse [`Marker`]
     #[error("impossible to parse marker")]
     MarkerParseError,
+    /// Unknown [`Report`]
+    #[error("unknown report type")]
+    UnknownReportType,
     /// Impossible to find tag kind
     #[error("impossible to find tag kind")]
     KindNotFound,
@@ -74,6 +77,49 @@ where
             "root" => Self::Root,
             "reply" => Self::Reply,
             m => Self::Custom(m.to_string()),
+        }
+    }
+}
+
+/// Report
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub enum Report {
+    /// Depictions of nudity, porn, etc
+    Nudity,
+    /// Profanity, hateful speech, etc.
+    Profanity,
+    /// Something which may be illegal in some jurisdiction
+    ///
+    /// Remenber: there is what is right and there is the law.
+    Illegal,
+    /// Spam
+    Spam,
+    /// Someone pretending to be someone else
+    Impersonation,
+}
+
+impl fmt::Display for Report {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Nudity => write!(f, "nudity"),
+            Self::Profanity => write!(f, "profanity"),
+            Self::Illegal => write!(f, "illegal"),
+            Self::Spam => write!(f, "spam"),
+            Self::Impersonation => write!(f, "impersonation"),
+        }
+    }
+}
+
+impl TryFrom<&str> for Report {
+    type Error = Error;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "nudity" => Ok(Self::Nudity),
+            "profanity" => Ok(Self::Profanity),
+            "illegal" => Ok(Self::Illegal),
+            "spam" => Ok(Self::Spam),
+            "impersonation" => Ok(Self::Impersonation),
+            _ => Err(Error::UnknownReportType),
         }
     }
 }
@@ -163,6 +209,8 @@ pub enum Tag {
     Generic(TagKind, Vec<String>),
     Event(EventId, Option<String>, Option<Marker>),
     PubKey(XOnlyPublicKey, Option<String>),
+    EventReport(EventId, Report),
+    PubKeyReport(XOnlyPublicKey, Report),
     Reference(String),
     Hashtag(String),
     Geohash(String),
@@ -242,15 +290,28 @@ where
             }
         } else if tag_len == 3 {
             match tag_kind {
-                TagKind::P => Ok(Self::PubKey(
-                    XOnlyPublicKey::from_str(&tag[1])?,
-                    Some(tag[2].clone()),
-                )),
-                TagKind::E => Ok(Self::Event(
-                    EventId::from_hex(&tag[1])?,
-                    Some(tag[2].clone()),
-                    None,
-                )),
+                TagKind::P => {
+                    let pubkey = XOnlyPublicKey::from_str(&tag[1])?;
+                    if tag[2].is_empty() {
+                        Ok(Self::PubKey(pubkey, Some(String::new())))
+                    } else {
+                        match Report::try_from(tag[2].as_str()) {
+                            Ok(report) => Ok(Self::PubKeyReport(pubkey, report)),
+                            Err(_) => Ok(Self::PubKey(pubkey, Some(tag[2].clone()))),
+                        }
+                    }
+                }
+                TagKind::E => {
+                    let event_id = EventId::from_hex(&tag[1])?;
+                    if tag[2].is_empty() {
+                        Ok(Self::Event(event_id, Some(String::new()), None))
+                    } else {
+                        match Report::try_from(tag[2].as_str()) {
+                            Ok(report) => Ok(Self::EventReport(event_id, report)),
+                            Err(_) => Ok(Self::Event(event_id, Some(tag[2].clone()), None)),
+                        }
+                    }
+                }
                 TagKind::Nonce => Ok(Self::POW {
                     nonce: tag[1].parse()?,
                     difficulty: tag[2].parse()?,
@@ -305,6 +366,12 @@ impl From<Tag> for Vec<String> {
                     tag.push(relay_url);
                 }
                 tag
+            }
+            Tag::EventReport(id, report) => {
+                vec![TagKind::E.to_string(), id.to_hex(), report.to_string()]
+            }
+            Tag::PubKeyReport(pk, report) => {
+                vec![TagKind::P.to_string(), pk.to_string(), report.to_string()]
             }
             Tag::Reference(r) => vec![TagKind::R.to_string(), r],
             Tag::Hashtag(t) => vec![TagKind::T.to_string(), t],
@@ -534,6 +601,36 @@ mod tests {
         );
 
         assert_eq!(
+            vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "spam"
+            ],
+            Tag::PubKeyReport(
+                XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                Report::Spam
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "nudity"
+            ],
+            Tag::EventReport(
+                EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                Report::Nudity,
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
             vec!["nonce", "1", "20"],
             Tag::POW {
                 nonce: 1,
@@ -697,6 +794,34 @@ mod tests {
                 )?,
                 Some(String::from("wss://relay.damus.io")),
                 None
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "impersonation"
+            ])?,
+            Tag::PubKeyReport(
+                XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                Report::Impersonation
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "profanity"
+            ])?,
+            Tag::EventReport(
+                EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )?,
+                Report::Profanity
             )
         );
 
