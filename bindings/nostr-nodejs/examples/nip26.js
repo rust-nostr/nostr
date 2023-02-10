@@ -1,0 +1,18 @@
+const { Keys, signDelegation, verifyDelegationSignature, PublicKey } = require("../index");
+
+function main() {
+    // Generate new random keys
+    let keys = Keys.generate();
+    let delegatee = PublicKey.fromBech32("npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u");
+    let conditions = "kind=1";
+    let signature = signDelegation(keys, delegatee, conditions);
+    console.log("Signature: ", signature);
+
+    if (verifyDelegationSignature(keys, delegatee, conditions, signature)) {
+        console.log("Valid signature")
+    } else {
+        console.log("Invalid signature")
+    }
+}
+
+main();

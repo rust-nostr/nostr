@@ -8,6 +8,7 @@ mod error;
 mod event;
 mod key;
 mod message;
+pub mod nips;
 mod types;
 
 pub use self::event::{JsEvent, JsEventBuilder, JsEventId};
