@@ -1,6 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::str::FromStr;
 
 use napi::Result;
@@ -11,6 +12,13 @@ use crate::error::into_err;
 #[napi(js_name = "SecretKey")]
 pub struct JsSecretKey {
     inner: SecretKey,
+}
+
+impl Deref for JsSecretKey {
+    type Target = SecretKey;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 impl From<SecretKey> for JsSecretKey {
