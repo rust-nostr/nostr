@@ -1,8 +1,13 @@
 {
   "name": "@rust-nostr/nostr",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Rust implementation of the Nostr protocol.",
-  "keywords": ["nostr", "protocol", "rust", "napi"],
+  "keywords": [
+    "nostr",
+    "protocol",
+    "rust",
+    "napi"
+  ],
   "license": "MIT",
   "homepage": "https://github.com/rust-nostr/nostr",
   "repository": {
@@ -12,8 +17,12 @@
   "bugs": {
     "url": "https://github.com/rust-nostr/nostr/issues"
   },
-  "author": { "name" : "Yuki Kishimoto", "email" : "yukikishimoto@protonmail.com", "url" : "https://github.com/yukibtc" },
-  "funding":[
+  "author": {
+    "name": "Yuki Kishimoto",
+    "email": "yukikishimoto@protonmail.com",
+    "url": "https://github.com/yukibtc"
+  },
+  "funding": [
     {
       "type": "individual",
       "url": "https://getalby.com/p/yuki"
@@ -49,7 +58,6 @@
     "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
     "version": "napi version"
-  }
-  ,
+  },
   "packageManager": "yarn@3.4.1"
 }
