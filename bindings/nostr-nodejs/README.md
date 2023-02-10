@@ -2,7 +2,7 @@
 	
 ## Description
 
-NodeJS bindings of the [`nostr`](../../crates/nostr/) crate.
+NodeJS bindings of the [`nostr`](https://crates.io/crates/nostr) crate.
 
 ## Getting started
 
@@ -40,7 +40,7 @@ Look at https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-n
 
 ## License
 
-This project is distributed under the MIT software license - see the [LICENSE](../../LICENSE) file for details
+This project is distributed under the MIT software license - see the [LICENSE](https://github.com/rust-nostr/nostr/blob/master/LICENSE) file for details
 
 ## Donations
 

@@ -2,7 +2,7 @@
 	
 ## Description
 
-NodeJS bindings of the [`nostr-sdk`](../../crates/nostr-sdk/) crate.
+NodeJS bindings of the [`nostr-sdk`](https://crates.io/crates/nostr-sdk) crate.
 
 ## Getting started
 
@@ -15,14 +15,14 @@ const { Keys } = require("@rust-nostr/nostr-sdk");
 
 async function main() {
      let keys = Keys.generate();
-    
-    // Hex keys
-    console.log("Public key (hex): ", keys.publicKey());
-    console.log("Secret key (hex): ", keys.secretKey());
-    
+
+     // Hex keys
+    console.log("Public key (hex): ", keys.publicKey().toHex());
+    console.log("Secret key (hex): ", keys.secretKey().toHex());
+
     // Bech32 keys
-    console.log("Public key (bech32): ", keys.publicKeyBech32());
-    console.log("Secret key (bech32): ", keys.secretKeyBech32());
+    console.log("Public key (bech32): ", keys.publicKey().toBech32());
+    console.log("Secret key (bech32): ", keys.secretKey().toBech32());
 }
 
 main();
@@ -38,7 +38,7 @@ Look at https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-n
 
 ## License
 
-This project is distributed under the MIT software license - see the [LICENSE](../../LICENSE) file for details
+This project is distributed under the MIT software license - see the [LICENSE](https://github.com/rust-nostr/nostr/blob/master/LICENSE) file for details
 
 ## Donations
 
