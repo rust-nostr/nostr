@@ -4,7 +4,7 @@
 use napi::bindgen_prelude::BigInt;
 use nostr::prelude::*;
 
-use crate::{event::id::JsEventId, key::JsPublicKey};
+use crate::{JsEventId, JsPublicKey};
 
 #[napi(js_name = "SubscriptionId")]
 pub struct JsSubscriptionId {

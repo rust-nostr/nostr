@@ -6,10 +6,11 @@ use std::ops::Deref;
 use napi::Result;
 use nostr::prelude::*;
 
-pub mod builder;
-pub mod id;
+mod builder;
+mod id;
 
-use self::id::JsEventId;
+pub use self::builder::JsEventBuilder;
+pub use self::id::JsEventId;
 use crate::error::into_err;
 use crate::key::JsPublicKey;
 

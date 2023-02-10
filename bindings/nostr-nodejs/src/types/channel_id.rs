@@ -5,7 +5,7 @@ use napi::Result;
 use nostr::prelude::*;
 
 use crate::error::into_err;
-use crate::event::id::JsEventId;
+use crate::JsEventId;
 
 /// Channel Id
 ///

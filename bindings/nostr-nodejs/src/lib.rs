@@ -5,7 +5,12 @@
 extern crate napi_derive;
 
 mod error;
-pub mod event;
-pub mod key;
-pub mod message;
-pub mod types;
+mod event;
+mod key;
+mod message;
+mod types;
+
+pub use self::event::{JsEvent, JsEventBuilder, JsEventId};
+pub use self::key::{JsKeys, JsPublicKey, JsSecretKey};
+pub use self::message::{JsSubscriptionFilter, JsSubscriptionId};
+pub use self::types::{JsChannelId, JsContact, JsMetadata};
