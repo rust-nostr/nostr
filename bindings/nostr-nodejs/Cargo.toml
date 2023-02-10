@@ -7,7 +7,7 @@ name = "nostr-nodejs"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
-napi = { version = "2.11", default-features = false, features = ["napi4", "napi6"] }
+napi = { version = "2.11", default-features = false, features = ["async", "napi4", "napi6"] }
 napi-derive = "2.11"
 nostr = { path = "../../crates/nostr" }
 
