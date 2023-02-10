@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Yuki Kishimoto
+// Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
 #[macro_use]
@@ -8,3 +8,4 @@ pub use nostr_nodejs;
 
 pub mod client;
 mod error;
+pub mod relay;

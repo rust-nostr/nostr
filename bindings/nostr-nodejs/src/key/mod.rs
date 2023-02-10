@@ -25,6 +25,12 @@ impl Deref for JsKeys {
     }
 }
 
+impl From<Keys> for JsKeys {
+    fn from(keys: Keys) -> Self {
+        Self { inner: keys }
+    }
+}
+
 #[napi]
 impl JsKeys {
     /// Initialize from secret key.
