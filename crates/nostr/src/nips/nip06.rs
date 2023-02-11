@@ -7,7 +7,7 @@
 
 use std::str::FromStr;
 
-use bip39::Mnemonic;
+use bip39::{Mnemonic, Seed};
 use bitcoin::hashes::hmac::{Hmac, HmacEngine};
 use bitcoin::hashes::{sha512, Hash, HashEngine};
 use bitcoin::secp256k1::rand::rngs::OsRng;
@@ -24,9 +24,10 @@ pub enum Error {
     /// BIP32 error
     #[error(transparent)]
     BIP32(#[from] bitcoin::util::bip32::Error),
-    /// BIP39 error
-    #[error(transparent)]
-    BIP39(#[from] bip39::Error),
+    // TODO: bip39::ErrorKind doesn't match #[derive]
+    // /// BIP39 error
+    // #[error(transparent)]
+    // BIP39(#[from] bip39::ErrorKind),
 }
 
 #[allow(missing_docs)]
@@ -51,9 +52,9 @@ impl FromMnemonic for Keys {
     where
         S: Into<String>,
     {
-        let mnemonic = Mnemonic::from_str(&mnemonic.into())?;
-        let seed = mnemonic.to_seed(passphrase.map(|p| p.into()).unwrap_or_default());
-        let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)?;
+        let mnemonic = Mnemonic::from_phrase(&mnemonic.into(), bip39::Language::English).unwrap();
+        let seed = Seed::new(&mnemonic, &passphrase.map(|p| p.into()).unwrap_or_default());
+        let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, seed.as_bytes())?;
         let path = DerivationPath::from_str("m/44'/1237'/0'/0/0")?;
         let secp = Secp256k1::new();
         let child_xprv = root_key.derive_priv(&secp, &path)?;
@@ -72,7 +73,7 @@ impl GenerateMnemonic for Keys {
         h.input(&os_random);
         let entropy: [u8; 64] = Hmac::from_engine(h).into_inner();
         let len: usize = word_count * 4 / 3;
-        Ok(Mnemonic::from_entropy(&entropy[0..len])?)
+        Ok(Mnemonic::from_entropy(&entropy[0..len], bip39::Language::English).unwrap())
     }
 }
 
