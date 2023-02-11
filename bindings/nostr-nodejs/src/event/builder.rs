@@ -77,7 +77,7 @@ impl JsEventBuilder {
 
     #[napi(factory)]
     pub fn new_text_note(content: String, tags: Vec<Vec<String>>) -> Result<Self> {
-        let mut new_tags: Vec<Tag> = Vec::new();
+        let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
         for tag in tags.into_iter() {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }

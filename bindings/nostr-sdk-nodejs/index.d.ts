@@ -233,6 +233,131 @@ export class Client {
   relays(): Promise<Record<string, JsRelay>>
   /** Add new relay */
   addRelay(url: string, proxy?: string | undefined | null): Promise<void>
+  /** Remove relay */
+  removeRelay(url: string): Promise<void>
+  /** Connect relay */
+  connectRelay(url: string): Promise<void>
+  /** Disconnect relay */
+  disconnectRelay(url: string): Promise<void>
+  /** Connect to all added relays */
+  connect(): Promise<void>
+  /** Disconnect from all relays */
+  disconnect(): Promise<void>
+  /** Subscribe to filters */
+  subscribe(filters: Array<JsSubscriptionFilter>): Promise<void>
+  /** Unsubscribe */
+  unsubscribe(): Promise<void>
+  /** Get events of filters */
+  getEventsOf(filters: Array<JsSubscriptionFilter>, timeout?: number | undefined | null): Promise<Array<JsEvent>>
+  /**
+   * Request events of filters
+   * All events will be received on notification listener
+   */
+  reqEventsOf(filters: Array<JsSubscriptionFilter>, timeout?: number | undefined | null): Promise<void>
+  /** Send event */
+  sendEvent(event: JsEvent): Promise<JsEventId>
+  /** Send event to specific relay */
+  sendEventTo(url: string, event: JsEvent): Promise<JsEventId>
+  /**
+   * Update metadata
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+   */
+  setMetadata(metadata: JsMetadata): Promise<JsEventId>
+  /**
+   * Publish text note
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+   */
+  publishTextNote(content: string, tags: Array<Array<string>>): Promise<JsEventId>
+  /**
+   * Publish POW text note
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/13.md>
+   */
+  publishPowTextNote(content: string, tags: Array<Array<string>>, difficulty: number): Promise<JsEventId>
+  /**
+   * Add recommended relay
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+   */
+  addRecommendedRelay(url: string): Promise<JsEventId>
+  /**
+   * Set contact list
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/02.md>
+   */
+  setContactList(list: Array<JsContact>): Promise<JsEventId>
+  /**
+   * Get contact list
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/02.md>
+   */
+  getContactList(timeout?: number | undefined | null): Promise<Array<JsContact>>
+  /**
+   * Send encrypted direct message
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/04.md>
+   */
+  sendDirectMsg(receiver: JsPublicKey, msg: string): Promise<JsEventId>
+  /** Repost event */
+  repostEvent(eventId: JsEventId, publicKey: JsPublicKey): Promise<JsEventId>
+  /**
+   * Delete event
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/09.md>
+   */
+  deleteEvent(eventId: JsEventId, reason?: string | undefined | null): Promise<JsEventId>
+  /**
+   * Like event
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/25.md>
+   */
+  like(eventId: JsEventId, publicKey: JsPublicKey): Promise<JsEventId>
+  /**
+   * Disike event
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/25.md>
+   */
+  dislike(eventId: JsEventId, publicKey: JsPublicKey): Promise<JsEventId>
+  /**
+   * React to an [`Event`]
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/25.md>
+   */
+  reaction(eventId: JsEventId, publicKey: JsPublicKey, content: string): Promise<JsEventId>
+  /**
+   * Create new channel
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/28.md>
+   */
+  newChannel(metadata: JsMetadata): Promise<JsEventId>
+  /**
+   * Update channel metadata
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/28.md>
+   */
+  setChannelMetadata(channelId: JsChannelId, relayUrl: string | undefined | null, metadata: JsMetadata): Promise<JsEventId>
+  /**
+   * Send message to channel
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/28.md>
+   */
+  sendChannelMsg(channelId: JsChannelId, relayUrl: string | undefined | null, msg: string): Promise<JsEventId>
+  /**
+   * Hide channel message
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/28.md>
+   */
+  hideChannelMsg(messageId: JsEventId, reason?: string | undefined | null): Promise<JsEventId>
+  /**
+   * Mute channel user
+   *
+   * <https://github.com/nostr-protocol/nips/blob/master/28.md>
+   */
+  muteChannelUser(pubkey: JsPublicKey, reason?: string | undefined | null): Promise<JsEventId>
+  /** Get a list of channels */
+  getChannels(timeout?: number | undefined | null): Promise<Array<JsEvent>>
 }
 export type JsRelay = Relay
 export class Relay { }

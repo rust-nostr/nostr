@@ -39,6 +39,12 @@ pub struct JsSubscriptionFilter {
     inner: SubscriptionFilter,
 }
 
+impl From<&JsSubscriptionFilter> for SubscriptionFilter {
+    fn from(filter: &JsSubscriptionFilter) -> Self {
+        filter.inner.clone()
+    }
+}
+
 #[napi]
 impl JsSubscriptionFilter {
     #[allow(clippy::new_without_default)]

@@ -9,13 +9,25 @@ use crate::key::JsPublicKey;
 
 #[napi(js_name = "Contact")]
 pub struct JsContact {
-    contact: Contact,
+    inner: Contact,
 }
 
 impl Deref for JsContact {
     type Target = Contact;
     fn deref(&self) -> &Self::Target {
-        &self.contact
+        &self.inner
+    }
+}
+
+impl From<Contact> for JsContact {
+    fn from(contact: Contact) -> Self {
+        Self { inner: contact }
+    }
+}
+
+impl From<&JsContact> for Contact {
+    fn from(contact: &JsContact) -> Self {
+        contact.inner.clone()
     }
 }
 
@@ -24,7 +36,7 @@ impl JsContact {
     #[napi(constructor)]
     pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
         Self {
-            contact: Contact::new(public_key.into(), relay_url, alias),
+            inner: Contact::new(public_key.into(), relay_url, alias),
         }
     }
 }
