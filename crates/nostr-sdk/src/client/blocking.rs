@@ -86,11 +86,11 @@ impl Client {
         RUNTIME.block_on(async { self.client.remove_relay(url).await })
     }
 
-    pub fn connect_relay<S>(&self, url: S, wait_for_connection: bool) -> Result<(), Error>
+    pub fn connect_relay<S>(&self, url: S) -> Result<(), Error>
     where
         S: Into<String>,
     {
-        RUNTIME.block_on(async { self.client.connect_relay(url, wait_for_connection).await })
+        RUNTIME.block_on(async { self.client.connect_relay(url).await })
     }
 
     pub fn disconnect_relay<S>(&self, url: S) -> Result<(), Error>

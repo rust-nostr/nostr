@@ -31,8 +31,8 @@ impl Client {
         Ok(self.client.add_relay(url, proxy)?)
     }
 
-    pub fn connect_relay(&self, url: String, wait_for_connection: bool) -> Result<()> {
-        Ok(self.client.connect_relay(url, wait_for_connection)?)
+    pub fn connect_relay(&self, url: String) -> Result<()> {
+        Ok(self.client.connect_relay(url)?)
     }
 
     pub fn connect(&self) {

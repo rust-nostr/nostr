@@ -223,18 +223,20 @@ impl Client {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client
-    ///     .connect_relay("wss://relay.nostr.info", true)
+    ///     .connect_relay("wss://relay.nostr.info")
     ///     .await
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn connect_relay<S>(&self, url: S, wait_for_connection: bool) -> Result<(), Error>
+    pub async fn connect_relay<S>(&self, url: S) -> Result<(), Error>
     where
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
-            self.pool.connect_relay(relay, wait_for_connection).await;
+            self.pool
+                .connect_relay(relay, self.opts.get_wait_for_connection())
+                .await;
             return Ok(());
         }
         Err(Error::RelayNotFound)
@@ -268,7 +270,7 @@ impl Client {
         Err(Error::RelayNotFound)
     }
 
-    /// Connect to all added relays without waiting for connection and keep connection alive
+    /// Connect to all added relays
     ///
     /// # Example
     /// ```rust,no_run
