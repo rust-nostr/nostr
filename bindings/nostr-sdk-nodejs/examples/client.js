@@ -1,20 +1,9 @@
-# Nostr SDK
-	
-## Description
-
-NodeJS bindings of the [`nostr-sdk`](https://crates.io/crates/nostr-sdk) crate.
-
-## Getting started
-
-```sh
-npm i @rust-nostr/nostr-sdk
-```
-    
-```javascript
-const { Keys, Client, Options, Metadata, EventId, PublicKey, EventBuilder } = require("@rust-nostr/nostr-sdk");
+const { Keys, Client, initLogger, Metadata, EventId, PublicKey, EventBuilder } = require("../index");
 
 async function main() {
-    let keys = Keys.generate();
+    initLogger();
+
+    let keys = Keys.fromSkStr("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
 
     // Hex keys
     console.log("Public key (hex): ", keys.publicKey().toHex());
@@ -23,8 +12,6 @@ async function main() {
     // Bech32 keys
     console.log("Public key (bech32): ", keys.publicKey().toBech32());
     console.log("Secret key (bech32): ", keys.secretKey().toBech32());
-
-    let opts = new Options().waitForSend(true);
 
     let client = Client.newWithOpts(keys, opts);
     await client.addRelay("wss://relay.damus.io");
@@ -58,25 +45,8 @@ async function main() {
 
     // Send custom event to a specific previously added relay
     await client.sendEventTo("wss://relay.damus.io", event);
+
+    while (true) {}
 }
 
 main();
-```
-
-## Supported NIPs
-
-Look at https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips
-
-## State
-
-**This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
-
-## License
-
-This project is distributed under the MIT software license - see the [LICENSE](https://github.com/rust-nostr/nostr/blob/master/LICENSE) file for details
-
-## Donations
-
-⚡ Tips: https://getalby.com/p/yuki
-
-⚡ Lightning Address: yuki@getalby.com

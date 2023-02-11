@@ -63,6 +63,7 @@ impl JsRelay {
     }
 
     /// Get `RelayInformationDocument`
+    #[napi(getter)]
     pub async fn document(&self) -> JsRelayInformationDocument {
         self.inner.document().await.into()
     }
