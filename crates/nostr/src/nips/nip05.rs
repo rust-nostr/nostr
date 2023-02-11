@@ -45,13 +45,16 @@ fn compose_url(nip05: &str) -> Result<(String, &str), Error> {
     Ok((url, name))
 }
 
-fn verify_json(public_key: XOnlyPublicKey, json: Value, name: &str) -> Result<(), Error> {
-    if let Some(pubkey) = json
-        .get("names")
+fn get_key_from_json(json: Value, name: &str) -> Option<XOnlyPublicKey> {
+    json.get("names")
         .and_then(|names| names.get(name))
         .and_then(|value| value.as_str())
-    {
-        if XOnlyPublicKey::from_str(pubkey)? == public_key {
+        .and_then(|pubkey| XOnlyPublicKey::from_str(pubkey).ok())
+}
+
+fn verify_json(public_key: XOnlyPublicKey, json: Value, name: &str) -> Result<(), Error> {
+    if let Some(pubkey) = get_key_from_json(json, name) {
+        if pubkey == public_key {
             return Ok(());
         }
     }
@@ -112,4 +115,63 @@ pub async fn verify(public_key: XOnlyPublicKey, nip05: &str) -> Result<(), Error
     let res = client.get(url).send().await?;
     let json: Value = serde_json::from_str(&res.text().await?)?;
     verify_json(public_key, json, name)
+}
+
+/// Get public key from NIP05
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn get_key(nip05: &str, proxy: Option<SocketAddr>) -> Result<XOnlyPublicKey, Error> {
+    use reqwest::Client;
+
+    let (url, name) = compose_url(nip05)?;
+    let mut builder = Client::builder();
+    if let Some(proxy) = proxy {
+        let proxy = format!("socks5h://{proxy}");
+        builder = builder.proxy(Proxy::all(proxy)?);
+    }
+    let client: Client = builder.build()?;
+    let res = client.get(url).send().await?;
+    let json: Value = serde_json::from_str(&res.text().await?)?;
+
+    match get_key_from_json(json, name) {
+        Some(key) => Ok(key),
+        None => Err(Error::ImpossibleToVerify),
+    }
+}
+
+/// Get public key from NIP05
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "blocking")]
+pub fn get_key_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<XOnlyPublicKey, Error> {
+    use reqwest::blocking::Client;
+
+    let (url, name) = compose_url(nip05)?;
+    let mut builder = Client::builder();
+    if let Some(proxy) = proxy {
+        let proxy = format!("socks5h://{proxy}");
+        builder = builder.proxy(Proxy::all(proxy)?);
+    }
+    let client: Client = builder.build()?;
+    let res = client.get(url).send()?;
+    let json: Value = serde_json::from_str(&res.text()?)?;
+
+    match get_key_from_json(json, name) {
+        Some(key) => Ok(key),
+        None => Err(Error::ImpossibleToVerify),
+    }
+}
+
+/// Get public key from NIP05
+#[cfg(target_arch = "wasm32")]
+pub async fn get_key(nip05: &str) -> Result<XOnlyPublicKey, Error> {
+    use reqwest::Client;
+
+    let (url, name) = compose_url(nip05)?;
+    let client: Client = Client::new();
+    let res = client.get(url).send().await?;
+    let json: Value = serde_json::from_str(&res.text().await?)?;
+
+    match get_key_from_json(json, name) {
+        Some(key) => Ok(key),
+        None => Err(Error::ImpossibleToVerify),
+    }
 }
