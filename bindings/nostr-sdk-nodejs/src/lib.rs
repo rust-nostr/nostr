@@ -9,3 +9,8 @@ pub use nostr_nodejs;
 pub mod client;
 mod error;
 pub mod relay;
+
+#[napi]
+pub fn init_logger() {
+    env_logger::init();
+}

@@ -25,6 +25,7 @@ export const enum JsRelayStatus {
   /** Relay completly disconnected */
   Terminated = 4
 }
+export function initLogger(): void
 export type JsEventBuilder = EventBuilder
 export class EventBuilder {
   constructor(kind: bigint, content: string, tags: Array<Array<string>>)

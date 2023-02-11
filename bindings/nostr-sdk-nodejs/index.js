@@ -246,7 +246,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { EventBuilder, EventId, Event, PublicKey, SecretKey, Keys, SubscriptionId, SubscriptionFilter, encrypt, decrypt, verifyNip05, RelayInformationDocument, signDelegation, verifyDelegationSignature, ChannelId, Contact, Metadata, Client, Relay, JsRelayStatus } = nativeBinding
+const { EventBuilder, EventId, Event, PublicKey, SecretKey, Keys, SubscriptionId, SubscriptionFilter, encrypt, decrypt, verifyNip05, RelayInformationDocument, signDelegation, verifyDelegationSignature, ChannelId, Contact, Metadata, Client, Relay, JsRelayStatus, initLogger } = nativeBinding
 
 module.exports.EventBuilder = EventBuilder
 module.exports.EventId = EventId
@@ -268,3 +268,4 @@ module.exports.Metadata = Metadata
 module.exports.Client = Client
 module.exports.Relay = Relay
 module.exports.JsRelayStatus = JsRelayStatus
+module.exports.initLogger = initLogger
