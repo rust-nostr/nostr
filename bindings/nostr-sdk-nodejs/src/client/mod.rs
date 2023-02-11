@@ -13,6 +13,9 @@ use nostr_nodejs::{
 };
 use nostr_sdk::prelude::*;
 
+mod options;
+
+pub use self::options::JsOptions;
 use crate::error::into_err;
 use crate::relay::JsRelay;
 
@@ -30,7 +33,13 @@ impl JsClient {
         }
     }
 
-    // Add new_with_opts
+    /// Create a new `Client` with custom `Options`
+    #[napi(factory)]
+    pub fn new_with_opts(keys: &JsKeys, opts: &JsOptions) -> Self {
+        Self {
+            inner: Client::new_with_opts(keys.deref(), opts.into()),
+        }
+    }
 
     /// Update default difficulty for new `Event`
     #[napi]
@@ -38,7 +47,11 @@ impl JsClient {
         self.inner.update_difficulty(difficulty);
     }
 
-    // Add update_opts
+    /// Update current `Options`
+    #[napi]
+    pub fn update_opts(&self, new_opts: &JsOptions) {
+        self.inner.update_opts(new_opts.into());
+    }
 
     /// Get current `Keys`
     #[napi]

@@ -6,9 +6,12 @@ extern crate napi_derive;
 
 pub use nostr_nodejs;
 
-pub mod client;
+mod client;
 mod error;
-pub mod relay;
+mod relay;
+
+pub use self::client::{JsClient, JsOptions};
+pub use self::relay::{JsRelay, JsRelayStatus};
 
 #[napi]
 pub fn init_logger() {

@@ -221,11 +221,26 @@ export class Metadata {
   lud06(lud06: string): Metadata
   lud16(lud16: string): Metadata
 }
+export type JsOptions = Options
+export class Options {
+  /** Create new (default) `Options` */
+  constructor()
+  /** If set to `true`, `Client` wait that `Relay` try at least one time to enstablish a connection before continue. */
+  waitForConnection(wait: boolean): Options
+  /** If set to `true`, [`Client`] wait that an event is sent before continue. */
+  waitForSend(wait: boolean): Options
+  /** Set default POW diffficulty for `Event` */
+  difficulty(difficulty: number): Options
+}
 export type JsClient = Client
 export class Client {
   constructor(keys: JsKeys)
+  /** Create a new `Client` with custom `Options` */
+  static newWithOpts(keys: JsKeys, opts: Options): JsClient
   /** Update default difficulty for new `Event` */
   updateDifficulty(difficulty: number): void
+  /** Update current `Options` */
+  updateOpts(newOpts: Options): void
   /** Get current `Keys` */
   keys(): JsKeys
   /** Completly shutdown `Client` */
