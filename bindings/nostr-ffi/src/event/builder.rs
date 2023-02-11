@@ -60,10 +60,10 @@ impl EventBuilder {
 }
 
 impl EventBuilder {
-    pub fn set_metadata(metadata: Arc<Metadata>) -> Result<Self> {
-        Ok(Self {
-            builder: EventBuilderSdk::set_metadata(metadata.as_ref().deref().clone())?,
-        })
+    pub fn set_metadata(metadata: Arc<Metadata>) -> Self {
+        Self {
+            builder: EventBuilderSdk::set_metadata(metadata.as_ref().deref().clone()),
+        }
     }
 
     pub fn add_recommended_relay(url: String) -> Result<Self> {

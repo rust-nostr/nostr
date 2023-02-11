@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         .nip05("username@example.com")
         .lud16("yuki@getalby.com");
 
-    let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&my_keys)?;
+    let event: Event = EventBuilder::set_metadata(metadata).to_event(&my_keys)?;
 
     socket
         .write_message(WsMessage::Text(ClientMessage::new_event(event).as_json()))

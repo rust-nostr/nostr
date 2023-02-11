@@ -61,10 +61,10 @@ impl JsEventBuilder {
     }
 
     #[napi(factory)]
-    pub fn set_metadata(metadata: &JsMetadata) -> Result<Self> {
-        Ok(Self {
-            builder: EventBuilder::set_metadata(metadata.into()).map_err(into_err)?,
-        })
+    pub fn set_metadata(metadata: &JsMetadata) -> Self {
+        Self {
+            builder: EventBuilder::set_metadata(metadata.into()),
+        }
     }
 
     #[napi(factory)]
@@ -134,10 +134,10 @@ impl JsEventBuilder {
     }
 
     #[napi(factory)]
-    pub fn new_channel(metadata: &JsMetadata) -> Result<Self> {
-        Ok(Self {
-            builder: EventBuilder::new_channel(metadata.into()).map_err(into_err)?,
-        })
+    pub fn new_channel(metadata: &JsMetadata) -> Self {
+        Self {
+            builder: EventBuilder::new_channel(metadata.into()),
+        }
     }
 
     #[napi(factory)]
@@ -155,8 +155,7 @@ impl JsEventBuilder {
                 channel_id.into(),
                 relay_url,
                 metadata.into(),
-            )
-            .map_err(into_err)?,
+            ),
         })
     }
 

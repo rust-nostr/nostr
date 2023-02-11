@@ -68,7 +68,7 @@ interface EventBuilder {
     Event to_event(Keys keys);
     [Throws=NostrError]
     Event to_pow_event(Keys keys, u8 difficulty);
-    [Throws=NostrError, Name=set_metadata]
+    [Name=set_metadata]
     constructor(AccountMetadata metadata);
     [Throws=NostrError, Name=add_recommended_relay]
     constructor(string url);

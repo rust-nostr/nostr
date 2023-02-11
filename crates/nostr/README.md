@@ -48,7 +48,7 @@ fn main() -> Result<()> {
         .nip05("username@example.com")
         .lud16("yuki@getalby.com");
 
-    let event: Event = EventBuilder::set_metadata(metadata)?.to_event(&my_keys)?;
+    let event: Event = EventBuilder::set_metadata(metadata).to_event(&my_keys)?;
 
     // New text note
     let event: Event = EventBuilder::new_text_note("Hello from Nostr SDK", &[]).to_event(&my_keys)?;

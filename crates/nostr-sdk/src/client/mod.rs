@@ -452,7 +452,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn set_metadata(&self, metadata: Metadata) -> Result<EventId, Error> {
-        let builder = EventBuilder::set_metadata(metadata)?;
+        let builder = EventBuilder::set_metadata(metadata);
         self.send_event_builder(builder).await
     }
 
@@ -764,7 +764,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn new_channel(&self, metadata: Metadata) -> Result<EventId, Error> {
-        let builder = EventBuilder::new_channel(metadata)?;
+        let builder = EventBuilder::new_channel(metadata);
         self.send_event_builder(builder).await
     }
 
@@ -778,7 +778,7 @@ impl Client {
         relay_url: Option<Url>,
         metadata: Metadata,
     ) -> Result<EventId, Error> {
-        let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata)?;
+        let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata);
         self.send_event_builder(builder).await
     }
 
@@ -791,7 +791,7 @@ impl Client {
         relay_url: Option<Url>,
         metadata: Metadata,
     ) -> Result<EventId, Error> {
-        let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata)?;
+        let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata);
         self.send_event_builder(builder).await
     }
 

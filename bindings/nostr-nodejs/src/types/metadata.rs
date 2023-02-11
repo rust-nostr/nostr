@@ -41,8 +41,8 @@ impl JsMetadata {
     }
 
     #[napi]
-    pub fn as_json(&self) -> Result<String> {
-        self.inner.as_json().map_err(into_err)
+    pub fn as_json(&self) -> String {
+        self.inner.as_json()
     }
 
     #[napi]

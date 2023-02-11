@@ -77,8 +77,8 @@ impl Metadata {
     }
 
     /// Serialize [`Metadata`] to `JSON` string
-    pub fn as_json(&self) -> Result<String, Error> {
-        Ok(serde_json::to_string(&self)?)
+    pub fn as_json(&self) -> String {
+        serde_json::json!(self).to_string()
     }
 
     /// Set name

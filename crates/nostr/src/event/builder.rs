@@ -4,8 +4,6 @@
 //! Event builder
 
 use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
-use once_cell::sync::Lazy;
-use regex::Regex;
 use serde_json::{json, Value};
 use url::Url;
 
@@ -19,9 +17,6 @@ use crate::nips::nip04;
 use crate::nips::nip13;
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 
-static REGEX_NAME: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"^[a-zA-Z0-9][a-zA-Z_\-0-9]+[a-zA-Z0-9]$"#).expect("Invalid regex"));
-
 /// [`EventBuilder`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -34,9 +29,6 @@ pub enum Error {
     /// JSON error
     #[error(transparent)]
     Json(#[from] serde_json::Error),
-    /// Invalid metadata name
-    #[error("invalid name")]
-    InvalidName,
     /// NIP04 error
     #[cfg(feature = "nip04")]
     #[error(transparent)]
@@ -156,20 +148,10 @@ impl EventBuilder {
     ///     .nip05("username@example.com")
     ///     .lud16("yuki@getalby.com");
     ///
-    /// let builder = EventBuilder::set_metadata(metadata).unwrap();
+    /// let builder = EventBuilder::set_metadata(metadata);
     /// ```
-    pub fn set_metadata(metadata: Metadata) -> Result<Self, Error> {
-        if let Some(name) = metadata.name.clone() {
-            if !REGEX_NAME.is_match(&name) {
-                return Err(Error::InvalidName);
-            }
-        }
-
-        Ok(Self::new(
-            Kind::Metadata,
-            serde_json::to_string(&metadata)?,
-            &[],
-        ))
+    pub fn set_metadata(metadata: Metadata) -> Self {
+        Self::new(Kind::Metadata, metadata.as_json(), &[])
     }
 
     /// Add recommended relay
@@ -271,18 +253,8 @@ impl EventBuilder {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel(metadata: Metadata) -> Result<Self, Error> {
-        if let Some(name) = metadata.name.as_ref() {
-            if !REGEX_NAME.is_match(name) {
-                return Err(Error::InvalidName);
-            }
-        }
-
-        Ok(Self::new(
-            Kind::ChannelCreation,
-            serde_json::to_string(&metadata)?,
-            &[],
-        ))
+    pub fn new_channel(metadata: Metadata) -> Self {
+        Self::new(Kind::ChannelCreation, metadata.as_json(), &[])
     }
 
     /// Set channel metadata
@@ -292,22 +264,16 @@ impl EventBuilder {
         channel_id: ChannelId,
         relay_url: Option<Url>,
         metadata: Metadata,
-    ) -> Result<Self, Error> {
-        if let Some(name) = metadata.name.as_ref() {
-            if !REGEX_NAME.is_match(name) {
-                return Err(Error::InvalidName);
-            }
-        }
-
-        Ok(Self::new(
+    ) -> Self {
+        Self::new(
             Kind::ChannelMetadata,
-            serde_json::to_string(&metadata)?,
+            metadata.as_json(),
             &[Tag::Event(
                 channel_id.into(),
                 relay_url.map(|u| u.to_string()),
                 None,
             )],
-        ))
+        )
     }
 
     /// New channel message
