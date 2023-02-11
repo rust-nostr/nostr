@@ -51,7 +51,7 @@ impl Event {
         })
     }
 
-    pub fn as_json(&self) -> Result<String> {
-        Ok(self.event.as_json()?)
+    pub fn as_json(&self) -> String {
+        self.event.as_json()
     }
 }

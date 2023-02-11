@@ -87,8 +87,8 @@ impl Event {
     }
 
     /// Get event as json string
-    pub fn as_json(&self) -> Result<String, Error> {
-        Ok(serde_json::to_string(&self)?)
+    pub fn as_json(&self) -> String {
+        serde_json::json!(self).to_string()
     }
 }
 
@@ -135,9 +135,9 @@ mod tests {
     #[test]
     fn test_tags_deser_without_recommended_relay() {
         //The TAG array has dynamic length because the third element(Recommended relay url) is optional
-        let sample_event = r#"{"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","created_at":1640839235,"kind":4,"tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]],"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"}"#;
+        let sample_event = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
         let ev_ser = Event::from_json(sample_event).unwrap();
-        assert_eq!(ev_ser.as_json().unwrap(), sample_event);
+        assert_eq!(ev_ser.as_json(), sample_event);
     }
 
     #[test]
@@ -147,7 +147,7 @@ mod tests {
             .to_event(&keys)
             .unwrap();
 
-        let serialized = e.as_json().unwrap();
+        let serialized = e.as_json();
         let deserialized = Event::from_json(serialized).unwrap();
 
         assert_eq!(e, deserialized);

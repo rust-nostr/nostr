@@ -65,7 +65,6 @@ interface Event {
     boolean verify();
     [Throws=NostrError, Name=from_json]
     constructor(string json);
-    [Throws=NostrError]
     string as_json();
 };
 
