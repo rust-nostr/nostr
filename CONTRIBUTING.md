@@ -55,9 +55,20 @@ well as test out the patch set and opine on the technical merits of the patch.
 PR should be reviewed first on the conceptual level before focusing on code
 style or grammar fixes.
 
+### Terminology
+
+Concept ACK - Agree with the idea and overall direction, but haven't reviewed the code changes or tested them.
+
+utACK (untested ACK) - Reviewed and agree with the code changes but haven't actually tested them.
+
+Tested ACK - Reviewed the code changes and have verified the functionality or bug fix.
+
+ACK - A loose ACK can be confusing. It's best to avoid them unless it's a documentation/comment only change in which case there is nothing to test/verify; therefore the tested/untested distinction is not there.
+
+NACK - Disagree with the code changes/concept. Should be accompanied by an explanation.
+
 ## Coding Conventions
 
-This codebase uses spaces, not tabs.
 Use `cargo fmt` and `cargo clippy` with the default settings to format code before committing.
 This is also enforced by the CI.
 
