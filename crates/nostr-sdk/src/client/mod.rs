@@ -5,6 +5,8 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+#[cfg(feature = "sqlite")]
+use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -15,6 +17,8 @@ use nostr::{
     ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Keys, Kind, Metadata,
     SubscriptionFilter, Tag,
 };
+#[cfg(feature = "sqlite")]
+use nostr_sdk_sqlite::Store;
 use tokio::sync::broadcast;
 
 #[cfg(feature = "blocking")]
@@ -46,6 +50,14 @@ pub enum Error {
     /// Hex error
     #[error("hex decoding error: {0}")]
     Hex(#[from] nostr::hashes::hex::Error),
+    /// Store error
+    #[cfg(feature = "sqlite")]
+    #[error(transparent)]
+    Store(#[from] nostr_sdk_sqlite::Error),
+    /// Store not initialized
+    #[cfg(feature = "sqlite")]
+    #[error("store not initialized")]
+    StoreNotInitialized,
 }
 
 /// Nostr client
@@ -53,6 +65,8 @@ pub enum Error {
 pub struct Client {
     pool: RelayPool,
     keys: Keys,
+    #[cfg(feature = "sqlite")]
+    store: Option<Store>,
     opts: Options,
 }
 
@@ -84,8 +98,33 @@ impl Client {
         Self {
             pool: RelayPool::new(),
             keys: keys.clone(),
+            #[cfg(feature = "sqlite")]
+            store: None,
             opts,
         }
+    }
+
+    /// New [`Client`] with [`Store`]
+    #[cfg(feature = "sqlite")]
+    pub fn new_with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Self::new_with_store_and_opts(keys, path, Options::default())
+    }
+
+    /// New [`Client`] with [`Store`] and [`Options`]
+    #[cfg(feature = "sqlite")]
+    pub fn new_with_store_and_opts<P>(keys: &Keys, path: P, opts: Options) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(Self {
+            pool: RelayPool::new(),
+            keys: keys.clone(),
+            store: Some(Store::open(path)?),
+            opts,
+        })
     }
 
     /// Update default difficulty for new [`Event`]
@@ -99,8 +138,16 @@ impl Client {
         self.keys.clone()
     }
 
+    /// Get [`Store`]
+    #[cfg(feature = "sqlite")]
+    pub fn store(&self) -> Result<Store, Error> {
+        self.store.clone().ok_or(Error::StoreNotInitialized)
+    }
+
     /// Completly shutdown [`Client`]
     pub async fn shutdown(self) -> Result<(), Error> {
+        #[cfg(feature = "sqlite")]
+        self.store()?.close();
         Ok(self.pool.shutdown().await?)
     }
 
@@ -171,6 +218,12 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
+        #[cfg(feature = "sqlite")]
+        {
+            let store = self.store()?;
+            store.insert_relay(url.clone(), proxy)?;
+            store.enable_relay(url.clone())?;
+        }
         self.pool.add_relay(url, proxy, opts).await;
         Ok(())
     }
@@ -193,6 +246,8 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
+        #[cfg(feature = "sqlite")]
+        self.store()?.delete_relay(url.clone())?;
         self.pool.remove_relay(url).await;
         Ok(())
     }
@@ -204,6 +259,18 @@ impl Client {
     {
         for (url, proxy) in relays.into_iter() {
             self.add_relay(url, proxy).await?;
+        }
+        Ok(())
+    }
+
+    /// Restore previous added relays from store
+    #[cfg(feature = "sqlite")]
+    pub async fn restore_relays(&self) -> Result<(), Error> {
+        let relays = self.store()?.get_relays(true)?;
+        for (url, proxy) in relays.into_iter() {
+            self.pool
+                .add_relay(url, proxy, RelayOptions::default())
+                .await;
         }
         Ok(())
     }
@@ -230,6 +297,8 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
+            #[cfg(feature = "sqlite")]
+            self.store()?.enable_relay(url)?;
             self.pool
                 .connect_relay(relay, self.opts.get_wait_for_connection())
                 .await;
@@ -260,6 +329,8 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
+            #[cfg(feature = "sqlite")]
+            self.store()?.disable_relay(url)?;
             self.pool.disconnect_relay(relay).await?;
             return Ok(());
         }
