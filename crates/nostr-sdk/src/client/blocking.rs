@@ -290,7 +290,7 @@ impl Client {
     pub fn send_channel_msg<S>(
         &self,
         channel_id: ChannelId,
-        relay_url: Option<Url>,
+        relay_url: Url,
         msg: S,
     ) -> Result<EventId, Error>
     where

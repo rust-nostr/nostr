@@ -402,13 +402,10 @@ impl JsClient {
     pub async fn send_channel_msg(
         &self,
         channel_id: &JsChannelId,
-        relay_url: Option<String>,
+        relay_url: String,
         msg: String,
     ) -> Result<JsEventId> {
-        let relay_url: Option<Url> = match relay_url {
-            Some(relay_url) => Some(Url::parse(&relay_url).map_err(into_err)?),
-            None => None,
-        };
+        let relay_url: Url = Url::parse(&relay_url).map_err(into_err)?;
         self.inner
             .send_channel_msg(channel_id.into(), relay_url, msg)
             .await

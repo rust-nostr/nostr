@@ -279,7 +279,7 @@ impl EventBuilder {
     /// New channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel_msg<S>(channel_id: ChannelId, relay_url: Option<Url>, content: S) -> Self
+    pub fn new_channel_msg<S>(channel_id: ChannelId, relay_url: Url, content: S) -> Self
     where
         S: Into<String>,
     {
@@ -288,7 +288,7 @@ impl EventBuilder {
             content,
             &[Tag::Event(
                 channel_id.into(),
-                relay_url.map(|u| u.to_string()),
+                Some(relay_url.to_string()),
                 Some(Marker::Root),
             )],
         )

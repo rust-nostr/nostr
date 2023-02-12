@@ -162,13 +162,10 @@ impl JsEventBuilder {
     #[napi(factory)]
     pub fn new_channel_msg(
         channel_id: &JsChannelId,
-        relay_url: Option<String>,
+        relay_url: String,
         content: String,
     ) -> Result<Self> {
-        let relay_url: Option<Url> = match relay_url {
-            Some(relay_url) => Some(Url::parse(&relay_url).map_err(into_err)?),
-            None => None,
-        };
+        let relay_url: Url = Url::parse(&relay_url).map_err(into_err)?;
         Ok(Self {
             builder: EventBuilder::new_channel_msg(channel_id.into(), relay_url, content),
         })
