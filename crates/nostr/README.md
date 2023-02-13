@@ -67,7 +67,7 @@ fn main() -> Result<()> {
 }
 ```
 
-More examples can be found in the [examples](https://github.com/rust-nostr/nostr/tree/master/crates/nostr/examples) directory.
+More examples can be found in the [examples/](https://github.com/rust-nostr/nostr/tree/master/crates/nostr/examples) directory.
 
 ## WASM
 
