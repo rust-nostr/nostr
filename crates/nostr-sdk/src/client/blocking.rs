@@ -25,6 +25,12 @@ pub struct Client {
     client: super::Client,
 }
 
+impl From<super::Client> for Client {
+    fn from(client: super::Client) -> Self {
+        Self { client }
+    }
+}
+
 impl Client {
     pub fn new(keys: &Keys) -> Self {
         Self {
