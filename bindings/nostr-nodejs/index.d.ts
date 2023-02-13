@@ -28,7 +28,7 @@ export class EventBuilder {
   static newReaction(eventId: JsEventId, publicKey: JsPublicKey, content: string): JsEventBuilder
   static newChannel(metadata: JsMetadata): JsEventBuilder
   static setChannelMetadata(channelId: JsChannelId, relayUrl: string | undefined | null, metadata: JsMetadata): JsEventBuilder
-  static newChannelMsg(channelId: JsChannelId, relayUrl: string | undefined | null, content: string): JsEventBuilder
+  static newChannelMsg(channelId: JsChannelId, relayUrl: string, content: string): JsEventBuilder
   static hideChannelMsg(messageId: JsEventId, reason?: string | undefined | null): JsEventBuilder
   static muteChannelUser(pubkey: JsPublicKey, reason?: string | undefined | null): JsEventBuilder
   static auth(challenge: string, relay: string): JsEventBuilder

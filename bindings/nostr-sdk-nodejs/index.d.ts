@@ -41,7 +41,7 @@ export class EventBuilder {
   static newReaction(eventId: JsEventId, publicKey: JsPublicKey, content: string): JsEventBuilder
   static newChannel(metadata: JsMetadata): JsEventBuilder
   static setChannelMetadata(channelId: JsChannelId, relayUrl: string | undefined | null, metadata: JsMetadata): JsEventBuilder
-  static newChannelMsg(channelId: JsChannelId, relayUrl: string | undefined | null, content: string): JsEventBuilder
+  static newChannelMsg(channelId: JsChannelId, relayUrl: string, content: string): JsEventBuilder
   static hideChannelMsg(messageId: JsEventId, reason?: string | undefined | null): JsEventBuilder
   static muteChannelUser(pubkey: JsPublicKey, reason?: string | undefined | null): JsEventBuilder
   static auth(challenge: string, relay: string): JsEventBuilder
@@ -239,8 +239,6 @@ export class Client {
   static newWithOpts(keys: JsKeys, opts: Options): JsClient
   /** Update default difficulty for new `Event` */
   updateDifficulty(difficulty: number): void
-  /** Update current `Options` */
-  updateOpts(newOpts: Options): void
   /** Get current `Keys` */
   keys(): JsKeys
   /** Completly shutdown `Client` */
@@ -359,7 +357,7 @@ export class Client {
    *
    * <https://github.com/nostr-protocol/nips/blob/master/28.md>
    */
-  sendChannelMsg(channelId: JsChannelId, relayUrl: string | undefined | null, msg: string): Promise<JsEventId>
+  sendChannelMsg(channelId: JsChannelId, relayUrl: string, msg: string): Promise<JsEventId>
   /**
    * Hide channel message
    *
