@@ -10,12 +10,12 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub struct Options {
     /// Wait for connection
-    pub wait_for_connection: Arc<AtomicBool>,
+    wait_for_connection: Arc<AtomicBool>,
     /// Wait for the msg to be sent
-    pub wait_for_send: Arc<AtomicBool>,
+    wait_for_send: Arc<AtomicBool>,
     /// POW difficulty (for all events)
     #[cfg(feature = "nip13")]
-    pub difficulty: Arc<AtomicU8>,
+    difficulty: Arc<AtomicU8>,
 }
 
 impl Default for Options {
@@ -78,21 +78,5 @@ impl Options {
         let _ = self
             .difficulty
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(difficulty));
-    }
-
-    /// Update [`Options`]
-    pub fn update_opts(&self, new_opts: Options) {
-        let _ = self
-            .wait_for_connection
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
-                Some(new_opts.get_wait_for_connection())
-            });
-        let _ = self
-            .wait_for_send
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
-                Some(new_opts.get_wait_for_send())
-            });
-        #[cfg(feature = "nip13")]
-        self.update_difficulty(new_opts.get_difficulty());
     }
 }

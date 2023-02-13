@@ -47,12 +47,6 @@ impl JsClient {
         self.inner.update_difficulty(difficulty);
     }
 
-    /// Update current `Options`
-    #[napi]
-    pub fn update_opts(&self, new_opts: &JsOptions) {
-        self.inner.update_opts(new_opts.into());
-    }
-
     /// Get current `Keys`
     #[napi]
     pub fn keys(&self) -> JsKeys {

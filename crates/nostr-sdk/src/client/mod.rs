@@ -94,11 +94,6 @@ impl Client {
         self.opts.update_difficulty(difficulty);
     }
 
-    /// Update current [`Options`]
-    pub fn update_opts(&self, new_opts: Options) {
-        self.opts.update_opts(new_opts);
-    }
-
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.keys.clone()
