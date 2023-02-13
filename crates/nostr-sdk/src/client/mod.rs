@@ -89,6 +89,7 @@ impl Client {
     }
 
     /// Update default difficulty for new [`Event`]
+    #[cfg(feature = "nip13")]
     pub fn update_difficulty(&self, difficulty: u8) {
         self.opts.update_difficulty(difficulty);
     }
@@ -414,12 +415,17 @@ impl Client {
     }
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
-        let difficulty: u8 = self.opts.get_difficulty();
-        let event: Event = if difficulty > 0 {
-            builder.to_pow_event(&self.keys, difficulty)?
-        } else {
-            builder.to_event(&self.keys)?
+        #[cfg(feature = "nip13")]
+        let event: Event = {
+            let difficulty: u8 = self.opts.get_difficulty();
+            if difficulty > 0 {
+                builder.to_pow_event(&self.keys, difficulty)?
+            } else {
+                builder.to_event(&self.keys)?
+            }
         };
+        #[cfg(not(feature = "nip13"))]
+        let event: Event = builder.to_event(&self.keys)?;
         self.send_event(event).await
     }
 

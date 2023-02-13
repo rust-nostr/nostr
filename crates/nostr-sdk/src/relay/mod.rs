@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{Future, SinkExt, StreamExt};
+#[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter, SubscriptionId, Url};
 use tokio::sync::broadcast;
@@ -150,6 +151,7 @@ pub struct Relay {
     url: Url,
     proxy: Option<SocketAddr>,
     status: Arc<Mutex<RelayStatus>>,
+    #[cfg(feature = "nip11")]
     document: Arc<Mutex<RelayInformationDocument>>,
     opts: RelayOptions,
     scheduled_for_termination: Arc<Mutex<bool>>,
@@ -174,6 +176,7 @@ impl Relay {
             url,
             proxy,
             status: Arc::new(Mutex::new(RelayStatus::Initialized)),
+            #[cfg(feature = "nip11")]
             document: Arc::new(Mutex::new(RelayInformationDocument::new())),
             opts,
             scheduled_for_termination: Arc::new(Mutex::new(false)),
@@ -212,17 +215,19 @@ impl Relay {
     }
 
     /// Get [`RelayInformationDocument`]
+    #[cfg(feature = "nip11")]
     pub async fn document(&self) -> RelayInformationDocument {
         let document = self.document.lock().await;
         document.clone()
     }
 
     /// Get [`RelayInformationDocument`]
-    #[cfg(feature = "blocking")]
+    #[cfg(all(feature = "nip11", feature = "blocking"))]
     pub fn document_blocking(&self) -> RelayInformationDocument {
         RUNTIME.block_on(async { self.document().await })
     }
 
+    #[cfg(feature = "nip11")]
     async fn set_document(&self, document: RelayInformationDocument) {
         let mut d = self.document.lock().await;
         *d = document;
@@ -295,17 +300,20 @@ impl Relay {
         log::debug!("Connecting to {}", url);
 
         // Request `RelayInformationDocument`
-        let relay = self.clone();
-        thread::spawn(async move {
-            match RelayInformationDocument::get(relay.url(), relay.proxy()).await {
-                Ok(document) => relay.set_document(document).await,
-                Err(e) => log::error!(
-                    "Impossible to get information document from {}: {}",
-                    relay.url,
-                    e
-                ),
-            };
-        });
+        #[cfg(feature = "nip11")]
+        {
+            let relay = self.clone();
+            thread::spawn(async move {
+                match RelayInformationDocument::get(relay.url(), relay.proxy()).await {
+                    Ok(document) => relay.set_document(document).await,
+                    Err(e) => log::error!(
+                        "Impossible to get information document from {}: {}",
+                        relay.url,
+                        e
+                    ),
+                };
+            });
+        }
 
         // Connect
         match net::get_connection(&self.url, self.proxy, None).await {

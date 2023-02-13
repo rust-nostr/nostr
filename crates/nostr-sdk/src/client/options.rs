@@ -1,7 +1,9 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+#[cfg(feature = "nip13")]
+use std::sync::atomic::AtomicU8;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 /// Options
@@ -12,6 +14,7 @@ pub struct Options {
     /// Wait for the msg to be sent
     pub wait_for_send: Arc<AtomicBool>,
     /// POW difficulty (for all events)
+    #[cfg(feature = "nip13")]
     pub difficulty: Arc<AtomicU8>,
 }
 
@@ -20,6 +23,7 @@ impl Default for Options {
         Self {
             wait_for_connection: Arc::new(AtomicBool::new(false)),
             wait_for_send: Arc::new(AtomicBool::new(false)),
+            #[cfg(feature = "nip13")]
             difficulty: Arc::new(AtomicU8::new(0)),
         }
     }
@@ -56,6 +60,7 @@ impl Options {
     }
 
     /// Set default POW diffficulty for [`Event`]
+    #[cfg(feature = "nip13")]
     pub fn difficulty(self, difficulty: u8) -> Self {
         Self {
             difficulty: Arc::new(AtomicU8::new(difficulty)),
@@ -63,10 +68,12 @@ impl Options {
         }
     }
 
+    #[cfg(feature = "nip13")]
     pub(crate) fn get_difficulty(&self) -> u8 {
         self.difficulty.load(Ordering::SeqCst)
     }
 
+    #[cfg(feature = "nip13")]
     pub(crate) fn update_difficulty(&self, difficulty: u8) {
         let _ = self
             .difficulty
@@ -85,6 +92,7 @@ impl Options {
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
                 Some(new_opts.get_wait_for_send())
             });
+        #[cfg(feature = "nip13")]
         self.update_difficulty(new_opts.get_difficulty());
     }
 }
