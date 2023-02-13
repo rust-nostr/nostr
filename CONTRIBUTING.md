@@ -61,7 +61,7 @@ Concept ACK - Agree with the idea and overall direction, but haven't reviewed th
 
 utACK (untested ACK) - Reviewed and agree with the code changes but haven't actually tested them.
 
-Tested ACK - Reviewed the code changes and have verified the functionality or bug fix.
+tACK (tested ACK) - Reviewed the code changes and have verified the functionality or bug fix.
 
 ACK - A loose ACK can be confusing. It's best to avoid them unless it's a documentation/comment only change in which case there is nothing to test/verify; therefore the tested/untested distinction is not there.
 
