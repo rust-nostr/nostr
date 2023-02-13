@@ -5,11 +5,15 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
+#[cfg(feature = "sqlite")]
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::url::Url;
 use nostr::{ClientMessage, Event, EventId, RelayMessage, SubscriptionFilter};
+#[cfg(feature = "sqlite")]
+use nostr_sdk_sqlite::Store;
 use once_cell::sync::Lazy;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
@@ -37,6 +41,14 @@ pub enum Error {
     /// Thread error
     #[error(transparent)]
     Thread(#[from] thread::Error),
+    /// Store error
+    #[cfg(feature = "sqlite")]
+    #[error(transparent)]
+    Store(#[from] nostr_sdk_sqlite::Error),
+    /// Store not initialized
+    #[cfg(feature = "sqlite")]
+    #[error("store not initialized")]
+    StoreNotInitialized,
 }
 
 /// Relay Pool Message
@@ -70,6 +82,8 @@ struct RelayPoolTask {
     receiver: Receiver<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     events: VecDeque<EventId>,
+    #[cfg(feature = "sqlite")]
+    store: Option<Store>,
 }
 
 const MAX_EVENTS: usize = 100000;
@@ -83,6 +97,22 @@ impl RelayPoolTask {
             receiver: pool_task_receiver,
             events: VecDeque::new(),
             notification_sender,
+            #[cfg(feature = "sqlite")]
+            store: None,
+        }
+    }
+
+    #[cfg(feature = "sqlite")]
+    pub fn new_with_store(
+        pool_task_receiver: Receiver<RelayPoolMessage>,
+        notification_sender: broadcast::Sender<RelayPoolNotification>,
+        store: Option<Store>,
+    ) -> Self {
+        Self {
+            receiver: pool_task_receiver,
+            events: VecDeque::new(),
+            notification_sender,
+            store,
         }
     }
 
@@ -103,14 +133,25 @@ impl RelayPoolTask {
                         event,
                     } = msg
                     {
-                        //Verifies if the event is valid
+                        // Verifies if the event is valid
                         if event.verify().is_ok() {
-                            //Adds only new events
+                            // Adds only new events
                             if !self.events.contains(&event.id) {
                                 self.add_event(event.id);
                                 let notification =
                                     RelayPoolNotification::Event(relay_url, event.as_ref().clone());
                                 let _ = self.notification_sender.send(notification);
+                            }
+
+                            // Save event into store
+                            #[cfg(feature = "sqlite")]
+                            if let Some(store) = &self.store {
+                                match store.insert_event(*event) {
+                                    Ok(_) => log::trace!("Event saved into store"),
+                                    Err(e) => {
+                                        log::error!("Imposible to insert event into store: {e}")
+                                    }
+                                }
                             }
                         }
                     }
@@ -147,6 +188,8 @@ pub struct RelayPool {
     relays: Arc<Mutex<HashMap<Url, Relay>>>,
     pool_task_sender: Sender<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
+    #[cfg(feature = "sqlite")]
+    store: Option<Store>,
 }
 
 impl Default for RelayPool {
@@ -170,7 +213,37 @@ impl RelayPool {
             relays: Arc::new(Mutex::new(HashMap::new())),
             pool_task_sender,
             notification_sender,
+            #[cfg(feature = "sqlite")]
+            store: None,
         }
+    }
+
+    /// Create new `RelayPool`
+    #[cfg(feature = "sqlite")]
+    pub fn new_with_store<P>(path: P) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        let (notification_sender, _) = broadcast::channel(1024);
+        let (pool_task_sender, pool_task_receiver) = mpsc::channel(1024);
+
+        let store = Some(Store::open(path)?);
+
+        let mut relay_pool_task = RelayPoolTask::new_with_store(
+            pool_task_receiver,
+            notification_sender.clone(),
+            store.clone(),
+        );
+
+        thread::spawn(async move { relay_pool_task.run().await });
+
+        Ok(Self {
+            relays: Arc::new(Mutex::new(HashMap::new())),
+            pool_task_sender,
+            notification_sender,
+            #[cfg(feature = "sqlite")]
+            store,
+        })
     }
 
     /// Get new notification listener
@@ -184,6 +257,12 @@ impl RelayPool {
         relays.clone()
     }
 
+    /// Get [`Store`]
+    #[cfg(feature = "sqlite")]
+    pub fn store(&self) -> Option<Store> {
+        self.store.clone()
+    }
+
     /// Get subscriptions
     pub async fn subscription(&self) -> Subscription {
         let subscription = SUBSCRIPTION.lock().await;
@@ -191,9 +270,20 @@ impl RelayPool {
     }
 
     /// Add new relay
-    pub async fn add_relay(&self, url: Url, proxy: Option<SocketAddr>, opts: RelayOptions) {
+    pub async fn add_relay(
+        &self,
+        url: Url,
+        proxy: Option<SocketAddr>,
+        opts: RelayOptions,
+    ) -> Result<(), Error> {
         let mut relays = self.relays.lock().await;
         if !relays.contains_key(&url) {
+            #[cfg(feature = "sqlite")]
+            if let Some(store) = &self.store {
+                store.insert_relay(url.clone(), proxy)?;
+                store.enable_relay(url.clone())?;
+            }
+
             let relay = Relay::new(
                 url,
                 self.pool_task_sender.clone(),
@@ -203,15 +293,34 @@ impl RelayPool {
             );
             relays.insert(relay.url(), relay);
         }
+        Ok(())
     }
 
     /// Disconnect and remove relay
-    pub async fn remove_relay(&self, url: Url) {
+    pub async fn remove_relay(&self, url: Url) -> Result<(), Error> {
         let mut relays = self.relays.lock().await;
         if let Some(relay) = relays.remove(&url) {
-            if self.disconnect_relay(&relay).await.is_err() {
-                relays.insert(url, relay);
+            self.disconnect_relay(&relay).await?;
+            #[cfg(feature = "sqlite")]
+            if let Some(store) = &self.store {
+                store.delete_relay(url)?;
             }
+        }
+        Ok(())
+    }
+
+    /// Restore previous added relays from store
+    #[cfg(feature = "sqlite")]
+    pub async fn restore_relays(&self) -> Result<(), Error> {
+        match &self.store {
+            Some(store) => {
+                let relays = store.get_relays(true)?;
+                for (url, proxy) in relays.into_iter() {
+                    self.add_relay(url, proxy, RelayOptions::default()).await?;
+                }
+                Ok(())
+            }
+            None => Err(Error::StoreNotInitialized),
         }
     }
 
@@ -346,11 +455,23 @@ impl RelayPool {
     /// Connect to relay
     pub async fn connect_relay(&self, relay: &Relay, wait_for_connection: bool) {
         relay.connect(wait_for_connection).await;
+        #[cfg(feature = "sqlite")]
+        if let Some(store) = &self.store {
+            if let Err(e) = store.enable_relay(relay.url()) {
+                log::error!("Impossible to enable relay: {e}");
+            }
+        }
     }
 
     /// Disconnect from relay
     pub async fn disconnect_relay(&self, relay: &Relay) -> Result<(), Error> {
         relay.terminate().await?;
+        #[cfg(feature = "sqlite")]
+        if let Some(store) = &self.store {
+            if let Err(e) = store.enable_relay(relay.url()) {
+                log::error!("Impossible to disable relay: {e}");
+            }
+        }
         Ok(())
     }
 
@@ -361,6 +482,10 @@ impl RelayPool {
         if let Err(e) = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await {
             log::error!("Impossible to shutdown pool: {e}");
         };
+        #[cfg(feature = "sqlite")]
+        if let Some(store) = self.store {
+            store.close();
+        }
         Ok(())
     }
 }

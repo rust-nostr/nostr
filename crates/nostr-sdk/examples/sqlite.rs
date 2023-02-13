@@ -22,7 +22,12 @@ async fn main() -> Result<()> {
 
     client.add_relay("ws://127.0.0.1:8080", None).await?;
     client.add_relay("wss://relay.nostr.info", proxy).await?;
-    client.add_relay("wss://rsslay.fiatjaf.com", None).await?;
+    client.add_relay("wss://nostr.oxtr.dev", None).await?;
+    client.add_relay("wss://relay.damus.io", None).await?;
+    client.add_relay("wss://nostr.openchain.fr", None).await?;
+    client
+        .add_relay_with_opts("wss://nostr.mom", None, RelayOptions::new(true, false))
+        .await?;
     client
         .add_relay(
             "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
