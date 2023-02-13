@@ -35,12 +35,6 @@ pub fn curr_db_version(conn: &mut Connection) -> Result<usize, Error> {
     Ok(curr_version)
 }
 
-fn mig_init(conn: &mut PooledConnection) -> Result<usize, Error> {
-    conn.execute_batch(include_str!("../migrations/001_init.sql"))?;
-    log::info!("database schema initialized to v{DB_VERSION}");
-    Ok(DB_VERSION)
-}
-
 /// Upgrade DB to latest version, and execute pragma settings
 pub fn run(conn: &mut PooledConnection) -> Result<(), Error> {
     // check the version.
@@ -59,15 +53,13 @@ pub fn run(conn: &mut PooledConnection) -> Result<(), Error> {
             // upgrade sequentially until we are current.
             /* if curr_version == 1 {
                 curr_version = mig_1_to_2(conn)?;
-            }
-            if curr_version == 2 {
+            } */
+            /* if curr_version == 2 {
                 curr_version = mig_2_to_3(conn)?;
             } */
 
             if curr_version == DB_VERSION {
-                log::info!(
-                    "All migration scripts completed successfully.  Welcome to v{DB_VERSION}"
-                );
+                log::info!("All migration scripts completed successfully (v{DB_VERSION})");
             }
         }
         // Database is current, all is good
@@ -87,3 +79,15 @@ pub fn run(conn: &mut PooledConnection) -> Result<(), Error> {
     log::debug!("SQLite PRAGMA startup completed");
     Ok(())
 }
+
+fn mig_init(conn: &mut PooledConnection) -> Result<usize, Error> {
+    conn.execute_batch(include_str!("../migrations/001_init.sql"))?;
+    log::info!("database schema initialized to v1");
+    Ok(1)
+}
+
+/* fn mig_1_to_2(conn: &mut PooledConnection) -> Result<usize, Error> {
+    conn.execute_batch(include_str!("../migrations/002.sql"))?;
+    log::info!("database schema upgraded v1 -> v2");
+    Ok(2)
+} */
