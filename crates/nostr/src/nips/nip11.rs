@@ -4,7 +4,7 @@
 
 //! NIP11
 //!
-//! https://github.com/nostr-protocol/nips/blob/master/11.md
+//! <https://github.com/nostr-protocol/nips/blob/master/11.md>
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;

@@ -2,8 +2,14 @@
 // Distributed under the MIT software license
 
 #![warn(missing_docs)]
+#![warn(rustdoc::bare_urls)]
 
 //! High level Nostr client library.
+
+#![cfg_attr(
+    feature = "all-nips",
+    doc = include_str!("../README.md")
+)]
 
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
@@ -14,8 +20,6 @@ pub use nostr;
 pub use nostr::Result;
 
 pub mod client;
-#[cfg(feature = "all-nips")]
-mod doctest;
 pub mod prelude;
 pub mod relay;
 pub mod subscription;

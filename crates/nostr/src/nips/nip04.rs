@@ -4,7 +4,7 @@
 
 //! NIP04
 //!
-//! https://github.com/nostr-protocol/nips/blob/master/04.md
+//! <https://github.com/nostr-protocol/nips/blob/master/04.md>
 
 use std::convert::From;
 use std::str::FromStr;

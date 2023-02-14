@@ -3,7 +3,7 @@
 
 //! NIP19
 //!
-//! https://github.com/nostr-protocol/nips/blob/master/19.md
+//! <https://github.com/nostr-protocol/nips/blob/master/19.md>
 
 #![allow(missing_docs)]
 

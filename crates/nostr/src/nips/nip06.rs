@@ -3,7 +3,7 @@
 
 //! NIP06
 //!
-//! https://github.com/nostr-protocol/nips/blob/master/06.md
+//! <https://github.com/nostr-protocol/nips/blob/master/06.md>
 
 use std::str::FromStr;
 

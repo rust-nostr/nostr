@@ -3,7 +3,7 @@
 
 //! NIP05
 //!
-//! https://github.com/nostr-protocol/nips/blob/master/05.md
+//! <https://github.com/nostr-protocol/nips/blob/master/05.md>
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;

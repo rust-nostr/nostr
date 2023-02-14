@@ -35,7 +35,7 @@ impl Options {
         Self::default()
     }
 
-    /// If set to `true`, [`Client`] wait that `Relay` try at least one time to enstablish a connection before continue.
+    /// If set to `true`, `Client` wait that `Relay` try at least one time to enstablish a connection before continue.
     pub fn wait_for_connection(self, wait: bool) -> Self {
         Self {
             wait_for_connection: Arc::new(AtomicBool::new(wait)),
@@ -47,7 +47,7 @@ impl Options {
         self.wait_for_connection.load(Ordering::SeqCst)
     }
 
-    /// If set to `true`, [`Client`] wait that an event is sent before continue.
+    /// If set to `true`, `Client` wait that an event is sent before continue.
     pub fn wait_for_send(self, wait: bool) -> Self {
         Self {
             wait_for_send: Arc::new(AtomicBool::new(wait)),
@@ -59,7 +59,7 @@ impl Options {
         self.wait_for_send.load(Ordering::SeqCst)
     }
 
-    /// Set default POW diffficulty for [`Event`]
+    /// Set default POW diffficulty for `Event`
     #[cfg(feature = "nip13")]
     pub fn difficulty(self, difficulty: u8) -> Self {
         Self {

@@ -3,7 +3,7 @@
 
 //! NIPs
 //!
-//! See all at https://github.com/nostr-protocol/nips
+//! See all at <https://github.com/nostr-protocol/nips>
 
 #[cfg(feature = "nip04")]
 pub mod nip04;

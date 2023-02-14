@@ -14,6 +14,6 @@ This project is distributed under the MIT software license - see the [LICENSE](.
 
 ## Donations
 
-⚡ Tips: https://getalby.com/p/yuki
+⚡ Tips: <https://getalby.com/p/yuki>
 
 ⚡ Lightning Address: yuki@getalby.com

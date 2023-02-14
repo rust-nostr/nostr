@@ -65,7 +65,7 @@ main();
 
 ## Supported NIPs
 
-Look at https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips
+Look at <https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips>
 
 ## State
 
@@ -77,6 +77,6 @@ This project is distributed under the MIT software license - see the [LICENSE](h
 
 ## Donations
 
-⚡ Tips: https://getalby.com/p/yuki
+⚡ Tips: <https://getalby.com/p/yuki>
 
 ⚡ Lightning Address: yuki@getalby.com

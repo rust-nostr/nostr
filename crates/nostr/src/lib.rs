@@ -2,8 +2,14 @@
 // Distributed under the MIT software license
 
 #![warn(missing_docs)]
+#![warn(rustdoc::bare_urls)]
 
 //! Rust implementation of the Nostr protocol.
+
+#![cfg_attr(
+    feature = "default",
+    doc = include_str!("../README.md")
+)]
 
 #[cfg(feature = "nip06")]
 pub use bip39;
@@ -12,8 +18,6 @@ pub use bitcoin::secp256k1;
 #[cfg(feature = "base")]
 pub use url::{self, Url};
 
-#[cfg(feature = "default")]
-mod doctest;
 #[cfg(feature = "base")]
 pub mod event;
 pub mod key;

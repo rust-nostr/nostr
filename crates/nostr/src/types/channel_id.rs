@@ -39,7 +39,7 @@ pub enum Error {
 ///
 /// Kind 40 event id (32-bytes lowercase hex-encoded)
 ///
-/// https://github.com/nostr-protocol/nips/blob/master/19.md
+/// <https://github.com/nostr-protocol/nips/blob/master/19.md>
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ChannelId {
     hash: Sha256Hash,

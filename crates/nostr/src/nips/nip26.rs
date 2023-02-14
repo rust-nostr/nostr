@@ -3,7 +3,7 @@
 
 //! NIP26
 //!
-//! https://github.com/nostr-protocol/nips/blob/master/26.md
+//! <https://github.com/nostr-protocol/nips/blob/master/26.md>
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
