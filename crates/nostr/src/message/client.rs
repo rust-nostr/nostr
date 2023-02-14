@@ -6,7 +6,7 @@
 
 use serde_json::{json, Value};
 
-use super::{MessageHandleError, SubscriptionFilter, SubscriptionId};
+use super::{Filter, MessageHandleError, SubscriptionId};
 use crate::Event;
 
 /// Messages sent by clients, received by relays
@@ -18,7 +18,7 @@ pub enum ClientMessage {
     /// Req
     Req {
         subscription_id: SubscriptionId,
-        filters: Vec<SubscriptionFilter>,
+        filters: Vec<Filter>,
     },
     /// Close
     Close(SubscriptionId),
@@ -33,7 +33,7 @@ impl ClientMessage {
     }
 
     /// Create new `REQ` message
-    pub fn new_req(subscription_id: SubscriptionId, filters: Vec<SubscriptionFilter>) -> Self {
+    pub fn new_req(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
         Self::Req {
             subscription_id,
             filters,
@@ -113,9 +113,8 @@ impl ClientMessage {
             } else if v_len == 3 {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
                     .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-                let filters: Vec<SubscriptionFilter> =
-                    serde_json::from_value(Value::Array(v[2..].to_vec()))
-                        .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+                let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))
+                    .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
                 return Ok(Self::new_req(subscription_id, filters));
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
@@ -167,8 +166,8 @@ mod tests {
         )
         .unwrap();
         let filters = vec![
-            SubscriptionFilter::new().kind(Kind::EncryptedDirectMessage),
-            SubscriptionFilter::new().pubkey(pk),
+            Filter::new().kind(Kind::EncryptedDirectMessage),
+            Filter::new().pubkey(pk),
         ];
 
         let client_req = ClientMessage::new_req(SubscriptionId::new("test"), filters);
@@ -185,8 +184,8 @@ mod tests {
         )
         .unwrap();
         let filters = vec![
-            SubscriptionFilter::new().kind(Kind::Custom(22)),
-            SubscriptionFilter::new().pubkey(pk),
+            Filter::new().kind(Kind::Custom(22)),
+            Filter::new().pubkey(pk),
         ];
 
         let client_req = ClientMessage::new_req(SubscriptionId::new("test"), filters);

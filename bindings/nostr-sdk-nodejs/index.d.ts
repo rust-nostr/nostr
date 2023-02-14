@@ -109,61 +109,61 @@ export class SubscriptionId {
   static generate(): JsSubscriptionId
   get get(): string
 }
-export type JsSubscriptionFilter = SubscriptionFilter
-export class SubscriptionFilter {
+export type JsFilter = Filter
+export class Filter {
   constructor()
   /** Set subscription id */
-  id(id: string): SubscriptionFilter
+  id(id: string): Filter
   /** Set subscription ids */
-  ids(ids: Array<string>): SubscriptionFilter
+  ids(ids: Array<string>): Filter
   /** Set author */
-  author(author: PublicKey): SubscriptionFilter
+  author(author: PublicKey): Filter
   /** Set authors */
-  authors(authors: Array<PublicKey>): SubscriptionFilter
+  authors(authors: Array<PublicKey>): Filter
   /** Set kind */
-  kind(kind: bigint): SubscriptionFilter
+  kind(kind: bigint): Filter
   /** Set kinds */
-  kinds(kinds: Array<bigint>): SubscriptionFilter
+  kinds(kinds: Array<bigint>): Filter
   /** Set event */
-  event(id: EventId): SubscriptionFilter
+  event(id: EventId): Filter
   /** Set events */
-  events(ids: Array<EventId>): SubscriptionFilter
+  events(ids: Array<EventId>): Filter
   /** Set pubkey */
-  pubkey(pubkey: PublicKey): SubscriptionFilter
+  pubkey(pubkey: PublicKey): Filter
   /** Set pubkeys */
-  pubkeys(pubkeys: Array<PublicKey>): SubscriptionFilter
+  pubkeys(pubkeys: Array<PublicKey>): Filter
   /**
    * Set hashtag
    *
    * <https://github.com/nostr-protocol/nips/blob/master/12.md>
    */
-  hashtag(hashtag: string): SubscriptionFilter
+  hashtag(hashtag: string): Filter
   /**
    * Set hashtags
    *
    * <https://github.com/nostr-protocol/nips/blob/master/12.md>
    */
-  hashtags(hashtags: Array<string>): SubscriptionFilter
+  hashtags(hashtags: Array<string>): Filter
   /**
    * Set reference
    *
    * <https://github.com/nostr-protocol/nips/blob/master/12.md>
    */
-  reference(v: string): SubscriptionFilter
+  reference(v: string): Filter
   /**
    * Set references
    *
    * <https://github.com/nostr-protocol/nips/blob/master/12.md>
    */
-  references(v: Array<string>): SubscriptionFilter
+  references(v: Array<string>): Filter
   /** Set search field */
-  search(value: string): SubscriptionFilter
+  search(value: string): Filter
   /** Set since unix timestamp */
-  since(since: bigint): SubscriptionFilter
+  since(since: bigint): Filter
   /** Set until unix timestamp */
-  until(until: bigint): SubscriptionFilter
+  until(until: bigint): Filter
   /** Set limit */
-  limit(limit: bigint): SubscriptionFilter
+  limit(limit: bigint): Filter
 }
 export type JsRelayInformationDocument = RelayInformationDocument
 export class RelayInformationDocument {
@@ -258,16 +258,16 @@ export class Client {
   /** Disconnect from all relays */
   disconnect(): Promise<void>
   /** Subscribe to filters */
-  subscribe(filters: Array<JsSubscriptionFilter>): Promise<void>
+  subscribe(filters: Array<JsFilter>): Promise<void>
   /** Unsubscribe */
   unsubscribe(): Promise<void>
   /** Get events of filters */
-  getEventsOf(filters: Array<JsSubscriptionFilter>, timeout?: number | undefined | null): Promise<Array<JsEvent>>
+  getEventsOf(filters: Array<JsFilter>, timeout?: number | undefined | null): Promise<Array<JsEvent>>
   /**
    * Request events of filters
    * All events will be received on notification listener
    */
-  reqEventsOf(filters: Array<JsSubscriptionFilter>, timeout?: number | undefined | null): Promise<void>
+  reqEventsOf(filters: Array<JsFilter>, timeout?: number | undefined | null): Promise<void>
   /** Send event */
   sendEvent(event: JsEvent): Promise<JsEventId>
   /** Send event to specific relay */

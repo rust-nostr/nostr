@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::url::Url;
-use nostr::{ClientMessage, Event, EventId, RelayMessage, SubscriptionFilter};
+use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
 #[cfg(feature = "sqlite")]
 use nostr_sdk_sqlite::Store;
 use once_cell::sync::Lazy;
@@ -369,7 +369,7 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>, wait: bool) {
+    pub async fn subscribe(&self, filters: Vec<Filter>, wait: bool) {
         let relays = self.relays().await;
 
         {
@@ -397,7 +397,7 @@ impl RelayPool {
     /// Get events of filters
     pub async fn get_events_of(
         &self,
-        filters: Vec<SubscriptionFilter>,
+        filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
         let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
@@ -427,7 +427,7 @@ impl RelayPool {
     }
 
     /// Request events of filter. All events will be sent to notification listener
-    pub async fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Option<Duration>) {
+    pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         let relays = self.relays().await;
         for relay in relays.values() {
             relay.req_events_of(filters.clone(), timeout);

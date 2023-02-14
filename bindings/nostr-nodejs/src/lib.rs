@@ -13,5 +13,5 @@ mod types;
 
 pub use self::event::{JsEvent, JsEventBuilder, JsEventId};
 pub use self::key::{JsKeys, JsPublicKey, JsSecretKey};
-pub use self::message::{JsSubscriptionFilter, JsSubscriptionId};
+pub use self::message::{JsFilter, JsSubscriptionId};
 pub use self::types::{JsChannelId, JsContact, JsMetadata};

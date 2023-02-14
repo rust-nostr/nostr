@@ -7,11 +7,11 @@
 
 use std::collections::HashMap;
 
-use nostr::{SubscriptionFilter, SubscriptionId, Url};
+use nostr::{Filter, SubscriptionId, Url};
 
 #[derive(Debug, Clone)]
 pub struct Subscription {
-    filters: Vec<SubscriptionFilter>,
+    filters: Vec<Filter>,
     channels: HashMap<Url, Channel>,
 }
 
@@ -30,12 +30,12 @@ impl Subscription {
     }
 
     /// Update subscription filters
-    pub fn update_filters(&mut self, filters: Vec<SubscriptionFilter>) {
+    pub fn update_filters(&mut self, filters: Vec<Filter>) {
         self.filters = filters;
     }
 
     /// Get subscription filters
-    pub fn get_filters(&self) -> Vec<SubscriptionFilter> {
+    pub fn get_filters(&self) -> Vec<Filter> {
         self.filters.clone()
     }
 

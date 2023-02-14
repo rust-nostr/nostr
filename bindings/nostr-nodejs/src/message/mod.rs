@@ -3,4 +3,4 @@
 
 mod subscription;
 
-pub use self::subscription::{JsSubscriptionFilter, JsSubscriptionId};
+pub use self::subscription::{JsFilter, JsSubscriptionId};

@@ -8,8 +8,7 @@ use std::time::Duration;
 
 use napi::Result;
 use nostr_nodejs::{
-    JsChannelId, JsContact, JsEvent, JsEventId, JsKeys, JsMetadata, JsPublicKey,
-    JsSubscriptionFilter,
+    JsChannelId, JsContact, JsEvent, JsEventId, JsFilter, JsKeys, JsMetadata, JsPublicKey,
 };
 use nostr_sdk::prelude::*;
 
@@ -116,7 +115,7 @@ impl JsClient {
 
     /// Subscribe to filters
     #[napi]
-    pub async fn subscribe(&self, filters: Vec<&JsSubscriptionFilter>) {
+    pub async fn subscribe(&self, filters: Vec<&JsFilter>) {
         let filters = filters.into_iter().map(|f| f.into()).collect();
         self.inner.subscribe(filters).await;
     }
@@ -131,7 +130,7 @@ impl JsClient {
     #[napi]
     pub async fn get_events_of(
         &self,
-        filters: Vec<&JsSubscriptionFilter>,
+        filters: Vec<&JsFilter>,
         timeout: Option<u32>,
     ) -> Result<Vec<JsEvent>> {
         let filters = filters.into_iter().map(|f| f.into()).collect();
@@ -148,7 +147,7 @@ impl JsClient {
     /// Request events of filters
     /// All events will be received on notification listener
     #[napi]
-    pub async fn req_events_of(&self, filters: Vec<&JsSubscriptionFilter>, timeout: Option<u32>) {
+    pub async fn req_events_of(&self, filters: Vec<&JsFilter>, timeout: Option<u32>) {
         let filters = filters.into_iter().map(|f| f.into()).collect();
         let timeout = timeout.map(|t| Duration::from_secs(t as u64));
         self.inner.req_events_of(filters, timeout).await;

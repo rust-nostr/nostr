@@ -12,7 +12,7 @@ use std::time::Duration;
 use futures_util::{Future, SinkExt, StreamExt};
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
-use nostr::{ClientMessage, Event, RelayMessage, SubscriptionFilter, SubscriptionId, Url};
+use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Url};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::oneshot;
@@ -543,7 +543,7 @@ impl Relay {
     /// Get events of filters with custom callback
     pub async fn get_events_of_with_callback<F>(
         &self,
-        filters: Vec<SubscriptionFilter>,
+        filters: Vec<Filter>,
         timeout: Option<Duration>,
         callback: impl Fn(Event) -> F,
     ) -> Result<(), Error>
@@ -600,7 +600,7 @@ impl Relay {
     /// Get events of filters
     pub async fn get_events_of(
         &self,
-        filters: Vec<SubscriptionFilter>,
+        filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
         let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
@@ -613,7 +613,7 @@ impl Relay {
     }
 
     /// Request events of filter. All events will be sent to notification listener
-    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Option<Duration>) {
+    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         if !self.opts.read() {
             log::error!("{}", Error::ReadDisabled);
         }

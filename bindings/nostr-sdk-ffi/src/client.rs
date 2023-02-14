@@ -5,7 +5,7 @@ use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_ffi::{Event, Keys, SubscriptionFilter};
+use nostr_ffi::{Event, Filter, Keys};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::pool::RelayPoolNotification as RelayPoolNotificationSdk;
 
@@ -39,8 +39,8 @@ impl Client {
         self.client.connect()
     }
 
-    pub fn subscribe(&self, filters: Vec<Arc<SubscriptionFilter>>) {
-        let mut new_filters: Vec<nostr::SubscriptionFilter> = Vec::with_capacity(filters.len());
+    pub fn subscribe(&self, filters: Vec<Arc<Filter>>) {
+        let mut new_filters: Vec<nostr::Filter> = Vec::with_capacity(filters.len());
         for filter in filters.into_iter() {
             new_filters.push(filter.as_ref().deref().clone());
         }

@@ -9,9 +9,7 @@ use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{
-    ChannelId, ClientMessage, Contact, Event, EventId, Keys, Metadata, SubscriptionFilter, Tag,
-};
+use nostr::{ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Tag};
 use tokio::sync::broadcast;
 
 use super::{Error, Options};
@@ -116,7 +114,7 @@ impl Client {
         RUNTIME.block_on(async { self.client.disconnect().await })
     }
 
-    pub fn subscribe(&self, filters: Vec<SubscriptionFilter>) {
+    pub fn subscribe(&self, filters: Vec<Filter>) {
         RUNTIME.block_on(async {
             self.client.subscribe(filters).await;
         })
@@ -130,13 +128,13 @@ impl Client {
 
     pub fn get_events_of(
         &self,
-        filters: Vec<SubscriptionFilter>,
+        filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
         RUNTIME.block_on(async { self.client.get_events_of(filters, timeout).await })
     }
 
-    pub fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Option<Duration>) {
+    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         RUNTIME.block_on(async {
             self.client.req_events_of(filters, timeout).await;
         })

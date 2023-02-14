@@ -28,9 +28,13 @@ pub mod types;
 pub use self::event::{Event, EventBuilder, EventId, Kind, Tag};
 pub use self::key::Keys;
 #[cfg(feature = "base")]
-pub use self::message::{ClientMessage, RelayMessage, SubscriptionFilter, SubscriptionId};
+pub use self::message::{ClientMessage, Filter, RelayMessage, SubscriptionId};
 #[cfg(feature = "base")]
 pub use self::types::{ChannelId, Contact, Entity, Metadata, Profile, Timestamp};
+
+#[allow(deprecated)]
+#[cfg(feature = "base")]
+pub use self::message::subscription::SubscriptionFilter;
 
 /// Result
 pub type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;

@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
         .await?;
     println!("Entity: {:?}", entity);
 
-    let subscription = SubscriptionFilter::new()
+    let subscription = Filter::new()
         .pubkey(my_keys.public_key())
         .since(Timestamp::now());
 

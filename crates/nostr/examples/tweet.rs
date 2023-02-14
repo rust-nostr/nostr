@@ -6,8 +6,7 @@ use std::str::FromStr;
 
 use nostr::secp256k1::SecretKey;
 use nostr::{
-    ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter,
-    SubscriptionId,
+    ClientMessage, EventBuilder, Filter, Keys, Kind, RelayMessage, Result, SubscriptionId,
 };
 use tungstenite::{connect, Message as WsMessage};
 
@@ -41,14 +40,14 @@ fn main() -> Result<()> {
 
     let subscribe_to_alice = ClientMessage::new_req(
         SubscriptionId::new("abcdefgh"),
-        vec![SubscriptionFilter::new()
+        vec![Filter::new()
             .authors(vec![alice_keys.public_key()])
             .kind(Kind::TextNote)],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         SubscriptionId::new("1234567"),
-        vec![SubscriptionFilter::new()
+        vec![Filter::new()
             .authors(vec![bob_keys.public_key()])
             .kind(Kind::TextNote)],
     );

@@ -40,8 +40,11 @@ impl ToString for SubscriptionId {
     }
 }
 
+#[deprecated(since = "0.19.0", note = "Use `Filter` instead.")]
+pub type SubscriptionFilter = Filter;
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct SubscriptionFilter {
+pub struct Filter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ids: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -70,13 +73,13 @@ pub struct SubscriptionFilter {
     pub limit: Option<usize>,
 }
 
-impl Default for SubscriptionFilter {
+impl Default for Filter {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl SubscriptionFilter {
+impl Filter {
     pub fn new() -> Self {
         Self {
             ids: None,

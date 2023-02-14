@@ -30,24 +30,24 @@ interface Keys {
     string secret_key_bech32();
 };
 
-interface SubscriptionFilter {
+interface Filter {
     constructor();
     [Throws=NostrError, Self=ByArc]
-    SubscriptionFilter id(string id);
+    Filter id(string id);
     [Throws=NostrError, Self=ByArc]
-    SubscriptionFilter ids(sequence<string> ids);
+    Filter ids(sequence<string> ids);
     [Self=ByArc]
-    SubscriptionFilter kind(u64 kind);
+    Filter kind(u64 kind);
     [Throws=NostrError, Self=ByArc]
-    SubscriptionFilter event(string event_id);
+    Filter event(string event_id);
     [Throws=NostrError, Self=ByArc]
-    SubscriptionFilter pubkey(string pubkey);
+    Filter pubkey(string pubkey);
     [Self=ByArc]
-    SubscriptionFilter since(u64 timestamp);
+    Filter since(u64 timestamp);
     [Self=ByArc]
-    SubscriptionFilter until(u64 timestamp);
+    Filter until(u64 timestamp);
     [Throws=NostrError, Self=ByArc]
-    SubscriptionFilter authors(sequence<string> authors);
+    Filter authors(sequence<string> authors);
 };
 
 interface Event {

@@ -6,39 +6,39 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{EventId, SubscriptionFilter as SubscriptionFilterSdk, Timestamp};
+use nostr::{EventId, Filter as FilterSdk, Timestamp};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 
 #[derive(Clone)]
-pub struct SubscriptionFilter {
-    sub_filter: SubscriptionFilterSdk,
+pub struct Filter {
+    sub_filter: FilterSdk,
 }
 
-impl Default for SubscriptionFilter {
+impl Default for Filter {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Deref for SubscriptionFilter {
-    type Target = SubscriptionFilterSdk;
+impl Deref for Filter {
+    type Target = FilterSdk;
     fn deref(&self) -> &Self::Target {
         &self.sub_filter
     }
 }
 
-impl From<SubscriptionFilterSdk> for SubscriptionFilter {
-    fn from(f: SubscriptionFilterSdk) -> Self {
+impl From<FilterSdk> for Filter {
+    fn from(f: FilterSdk) -> Self {
         Self { sub_filter: f }
     }
 }
 
-impl SubscriptionFilter {
+impl Filter {
     pub fn new() -> Self {
         Self {
-            sub_filter: SubscriptionFilterSdk::new(),
+            sub_filter: FilterSdk::new(),
         }
     }
 

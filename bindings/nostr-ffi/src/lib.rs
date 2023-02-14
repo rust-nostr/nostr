@@ -21,7 +21,7 @@ mod ffi {
     pub use crate::event::Event;
     pub use crate::key::Keys;
     pub use crate::metadata::Metadata as AccountMetadata;
-    pub use crate::subscription::SubscriptionFilter;
+    pub use crate::subscription::Filter;
 
     // UDL
     uniffi_macros::include_scaffolding!("nostr");

@@ -34,24 +34,24 @@ impl JsSubscriptionId {
     }
 }
 
-#[napi(js_name = "SubscriptionFilter")]
-pub struct JsSubscriptionFilter {
-    inner: SubscriptionFilter,
+#[napi(js_name = "Filter")]
+pub struct JsFilter {
+    inner: Filter,
 }
 
-impl From<&JsSubscriptionFilter> for SubscriptionFilter {
-    fn from(filter: &JsSubscriptionFilter) -> Self {
+impl From<&JsFilter> for Filter {
+    fn from(filter: &JsFilter) -> Self {
         filter.inner.clone()
     }
 }
 
 #[napi]
-impl JsSubscriptionFilter {
+impl JsFilter {
     #[allow(clippy::new_without_default)]
     #[napi(constructor)]
     pub fn new() -> Self {
         Self {
-            inner: SubscriptionFilter::new(),
+            inner: Filter::new(),
         }
     }
 

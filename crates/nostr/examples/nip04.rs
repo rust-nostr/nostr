@@ -7,8 +7,7 @@ use std::{thread, time};
 use nostr::key::FromSkStr;
 use nostr::nips::nip04::decrypt;
 use nostr::{
-    ClientMessage, EventBuilder, Keys, Kind, RelayMessage, Result, SubscriptionFilter,
-    SubscriptionId, Tag, Url,
+    ClientMessage, EventBuilder, Filter, Keys, Kind, RelayMessage, Result, SubscriptionId, Tag, Url,
 };
 use tungstenite::{connect, Message as WsMessage};
 
@@ -36,14 +35,14 @@ fn main() -> Result<()> {
 
     let subscribe_to_alice = ClientMessage::new_req(
         SubscriptionId::new("abcdefg"),
-        vec![SubscriptionFilter::new()
+        vec![Filter::new()
             .authors(vec![alice_keys.public_key()])
             .pubkey(bob_keys.public_key())],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         SubscriptionId::new("123456"),
-        vec![SubscriptionFilter::new()
+        vec![Filter::new()
             .authors(vec![bob_keys.public_key()])
             .pubkey(alice_keys.public_key())],
     );

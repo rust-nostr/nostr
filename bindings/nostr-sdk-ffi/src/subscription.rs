@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::url::Url;
-use nostr_ffi::SubscriptionFilter;
+use nostr_ffi::Filter;
 use nostr_sdk::subscription::{Channel as ChannelSdk, Subscription as SubscriptionSdk};
 use parking_lot::RwLock;
 
@@ -28,8 +28,8 @@ impl Subscription {
         }
     }
 
-    pub fn update_filters(&self, filters: Vec<Arc<SubscriptionFilter>>) {
-        let mut new_filters: Vec<nostr::SubscriptionFilter> = Vec::with_capacity(filters.len());
+    pub fn update_filters(&self, filters: Vec<Arc<Filter>>) {
+        let mut new_filters: Vec<nostr::Filter> = Vec::with_capacity(filters.len());
         for filter in filters.into_iter() {
             new_filters.push(filter.as_ref().deref().clone());
         }
@@ -38,11 +38,11 @@ impl Subscription {
         sub.update_filters(new_filters);
     }
 
-    pub fn get_filters(&self) -> Vec<Arc<SubscriptionFilter>> {
+    pub fn get_filters(&self) -> Vec<Arc<Filter>> {
         let sub = self.sub.read();
         sub.get_filters()
             .into_iter()
-            .map(|s| Arc::new(SubscriptionFilter::from(s)))
+            .map(|s| Arc::new(Filter::from(s)))
             .collect()
     }
 

@@ -24,7 +24,7 @@ fn main() -> Result<()> {
         Some("reason"),
     )?;
 
-    let subscription = SubscriptionFilter::new()
+    let subscription = Filter::new()
         .pubkey(my_keys.public_key())
         .since(Timestamp::now());
 

@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    let subscription = SubscriptionFilter::new()
+    let subscription = Filter::new()
         .pubkey(my_keys.public_key())
         .since(Timestamp::now());
 

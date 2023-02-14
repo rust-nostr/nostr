@@ -14,8 +14,8 @@ use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{
-    ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Keys, Kind, Metadata,
-    SubscriptionFilter, Tag,
+    ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, Keys, Kind,
+    Metadata, Tag,
 };
 #[cfg(feature = "sqlite")]
 use nostr_sdk_sqlite::Store;
@@ -348,14 +348,14 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let subscription = SubscriptionFilter::new()
+    /// let subscription = Filter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
     /// client.subscribe(vec![subscription]).await;
     /// # }
     /// ```
-    pub async fn subscribe(&self, filters: Vec<SubscriptionFilter>) {
+    pub async fn subscribe(&self, filters: Vec<Filter>) {
         self.pool
             .subscribe(filters, self.opts.get_wait_for_send())
             .await;
@@ -378,7 +378,7 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let subscription = SubscriptionFilter::new()
+    /// let subscription = Filter::new()
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
@@ -391,7 +391,7 @@ impl Client {
     /// ```
     pub async fn get_events_of(
         &self,
-        filters: Vec<SubscriptionFilter>,
+        filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
         Ok(self.pool.get_events_of(filters, timeout).await?)
@@ -399,7 +399,7 @@ impl Client {
 
     /// Request events of filters
     /// All events will be received on notification listener (`client.notifications()`)
-    pub async fn req_events_of(&self, filters: Vec<SubscriptionFilter>, timeout: Option<Duration>) {
+    pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         self.pool.req_events_of(filters, timeout).await;
     }
 
@@ -610,7 +610,7 @@ impl Client {
     pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
 
-        let filter = SubscriptionFilter::new()
+        let filter = Filter::new()
             .authors(vec![self.keys.public_key()])
             .kind(Kind::ContactList)
             .limit(1);
@@ -882,11 +882,8 @@ impl Client {
 
     /// Get a list of channels
     pub async fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
-        self.get_events_of(
-            vec![SubscriptionFilter::new().kind(Kind::ChannelCreation)],
-            timeout,
-        )
-        .await
+        self.get_events_of(vec![Filter::new().kind(Kind::ChannelCreation)], timeout)
+            .await
     }
 
     /// Get entity of hex string
@@ -901,7 +898,7 @@ impl Client {
         let entity: String = entity.into();
         let events: Vec<Event> = self
             .get_events_of(
-                vec![SubscriptionFilter::new()
+                vec![Filter::new()
                     .id(&entity)
                     .kind(Kind::ChannelCreation)
                     .limit(1)],
@@ -911,10 +908,7 @@ impl Client {
         if events.is_empty() {
             let pubkey = XOnlyPublicKey::from_str(&entity)?;
             let events: Vec<Event> = self
-                .get_events_of(
-                    vec![SubscriptionFilter::new().author(pubkey).limit(1)],
-                    timeout,
-                )
+                .get_events_of(vec![Filter::new().author(pubkey).limit(1)], timeout)
                 .await?;
             if events.is_empty() {
                 Ok(Entity::Unknown)
