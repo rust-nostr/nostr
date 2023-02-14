@@ -8,30 +8,62 @@ use std::fmt;
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::{Serialize, Serializer};
 
-#[allow(missing_docs)]
+/// Event [`Kind`]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Kind {
+    /// Metadata (NIP01 and NIP05)
     Metadata,
+    /// Short Text Note (NIP01)
     TextNote,
+    /// Recommend Relay (NIP01)
     RecommendRelay,
+    /// Contacts (NIP02)
     ContactList,
+    /// Encrypted Direct Messages (NIP04)
     EncryptedDirectMessage,
+    /// Event Deletion (NIP09)
     EventDeletion,
+    /// Repost (NIP18)
     Repost,
+    /// Reaction (NIP25)
     Reaction,
+    /// Channel Creation (NIP28)
     ChannelCreation,
+    /// Channel Metadata (NIP28)
     ChannelMetadata,
+    /// Channel Message (NIP28)
     ChannelMessage,
+    /// Channel Hide Message (NIP28)
     ChannelHideMessage,
+    /// Channel Mute User (NIP28)
     ChannelMuteUser,
+    /// Public Chat Reserved (NIP28)
+    PublicChatReserved45,
+    /// Public Chat Reserved (NIP28)
+    PublicChatReserved46,
+    /// Public Chat Reserved (NIP28)
+    PublicChatReserved47,
+    /// Public Chat Reserved (NIP28)
+    PublicChatReserved48,
+    /// Public Chat Reserved (NIP28)
+    PublicChatReserved49,
+    /// Reporting (NIP56)
     Reporting,
+    /// Zap Request (NIP57)
+    ZapRequest,
+    /// Zap (NIP57)
+    Zap,
+    /// Client Authentication (NIP42)
     Authentication,
+    /// Long-form Text Note (NIP23)
+    LongFormTextNote,
     /// Replacabe event (must be between 10000 and <20000)
     Replaceable(u16),
     /// Ephemeral event (must be between 20000 and <30000)
     Ephemeral(u16),
     /// Parameterized Replacabe event (must be between 30000 and <40000)
     ParameterizedReplaceable(u16),
+    /// Custom
     Custom(u64),
 }
 
@@ -58,8 +90,16 @@ impl From<u64> for Kind {
             42 => Self::ChannelMessage,
             43 => Self::ChannelHideMessage,
             44 => Self::ChannelMuteUser,
+            45 => Self::PublicChatReserved45,
+            46 => Self::PublicChatReserved46,
+            47 => Self::PublicChatReserved47,
+            48 => Self::PublicChatReserved48,
+            49 => Self::PublicChatReserved49,
             1984 => Self::Reporting,
+            9734 => Self::ZapRequest,
+            9735 => Self::Zap,
             22242 => Self::Authentication,
+            30023 => Self::LongFormTextNote,
             x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
             x if (20_000..30_000).contains(&x) => Self::Ephemeral(x as u16),
             x if (30_000..40_000).contains(&x) => Self::ParameterizedReplaceable(x as u16),
@@ -84,8 +124,16 @@ impl From<Kind> for u64 {
             Kind::ChannelMessage => 42,
             Kind::ChannelHideMessage => 43,
             Kind::ChannelMuteUser => 44,
+            Kind::PublicChatReserved45 => 45,
+            Kind::PublicChatReserved46 => 46,
+            Kind::PublicChatReserved47 => 47,
+            Kind::PublicChatReserved48 => 48,
+            Kind::PublicChatReserved49 => 49,
             Kind::Reporting => 1984,
+            Kind::ZapRequest => 9734,
+            Kind::Zap => 9735,
             Kind::Authentication => 22242,
+            Kind::LongFormTextNote => 30023,
             Kind::Replaceable(u) => u as u64,
             Kind::Ephemeral(u) => u as u64,
             Kind::ParameterizedReplaceable(u) => u as u64,
