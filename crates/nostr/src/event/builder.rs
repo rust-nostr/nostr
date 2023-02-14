@@ -176,6 +176,32 @@ impl EventBuilder {
         Self::new(Kind::TextNote, content, tags)
     }
 
+    /// Long-form text note (generally referred to as "articles" or "blog posts").
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/23.md>
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr::{EventBuilder, Tag, Timestamp, EventId};
+    ///
+    /// let event_id = EventId::from_hex("b3e392b11f5d4f28321cedd09303a748acfd0487aea5a7450b3481c60b6e4f87").unwrap();
+    /// let content: &str = "Lorem [ipsum][4] dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nRead more at #[3].";
+    /// let tags = &[
+    ///     Tag::Identifier("lorem-ipsum".to_string()),
+    ///     Tag::Title("Lorem Ipsum".to_string()),
+    ///     Tag::PublishedAt(Timestamp::from(1296962229)),
+    ///     Tag::Hashtag("placeholder".to_string()),
+    ///     Tag::Event(event_id, Some("wss://relay.example.com".to_string()), None),
+    /// ];
+    /// let builder = EventBuilder::long_form_text_note("My first text note from Nostr SDK!", &[]);
+    /// ```
+    pub fn long_form_text_note<S>(content: S, tags: &[Tag]) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(Kind::LongFormTextNote, content, tags)
+    }
+
     /// Set contact list
     pub fn set_contact_list(list: Vec<Contact>) -> Self {
         let tags: Vec<Tag> = list

@@ -120,6 +120,7 @@ The following crate feature flags are available:
 | ✅         | [18 - Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)                                                            |
 | ✅         | [19 - bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)                                            |
 | ✅         | [20 - Command Results](https://github.com/nostr-protocol/nips/blob/master/20.md)                                                    |
+| ✅         | [23 - Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)                                                  |
 | ✅         | [25 - Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)                                                          |
 | ✅         | [26 - Delegated Event Signing](https://github.com/nostr-protocol/nips/blob/master/26.md)                                            |
 | ✅         | [28 - Public Chat](https://github.com/nostr-protocol/nips/blob/master/28.md)                                                        |
@@ -140,6 +141,6 @@ This project is distributed under the MIT software license - see the [LICENSE](.
 
 ## Donations
 
-⚡ Tips: https://getalby.com/p/yuki
+⚡ Tips: <https://getalby.com/p/yuki>
 
 ⚡ Lightning Address: yuki@getalby.com

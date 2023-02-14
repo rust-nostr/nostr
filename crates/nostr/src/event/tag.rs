@@ -153,6 +153,14 @@ pub enum TagKind {
     Subject,
     /// Auth challenge
     Challenge,
+    /// Title (NIP23)
+    Title,
+    /// Image (NIP23)
+    Image,
+    /// Summary (NIP23)
+    Summary,
+    /// PublishedAt (NIP23)
+    PublishedAt,
     /// Custom tag kind
     Custom(String),
 }
@@ -173,6 +181,10 @@ impl fmt::Display for TagKind {
             Self::Expiration => write!(f, "expiration"),
             Self::Subject => write!(f, "subject"),
             Self::Challenge => write!(f, "challenge"),
+            Self::Title => write!(f, "title"),
+            Self::Image => write!(f, "image"),
+            Self::Summary => write!(f, "summary"),
+            Self::PublishedAt => write!(f, "published_at"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -198,6 +210,10 @@ where
             "expiration" => Self::Expiration,
             "subject" => Self::Subject,
             "challenge" => Self::Challenge,
+            "title" => Self::Title,
+            "image" => Self::Image,
+            "summary" => Self::Summary,
+            "published_at" => Self::PublishedAt,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -214,6 +230,7 @@ pub enum Tag {
     Reference(String),
     Hashtag(String),
     Geohash(String),
+    Identifier(String),
     Relay(Url),
     ContactList {
         pk: XOnlyPublicKey,
@@ -235,6 +252,10 @@ pub enum Tag {
     Expiration(Timestamp),
     Subject(String),
     Challenge(String),
+    Title(String),
+    Image(String),
+    Summary(String),
+    PublishedAt(Timestamp),
 }
 
 impl Tag {
@@ -279,6 +300,7 @@ where
                 TagKind::R => Ok(Self::Reference(content.to_string())),
                 TagKind::T => Ok(Self::Hashtag(content.to_string())),
                 TagKind::G => Ok(Self::Geohash(content.to_string())),
+                TagKind::D => Ok(Self::Identifier(content.to_string())),
                 TagKind::Relay => Ok(Self::Relay(Url::parse(content)?)),
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(content.to_string()),
@@ -286,6 +308,10 @@ where
                 TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(content)?)),
                 TagKind::Subject => Ok(Self::Subject(content.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(content.to_string())),
+                TagKind::Title => Ok(Self::Title(content.to_string())),
+                TagKind::Image => Ok(Self::Image(content.to_string())),
+                TagKind::Summary => Ok(Self::Summary(content.to_string())),
+                TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(content)?)),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -376,6 +402,7 @@ impl From<Tag> for Vec<String> {
             Tag::Reference(r) => vec![TagKind::R.to_string(), r],
             Tag::Hashtag(t) => vec![TagKind::T.to_string(), t],
             Tag::Geohash(g) => vec![TagKind::G.to_string(), g],
+            Tag::Identifier(d) => vec![TagKind::D.to_string(), d],
             Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
             Tag::ContactList {
                 pk,
@@ -414,6 +441,12 @@ impl From<Tag> for Vec<String> {
             }
             Tag::Subject(sub) => vec![TagKind::Subject.to_string(), sub],
             Tag::Challenge(challenge) => vec![TagKind::Challenge.to_string(), challenge],
+            Tag::Title(title) => vec![TagKind::Title.to_string(), title],
+            Tag::Image(image) => vec![TagKind::Image.to_string(), image],
+            Tag::Summary(summary) => vec![TagKind::Summary.to_string(), summary],
+            Tag::PublishedAt(timestamp) => {
+                vec![TagKind::PublishedAt.to_string(), timestamp.to_string()]
+            }
         }
     }
 }
@@ -551,6 +584,11 @@ mod tests {
                 vec!["nostr-sdk".to_string()]
             )
             .as_vec()
+        );
+
+        assert_eq!(
+            vec!["d", "test"],
+            Tag::Identifier("test".to_string()).as_vec()
         );
 
         assert_eq!(
@@ -751,6 +789,11 @@ mod tests {
                 TagKind::Custom("client".to_string()),
                 vec!["nostr-sdk".to_string()]
             )
+        );
+
+        assert_eq!(
+            Tag::parse(vec!["d", "test"])?,
+            Tag::Identifier("test".to_string())
         );
 
         assert_eq!(
