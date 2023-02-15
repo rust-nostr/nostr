@@ -13,20 +13,14 @@ use bitcoin::hashes::Hash;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "nip19")]
-use crate::nips::nip19::{FromBech32, ToBech32, PREFIX_BECH32_CHANNEL};
+use crate::nips::nip19::{
+    Error as Bech32Error, FromBech32, ToBech32, PREFIX_BECH32_CHANNEL, RELAY, SPECIAL,
+};
 use crate::EventId;
 
 /// [`ChannelId`] error
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Error {
-    /// Bech32 error.
-    #[cfg(feature = "nip19")]
-    #[error(transparent)]
-    Bech32(#[from] bech32::Error),
-    /// Invalid bech32 channel.
-    #[cfg(feature = "nip19")]
-    #[error("Invalid bech32 channel")]
-    Bech32ParseError,
     /// Hex error
     #[error(transparent)]
     Hex(#[from] bitcoin::hashes::hex::Error),
@@ -94,7 +88,7 @@ impl AsRef<[u8]> for ChannelId {
 
 #[cfg(feature = "nip19")]
 impl FromBech32 for ChannelId {
-    type Err = Error;
+    type Err = Bech32Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
         S: Into<String>,
@@ -102,55 +96,52 @@ impl FromBech32 for ChannelId {
         let (hrp, data, checksum) = bech32::decode(&s.into())?;
 
         if hrp != PREFIX_BECH32_CHANNEL || checksum != Variant::Bech32 {
-            return Err(Error::Bech32ParseError);
+            return Err(Bech32Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32ParseError)?;
+        let mut data: Vec<u8> = Vec::from_base32(&data)?;
 
-        let t = data.first().ok_or(Error::Bech32ParseError)?;
-        if *t != 0 {
-            return Err(Error::Bech32ParseError);
-        }
-
-        let l = data.get(1).ok_or(Error::Bech32ParseError)?;
-        if *l != 32 {
-            return Err(Error::Bech32ParseError);
-        }
-
-        let channel_id = data.get(2..34).ok_or(Error::Bech32ParseError)?;
-        let hash = Sha256Hash::from_slice(channel_id)?;
-
+        let mut hash: Option<Sha256Hash> = None;
         let mut relays: Vec<String> = Vec::new();
-        let mut relays_data: Vec<u8> = data.get(34..).ok_or(Error::Bech32ParseError)?.to_vec();
 
-        while !relays_data.is_empty() {
-            let t = relays_data.first().ok_or(Error::Bech32ParseError)?;
-            if *t != 1 {
-                return Err(Error::Bech32ParseError);
-            }
-
-            let l = relays_data.get(1).ok_or(Error::Bech32ParseError)?;
+        while !data.is_empty() {
+            let t = data.first().ok_or(Bech32Error::TLV)?;
+            let l = data.get(1).ok_or(Bech32Error::TLV)?;
             let l = *l as usize;
 
-            let data = relays_data.get(2..l + 2).ok_or(Error::Bech32ParseError)?;
+            let bytes = data.get(2..l + 2).ok_or(Bech32Error::TLV)?;
 
-            relays.push(String::from_utf8(data.to_vec()).map_err(|_| Error::Bech32ParseError)?);
-            relays_data.drain(..l + 2);
+            match *t {
+                SPECIAL => {
+                    if hash.is_none() {
+                        hash = Some(Sha256Hash::from_slice(bytes)?);
+                    }
+                }
+                RELAY => {
+                    relays.push(String::from_utf8(bytes.to_vec())?);
+                }
+                _ => (),
+            };
+
+            data.drain(..l + 2);
         }
 
-        Ok(Self::new(hash, relays))
+        Ok(Self::new(
+            hash.ok_or_else(|| Bech32Error::FieldMissing("hash".to_string()))?,
+            relays,
+        ))
     }
 }
 
 #[cfg(feature = "nip19")]
 impl ToBech32 for ChannelId {
-    type Err = Error;
+    type Err = Bech32Error;
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let mut bytes: Vec<u8> = vec![0, 32];
+        let mut bytes: Vec<u8> = vec![SPECIAL, 32];
         bytes.extend(self.hash().iter());
 
         for relay in self.relays.iter() {
-            bytes.extend([1, relay.len() as u8]);
+            bytes.extend([RELAY, relay.len() as u8]);
             bytes.extend(relay.as_bytes());
         }
 

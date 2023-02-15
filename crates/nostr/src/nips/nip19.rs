@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "base")]
 use crate::event::id::{self, EventId};
 #[cfg(feature = "base")]
-use crate::Profile;
+use crate::Kind;
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
@@ -23,28 +23,34 @@ pub const PREFIX_BECH32_NOTE_ID: &str = "note";
 pub const PREFIX_BECH32_CHANNEL: &str = "nchannel";
 pub const PREFIX_BECH32_PROFILE: &str = "nprofile";
 pub const PREFIX_BECH32_EVENT: &str = "nevent";
+pub const PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT: &str = "naddr";
+
+pub const SPECIAL: u8 = 0;
+pub const RELAY: u8 = 1;
+pub const AUTHOR: u8 = 2;
+pub const KIND: u8 = 3;
 
 /// `NIP19` error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Wrong prefix or variant
+    #[error("wrong prefix or variant")]
+    WrongPrefixOrVariant,
     /// Bech32 error.
     #[error(transparent)]
     Bech32(#[from] bech32::Error),
-    /// Invalid bec32 secret key
-    #[error("Invalid bech32 secret key")]
-    Bech32SkParseError,
-    /// Invalid bec32 public key
-    #[error("Invalid bech32 public key")]
-    Bech32PkParseError,
-    /// Invalid bec32 note id
-    #[error("Invalid bech32 note id")]
-    Bech32NoteParseError,
-    /// Invalid bec32 profile
-    #[error("Invalid bech32 profile")]
-    Bech32ProfileParseError,
-    /// Invalid bec32 event
-    #[error("Invalid bech32 event")]
-    Bech32EventParseError,
+    /// Field missing
+    #[error("field missing: {0}")]
+    FieldMissing(String),
+    /// TLV error
+    #[error("type-length-value error")]
+    TLV,
+    /// UFT-8 error
+    #[error(transparent)]
+    UTF8(#[from] std::string::FromUtf8Error),
+    /// Fro slice error
+    #[error(transparent)]
+    FromSlice(#[from] std::array::TryFromSliceError),
     /// Secp256k1 error
     #[error(transparent)]
     Secp256k1(#[from] bitcoin::secp256k1::Error),
@@ -70,15 +76,14 @@ impl FromBech32 for SecretKey {
     where
         S: Into<String>,
     {
-        let (hrp, data, checksum) =
-            bech32::decode(&secret_key.into()).map_err(|_| Error::Bech32SkParseError)?;
+        let (hrp, data, checksum) = bech32::decode(&secret_key.into())?;
 
         if hrp != PREFIX_BECH32_SECRET_KEY || checksum != Variant::Bech32 {
-            return Err(Error::Bech32SkParseError);
+            return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32SkParseError)?;
-        SecretKey::from_slice(data.as_slice()).map_err(|_| Error::Bech32SkParseError)
+        let data = Vec::<u8>::from_base32(&data)?;
+        Ok(Self::from_slice(data.as_slice())?)
     }
 }
 
@@ -88,15 +93,14 @@ impl FromBech32 for XOnlyPublicKey {
     where
         S: Into<String>,
     {
-        let (hrp, data, checksum) =
-            bech32::decode(&public_key.into()).map_err(|_| Error::Bech32PkParseError)?;
+        let (hrp, data, checksum) = bech32::decode(&public_key.into())?;
 
         if hrp != PREFIX_BECH32_PUBLIC_KEY || checksum != Variant::Bech32 {
-            return Err(Error::Bech32PkParseError);
+            return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32PkParseError)?;
-        Ok(XOnlyPublicKey::from_slice(data.as_slice())?)
+        let data = Vec::<u8>::from_base32(&data)?;
+        Ok(Self::from_slice(data.as_slice())?)
     }
 }
 
@@ -107,14 +111,13 @@ impl FromBech32 for EventId {
     where
         S: Into<String>,
     {
-        let (hrp, data, checksum) =
-            bech32::decode(&hash.into()).map_err(|_| Error::Bech32NoteParseError)?;
+        let (hrp, data, checksum) = bech32::decode(&hash.into())?;
 
         if hrp != PREFIX_BECH32_NOTE_ID || checksum != Variant::Bech32 {
-            return Err(Error::Bech32NoteParseError);
+            return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32NoteParseError)?;
+        let data = Vec::<u8>::from_base32(&data)?;
         Ok(EventId::from_slice(data.as_slice())?)
     }
 }
@@ -166,86 +169,6 @@ impl ToBech32 for EventId {
 }
 
 #[cfg(feature = "base")]
-impl FromBech32 for Profile {
-    type Err = Error;
-    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
-    where
-        S: Into<String>,
-    {
-        let (hrp, data, checksum) =
-            bech32::decode(&s.into()).map_err(|_| Error::Bech32ProfileParseError)?;
-
-        if hrp != PREFIX_BECH32_PROFILE || checksum != Variant::Bech32 {
-            return Err(Error::Bech32ProfileParseError);
-        }
-
-        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32ProfileParseError)?;
-
-        let t = data.first().ok_or(Error::Bech32ProfileParseError)?;
-        if *t != 0 {
-            return Err(Error::Bech32ProfileParseError);
-        }
-
-        let l = data.get(1).ok_or(Error::Bech32ProfileParseError)?;
-        if *l != 32 {
-            return Err(Error::Bech32ProfileParseError);
-        }
-
-        let public_key = data.get(2..34).ok_or(Error::Bech32ProfileParseError)?;
-        let public_key = XOnlyPublicKey::from_slice(public_key)?;
-
-        let mut relays: Vec<String> = Vec::new();
-        let mut relays_data: Vec<u8> = data
-            .get(34..)
-            .ok_or(Error::Bech32ProfileParseError)?
-            .to_vec();
-
-        while !relays_data.is_empty() {
-            let t = relays_data.first().ok_or(Error::Bech32ProfileParseError)?;
-            if *t != 1 {
-                return Err(Error::Bech32ProfileParseError);
-            }
-
-            let l = relays_data.get(1).ok_or(Error::Bech32ProfileParseError)?;
-            let l = *l as usize;
-
-            let data = relays_data
-                .get(2..l + 2)
-                .ok_or(Error::Bech32ProfileParseError)?;
-
-            relays.push(
-                String::from_utf8(data.to_vec()).map_err(|_| Error::Bech32ProfileParseError)?,
-            );
-            relays_data.drain(..l + 2);
-        }
-
-        Ok(Self { public_key, relays })
-    }
-}
-
-#[cfg(feature = "base")]
-impl ToBech32 for Profile {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
-        let mut bytes: Vec<u8> = vec![0, 32];
-        bytes.extend(self.public_key.serialize());
-
-        for relay in self.relays.iter() {
-            bytes.extend([1, relay.len() as u8]);
-            bytes.extend(relay.as_bytes());
-        }
-
-        let data = bytes.to_base32();
-        Ok(bech32::encode(
-            PREFIX_BECH32_PROFILE,
-            data,
-            Variant::Bech32,
-        )?)
-    }
-}
-
-#[cfg(feature = "base")]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Nip19Event {
     event_id: EventId,
@@ -272,50 +195,43 @@ impl FromBech32 for Nip19Event {
     where
         S: Into<String>,
     {
-        let (hrp, data, checksum) =
-            bech32::decode(&s.into()).map_err(|_| Error::Bech32EventParseError)?;
+        let (hrp, data, checksum) = bech32::decode(&s.into())?;
 
         if hrp != PREFIX_BECH32_EVENT || checksum != Variant::Bech32 {
-            return Err(Error::Bech32EventParseError);
+            return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data).map_err(|_| Error::Bech32EventParseError)?;
+        let mut data: Vec<u8> = Vec::from_base32(&data)?;
 
-        let t = data.first().ok_or(Error::Bech32EventParseError)?;
-        if *t != 0 {
-            return Err(Error::Bech32EventParseError);
-        }
-
-        let l = data.get(1).ok_or(Error::Bech32EventParseError)?;
-        if *l != 32 {
-            return Err(Error::Bech32EventParseError);
-        }
-
-        let event_id = data.get(2..34).ok_or(Error::Bech32EventParseError)?;
-        let event_id = EventId::from_slice(event_id)?;
-
+        let mut event_id: Option<EventId> = None;
         let mut relays: Vec<String> = Vec::new();
-        let mut relays_data: Vec<u8> = data.get(34..).ok_or(Error::Bech32EventParseError)?.to_vec();
 
-        while !relays_data.is_empty() {
-            let t = relays_data.first().ok_or(Error::Bech32EventParseError)?;
-            if *t != 1 {
-                return Err(Error::Bech32EventParseError);
-            }
-
-            let l = relays_data.get(1).ok_or(Error::Bech32EventParseError)?;
+        while !data.is_empty() {
+            let t = data.first().ok_or(Error::TLV)?;
+            let l = data.get(1).ok_or(Error::TLV)?;
             let l = *l as usize;
 
-            let data = relays_data
-                .get(2..l + 2)
-                .ok_or(Error::Bech32EventParseError)?;
+            let bytes = data.get(2..l + 2).ok_or(Error::TLV)?;
 
-            relays
-                .push(String::from_utf8(data.to_vec()).map_err(|_| Error::Bech32EventParseError)?);
-            relays_data.drain(..l + 2);
+            match *t {
+                SPECIAL => {
+                    if event_id.is_none() {
+                        event_id = Some(EventId::from_slice(bytes)?);
+                    }
+                }
+                RELAY => {
+                    relays.push(String::from_utf8(bytes.to_vec())?);
+                }
+                _ => (),
+            };
+
+            data.drain(..l + 2);
         }
 
-        Ok(Self { event_id, relays })
+        Ok(Self {
+            event_id: event_id.ok_or_else(|| Error::FieldMissing("event id".to_string()))?,
+            relays,
+        })
     }
 }
 
@@ -324,16 +240,120 @@ impl ToBech32 for Nip19Event {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let mut bytes: Vec<u8> = vec![0, 32];
+        let mut bytes: Vec<u8> = vec![SPECIAL, 32];
         bytes.extend(self.event_id.inner().iter());
 
         for relay in self.relays.iter() {
-            bytes.extend([1, relay.len() as u8]);
+            bytes.extend([RELAY, relay.len() as u8]);
             bytes.extend(relay.as_bytes());
         }
 
         let data = bytes.to_base32();
         Ok(bech32::encode(PREFIX_BECH32_EVENT, data, Variant::Bech32)?)
+    }
+}
+
+#[cfg(feature = "base")]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+pub struct ParameterizedReplaceableEvent {
+    kind: Kind,
+    pubkey: XOnlyPublicKey,
+    identifier: String,
+    relays: Vec<String>,
+}
+
+#[cfg(feature = "base")]
+impl FromBech32 for ParameterizedReplaceableEvent {
+    type Err = Error;
+    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
+    where
+        S: Into<String>,
+    {
+        let (hrp, data, checksum) = bech32::decode(&s.into())?;
+
+        if hrp != PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT || checksum != Variant::Bech32 {
+            return Err(Error::WrongPrefixOrVariant);
+        }
+
+        let mut data: Vec<u8> = Vec::from_base32(&data)?;
+
+        let mut identifier: Option<String> = None;
+        let mut pubkey: Option<XOnlyPublicKey> = None;
+        let mut kind: Option<Kind> = None;
+        let mut relays: Vec<String> = Vec::new();
+
+        while !data.is_empty() {
+            let t = data.first().ok_or(Error::TLV)?;
+            let l = data.get(1).ok_or(Error::TLV)?;
+            let l = *l as usize;
+
+            let bytes = data.get(2..l + 2).ok_or(Error::TLV)?;
+
+            match *t {
+                SPECIAL => {
+                    if identifier.is_none() {
+                        identifier = Some(String::from_utf8(bytes.to_vec())?);
+                    }
+                }
+                RELAY => {
+                    relays.push(String::from_utf8(bytes.to_vec())?);
+                }
+                AUTHOR => {
+                    if pubkey.is_none() {
+                        pubkey = Some(XOnlyPublicKey::from_slice(bytes)?);
+                    }
+                }
+                KIND => {
+                    if kind.is_none() {
+                        let k: u64 = u32::from_be_bytes(bytes.try_into()?) as u64;
+                        kind = Some(Kind::from(k));
+                    }
+                }
+                _ => (),
+            };
+
+            data.drain(..l + 2);
+        }
+
+        Ok(Self {
+            kind: kind.ok_or_else(|| Error::FieldMissing("kind".to_string()))?,
+            pubkey: pubkey.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
+            identifier: identifier.ok_or_else(|| Error::FieldMissing("identifier".to_string()))?,
+            relays,
+        })
+    }
+}
+
+#[cfg(feature = "base")]
+impl ToBech32 for ParameterizedReplaceableEvent {
+    type Err = Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        let mut bytes: Vec<u8> = Vec::new();
+
+        // Identifier
+        bytes.extend([SPECIAL, self.identifier.len() as u8]);
+        bytes.extend(self.identifier.as_bytes());
+
+        for relay in self.relays.iter() {
+            bytes.extend([RELAY, relay.len() as u8]);
+            bytes.extend(relay.as_bytes());
+        }
+
+        // Author
+        bytes.extend([AUTHOR, 32]);
+        bytes.extend(self.pubkey.serialize());
+
+        // Kind
+        bytes.extend([KIND, 4]);
+        bytes.extend(self.kind.as_u32().to_be_bytes());
+
+        let data = bytes.to_base32();
+        Ok(bech32::encode(
+            PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT,
+            data,
+            Variant::Bech32,
+        )?)
     }
 }
 
@@ -376,41 +396,6 @@ mod tests {
         assert_eq!(
             "note1m99r7nwc0wdrkzldrqan96gklg5usqspq7z9696j6unf0ljnpxjspqfw99".to_string(),
             event_id.to_bech32()?
-        );
-        Ok(())
-    }
-
-    #[cfg(feature = "base")]
-    #[test]
-    fn to_bech32_profile() -> Result<()> {
-        let profile = Profile::new(
-            XOnlyPublicKey::from_str(
-                "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
-            )?,
-            vec![
-                String::from("wss://r.x.com"),
-                String::from("wss://djbas.sadkb.com"),
-            ],
-        );
-        assert_eq!("nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p".to_string(), profile.to_bech32()?);
-        Ok(())
-    }
-
-    #[cfg(feature = "base")]
-    #[test]
-    fn from_bech32_profile() -> Result<()> {
-        let bech32_profile = "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p";
-        let profile = Profile::from_bech32(bech32_profile)?;
-        assert_eq!(
-            "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d".to_string(),
-            profile.public_key.to_string()
-        );
-        assert_eq!(
-            vec![
-                "wss://r.x.com".to_string(),
-                "wss://djbas.sadkb.com".to_string()
-            ],
-            profile.relays
         );
         Ok(())
     }
