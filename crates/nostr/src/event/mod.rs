@@ -36,6 +36,9 @@ pub enum Error {
     /// Hex decoding error
     #[error(transparent)]
     Hex(#[from] bitcoin_hashes::hex::Error),
+    /// OpenTimestamps error
+    #[error(transparent)]
+    OpenTimestamps(#[from] nostr_ots::Error),
 }
 
 /// [`Event`] struct
@@ -89,6 +92,13 @@ impl Event {
     /// Get event as json string
     pub fn as_json(&self) -> String {
         serde_json::json!(self).to_string()
+    }
+
+    /// Timestamp this event with OpenTimestamps, according to NIP-03
+    pub fn timestamp(&mut self) -> Result<(), Error> {
+        let ots = nostr_ots::timestamp_event(&self.id.to_hex())?;
+        self.ots = Some(ots);
+        Ok(())
     }
 }
 
