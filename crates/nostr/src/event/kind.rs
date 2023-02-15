@@ -70,6 +70,11 @@ pub enum Kind {
 }
 
 impl Kind {
+    /// Get [`Kind`] as `u32`
+    pub fn as_u32(&self) -> u32 {
+        self.as_u64() as u32
+    }
+
     /// Get [`Kind`] as `u64`
     pub fn as_u64(&self) -> u64 {
         (*self).into()
