@@ -4,6 +4,8 @@
 //! Kind
 
 use std::fmt;
+use std::num::ParseIntError;
+use std::str::FromStr;
 
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::{Serialize, Serializer};
@@ -139,6 +141,14 @@ impl From<Kind> for u64 {
             Kind::ParameterizedReplaceable(u) => u as u64,
             Kind::Custom(u) => u,
         }
+    }
+}
+
+impl FromStr for Kind {
+    type Err = ParseIntError;
+    fn from_str(kind: &str) -> Result<Self, Self::Err> {
+        let kind: u64 = kind.parse()?;
+        Ok(Self::from(kind))
     }
 }
 

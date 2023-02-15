@@ -15,7 +15,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
 
 use super::id::{self, EventId};
-use crate::Timestamp;
+use crate::{Kind, Timestamp};
 
 /// [`Tag`] error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
@@ -29,6 +29,9 @@ pub enum Error {
     /// Impossible to find tag kind
     #[error("impossible to find tag kind")]
     KindNotFound,
+    /// Invalid length
+    #[error("invalid length")]
+    InvalidLength,
     /// Impossible to parse integer
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
@@ -139,6 +142,8 @@ pub enum TagKind {
     G,
     /// Identifier
     D,
+    /// Referencing and tagging
+    A,
     /// Relay
     Relay,
     /// Nonce
@@ -174,6 +179,7 @@ impl fmt::Display for TagKind {
             Self::T => write!(f, "t"),
             Self::G => write!(f, "g"),
             Self::D => write!(f, "d"),
+            Self::A => write!(f, "a"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
@@ -203,6 +209,7 @@ where
             "t" => Self::T,
             "g" => Self::G,
             "d" => Self::D,
+            "a" => Self::A,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,
@@ -231,6 +238,12 @@ pub enum Tag {
     Hashtag(String),
     Geohash(String),
     Identifier(String),
+    A {
+        kind: Kind,
+        public_key: XOnlyPublicKey,
+        identifier: String,
+        relay_url: String,
+    },
     Relay(Url),
     ContactList {
         pk: XOnlyPublicKey,
@@ -342,6 +355,19 @@ where
                     nonce: tag[1].parse()?,
                     difficulty: tag[2].parse()?,
                 }),
+                TagKind::A => {
+                    let kpi: Vec<&str> = tag[1].split(':').collect();
+                    if kpi.len() == 3 {
+                        Ok(Self::A {
+                            kind: Kind::from_str(kpi[0])?,
+                            public_key: XOnlyPublicKey::from_str(kpi[1])?,
+                            identifier: kpi[2].to_string(),
+                            relay_url: tag[2].clone(),
+                        })
+                    } else {
+                        Err(Error::InvalidLength)
+                    }
+                }
                 _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
             }
         } else if tag_len == 4 {
@@ -403,6 +429,16 @@ impl From<Tag> for Vec<String> {
             Tag::Hashtag(t) => vec![TagKind::T.to_string(), t],
             Tag::Geohash(g) => vec![TagKind::G.to_string(), g],
             Tag::Identifier(d) => vec![TagKind::D.to_string(), d],
+            Tag::A {
+                kind,
+                public_key,
+                identifier,
+                relay_url,
+            } => vec![
+                TagKind::A.to_string(),
+                format!("{}:{public_key}:{identifier}", kind.as_u64()),
+                relay_url,
+            ],
             Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
             Tag::ContactList {
                 pk,
@@ -679,6 +715,23 @@ mod tests {
 
         assert_eq!(
             vec![
+                "a",
+                "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
+                "wss://relay.nostr.org"
+            ],
+            Tag::A {
+                kind: Kind::LongFormTextNote,
+                public_key: XOnlyPublicKey::from_str(
+                    "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
+                )?,
+                identifier: String::from("ipsum"),
+                relay_url: String::from("wss://relay.nostr.org")
+            }
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
                 "wss://relay.damus.io",
@@ -873,6 +926,22 @@ mod tests {
             Tag::POW {
                 nonce: 1,
                 difficulty: 20
+            }
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "a",
+                "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
+                "wss://relay.nostr.org"
+            ])?,
+            Tag::A {
+                kind: Kind::LongFormTextNote,
+                public_key: XOnlyPublicKey::from_str(
+                    "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
+                )?,
+                identifier: String::from("ipsum"),
+                relay_url: String::from("wss://relay.nostr.org")
             }
         );
 
