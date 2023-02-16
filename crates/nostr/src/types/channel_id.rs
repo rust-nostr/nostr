@@ -6,10 +6,10 @@
 use std::fmt;
 
 #[cfg(feature = "nip19")]
-use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
-use bitcoin::hashes::hex::FromHex;
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
+use bech32::{self, FromBase32, ToBase32, Variant};
+use bitcoin_hashes::hex::FromHex;
+use bitcoin_hashes::sha256::Hash as Sha256Hash;
+use bitcoin_hashes::Hash;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "nip19")]
@@ -23,10 +23,10 @@ use crate::EventId;
 pub enum Error {
     /// Hex error
     #[error(transparent)]
-    Hex(#[from] bitcoin::hashes::hex::Error),
+    Hex(#[from] bitcoin_hashes::hex::Error),
     /// Hash error
     #[error(transparent)]
-    Hash(#[from] bitcoin::hashes::Error),
+    Hash(#[from] bitcoin_hashes::Error),
 }
 
 /// Channel Id

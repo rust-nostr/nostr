@@ -8,8 +8,8 @@ use std::sync::mpsc::{sync_channel, RecvError};
 use std::sync::Arc;
 use std::thread;
 
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::{Secp256k1, SecretKey};
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::{Secp256k1, SecretKey};
 
 use super::Keys;
 use crate::nips::nip19::{ToBech32, PREFIX_BECH32_PUBLIC_KEY};

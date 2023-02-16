@@ -9,8 +9,8 @@
 #[cfg(feature = "nip19")]
 use std::str::FromStr;
 
-use bitcoin::secp256k1::rand::rngs::OsRng;
-pub use bitcoin::secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
+use secp256k1::rand::rngs::OsRng;
+pub use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 
 #[cfg(feature = "vanity")]
 pub mod vanity;
@@ -41,7 +41,7 @@ pub enum Error {
     InvalidChar(char),
     /// Secp256k1 error
     #[error(transparent)]
-    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    Secp256k1(#[from] secp256k1::Error),
 }
 
 /// Trait for [`Keys`]

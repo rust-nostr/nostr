@@ -3,7 +3,7 @@
 
 //! Event builder
 
-use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
+use secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 use serde_json::{json, Value};
 use url::Url;
 
@@ -25,7 +25,7 @@ pub enum Error {
     Key(#[from] key::Error),
     #[error(transparent)]
     /// Secp256k1 error
-    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    Secp256k1(#[from] secp256k1::Error),
     /// JSON error
     #[error(transparent)]
     Json(#[from] serde_json::Error),
@@ -388,7 +388,7 @@ impl EventBuilder {
 mod tests {
     use std::str::FromStr;
 
-    use bitcoin::secp256k1::SecretKey;
+    use secp256k1::SecretKey;
 
     use crate::{Event, EventBuilder, Keys, Result};
 

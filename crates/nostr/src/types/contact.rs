@@ -3,7 +3,7 @@
 
 //! Contact
 
-use bitcoin::secp256k1::XOnlyPublicKey;
+use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 
 /// Contact

@@ -11,10 +11,12 @@
     doc = include_str!("../README.md")
 )]
 
+#[cfg(feature = "nip19")]
+pub use bech32;
 #[cfg(feature = "nip06")]
 pub use bip39;
-pub use bitcoin::hashes;
-pub use bitcoin::secp256k1;
+pub use bitcoin_hashes as hashes;
+pub use secp256k1;
 #[cfg(feature = "base")]
 pub use url::{self, Url};
 

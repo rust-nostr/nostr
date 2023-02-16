@@ -7,8 +7,8 @@ use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::XOnlyPublicKey;
+use secp256k1::schnorr::Signature;
+use secp256k1::XOnlyPublicKey;
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -37,10 +37,10 @@ pub enum Error {
     ParseIntError(#[from] ParseIntError),
     /// Secp256k1
     #[error(transparent)]
-    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    Secp256k1(#[from] secp256k1::Error),
     /// Hex decoding error
     #[error(transparent)]
-    Hex(#[from] bitcoin::hashes::hex::Error),
+    Hex(#[from] bitcoin_hashes::hex::Error),
     /// Url parse error
     #[error("invalid url")]
     Url(#[from] url::ParseError),

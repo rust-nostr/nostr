@@ -6,8 +6,8 @@
 
 use std::str::FromStr;
 
-use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{Message, Secp256k1, XOnlyPublicKey};
+use secp256k1::schnorr::Signature;
+use secp256k1::{Message, Secp256k1, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 
 pub mod builder;
@@ -32,10 +32,10 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     /// Secp256k1 error
     #[error(transparent)]
-    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    Secp256k1(#[from] secp256k1::Error),
     /// Hex decoding error
     #[error(transparent)]
-    Hex(#[from] bitcoin::hashes::hex::Error),
+    Hex(#[from] bitcoin_hashes::hex::Error),
 }
 
 /// [`Event`] struct

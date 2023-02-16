@@ -8,13 +8,13 @@
 use std::str::FromStr;
 
 use bip39::Mnemonic;
-use bitcoin::hashes::hmac::{Hmac, HmacEngine};
-use bitcoin::hashes::{sha512, Hash, HashEngine};
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::RngCore;
-use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use bitcoin::Network;
+use bitcoin_hashes::hmac::{Hmac, HmacEngine};
+use bitcoin_hashes::{sha512, Hash, HashEngine};
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::RngCore;
+use secp256k1::Secp256k1;
 
 use crate::key::Keys;
 
@@ -78,7 +78,7 @@ impl GenerateMnemonic for Keys {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::secp256k1::SecretKey;
+    use secp256k1::SecretKey;
 
     use super::*;
 

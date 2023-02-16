@@ -9,9 +9,9 @@
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-use bitcoin::secp256k1::XOnlyPublicKey;
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
+use secp256k1::XOnlyPublicKey;
 use serde_json::Value;
 
 /// `NIP05` error
@@ -31,7 +31,7 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     /// Secp256k1 error
     #[error(transparent)]
-    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    Secp256k1(#[from] secp256k1::Error),
 }
 
 fn compose_url(nip05: &str) -> Result<(String, &str), Error> {

@@ -5,10 +5,10 @@
 
 use std::fmt;
 
-use bitcoin::hashes::hex::FromHex;
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::XOnlyPublicKey;
+use bitcoin_hashes::hex::FromHex;
+use bitcoin_hashes::sha256::Hash as Sha256Hash;
+use bitcoin_hashes::Hash;
+use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -22,10 +22,10 @@ use crate::Timestamp;
 pub enum Error {
     /// Hex error
     #[error(transparent)]
-    Hex(#[from] bitcoin::hashes::hex::Error),
+    Hex(#[from] bitcoin_hashes::hex::Error),
     /// Hash error
     #[error(transparent)]
-    Hash(#[from] bitcoin::hashes::Error),
+    Hash(#[from] bitcoin_hashes::Error),
 }
 
 /// Event Id

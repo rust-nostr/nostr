@@ -13,8 +13,8 @@ use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::engine::{general_purpose, Engine};
-use bitcoin::secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
 use cbc::{Decryptor, Encryptor};
+use secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
@@ -36,7 +36,7 @@ pub enum Error {
     WrongBlockMode,
     /// Secp256k1 error
     #[error("secp256k1 error: {0}")]
-    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    Secp256k1(#[from] secp256k1::Error),
 }
 
 /// Entrypt
@@ -45,7 +45,7 @@ where
     T: AsRef<[u8]>,
 {
     let key: Vec<u8> = generate_shared_key(sk, pk)?;
-    let iv: [u8; 16] = bitcoin::secp256k1::rand::random();
+    let iv: [u8; 16] = secp256k1::rand::random();
 
     let cipher = Aes256CbcEnc::new(key.as_slice().into(), &iv.into());
     let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_ref());
@@ -107,7 +107,7 @@ fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
 mod tests {
     use super::*;
 
-    use bitcoin::secp256k1::{KeyPair, Secp256k1};
+    use secp256k1::{KeyPair, Secp256k1};
 
     use crate::Result;
 

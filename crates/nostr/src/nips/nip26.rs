@@ -5,10 +5,10 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/26.md>
 
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
+use bitcoin_hashes::sha256::Hash as Sha256Hash;
+use bitcoin_hashes::Hash;
+use secp256k1::schnorr::Signature;
+use secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
 
 use crate::key::{self, Keys};
 
@@ -20,7 +20,7 @@ pub enum Error {
     Key(#[from] key::Error),
     #[error(transparent)]
     /// Secp256k1 error
-    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    Secp256k1(#[from] secp256k1::Error),
 }
 
 fn delegation_token(delegatee_pk: &XOnlyPublicKey, conditions: &str) -> String {

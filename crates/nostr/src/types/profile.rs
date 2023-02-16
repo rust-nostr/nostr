@@ -4,8 +4,8 @@
 //! Profile
 
 #[cfg(feature = "nip19")]
-use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
-use bitcoin::secp256k1::XOnlyPublicKey;
+use bech32::{self, FromBase32, ToBase32, Variant};
+use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "nip19")]

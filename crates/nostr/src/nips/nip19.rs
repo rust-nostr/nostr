@@ -7,8 +7,8 @@
 
 #![allow(missing_docs)]
 
-use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
-use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
+use bech32::{self, FromBase32, ToBase32, Variant};
+use secp256k1::{SecretKey, XOnlyPublicKey};
 #[cfg(feature = "base")]
 use serde::{Deserialize, Serialize};
 
@@ -53,10 +53,10 @@ pub enum Error {
     FromSlice(#[from] std::array::TryFromSliceError),
     /// Secp256k1 error
     #[error(transparent)]
-    Secp256k1(#[from] bitcoin::secp256k1::Error),
+    Secp256k1(#[from] secp256k1::Error),
     /// Hash error
     #[error(transparent)]
-    Hash(#[from] bitcoin::hashes::Error),
+    Hash(#[from] bitcoin_hashes::Error),
     /// EventId error
     #[cfg(feature = "base")]
     #[error(transparent)]
