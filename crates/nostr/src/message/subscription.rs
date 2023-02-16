@@ -30,7 +30,8 @@ impl SubscriptionId {
     pub fn generate() -> Self {
         let mut os_random = [0u8; 32];
         OsRng.fill_bytes(&mut os_random);
-        Self(Sha256Hash::hash(&os_random).to_string())
+        let hash = Sha256Hash::hash(&os_random).to_string();
+        Self::new(&hash[..32])
     }
 }
 
