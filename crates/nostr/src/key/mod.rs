@@ -10,7 +10,9 @@
 use std::str::FromStr;
 
 use secp256k1::rand::rngs::OsRng;
-pub use secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
+pub use secp256k1::{KeyPair, SecretKey, XOnlyPublicKey};
+
+use crate::SECP256K1;
 
 #[cfg(feature = "vanity")]
 pub mod vanity;
@@ -71,8 +73,7 @@ pub struct Keys {
 impl Keys {
     /// Initialize from secret key.
     pub fn new(secret_key: SecretKey) -> Self {
-        let secp = Secp256k1::new();
-        let key_pair = KeyPair::from_secret_key(&secp, &secret_key);
+        let key_pair = KeyPair::from_secret_key(SECP256K1, &secret_key);
         let public_key = XOnlyPublicKey::from_keypair(&key_pair).0;
 
         Self {
@@ -93,9 +94,8 @@ impl Keys {
 
     /// Generate new random keys
     pub fn generate() -> Self {
-        let secp = Secp256k1::new();
         let mut rng = OsRng::default();
-        let (secret_key, _) = secp.generate_keypair(&mut rng);
+        let (secret_key, _) = SECP256K1.generate_keypair(&mut rng);
         Self::new(secret_key)
     }
 

@@ -3,7 +3,7 @@
 
 //! Event builder
 
-use secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
+use secp256k1::{KeyPair, Message, XOnlyPublicKey};
 use serde_json::{json, Value};
 use url::Url;
 
@@ -16,6 +16,7 @@ use crate::nips::nip04;
 #[cfg(feature = "nip13")]
 use crate::nips::nip13;
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
+use crate::SECP256K1;
 
 /// [`EventBuilder`] error
 #[derive(Debug, thiserror::Error)]
@@ -58,7 +59,6 @@ impl EventBuilder {
 
     /// Build [`Event`]
     pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
-        let secp = Secp256k1::new();
         let keypair: &KeyPair = &keys.key_pair()?;
         let pubkey: XOnlyPublicKey = keys.public_key();
         let created_at: Timestamp = Timestamp::now();
@@ -73,7 +73,7 @@ impl EventBuilder {
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-            sig: secp.sign_schnorr(&message, keypair),
+            sig: SECP256K1.sign_schnorr(&message, keypair),
             ots: None,
         })
     }
@@ -109,7 +109,6 @@ impl EventBuilder {
                     nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
                 );
 
-                let secp = Secp256k1::new();
                 let keypair: &KeyPair = &keys.key_pair()?;
                 let message = Message::from_slice(id.as_bytes())?;
 
@@ -120,7 +119,7 @@ impl EventBuilder {
                     kind: self.kind,
                     tags,
                     content: self.content,
-                    sig: secp.sign_schnorr(&message, keypair),
+                    sig: SECP256K1.sign_schnorr(&message, keypair),
                     ots: None,
                 });
             }

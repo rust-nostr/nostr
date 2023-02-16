@@ -9,10 +9,11 @@ use std::sync::Arc;
 use std::thread;
 
 use secp256k1::rand::rngs::OsRng;
-use secp256k1::{Secp256k1, SecretKey};
+use secp256k1::SecretKey;
 
 use super::Keys;
 use crate::nips::nip19::{ToBech32, PREFIX_BECH32_PUBLIC_KEY};
+use crate::SECP256K1;
 
 const BECH32_CHARS: &str = "023456789acdefghjklmnpqrstuvwxyz";
 const HEX_CHARS: &str = "0123456789abcdef";
@@ -66,14 +67,13 @@ impl Keys {
             let found = found.clone();
             let prefixes = prefixes.clone();
             let handle = thread::spawn(move || {
-                let secp = Secp256k1::new();
                 let mut rng = OsRng::default();
                 loop {
                     if found.load(Ordering::SeqCst) {
                         break;
                     }
 
-                    let (secret_key, public_key) = secp.generate_keypair(&mut rng);
+                    let (secret_key, public_key) = SECP256K1.generate_keypair(&mut rng);
                     let (xonly_public_key, _) = public_key.x_only_public_key();
 
                     if bech32 {

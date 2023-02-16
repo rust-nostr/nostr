@@ -14,9 +14,8 @@ use bitcoin_hashes::hmac::{Hmac, HmacEngine};
 use bitcoin_hashes::{sha512, Hash, HashEngine};
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::RngCore;
-use secp256k1::Secp256k1;
 
-use crate::key::Keys;
+use crate::{Keys, SECP256K1};
 
 /// `NIP06` error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
@@ -55,8 +54,7 @@ impl FromMnemonic for Keys {
         let seed = mnemonic.to_seed(passphrase.map(|p| p.into()).unwrap_or_default());
         let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)?;
         let path = DerivationPath::from_str("m/44'/1237'/0'/0/0")?;
-        let secp = Secp256k1::new();
-        let child_xprv = root_key.derive_priv(&secp, &path)?;
+        let child_xprv = root_key.derive_priv(SECP256K1, &path)?;
         Ok(Self::new(child_xprv.private_key))
     }
 }

@@ -7,7 +7,7 @@
 use std::str::FromStr;
 
 use secp256k1::schnorr::Signature;
-use secp256k1::{Message, Secp256k1, XOnlyPublicKey};
+use secp256k1::{Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 
 pub mod builder;
@@ -19,7 +19,7 @@ pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::tag::{Marker, Tag, TagKind};
-use crate::Timestamp;
+use crate::{Timestamp, SECP256K1};
 
 /// [`Event`] error
 #[derive(Debug, thiserror::Error)]
@@ -63,7 +63,6 @@ pub struct Event {
 impl Event {
     /// Verify event
     pub fn verify(&self) -> Result<(), Error> {
-        let secp = Secp256k1::new();
         let id = EventId::new(
             &self.pubkey,
             self.created_at,
@@ -72,7 +71,8 @@ impl Event {
             &self.content,
         );
         let message = Message::from_slice(id.as_bytes())?;
-        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
+        SECP256K1
+            .verify_schnorr(&self.sig, &message, &self.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }
 

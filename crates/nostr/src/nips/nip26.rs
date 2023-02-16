@@ -8,9 +8,10 @@
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
-use secp256k1::{KeyPair, Message, Secp256k1, XOnlyPublicKey};
+use secp256k1::{KeyPair, Message, XOnlyPublicKey};
 
 use crate::key::{self, Keys};
+use crate::SECP256K1;
 
 /// `NIP26` error
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
@@ -33,12 +34,11 @@ pub fn sign_delegation(
     delegatee_pk: XOnlyPublicKey,
     conditions: String,
 ) -> Result<Signature, Error> {
-    let secp = Secp256k1::new();
     let keypair: &KeyPair = &keys.key_pair()?;
     let unhashed_token: String = delegation_token(&delegatee_pk, &conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
-    Ok(secp.sign_schnorr(&message, keypair))
+    Ok(SECP256K1.sign_schnorr(&message, keypair))
 }
 
 /// Verify delegation signature
@@ -48,11 +48,10 @@ pub fn verify_delegation_signature(
     delegatee_pk: XOnlyPublicKey,
     conditions: String,
 ) -> Result<(), Error> {
-    let secp = Secp256k1::new();
     let unhashed_token: String = delegation_token(&delegatee_pk, &conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
-    secp.verify_schnorr(signature, &message, &keys.public_key())?;
+    SECP256K1.verify_schnorr(signature, &message, &keys.public_key())?;
     Ok(())
 }
 
@@ -100,8 +99,8 @@ mod test {
         let unhashed_token: String = format!("nostr:delegation:{delegatee_pk}:{conditions}");
         let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
         let message = Message::from_slice(&hashed_token).unwrap();
-        let secp = Secp256k1::new();
-        let verify_result = secp.verify_schnorr(&signature, &message, &keys.public_key());
+
+        let verify_result = SECP256K1.verify_schnorr(&signature, &message, &keys.public_key());
         assert!(verify_result.is_ok());
     }
 

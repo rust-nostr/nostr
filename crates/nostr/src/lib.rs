@@ -16,7 +16,7 @@ pub use bech32;
 #[cfg(feature = "nip06")]
 pub use bip39;
 pub use bitcoin_hashes as hashes;
-pub use secp256k1;
+pub use secp256k1::{self, SECP256K1};
 #[cfg(feature = "base")]
 pub use url::{self, Url};
 

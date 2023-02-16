@@ -107,24 +107,22 @@ fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
 mod tests {
     use super::*;
 
-    use secp256k1::{KeyPair, Secp256k1};
+    use secp256k1::KeyPair;
 
-    use crate::Result;
+    use crate::{Result, SECP256K1};
 
     #[test]
     fn test_encryption_decryption() -> Result<()> {
-        let secp = Secp256k1::new();
-
         let sender_sk = SecretKey::from_str(
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let sender_key_pair = KeyPair::from_secret_key(&secp, &sender_sk);
+        let sender_key_pair = KeyPair::from_secret_key(SECP256K1, &sender_sk);
         let sender_pk = XOnlyPublicKey::from_keypair(&sender_key_pair).0;
 
         let receiver_sk = SecretKey::from_str(
             "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let receiver_key_pair = KeyPair::from_secret_key(&secp, &receiver_sk);
+        let receiver_key_pair = KeyPair::from_secret_key(SECP256K1, &receiver_sk);
         let receiver_pk = XOnlyPublicKey::from_keypair(&receiver_key_pair).0;
 
         let encrypted_content_from_outside =

@@ -21,7 +21,7 @@ pub use crate::key::*;
 pub use crate::message::*;
 #[cfg(feature = "base")]
 pub use crate::types::*;
-pub use crate::Result;
+pub use crate::{Result, SECP256K1};
 
 // NIPs
 #[cfg(feature = "nip04")]
