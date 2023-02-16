@@ -404,12 +404,6 @@ impl Client {
     }
 
     /// Send client message
-    #[deprecated]
-    pub async fn send_client_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
-        Ok(self.pool.send_msg(msg, wait).await?)
-    }
-
-    /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
         Ok(self
             .pool
@@ -463,7 +457,7 @@ impl Client {
     }
 
     /// Update profile metadata
-    #[deprecated = "Use `set_metadata` method"]
+    #[deprecated(since = "0.19.0", note = "Use `set_metadata` method")]
     pub async fn update_profile(&self, metadata: Metadata) -> Result<EventId, Error> {
         self.set_metadata(metadata).await
     }
@@ -810,7 +804,7 @@ impl Client {
     /// Update channel metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated = "Use `set_channel_metadata` method"]
+    #[deprecated(since = "0.19.0", note = "Use `set_channel_metadata` method")]
     pub async fn update_channel(
         &self,
         channel_id: ChannelId,

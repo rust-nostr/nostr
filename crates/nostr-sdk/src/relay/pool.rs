@@ -325,12 +325,6 @@ impl RelayPool {
     }
 
     /// Send client message
-    #[deprecated]
-    pub async fn send_client_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
-        self.send_msg(msg, wait).await
-    }
-
-    /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
         let relays = self.relays().await;
 
