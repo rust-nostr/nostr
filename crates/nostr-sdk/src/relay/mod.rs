@@ -577,7 +577,7 @@ impl Relay {
                                 break;
                             }
                         }
-                        _ => (),
+                        _ => log::debug!("Receive unhandled message {msg:?} on get_events_of"),
                     };
                 }
             }
