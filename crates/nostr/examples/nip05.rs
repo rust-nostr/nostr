@@ -20,5 +20,8 @@ fn main() -> Result<()> {
         println!("NIP-05 NOT verified");
     }
 
+    let profile = nip05::get_profile_blocking("_@fiatjaf.com", None)?;
+    println!("Profile example (including relays): {profile:#?}");
+
     Ok(())
 }
