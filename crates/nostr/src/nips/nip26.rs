@@ -36,11 +36,11 @@ fn delegation_token(delegatee_pk: &XOnlyPublicKey, conditions: &str) -> String {
 
 /// Sign delegation
 pub fn sign_delegation(
-    keys: &Keys,
+    delegator_keys: &Keys,
     delegatee_pk: XOnlyPublicKey,
     conditions: String,
 ) -> Result<Signature, Error> {
-    let keypair: &KeyPair = &keys.key_pair()?;
+    let keypair: &KeyPair = &delegator_keys.key_pair()?;
     let unhashed_token: String = delegation_token(&delegatee_pk, &conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
@@ -49,7 +49,7 @@ pub fn sign_delegation(
 
 /// Verify delegation signature
 pub fn verify_delegation_signature(
-    keys: &Keys,
+    delegator_public_key: &XOnlyPublicKey,
     signature: &Signature,
     delegatee_pk: XOnlyPublicKey,
     conditions: String,
@@ -57,7 +57,7 @@ pub fn verify_delegation_signature(
     let unhashed_token: String = delegation_token(&delegatee_pk, &conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
-    SECP256K1.verify_schnorr(signature, &message, &keys.public_key())?;
+    SECP256K1.verify_schnorr(signature, &message, delegator_public_key)?;
     Ok(())
 }
 
@@ -143,53 +143,65 @@ mod test {
 
     #[test]
     fn test_sign_delegation_verify_delegation_signature() {
-        let sk =
+        let delegator_secret_key =
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
                 .unwrap();
-        let keys = Keys::new(sk);
-        let delegatee_pk = XOnlyPublicKey::from_bech32(
+        let delegator_keys = Keys::new(delegator_secret_key);
+        let delegatee_public_key = XOnlyPublicKey::from_bech32(
             "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
         )
         .unwrap();
         let conditions = "kind=1&created_at>1674834236&created_at<1677426236".to_string();
 
-        let signature = sign_delegation(&keys, delegatee_pk, conditions.clone()).unwrap();
+        let signature =
+            sign_delegation(&delegator_keys, delegatee_public_key, conditions.clone()).unwrap();
 
         // signature is changing, validate by verify method
-        let verify_result =
-            verify_delegation_signature(&keys, &signature, delegatee_pk, conditions);
+        let verify_result = verify_delegation_signature(
+            &delegator_keys.public_key(),
+            &signature,
+            delegatee_public_key,
+            conditions,
+        );
         assert!(verify_result.is_ok());
     }
 
     #[test]
     fn test_sign_delegation_verify_lowlevel() {
-        let sk =
+        let delegator_secret_key =
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
                 .unwrap();
-        let keys = Keys::new(sk);
-        let delegatee_pk = XOnlyPublicKey::from_bech32(
+        let delegator_keys = Keys::new(delegator_secret_key);
+        let delegatee_public_key = XOnlyPublicKey::from_bech32(
             "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
         )
         .unwrap();
         let conditions = "kind=1&created_at>1674834236&created_at<1677426236";
 
-        let signature = sign_delegation(&keys, delegatee_pk, conditions.to_string()).unwrap();
+        let signature = sign_delegation(
+            &delegator_keys,
+            delegatee_public_key,
+            conditions.to_string(),
+        )
+        .unwrap();
 
         // signature is changing, validate by lowlevel verify
-        let unhashed_token: String = format!("nostr:delegation:{delegatee_pk}:{conditions}");
+        let unhashed_token: String =
+            format!("nostr:delegation:{delegatee_public_key}:{conditions}");
         let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
         let message = Message::from_slice(&hashed_token).unwrap();
 
-        let verify_result = SECP256K1.verify_schnorr(&signature, &message, &keys.public_key());
+        let verify_result =
+            SECP256K1.verify_schnorr(&signature, &message, &delegator_keys.public_key());
         assert!(verify_result.is_ok());
     }
 
     #[test]
     fn test_verify_delegation_signature() {
-        let sk =
+        let delegator_secret_key =
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
                 .unwrap();
-        let keys = Keys::new(sk);
+        let delegator_keys = Keys::new(delegator_secret_key);
         // use one concrete signature
         let signature = Signature::from_str("f9f00fcf8480686d9da6dfde1187d4ba19c54f6ace4c73361a14db429c4b96eb30b29283d6ea1f06ba9e18e06e408244c689039ddadbacffc56060f3da5b04b8").unwrap();
         let delegatee_pk = XOnlyPublicKey::from_bech32(
@@ -198,8 +210,12 @@ mod test {
         .unwrap();
         let conditions = "kind=1&created_at>1674834236&created_at<1677426236".to_string();
 
-        let verify_result =
-            verify_delegation_signature(&keys, &signature, delegatee_pk, conditions);
+        let verify_result = verify_delegation_signature(
+            &delegator_keys.public_key(),
+            &signature,
+            delegatee_pk,
+            conditions,
+        );
         assert!(verify_result.is_ok());
     }
 
@@ -239,22 +255,26 @@ mod test {
 
     #[test]
     fn test_create_delegation_tag() {
-        let sk = SecretKey::from_bech32(
+        let delegator_secret_key = SecretKey::from_bech32(
             "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
         )
         .unwrap();
-        let keys = Keys::new(sk);
+        let delegator_keys = Keys::new(delegator_secret_key);
         let delegatee_pubkey = XOnlyPublicKey::from_bech32(
             "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
         )
         .unwrap();
         let conditions = "k=1&created_at>1676067553&created_at<1678659553".to_string();
 
-        let tag = create_delegation_tag(&keys, delegatee_pubkey, &conditions).unwrap();
+        let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
 
         // verify signature (it's variable)
-        let verify_result =
-            verify_delegation_signature(&keys, &tag.get_signature(), delegatee_pubkey, conditions);
+        let verify_result = verify_delegation_signature(
+            &delegator_keys.public_key(),
+            &tag.get_signature(),
+            delegatee_pubkey,
+            conditions,
+        );
         assert!(verify_result.is_ok());
 
         // signature changes, cannot compare to expected constant, use signature from result

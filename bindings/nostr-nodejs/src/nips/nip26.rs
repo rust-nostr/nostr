@@ -28,14 +28,14 @@ pub fn sign_delegation(
 /// Verify delegation signature (NIP26)
 #[napi]
 pub fn verify_delegation_signature(
-    keys: &JsKeys,
+    delegator_public_key: &JsPublicKey,
     delegatee_pk: &JsPublicKey,
     conditions: String,
     signature: String,
 ) -> Result<bool> {
     let signature = Signature::from_str(&signature).map_err(into_err)?;
     match nip26::verify_delegation_signature(
-        keys.deref(),
+        delegator_public_key.deref(),
         &signature,
         delegatee_pk.into(),
         conditions,
