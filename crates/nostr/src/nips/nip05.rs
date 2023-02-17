@@ -57,6 +57,7 @@ fn get_key_from_json(json: Value, name: &str) -> Option<XOnlyPublicKey> {
         .and_then(|pubkey| XOnlyPublicKey::from_str(pubkey).ok())
 }
 
+#[cfg(feature = "base")]
 fn get_relays_from_json(json: Value, pk: XOnlyPublicKey) -> Vec<String> {
     let relays_list: Option<Vec<String>> = json
         .get("relays")
