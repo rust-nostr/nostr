@@ -235,6 +235,7 @@ pub enum Tag {
     EventReport(EventId, Report),
     PubKeyReport(XOnlyPublicKey, Report),
     Reference(String),
+    RelayMetadata(String, Option<String>),
     Hashtag(String),
     Geohash(String),
     Identifier(String),
@@ -426,6 +427,13 @@ impl From<Tag> for Vec<String> {
                 vec![TagKind::P.to_string(), pk.to_string(), report.to_string()]
             }
             Tag::Reference(r) => vec![TagKind::R.to_string(), r],
+            Tag::RelayMetadata(url, rw) => {
+                let mut tag = vec![TagKind::R.to_string(), url];
+                if let Some(rw) = rw {
+                    tag.push(rw);
+                }
+                tag
+            }
             Tag::Hashtag(t) => vec![TagKind::T.to_string(), t],
             Tag::Geohash(g) => vec![TagKind::G.to_string(), g],
             Tag::Identifier(d) => vec![TagKind::D.to_string(), d],

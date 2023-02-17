@@ -59,6 +59,8 @@ pub enum Kind {
     Authentication,
     /// Long-form Text Note (NIP23)
     LongFormTextNote,
+    /// Relay List Metadata (NIP65)
+    RelayList,
     /// Replacabe event (must be between 10000 and <20000)
     Replaceable(u16),
     /// Ephemeral event (must be between 20000 and <30000)
@@ -105,6 +107,7 @@ impl From<u64> for Kind {
             1984 => Self::Reporting,
             9734 => Self::ZapRequest,
             9735 => Self::Zap,
+            10002 => Self::RelayList,
             22242 => Self::Authentication,
             30023 => Self::LongFormTextNote,
             x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
@@ -139,6 +142,7 @@ impl From<Kind> for u64 {
             Kind::Reporting => 1984,
             Kind::ZapRequest => 9734,
             Kind::Zap => 9735,
+            Kind::RelayList => 10002,
             Kind::Authentication => 22242,
             Kind::LongFormTextNote => 30023,
             Kind::Replaceable(u) => u as u64,
