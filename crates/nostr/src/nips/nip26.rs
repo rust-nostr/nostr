@@ -12,7 +12,7 @@ use secp256k1::{KeyPair, Message, XOnlyPublicKey};
 
 use crate::key::{self, Keys};
 use crate::nips::nip19::ToBech32;
-use crate::SECP256K1;
+use crate::{Kind, SECP256K1};
 
 use core::fmt;
 
@@ -34,7 +34,8 @@ fn delegation_token(delegatee_pk: &XOnlyPublicKey, conditions: &str) -> String {
     format!("nostr:delegation:{delegatee_pk}:{conditions}")
 }
 
-/// Sign delegation
+/// Sign delegation.
+/// See `create_delegation_tag` for more complete functionality.
 pub fn sign_delegation(
     delegator_keys: &Keys,
     delegatee_pk: XOnlyPublicKey,
@@ -49,7 +50,7 @@ pub fn sign_delegation(
 
 /// Verify delegation signature
 pub fn verify_delegation_signature(
-    delegator_public_key: &XOnlyPublicKey,
+    delegator_pk: &XOnlyPublicKey,
     signature: &Signature,
     delegatee_pk: XOnlyPublicKey,
     conditions: String,
@@ -57,7 +58,7 @@ pub fn verify_delegation_signature(
     let unhashed_token: String = delegation_token(&delegatee_pk, &conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
-    SECP256K1.verify_schnorr(signature, &message, delegator_public_key)?;
+    SECP256K1.verify_schnorr(signature, &message, delegator_pk)?;
     Ok(())
 }
 
@@ -69,6 +70,16 @@ pub struct DelegationTag {
 }
 
 impl DelegationTag {
+    /// Accessor for delegator public key
+    pub fn get_delegator_pubkey(&self) -> XOnlyPublicKey {
+        self.delegator_pubkey
+    }
+
+    /// Accessor for conditions
+    pub fn get_conditions(&self) -> String {
+        self.conditions.clone()
+    }
+
     /// Accessor for signature
     pub fn get_signature(&self) -> Signature {
         self.signature
@@ -127,13 +138,26 @@ pub fn create_delegation_tag(
     })
 }
 
-/*
-// TODO
+/// Verify a delegation tag, check signature and conditions.
 pub fn verify_delegation_tag(
-    // tag
-) {
+    delegation_tag: &DelegationTag,
+    delegatee_pubkey: XOnlyPublicKey,
+    _create_time: u64,
+    _event_kind: Kind,
+) -> Result<(), Error> {
+    // verify signature
+    verify_delegation_signature(
+        &delegation_tag.get_delegator_pubkey(),
+        &delegation_tag.get_signature(),
+        delegatee_pubkey,
+        delegation_tag.get_signature().to_string(),
+    )?;
+
+    // verify conditions
+    // TODO verify conditions kind, created_at
+
+    Ok(())
 }
-*/
 
 #[cfg(test)]
 mod test {
