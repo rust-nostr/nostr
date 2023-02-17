@@ -14,6 +14,8 @@ use crate::key::{self, Keys};
 use crate::nips::nip19::ToBech32;
 use crate::SECP256K1;
 
+use core::fmt;
+
 /// `NIP26` error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -72,14 +74,6 @@ impl DelegationTag {
         self.signature
     }
 
-    /// Return tag in JSON string format
-    pub fn to_string(&self) -> String {
-        match self.to_json(false) {
-            Err(_e) => String::new(),
-            Ok(s) => s,
-        }
-    }
-
     // TODO from_string()
 
     /// Convert to JSON string
@@ -99,9 +93,19 @@ impl DelegationTag {
             self.conditions,
             separator,
             tabulator,
-            self.signature.to_string(),
+            self.signature,
             separator
         ))
+    }
+}
+
+impl fmt::Display for DelegationTag {
+    /// Return tag in JSON string format
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.to_json(false) {
+            Err(e) => write!(f, "(error {e})"),
+            Ok(s) => write!(f, "{s}"),
+        }
     }
 }
 
@@ -109,12 +113,16 @@ impl DelegationTag {
 pub fn create_delegation_tag(
     delegator_keys: &Keys,
     delegatee_pubkey: XOnlyPublicKey,
-    conditions_string: &String,
+    conditions_string: &str,
 ) -> Result<DelegationTag, Error> {
-    let signature = sign_delegation(delegator_keys, delegatee_pubkey, conditions_string.clone())?;
+    let signature = sign_delegation(
+        delegator_keys,
+        delegatee_pubkey,
+        conditions_string.to_string(),
+    )?;
     Ok(DelegationTag {
         delegator_pubkey: delegator_keys.public_key(),
-        conditions: conditions_string.clone(),
+        conditions: conditions_string.to_string(),
         signature,
     })
 }
