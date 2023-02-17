@@ -5,16 +5,19 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/05.md>
 
-use bitcoin_hashes::hex::ToHex;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-use crate::Profile;
+#[cfg(feature = "base")]
+use bitcoin_hashes::hex::ToHex;
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
 use secp256k1::XOnlyPublicKey;
 use serde_json::Value;
+
+#[cfg(feature = "base")]
+use crate::Profile;
 
 /// `NIP05` error
 #[derive(Debug, thiserror::Error)]
@@ -133,6 +136,7 @@ pub async fn verify(public_key: XOnlyPublicKey, nip05: &str) -> Result<(), Error
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "base")]
 pub async fn get_profile(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profile, Error> {
     use reqwest::Client;
 
@@ -154,7 +158,7 @@ pub async fn get_profile(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profi
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "blocking")]
+#[cfg(all(feature = "blocking", feature = "base"))]
 pub fn get_profile_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profile, Error> {
     use reqwest::blocking::Client;
 
@@ -176,6 +180,7 @@ pub fn get_profile_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<Pr
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(target_arch = "wasm32")]
+#[cfg(feature = "base")]
 pub async fn get_profile(nip05: &str) -> Result<Profile, Error> {
     use reqwest::Client;
 
