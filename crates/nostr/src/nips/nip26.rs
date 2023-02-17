@@ -11,10 +11,11 @@ use secp256k1::schnorr::Signature;
 use secp256k1::{KeyPair, Message, XOnlyPublicKey};
 
 use crate::key::{self, Keys};
+use crate::nips::nip19::ToBech32;
 use crate::SECP256K1;
 
 /// `NIP26` error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Key error
     #[error(transparent)]
@@ -22,6 +23,9 @@ pub enum Error {
     #[error(transparent)]
     /// Secp256k1 error
     Secp256k1(#[from] secp256k1::Error),
+    #[error(transparent)]
+    /// Signature error (NIP-19)
+    SignatureError(#[from] crate::nips::nip19::Error),
 }
 
 fn delegation_token(delegatee_pk: &XOnlyPublicKey, conditions: &str) -> String {
@@ -54,6 +58,74 @@ pub fn verify_delegation_signature(
     SECP256K1.verify_schnorr(signature, &message, &keys.public_key())?;
     Ok(())
 }
+
+/// Delegation tag, as defined in NIP-26
+pub struct DelegationTag {
+    delegator_pubkey: XOnlyPublicKey,
+    conditions: String,
+    signature: Signature,
+}
+
+impl DelegationTag {
+    /// Accessor for signature
+    pub fn get_signature(&self) -> Signature {
+        self.signature
+    }
+
+    /// Return tag in JSON string format
+    pub fn to_string(&self) -> String {
+        match self.to_json(false) {
+            Err(_e) => String::new(),
+            Ok(s) => s,
+        }
+    }
+
+    // TODO from_string()
+
+    /// Convert to JSON string
+    pub(crate) fn to_json(&self, multiline: bool) -> Result<String, Error> {
+        let delegator_npub = self.delegator_pubkey.to_bech32()?;
+        let separator = if multiline { "\n" } else { " " };
+        let tabulator = if multiline { "\t" } else { "" };
+        Ok(format!(
+            "[{}{}\"delegation\",{}{}\"{}\",{}{}\"{}\",{}{}\"{}\"{}]",
+            separator,
+            tabulator,
+            separator,
+            tabulator,
+            delegator_npub,
+            separator,
+            tabulator,
+            self.conditions,
+            separator,
+            tabulator,
+            self.signature.to_string(),
+            separator
+        ))
+    }
+}
+
+/// Create a delegation tag (including the signature)
+pub fn create_delegation_tag(
+    delegator_keys: &Keys,
+    delegatee_pubkey: XOnlyPublicKey,
+    conditions_string: &String,
+) -> Result<DelegationTag, Error> {
+    let signature = sign_delegation(delegator_keys, delegatee_pubkey, conditions_string.clone())?;
+    Ok(DelegationTag {
+        delegator_pubkey: delegator_keys.public_key(),
+        conditions: conditions_string.clone(),
+        signature,
+    })
+}
+
+/*
+// TODO
+pub fn verify_delegation_tag(
+    // tag
+) {
+}
+*/
 
 #[cfg(test)]
 mod test {
@@ -135,5 +207,58 @@ mod test {
             unhashed_token,
             "nostr:delegation:477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396:kind=1&created_at>1674834236&created_at<1677426236"
         );
+    }
+
+    #[test]
+    fn test_delegation_tag_to_json() {
+        let delegator_sk = SecretKey::from_bech32(
+            "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
+        )
+        .unwrap();
+        let delegator_pubkey = Keys::new(delegator_sk).public_key();
+        let conditions = "k=1&reated_at<1678659553".to_string();
+        let signature = Signature::from_str("435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976").unwrap();
+        let d = DelegationTag {
+            delegator_pubkey,
+            conditions,
+            signature,
+        };
+        let tag = d.to_json(false).unwrap();
+        assert_eq!(tag, "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"k=1&reated_at<1678659553\", \"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\" ]");
+        let tag2 = d.to_json(true).unwrap();
+        assert_eq!(tag2, "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"k=1&reated_at<1678659553\",\n\t\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"\n]");
+    }
+
+    #[test]
+    fn test_create_delegation_tag() {
+        let sk = SecretKey::from_bech32(
+            "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
+        )
+        .unwrap();
+        let keys = Keys::new(sk);
+        let delegatee_pubkey = XOnlyPublicKey::from_bech32(
+            "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
+        )
+        .unwrap();
+        let conditions = "k=1&created_at>1676067553&created_at<1678659553".to_string();
+
+        let tag = create_delegation_tag(&keys, delegatee_pubkey, &conditions).unwrap();
+
+        // verify signature (it's variable)
+        let verify_result =
+            verify_delegation_signature(&keys, &tag.get_signature(), delegatee_pubkey, conditions);
+        assert!(verify_result.is_ok());
+
+        // signature changes, cannot compare to expected constant, use signature from result
+        let expected = format!(
+            "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"k=1&created_at>1676067553&created_at<1678659553\", \"{}\" ]",
+            &tag.signature.to_string());
+        assert_eq!(tag.to_string(), expected);
+
+        assert_eq!(tag.to_json(false).unwrap(), expected);
+        let expected_multiline = format!(
+            "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"k=1&created_at>1676067553&created_at<1678659553\",\n\t\"{}\"\n]",
+            &tag.signature.to_string());
+        assert_eq!(tag.to_json(true).unwrap(), expected_multiline);
     }
 }
