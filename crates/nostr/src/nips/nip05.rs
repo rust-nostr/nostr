@@ -9,10 +9,15 @@
 use std::net::SocketAddr;
 use std::str::FromStr;
 
+#[cfg(feature = "base")]
+use bitcoin_hashes::hex::ToHex;
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
 use secp256k1::XOnlyPublicKey;
 use serde_json::Value;
+
+#[cfg(feature = "base")]
+use crate::Profile;
 
 /// `NIP05` error
 #[derive(Debug, thiserror::Error)]
@@ -50,6 +55,19 @@ fn get_key_from_json(json: Value, name: &str) -> Option<XOnlyPublicKey> {
         .and_then(|names| names.get(name))
         .and_then(|value| value.as_str())
         .and_then(|pubkey| XOnlyPublicKey::from_str(pubkey).ok())
+}
+
+#[cfg(feature = "base")]
+fn get_relays_from_json(json: Value, pk: XOnlyPublicKey) -> Vec<String> {
+    let relays_list: Option<Vec<String>> = json
+        .get("relays")
+        .and_then(|relays| relays.get(pk.to_hex()))
+        .and_then(|value| serde_json::from_value(value.clone()).ok());
+
+    match relays_list {
+        None => vec![],
+        Some(v) => v,
+    }
 }
 
 fn verify_json(public_key: XOnlyPublicKey, json: Value, name: &str) -> Result<(), Error> {
@@ -117,9 +135,10 @@ pub async fn verify(public_key: XOnlyPublicKey, nip05: &str) -> Result<(), Error
     verify_json(public_key, json, name)
 }
 
-/// Get public key from NIP05
+/// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn get_key(nip05: &str, proxy: Option<SocketAddr>) -> Result<XOnlyPublicKey, Error> {
+#[cfg(feature = "base")]
+pub async fn get_profile(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profile, Error> {
     use reqwest::Client;
 
     let (url, name) = compose_url(nip05)?;
@@ -132,16 +151,16 @@ pub async fn get_key(nip05: &str, proxy: Option<SocketAddr>) -> Result<XOnlyPubl
     let res = client.get(url).send().await?;
     let json: Value = serde_json::from_str(&res.text().await?)?;
 
-    match get_key_from_json(json, name) {
-        Some(key) => Ok(key),
-        None => Err(Error::ImpossibleToVerify),
-    }
+    let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
+    let relays = get_relays_from_json(json, public_key);
+
+    Ok(Profile { public_key, relays })
 }
 
-/// Get public key from NIP05
+/// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "blocking")]
-pub fn get_key_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<XOnlyPublicKey, Error> {
+#[cfg(all(feature = "blocking", feature = "base"))]
+pub fn get_profile_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profile, Error> {
     use reqwest::blocking::Client;
 
     let (url, name) = compose_url(nip05)?;
@@ -154,15 +173,16 @@ pub fn get_key_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<XOnlyP
     let res = client.get(url).send()?;
     let json: Value = serde_json::from_str(&res.text()?)?;
 
-    match get_key_from_json(json, name) {
-        Some(key) => Ok(key),
-        None => Err(Error::ImpossibleToVerify),
-    }
+    let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
+    let relays = get_relays_from_json(json, public_key);
+
+    Ok(Profile { public_key, relays })
 }
 
-/// Get public key from NIP05
+/// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(target_arch = "wasm32")]
-pub async fn get_key(nip05: &str) -> Result<XOnlyPublicKey, Error> {
+#[cfg(feature = "base")]
+pub async fn get_profile(nip05: &str) -> Result<Profile, Error> {
     use reqwest::Client;
 
     let (url, name) = compose_url(nip05)?;
@@ -170,8 +190,8 @@ pub async fn get_key(nip05: &str) -> Result<XOnlyPublicKey, Error> {
     let res = client.get(url).send().await?;
     let json: Value = serde_json::from_str(&res.text().await?)?;
 
-    match get_key_from_json(json, name) {
-        Some(key) => Ok(key),
-        None => Err(Error::ImpossibleToVerify),
-    }
+    let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
+    let relays = get_relays_from_json(json, public_key);
+
+    Ok(Profile { public_key, relays })
 }
