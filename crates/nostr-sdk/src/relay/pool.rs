@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::url::Url;
-use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
+use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId};
 #[cfg(feature = "sqlite")]
 use nostr_sdk_sqlite::Store;
 use once_cell::sync::Lazy;
@@ -363,7 +363,7 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&self, filters: Vec<Filter>, wait: bool) {
+    pub async fn subscribe(&self, filters: Vec<Filter>, wait: bool) -> Vec<SubscriptionId> {
         let relays = self.relays().await;
 
         {
@@ -371,11 +371,15 @@ impl RelayPool {
             subscription.update_filters(filters.clone());
         }
 
+        let mut subscription_ids = vec![];
         for relay in relays.values() {
-            if let Err(e) = relay.subscribe(wait).await {
-                log::error!("{e}");
+            match relay.subscribe(wait).await {
+                Ok(id) => subscription_ids.push(id),
+                Err(e) => log::error!("{e}"),
             }
         }
+
+        subscription_ids
     }
 
     /// Unsubscribe from filters
@@ -421,11 +425,19 @@ impl RelayPool {
     }
 
     /// Request events of filter. All events will be sent to notification listener
-    pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+    pub async fn req_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Vec<SubscriptionId> {
+        let mut subscription_ids = vec![];
         let relays = self.relays().await;
         for relay in relays.values() {
-            relay.req_events_of(filters.clone(), timeout);
+            let id = relay.req_events_of(filters.clone(), timeout);
+            subscription_ids.push(id);
         }
+
+        subscription_ids
     }
 
     /// Connect to all added relays and keep connection alive

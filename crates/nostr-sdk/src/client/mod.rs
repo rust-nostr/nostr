@@ -15,7 +15,7 @@ use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{
     ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, Keys, Kind,
-    Metadata, Tag,
+    Metadata, SubscriptionId, Tag,
 };
 #[cfg(feature = "sqlite")]
 use nostr_sdk_sqlite::Store;
@@ -355,10 +355,10 @@ impl Client {
     /// client.subscribe(vec![subscription]).await;
     /// # }
     /// ```
-    pub async fn subscribe(&self, filters: Vec<Filter>) {
+    pub async fn subscribe(&self, filters: Vec<Filter>) -> Vec<SubscriptionId> {
         self.pool
             .subscribe(filters, self.opts.get_wait_for_send())
-            .await;
+            .await
     }
 
     /// Unsubscribe
@@ -399,8 +399,12 @@ impl Client {
 
     /// Request events of filters
     /// All events will be received on notification listener (`client.notifications()`)
-    pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
-        self.pool.req_events_of(filters, timeout).await;
+    pub async fn req_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Vec<SubscriptionId> {
+        self.pool.req_events_of(filters, timeout).await
     }
 
     /// Send client message

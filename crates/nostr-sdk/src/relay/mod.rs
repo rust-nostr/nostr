@@ -613,15 +613,15 @@ impl Relay {
     }
 
     /// Request events of filter. All events will be sent to notification listener
-    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) -> SubscriptionId {
         if !self.opts.read() {
             log::error!("{}", Error::ReadDisabled);
         }
 
         let relay = self.clone();
+        let subscription_id = SubscriptionId::generate();
+        let id = subscription_id.clone();
         thread::spawn(async move {
-            let id = SubscriptionId::generate();
-
             // Subscribe
             if let Err(e) = relay
                 .send_msg(ClientMessage::new_req(id.clone(), filters), false)
@@ -666,5 +666,7 @@ impl Relay {
                 );
             }
         });
+
+        subscription_id
     }
 }

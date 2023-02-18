@@ -9,7 +9,9 @@ use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Tag};
+use nostr::{
+    ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, SubscriptionId, Tag,
+};
 use tokio::sync::broadcast;
 
 use super::{Error, Options};
@@ -114,10 +116,8 @@ impl Client {
         RUNTIME.block_on(async { self.client.disconnect().await })
     }
 
-    pub fn subscribe(&self, filters: Vec<Filter>) {
-        RUNTIME.block_on(async {
-            self.client.subscribe(filters).await;
-        })
+    pub fn subscribe(&self, filters: Vec<Filter>) -> Vec<SubscriptionId> {
+        RUNTIME.block_on(async { self.client.subscribe(filters).await })
     }
 
     pub fn unsubscribe(&self) {
@@ -134,10 +134,12 @@ impl Client {
         RUNTIME.block_on(async { self.client.get_events_of(filters, timeout).await })
     }
 
-    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
-        RUNTIME.block_on(async {
-            self.client.req_events_of(filters, timeout).await;
-        })
+    pub fn req_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Vec<SubscriptionId> {
+        RUNTIME.block_on(async { self.client.req_events_of(filters, timeout).await })
     }
 
     pub fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
