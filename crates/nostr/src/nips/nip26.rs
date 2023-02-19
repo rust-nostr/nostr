@@ -12,7 +12,8 @@ use secp256k1::{KeyPair, Message, XOnlyPublicKey};
 
 use crate::key::{self, Keys};
 use crate::nips::nip19::ToBech32;
-use crate::{Kind, SECP256K1};
+use crate::prelude::kind::Kind;
+use crate::SECP256K1;
 
 use core::fmt;
 
