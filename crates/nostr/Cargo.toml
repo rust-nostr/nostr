@@ -16,7 +16,7 @@ default = ["all-nips", "base"]
 blocking = ["reqwest?/blocking"]
 base = ["dep:instant", "dep:log", "dep:serde", "dep:serde_json", "dep:url"]
 vanity = ["nip19"]
-all-nips = ["nip04", "nip05", "nip06", "nip11", "nip13", "nip19", "nip26"]
+all-nips = ["nip04", "nip05", "nip06", "nip11", "nip13", "nip19", "nip26", "nip65"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip05 = ["dep:reqwest", "dep:serde_json"]
 nip06 = ["dep:bip39", "dep:bitcoin"]
@@ -24,6 +24,7 @@ nip11 = ["dep:reqwest", "dep:serde", "dep:url"]
 nip13 = ["dep:log"]
 nip19 = ["dep:bech32", "dep:serde"]
 nip26 = []
+nip65 = []
 
 [dependencies]
 aes = { version = "0.8", optional = true }
@@ -90,6 +91,10 @@ required-features = ["base", "nip13"]
 [[example]]
 name = "nip19"
 required-features = ["base", "nip19"]
+
+[[example]]
+name = "nip65"
+required-features = ["base", "nip65"]
 
 [[example]]
 name = "vanity"
