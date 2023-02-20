@@ -179,7 +179,7 @@ impl DelegationTag {
         }
 
         // validate conditions
-        self.conditions.evaluate(&event_properties)?;
+        self.conditions.evaluate(event_properties)?;
 
         Ok(())
     }
@@ -427,7 +427,12 @@ mod test {
 
         let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
 
-        assert!(validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(1, 1677000000)).is_ok());
+        assert!(validate_delegation_tag(
+            &tag,
+            delegatee_pubkey,
+            &EventProperties::new(1, 1677000000)
+        )
+        .is_ok());
     }
 
     #[test]
@@ -440,7 +445,12 @@ mod test {
 
         let tag = DelegationTag::from_str(tag_str).unwrap();
 
-        assert!(validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(1, 1677000000)).is_ok());
+        assert!(validate_delegation_tag(
+            &tag,
+            delegatee_pubkey,
+            &EventProperties::new(1, 1677000000)
+        )
+        .is_ok());
 
         // additional test: verify a value from inside the tag
         assert_eq!(
@@ -601,7 +611,12 @@ mod test {
         let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
 
         // positive
-        assert!(validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(1, 1677000000)).is_ok());
+        assert!(validate_delegation_tag(
+            &tag,
+            delegatee_pubkey,
+            &EventProperties::new(1, 1677000000)
+        )
+        .is_ok());
 
         // signature verification fails if wrong delegatee key is given
         let wrong_pubkey = XOnlyPublicKey::from_bech32(
