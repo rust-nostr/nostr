@@ -324,7 +324,6 @@ impl FromStr for Condition {
 }
 
 impl Conditions {
-    #[cfg(test)]
     pub fn new() -> Self {
         Conditions { cond: Vec::new() }
     }
@@ -358,6 +357,9 @@ impl FromStr for Conditions {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Ok(Conditions::new());
+        }
         let cond = s
             .split('&')
             .map(Condition::from_str)
@@ -682,6 +684,14 @@ mod test {
             c.to_string(),
             "kind=1&created_at>1674834236&created_at<1677426236"
         );
+
+        // special: empty string
+        let c_empty = Conditions::from_str("").unwrap();
+        assert_eq!(c_empty.to_string(), "");
+
+        // one condition
+        let c_one = Conditions::from_str("created_at<10000").unwrap();
+        assert_eq!(c_one.to_string(), "created_at<10000");
     }
 
     #[test]
