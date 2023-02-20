@@ -9,6 +9,7 @@ use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::{KeyPair, Message, XOnlyPublicKey};
+use serde_json::json;
 
 use crate::key::{self, Keys};
 use crate::nips::nip19::ToBech32;
@@ -117,32 +118,23 @@ impl DelegationTag {
 
     /// Convert to JSON string.
     // TODO use json methods
-    pub(crate) fn to_json(&self, multiline: bool) -> Result<String, Error> {
+    pub(crate) fn to_json(&self) -> Result<String, Error> {
         let delegator_npub = self.delegator_pubkey.to_bech32()?;
-        let separator = if multiline { "\n" } else { " " };
-        let tabulator = if multiline { "\t" } else { "" };
-        Ok(format!(
-            "[{}{}\"delegation\",{}{}\"{}\",{}{}\"{}\",{}{}\"{}\"{}]",
-            separator,
-            tabulator,
-            separator,
-            tabulator,
+        let tag = json!([
+            "delegation",
             delegator_npub,
-            separator,
-            tabulator,
             self.conditions.to_string(),
-            separator,
-            tabulator,
-            self.signature,
-            separator
-        ))
+            self.signature.to_string(),
+        ]);
+        let s = tag.to_string();
+        Ok(s)
     }
 }
 
 impl fmt::Display for DelegationTag {
     /// Return tag in JSON string format
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.to_json(false) {
+        match self.to_json() {
             Err(e) => write!(f, "(error {e})"),
             Ok(s) => write!(f, "{s}"),
         }
@@ -442,10 +434,8 @@ mod test {
             conditions,
             signature,
         };
-        let tag = d.to_json(false).unwrap();
-        assert_eq!(tag, "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"kind=1&created_at<1678659553\", \"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\" ]");
-        let tag2 = d.to_json(true).unwrap();
-        assert_eq!(tag2, "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"kind=1&created_at<1678659553\",\n\t\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"\n]");
+        let tag = d.to_json().unwrap();
+        assert_eq!(tag, "[\"delegation\",\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\"kind=1&created_at<1678659553\",\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"]");
     }
 
     #[test]
@@ -474,15 +464,9 @@ mod test {
 
         // signature changes, cannot compare to expected constant, use signature from result
         let expected = format!(
-            "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"kind=1&created_at>1676067553&created_at<1678659553\", \"{}\" ]",
+            "[\"delegation\",\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\"kind=1&created_at>1676067553&created_at<1678659553\",\"{}\"]",
             &tag.signature.to_string());
         assert_eq!(tag.to_string(), expected);
-
-        assert_eq!(tag.to_json(false).unwrap(), expected);
-        let expected_multiline = format!(
-            "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"kind=1&created_at>1676067553&created_at<1678659553\",\n\t\"{}\"\n]",
-            &tag.signature.to_string());
-        assert_eq!(tag.to_json(true).unwrap(), expected_multiline);
     }
 
     #[test]
@@ -578,12 +562,18 @@ mod test {
 
     #[test]
     fn test_conditions_parse_negative() {
-        match Conditions::from_str("__invalid_condition__&kind=1").err().unwrap() {
-            Error::ConditionsParseInvalidCondition => {},
+        match Conditions::from_str("__invalid_condition__&kind=1")
+            .err()
+            .unwrap()
+        {
+            Error::ConditionsParseInvalidCondition => {}
             _ => panic!("Exepected ConditionsParseInvalidCondition"),
         }
-        match Conditions::from_str("kind=__invalid_number__").err().unwrap() {
-            Error::ConditionsParseNumeric(_) => {},
+        match Conditions::from_str("kind=__invalid_number__")
+            .err()
+            .unwrap()
+        {
+            Error::ConditionsParseNumeric(_) => {}
             _ => panic!("Exepected ConditionsParseNumeric"),
         }
     }
