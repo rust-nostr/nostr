@@ -12,10 +12,11 @@ use secp256k1::{KeyPair, Message, XOnlyPublicKey};
 
 use crate::key::{self, Keys};
 use crate::nips::nip19::ToBech32;
-use crate::prelude::kind::Kind;
+//use crate::event::Kind;  // TODO use Kind instead of u64
 use crate::SECP256K1;
 
 use core::fmt;
+use std::str::FromStr;
 
 /// `NIP26` error
 #[derive(Debug, thiserror::Error)]
@@ -27,8 +28,34 @@ pub enum Error {
     /// Secp256k1 error
     Secp256k1(#[from] secp256k1::Error),
     #[error(transparent)]
-    /// Signature error (NIP-19)
-    SignatureError(#[from] crate::nips::nip19::Error),
+    /// Error passed from NIP-19, Bech32 format, signature format, etc.
+    Nip19Error(#[from] crate::nips::nip19::Error),
+    /// Invalid condition in conditions string
+    #[error("Invalid condition in conditions string")]
+    ConditionsParseInvalidCondition,
+    /// Invalid condition, cannot parse expected number
+    #[error("Invalid condition, cannot parse expected number")]
+    ConditionsParseNumeric(#[from] std::num::ParseIntError),
+    /// Conditions not satisfied
+    #[error("Conditions not satisfied")]
+    ConditionsValidation(#[from] ValidationError),
+}
+
+/// Tag validation errors
+#[derive(Debug, PartialEq, thiserror::Error)]
+pub enum ValidationError {
+    /// Signature does not match
+    #[error("Signature does not match")]
+    InvalidSignature,
+    /// Event kind does not match
+    #[error("Event kind does not match")]
+    InvalidKind,
+    /// Creation time is earlier than validity period
+    #[error("Creation time is earlier than validity period")]
+    CreatedTooEarly,
+    /// Creation time is later than validity period
+    #[error("Creation time is later than validity period")]
+    CreatedTooLate,
 }
 
 fn delegation_token(delegatee_pk: &XOnlyPublicKey, conditions: &str) -> String {
@@ -66,6 +93,7 @@ pub fn verify_delegation_signature(
 /// Delegation tag, as defined in NIP-26
 pub struct DelegationTag {
     delegator_pubkey: XOnlyPublicKey,
+    // TODO: use structured conditions here
     conditions: String,
     signature: Signature,
 }
@@ -88,7 +116,8 @@ impl DelegationTag {
 
     // TODO from_string()
 
-    /// Convert to JSON string
+    /// Convert to JSON string.
+    // TODO use json methods
     pub(crate) fn to_json(&self, multiline: bool) -> Result<String, Error> {
         let delegator_npub = self.delegator_pubkey.to_bech32()?;
         let separator = if multiline { "\n" } else { " " };
@@ -140,24 +169,164 @@ pub fn create_delegation_tag(
 }
 
 /// Verify a delegation tag, check signature and conditions.
+/// TODO: for event properties it could take EventProperties, or even Event
 pub fn verify_delegation_tag(
     delegation_tag: &DelegationTag,
     delegatee_pubkey: XOnlyPublicKey,
-    _create_time: u64,
-    _event_kind: Kind,
+    event_kind: u64,
+    created_time: u64,
 ) -> Result<(), Error> {
     // verify signature
-    verify_delegation_signature(
+    if let Err(_e) = verify_delegation_signature(
         &delegation_tag.get_delegator_pubkey(),
         &delegation_tag.get_signature(),
         delegatee_pubkey,
-        delegation_tag.get_signature().to_string(),
-    )?;
+        delegation_tag.get_conditions(),
+    ) {
+        return Err(Error::ConditionsValidation(
+            ValidationError::InvalidSignature,
+        ));
+    }
 
     // verify conditions
-    // TODO verify conditions kind, created_at
+    let props = EventProperties::new(event_kind, created_time);
+    let conds = Conditions::from_str(&delegation_tag.conditions)?;
+    conds.evaluate(&props)?;
 
     Ok(())
+}
+
+/// A condition from the delegation conditions.
+pub(crate) enum Condition {
+    /// Event kind, e.g. kind=1
+    Kind(u64),
+    /// Creation time before, e.g. created_at<1679000000
+    CreatedBefore(u64),
+    /// Creation time after, e.g. created_at>1676000000
+    CreatedAfter(u64),
+}
+
+/// Set of conditions of a delegation.
+pub(crate) struct Conditions {
+    cond: Vec<Condition>,
+}
+
+/// Represents properties of an event, relevant for delegation
+pub(crate) struct EventProperties {
+    /// Event kind. For simplicity/flexibility, numeric type is used.
+    kind: u64,
+    /// Creation time, as unix timestamp
+    created_time: u64,
+}
+
+impl Condition {
+    /// Evaluate whether an event satisfies this condition
+    pub(crate) fn evaluate(&self, ep: &EventProperties) -> Result<(), ValidationError> {
+        match self {
+            Self::Kind(k) => {
+                if ep.kind != *k {
+                    return Err(ValidationError::InvalidKind);
+                }
+            }
+            Self::CreatedBefore(t) => {
+                if ep.created_time >= *t {
+                    return Err(ValidationError::CreatedTooLate);
+                }
+            }
+            Self::CreatedAfter(t) => {
+                if ep.created_time <= *t {
+                    return Err(ValidationError::CreatedTooEarly);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl ToString for Condition {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Kind(k) => format!("kind={k}"),
+            Self::CreatedBefore(t) => format!("created_at<{t}"),
+            Self::CreatedAfter(t) => format!("created_at>{t}"),
+        }
+    }
+}
+
+impl FromStr for Condition {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let try_kind = s.strip_prefix("kind=");
+        if try_kind.is_some() {
+            let n = u64::from_str(try_kind.unwrap())?;
+            return Ok(Condition::Kind(n));
+        }
+        let try_created_before = s.strip_prefix("created_at<");
+        if try_created_before.is_some() {
+            let n = u64::from_str(try_created_before.unwrap())?;
+            return Ok(Condition::CreatedBefore(n));
+        }
+        let try_created_after = s.strip_prefix("created_at>");
+        if try_created_after.is_some() {
+            let n = u64::from_str(try_created_after.unwrap())?;
+            return Ok(Condition::CreatedAfter(n));
+        }
+        Err(Error::ConditionsParseInvalidCondition)
+    }
+}
+
+impl Conditions {
+    #[cfg(test)]
+    pub fn new() -> Self {
+        Conditions { cond: Vec::new() }
+    }
+
+    #[cfg(test)]
+    pub fn add(&mut self, cond: Condition) {
+        self.cond.push(cond);
+    }
+
+    /// Evaluate whether an event satisfies all these conditions
+    fn evaluate(&self, ep: &EventProperties) -> Result<(), ValidationError> {
+        for c in &self.cond {
+            c.evaluate(ep)?;
+        }
+        Ok(())
+    }
+}
+
+impl ToString for Conditions {
+    fn to_string(&self) -> String {
+        // convert parts, join
+        self.cond
+            .iter()
+            .map(|c| c.to_string())
+            .collect::<Vec<String>>()
+            .join("&")
+    }
+}
+
+impl FromStr for Conditions {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let cond = s
+            .split('&')
+            .map(Condition::from_str)
+            .collect::<Result<Vec<Condition>, Self::Err>>()?;
+        Ok(Conditions { cond })
+    }
+}
+
+impl EventProperties {
+    /// Create new with values
+    pub fn new(event_kind: u64, created_time: u64) -> Self {
+        EventProperties {
+            kind: event_kind,
+            created_time,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -265,7 +434,7 @@ mod test {
         )
         .unwrap();
         let delegator_pubkey = Keys::new(delegator_sk).public_key();
-        let conditions = "k=1&reated_at<1678659553".to_string();
+        let conditions = "kind=1&reated_at<1678659553".to_string();
         let signature = Signature::from_str("435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976").unwrap();
         let d = DelegationTag {
             delegator_pubkey,
@@ -273,9 +442,9 @@ mod test {
             signature,
         };
         let tag = d.to_json(false).unwrap();
-        assert_eq!(tag, "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"k=1&reated_at<1678659553\", \"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\" ]");
+        assert_eq!(tag, "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"kind=1&reated_at<1678659553\", \"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\" ]");
         let tag2 = d.to_json(true).unwrap();
-        assert_eq!(tag2, "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"k=1&reated_at<1678659553\",\n\t\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"\n]");
+        assert_eq!(tag2, "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"kind=1&reated_at<1678659553\",\n\t\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"\n]");
     }
 
     #[test]
@@ -289,7 +458,7 @@ mod test {
             "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
         )
         .unwrap();
-        let conditions = "k=1&created_at>1676067553&created_at<1678659553".to_string();
+        let conditions = "kind=1&created_at>1676067553&created_at<1678659553".to_string();
 
         let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
 
@@ -304,14 +473,172 @@ mod test {
 
         // signature changes, cannot compare to expected constant, use signature from result
         let expected = format!(
-            "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"k=1&created_at>1676067553&created_at<1678659553\", \"{}\" ]",
+            "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"kind=1&created_at>1676067553&created_at<1678659553\", \"{}\" ]",
             &tag.signature.to_string());
         assert_eq!(tag.to_string(), expected);
 
         assert_eq!(tag.to_json(false).unwrap(), expected);
         let expected_multiline = format!(
-            "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"k=1&created_at>1676067553&created_at<1678659553\",\n\t\"{}\"\n]",
+            "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"kind=1&created_at>1676067553&created_at<1678659553\",\n\t\"{}\"\n]",
             &tag.signature.to_string());
         assert_eq!(tag.to_json(true).unwrap(), expected_multiline);
+    }
+
+    #[test]
+    fn test_verify_delegation_tag() {
+        let delegator_secret_key = SecretKey::from_bech32(
+            "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
+        )
+        .unwrap();
+        let delegator_keys = Keys::new(delegator_secret_key);
+        let delegatee_pubkey = XOnlyPublicKey::from_bech32(
+            "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
+        )
+        .unwrap();
+        let conditions = "kind=1&created_at>1676067553&created_at<1678659553".to_string();
+
+        let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
+
+        assert!(verify_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+    }
+
+    #[test]
+    fn test_verify_delegation_tag_negative() {
+        let delegator_secret_key = SecretKey::from_bech32(
+            "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
+        )
+        .unwrap();
+        let delegator_keys = Keys::new(delegator_secret_key);
+        let delegatee_pubkey = XOnlyPublicKey::from_bech32(
+            "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
+        )
+        .unwrap();
+        let conditions = "kind=1&created_at>1676067553&created_at<1678659553".to_string();
+
+        let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
+
+        // positive
+        assert!(verify_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+
+        // signature verification fails if wrong delegatee key is given
+        let wrong_pubkey = XOnlyPublicKey::from_bech32(
+            "npub1zju3cgxq9p6f2c2jzrhhwuse94p7efkj5dp59eerh53hqd08j4dszevd7s",
+        )
+        .unwrap();
+        // Note: Error cannot be tested simply  using equality
+        match verify_delegation_tag(&tag, wrong_pubkey, 1, 1677000000)
+            .err()
+            .unwrap()
+        {
+            Error::ConditionsValidation(e) => assert_eq!(e, ValidationError::InvalidSignature),
+            _ => panic!("Expected ConditionsValidation"),
+        }
+
+        // wrong event kind
+        match verify_delegation_tag(&tag, delegatee_pubkey, 9, 1677000000)
+            .err()
+            .unwrap()
+        {
+            Error::ConditionsValidation(e) => assert_eq!(e, ValidationError::InvalidKind),
+            _ => panic!("Expected ConditionsValidation"),
+        };
+
+        // wrong creation time
+        match verify_delegation_tag(&tag, delegatee_pubkey, 1, 1679000000)
+            .err()
+            .unwrap()
+        {
+            Error::ConditionsValidation(e) => assert_eq!(e, ValidationError::CreatedTooLate),
+            _ => panic!("Expected ConditionsValidation"),
+        };
+    }
+
+    #[test]
+    fn test_conditions_to_string() {
+        let mut c = Conditions::new();
+        c.add(Condition::Kind(1));
+        assert_eq!(c.to_string(), "kind=1");
+        c.add(Condition::CreatedAfter(1674834236));
+        c.add(Condition::CreatedBefore(1677426236));
+        assert_eq!(
+            c.to_string(),
+            "kind=1&created_at>1674834236&created_at<1677426236"
+        );
+    }
+
+    #[test]
+    fn test_conditions_parse() {
+        let c = Conditions::from_str("kind=1&created_at>1674834236&created_at<1677426236").unwrap();
+        assert_eq!(
+            c.to_string(),
+            "kind=1&created_at>1674834236&created_at<1677426236"
+        );
+    }
+
+    #[test]
+    fn test_conditions_evaluate() {
+        let c_kind = Conditions::from_str("kind=3").unwrap();
+        assert!(c_kind.evaluate(&EventProperties::new(3, 0)).is_ok());
+        assert_eq!(
+            c_kind.evaluate(&EventProperties::new(5, 0)).err().unwrap(),
+            ValidationError::InvalidKind
+        );
+
+        let c_impossible = Conditions::from_str("kind=3&kind=4").unwrap();
+        assert_eq!(
+            c_impossible
+                .evaluate(&EventProperties::new(3, 0))
+                .err()
+                .unwrap(),
+            ValidationError::InvalidKind
+        );
+
+        let c_before = Conditions::from_str("created_at<1000").unwrap();
+        assert!(c_before.evaluate(&EventProperties::new(3, 500)).is_ok());
+        assert_eq!(
+            c_before
+                .evaluate(&EventProperties::new(3, 2000))
+                .err()
+                .unwrap(),
+            ValidationError::CreatedTooLate
+        );
+
+        let c_after = Conditions::from_str("created_at>1000").unwrap();
+        assert!(c_after.evaluate(&EventProperties::new(3, 2000)).is_ok());
+        assert_eq!(
+            c_after
+                .evaluate(&EventProperties::new(3, 500))
+                .err()
+                .unwrap(),
+            ValidationError::CreatedTooEarly
+        );
+
+        let c_complex =
+            Conditions::from_str("kind=1&created_at>1676067553&created_at<1678659553").unwrap();
+        assert!(c_complex
+            .evaluate(&EventProperties::new(1, 1677000000))
+            .is_ok());
+        //assert_eq!(c_complex.evaluate(&EventProperties{ kind: 1, created_time: 1677000000}).err().unwrap(), ValidationError::InvalidKind);
+        assert_eq!(
+            c_complex
+                .evaluate(&EventProperties::new(5, 1677000000))
+                .err()
+                .unwrap(),
+            ValidationError::InvalidKind
+        );
+        assert_eq!(
+            c_complex
+                .evaluate(&EventProperties::new(1, 1674000000))
+                .err()
+                .unwrap(),
+            ValidationError::CreatedTooEarly
+        );
+        assert_eq!(
+            c_complex
+                .evaluate(&EventProperties::new(1, 1699000000))
+                .err()
+                .unwrap(),
+            ValidationError::CreatedTooLate
+        );
     }
 }
