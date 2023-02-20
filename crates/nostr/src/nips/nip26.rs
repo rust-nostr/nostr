@@ -71,20 +71,10 @@ pub fn create_delegation_tag(
     delegatee_pubkey: XOnlyPublicKey,
     conditions_string: &str,
 ) -> Result<DelegationTag, Error> {
-    let signature = sign_delegation(
-        delegator_keys,
-        delegatee_pubkey,
-        conditions_string.to_string(),
-    )?;
-    let conditions = Conditions::from_str(conditions_string)?;
-    Ok(DelegationTag {
-        delegator_pubkey: delegator_keys.public_key(),
-        conditions,
-        signature,
-    })
+    DelegationTag::create(delegator_keys, delegatee_pubkey, conditions_string)
 }
 
-/// Verify a delegation tag, check signature and conditions.
+/// Validate a delegation tag, check signature and conditions.
 /// TODO: for event properties it could take EventProperties, or even Event
 pub fn validate_delegation_tag(
     delegation_tag: &DelegationTag,
@@ -92,23 +82,7 @@ pub fn validate_delegation_tag(
     event_kind: u64,
     created_time: u64,
 ) -> Result<(), Error> {
-    // verify signature
-    if let Err(_e) = verify_delegation_signature(
-        &delegation_tag.get_delegator_pubkey(),
-        &delegation_tag.get_signature(),
-        delegatee_pubkey,
-        delegation_tag.get_conditions_string(),
-    ) {
-        return Err(Error::ConditionsValidation(
-            ValidationError::InvalidSignature,
-        ));
-    }
-
-    // validate conditions
-    let props = EventProperties::new(event_kind, created_time);
-    delegation_tag.conditions.evaluate(&props)?;
-
-    Ok(())
+    delegation_tag.validate(delegatee_pubkey, event_kind, created_time)
 }
 
 const DELEGATION_KEYWORD: &str = "delegation";
@@ -166,6 +140,53 @@ impl DelegationTag {
     /// Accessor for signature
     pub fn get_signature(&self) -> Signature {
         self.signature
+    }
+
+    /// Create a delegation tag (including the signature).
+    /// See also validate().
+    pub fn create(
+        delegator_keys: &Keys,
+        delegatee_pubkey: XOnlyPublicKey,
+        conditions_string: &str,
+    ) -> Result<Self, Error> {
+        let signature = sign_delegation(
+            delegator_keys,
+            delegatee_pubkey,
+            conditions_string.to_string(),
+        )?;
+        let conditions = Conditions::from_str(conditions_string)?;
+        Ok(Self {
+            delegator_pubkey: delegator_keys.public_key(),
+            conditions,
+            signature,
+        })
+    }
+
+    /// Validate a delegation tag, check signature and conditions.
+    /// TODO: for event properties it could take EventProperties, or even Event
+    pub fn validate(
+        &self,
+        delegatee_pubkey: XOnlyPublicKey,
+        event_kind: u64,
+        created_time: u64,
+    ) -> Result<(), Error> {
+        // verify signature
+        if let Err(_e) = verify_delegation_signature(
+            &self.get_delegator_pubkey(),
+            &self.get_signature(),
+            delegatee_pubkey,
+            self.get_conditions_string(),
+        ) {
+            return Err(Error::ConditionsValidation(
+                ValidationError::InvalidSignature,
+            ));
+        }
+
+        // validate conditions
+        let props = EventProperties::new(event_kind, created_time);
+        self.conditions.evaluate(&props)?;
+
+        Ok(())
     }
 
     /// Convert to JSON string.
