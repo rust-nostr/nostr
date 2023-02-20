@@ -65,7 +65,7 @@ pub enum ValidationError {
 }
 
 /// Create a delegation tag (including the signature).
-/// See also verify_delegation_tag().
+/// See also validate_delegation_tag().
 pub fn create_delegation_tag(
     delegator_keys: &Keys,
     delegatee_pubkey: XOnlyPublicKey,
@@ -86,7 +86,7 @@ pub fn create_delegation_tag(
 
 /// Verify a delegation tag, check signature and conditions.
 /// TODO: for event properties it could take EventProperties, or even Event
-pub fn verify_delegation_tag(
+pub fn validate_delegation_tag(
     delegation_tag: &DelegationTag,
     delegatee_pubkey: XOnlyPublicKey,
     event_kind: u64,
@@ -104,7 +104,7 @@ pub fn verify_delegation_tag(
         ));
     }
 
-    // verify conditions
+    // validate conditions
     let props = EventProperties::new(event_kind, created_time);
     delegation_tag.conditions.evaluate(&props)?;
 
@@ -397,7 +397,7 @@ mod test {
     }
 
     #[test]
-    fn test_verify_delegation_tag() {
+    fn test_validate_delegation_tag() {
         let delegator_secret_key = SecretKey::from_bech32(
             "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
         )
@@ -411,7 +411,7 @@ mod test {
 
         let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
 
-        assert!(verify_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+        assert!(validate_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
     }
 
     #[test]
@@ -424,7 +424,7 @@ mod test {
 
         let tag = DelegationTag::from_str(tag_str).unwrap();
 
-        assert!(verify_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+        assert!(validate_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
 
         // additional test: verify a value from inside the tag
         assert_eq!(
@@ -433,7 +433,7 @@ mod test {
         );
 
         // additional test: try validation with invalid values, invalid event kind
-        match verify_delegation_tag(&tag, delegatee_pubkey, 5, 1677000000)
+        match validate_delegation_tag(&tag, delegatee_pubkey, 5, 1677000000)
             .err()
             .unwrap()
         {
@@ -570,7 +570,7 @@ mod test {
     }
 
     #[test]
-    fn test_verify_delegation_tag_negative() {
+    fn test_validate_delegation_tag_negative() {
         let delegator_secret_key = SecretKey::from_bech32(
             "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
         )
@@ -585,7 +585,7 @@ mod test {
         let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
 
         // positive
-        assert!(verify_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+        assert!(validate_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
 
         // signature verification fails if wrong delegatee key is given
         let wrong_pubkey = XOnlyPublicKey::from_bech32(
@@ -593,7 +593,7 @@ mod test {
         )
         .unwrap();
         // Note: Error cannot be tested simply  using equality
-        match verify_delegation_tag(&tag, wrong_pubkey, 1, 1677000000)
+        match validate_delegation_tag(&tag, wrong_pubkey, 1, 1677000000)
             .err()
             .unwrap()
         {
@@ -602,7 +602,7 @@ mod test {
         }
 
         // wrong event kind
-        match verify_delegation_tag(&tag, delegatee_pubkey, 9, 1677000000)
+        match validate_delegation_tag(&tag, delegatee_pubkey, 9, 1677000000)
             .err()
             .unwrap()
         {
@@ -611,7 +611,7 @@ mod test {
         };
 
         // wrong creation time
-        match verify_delegation_tag(&tag, delegatee_pubkey, 1, 1679000000)
+        match validate_delegation_tag(&tag, delegatee_pubkey, 1, 1679000000)
             .err()
             .unwrap()
         {
