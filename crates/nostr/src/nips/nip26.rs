@@ -9,7 +9,7 @@ use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::{KeyPair, Message, XOnlyPublicKey};
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::key::{self, Keys};
 //use crate::event::Kind;  // TODO use Kind instead of u64
@@ -39,6 +39,12 @@ pub enum Error {
     /// Conditions not satisfied
     #[error("Conditions not satisfied")]
     ConditionsValidation(#[from] ValidationError),
+    /// Delegation tag json parse error
+    #[error("Delegation tag json parse error")]
+    DelegationTagParseJson(#[from] serde_json::Error),
+    /// Delegation tag parse error
+    #[error("Delegation tag parse error")]
+    DelegationTagParse,
 }
 
 /// Tag validation errors
@@ -58,8 +64,10 @@ pub enum ValidationError {
     CreatedTooLate,
 }
 
+const DELEGATION_KEYWORD: &str = "delegation";
+
 fn delegation_token(delegatee_pk: &XOnlyPublicKey, conditions: &str) -> String {
-    format!("nostr:delegation:{delegatee_pk}:{conditions}")
+    format!("nostr:{DELEGATION_KEYWORD}:{delegatee_pk}:{conditions}")
 }
 
 /// Sign delegation.
@@ -113,19 +121,40 @@ impl DelegationTag {
         self.signature
     }
 
-    // TODO from_string()
-
     /// Convert to JSON string.
-    pub(crate) fn to_json(&self) -> Result<String, Error> {
+    pub fn to_json(&self) -> Result<String, Error> {
         let delegator_pubkey_hex = self.delegator_pubkey.to_string();
         let tag = json!([
-            "delegation",
+            DELEGATION_KEYWORD,
             delegator_pubkey_hex,
             self.conditions.to_string(),
             self.signature.to_string(),
         ]);
         let s = tag.to_string();
         Ok(s)
+    }
+
+    /// Parse from a JSON string
+    pub fn from_json(s: &str) -> Result<Self, Error> {
+        let v = serde_json::from_str::<Value>(s)?;
+        let arr = match v.as_array() {
+            None => return Err(Error::DelegationTagParse),
+            Some(a) => a,
+        };
+        if arr.len() != 4 {
+            return Err(Error::DelegationTagParse);
+        }
+        if arr[0].as_str().unwrap_or("") != DELEGATION_KEYWORD {
+            return Err(Error::DelegationTagParse);
+        }
+        let delegator_pubkey = XOnlyPublicKey::from_str(arr[1].as_str().unwrap_or(""))?;
+        let conditions = Conditions::from_str(arr[2].as_str().unwrap_or(""))?;
+        let signature = Signature::from_str(arr[3].as_str().unwrap_or(""))?;
+        Ok(DelegationTag {
+            delegator_pubkey,
+            conditions,
+            signature,
+        })
     }
 }
 
@@ -136,6 +165,14 @@ impl fmt::Display for DelegationTag {
             Err(e) => write!(f, "(error {e})"),
             Ok(s) => write!(f, "{s}"),
         }
+    }
+}
+
+impl FromStr for DelegationTag {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_json(s)
     }
 }
 
@@ -323,8 +360,37 @@ impl EventProperties {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::nips::nip19::ToBech32;
     use crate::prelude::{FromBech32, SecretKey};
     use std::str::FromStr;
+
+    #[test]
+    fn test_delegation_tag_parse_and_validate() {
+        let tag_str = "[\"delegation\",\"1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4\",\"kind=1&created_at>1676067553&created_at<1678659553\",\"369aed09c1ad52fceb77ecd6c16f2433eac4a3803fc41c58876a5b60f4f36b9493d5115e5ec5a0ce6c3668ffe5b58d47f2cbc97233833bb7e908f66dbbbd9d36\"]";
+        let delegatee_pubkey = XOnlyPublicKey::from_bech32(
+            "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
+        )
+        .unwrap();
+
+        let tag = DelegationTag::from_str(tag_str).unwrap();
+
+        assert!(verify_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+
+        // additional test: verify a value from inside the tag
+        assert_eq!(
+            tag.get_conditions_string(),
+            "kind=1&created_at>1676067553&created_at<1678659553"
+        );
+
+        // additional test: try validation with invalid values, invalid event kind
+        match verify_delegation_tag(&tag, delegatee_pubkey, 5, 1677000000)
+            .err()
+            .unwrap()
+        {
+            Error::ConditionsValidation(e) => assert_eq!(e, ValidationError::InvalidKind),
+            _ => panic!("Expected ConditionsValidation"),
+        };
+    }
 
     #[test]
     fn test_sign_delegation_verify_delegation_signature() {
@@ -483,6 +549,23 @@ mod test {
         let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
 
         assert!(verify_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+    }
+
+    #[test]
+    fn test_delegation_tag_from_str() {
+        let tag_str = "[\"delegation\",\"1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4\",\"kind=1&created_at>1676067553&created_at<1678659553\",\"369aed09c1ad52fceb77ecd6c16f2433eac4a3803fc41c58876a5b60f4f36b9493d5115e5ec5a0ce6c3668ffe5b58d47f2cbc97233833bb7e908f66dbbbd9d36\"]";
+
+        let tag = DelegationTag::from_str(tag_str).unwrap();
+
+        assert_eq!(tag.to_string(), tag_str);
+        assert_eq!(
+            tag.get_conditions_string(),
+            "kind=1&created_at>1676067553&created_at<1678659553"
+        );
+        assert_eq!(
+            tag.get_delegator_pubkey().to_bech32().unwrap(),
+            "npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4"
+        );
     }
 
     #[test]
