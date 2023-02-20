@@ -93,8 +93,7 @@ pub fn verify_delegation_signature(
 /// Delegation tag, as defined in NIP-26
 pub struct DelegationTag {
     delegator_pubkey: XOnlyPublicKey,
-    // TODO: use structured conditions here
-    conditions: String,
+    conditions: Conditions,
     signature: Signature,
 }
 
@@ -104,9 +103,9 @@ impl DelegationTag {
         self.delegator_pubkey
     }
 
-    /// Accessor for conditions
-    pub fn get_conditions(&self) -> String {
-        self.conditions.clone()
+    /// Accessor for conditions, as string
+    pub(crate) fn get_conditions_string(&self) -> String {
+        self.conditions.to_string()
     }
 
     /// Accessor for signature
@@ -131,7 +130,7 @@ impl DelegationTag {
             delegator_npub,
             separator,
             tabulator,
-            self.conditions,
+            self.conditions.to_string(),
             separator,
             tabulator,
             self.signature,
@@ -161,9 +160,10 @@ pub fn create_delegation_tag(
         delegatee_pubkey,
         conditions_string.to_string(),
     )?;
+    let conditions = Conditions::from_str(conditions_string)?;
     Ok(DelegationTag {
         delegator_pubkey: delegator_keys.public_key(),
-        conditions: conditions_string.to_string(),
+        conditions,
         signature,
     })
 }
@@ -181,7 +181,7 @@ pub fn verify_delegation_tag(
         &delegation_tag.get_delegator_pubkey(),
         &delegation_tag.get_signature(),
         delegatee_pubkey,
-        delegation_tag.get_conditions(),
+        delegation_tag.get_conditions_string(),
     ) {
         return Err(Error::ConditionsValidation(
             ValidationError::InvalidSignature,
@@ -190,13 +190,13 @@ pub fn verify_delegation_tag(
 
     // verify conditions
     let props = EventProperties::new(event_kind, created_time);
-    let conds = Conditions::from_str(&delegation_tag.conditions)?;
-    conds.evaluate(&props)?;
+    delegation_tag.conditions.evaluate(&props)?;
 
     Ok(())
 }
 
 /// A condition from the delegation conditions.
+#[derive(Clone)]
 pub(crate) enum Condition {
     /// Event kind, e.g. kind=1
     Kind(u64),
@@ -207,6 +207,7 @@ pub(crate) enum Condition {
 }
 
 /// Set of conditions of a delegation.
+#[derive(Clone)]
 pub(crate) struct Conditions {
     cond: Vec<Condition>,
 }
@@ -434,7 +435,7 @@ mod test {
         )
         .unwrap();
         let delegator_pubkey = Keys::new(delegator_sk).public_key();
-        let conditions = "kind=1&reated_at<1678659553".to_string();
+        let conditions = Conditions::from_str("kind=1&created_at<1678659553").unwrap();
         let signature = Signature::from_str("435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976").unwrap();
         let d = DelegationTag {
             delegator_pubkey,
@@ -442,9 +443,9 @@ mod test {
             signature,
         };
         let tag = d.to_json(false).unwrap();
-        assert_eq!(tag, "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"kind=1&reated_at<1678659553\", \"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\" ]");
+        assert_eq!(tag, "[ \"delegation\", \"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\", \"kind=1&created_at<1678659553\", \"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\" ]");
         let tag2 = d.to_json(true).unwrap();
-        assert_eq!(tag2, "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"kind=1&reated_at<1678659553\",\n\t\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"\n]");
+        assert_eq!(tag2, "[\n\t\"delegation\",\n\t\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\n\t\"kind=1&created_at<1678659553\",\n\t\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"\n]");
     }
 
     #[test]
@@ -573,6 +574,18 @@ mod test {
             c.to_string(),
             "kind=1&created_at>1674834236&created_at<1677426236"
         );
+    }
+
+    #[test]
+    fn test_conditions_parse_negative() {
+        match Conditions::from_str("__invalid_condition__&kind=1").err().unwrap() {
+            Error::ConditionsParseInvalidCondition => {},
+            _ => panic!("Exepected ConditionsParseInvalidCondition"),
+        }
+        match Conditions::from_str("kind=__invalid_number__").err().unwrap() {
+            Error::ConditionsParseNumeric(_) => {},
+            _ => panic!("Exepected ConditionsParseNumeric"),
+        }
     }
 
     #[test]
