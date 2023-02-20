@@ -11,6 +11,7 @@ use secp256k1::schnorr::Signature;
 use secp256k1::{KeyPair, Message, XOnlyPublicKey};
 use serde_json::{json, Value};
 
+#[cfg(feature = "base")]
 use crate::event::Event;
 use crate::key::{self, Keys};
 use crate::SECP256K1;
@@ -374,6 +375,7 @@ impl EventProperties {
     }
 
     /// Create from an Event
+    #[cfg(feature = "base")]
     pub fn from_event(event: &Event) -> Self {
         EventProperties {
             kind: event.kind.as_u64(),
