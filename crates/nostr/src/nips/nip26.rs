@@ -75,14 +75,12 @@ pub fn create_delegation_tag(
 }
 
 /// Validate a delegation tag, check signature and conditions.
-/// TODO: for event properties it could take EventProperties, or even Event
 pub fn validate_delegation_tag(
     delegation_tag: &DelegationTag,
     delegatee_pubkey: XOnlyPublicKey,
-    event_kind: u64,
-    created_time: u64,
+    event_properties: &EventProperties,
 ) -> Result<(), Error> {
-    delegation_tag.validate(delegatee_pubkey, event_kind, created_time)
+    delegation_tag.validate(delegatee_pubkey, event_properties)
 }
 
 const DELEGATION_KEYWORD: &str = "delegation";
@@ -163,12 +161,10 @@ impl DelegationTag {
     }
 
     /// Validate a delegation tag, check signature and conditions.
-    /// TODO: for event properties it could take EventProperties, or even Event
     pub fn validate(
         &self,
         delegatee_pubkey: XOnlyPublicKey,
-        event_kind: u64,
-        created_time: u64,
+        event_properties: &EventProperties,
     ) -> Result<(), Error> {
         // verify signature
         if let Err(_e) = verify_delegation_signature(
@@ -183,8 +179,7 @@ impl DelegationTag {
         }
 
         // validate conditions
-        let props = EventProperties::new(event_kind, created_time);
-        self.conditions.evaluate(&props)?;
+        self.conditions.evaluate(&event_properties)?;
 
         Ok(())
     }
@@ -262,7 +257,7 @@ pub(crate) struct Conditions {
 }
 
 /// Represents properties of an event, relevant for delegation
-pub(crate) struct EventProperties {
+pub struct EventProperties {
     /// Event kind. For simplicity/flexibility, numeric type is used.
     kind: u64,
     /// Creation time, as unix timestamp
@@ -432,7 +427,7 @@ mod test {
 
         let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
 
-        assert!(validate_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+        assert!(validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(1, 1677000000)).is_ok());
     }
 
     #[test]
@@ -445,7 +440,7 @@ mod test {
 
         let tag = DelegationTag::from_str(tag_str).unwrap();
 
-        assert!(validate_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+        assert!(validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(1, 1677000000)).is_ok());
 
         // additional test: verify a value from inside the tag
         assert_eq!(
@@ -454,7 +449,7 @@ mod test {
         );
 
         // additional test: try validation with invalid values, invalid event kind
-        match validate_delegation_tag(&tag, delegatee_pubkey, 5, 1677000000)
+        match validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(5, 1677000000))
             .err()
             .unwrap()
         {
@@ -606,7 +601,7 @@ mod test {
         let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
 
         // positive
-        assert!(validate_delegation_tag(&tag, delegatee_pubkey, 1, 1677000000).is_ok());
+        assert!(validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(1, 1677000000)).is_ok());
 
         // signature verification fails if wrong delegatee key is given
         let wrong_pubkey = XOnlyPublicKey::from_bech32(
@@ -614,7 +609,7 @@ mod test {
         )
         .unwrap();
         // Note: Error cannot be tested simply  using equality
-        match validate_delegation_tag(&tag, wrong_pubkey, 1, 1677000000)
+        match validate_delegation_tag(&tag, wrong_pubkey, &EventProperties::new(1, 1677000000))
             .err()
             .unwrap()
         {
@@ -623,7 +618,7 @@ mod test {
         }
 
         // wrong event kind
-        match validate_delegation_tag(&tag, delegatee_pubkey, 9, 1677000000)
+        match validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(9, 1677000000))
             .err()
             .unwrap()
         {
@@ -632,7 +627,7 @@ mod test {
         };
 
         // wrong creation time
-        match validate_delegation_tag(&tag, delegatee_pubkey, 1, 1679000000)
+        match validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(1, 1679000000))
             .err()
             .unwrap()
         {
