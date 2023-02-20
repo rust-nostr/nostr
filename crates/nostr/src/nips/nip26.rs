@@ -64,7 +64,7 @@ pub enum ValidationError {
     CreatedTooLate,
 }
 
-/// Create a delegation tag (including the signature).
+/// Create a NIP-26 delegation tag (including the signature).
 /// See also validate_delegation_tag().
 pub fn create_delegation_tag(
     delegator_keys: &Keys,
@@ -74,7 +74,7 @@ pub fn create_delegation_tag(
     DelegationTag::create(delegator_keys, delegatee_pubkey, conditions_string)
 }
 
-/// Validate a delegation tag, check signature and conditions.
+/// Validate a NIP-26 delegation tag, check signature and conditions.
 pub fn validate_delegation_tag(
     delegation_tag: &DelegationTag,
     delegatee_pubkey: XOnlyPublicKey,
@@ -105,15 +105,15 @@ pub fn sign_delegation(
 
 /// Verify delegation signature
 pub fn verify_delegation_signature(
-    delegator_pk: &XOnlyPublicKey,
+    delegator_public_key: &XOnlyPublicKey,
     signature: &Signature,
-    delegatee_pk: XOnlyPublicKey,
+    delegatee_public_key: XOnlyPublicKey,
     conditions: String,
 ) -> Result<(), Error> {
-    let unhashed_token: String = delegation_token(&delegatee_pk, &conditions);
+    let unhashed_token: String = delegation_token(&delegatee_public_key, &conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
-    SECP256K1.verify_schnorr(signature, &message, delegator_pk)?;
+    SECP256K1.verify_schnorr(signature, &message, delegator_public_key)?;
     Ok(())
 }
 
