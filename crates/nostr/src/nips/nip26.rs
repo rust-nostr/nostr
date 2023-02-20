@@ -12,7 +12,6 @@ use secp256k1::{KeyPair, Message, XOnlyPublicKey};
 use serde_json::json;
 
 use crate::key::{self, Keys};
-use crate::nips::nip19::ToBech32;
 //use crate::event::Kind;  // TODO use Kind instead of u64
 use crate::SECP256K1;
 
@@ -117,12 +116,11 @@ impl DelegationTag {
     // TODO from_string()
 
     /// Convert to JSON string.
-    // TODO use json methods
     pub(crate) fn to_json(&self) -> Result<String, Error> {
-        let delegator_npub = self.delegator_pubkey.to_bech32()?;
+        let delegator_pubkey_hex = self.delegator_pubkey.to_string();
         let tag = json!([
             "delegation",
-            delegator_npub,
+            delegator_pubkey_hex,
             self.conditions.to_string(),
             self.signature.to_string(),
         ]);
@@ -435,7 +433,7 @@ mod test {
             signature,
         };
         let tag = d.to_json().unwrap();
-        assert_eq!(tag, "[\"delegation\",\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\"kind=1&created_at<1678659553\",\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"]");
+        assert_eq!(tag, "[\"delegation\",\"1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4\",\"kind=1&created_at<1678659553\",\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"]");
     }
 
     #[test]
@@ -464,7 +462,7 @@ mod test {
 
         // signature changes, cannot compare to expected constant, use signature from result
         let expected = format!(
-            "[\"delegation\",\"npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4\",\"kind=1&created_at>1676067553&created_at<1678659553\",\"{}\"]",
+            "[\"delegation\",\"1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4\",\"kind=1&created_at>1676067553&created_at<1678659553\",\"{}\"]",
             &tag.signature.to_string());
         assert_eq!(tag.to_string(), expected);
     }
