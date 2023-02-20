@@ -42,7 +42,7 @@ pub enum Error {
 }
 
 /// Tag validation errors
-#[derive(Debug, PartialEq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ValidationError {
     /// Signature does not match
     #[error("Signature does not match")]
