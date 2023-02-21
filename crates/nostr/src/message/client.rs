@@ -4,6 +4,8 @@
 
 //! Client messages
 
+use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::{Filter, MessageHandleError, SubscriptionId};
@@ -24,6 +26,26 @@ pub enum ClientMessage {
     Close(SubscriptionId),
     /// Auth
     Auth(Box<Event>),
+}
+
+impl Serialize for ClientMessage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let json_value: Value = self.as_value();
+        json_value.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ClientMessage {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let json_value = Value::deserialize(deserializer)?;
+        ClientMessage::from_value(json_value).map_err(Error::custom)
+    }
 }
 
 impl ClientMessage {
@@ -50,10 +72,9 @@ impl ClientMessage {
         Self::Auth(Box::new(event))
     }
 
-    /// Serialize [`ClientMessage`] as JSON string
-    pub fn as_json(&self) -> String {
+    fn as_value(&self) -> Value {
         match self {
-            Self::Event(event) => json!(["EVENT", event]).to_string(),
+            Self::Event(event) => json!(["EVENT", event]),
             Self::Req {
                 subscription_id,
                 filters,
@@ -67,24 +88,22 @@ impl ClientMessage {
                     }
                 }
 
-                json.to_string()
+                json
             }
-            Self::Close(subscription_id) => json!(["CLOSE", subscription_id]).to_string(),
-            Self::Auth(event) => json!(["AUTH", event]).to_string(),
+            Self::Close(subscription_id) => json!(["CLOSE", subscription_id]),
+            Self::Auth(event) => json!(["AUTH", event]),
         }
     }
 
-    /// Deserialize [`ClientMessage`] from JSON string
-    pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
-    where
-        S: Into<String>,
-    {
-        let msg: &str = &msg.into();
+    /// Serialize [`ClientMessage`] as JSON string
+    pub fn as_json(&self) -> String {
+        self.as_value().to_string()
+    }
 
-        log::trace!("{}", msg);
-
-        let v: Vec<Value> =
-            serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+    fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
+        let v = msg
+            .as_array()
+            .ok_or(MessageHandleError::InvalidMessageFormat)?;
 
         if v.is_empty() {
             return Err(MessageHandleError::InvalidMessageFormat);
@@ -146,6 +165,21 @@ impl ClientMessage {
         }
 
         Err(MessageHandleError::InvalidMessageFormat)
+    }
+
+    /// Deserialize [`ClientMessage`] from JSON string
+    pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
+    where
+        S: Into<String>,
+    {
+        let msg: &str = &msg.into();
+
+        log::trace!("{}", msg);
+
+        let value: Value =
+            serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+        Self::from_value(value)
     }
 }
 
