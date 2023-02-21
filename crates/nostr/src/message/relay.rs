@@ -4,6 +4,8 @@
 
 //! Relay messages
 
+use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::MessageHandleError;
@@ -30,6 +32,26 @@ pub enum RelayMessage {
         challenge: String,
     },
     Empty,
+}
+
+impl Serialize for RelayMessage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let json_value: Value = self.as_value();
+        json_value.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for RelayMessage {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let json_value = Value::deserialize(deserializer)?;
+        RelayMessage::from_value(json_value).map_err(Error::custom)
+    }
 }
 
 impl RelayMessage {
@@ -78,43 +100,39 @@ impl RelayMessage {
         }
     }
 
-    /// Serialize [`RelayMessage`] as JSON string
-    pub fn as_json(&self) -> String {
+    fn as_value(&self) -> Value {
         match self {
             Self::Event {
                 event,
                 subscription_id,
-            } => json!(["EVENT", subscription_id, event]).to_string(),
-            Self::Notice { message } => json!(["NOTICE", message]).to_string(),
+            } => json!(["EVENT", subscription_id, event]),
+            Self::Notice { message } => json!(["NOTICE", message]),
             Self::EndOfStoredEvents(subscription_id) => {
-                json!(["EOSE", subscription_id]).to_string()
+                json!(["EOSE", subscription_id])
             }
             Self::Ok {
                 event_id,
                 status,
                 message,
-            } => json!(["OK", event_id, status, message]).to_string(),
-            Self::Auth { challenge } => json!(["AUTH", challenge]).to_string(),
-            Self::Empty => String::new(),
+            } => json!(["OK", event_id, status, message]),
+            Self::Auth { challenge } => json!(["AUTH", challenge]),
+            Self::Empty => Value::Null,
         }
     }
 
-    /// Deserialize [`RelayMessage`] as JSON string
-    pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
-    where
-        S: Into<String>,
-    {
-        let msg: &str = &msg.into();
+    /// Serialize [`RelayMessage`] as JSON string
+    pub fn as_json(&self) -> String {
+        self.as_value().to_string()
+    }
 
-        if msg.is_empty() {
-            return Ok(Self::Empty);
-        }
-
-        let v: Vec<Value> =
-            serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+    /// Deserialize [`RelayMessage`] from [`Value`]
+    fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
+        let v = msg
+            .as_array()
+            .ok_or(MessageHandleError::InvalidMessageFormat)?;
 
         if v.is_empty() {
-            return Ok(Self::Empty);
+            return Err(MessageHandleError::InvalidMessageFormat);
         }
 
         let v_len: usize = v.len();
@@ -178,6 +196,21 @@ impl RelayMessage {
         }
 
         Err(MessageHandleError::InvalidMessageFormat)
+    }
+
+    /// Deserialize [`RelayMessage`] as JSON string
+    pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
+    where
+        S: Into<String>,
+    {
+        let msg: &str = &msg.into();
+
+        log::trace!("{}", msg);
+
+        let value: Value =
+            serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+
+        Self::from_value(value)
     }
 }
 
