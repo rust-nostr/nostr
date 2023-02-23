@@ -9,10 +9,17 @@ export function encrypt(sk: SecretKey, pk: PublicKey, text: string): string
 export function decrypt(sk: SecretKey, pk: PublicKey, encryptedContent: string): string
 /** Verify NIP05 */
 export function verifyNip05(publicKey: PublicKey, nip05: string): Promise<boolean>
+/**
+ * Create a NIP-26 delegation tag (including the signature).
+ * See also validate_delegation_tag().
+ */
+export function createDelegationTag(delegatorKeys: Keys, delegateePubkey: PublicKey, conditions: string): string
+/** Validate a NIP-26 delegation tag, check signature and conditions. */
+export function validateDelegationTag(delegationTag: string, delegateePubkey: PublicKey, eventKind: bigint, createdAt: bigint): boolean
 /** Sign delegation (NIP26) */
 export function signDelegation(keys: Keys, delegateePk: PublicKey, conditions: string): string
 /** Verify delegation signature (NIP26) */
-export function verifyDelegationSignature(keys: Keys, delegateePk: PublicKey, conditions: string, signature: string): boolean
+export function verifyDelegationSignature(delegatorPublicKey: PublicKey, delegateePublicKey: PublicKey, conditions: string, signature: string): boolean
 export type JsEventBuilder = EventBuilder
 export class EventBuilder {
   constructor(kind: bigint, content: string, tags: Array<Array<string>>)
