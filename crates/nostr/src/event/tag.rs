@@ -7,6 +7,7 @@ use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
+#[cfg(feature = "nip26")]
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
 use serde::de::Error as DeserializerError;
@@ -15,6 +16,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
 
 use super::id::{self, EventId};
+#[cfg(feature = "nip26")]
+use crate::nips::nip26::Conditions;
 use crate::{Kind, Timestamp};
 
 /// [`Tag`] error
@@ -47,6 +50,10 @@ pub enum Error {
     /// EventId error
     #[error(transparent)]
     EventId(#[from] id::Error),
+    /// NIP26 error
+    #[cfg(feature = "nip26")]
+    #[error(transparent)]
+    Nip26(#[from] crate::nips::nip26::Error),
 }
 
 /// Marker
@@ -255,9 +262,10 @@ pub enum Tag {
         nonce: u128,
         difficulty: u8,
     },
+    #[cfg(feature = "nip26")]
     Delegation {
         delegator_pk: XOnlyPublicKey,
-        conditions: String,
+        conditions: Conditions,
         sig: Signature,
     },
     ContentWarning {
@@ -383,9 +391,10 @@ where
                     (!tag[2].is_empty()).then_some(tag[2].clone()),
                     (!tag[3].is_empty()).then_some(Marker::from(&tag[3])),
                 )),
+                #[cfg(feature = "nip26")]
                 TagKind::Delegation => Ok(Self::Delegation {
                     delegator_pk: XOnlyPublicKey::from_str(&tag[1])?,
-                    conditions: tag[2].clone(),
+                    conditions: Conditions::from_str(&tag[2])?,
                     sig: Signature::from_str(&tag[3])?,
                 }),
                 _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
@@ -463,6 +472,7 @@ impl From<Tag> for Vec<String> {
                 nonce.to_string(),
                 difficulty.to_string(),
             ],
+            #[cfg(feature = "nip26")]
             Tag::Delegation {
                 delegator_pk,
                 conditions,
@@ -470,7 +480,7 @@ impl From<Tag> for Vec<String> {
             } => vec![
                 TagKind::Delegation.to_string(),
                 delegator_pk.to_string(),
-                conditions,
+                conditions.to_string(),
                 sig.to_string(),
             ],
             Tag::ContentWarning { reason } => {
@@ -772,6 +782,7 @@ mod tests {
             .as_vec()
         );
 
+        #[cfg(feature = "nip26")]
         assert_eq!(
             vec![
                 "delegation",
@@ -781,7 +792,7 @@ mod tests {
             ],
             Tag::Delegation { delegator_pk: XOnlyPublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            )?, conditions: String::from("kind=1"), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8")? }
+            )?, conditions: Conditions::from_str("kind=1")?, sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8")? }
             .as_vec()
         );
 
@@ -985,6 +996,7 @@ mod tests {
             )
         );
 
+        #[cfg(feature = "nip26")]
         assert_eq!(
             Tag::parse(vec![
                 "delegation",
@@ -994,7 +1006,7 @@ mod tests {
             ])?,
             Tag::Delegation { delegator_pk: XOnlyPublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            )?, conditions: String::from("kind=1"), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8")? }
+            )?, conditions: Conditions::from_str("kind=1")?, sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8")? }
         );
 
         Ok(())
