@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use napi::bindgen_prelude::BigInt;
 use napi::Result;
-use nostr::nips::nip26;
+use nostr::nips::nip26::{self, DelegationTag, EventProperties};
 use nostr::secp256k1::schnorr::Signature;
 
 use crate::error::into_err;
@@ -33,17 +33,14 @@ pub fn validate_delegation_tag(
     delegatee_pubkey: &JsPublicKey,
     event_kind: BigInt,
     created_at: BigInt,
-) -> Result<bool> {
-    match nip26::DelegationTag::from_str(&delegation_tag) {
-        Err(_) => Ok(false),
+) -> bool {
+    match DelegationTag::from_str(&delegation_tag) {
         Ok(tag) => {
             let event_properties =
-                nip26::EventProperties::new(event_kind.get_u64().1, created_at.get_u64().1);
-            match nip26::validate_delegation_tag(&tag, delegatee_pubkey.into(), &event_properties) {
-                Err(_) => Ok(false),
-                Ok(_) => Ok(true),
-            }
+                EventProperties::new(event_kind.get_u64().1, created_at.get_u64().1);
+            nip26::validate_delegation_tag(&tag, delegatee_pubkey.into(), &event_properties).is_ok()
         }
+        Err(_) => false,
     }
 }
 
