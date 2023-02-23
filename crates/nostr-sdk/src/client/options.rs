@@ -16,6 +16,9 @@ pub struct Options {
     /// POW difficulty (for all events)
     #[cfg(feature = "nip13")]
     difficulty: Arc<AtomicU8>,
+    /// Nostr Connect (NIP46)
+    #[cfg(feature = "nip46")]
+    nostr_connect: Arc<AtomicBool>,
 }
 
 impl Default for Options {
@@ -25,6 +28,8 @@ impl Default for Options {
             wait_for_send: Arc::new(AtomicBool::new(false)),
             #[cfg(feature = "nip13")]
             difficulty: Arc::new(AtomicU8::new(0)),
+            #[cfg(feature = "nip46")]
+            nostr_connect: Arc::new(AtomicBool::new(false)),
         }
     }
 }
@@ -78,5 +83,26 @@ impl Options {
         let _ = self
             .difficulty
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(difficulty));
+    }
+
+    /// Enable Nostr Connect (NIP46)
+    #[cfg(feature = "nip46")]
+    pub fn nostr_connect(self, enable: bool) -> Self {
+        Self {
+            nostr_connect: Arc::new(AtomicBool::new(enable)),
+            ..self
+        }
+    }
+
+    #[cfg(feature = "nip46")]
+    pub(crate) fn get_nostr_connect(&self) -> bool {
+        self.nostr_connect.load(Ordering::SeqCst)
+    }
+
+    #[cfg(feature = "nip46")]
+    pub(crate) fn update_nostr_connect(&self, enable: bool) {
+        let _ = self
+            .nostr_connect
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(enable));
     }
 }

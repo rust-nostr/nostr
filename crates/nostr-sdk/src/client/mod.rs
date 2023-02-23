@@ -120,6 +120,12 @@ impl Client {
         self.opts.update_difficulty(difficulty);
     }
 
+    /// Enable/Disable Nostr Connect (NIP46)
+    #[cfg(feature = "nip46")]
+    pub fn nostr_connect(&self, enable: bool) {
+        self.opts.update_nostr_connect(enable);
+    }
+
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.keys.clone()

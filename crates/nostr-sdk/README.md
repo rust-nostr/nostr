@@ -121,6 +121,8 @@ The following crate feature flags are available:
 | `nip13`             |   Yes   | Enable NIP-13: Proof of Work                                                                                               |
 | `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
 | `nip26`             |   Yes   | Enable NIP-26: Delegated Event Signing                                                                                     |
+| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
+| `nip65`             |   Yes   | Enable NIP-65: Relay List Metadata                                                                                         |
 
 ## Supported NIPs
 
