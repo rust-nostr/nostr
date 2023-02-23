@@ -198,7 +198,7 @@ impl RelayMessage {
     {
         let msg: &str = &msg.into();
         log::trace!("{}", msg);
-        
+
         if msg.is_empty() {
             return Err(MessageHandleError::InvalidMessageFormat);
         }
