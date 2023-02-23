@@ -15,12 +15,15 @@ pub use self::subscription::{Filter, SubscriptionId};
 pub use self::subscription::SubscriptionFilter;
 
 /// Messages error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum MessageHandleError {
     /// Invalid message format
     #[error("Message has an invalid format")]
     InvalidMessageFormat,
     /// Impossible to deserialize message
-    #[error("Json deserialization failed")]
-    JsonDeserializationFailed,
+    #[error("Json deserialization failed: {0}")]
+    Json(#[from] serde_json::Error),
+    /// Event error
+    #[error(transparent)]
+    Event(#[from] crate::event::Error),
 }

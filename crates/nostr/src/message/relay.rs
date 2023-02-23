@@ -143,8 +143,7 @@ impl RelayMessage {
             if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let v_notice: String = serde_json::from_value(v[1].clone())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let v_notice: String = serde_json::from_value(v[1].clone())?;
             return Ok(Self::Notice { message: v_notice });
         }
 
@@ -155,10 +154,8 @@ impl RelayMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-            let event = Event::from_json(v[2].to_string())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+            let event = Event::from_json(v[2].to_string())?;
 
             return Ok(Self::new_event(subscription_id, event));
         }
@@ -170,8 +167,7 @@ impl RelayMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
 
             return Ok(Self::new_eose(subscription_id));
         }
@@ -183,14 +179,11 @@ impl RelayMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let event_id: EventId = serde_json::from_value(v[1].clone())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let event_id: EventId = serde_json::from_value(v[1].clone())?;
 
-            let status: bool = serde_json::from_value(v[2].clone())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let status: bool = serde_json::from_value(v[2].clone())?;
 
-            let message: String = serde_json::from_value(v[3].clone())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let message: String = serde_json::from_value(v[3].clone())?;
 
             return Ok(Self::new_ok(event_id, status, message));
         }
@@ -204,12 +197,13 @@ impl RelayMessage {
         S: Into<String>,
     {
         let msg: &str = &msg.into();
-
         log::trace!("{}", msg);
+        
+        if msg.is_empty() {
+            return Err(MessageHandleError::InvalidMessageFormat);
+        }
 
-        let value: Value =
-            serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-
+        let value: Value = serde_json::from_str(msg)?;
         Self::from_value(value)
     }
 }
@@ -239,14 +233,8 @@ mod tests {
         //The content is not string
         let invalid_notice_msg_content = r#"["NOTICE": 404]"#;
 
-        assert_eq!(
-            RelayMessage::from_json(invalid_notice_msg).unwrap_err(),
-            MessageHandleError::InvalidMessageFormat
-        );
-        assert_eq!(
-            RelayMessage::from_json(invalid_notice_msg_content).unwrap_err(),
-            MessageHandleError::JsonDeserializationFailed
-        );
+        assert!(RelayMessage::from_json(invalid_notice_msg).is_err(),);
+        assert!(RelayMessage::from_json(invalid_notice_msg_content).is_err(),);
     }
 
     #[test]
@@ -278,15 +266,9 @@ mod tests {
         //Event JSON with incomplete content
         let invalid_event_msg_content = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"}]"#;
 
-        assert_eq!(
-            RelayMessage::from_json(invalid_event_msg).unwrap_err(),
-            MessageHandleError::InvalidMessageFormat
-        );
+        assert!(RelayMessage::from_json(invalid_event_msg).is_err(),);
 
-        assert_eq!(
-            RelayMessage::from_json(invalid_event_msg_content).unwrap_err(),
-            MessageHandleError::JsonDeserializationFailed
-        );
+        assert!(RelayMessage::from_json(invalid_event_msg_content).is_err(),);
     }
 
     #[test]
@@ -305,16 +287,10 @@ mod tests {
     #[test]
     fn test_handle_invalid_eose() {
         // Missing subscription ID
-        assert_eq!(
-            RelayMessage::from_json(r#"["EOSE"]"#).unwrap_err(),
-            MessageHandleError::InvalidMessageFormat
-        );
+        assert!(RelayMessage::from_json(r#"["EOSE"]"#).is_err(),);
 
         // The subscription ID is not string
-        assert_eq!(
-            RelayMessage::from_json(r#"["EOSE", 404]"#).unwrap_err(),
-            MessageHandleError::JsonDeserializationFailed
-        );
+        assert!(RelayMessage::from_json(r#"["EOSE", 404]"#).is_err(),);
     }
 
     #[test]
@@ -333,33 +309,25 @@ mod tests {
     #[test]
     fn test_handle_invalid_ok() {
         // Missing params
-        assert_eq!(
-            RelayMessage::from_json(
-                r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30"]"#
-            )
-            .unwrap_err(),
-            MessageHandleError::InvalidMessageFormat
-        );
+        assert!(RelayMessage::from_json(
+            r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30"]"#
+        )
+        .is_err(),);
 
         // Invalid event_id
-        assert_eq!(
-            RelayMessage::from_json(
-                r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7dde", true, ""]"#
-            )
-            .unwrap_err(),
-            MessageHandleError::JsonDeserializationFailed
-        );
+        assert!(RelayMessage::from_json(
+            r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7dde", true, ""]"#
+        )
+        .is_err(),);
 
         // Invalid status
-        assert_eq!(
-            RelayMessage::from_json(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", hello, ""]"#).unwrap_err(),
-            MessageHandleError::JsonDeserializationFailed
+        assert!(
+            RelayMessage::from_json(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", hello, ""]"#).is_err(),
         );
 
         // Invalid message
-        assert_eq!(
-            RelayMessage::from_json(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", hello, 404]"#).unwrap_err(),
-            MessageHandleError::JsonDeserializationFailed
+        assert!(
+            RelayMessage::from_json(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", hello, 404]"#).is_err()
         );
     }
 

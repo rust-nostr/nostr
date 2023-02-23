@@ -117,8 +117,7 @@ impl ClientMessage {
             if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let event = Event::from_json(v[1].to_string())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let event = Event::from_json(v[1].to_string())?;
             return Ok(Self::new_event(event));
         }
 
@@ -126,14 +125,11 @@ impl ClientMessage {
         // ["REQ", <subscription_id>, <filter JSON>, <filter JSON>...]
         if v[0] == "REQ" {
             if v_len == 2 {
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
-                    .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 return Ok(Self::new_req(subscription_id, Vec::new()));
             } else if v_len == 3 {
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
-                    .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
-                let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))
-                    .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))?;
                 return Ok(Self::new_req(subscription_id, filters));
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
@@ -147,8 +143,7 @@ impl ClientMessage {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
 
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
 
             return Ok(Self::close(subscription_id));
         }
@@ -159,8 +154,7 @@ impl ClientMessage {
             if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let event = Event::from_json(v[1].to_string())
-                .map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+            let event = Event::from_json(v[1].to_string())?;
             return Ok(Self::new_auth(event));
         }
 
@@ -173,12 +167,13 @@ impl ClientMessage {
         S: Into<String>,
     {
         let msg: &str = &msg.into();
-
         log::trace!("{}", msg);
 
-        let value: Value =
-            serde_json::from_str(msg).map_err(|_| MessageHandleError::JsonDeserializationFailed)?;
+        if msg.is_empty() {
+            return Err(MessageHandleError::InvalidMessageFormat);
+        }
 
+        let value: Value = serde_json::from_str(msg)?;
         Self::from_value(value)
     }
 }
