@@ -7,13 +7,17 @@
 
 use std::fmt;
 
-use bitcoin::XOnlyPublicKey;
+use bitcoin_hashes::sha256::Hash as Sha256Hash;
+use bitcoin_hashes::Hash;
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::RngCore;
+use secp256k1::XOnlyPublicKey;
 use serde_json::{json, Value};
 use url::form_urlencoded::byte_serialize;
 use url::Url;
 
 #[cfg(feature = "base")]
-use crate::Event;
+use crate::UnsignedEvent;
 
 /// Method
 pub enum Method {
@@ -21,9 +25,9 @@ pub enum Method {
     Describe,
     /// Get public key
     GetPublicKey,
-    /// Sign [`Event`]
+    /// Sign [`UnsignedEvent`]
     #[cfg(feature = "base")]
-    SignEvent(Event),
+    SignEvent(UnsignedEvent),
     /// Connect
     Connect(XOnlyPublicKey),
     /// Disconnect
@@ -53,24 +57,103 @@ pub enum Method {
     },
 }
 
-/// Request message
-pub struct Request {
-    /// Request id
-    pub id: String,
-    /// Method
-    pub method: Method,
-    /// params
-    pub params: Vec<Value>,
+impl Method {
+    /// Get method name
+    pub fn name(&self) -> String {
+        match self {
+            Self::Describe => "describe".to_string(),
+            Self::GetPublicKey => "get_public_key".to_string(),
+            #[cfg(feature = "base")]
+            Self::SignEvent(_) => "sign_event".to_string(),
+            Self::Connect(_) => "connect".to_string(),
+            Self::Disconnect => "disconnect".to_string(),
+            Self::Delegate {
+                public_key: _,
+                conditions: _,
+            } => "delegate".to_string(),
+            Self::GetRelays => "get_relays".to_string(),
+            Self::Nip04Encrypt {
+                public_key: _,
+                text: _,
+            } => "nip04_encrypt".to_string(),
+            Self::Nip04Decrypt {
+                public_key: _,
+                text: _,
+            } => "nip04_decrypt".to_string(),
+        }
+    }
+
+    /// Get method params
+    pub fn params(&self) -> Vec<Value> {
+        match self {
+            Self::Describe => Vec::new(),
+            Self::GetPublicKey => Vec::new(),
+            #[cfg(feature = "base")]
+            Self::SignEvent(event) => vec![json!(event)],
+            Self::Connect(pubkey) => vec![json!(pubkey)],
+            Self::Disconnect => Vec::new(),
+            Self::Delegate {
+                public_key,
+                conditions,
+            } => vec![json!(public_key), json!(conditions)],
+            Self::GetRelays => Vec::new(),
+            Self::Nip04Encrypt { public_key, text } => vec![json!(public_key), json!(text)],
+            Self::Nip04Decrypt { public_key, text } => vec![json!(public_key), json!(text)],
+        }
+    }
 }
 
-/// Response message
-pub struct Response {
-    /// Request id
-    pub id: String,
-    /// Result
-    pub result: Value,
-    /// Reason, if failed
-    pub error: String,
+/// Message
+#[derive(Debug, Clone)]
+pub enum Message {
+    /// Request
+    Request {
+        /// Request id
+        id: String,
+        /// Method
+        method: String,
+        /// params
+        params: Vec<Value>,
+    },
+    /// Response
+    Response {
+        /// Request id
+        id: String,
+        /// Result
+        result: Value,
+        /// Reason, if failed
+        error: String,
+    },
+}
+
+impl Message {
+    /// Compose `Request` message
+    pub fn request(method: Method) -> Self {
+        Self::Request {
+            id: Self::random_id(),
+            method: method.name(),
+            params: method.params(),
+        }
+    }
+
+    fn random_id() -> String {
+        let mut os_random = [0u8; 32];
+        OsRng.fill_bytes(&mut os_random);
+        let hash = Sha256Hash::hash(&os_random).to_string();
+        hash[..16].to_string()
+    }
+
+    /// Serialize [`Message`] as JSON string
+    pub fn as_json(&self) -> String {
+        match self {
+            Self::Request { id, method, params } => {
+                json!({"id": id, "method": method, "params": params}).to_string()
+            }
+            Self::Response { id, result, error } => {
+                json!({"id": id, "result": result, "error": error}).to_string()
+            }
+        }
+    }
 }
 
 fn url_encode<T>(data: T) -> String
@@ -81,6 +164,7 @@ where
 }
 
 /// Nostr Connect URI
+#[derive(Debug, Clone)]
 pub struct NostrConnectURI {
     /// Pubkey
     pub public_key: XOnlyPublicKey,
@@ -98,11 +182,7 @@ pub struct NostrConnectURI {
 
 impl NostrConnectURI {
     /// Create new [`NostrConnectURI`]
-    pub fn new<S>(
-        public_key: XOnlyPublicKey,
-        relay_url: Url,
-        app_name: S,
-    ) -> Self
+    pub fn new<S>(public_key: XOnlyPublicKey, relay_url: Url, app_name: S) -> Self
     where
         S: Into<String>,
     {
@@ -119,18 +199,18 @@ impl NostrConnectURI {
     /// Set url
     pub fn url(self, url: Url) -> Self {
         Self {
-            url: Some(url), 
+            url: Some(url),
             ..self
         }
     }
 
     /// Set description
-    pub fn description<S>(self, description: S) -> Self 
+    pub fn description<S>(self, description: S) -> Self
     where
-        S: Into<String>
+        S: Into<String>,
     {
         Self {
-            description: Some(description.into()), 
+            description: Some(description.into()),
             ..self
         }
     }
@@ -138,7 +218,7 @@ impl NostrConnectURI {
     /// Set icons
     pub fn icons(self, icons: Vec<Url>) -> Self {
         Self {
-            icons: Some(icons), 
+            icons: Some(icons),
             ..self
         }
     }
