@@ -5,6 +5,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/26.md>
 
+use std::fmt;
+use std::str::FromStr;
+
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
@@ -15,9 +18,6 @@ use serde_json::{json, Value};
 use crate::event::Event;
 use crate::key::{self, Keys};
 use crate::SECP256K1;
-
-use core::fmt;
-use std::str::FromStr;
 
 /// `NIP26` error
 #[derive(Debug, thiserror::Error)]
@@ -187,16 +187,14 @@ impl DelegationTag {
     }
 
     /// Convert to JSON string.
-    pub fn to_json(&self) -> Result<String, Error> {
-        let delegator_pubkey_hex = self.delegator_pubkey.to_string();
+    pub fn as_json(&self) -> String {
         let tag = json!([
             DELEGATION_KEYWORD,
-            delegator_pubkey_hex,
+            self.delegator_pubkey.to_string(),
             self.conditions.to_string(),
             self.signature.to_string(),
         ]);
-        let s = tag.to_string();
-        Ok(s)
+        tag.to_string()
     }
 
     /// Parse from a JSON string
@@ -226,10 +224,7 @@ impl DelegationTag {
 impl fmt::Display for DelegationTag {
     /// Return tag in JSON string format
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.to_json() {
-            Err(e) => write!(f, "(error {e})"),
-            Ok(s) => write!(f, "{s}"),
-        }
+        write!(f, "{}", self.as_json())
     }
 }
 
@@ -304,20 +299,17 @@ impl FromStr for Condition {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let try_kind = s.strip_prefix("kind=");
-        if try_kind.is_some() {
-            let n = u64::from_str(try_kind.unwrap())?;
-            return Ok(Condition::Kind(n));
+        if let Some(kind) = s.strip_prefix("kind=") {
+            let n = u64::from_str(kind)?;
+            return Ok(Self::Kind(n));
         }
-        let try_created_before = s.strip_prefix("created_at<");
-        if try_created_before.is_some() {
-            let n = u64::from_str(try_created_before.unwrap())?;
-            return Ok(Condition::CreatedBefore(n));
+        if let Some(created_before) = s.strip_prefix("created_at<") {
+            let n = u64::from_str(created_before)?;
+            return Ok(Self::CreatedBefore(n));
         }
-        let try_created_after = s.strip_prefix("created_at>");
-        if try_created_after.is_some() {
-            let n = u64::from_str(try_created_after.unwrap())?;
-            return Ok(Condition::CreatedAfter(n));
+        if let Some(created_after) = s.strip_prefix("created_at>") {
+            let n = u64::from_str(created_after)?;
+            return Ok(Self::CreatedAfter(n));
         }
         Err(Error::ConditionsParseInvalidCondition)
     }
@@ -325,7 +317,7 @@ impl FromStr for Condition {
 
 impl Conditions {
     pub fn new() -> Self {
-        Conditions { cond: Vec::new() }
+        Self { cond: Vec::new() }
     }
 
     #[cfg(test)]
@@ -358,20 +350,20 @@ impl FromStr for Conditions {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
-            return Ok(Conditions::new());
+            return Ok(Self::new());
         }
         let cond = s
             .split('&')
             .map(Condition::from_str)
             .collect::<Result<Vec<Condition>, Self::Err>>()?;
-        Ok(Conditions { cond })
+        Ok(Self { cond })
     }
 }
 
 impl EventProperties {
     /// Create new with values
     pub fn new(event_kind: u64, created_time: u64) -> Self {
-        EventProperties {
+        Self {
             kind: event_kind,
             created_time,
         }
@@ -380,7 +372,7 @@ impl EventProperties {
     /// Create from an Event
     #[cfg(feature = "base")]
     pub fn from_event(event: &Event) -> Self {
-        EventProperties {
+        Self {
             kind: event.kind.as_u64(),
             created_time: event.created_at.as_u64(),
         }
@@ -587,7 +579,7 @@ mod test {
             conditions,
             signature,
         };
-        let tag = d.to_json().unwrap();
+        let tag = d.as_json();
         assert_eq!(tag, "[\"delegation\",\"1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4\",\"kind=1&created_at<1678659553\",\"435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976\"]");
     }
 

@@ -4,6 +4,7 @@
 use std::ops::Deref;
 use std::str::FromStr;
 
+use napi::bindgen_prelude::BigInt;
 use napi::Result;
 use nostr::nips::nip26;
 use nostr::secp256k1::schnorr::Signature;
@@ -27,16 +28,18 @@ pub fn create_delegation_tag(
 }
 
 /// Validate a NIP-26 delegation tag, check signature and conditions.
+#[napi]
 pub fn validate_delegation_tag(
     delegation_tag: String,
     delegatee_pubkey: &JsPublicKey,
-    event_kind: u64,
-    created_at: u64,
+    event_kind: BigInt,
+    created_at: BigInt,
 ) -> Result<bool> {
     match nip26::DelegationTag::from_str(&delegation_tag) {
         Err(_) => Ok(false),
         Ok(tag) => {
-            let event_properties = nip26::EventProperties::new(event_kind, created_at);
+            let event_properties =
+                nip26::EventProperties::new(event_kind.get_u64().1, created_at.get_u64().1);
             match nip26::validate_delegation_tag(&tag, delegatee_pubkey.into(), &event_properties) {
                 Err(_) => Ok(false),
                 Ok(_) => Ok(true),
