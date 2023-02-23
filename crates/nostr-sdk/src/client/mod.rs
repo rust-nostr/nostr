@@ -17,6 +17,8 @@ use nostr::{
     ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, Keys, Kind,
     Metadata, Tag,
 };
+#[cfg(feature = "nip46")]
+use nostr::nips::nip46::NostrConnectURI;
 #[cfg(feature = "sqlite")]
 use nostr_sdk_sqlite::Store;
 use tokio::sync::broadcast;
@@ -124,6 +126,16 @@ impl Client {
     #[cfg(feature = "nip46")]
     pub fn nostr_connect(&self, enable: bool) {
         self.opts.update_nostr_connect(enable);
+    }
+
+    /// Get Nostr Connect URI (NIP46)
+    #[cfg(feature = "nip46")]
+    pub fn nostr_connect_uri<S>(&self, relay_url: S, app_name: S) -> Result<NostrConnectURI, Error> 
+    where
+        S: Into<String>
+    {
+        let relay_url = Url::parse(&relay_url.into())?;
+        Ok(NostrConnectURI::new(self.keys.public_key(), relay_url, app_name))
     }
 
     /// Get current [`Keys`]
