@@ -12,25 +12,27 @@ use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::{KeyPair, Message, XOnlyPublicKey};
-use serde_json::{json, Value};
+use serde_json::json;
 
 #[cfg(feature = "base")]
 use crate::event::Event;
 use crate::key::{self, Keys};
 use crate::SECP256K1;
 
+const DELEGATION_KEYWORD: &str = "delegation";
+
 /// `NIP26` error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
     /// Key error
     #[error(transparent)]
     Key(#[from] key::Error),
-    #[error(transparent)]
     /// Secp256k1 error
-    Secp256k1(#[from] secp256k1::Error),
     #[error(transparent)]
+    Secp256k1(#[from] secp256k1::Error),
     /// Error passed from NIP-19, Bech32 format, signature format, etc.
-    Nip19Error(#[from] crate::nips::nip19::Error),
+    #[error(transparent)]
+    Nip19(#[from] crate::nips::nip19::Error),
     /// Invalid condition in conditions string
     #[error("Invalid condition in conditions string")]
     ConditionsParseInvalidCondition,
@@ -40,9 +42,6 @@ pub enum Error {
     /// Conditions not satisfied
     #[error("Conditions not satisfied")]
     ConditionsValidation(#[from] ValidationError),
-    /// Delegation tag json parse error
-    #[error("Delegation tag json parse error")]
-    DelegationTagParseJson(#[from] serde_json::Error),
     /// Delegation tag parse error
     #[error("Delegation tag parse error")]
     DelegationTagParse,
@@ -84,8 +83,6 @@ pub fn validate_delegation_tag(
     delegation_tag.validate(delegatee_pubkey, event_properties)
 }
 
-const DELEGATION_KEYWORD: &str = "delegation";
-
 /// Compile the delegation token, of the form 'nostr:delegation:<pubkey of publisher (delegatee)>:<conditions query string>'
 pub fn delegation_token(delegatee_pk: &XOnlyPublicKey, conditions: &str) -> String {
     format!("nostr:{DELEGATION_KEYWORD}:{delegatee_pk}:{conditions}")
@@ -120,6 +117,7 @@ pub fn verify_delegation_signature(
 }
 
 /// Delegation tag, as defined in NIP-26
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct DelegationTag {
     delegator_pubkey: XOnlyPublicKey,
     conditions: Conditions,
@@ -127,18 +125,18 @@ pub struct DelegationTag {
 }
 
 impl DelegationTag {
-    /// Accessor for delegator public key
-    pub fn get_delegator_pubkey(&self) -> XOnlyPublicKey {
+    /// Get delegator public key
+    pub fn delegator_pubkey(&self) -> XOnlyPublicKey {
         self.delegator_pubkey
     }
 
-    /// Accessor for conditions, as string
-    pub(crate) fn get_conditions_string(&self) -> String {
-        self.conditions.to_string()
+    /// Get conditions
+    pub fn conditions(&self) -> Conditions {
+        self.conditions.clone()
     }
 
-    /// Accessor for signature
-    pub fn get_signature(&self) -> Signature {
+    /// Get signature
+    pub fn signature(&self) -> Signature {
         self.signature
     }
 
@@ -170,10 +168,10 @@ impl DelegationTag {
     ) -> Result<(), Error> {
         // verify signature
         if let Err(_e) = verify_delegation_signature(
-            &self.get_delegator_pubkey(),
-            &self.get_signature(),
+            &self.delegator_pubkey,
+            &self.signature,
             delegatee_pubkey,
-            self.get_conditions_string(),
+            self.conditions.to_string(),
         ) {
             return Err(Error::ConditionsValidation(
                 ValidationError::InvalidSignature,
@@ -199,24 +197,25 @@ impl DelegationTag {
 
     /// Parse from a JSON string
     pub fn from_json(s: &str) -> Result<Self, Error> {
-        let v = serde_json::from_str::<Value>(s)?;
-        let arr = match v.as_array() {
-            None => return Err(Error::DelegationTagParse),
-            Some(a) => a,
-        };
-        if arr.len() != 4 {
+        let tag: Vec<String> = serde_json::from_str(s).map_err(|_| Error::DelegationTagParse)?;
+        Self::try_from(tag)
+    }
+}
+
+impl TryFrom<Vec<String>> for DelegationTag {
+    type Error = Error;
+
+    fn try_from(tag: Vec<String>) -> Result<Self, Self::Error> {
+        if tag.len() != 4 {
             return Err(Error::DelegationTagParse);
         }
-        if arr[0].as_str().unwrap_or("") != DELEGATION_KEYWORD {
+        if tag[0] != DELEGATION_KEYWORD {
             return Err(Error::DelegationTagParse);
         }
-        let delegator_pubkey = XOnlyPublicKey::from_str(arr[1].as_str().unwrap_or(""))?;
-        let conditions = Conditions::from_str(arr[2].as_str().unwrap_or(""))?;
-        let signature = Signature::from_str(arr[3].as_str().unwrap_or(""))?;
-        Ok(DelegationTag {
-            delegator_pubkey,
-            conditions,
-            signature,
+        Ok(Self {
+            delegator_pubkey: XOnlyPublicKey::from_str(&tag[1])?,
+            conditions: Conditions::from_str(&tag[2])?,
+            signature: Signature::from_str(&tag[3])?,
         })
     }
 }
@@ -237,20 +236,14 @@ impl FromStr for DelegationTag {
 }
 
 /// A condition from the delegation conditions.
-#[derive(Clone)]
-pub(crate) enum Condition {
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+pub enum Condition {
     /// Event kind, e.g. kind=1
     Kind(u64),
     /// Creation time before, e.g. created_at<1679000000
     CreatedBefore(u64),
     /// Creation time after, e.g. created_at>1676000000
     CreatedAfter(u64),
-}
-
-/// Set of conditions of a delegation.
-#[derive(Clone)]
-pub(crate) struct Conditions {
-    cond: Vec<Condition>,
 }
 
 /// Represents properties of an event, relevant for delegation
@@ -315,29 +308,45 @@ impl FromStr for Condition {
     }
 }
 
+/// Set of conditions of a delegation.
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+pub struct Conditions(Vec<Condition>);
+
+impl Default for Conditions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Conditions {
+    /// New empty [`Conditions`]
     pub fn new() -> Self {
-        Self { cond: Vec::new() }
+        Self(Vec::new())
     }
 
-    #[cfg(test)]
+    /// Add [`Condition`]
     pub fn add(&mut self, cond: Condition) {
-        self.cond.push(cond);
+        self.0.push(cond);
     }
 
     /// Evaluate whether an event satisfies all these conditions
     fn evaluate(&self, ep: &EventProperties) -> Result<(), ValidationError> {
-        for c in &self.cond {
+        for c in &self.0 {
             c.evaluate(ep)?;
         }
         Ok(())
+    }
+
+    /// Get [`Vec<Contifion>`]
+    pub fn inner(&self) -> Vec<Condition> {
+        self.0.clone()
     }
 }
 
 impl ToString for Conditions {
     fn to_string(&self) -> String {
         // convert parts, join
-        self.cond
+        self.0
             .iter()
             .map(|c| c.to_string())
             .collect::<Vec<String>>()
@@ -356,7 +365,7 @@ impl FromStr for Conditions {
             .split('&')
             .map(Condition::from_str)
             .collect::<Result<Vec<Condition>, Self::Err>>()?;
-        Ok(Self { cond })
+        Ok(Self(cond))
     }
 }
 
@@ -404,7 +413,7 @@ mod test {
         // verify signature (it's variable)
         let verify_result = verify_delegation_signature(
             &delegator_keys.public_key(),
-            &tag.get_signature(),
+            &tag.signature(),
             delegatee_pubkey,
             conditions,
         );
@@ -459,7 +468,7 @@ mod test {
 
         // additional test: verify a value from inside the tag
         assert_eq!(
-            tag.get_conditions_string(),
+            tag.conditions().to_string(),
             "kind=1&created_at>1676067553&created_at<1678659553"
         );
 
@@ -591,11 +600,11 @@ mod test {
 
         assert_eq!(tag.to_string(), tag_str);
         assert_eq!(
-            tag.get_conditions_string(),
+            tag.conditions().to_string(),
             "kind=1&created_at>1676067553&created_at<1678659553"
         );
         assert_eq!(
-            tag.get_delegator_pubkey().to_bech32().unwrap(),
+            tag.delegator_pubkey().to_bech32().unwrap(),
             "npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4"
         );
     }
