@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 #![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
 
 //! SQLite for Nostr SDK
 
