@@ -57,6 +57,8 @@ pub enum Kind {
     Zap,
     /// Client Authentication (NIP42)
     Authentication,
+    /// Nostr Connect (NIP46)
+    NostrConnect,
     /// Long-form Text Note (NIP23)
     LongFormTextNote,
     /// Relay List Metadata (NIP65)
@@ -109,6 +111,7 @@ impl From<u64> for Kind {
             9735 => Self::Zap,
             10002 => Self::RelayList,
             22242 => Self::Authentication,
+            24133 => Self::NostrConnect,
             30023 => Self::LongFormTextNote,
             x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
             x if (20_000..30_000).contains(&x) => Self::Ephemeral(x as u16),
@@ -144,6 +147,7 @@ impl From<Kind> for u64 {
             Kind::Zap => 9735,
             Kind::RelayList => 10002,
             Kind::Authentication => 22242,
+            Kind::NostrConnect => 24133,
             Kind::LongFormTextNote => 30023,
             Kind::Replaceable(u) => u as u64,
             Kind::Ephemeral(u) => u as u64,
