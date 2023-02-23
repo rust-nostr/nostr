@@ -78,35 +78,67 @@ where
     byte_serialize(data.as_ref()).collect()
 }
 
-/// Compose URI
-pub fn uri<S>(
-    public_key: XOnlyPublicKey,
-    relay_url: Url,
-    app_name: S,
-    url: Option<Url>,
-    description: Option<S>,
-    icons: Option<Vec<Url>>,
-) -> String
-where
-    S: Into<String>,
-{
-    let mut metadata = json!({
-        "name": app_name.into(),
-    });
-    if let Some(url) = url {
-        metadata["url"] = json!(url);
+/// Nostr Connect URI
+pub struct NostrConnectURI {
+    /// Pubkey
+    pub public_key: XOnlyPublicKey,
+    /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.
+    pub relay_url: Url,
+    /// Human-readable name of the `App`
+    pub name: String,
+    /// URL of the website requesting the connection
+    pub url: Option<Url>,
+    /// Description of the `App`
+    pub description: Option<String>,
+    /// Array of URLs for icons of the `App`
+    pub icons: Option<Vec<Url>>,
+}
+
+impl NostrConnectURI {
+    /// Create new [`NostrConnectURI`]
+    pub fn new<S>(
+        public_key: XOnlyPublicKey,
+        relay_url: Url,
+        app_name: S,
+        url: Option<Url>,
+        description: Option<S>,
+        icons: Option<Vec<Url>>,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            public_key,
+            relay_url,
+            name: app_name.into(),
+            url,
+            description: description.map(|d| d.into()),
+            icons,
+        }
     }
-    if let Some(description) = description.map(|d| d.into()) {
-        metadata["description"] = json!(description);
+}
+
+impl ToString for NostrConnectURI {
+    fn to_string(&self) -> String {
+        let mut metadata = json!({
+            "name": self.name,
+        });
+        if let Some(url) = &self.url {
+            metadata["url"] = json!(url);
+        }
+        if let Some(description) = &self.description {
+            metadata["description"] = json!(description);
+        }
+        if let Some(icons) = &self.icons {
+            metadata["icons"] = json!(icons);
+        }
+        format!(
+            "nostrconnect://{}?relay={}&metadata={}",
+            self.public_key,
+            url_encode(self.relay_url.to_string()),
+            url_encode(metadata.to_string())
+        )
     }
-    if let Some(icons) = icons {
-        metadata["icons"] = json!(icons);
-    }
-    format!(
-        "nostrconnect://{public_key}?relay={}&metadata={}",
-        url_encode(relay_url.to_string()),
-        url_encode(metadata.to_string())
-    )
 }
 
 #[cfg(test)]
@@ -123,8 +155,11 @@ mod test {
         )?;
         let relay_url = Url::parse("wss://relay.damus.io")?;
         let app_name = "Example";
-        let uri = uri(pubkey, relay_url, app_name, None, None, None);
-        assert_eq!(uri, "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&metadata=%7B%22name%22%3A%22Example%22%7D".to_string());
+        let uri = NostrConnectURI::new(pubkey, relay_url, app_name, None, None, None);
+        assert_eq!(
+            uri.to_string(),
+            "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&metadata=%7B%22name%22%3A%22Example%22%7D".to_string()
+        );
         Ok(())
     }
 }
