@@ -31,7 +31,7 @@ pub const AUTHOR: u8 = 2;
 pub const KIND: u8 = 3;
 
 /// `NIP19` error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum Error {
     /// Wrong prefix or variant
     #[error("wrong prefix or variant")]
@@ -48,9 +48,9 @@ pub enum Error {
     /// UFT-8 error
     #[error(transparent)]
     UTF8(#[from] std::string::FromUtf8Error),
-    /// Fro slice error
-    #[error(transparent)]
-    FromSlice(#[from] std::array::TryFromSliceError),
+    /// From slice error
+    #[error("impossible to perform conversion from slice")]
+    TryFromSlice,
     /// Secp256k1 error
     #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),
@@ -305,7 +305,9 @@ impl FromBech32 for ParameterizedReplaceableEvent {
                 }
                 KIND => {
                     if kind.is_none() {
-                        let k: u64 = u32::from_be_bytes(bytes.try_into()?) as u64;
+                        let k: u64 =
+                            u32::from_be_bytes(bytes.try_into().map_err(|_| Error::TryFromSlice)?)
+                                as u64;
                         kind = Some(Kind::from(k));
                     }
                 }
