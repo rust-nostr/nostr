@@ -83,7 +83,7 @@ pub fn validate_delegation_tag(
     delegation_tag.validate(delegatee_pubkey, event_properties)
 }
 
-/// Compile the delegation token, of the form 'nostr:delegation:<pubkey of publisher (delegatee)>:<conditions query string>'
+/// Compile the delegation token, of the form 'nostr:delegation:<pubkey_of_publisher>:<conditions_query_string>'
 pub fn delegation_token(delegatee_pk: &XOnlyPublicKey, conditions: &str) -> String {
     format!("nostr:{DELEGATION_KEYWORD}:{delegatee_pk}:{conditions}")
 }
