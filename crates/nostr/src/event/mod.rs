@@ -14,11 +14,13 @@ pub mod builder;
 pub mod id;
 pub mod kind;
 pub mod tag;
+pub mod unsigned;
 
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::tag::{Marker, Tag, TagKind};
+pub use self::unsigned::UnsignedEvent;
 use crate::{Timestamp, SECP256K1};
 
 /// [`Event`] error

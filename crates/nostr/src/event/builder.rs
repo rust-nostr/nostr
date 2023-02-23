@@ -9,7 +9,7 @@ use url::Url;
 
 pub use super::kind::Kind;
 pub use super::tag::{Marker, Tag, TagKind};
-use super::{Event, EventId};
+use super::{Event, EventId, UnsignedEvent};
 use crate::key::{self, Keys};
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
@@ -128,6 +128,21 @@ impl EventBuilder {
 
             tags.pop();
         }
+    }
+
+    /// Build [`UnsignedEvent`]
+    pub fn to_unsigned_event(self, keys: &Keys) -> Result<UnsignedEvent, Error> {
+        let pubkey: XOnlyPublicKey = keys.public_key();
+        let created_at: Timestamp = Timestamp::now();
+        let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
+        Ok(UnsignedEvent {
+            id,
+            pubkey,
+            created_at,
+            kind: self.kind,
+            tags: self.tags,
+            content: self.content,
+        })
     }
 }
 

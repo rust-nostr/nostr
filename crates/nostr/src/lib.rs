@@ -31,7 +31,7 @@ pub mod prelude;
 pub mod types;
 
 #[cfg(feature = "base")]
-pub use self::event::{Event, EventBuilder, EventId, Kind, Tag};
+pub use self::event::{Event, EventBuilder, EventId, Kind, Tag, UnsignedEvent};
 pub use self::key::Keys;
 #[cfg(feature = "base")]
 pub use self::message::{ClientMessage, Filter, RelayMessage, SubscriptionId};
