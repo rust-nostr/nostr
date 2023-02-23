@@ -20,7 +20,9 @@ pub fn create_delegation_tag(
     delegatee_pubkey: &JsPublicKey,
     conditions: String,
 ) -> Result<String> {
-    let tag = nip26::create_delegation_tag(delegator_keys.deref(), delegatee_pubkey.into(), &conditions).map_err(into_err)?;
+    let tag =
+        nip26::create_delegation_tag(delegator_keys.deref(), delegatee_pubkey.into(), &conditions)
+            .map_err(into_err)?;
     Ok(tag.to_string())
 }
 
