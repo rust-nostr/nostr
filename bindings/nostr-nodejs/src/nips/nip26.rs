@@ -20,11 +20,8 @@ pub fn create_delegation_tag(
     delegatee_pubkey: &JsPublicKey,
     conditions: String,
 ) -> Result<String> {
-    match nip26::create_delegation_tag(delegator_keys.deref(), delegatee_pubkey.into(), &conditions)
-    {
-        Ok(tag) => Ok(tag.to_string()),
-        Err(_) => Ok("".to_string()),
-    }
+    let tag = nip26::create_delegation_tag(delegator_keys.deref(), delegatee_pubkey.into(), &conditions).map_err(into_err)?;
+    Ok(tag.to_string())
 }
 
 /// Validate a NIP-26 delegation tag, check signature and conditions.
