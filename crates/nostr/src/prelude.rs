@@ -38,3 +38,7 @@ pub use crate::nips::nip13::*;
 pub use crate::nips::nip19::*;
 #[cfg(feature = "nip26")]
 pub use crate::nips::nip26::*;
+#[cfg(feature = "nip46")]
+pub use crate::nips::nip46::*;
+#[cfg(feature = "nip65")]
+pub use crate::nips::nip65::*;
