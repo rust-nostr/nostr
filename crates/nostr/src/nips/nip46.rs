@@ -5,6 +5,8 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/46.md>
 
+use std::fmt;
+
 use bitcoin::XOnlyPublicKey;
 use serde_json::{json, Value};
 use url::form_urlencoded::byte_serialize;
@@ -100,9 +102,6 @@ impl NostrConnectURI {
         public_key: XOnlyPublicKey,
         relay_url: Url,
         app_name: S,
-        url: Option<Url>,
-        description: Option<S>,
-        icons: Option<Vec<Url>>,
     ) -> Self
     where
         S: Into<String>,
@@ -111,15 +110,42 @@ impl NostrConnectURI {
             public_key,
             relay_url,
             name: app_name.into(),
-            url,
-            description: description.map(|d| d.into()),
-            icons,
+            url: None,
+            description: None,
+            icons: None,
+        }
+    }
+
+    /// Set url
+    pub fn url(self, url: Url) -> Self {
+        Self {
+            url: Some(url), 
+            ..self
+        }
+    }
+
+    /// Set description
+    pub fn description<S>(self, description: S) -> Self 
+    where
+        S: Into<String>
+    {
+        Self {
+            description: Some(description.into()), 
+            ..self
+        }
+    }
+
+    /// Set icons
+    pub fn icons(self, icons: Vec<Url>) -> Self {
+        Self {
+            icons: Some(icons), 
+            ..self
         }
     }
 }
 
-impl ToString for NostrConnectURI {
-    fn to_string(&self) -> String {
+impl fmt::Display for NostrConnectURI {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut metadata = json!({
             "name": self.name,
         });
@@ -132,7 +158,8 @@ impl ToString for NostrConnectURI {
         if let Some(icons) = &self.icons {
             metadata["icons"] = json!(icons);
         }
-        format!(
+        write!(
+            f,
             "nostrconnect://{}?relay={}&metadata={}",
             self.public_key,
             url_encode(self.relay_url.to_string()),
@@ -155,7 +182,7 @@ mod test {
         )?;
         let relay_url = Url::parse("wss://relay.damus.io")?;
         let app_name = "Example";
-        let uri = NostrConnectURI::new(pubkey, relay_url, app_name, None, None, None);
+        let uri = NostrConnectURI::new(pubkey, relay_url, app_name);
         assert_eq!(
             uri.to_string(),
             "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&metadata=%7B%22name%22%3A%22Example%22%7D".to_string()
