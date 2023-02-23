@@ -99,6 +99,8 @@ The following crate feature flags are available:
 | `nip13`             |   Yes   | Enable NIP-13: Proof of Work                                                                                               |
 | `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
 | `nip26`             |   Yes   | Enable NIP-26: Delegated Event Signing                                                                                     |
+| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
+| `nip65`             |   Yes   | Enable NIP-65: Relay List Metadata                                                                                         |
 
 ## Supported NIPs
 
@@ -129,6 +131,7 @@ The following crate feature flags are available:
 | ✅         | [36 - Sensitive Content](https://github.com/nostr-protocol/nips/blob/master/36.md)                                                  |
 | ✅         | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                                               |
 | ✅         | [42 - Authentication of clients to relays](https://github.com/nostr-protocol/nips/blob/master/42.md)                                |
+| ✅         | [46 - Nostr Connect](https://github.com/nostr-protocol/nips/blob/master/46.md)                                                      |
 | ✅         | [50 - Keywords filter](https://github.com/nostr-protocol/nips/blob/master/50.md)                                                    |
 | ✅         | [56 - Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)                                                          |
 | ✅         | [65 - Relay List Metadata](https://github.com/nostr-protocol/nips/blob/master/65.md)                                                |
