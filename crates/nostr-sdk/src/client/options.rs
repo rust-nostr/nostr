@@ -94,10 +94,10 @@ impl Options {
         }
     }
 
-    #[cfg(feature = "nip46")]
+    /* #[cfg(feature = "nip46")]
     pub(crate) fn get_nostr_connect(&self) -> bool {
         self.nostr_connect.load(Ordering::SeqCst)
-    }
+    } */
 
     #[cfg(feature = "nip46")]
     pub(crate) fn update_nostr_connect(&self, enable: bool) {
