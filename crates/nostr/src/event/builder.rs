@@ -131,18 +131,17 @@ impl EventBuilder {
     }
 
     /// Build [`UnsignedEvent`]
-    pub fn to_unsigned_event(self, keys: &Keys) -> Result<UnsignedEvent, Error> {
-        let pubkey: XOnlyPublicKey = keys.public_key();
+    pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
         let created_at: Timestamp = Timestamp::now();
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
-        Ok(UnsignedEvent {
+        UnsignedEvent {
             id,
             pubkey,
             created_at,
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-        })
+        }
     }
 }
 
