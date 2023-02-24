@@ -43,21 +43,20 @@ async fn main() -> Result<()> {
 
     client.subscribe(vec![subscription]).await;
 
-    loop {
-        let mut notifications = client.notifications();
-        while let Ok(notification) = notifications.recv().await {
-            if let RelayPoolNotification::Event(_url, event) = notification {
-                if event.kind == Kind::EncryptedDirectMessage {
-                    if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
-                    {
-                        println!("New DM: {}", msg);
-                    } else {
-                        log::error!("Impossible to decrypt direct message");
-                    }
+    let mut notifications = client.notifications();
+    while let Ok(notification) = notifications.recv().await {
+        if let RelayPoolNotification::Event(_url, event) = notification {
+            if event.kind == Kind::EncryptedDirectMessage {
+                if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content) {
+                    println!("New DM: {}", msg);
                 } else {
-                    println!("{:?}", event);
+                    log::error!("Impossible to decrypt direct message");
                 }
+            } else {
+                println!("{:?}", event);
             }
         }
     }
+
+    Ok(())
 }

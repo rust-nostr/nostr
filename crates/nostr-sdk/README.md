@@ -92,12 +92,12 @@ async fn main() -> Result<()> {
     client.send_event_to("wss://relay.damus.io", event).await?;
 
     // Handle notifications
-    loop {
-        let mut notifications = client.notifications();
-        while let Ok(notification) = notifications.recv().await {
-            println!("{notification:?}");
-        }
+    let mut notifications = client.notifications();
+    while let Ok(notification) = notifications.recv().await {
+        println!("{notification:?}");
     }
+
+    Ok(())
 }
 ```
 
