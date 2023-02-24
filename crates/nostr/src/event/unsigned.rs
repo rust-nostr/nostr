@@ -3,6 +3,7 @@
 
 //! Unsigned Event
 
+use secp256k1::schnorr::Signature;
 use secp256k1::{KeyPair, Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +21,9 @@ pub enum Error {
     /// Secp256k1 error
     #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),
+    /// Event error
+    #[error(transparent)]
+    Event(#[from] super::Error),
 }
 
 /// [`UnsignedEvent`] struct
@@ -52,8 +56,26 @@ impl UnsignedEvent {
             tags: self.tags,
             content: self.content,
             sig: SECP256K1.sign_schnorr(&message, keypair),
+            #[cfg(feature = "nip03")]
             ots: None,
         })
+    }
+
+    /// Add signature to [`UnsignedEvent`]
+    pub fn add_signature(self, sig: Signature) -> Result<Event, Error> {
+        let event = Event {
+            id: self.id,
+            pubkey: self.pubkey,
+            created_at: self.created_at,
+            kind: self.kind,
+            tags: self.tags,
+            content: self.content,
+            sig,
+            #[cfg(feature = "nip03")]
+            ots: None,
+        };
+        event.verify()?;
+        Ok(event)
     }
 
     /// Deserialize from JSON string
