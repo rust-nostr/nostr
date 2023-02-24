@@ -94,11 +94,54 @@ impl Event {
         serde_json::json!(self).to_string()
     }
 
+    #[cfg(feature = "blocking")]
     /// Timestamp this event with OpenTimestamps, according to NIP-03
     pub fn timestamp(&mut self) -> Result<(), Error> {
-        let ots = nostr_ots::timestamp_event(&self.id.to_hex())?;
+        use nostr_ots::Stamper;
+        let stamper = StamperClient::new(std::time::Duration::from_secs(5)).unwrap();
+        let options = nostr_ots::Options::with_stamper(stamper);
+        let ots = nostr_ots::timestamp_event_with_options(&self.id.to_hex(), &options)?;
         self.ots = Some(ots);
         Ok(())
+    }
+}
+
+#[cfg(feature = "blocking")]
+
+struct StamperClient(reqwest::blocking::Client);
+
+#[cfg(feature = "blocking")]
+
+impl nostr_ots::Stamper for StamperClient {
+    fn new(timeout: std::time::Duration) -> Result<Self, String> {
+        Ok(Self(
+            reqwest::blocking::ClientBuilder::new()
+                .timeout(timeout)
+                .build()
+                .map_err(|e| e.to_string())?,
+        ))
+    }
+
+    fn stamp(
+        &self,
+        digest_endpoint: &str,
+        digest: &[u8],
+    ) -> Result<Vec<u8>, nostr_ots::StamperError> {
+        let resp = self
+            .0
+            .post(digest_endpoint)
+            .body(digest.to_vec())
+            .send()
+            .map_err(|e| nostr_ots::StamperError::Transport(e.to_string()))?;
+        if resp.status() == 200 {
+            Ok(resp
+                .bytes()
+                .map_err(|e| nostr_ots::StamperError::Transport(e.to_string()))?
+                .slice(..)
+                .to_vec())
+        } else {
+            Err(nostr_ots::StamperError::Status(resp.status().into()))
+        }
     }
 }
 
