@@ -186,7 +186,7 @@ mod tests {
     use crate::Result;
 
     #[test]
-    fn to_bech32_channel() -> Result<()> {
+    fn to_bech32_channel_only_id() -> Result<()> {
         let channel_id = ChannelId::from_hex(
             "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
         )?;
@@ -198,13 +198,42 @@ mod tests {
     }
 
     #[test]
-    fn from_bech32_channel() -> Result<()> {
+    fn from_bech32_channel_only_id() -> Result<()> {
         let channel_id = ChannelId::from_bech32(
             "nchannel1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gg07hju",
         )?;
         assert_eq!(
             "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d".to_string(),
             channel_id.to_hex()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn to_bech32_channel_with_relays() -> Result<()> {
+        let event_id =
+            EventId::from_hex("25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb")?;
+        let relays = vec!["wss://relay.damus.io".to_string()];
+        let channel_id = ChannelId::new(event_id.inner(), relays);
+        assert_eq!(
+            "nchannel1qqsztewgyfe6yuwtr2zq6qrq8ydqhayktjh7kq5at264x595rz2nlwcpz3mhxue69uhhyetvv9ujuerpd46hxtnfducdjqp3".to_string(),
+            channel_id.to_bech32()?
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn from_bech32_channel_with_relays() -> Result<()> {
+        let channel_id = ChannelId::from_bech32(
+            "nchannel1qqsztewgyfe6yuwtr2zq6qrq8ydqhayktjh7kq5at264x595rz2nlwcpz3mhxue69uhhyetvv9ujuerpd46hxtnfducdjqp3",
+        )?;
+        assert_eq!(
+            "25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb".to_string(),
+            channel_id.to_hex()
+        );
+        assert_eq!(
+            vec!["wss://relay.damus.io".to_string()],
+            channel_id.relays()
         );
         Ok(())
     }
