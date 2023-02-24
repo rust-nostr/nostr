@@ -200,7 +200,7 @@ impl RelayMessage {
         log::trace!("{}", msg);
 
         if msg.is_empty() {
-            return Err(MessageHandleError::InvalidMessageFormat);
+            return Ok(Self::Empty);
         }
 
         let value: Value = serde_json::from_str(msg)?;
