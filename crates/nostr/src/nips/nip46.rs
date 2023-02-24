@@ -7,17 +7,22 @@
 
 use std::fmt;
 
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
-use bitcoin_hashes::Hash;
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
-use secp256k1::XOnlyPublicKey;
+use secp256k1::{rand, XOnlyPublicKey};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use url::form_urlencoded::byte_serialize;
 use url::Url;
 
 #[cfg(feature = "base")]
 use crate::UnsignedEvent;
+
+/// NIP46 error
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    /// JSON error
+    #[error(transparent)]
+    JSON(#[from] serde_json::Error),
+}
 
 /// Method
 pub enum Method {
@@ -104,7 +109,8 @@ impl Method {
 }
 
 /// Message
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum Message {
     /// Request
     Request {
@@ -137,22 +143,20 @@ impl Message {
     }
 
     fn random_id() -> String {
-        let mut os_random = [0u8; 32];
-        OsRng.fill_bytes(&mut os_random);
-        let hash = Sha256Hash::hash(&os_random).to_string();
-        hash[..16].to_string()
+        rand::random::<u32>().to_string()
     }
 
     /// Serialize [`Message`] as JSON string
     pub fn as_json(&self) -> String {
-        match self {
-            Self::Request { id, method, params } => {
-                json!({"id": id, "method": method, "params": params}).to_string()
-            }
-            Self::Response { id, result, error } => {
-                json!({"id": id, "result": result, "error": error}).to_string()
-            }
-        }
+        json!(self).to_string()
+    }
+
+    /// Deserialize from JSON string
+    pub fn from_json<S>(json: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        Ok(serde_json::from_str(&json.into())?)
     }
 }
 
