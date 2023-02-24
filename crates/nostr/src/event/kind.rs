@@ -11,7 +11,7 @@ use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::{Serialize, Serializer};
 
 /// Event [`Kind`]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, Eq, Ord, PartialOrd)]
 pub enum Kind {
     /// Metadata (NIP01 and NIP05)
     Metadata,
@@ -161,6 +161,12 @@ impl FromStr for Kind {
     }
 }
 
+impl PartialEq<Kind> for Kind {
+    fn eq(&self, other: &Kind) -> bool {
+        self.as_u64() == other.as_u64()
+    }
+}
+
 impl Serialize for Kind {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -193,5 +199,24 @@ impl Visitor<'_> for KindVisitor {
         E: Error,
     {
         Ok(From::<u64>::from(v))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_equal_kind() {
+        assert_eq!(Kind::Custom(20100), Kind::Custom(20100));
+        assert_eq!(Kind::Custom(20100), Kind::Ephemeral(20100));
+        assert_eq!(Kind::TextNote, Kind::Custom(1));
+    }
+
+    #[test]
+    fn test_not_equal_kind() {
+        assert_ne!(Kind::Custom(20100), Kind::Custom(2000));
+        assert_ne!(Kind::Authentication, Kind::EncryptedDirectMessage);
+        assert_ne!(Kind::TextNote, Kind::Custom(2));
     }
 }
