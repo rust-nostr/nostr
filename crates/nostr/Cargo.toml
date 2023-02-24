@@ -35,7 +35,7 @@ bitcoin = { version = "0.29", optional = true }
 bitcoin_hashes = { version = "0.11", features = ["serde"] }
 cbc = { version = "0.1", features = ["alloc"], optional = true }
 log = { version = "0.4", optional = true }
-nostr-ots = "0.2"
+nostr-ots = { git="https://github.com/RCasatta/nostr-ots", branch="ureq_optional", default-features = false }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
 secp256k1 = { version = "0.24", features = ["global-context", "rand-std", "serde"] }
 serde = { version = "1.0", features = ["derive"], optional = true }
