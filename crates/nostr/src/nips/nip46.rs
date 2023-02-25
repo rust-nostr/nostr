@@ -9,8 +9,8 @@ use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
-/* #[cfg(feature = "base")]
-use secp256k1::schnorr::Signature; */
+#[cfg(feature = "base")]
+use secp256k1::schnorr::Signature;
 use secp256k1::{rand, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -131,13 +131,17 @@ impl Request {
     }
 }
 
-/* #[derive(Debug, Clone)]
+/// Response
+#[derive(Debug, Clone)]
 pub enum Response {
+    /// Describe
     Describe(Value),
+    /// Get public key
     GetPublicKey(XOnlyPublicKey),
+    /// Sign event
     #[cfg(feature = "base")]
     SignEvent(Signature),
-} */
+}
 
 /// Message
 #[derive(Debug, Clone, Serialize, Deserialize)]
