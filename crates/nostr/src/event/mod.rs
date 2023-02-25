@@ -9,6 +9,7 @@ use std::str::FromStr;
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 pub mod builder;
 pub mod id;
@@ -81,6 +82,13 @@ impl Event {
         SECP256K1
             .verify_schnorr(&self.sig, &message, &self.pubkey)
             .map_err(|_| Error::InvalidSignature)
+    }
+
+    /// New event from [`Value`]
+    pub fn from_value(value: Value) -> Result<Self, Error> {
+        let event: Self = serde_json::from_value(value)?;
+        event.verify()?;
+        Ok(event)
     }
 
     /// New event from json string
