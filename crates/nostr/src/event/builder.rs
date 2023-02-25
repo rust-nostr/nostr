@@ -15,6 +15,8 @@ use crate::key::{self, Keys};
 use crate::nips::nip04;
 #[cfg(feature = "nip13")]
 use crate::nips::nip13;
+#[cfg(feature = "nip46")]
+use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 use crate::SECP256K1;
 
@@ -241,11 +243,9 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let msg = nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, content.into())?;
-
         Ok(Self::new(
             Kind::EncryptedDirectMessage,
-            msg,
+            nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, content.into())?,
             &[Tag::PubKey(receiver_pubkey, None)],
         ))
     }
@@ -386,6 +386,22 @@ impl EventBuilder {
             "",
             &[Tag::Challenge(challenge.into()), Tag::Relay(relay)],
         )
+    }
+
+    /// Nostr Connect
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
+    #[cfg(all(feature = "nip04", feature = "nip46"))]
+    pub fn nostr_connect(
+        sender_keys: &Keys,
+        receiver_pubkey: XOnlyPublicKey,
+        msg: NostrConnectMessage,
+    ) -> Result<Self, Error> {
+        Ok(Self::new(
+            Kind::NostrConnect,
+            nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, msg.as_json())?,
+            &[Tag::PubKey(receiver_pubkey, None)],
+        ))
     }
 
     /// Create report event
