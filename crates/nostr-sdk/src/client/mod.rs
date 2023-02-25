@@ -52,6 +52,10 @@ pub enum Error {
     /// Hex error
     #[error("hex decoding error: {0}")]
     Hex(#[from] nostr::hashes::hex::Error),
+    /// Nostr Connect URI (NIP46) missing
+    #[cfg(feature = "nip46")]
+    #[error("nostr connect uri missing")]
+    NostrConnectURIMissing,
 }
 
 /// Nostr client
@@ -122,24 +126,12 @@ impl Client {
         self.opts.update_difficulty(difficulty);
     }
 
-    /// Enable/Disable Nostr Connect (NIP46)
-    #[cfg(feature = "nip46")]
-    pub fn nostr_connect(&self, enable: bool) {
-        self.opts.update_nostr_connect(enable);
-    }
-
     /// Get Nostr Connect URI (NIP46)
     #[cfg(feature = "nip46")]
-    pub fn nostr_connect_uri<S>(&self, relay_url: S, app_name: S) -> Result<NostrConnectURI, Error>
-    where
-        S: Into<String>,
-    {
-        let relay_url = Url::parse(&relay_url.into())?;
-        Ok(NostrConnectURI::new(
-            self.keys.public_key(),
-            relay_url,
-            app_name,
-        ))
+    pub fn nostr_connect(&self) -> Result<NostrConnectURI, Error> {
+        self.opts
+            .get_nostr_connect()
+            .ok_or(Error::NostrConnectURIMissing)
     }
 
     /// Get current [`Keys`]

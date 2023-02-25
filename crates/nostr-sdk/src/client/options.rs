@@ -6,6 +6,9 @@ use std::sync::atomic::AtomicU8;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+#[cfg(feature = "nip46")]
+use crate::nostr::nips::nip46::NostrConnectURI;
+
 /// Options
 #[derive(Debug, Clone)]
 pub struct Options {
@@ -18,7 +21,7 @@ pub struct Options {
     difficulty: Arc<AtomicU8>,
     /// Nostr Connect (NIP46)
     #[cfg(feature = "nip46")]
-    nostr_connect: Arc<AtomicBool>,
+    nostr_connect: Arc<Option<NostrConnectURI>>,
 }
 
 impl Default for Options {
@@ -29,7 +32,7 @@ impl Default for Options {
             #[cfg(feature = "nip13")]
             difficulty: Arc::new(AtomicU8::new(0)),
             #[cfg(feature = "nip46")]
-            nostr_connect: Arc::new(AtomicBool::new(false)),
+            nostr_connect: Arc::new(None),
         }
     }
 }
@@ -87,22 +90,22 @@ impl Options {
 
     /// Enable Nostr Connect (NIP46)
     #[cfg(feature = "nip46")]
-    pub fn nostr_connect(self, enable: bool) -> Self {
+    pub fn nostr_connect(self, uri: NostrConnectURI) -> Self {
         Self {
-            nostr_connect: Arc::new(AtomicBool::new(enable)),
+            nostr_connect: Arc::new(Some(uri)),
             ..self
         }
     }
 
-    /* #[cfg(feature = "nip46")]
-    pub(crate) fn get_nostr_connect(&self) -> bool {
-        self.nostr_connect.load(Ordering::SeqCst)
-    } */
-
     #[cfg(feature = "nip46")]
+    pub(crate) fn get_nostr_connect(&self) -> Option<NostrConnectURI> {
+        self.nostr_connect.as_ref().clone()
+    }
+
+    /* #[cfg(feature = "nip46")]
     pub(crate) fn update_nostr_connect(&self, enable: bool) {
         let _ = self
             .nostr_connect
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(enable));
-    }
+    } */
 }
