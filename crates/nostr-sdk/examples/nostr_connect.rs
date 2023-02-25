@@ -38,22 +38,61 @@ async fn main() -> Result<()> {
 
     println!("\n###############################################\n");
 
+    let msg = Message::request(Request::GetPublicKey);
+    let res = get_response(&client, signer_pubkey, msg).await?;
+    if let Response::GetPublicKey(pubkey) = res {
+        println!("Received pubeky {pubkey}");
+        println!("\n###############################################\n");
+    }
+
     // compose unsigned event
     let unsigned_event = EventBuilder::new_text_note("Hello world from Nostr SDK", &[])
         .to_unsigned_event(signer_pubkey);
-    let req_msg = Message::request(Request::SignEvent(unsigned_event.clone()));
-    let content = encrypt(&app_keys.secret_key()?, &signer_pubkey, req_msg.as_json())?;
-    let event = EventBuilder::new(
-        Kind::NostrConnect,
-        content,
-        &[Tag::PubKey(signer_pubkey, None)],
-    )
-    .to_event(&app_keys)?;
+    let msg = Message::request(Request::SignEvent(unsigned_event.clone()));
+    let res = get_response(&client, signer_pubkey, msg).await?;
+    if let Response::SignEvent(sig) = res {
+        let event = unsigned_event.add_signature(sig)?;
+        let id = client.send_event(event).await?;
+        println!("Published event {id}");
+        println!("\n###############################################\n");
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("generic error")]
+    Generic,
+    #[error("response error: {0}")]
+    Response(String),
+    #[error(transparent)]
+    Keys(#[from] nostr_sdk::nostr::key::Error),
+    #[error(transparent)]
+    Builder(#[from] nostr_sdk::nostr::event::builder::Error),
+    #[error(transparent)]
+    Client(#[from] nostr_sdk::client::Error),
+    #[error(transparent)]
+    Nip46(#[from] nostr_sdk::nostr::nips::nip46::Error),
+    #[error(transparent)]
+    JSON(#[from] serde_json::Error),
+}
+
+async fn get_response(
+    client: &Client,
+    signer_pubkey: XOnlyPublicKey,
+    msg: Message,
+) -> Result<Response, Error> {
+    let keys = client.keys();
+    let req_id = msg.id();
+    let req = msg.to_request()?;
+
+    let event = EventBuilder::nostr_connect(&keys, signer_pubkey, msg)?.to_event(&keys)?;
     client.send_event(event).await?;
 
     client
         .subscribe(vec![Filter::new()
-            .pubkey(app_keys.public_key())
+            .pubkey(keys.public_key())
             .kind(Kind::NostrConnect)
             .since(Timestamp::now())])
         .await;
@@ -62,24 +101,34 @@ async fn main() -> Result<()> {
     while let Ok(notification) = notifications.recv().await {
         if let RelayPoolNotification::Event(_url, event) = notification {
             if event.kind == Kind::NostrConnect {
-                match decrypt(&app_keys.secret_key()?, &event.pubkey, &event.content) {
+                match decrypt(&keys.secret_key()?, &event.pubkey, &event.content) {
                     Ok(msg) => {
                         let msg = Message::from_json(msg)?;
 
                         println!("New message received: {msg:#?}");
                         println!("\n###############################################\n");
 
-                        if let Message::Response { id, result, error } = msg {
-                            if req_msg.id() == id {
+                        if let Message::Response { id, result, error } = &msg {
+                            if &req_id == id {
                                 if let Some(result) = result {
-                                    let sig = serde_json::from_value(result)?;
-                                    let event = unsigned_event.add_signature(sig)?;
-                                    let id = client.send_event(event).await?;
-                                    println!("Published event {id}");
+                                    let res = match req {
+                                        Request::SignEvent(_) => {
+                                            let sig = serde_json::from_value(result.to_owned())?;
+                                            Response::SignEvent(sig)
+                                        }
+                                        Request::GetPublicKey => {
+                                            let pubkey = serde_json::from_value(result.to_owned())?;
+                                            Response::GetPublicKey(pubkey)
+                                        }
+                                        _ => todo!(),
+                                    };
+                                    client.unsubscribe().await;
+                                    return Ok(res);
                                 }
 
                                 if let Some(error) = error {
-                                    eprintln!("Error: {error}")
+                                    client.unsubscribe().await;
+                                    return Err(Error::Response(error.to_owned()));
                                 }
 
                                 break;
@@ -92,7 +141,9 @@ async fn main() -> Result<()> {
         }
     }
 
-    Ok(())
+    client.unsubscribe().await;
+
+    Err(Error::Generic)
 }
 
 async fn get_signer_pubkey(client: &Client) -> XOnlyPublicKey {
