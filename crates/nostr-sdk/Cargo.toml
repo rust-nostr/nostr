@@ -43,6 +43,7 @@ webpki-roots = "0.22"
 
 [dev-dependencies]
 env_logger = "0.10"
+serde_json = "1.0"
 
 [[example]]
 name = "client"
@@ -59,3 +60,7 @@ required-features = ["all-nips", "sqlite"]
 [[example]]
 name = "blocking"
 required-features = ["all-nips", "blocking"]
+
+[[example]]
+name = "nostr_connect"
+required-features = ["nip46"]
