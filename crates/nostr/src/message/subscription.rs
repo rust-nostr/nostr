@@ -97,7 +97,7 @@ impl Filter {
         }
     }
 
-    /// Set subscription id
+    /// Set event id or prefix
     pub fn id(self, id: impl Into<String>) -> Self {
         Self {
             ids: Some(vec![id.into()]),
@@ -105,7 +105,7 @@ impl Filter {
         }
     }
 
-    /// Set subscription ids
+    /// Set event ids or prefixes
     pub fn ids(self, ids: impl Into<Vec<String>>) -> Self {
         Self {
             ids: Some(ids.into()),
