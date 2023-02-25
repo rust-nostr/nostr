@@ -91,6 +91,7 @@ The following crate feature flags are available:
 | `base`              |   Yes   | Enable `event`, `message` and `types` modules                                                                              |
 | `vanity`            |   No    | Enable vanity public key mining module                                                                                     |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
+| `nip03`             |   Yes   | Enable NIP-03: OpenTimestamps Attestations for Events                                                                      |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                                                    |
 | `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                                                        |
 | `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |

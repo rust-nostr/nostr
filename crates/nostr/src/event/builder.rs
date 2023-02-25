@@ -74,6 +74,7 @@ impl EventBuilder {
             tags: self.tags,
             content: self.content,
             sig: SECP256K1.sign_schnorr(&message, keypair),
+            #[cfg(feature = "nip03")]
             ots: None,
         })
     }
@@ -120,6 +121,7 @@ impl EventBuilder {
                     tags,
                     content: self.content,
                     sig: SECP256K1.sign_schnorr(&message, keypair),
+                    #[cfg(feature = "nip03")]
                     ots: None,
                 });
             }

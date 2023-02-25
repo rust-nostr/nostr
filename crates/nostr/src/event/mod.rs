@@ -37,6 +37,7 @@ pub enum Error {
     #[error(transparent)]
     Hex(#[from] bitcoin_hashes::hex::Error),
     /// OpenTimestamps error
+    #[cfg(feature = "nip03")]
     #[error(transparent)]
     OpenTimestamps(#[from] nostr_ots::Error),
 }
@@ -59,6 +60,7 @@ pub struct Event {
     /// Signature
     pub sig: Signature,
     /// OpenTimestamps Attestations
+    #[cfg(feature = "nip03")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ots: Option<String>,
 }
@@ -95,6 +97,7 @@ impl Event {
     }
 
     /// Timestamp this event with OpenTimestamps, according to NIP-03
+    #[cfg(feature = "nip03")]
     pub fn timestamp(&mut self) -> Result<(), Error> {
         let ots = nostr_ots::timestamp_event(&self.id.to_hex())?;
         self.ots = Some(ots);
@@ -127,6 +130,7 @@ impl Event {
             tags,
             content: content.to_string(),
             sig,
+            #[cfg(feature = "nip03")]
             ots: None,
         };
 
