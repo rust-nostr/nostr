@@ -9,9 +9,10 @@ use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
-#[cfg(feature = "base")]
+use bitcoin_hashes::sha256::Hash as Sha256Hash;
+use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
-use secp256k1::{rand, XOnlyPublicKey};
+use secp256k1::{rand, Message as Secp256k1Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use url::form_urlencoded::byte_serialize;
@@ -23,6 +24,7 @@ use super::nip26::{Conditions, DelegationToken};
 use crate::key::{self, Keys};
 #[cfg(feature = "base")]
 use crate::UnsignedEvent;
+use crate::SECP256K1;
 
 /// NIP46 error
 #[derive(Debug, thiserror::Error)]
@@ -99,6 +101,8 @@ pub enum Request {
         /// Ciphertext
         text: String,
     },
+    /// Sign Schnorr
+    SignSchnorr(String),
 }
 
 impl Request {
@@ -124,6 +128,7 @@ impl Request {
                 public_key: _,
                 text: _,
             } => "nip04_decrypt".to_string(),
+            Self::SignSchnorr(_) => "sign_schnorr".to_string(),
         }
     }
 
@@ -143,6 +148,7 @@ impl Request {
             } => vec![json!(public_key), json!(conditions)],
             Self::Nip04Encrypt { public_key, text } => vec![json!(public_key), json!(text)],
             Self::Nip04Decrypt { public_key, text } => vec![json!(public_key), json!(text)],
+            Self::SignSchnorr(value) => vec![json!(value)],
         }
     }
 
@@ -179,6 +185,13 @@ impl Request {
                 let decrypted_content = nip04::decrypt(&keys.secret_key()?, &public_key, text)?;
                 Some(Response::Nip04Decrypt(decrypted_content))
             }
+            Self::SignSchnorr(value) => {
+                let keypair = keys.key_pair()?;
+                let hash = Sha256Hash::hash(value.as_bytes());
+                let message = Secp256k1Message::from_slice(&hash)?;
+                let sig: Signature = SECP256K1.sign_schnorr(&message, &keypair);
+                Some(Response::SignSchnorr(sig))
+            }
         };
         Ok(res)
     }
@@ -201,6 +214,8 @@ pub enum Response {
     Nip04Encrypt(String),
     /// Decrypted content (NIP04)
     Nip04Decrypt(String),
+    /// Sign Schnorr
+    SignSchnorr(Signature),
 }
 
 /// Message
@@ -250,6 +265,7 @@ impl Message {
                 Response::Delegate(token) => json!(token),
                 Response::Nip04Encrypt(encrypted_content) => json!(encrypted_content),
                 Response::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
+                Response::SignSchnorr(sig) => json!(sig),
             }),
             error: None,
         }
@@ -326,12 +342,12 @@ impl Message {
                     }
                 }
                 "connect" => {
-                    if let Some(value) = params.first() {
-                        let pubkey: XOnlyPublicKey = serde_json::from_value(value.to_owned())?;
-                        Ok(Request::Connect(pubkey))
-                    } else {
-                        Err(Error::InvalidRequest)
+                    if params.len() != 1 {
+                        return Err(Error::InvalidParamsLength);
                     }
+
+                    let pubkey: XOnlyPublicKey = serde_json::from_value(params[0].to_owned())?;
+                    Ok(Request::Connect(pubkey))
                 }
                 "disconnect" => Ok(Request::Disconnect),
                 #[cfg(feature = "nip26")]
@@ -352,7 +368,7 @@ impl Message {
 
                     Ok(Request::Nip04Encrypt {
                         public_key: serde_json::from_value(params[0].clone())?,
-                        text: params[1].as_str().ok_or(Error::InvalidRequest)?.to_string(),
+                        text: serde_json::from_value(params[1].clone())?,
                     })
                 }
                 "nip04_decrypt" => {
@@ -362,8 +378,16 @@ impl Message {
 
                     Ok(Request::Nip04Decrypt {
                         public_key: serde_json::from_value(params[0].clone())?,
-                        text: params[1].as_str().ok_or(Error::InvalidRequest)?.to_string(),
+                        text: serde_json::from_value(params[1].clone())?,
                     })
+                }
+                "sign_schnorr" => {
+                    if params.len() != 1 {
+                        return Err(Error::InvalidParamsLength);
+                    }
+
+                    let value: String = serde_json::from_value(params[0].clone())?;
+                    Ok(Request::SignSchnorr(value))
                 }
                 _ => Err(Error::UnsupportedMethod),
             }
