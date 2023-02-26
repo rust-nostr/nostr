@@ -177,6 +177,19 @@ impl Message {
         }
     }
 
+    /// Compose `Response` message
+    pub fn response(req_id: String, res: Response) -> Self {
+        Self::Response {
+            id: req_id,
+            result: Some(match res {
+                Response::Describe(value) => value,
+                Response::GetPublicKey(pubkey) => json!(pubkey),
+                Response::SignEvent(sig) => json!(sig),
+            }),
+            error: None,
+        }
+    }
+
     fn random_id() -> String {
         rand::random::<u32>().to_string()
     }
