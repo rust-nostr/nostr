@@ -24,7 +24,7 @@ nip06 = ["dep:bip39", "dep:bitcoin"]
 nip11 = ["dep:reqwest", "dep:serde", "dep:url"]
 nip13 = ["dep:log"]
 nip19 = ["dep:bech32", "dep:serde"]
-nip26 = []
+nip26 = ["dep:serde", "dep:serde_json"]
 nip65 = []
 
 [dependencies]
