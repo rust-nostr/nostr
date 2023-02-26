@@ -420,7 +420,10 @@ mod test {
         conditions.add(Condition::CreatedAfter(1676067553));
         conditions.add(Condition::CreatedBefore(1678659553));
 
-        assert_eq!(json!(conditions).as_str().unwrap(), "kind=1&created_at>1676067553&created_at<1678659553");
+        assert_eq!(
+            json!(conditions).as_str().unwrap(),
+            "kind=1&created_at>1676067553&created_at<1678659553"
+        );
     }
 
     #[test]
@@ -429,12 +432,18 @@ mod test {
         conditions.add(Condition::Kind(1));
         conditions.add(Condition::CreatedAfter(1676067553));
         conditions.add(Condition::CreatedBefore(1678659553));
-        
+
         let value = json!("kind=1&created_at>1676067553&created_at<1678659553");
-        assert_eq!(serde_json::from_value::<Conditions>(value).unwrap(), conditions);
+        assert_eq!(
+            serde_json::from_value::<Conditions>(value).unwrap(),
+            conditions
+        );
 
         let value = "\"kind=1&created_at>1676067553&created_at<1678659553\"";
-        assert_eq!(serde_json::from_str::<Conditions>(value).unwrap(), conditions);
+        assert_eq!(
+            serde_json::from_str::<Conditions>(value).unwrap(),
+            conditions
+        );
     }
 
     #[test]
