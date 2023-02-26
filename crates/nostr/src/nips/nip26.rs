@@ -12,8 +12,9 @@ use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::{KeyPair, Message, XOnlyPublicKey};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde::de::Error as DeserializerError;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::{json, Value};
 
 #[cfg(feature = "base")]
 use crate::event::Event;
@@ -364,6 +365,27 @@ impl FromStr for Conditions {
     }
 }
 
+impl Serialize for Conditions {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Conditions {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let json_value = Value::deserialize(deserializer)?;
+        let conditions: String =
+            serde_json::from_value(json_value).map_err(DeserializerError::custom)?;
+        Self::from_str(&conditions).map_err(DeserializerError::custom)
+    }
+}
+
 impl EventProperties {
     /// Create new with values
     pub fn new(event_kind: u64, created_time: u64) -> Self {
@@ -390,6 +412,30 @@ mod test {
     use super::*;
     use crate::nips::nip19::ToBech32;
     use crate::prelude::{FromBech32, SecretKey};
+
+    #[test]
+    fn test_serialize_conditions() {
+        let mut conditions = Conditions::new();
+        conditions.add(Condition::Kind(1));
+        conditions.add(Condition::CreatedAfter(1676067553));
+        conditions.add(Condition::CreatedBefore(1678659553));
+
+        assert_eq!(json!(conditions).as_str().unwrap(), "kind=1&created_at>1676067553&created_at<1678659553");
+    }
+
+    #[test]
+    fn test_deserialize_conditions() {
+        let mut conditions = Conditions::new();
+        conditions.add(Condition::Kind(1));
+        conditions.add(Condition::CreatedAfter(1676067553));
+        conditions.add(Condition::CreatedBefore(1678659553));
+        
+        let value = json!("kind=1&created_at>1676067553&created_at<1678659553");
+        assert_eq!(serde_json::from_value::<Conditions>(value).unwrap(), conditions);
+
+        let value = "\"kind=1&created_at>1676067553&created_at<1678659553\"";
+        assert_eq!(serde_json::from_str::<Conditions>(value).unwrap(), conditions);
+    }
 
     #[test]
     fn test_create_delegation_tag() {
