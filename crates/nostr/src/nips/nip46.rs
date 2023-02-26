@@ -17,12 +17,19 @@ use serde_json::{json, Value};
 use url::form_urlencoded::byte_serialize;
 use url::Url;
 
+use super::nip04;
+#[cfg(feature = "nip26")]
+use super::nip26::{Conditions, DelegationToken};
+use crate::key::{self, Keys};
 #[cfg(feature = "base")]
 use crate::UnsignedEvent;
 
 /// NIP46 error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Key error
+    #[error(transparent)]
+    Key(#[from] key::Error),
     /// JSON error
     #[error(transparent)]
     JSON(#[from] serde_json::Error),
@@ -32,9 +39,19 @@ pub enum Error {
     /// Secp256k1 error
     #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),
+    /// NIP04 error
+    #[error(transparent)]
+    NIP04(#[from] nip04::Error),
+    /// Unsigned event error
+    #[cfg(feature = "base")]
+    #[error(transparent)]
+    UnsignedEvent(#[from] crate::event::unsigned::Error),
     /// Invalid request
     #[error("invalid request")]
     InvalidRequest,
+    /// Too many/few params
+    #[error("too many/few params")]
+    InvalidParamsLength,
     /// Unsupported method
     #[error("unsupported method")]
     UnsupportedMethod,
@@ -61,14 +78,13 @@ pub enum Request {
     /// Disconnect
     Disconnect,
     /// Delegate
+    #[cfg(feature = "nip26")]
     Delegate {
         /// Pubkey
         public_key: XOnlyPublicKey,
         /// NIP26 conditions
-        conditions: String,
+        conditions: Conditions,
     },
-    /// Get relays
-    GetRelays,
     /// Encrypt text (NIP04)
     Nip04Encrypt {
         /// Pubkey
@@ -95,11 +111,11 @@ impl Request {
             Self::SignEvent(_) => "sign_event".to_string(),
             Self::Connect(_) => "connect".to_string(),
             Self::Disconnect => "disconnect".to_string(),
+            #[cfg(feature = "nip26")]
             Self::Delegate {
                 public_key: _,
                 conditions: _,
             } => "delegate".to_string(),
-            Self::GetRelays => "get_relays".to_string(),
             Self::Nip04Encrypt {
                 public_key: _,
                 text: _,
@@ -120,14 +136,51 @@ impl Request {
             Self::SignEvent(event) => vec![json!(event)],
             Self::Connect(pubkey) => vec![json!(pubkey)],
             Self::Disconnect => Vec::new(),
+            #[cfg(feature = "nip26")]
             Self::Delegate {
                 public_key,
                 conditions,
             } => vec![json!(public_key), json!(conditions)],
-            Self::GetRelays => Vec::new(),
             Self::Nip04Encrypt { public_key, text } => vec![json!(public_key), json!(text)],
             Self::Nip04Decrypt { public_key, text } => vec![json!(public_key), json!(text)],
         }
+    }
+
+    /// Generate [`Response`] message from [`Request`]
+    pub fn into_response(self, keys: &Keys) -> Result<Option<Response>, Error> {
+        let res: Option<Response> = match self {
+            Self::Describe => Some(Response::Describe(json!({
+                "get_public_key": {
+                    "params": [],
+                    "result": "something",
+                }
+            }))),
+            Self::GetPublicKey => Some(Response::GetPublicKey(keys.public_key())),
+            #[cfg(feature = "base")]
+            Self::SignEvent(unsigned_event) => {
+                let signed_event = unsigned_event.sign(keys)?;
+                Some(Response::SignEvent(signed_event.sig))
+            }
+            Self::Connect(_) => None,
+            Self::Disconnect => None,
+            #[cfg(feature = "nip26")]
+            Self::Delegate {
+                public_key,
+                conditions,
+            } => {
+                let token = DelegationToken::new(public_key, conditions);
+                Some(Response::Delegate(token))
+            }
+            Self::Nip04Encrypt { public_key, text } => {
+                let encrypted_content = nip04::encrypt(&keys.secret_key()?, &public_key, text)?;
+                Some(Response::Nip04Encrypt(encrypted_content))
+            }
+            Self::Nip04Decrypt { public_key, text } => {
+                let decrypted_content = nip04::decrypt(&keys.secret_key()?, &public_key, text)?;
+                Some(Response::Nip04Decrypt(decrypted_content))
+            }
+        };
+        Ok(res)
     }
 }
 
@@ -141,6 +194,13 @@ pub enum Response {
     /// Sign event
     #[cfg(feature = "base")]
     SignEvent(Signature),
+    /// Delegation
+    #[cfg(feature = "nip26")]
+    Delegate(DelegationToken),
+    /// Encrypted content (NIP04)
+    Nip04Encrypt(String),
+    /// Decrypted content (NIP04)
+    Nip04Decrypt(String),
 }
 
 /// Message
@@ -184,9 +244,30 @@ impl Message {
             result: Some(match res {
                 Response::Describe(value) => value,
                 Response::GetPublicKey(pubkey) => json!(pubkey),
+                #[cfg(feature = "base")]
                 Response::SignEvent(sig) => json!(sig),
+                #[cfg(feature = "nip26")]
+                Response::Delegate(token) => json!(token),
+                Response::Nip04Encrypt(encrypted_content) => json!(encrypted_content),
+                Response::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
             }),
             error: None,
+        }
+    }
+
+    /// check if current [`Message`] is a request
+    pub fn is_request(&self) -> bool {
+        match self {
+            Message::Request {
+                id: _,
+                method: _,
+                params: _,
+            } => true,
+            Message::Response {
+                id: _,
+                result: _,
+                error: _,
+            } => false,
         }
     }
 
@@ -252,15 +333,52 @@ impl Message {
                         Err(Error::InvalidRequest)
                     }
                 }
-                "disconnect" => todo!(),
-                "delegate" => todo!(),
-                "get_relays" => todo!(),
-                "nip04_encrypt" => todo!(),
-                "nip04_decrypt" => todo!(),
+                "disconnect" => Ok(Request::Disconnect),
+                #[cfg(feature = "nip26")]
+                "delegate" => {
+                    if params.len() != 2 {
+                        return Err(Error::InvalidParamsLength);
+                    }
+
+                    Ok(Request::Delegate {
+                        public_key: serde_json::from_value(params[0].clone())?,
+                        conditions: serde_json::from_value(params[1].clone())?,
+                    })
+                }
+                "nip04_encrypt" => {
+                    if params.len() != 2 {
+                        return Err(Error::InvalidParamsLength);
+                    }
+
+                    Ok(Request::Nip04Encrypt {
+                        public_key: serde_json::from_value(params[0].clone())?,
+                        text: params[1].as_str().ok_or(Error::InvalidRequest)?.to_string(),
+                    })
+                }
+                "nip04_decrypt" => {
+                    if params.len() != 2 {
+                        return Err(Error::InvalidParamsLength);
+                    }
+
+                    Ok(Request::Nip04Decrypt {
+                        public_key: serde_json::from_value(params[0].clone())?,
+                        text: params[1].as_str().ok_or(Error::InvalidRequest)?.to_string(),
+                    })
+                }
                 _ => Err(Error::UnsupportedMethod),
             }
         } else {
             Err(Error::InvalidRequest)
+        }
+    }
+
+    /// Generate response message
+    pub fn generate_response(&self, keys: &Keys) -> Result<Option<Self>, Error> {
+        let req = self.to_request()?;
+        if let Some(res) = req.into_response(keys)? {
+            Ok(Some(Self::response(self.id(), res)))
+        } else {
+            Ok(None)
         }
     }
 }
