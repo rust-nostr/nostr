@@ -55,8 +55,8 @@ pub enum Error {
     #[error("too many/few params")]
     InvalidParamsLength,
     /// Unsupported method
-    #[error("unsupported method")]
-    UnsupportedMethod,
+    #[error("unsupported method: {0}")]
+    UnsupportedMethod(String),
     /// Invalid URI
     #[error("invalid uri")]
     InvalidURI,
@@ -389,7 +389,7 @@ impl Message {
                     let value: String = serde_json::from_value(params[0].clone())?;
                     Ok(Request::SignSchnorr(value))
                 }
-                _ => Err(Error::UnsupportedMethod),
+                other => Err(Error::UnsupportedMethod(other.to_string())),
             }
         } else {
             Err(Error::InvalidRequest)
