@@ -87,7 +87,7 @@ The following crate feature flags are available:
 
 | Feature             | Default | Description                                                                                                                |
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
-| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11`features in not async/await context                                                     |
+| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                                                    |
 | `base`              |   Yes   | Enable `event`, `message` and `types` modules                                                                              |
 | `vanity`            |   No    | Enable vanity public key mining module                                                                                     |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
