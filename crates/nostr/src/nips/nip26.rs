@@ -12,6 +12,7 @@ use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::{KeyPair, Message, XOnlyPublicKey};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 #[cfg(feature = "base")]
@@ -64,39 +65,15 @@ pub enum ValidationError {
     CreatedTooLate,
 }
 
-/// Create a NIP-26 delegation tag (including the signature).
-/// See also validate_delegation_tag().
-pub fn create_delegation_tag(
-    delegator_keys: &Keys,
-    delegatee_pubkey: XOnlyPublicKey,
-    conditions_string: &str,
-) -> Result<DelegationTag, Error> {
-    DelegationTag::create(delegator_keys, delegatee_pubkey, conditions_string)
-}
-
-/// Validate a NIP-26 delegation tag, check signature and conditions.
-pub fn validate_delegation_tag(
-    delegation_tag: &DelegationTag,
-    delegatee_pubkey: XOnlyPublicKey,
-    event_properties: &EventProperties,
-) -> Result<(), Error> {
-    delegation_tag.validate(delegatee_pubkey, event_properties)
-}
-
-/// Compile the delegation token, of the form 'nostr:delegation:<pubkey_of_publisher>:<conditions_query_string>'
-pub fn delegation_token(delegatee_pk: &XOnlyPublicKey, conditions: &str) -> String {
-    format!("nostr:{DELEGATION_KEYWORD}:{delegatee_pk}:{conditions}")
-}
-
 /// Sign delegation.
 /// See `create_delegation_tag` for more complete functionality.
 pub fn sign_delegation(
     delegator_keys: &Keys,
     delegatee_pk: XOnlyPublicKey,
-    conditions: String,
+    conditions: Conditions,
 ) -> Result<Signature, Error> {
     let keypair: &KeyPair = &delegator_keys.key_pair()?;
-    let unhashed_token: String = delegation_token(&delegatee_pk, &conditions);
+    let unhashed_token = DelegationToken::new(delegatee_pk, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
     Ok(SECP256K1.sign_schnorr(&message, keypair))
@@ -104,16 +81,40 @@ pub fn sign_delegation(
 
 /// Verify delegation signature
 pub fn verify_delegation_signature(
-    delegator_public_key: &XOnlyPublicKey,
-    signature: &Signature,
+    delegator_public_key: XOnlyPublicKey,
+    signature: Signature,
     delegatee_public_key: XOnlyPublicKey,
-    conditions: String,
+    conditions: Conditions,
 ) -> Result<(), Error> {
-    let unhashed_token: String = delegation_token(&delegatee_public_key, &conditions);
+    let unhashed_token = DelegationToken::new(delegatee_public_key, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
-    SECP256K1.verify_schnorr(signature, &message, delegator_public_key)?;
+    SECP256K1.verify_schnorr(&signature, &message, &delegator_public_key)?;
     Ok(())
+}
+
+/// Delegation token
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct DelegationToken(String);
+
+impl DelegationToken {
+    /// Generate [`DelegationToken`]
+    pub fn new(delegatee_pk: XOnlyPublicKey, conditions: Conditions) -> Self {
+        Self(format!(
+            "nostr:{DELEGATION_KEYWORD}:{delegatee_pk}:{conditions}"
+        ))
+    }
+
+    /// Get as bytes
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
+impl fmt::Display for DelegationToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 /// Delegation tag, as defined in NIP-26
@@ -125,6 +126,21 @@ pub struct DelegationTag {
 }
 
 impl DelegationTag {
+    /// Create a delegation tag (including the signature).
+    /// See also validate().
+    pub fn new(
+        delegator_keys: &Keys,
+        delegatee_pubkey: XOnlyPublicKey,
+        conditions: Conditions,
+    ) -> Result<Self, Error> {
+        let signature = sign_delegation(delegator_keys, delegatee_pubkey, conditions.clone())?;
+        Ok(Self {
+            delegator_pubkey: delegator_keys.public_key(),
+            conditions,
+            signature,
+        })
+    }
+
     /// Get delegator public key
     pub fn delegator_pubkey(&self) -> XOnlyPublicKey {
         self.delegator_pubkey
@@ -140,26 +156,6 @@ impl DelegationTag {
         self.signature
     }
 
-    /// Create a delegation tag (including the signature).
-    /// See also validate().
-    pub fn create(
-        delegator_keys: &Keys,
-        delegatee_pubkey: XOnlyPublicKey,
-        conditions_string: &str,
-    ) -> Result<Self, Error> {
-        let signature = sign_delegation(
-            delegator_keys,
-            delegatee_pubkey,
-            conditions_string.to_string(),
-        )?;
-        let conditions = Conditions::from_str(conditions_string)?;
-        Ok(Self {
-            delegator_pubkey: delegator_keys.public_key(),
-            conditions,
-            signature,
-        })
-    }
-
     /// Validate a delegation tag, check signature and conditions.
     pub fn validate(
         &self,
@@ -167,16 +163,13 @@ impl DelegationTag {
         event_properties: &EventProperties,
     ) -> Result<(), Error> {
         // verify signature
-        if let Err(_e) = verify_delegation_signature(
-            &self.delegator_pubkey,
-            &self.signature,
+        verify_delegation_signature(
+            self.delegator_pubkey,
+            self.signature,
             delegatee_pubkey,
-            self.conditions.to_string(),
-        ) {
-            return Err(Error::ConditionsValidation(
-                ValidationError::InvalidSignature,
-            ));
-        }
+            self.conditions.clone(),
+        )
+        .map_err(|_| Error::ConditionsValidation(ValidationError::InvalidSignature))?;
 
         // validate conditions
         self.conditions.evaluate(event_properties)?;
@@ -236,7 +229,7 @@ impl FromStr for DelegationTag {
 }
 
 /// A condition from the delegation conditions.
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Condition {
     /// Event kind, e.g. kind=1
     Kind(u64),
@@ -343,14 +336,16 @@ impl Conditions {
     }
 }
 
-impl ToString for Conditions {
-    fn to_string(&self) -> String {
+impl fmt::Display for Conditions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // convert parts, join
-        self.0
+        let conditions: String = self
+            .0
             .iter()
             .map(|c| c.to_string())
             .collect::<Vec<String>>()
-            .join("&")
+            .join("&");
+        write!(f, "{conditions}")
     }
 }
 
@@ -390,10 +385,11 @@ impl EventProperties {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use super::*;
     use crate::nips::nip19::ToBech32;
     use crate::prelude::{FromBech32, SecretKey};
-    use std::str::FromStr;
 
     #[test]
     fn test_create_delegation_tag() {
@@ -406,14 +402,16 @@ mod test {
             "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
         )
         .unwrap();
-        let conditions = "kind=1&created_at>1676067553&created_at<1678659553".to_string();
+        let conditions =
+            Conditions::from_str("kind=1&created_at>1676067553&created_at<1678659553").unwrap();
 
-        let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
+        let tag =
+            DelegationTag::new(&delegator_keys, delegatee_pubkey, conditions.clone()).unwrap();
 
         // verify signature (it's variable)
         let verify_result = verify_delegation_signature(
-            &delegator_keys.public_key(),
-            &tag.signature(),
+            delegator_keys.public_key(),
+            tag.signature(),
             delegatee_pubkey,
             conditions,
         );
@@ -437,16 +435,14 @@ mod test {
             "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
         )
         .unwrap();
-        let conditions = "kind=1&created_at>1676067553&created_at<1678659553".to_string();
+        let conditions =
+            Conditions::from_str("kind=1&created_at>1676067553&created_at<1678659553").unwrap();
 
-        let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
+        let tag = DelegationTag::new(&delegator_keys, delegatee_pubkey, conditions).unwrap();
 
-        assert!(validate_delegation_tag(
-            &tag,
-            delegatee_pubkey,
-            &EventProperties::new(1, 1677000000)
-        )
-        .is_ok());
+        assert!(tag
+            .validate(delegatee_pubkey, &EventProperties::new(1, 1677000000))
+            .is_ok());
     }
 
     #[test]
@@ -459,12 +455,9 @@ mod test {
 
         let tag = DelegationTag::from_str(tag_str).unwrap();
 
-        assert!(validate_delegation_tag(
-            &tag,
-            delegatee_pubkey,
-            &EventProperties::new(1, 1677000000)
-        )
-        .is_ok());
+        assert!(tag
+            .validate(delegatee_pubkey, &EventProperties::new(1, 1677000000))
+            .is_ok());
 
         // additional test: verify a value from inside the tag
         assert_eq!(
@@ -473,7 +466,9 @@ mod test {
         );
 
         // additional test: try validation with invalid values, invalid event kind
-        match validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(5, 1677000000))
+
+        match tag
+            .validate(delegatee_pubkey, &EventProperties::new(5, 1677000000))
             .err()
             .unwrap()
         {
@@ -492,15 +487,16 @@ mod test {
             "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
         )
         .unwrap();
-        let conditions = "kind=1&created_at>1674834236&created_at<1677426236".to_string();
+        let conditions =
+            Conditions::from_str("kind=1&created_at>1674834236&created_at<1677426236").unwrap();
 
         let signature =
             sign_delegation(&delegator_keys, delegatee_public_key, conditions.clone()).unwrap();
 
         // signature is changing, validate by verify method
         let verify_result = verify_delegation_signature(
-            &delegator_keys.public_key(),
-            &signature,
+            delegator_keys.public_key(),
+            signature,
             delegatee_public_key,
             conditions,
         );
@@ -517,14 +513,11 @@ mod test {
             "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
         )
         .unwrap();
-        let conditions = "kind=1&created_at>1674834236&created_at<1677426236";
+        let conditions =
+            Conditions::from_str("kind=1&created_at>1674834236&created_at<1677426236").unwrap();
 
-        let signature = sign_delegation(
-            &delegator_keys,
-            delegatee_public_key,
-            conditions.to_string(),
-        )
-        .unwrap();
+        let signature =
+            sign_delegation(&delegator_keys, delegatee_public_key, conditions.clone()).unwrap();
 
         // signature is changing, validate by lowlevel verify
         let unhashed_token: String =
@@ -549,11 +542,12 @@ mod test {
             "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
         )
         .unwrap();
-        let conditions = "kind=1&created_at>1674834236&created_at<1677426236".to_string();
+        let conditions =
+            Conditions::from_str("kind=1&created_at>1674834236&created_at<1677426236").unwrap();
 
         let verify_result = verify_delegation_signature(
-            &delegator_keys.public_key(),
-            &signature,
+            delegator_keys.public_key(),
+            signature,
             delegatee_pk,
             conditions,
         );
@@ -566,10 +560,11 @@ mod test {
             "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
         )
         .unwrap();
-        let conditions = "kind=1&created_at>1674834236&created_at<1677426236";
-        let unhashed_token: String = delegation_token(&delegatee_pk, &conditions);
+        let conditions =
+            Conditions::from_str("kind=1&created_at>1674834236&created_at<1677426236").unwrap();
+        let unhashed_token = DelegationToken::new(delegatee_pk, conditions);
         assert_eq!(
-            unhashed_token,
+            unhashed_token.to_string().as_str(),
             "nostr:delegation:477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396:kind=1&created_at>1674834236&created_at<1677426236"
         );
     }
@@ -620,25 +615,25 @@ mod test {
             "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
         )
         .unwrap();
-        let conditions = "kind=1&created_at>1676067553&created_at<1678659553".to_string();
+        let conditions =
+            Conditions::from_str("kind=1&created_at>1676067553&created_at<1678659553").unwrap();
 
-        let tag = create_delegation_tag(&delegator_keys, delegatee_pubkey, &conditions).unwrap();
+        let tag = DelegationTag::new(&delegator_keys, delegatee_pubkey, conditions).unwrap();
 
         // positive
-        assert!(validate_delegation_tag(
-            &tag,
-            delegatee_pubkey,
-            &EventProperties::new(1, 1677000000)
-        )
-        .is_ok());
+        assert!(tag
+            .validate(delegatee_pubkey, &EventProperties::new(1, 1677000000))
+            .is_ok());
 
         // signature verification fails if wrong delegatee key is given
         let wrong_pubkey = XOnlyPublicKey::from_bech32(
             "npub1zju3cgxq9p6f2c2jzrhhwuse94p7efkj5dp59eerh53hqd08j4dszevd7s",
         )
         .unwrap();
+
         // Note: Error cannot be tested simply  using equality
-        match validate_delegation_tag(&tag, wrong_pubkey, &EventProperties::new(1, 1677000000))
+        match tag
+            .validate(wrong_pubkey, &EventProperties::new(1, 1677000000))
             .err()
             .unwrap()
         {
@@ -647,7 +642,8 @@ mod test {
         }
 
         // wrong event kind
-        match validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(9, 1677000000))
+        match tag
+            .validate(delegatee_pubkey, &EventProperties::new(9, 1677000000))
             .err()
             .unwrap()
         {
@@ -656,7 +652,8 @@ mod test {
         };
 
         // wrong creation time
-        match validate_delegation_tag(&tag, delegatee_pubkey, &EventProperties::new(1, 1679000000))
+        match tag
+            .validate(delegatee_pubkey, &EventProperties::new(1, 1679000000))
             .err()
             .unwrap()
         {

@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use napi::bindgen_prelude::BigInt;
 use napi::Result;
-use nostr::nips::nip26::{self, DelegationTag, EventProperties};
+use nostr::nips::nip26::{self, Conditions, DelegationTag, EventProperties};
 use nostr::secp256k1::schnorr::Signature;
 
 use crate::error::into_err;
@@ -20,9 +20,9 @@ pub fn create_delegation_tag(
     delegatee_pubkey: &JsPublicKey,
     conditions: String,
 ) -> Result<String> {
-    let tag =
-        nip26::create_delegation_tag(delegator_keys.deref(), delegatee_pubkey.into(), &conditions)
-            .map_err(into_err)?;
+    let conditions = Conditions::from_str(&conditions).map_err(into_err)?;
+    let tag = DelegationTag::new(delegator_keys.deref(), delegatee_pubkey.into(), conditions)
+        .map_err(into_err)?;
     Ok(tag.to_string())
 }
 
@@ -38,7 +38,8 @@ pub fn validate_delegation_tag(
         Ok(tag) => {
             let event_properties =
                 EventProperties::new(event_kind.get_u64().1, created_at.get_u64().1);
-            nip26::validate_delegation_tag(&tag, delegatee_pubkey.into(), &event_properties).is_ok()
+            tag.validate(delegatee_pubkey.into(), &event_properties)
+                .is_ok()
         }
         Err(_) => false,
     }
@@ -51,11 +52,10 @@ pub fn sign_delegation(
     delegatee_pk: &JsPublicKey,
     conditions: String,
 ) -> Result<String> {
-    Ok(
-        nip26::sign_delegation(keys.deref(), delegatee_pk.into(), conditions)
-            .map_err(into_err)?
-            .to_string(),
-    )
+    let conditions = Conditions::from_str(&conditions).map_err(into_err)?;
+    let signature: Signature =
+        nip26::sign_delegation(keys.deref(), delegatee_pk.into(), conditions).map_err(into_err)?;
+    Ok(signature.to_string())
 }
 
 /// Verify delegation signature (NIP26)
@@ -66,10 +66,11 @@ pub fn verify_delegation_signature(
     conditions: String,
     signature: String,
 ) -> Result<bool> {
+    let conditions = Conditions::from_str(&conditions).map_err(into_err)?;
     let signature_struct = Signature::from_str(&signature).map_err(into_err)?;
     match nip26::verify_delegation_signature(
-        delegator_public_key.deref(),
-        &signature_struct,
+        delegator_public_key.into(),
+        signature_struct,
         delegatee_public_key.into(),
         conditions,
     ) {
