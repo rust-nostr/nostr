@@ -8,6 +8,7 @@ pub mod contact;
 pub mod entity;
 pub mod metadata;
 pub mod profile;
+pub mod proxy;
 pub mod time;
 
 pub use self::channel_id::ChannelId;

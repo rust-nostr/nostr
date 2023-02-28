@@ -85,6 +85,9 @@ fn main() -> Result<()> {
                 RelayMessage::Auth { challenge } => {
                     println!("Got a auth challenge: {}", challenge);
                 }
+                RelayMessage::Proxy(response) => {
+                    println!("Got a proxy response {:?}", response);
+                }
                 RelayMessage::Empty => {
                     println!("Empty message");
                 }

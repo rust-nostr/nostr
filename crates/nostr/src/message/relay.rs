@@ -9,6 +9,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::MessageHandleError;
+use crate::types::proxy::ProxyResponse;
 use crate::{Event, EventId, SubscriptionId};
 
 /// Messages sent by relays, received by clients
@@ -31,6 +32,7 @@ pub enum RelayMessage {
     Auth {
         challenge: String,
     },
+    Proxy(Box<ProxyResponse>),
     Empty,
 }
 
@@ -100,6 +102,11 @@ impl RelayMessage {
         }
     }
 
+    /// Create new `PROXY` message
+    pub fn new_proxy(proxy_response: ProxyResponse) -> Self {
+        Self::Proxy(Box::new(proxy_response))
+    }
+
     fn as_value(&self) -> Value {
         match self {
             Self::Event {
@@ -116,6 +123,16 @@ impl RelayMessage {
                 message,
             } => json!(["OK", event_id, status, message]),
             Self::Auth { challenge } => json!(["AUTH", challenge]),
+            Self::Proxy(proxy_type) => match proxy_type.as_ref() {
+                ProxyResponse::Nip05 { address, response } => {
+                    json!(["PROXY", "NIP-05", address, response])
+                }
+                ProxyResponse::Unknown {
+                    proxy_type,
+                    proxy_request,
+                    response,
+                } => json!(["PROXY", proxy_type, proxy_request, response]),
+            },
             Self::Empty => Value::Null,
         }
     }
@@ -186,6 +203,25 @@ impl RelayMessage {
             let message: String = serde_json::from_value(v[3].clone())?;
 
             return Ok(Self::new_ok(event_id, status, message));
+        }
+
+        // PROXY (NIP-55)
+        // Relay response format: ["PROXY", <proxy_type>, <proxy request>, <response>]
+        if v[0] == "PROXY" {
+            if v_len != 4 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+
+            if v[1] == "NIP-05" {
+                let address = v[2].to_string();
+                let response = ProxyResponse::new_nip05(address, v[3].clone());
+                return Ok(Self::new_proxy(response));
+            } else {
+                let proxy_type = v[1].to_string();
+                let address = v[2].to_string();
+                let response = ProxyResponse::new_unknown(proxy_type, address, v[3].clone());
+                return Ok(Self::new_proxy(response));
+            }
         }
 
         Err(MessageHandleError::InvalidMessageFormat)

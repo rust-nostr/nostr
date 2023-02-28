@@ -9,6 +9,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::{Filter, MessageHandleError, SubscriptionId};
+use crate::types::proxy::ProxyRequest;
 use crate::Event;
 
 /// Messages sent by clients, received by relays
@@ -26,6 +27,8 @@ pub enum ClientMessage {
     Close(SubscriptionId),
     /// Auth
     Auth(Box<Event>),
+    /// Proxy
+    Proxy(Box<ProxyRequest>),
 }
 
 impl Serialize for ClientMessage {
@@ -72,6 +75,11 @@ impl ClientMessage {
         Self::Auth(Box::new(event))
     }
 
+    /// Create new `PROXY` message
+    pub fn new_proxy(proxy: ProxyRequest) -> Self {
+        Self::Proxy(Box::new(proxy))
+    }
+
     fn as_value(&self) -> Value {
         match self {
             Self::Event(event) => json!(["EVENT", event]),
@@ -92,6 +100,13 @@ impl ClientMessage {
             }
             Self::Close(subscription_id) => json!(["CLOSE", subscription_id]),
             Self::Auth(event) => json!(["AUTH", event]),
+            Self::Proxy(proxy_request) => match proxy_request.as_ref() {
+                ProxyRequest::Nip05(address) => json!(["PROXY", "NIP-05", address]),
+                ProxyRequest::Unknown {
+                    proxy_type,
+                    proxy_request,
+                } => json!(["PROXY", proxy_type, proxy_request]),
+            },
         }
     }
 
@@ -156,6 +171,23 @@ impl ClientMessage {
             }
             let event = Event::from_json(v[1].to_string())?;
             return Ok(Self::new_auth(event));
+        }
+
+        // Proxy
+        // ["PROXY", <proxy type>, <proxy request>]
+        if v[0] == "PROXY" {
+            if v_len != 3 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+
+            if v[1] == "NIP-05" {
+                return Ok(Self::new_proxy(ProxyRequest::new_nip05(v[2].to_string())));
+            } else {
+                return Ok(Self::new_proxy(ProxyRequest::new_unknown(
+                    v[1].to_string(),
+                    v[2].to_string(),
+                )));
+            }
         }
 
         Err(MessageHandleError::InvalidMessageFormat)

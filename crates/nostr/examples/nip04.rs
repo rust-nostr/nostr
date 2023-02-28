@@ -70,6 +70,9 @@ fn main() -> Result<()> {
                 RelayMessage::EndOfStoredEvents(_subscription_id) => {
                     println!("Relay signalled End of Stored Events");
                 }
+                RelayMessage::Proxy(response) => {
+                    println!("Got a proxy response {:?}", response);
+                }
                 RelayMessage::Ok {
                     event_id,
                     status,
