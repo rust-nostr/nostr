@@ -482,12 +482,7 @@ impl Relay {
         }
 
         if !self.opts.read() {
-            if let ClientMessage::Req {
-                subscription_id: _,
-                filters: _,
-            }
-            | ClientMessage::Close(_) = msg
-            {
+            if let ClientMessage::Req { .. } | ClientMessage::Close(_) = msg {
                 return Err(Error::ReadDisabled);
             }
         }

@@ -66,10 +66,7 @@ fn main() -> Result<()> {
                 RelayMessage::Notice { message } => {
                     println!("Got a notice: {}", message);
                 }
-                RelayMessage::Event {
-                    event: _,
-                    subscription_id: _,
-                } => {
+                RelayMessage::Event { .. } => {
                     println!("Got an event!");
                 }
                 RelayMessage::EndOfStoredEvents(_subscription_id) => {

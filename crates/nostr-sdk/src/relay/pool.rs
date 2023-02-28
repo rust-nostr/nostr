@@ -128,11 +128,7 @@ impl RelayPoolTask {
                             msg.clone(),
                         ));
 
-                    if let RelayMessage::Event {
-                        subscription_id: _,
-                        event,
-                    } = msg
-                    {
+                    if let RelayMessage::Event { event, .. } = msg {
                         // Verifies if the event is valid
                         if event.verify().is_ok() {
                             // Adds only new events
