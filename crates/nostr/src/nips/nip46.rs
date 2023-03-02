@@ -116,18 +116,9 @@ impl Request {
             Self::Connect(_) => "connect".to_string(),
             Self::Disconnect => "disconnect".to_string(),
             #[cfg(feature = "nip26")]
-            Self::Delegate {
-                public_key: _,
-                conditions: _,
-            } => "delegate".to_string(),
-            Self::Nip04Encrypt {
-                public_key: _,
-                text: _,
-            } => "nip04_encrypt".to_string(),
-            Self::Nip04Decrypt {
-                public_key: _,
-                text: _,
-            } => "nip04_decrypt".to_string(),
+            Self::Delegate { .. } => "delegate".to_string(),
+            Self::Nip04Encrypt { .. } => "nip04_encrypt".to_string(),
+            Self::Nip04Decrypt { .. } => "nip04_decrypt".to_string(),
             Self::SignSchnorr(_) => "sign_schnorr".to_string(),
         }
     }
@@ -274,16 +265,8 @@ impl Message {
     /// check if current [`Message`] is a request
     pub fn is_request(&self) -> bool {
         match self {
-            Message::Request {
-                id: _,
-                method: _,
-                params: _,
-            } => true,
-            Message::Response {
-                id: _,
-                result: _,
-                error: _,
-            } => false,
+            Message::Request { .. } => true,
+            Message::Response { .. } => false,
         }
     }
 
@@ -294,16 +277,8 @@ impl Message {
     /// Get [`Message`] id
     pub fn id(&self) -> String {
         match self {
-            Self::Request {
-                id,
-                method: _,
-                params: _,
-            } => id.to_owned(),
-            Self::Response {
-                id,
-                result: _,
-                error: _,
-            } => id.to_owned(),
+            Self::Request { id, .. } => id.to_owned(),
+            Self::Response { id, .. } => id.to_owned(),
         }
     }
 
@@ -322,12 +297,7 @@ impl Message {
 
     /// Convert [`Message`] to [`Request`]
     pub fn to_request(&self) -> Result<Request, Error> {
-        if let Message::Request {
-            id: _,
-            method,
-            params,
-        } = self
-        {
+        if let Message::Request { method, params, .. } = self {
             match method.as_str() {
                 "describe" => Ok(Request::Describe),
                 "get_public_key" => Ok(Request::GetPublicKey),
