@@ -19,15 +19,14 @@ async fn main() -> Result<()> {
         "Nostr SDK",
     )
     .url(Url::parse("https://example.com")?);
-    let opts = Options::new()
-        .wait_for_send(true)
-        .nostr_connect(nostr_connect_uri);
+
+    let opts = Options::new().wait_for_send(true);
 
     let client = Client::new_with_opts(&app_keys, opts);
     client.add_relay("ws://192.168.7.233:7777", None).await?;
 
     println!("\n###############################################\n");
-    println!("Nostr Connect URI: {}", client.nostr_connect()?);
+    println!("Nostr Connect URI: {nostr_connect_uri}");
     println!("\n###############################################\n");
 
     client.connect().await;

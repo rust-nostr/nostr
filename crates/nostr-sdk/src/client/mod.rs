@@ -12,8 +12,6 @@ use std::time::Duration;
 
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
-#[cfg(feature = "nip46")]
-use nostr::nips::nip46::NostrConnectURI;
 use nostr::url::Url;
 use nostr::{
     ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, Keys, Kind,
@@ -52,10 +50,6 @@ pub enum Error {
     /// Hex error
     #[error("hex decoding error: {0}")]
     Hex(#[from] nostr::hashes::hex::Error),
-    /// Nostr Connect URI (NIP46) missing
-    #[cfg(feature = "nip46")]
-    #[error("nostr connect uri missing")]
-    NostrConnectURIMissing,
 }
 
 /// Nostr client
@@ -124,14 +118,6 @@ impl Client {
     #[cfg(feature = "nip13")]
     pub fn update_difficulty(&self, difficulty: u8) {
         self.opts.update_difficulty(difficulty);
-    }
-
-    /// Get Nostr Connect URI (NIP46)
-    #[cfg(feature = "nip46")]
-    pub fn nostr_connect(&self) -> Result<NostrConnectURI, Error> {
-        self.opts
-            .get_nostr_connect()
-            .ok_or(Error::NostrConnectURIMissing)
     }
 
     /// Get current [`Keys`]
