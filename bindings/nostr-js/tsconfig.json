@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "strict": true
+    },
+    "typedocOptions": {
+        "entryPoints": ["pkg/nostr_js.d.ts"],
+        "out": "docs",
+        "readme": "README.md"
+    }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "@rust-nostr/nostr",
+  "version": "0.3.0",
+  "description": "Rust implementation of the Nostr protocol.",
+  "keywords": [
+    "nostr",
+    "protocol",
+    "rust",
+    "bindings"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/rust-nostr/nostr",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rust-nostr/nostr.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rust-nostr/nostr/issues"
+  },
+  "author": {
+    "name": "Yuki Kishimoto",
+    "email": "yukikishimoto@protonmail.com",
+    "url": "https://github.com/yukibtc"
+  },
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://getalby.com/p/yuki"
+    }
+  ],
+  "main": "pkg/nostr_js.js",
+    "types": "pkg/nostr_js.d.ts",
+    "files": [
+        "pkg/nostr_js_bg.wasm.js",
+        "pkg/nostr_js_bg.wasm.d.ts",
+        "pkg/nostr_js.js",
+        "pkg/nostr_js.d.ts"
+    ],
+  "devDependencies": {
+    "wasm-pack": "^0.10.2"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "scripts": {
+    "build": "WASM_PACK_ARGS=--release ./build.sh",
+    "build:dev": "WASM_PACK_ARGS=--dev ./build.sh",
+    "doc": "typedoc --tsconfig ."
+  }
+}

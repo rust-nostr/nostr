@@ -1,0 +1,29 @@
+[package]
+name = "nostr-js"
+version = "0.1.0"
+edition = "2021"
+authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+nostr = { path = "../../crates/nostr" }
+wasm-bindgen = "0.2"
+
+[package.metadata.wasm-pack.profile.profiling]
+wasm-opt = false
+
+[package.metadata.wasm-pack.profile.profiling.wasm-bindgen]
+debug-js-glue = false
+demangle-name-section = true
+dwarf-debug-info = true
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ['-Oz']
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
