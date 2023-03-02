@@ -17,29 +17,21 @@ pub use bech32;
 pub use bip39;
 pub use bitcoin_hashes as hashes;
 pub use secp256k1::{self, SECP256K1};
-#[cfg(feature = "base")]
 pub use url::{self, Url};
 
-#[cfg(feature = "base")]
 pub mod event;
 pub mod key;
-#[cfg(feature = "base")]
 pub mod message;
 pub mod nips;
 pub mod prelude;
-#[cfg(feature = "base")]
 pub mod types;
 
-#[cfg(feature = "base")]
 pub use self::event::{Event, EventBuilder, EventId, Kind, Tag, UnsignedEvent};
 pub use self::key::Keys;
-#[cfg(feature = "base")]
 pub use self::message::{ClientMessage, Filter, RelayMessage, SubscriptionId};
-#[cfg(feature = "base")]
 pub use self::types::{ChannelId, Contact, Entity, Metadata, Profile, Timestamp};
 
 #[allow(deprecated)]
-#[cfg(feature = "base")]
 pub use self::message::subscription::SubscriptionFilter;
 
 /// Result

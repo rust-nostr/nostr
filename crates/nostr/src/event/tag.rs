@@ -7,7 +7,6 @@ use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-#[cfg(feature = "nip26")]
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
 use serde::de::Error as DeserializerError;
@@ -16,7 +15,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
 
 use super::id::{self, EventId};
-#[cfg(feature = "nip26")]
 use crate::nips::nip26::Conditions;
 use crate::{Kind, Timestamp};
 
@@ -51,7 +49,6 @@ pub enum Error {
     #[error(transparent)]
     EventId(#[from] id::Error),
     /// NIP26 error
-    #[cfg(feature = "nip26")]
     #[error(transparent)]
     Nip26(#[from] crate::nips::nip26::Error),
 }
@@ -262,7 +259,6 @@ pub enum Tag {
         nonce: u128,
         difficulty: u8,
     },
-    #[cfg(feature = "nip26")]
     Delegation {
         delegator_pk: XOnlyPublicKey,
         conditions: Conditions,
@@ -391,7 +387,6 @@ where
                     (!tag[2].is_empty()).then_some(tag[2].clone()),
                     (!tag[3].is_empty()).then_some(Marker::from(&tag[3])),
                 )),
-                #[cfg(feature = "nip26")]
                 TagKind::Delegation => Ok(Self::Delegation {
                     delegator_pk: XOnlyPublicKey::from_str(&tag[1])?,
                     conditions: Conditions::from_str(&tag[2])?,
@@ -472,7 +467,6 @@ impl From<Tag> for Vec<String> {
                 nonce.to_string(),
                 difficulty.to_string(),
             ],
-            #[cfg(feature = "nip26")]
             Tag::Delegation {
                 delegator_pk,
                 conditions,
@@ -782,7 +776,6 @@ mod tests {
             .as_vec()
         );
 
-        #[cfg(feature = "nip26")]
         assert_eq!(
             vec![
                 "delegation",
@@ -996,7 +989,6 @@ mod tests {
             )
         );
 
-        #[cfg(feature = "nip26")]
         assert_eq!(
             Tag::parse(vec![
                 "delegation",

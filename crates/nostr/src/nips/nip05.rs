@@ -9,14 +9,12 @@
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-#[cfg(feature = "base")]
 use bitcoin_hashes::hex::ToHex;
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
 use secp256k1::XOnlyPublicKey;
 use serde_json::Value;
 
-#[cfg(feature = "base")]
 use crate::Profile;
 
 /// `NIP05` error
@@ -57,7 +55,6 @@ fn get_key_from_json(json: Value, name: &str) -> Option<XOnlyPublicKey> {
         .and_then(|pubkey| XOnlyPublicKey::from_str(pubkey).ok())
 }
 
-#[cfg(feature = "base")]
 fn get_relays_from_json(json: Value, pk: XOnlyPublicKey) -> Vec<String> {
     let relays_list: Option<Vec<String>> = json
         .get("relays")
@@ -137,7 +134,6 @@ pub async fn verify(public_key: XOnlyPublicKey, nip05: &str) -> Result<(), Error
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "base")]
 pub async fn get_profile(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profile, Error> {
     use reqwest::Client;
 
@@ -159,7 +155,7 @@ pub async fn get_profile(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profi
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(all(feature = "blocking", feature = "base"))]
+#[cfg(feature = "blocking")]
 pub fn get_profile_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profile, Error> {
     use reqwest::blocking::Client;
 
@@ -181,7 +177,6 @@ pub fn get_profile_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<Pr
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(target_arch = "wasm32")]
-#[cfg(feature = "base")]
 pub async fn get_profile(nip05: &str) -> Result<Profile, Error> {
     use reqwest::Client;
 

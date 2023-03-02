@@ -9,24 +9,20 @@ repository.workspace = true
 license.workspace = true
 readme = "README.md"
 rust-version.workspace = true
-keywords = ["nostr", "protocol", "sdk", "rust"]
+keywords = ["nostr", "protocol", "sdk"]
 
 [features]
-default = ["all-nips", "base"]
+default = ["all-nips"]
 blocking = ["reqwest?/blocking"]
-base = ["dep:instant", "dep:log", "dep:serde", "dep:serde_json", "dep:url"]
 vanity = ["nip19"]
-all-nips = ["nip03", "nip04", "nip05", "nip06", "nip11", "nip13", "nip19", "nip26", "nip46", "nip65"]
+all-nips = ["nip03", "nip04", "nip05", "nip06", "nip11", "nip19", "nip46"]
 nip03 = ["dep:nostr-ots"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
-nip05 = ["dep:reqwest", "dep:serde_json"]
+nip05 = ["dep:reqwest"]
 nip06 = ["dep:bip39", "dep:bitcoin"]
-nip11 = ["dep:reqwest", "dep:serde", "dep:url"]
-nip13 = ["dep:log"]
-nip19 = ["dep:bech32", "dep:serde"]
-nip26 = ["dep:serde", "dep:serde_json"]
-nip46 = ["dep:serde", "dep:serde_json", "dep:url", "nip04"]
-nip65 = []
+nip11 = ["dep:reqwest"]
+nip19 = ["dep:bech32"]
+nip46 = ["nip04"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
@@ -36,18 +32,18 @@ bip39 = { version = "2.0", optional = true }
 bitcoin = { version = "0.29", optional = true }
 bitcoin_hashes = { version = "0.11", features = ["serde"] }
 cbc = { version = "0.1", features = ["alloc"], optional = true }
-log = { version = "0.4", optional = true }
+log = "0.4"
 nostr-ots = { version = "0.2", optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
 secp256k1 = { version = "0.24", features = ["global-context", "rand-std", "serde"] }
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_json = { version = "1.0", optional = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
 thiserror = "1.0"
-url = { version = "2", features = ["serde"], optional = true }
+url = { version = "2", features = ["serde"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
-instant = { version = "0.1", features = [ "wasm-bindgen", "inaccurate" ], optional = true }
+instant = { version = "0.1", features = [ "wasm-bindgen", "inaccurate" ] }
 
 [dev-dependencies]
 csv = "1.1.5"
@@ -61,19 +57,17 @@ required-features = ["nip19"]
 
 [[example]]
 name = "metadata"
-required-features = ["base"]
 
 [[example]]
 name = "tweet"
-required-features = ["base"]
 
 [[example]]
 name = "nip04"
-required-features = ["base", "nip04"]
+required-features = ["nip04"]
 
 [[example]]
 name = "nip05"
-required-features = ["base", "nip05", "blocking"]
+required-features = ["nip05", "blocking"]
 
 [[example]]
 name = "nip06"
@@ -81,7 +75,7 @@ required-features = ["nip06"]
 
 [[example]]
 name = "nip09"
-required-features = ["base", "nip19"]
+required-features = ["nip19"]
 
 [[example]]
 name = "nip11"
@@ -89,15 +83,14 @@ required-features = ["nip11", "blocking"]
 
 [[example]]
 name = "nip13"
-required-features = ["base", "nip13"]
 
 [[example]]
 name = "nip19"
-required-features = ["base", "nip19"]
+required-features = ["nip19"]
 
 [[example]]
 name = "nip65"
-required-features = ["base", "nip65"]
+required-features = ["nip19"]
 
 [[example]]
 name = "vanity"

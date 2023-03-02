@@ -88,7 +88,6 @@ The following crate feature flags are available:
 | Feature             | Default | Description                                                                                                                |
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
 | `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                                                    |
-| `base`              |   Yes   | Enable `event`, `message` and `types` modules                                                                              |
 | `vanity`            |   No    | Enable vanity public key mining module                                                                                     |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
 | `nip03`             |   Yes   | Enable NIP-03: OpenTimestamps Attestations for Events                                                                      |
@@ -96,11 +95,8 @@ The following crate feature flags are available:
 | `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                                                        |
 | `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
 | `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                                                  |
-| `nip13`             |   Yes   | Enable NIP-13: Proof of Work                                                                                               |
 | `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
-| `nip26`             |   Yes   | Enable NIP-26: Delegated Event Signing                                                                                     |
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
-| `nip65`             |   Yes   | Enable NIP-65: Relay List Metadata                                                                                         |
 
 ## Supported NIPs
 

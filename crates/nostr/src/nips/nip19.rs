@@ -9,12 +9,9 @@
 
 use bech32::{self, FromBase32, ToBase32, Variant};
 use secp256k1::{SecretKey, XOnlyPublicKey};
-#[cfg(feature = "base")]
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "base")]
 use crate::event::id::{self, EventId};
-#[cfg(feature = "base")]
 use crate::Kind;
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
@@ -58,7 +55,7 @@ pub enum Error {
     #[error(transparent)]
     Hash(#[from] bitcoin_hashes::Error),
     /// EventId error
-    #[cfg(feature = "base")]
+
     #[error(transparent)]
     EventId(#[from] id::Error),
 }
@@ -104,7 +101,6 @@ impl FromBech32 for XOnlyPublicKey {
     }
 }
 
-#[cfg(feature = "base")]
 impl FromBech32 for EventId {
     type Err = Error;
     fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
@@ -154,7 +150,6 @@ impl ToBech32 for SecretKey {
 }
 
 // Note ID
-#[cfg(feature = "base")]
 impl ToBech32 for EventId {
     type Err = Error;
 
@@ -168,14 +163,12 @@ impl ToBech32 for EventId {
     }
 }
 
-#[cfg(feature = "base")]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Nip19Event {
     event_id: EventId,
     relays: Vec<String>,
 }
 
-#[cfg(feature = "base")]
 impl Nip19Event {
     pub fn new<S>(event_id: EventId, relays: Vec<S>) -> Self
     where
@@ -188,7 +181,6 @@ impl Nip19Event {
     }
 }
 
-#[cfg(feature = "base")]
 impl FromBech32 for Nip19Event {
     type Err = Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
@@ -235,7 +227,6 @@ impl FromBech32 for Nip19Event {
     }
 }
 
-#[cfg(feature = "base")]
 impl ToBech32 for Nip19Event {
     type Err = Error;
 
@@ -253,7 +244,6 @@ impl ToBech32 for Nip19Event {
     }
 }
 
-#[cfg(feature = "base")]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct ParameterizedReplaceableEvent {
     kind: Kind,
@@ -262,7 +252,6 @@ pub struct ParameterizedReplaceableEvent {
     relays: Vec<String>,
 }
 
-#[cfg(feature = "base")]
 impl FromBech32 for ParameterizedReplaceableEvent {
     type Err = Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
@@ -326,7 +315,6 @@ impl FromBech32 for ParameterizedReplaceableEvent {
     }
 }
 
-#[cfg(feature = "base")]
 impl ToBech32 for ParameterizedReplaceableEvent {
     type Err = Error;
 
@@ -390,7 +378,6 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(feature = "base")]
     #[test]
     fn to_bech32_note() -> Result<()> {
         let event_id =

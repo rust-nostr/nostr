@@ -13,7 +13,6 @@ use super::{Event, EventId, UnsignedEvent};
 use crate::key::{self, Keys};
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
-#[cfg(feature = "nip13")]
 use crate::nips::nip13;
 #[cfg(feature = "nip46")]
 use crate::nips::nip46::Message as NostrConnectMessage;
@@ -82,7 +81,6 @@ impl EventBuilder {
     }
 
     /// Build POW [`Event`]
-    #[cfg(feature = "nip13")]
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
         #[cfg(target_arch = "wasm32")]
         use instant::Instant;

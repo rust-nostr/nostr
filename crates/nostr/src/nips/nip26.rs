@@ -16,7 +16,6 @@ use serde::de::Error as DeserializerError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
-#[cfg(feature = "base")]
 use crate::event::Event;
 use crate::key::{self, Keys};
 use crate::SECP256K1;
@@ -32,9 +31,6 @@ pub enum Error {
     /// Secp256k1 error
     #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),
-    /// Error passed from NIP-19, Bech32 format, signature format, etc.
-    #[error(transparent)]
-    Nip19(#[from] crate::nips::nip19::Error),
     /// Invalid condition in conditions string
     #[error("Invalid condition in conditions string")]
     ConditionsParseInvalidCondition,
@@ -396,7 +392,7 @@ impl EventProperties {
     }
 
     /// Create from an Event
-    #[cfg(feature = "base")]
+
     pub fn from_event(event: &Event) -> Self {
         Self {
             kind: event.kind.as_u64(),
@@ -410,8 +406,7 @@ mod test {
     use std::str::FromStr;
 
     use super::*;
-    use crate::nips::nip19::ToBech32;
-    use crate::prelude::{FromBech32, SecretKey};
+    use crate::prelude::SecretKey;
 
     #[test]
     fn test_serialize_conditions() {
@@ -448,13 +443,12 @@ mod test {
 
     #[test]
     fn test_create_delegation_tag() {
-        let delegator_secret_key = SecretKey::from_bech32(
-            "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
-        )
-        .unwrap();
+        let delegator_secret_key =
+            SecretKey::from_str("b2f3673ee3a659283e6599080e0ab0e669a3c2640914375a9b0b357faae08b17")
+                .unwrap();
         let delegator_keys = Keys::new(delegator_secret_key);
-        let delegatee_pubkey = XOnlyPublicKey::from_bech32(
-            "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
+        let delegatee_pubkey = XOnlyPublicKey::from_str(
+            "bea8aeb6c1657e33db5ac75a83910f77e8ec6145157e476b5b88c6e85b1fab34",
         )
         .unwrap();
         let conditions =
@@ -481,13 +475,12 @@ mod test {
 
     #[test]
     fn test_validate_delegation_tag() {
-        let delegator_secret_key = SecretKey::from_bech32(
-            "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
-        )
-        .unwrap();
+        let delegator_secret_key =
+            SecretKey::from_str("b2f3673ee3a659283e6599080e0ab0e669a3c2640914375a9b0b357faae08b17")
+                .unwrap();
         let delegator_keys = Keys::new(delegator_secret_key);
-        let delegatee_pubkey = XOnlyPublicKey::from_bech32(
-            "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
+        let delegatee_pubkey = XOnlyPublicKey::from_str(
+            "bea8aeb6c1657e33db5ac75a83910f77e8ec6145157e476b5b88c6e85b1fab34",
         )
         .unwrap();
         let conditions =
@@ -503,8 +496,8 @@ mod test {
     #[test]
     fn test_delegation_tag_parse_and_validate() {
         let tag_str = "[\"delegation\",\"1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4\",\"kind=1&created_at>1676067553&created_at<1678659553\",\"369aed09c1ad52fceb77ecd6c16f2433eac4a3803fc41c58876a5b60f4f36b9493d5115e5ec5a0ce6c3668ffe5b58d47f2cbc97233833bb7e908f66dbbbd9d36\"]";
-        let delegatee_pubkey = XOnlyPublicKey::from_bech32(
-            "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
+        let delegatee_pubkey = XOnlyPublicKey::from_str(
+            "bea8aeb6c1657e33db5ac75a83910f77e8ec6145157e476b5b88c6e85b1fab34",
         )
         .unwrap();
 
@@ -538,8 +531,8 @@ mod test {
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
                 .unwrap();
         let delegator_keys = Keys::new(delegator_secret_key);
-        let delegatee_public_key = XOnlyPublicKey::from_bech32(
-            "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
+        let delegatee_public_key = XOnlyPublicKey::from_str(
+            "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",
         )
         .unwrap();
         let conditions =
@@ -564,8 +557,8 @@ mod test {
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
                 .unwrap();
         let delegator_keys = Keys::new(delegator_secret_key);
-        let delegatee_public_key = XOnlyPublicKey::from_bech32(
-            "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
+        let delegatee_public_key = XOnlyPublicKey::from_str(
+            "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",
         )
         .unwrap();
         let conditions =
@@ -593,8 +586,8 @@ mod test {
         let delegator_keys = Keys::new(delegator_secret_key);
         // use one concrete signature
         let signature = Signature::from_str("f9f00fcf8480686d9da6dfde1187d4ba19c54f6ace4c73361a14db429c4b96eb30b29283d6ea1f06ba9e18e06e408244c689039ddadbacffc56060f3da5b04b8").unwrap();
-        let delegatee_pk = XOnlyPublicKey::from_bech32(
-            "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
+        let delegatee_pk = XOnlyPublicKey::from_str(
+            "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",
         )
         .unwrap();
         let conditions =
@@ -611,8 +604,8 @@ mod test {
 
     #[test]
     fn test_delegation_token() {
-        let delegatee_pk = XOnlyPublicKey::from_bech32(
-            "npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u",
+        let delegatee_pk = XOnlyPublicKey::from_str(
+            "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",
         )
         .unwrap();
         let conditions =
@@ -626,10 +619,9 @@ mod test {
 
     #[test]
     fn test_delegation_tag_to_json() {
-        let delegator_sk = SecretKey::from_bech32(
-            "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
-        )
-        .unwrap();
+        let delegator_sk =
+            SecretKey::from_str("b2f3673ee3a659283e6599080e0ab0e669a3c2640914375a9b0b357faae08b17")
+                .unwrap();
         let delegator_pubkey = Keys::new(delegator_sk).public_key();
         let conditions = Conditions::from_str("kind=1&created_at<1678659553").unwrap();
         let signature = Signature::from_str("435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976").unwrap();
@@ -654,20 +646,19 @@ mod test {
             "kind=1&created_at>1676067553&created_at<1678659553"
         );
         assert_eq!(
-            tag.delegator_pubkey().to_bech32().unwrap(),
-            "npub1rfze4zn25ezp6jqt5ejlhrajrfx0az72ed7cwvq0spr22k9rlnjq93lmd4"
+            tag.delegator_pubkey().to_string().as_str(),
+            "1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4"
         );
     }
 
     #[test]
     fn test_validate_delegation_tag_negative() {
-        let delegator_secret_key = SecretKey::from_bech32(
-            "nsec1ktekw0hr5evjs0n9nyyquz4sue568snypy2rwk5mpv6hl2hq3vtsk0kpae",
-        )
-        .unwrap();
+        let delegator_secret_key =
+            SecretKey::from_str("b2f3673ee3a659283e6599080e0ab0e669a3c2640914375a9b0b357faae08b17")
+                .unwrap();
         let delegator_keys = Keys::new(delegator_secret_key);
-        let delegatee_pubkey = XOnlyPublicKey::from_bech32(
-            "npub1h652adkpv4lr8k66cadg8yg0wl5wcc29z4lyw66m3rrwskcl4v6qr82xez",
+        let delegatee_pubkey = XOnlyPublicKey::from_str(
+            "bea8aeb6c1657e33db5ac75a83910f77e8ec6145157e476b5b88c6e85b1fab34",
         )
         .unwrap();
         let conditions =
@@ -681,8 +672,8 @@ mod test {
             .is_ok());
 
         // signature verification fails if wrong delegatee key is given
-        let wrong_pubkey = XOnlyPublicKey::from_bech32(
-            "npub1zju3cgxq9p6f2c2jzrhhwuse94p7efkj5dp59eerh53hqd08j4dszevd7s",
+        let wrong_pubkey = XOnlyPublicKey::from_str(
+            "14b91c20c0287495615210ef7772192d43eca6d2a34342e723bd237035e7955b",
         )
         .unwrap();
 

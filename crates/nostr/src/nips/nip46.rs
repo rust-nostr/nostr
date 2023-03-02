@@ -19,10 +19,8 @@ use url::form_urlencoded::byte_serialize;
 use url::Url;
 
 use super::nip04;
-#[cfg(feature = "nip26")]
 use super::nip26::{Conditions, DelegationToken};
 use crate::key::{self, Keys};
-#[cfg(feature = "base")]
 use crate::UnsignedEvent;
 use crate::SECP256K1;
 
@@ -45,7 +43,7 @@ pub enum Error {
     #[error(transparent)]
     NIP04(#[from] nip04::Error),
     /// Unsigned event error
-    #[cfg(feature = "base")]
+
     #[error(transparent)]
     UnsignedEvent(#[from] crate::event::unsigned::Error),
     /// Invalid request
@@ -73,14 +71,12 @@ pub enum Request {
     /// Get public key
     GetPublicKey,
     /// Sign [`UnsignedEvent`]
-    #[cfg(feature = "base")]
     SignEvent(UnsignedEvent),
     /// Connect
     Connect(XOnlyPublicKey),
     /// Disconnect
     Disconnect,
     /// Delegate
-    #[cfg(feature = "nip26")]
     Delegate {
         /// Pubkey
         public_key: XOnlyPublicKey,
@@ -111,11 +107,11 @@ impl Request {
         match self {
             Self::Describe => "describe".to_string(),
             Self::GetPublicKey => "get_public_key".to_string(),
-            #[cfg(feature = "base")]
+
             Self::SignEvent(_) => "sign_event".to_string(),
             Self::Connect(_) => "connect".to_string(),
             Self::Disconnect => "disconnect".to_string(),
-            #[cfg(feature = "nip26")]
+
             Self::Delegate { .. } => "delegate".to_string(),
             Self::Nip04Encrypt { .. } => "nip04_encrypt".to_string(),
             Self::Nip04Decrypt { .. } => "nip04_decrypt".to_string(),
@@ -128,11 +124,11 @@ impl Request {
         match self {
             Self::Describe => Vec::new(),
             Self::GetPublicKey => Vec::new(),
-            #[cfg(feature = "base")]
+
             Self::SignEvent(event) => vec![json!(event)],
             Self::Connect(pubkey) => vec![json!(pubkey)],
             Self::Disconnect => Vec::new(),
-            #[cfg(feature = "nip26")]
+
             Self::Delegate {
                 public_key,
                 conditions,
@@ -153,14 +149,14 @@ impl Request {
                 }
             }))),
             Self::GetPublicKey => Some(Response::GetPublicKey(keys.public_key())),
-            #[cfg(feature = "base")]
+
             Self::SignEvent(unsigned_event) => {
                 let signed_event = unsigned_event.sign(keys)?;
                 Some(Response::SignEvent(signed_event.sig))
             }
             Self::Connect(_) => None,
             Self::Disconnect => None,
-            #[cfg(feature = "nip26")]
+
             Self::Delegate {
                 public_key,
                 conditions,
@@ -196,10 +192,8 @@ pub enum Response {
     /// Get public key
     GetPublicKey(XOnlyPublicKey),
     /// Sign event
-    #[cfg(feature = "base")]
     SignEvent(Signature),
     /// Delegation
-    #[cfg(feature = "nip26")]
     Delegate(DelegationToken),
     /// Encrypted content (NIP04)
     Nip04Encrypt(String),
@@ -250,9 +244,9 @@ impl Message {
             result: Some(match res {
                 Response::Describe(value) => value,
                 Response::GetPublicKey(pubkey) => json!(pubkey),
-                #[cfg(feature = "base")]
+
                 Response::SignEvent(sig) => json!(sig),
-                #[cfg(feature = "nip26")]
+
                 Response::Delegate(token) => json!(token),
                 Response::Nip04Encrypt(encrypted_content) => json!(encrypted_content),
                 Response::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
@@ -301,7 +295,7 @@ impl Message {
             match method.as_str() {
                 "describe" => Ok(Request::Describe),
                 "get_public_key" => Ok(Request::GetPublicKey),
-                #[cfg(feature = "base")]
+
                 "sign_event" => {
                     if let Some(value) = params.first() {
                         let unsigned_event: UnsignedEvent =
@@ -320,7 +314,7 @@ impl Message {
                     Ok(Request::Connect(pubkey))
                 }
                 "disconnect" => Ok(Request::Disconnect),
-                #[cfg(feature = "nip26")]
+
                 "delegate" => {
                     if params.len() != 2 {
                         return Err(Error::InvalidParamsLength);

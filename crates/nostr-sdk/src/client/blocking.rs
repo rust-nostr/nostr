@@ -179,7 +179,6 @@ impl Client {
         RUNTIME.block_on(async { self.client.publish_text_note(content, tags).await })
     }
 
-    #[cfg(feature = "nip13")]
     pub fn publish_pow_text_note<S>(
         &self,
         content: S,
