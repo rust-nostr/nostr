@@ -81,6 +81,8 @@ LLVM_PATH=$(brew --prefix llvm)
 AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target wasm32-unknown-unknown
 ```
 
+NOTE: Currently you must disable `nip03` feature to allow compilation on `wasm` targets.
+
 ## Crate Feature Flags
 
 The following crate feature flags are available:
