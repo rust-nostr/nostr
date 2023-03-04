@@ -72,7 +72,8 @@ impl ClientMessage {
         Self::Auth(Box::new(event))
     }
 
-    fn as_value(&self) -> Value {
+    /// Serialize as [`Value`]
+    pub fn as_value(&self) -> Value {
         match self {
             Self::Event(event) => json!(["EVENT", event]),
             Self::Req {
@@ -100,7 +101,8 @@ impl ClientMessage {
         self.as_value().to_string()
     }
 
-    fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
+    /// Deserialize from [`Value`]
+    pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
         let v = msg
             .as_array()
             .ok_or(MessageHandleError::InvalidMessageFormat)?;
@@ -222,5 +224,28 @@ mod tests {
             client_req.as_json(),
             r##"["REQ","test",{"kinds":[22]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
         );
+    }
+
+    #[test]
+    fn test_negative_timestamp() {
+        let req = json!([
+            "REQ",
+            "some_id",
+            {
+                "authors": [
+                    "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"
+                ],
+                "kinds": [
+                    0,
+                    3
+                ],
+                "limit": 200000,
+                "since": -50123406
+            }
+        ]);
+
+        let msg = ClientMessage::from_value(req.clone()).unwrap();
+
+        assert_eq!(msg.as_value(), req)
     }
 }
