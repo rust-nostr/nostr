@@ -3,6 +3,8 @@
 
 //! Time
 
+use std::fmt;
+
 use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -60,9 +62,9 @@ impl FromStr for Timestamp {
     }
 }
 
-impl ToString for Timestamp {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl fmt::Display for Timestamp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
