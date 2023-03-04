@@ -16,8 +16,7 @@ use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
 use tokio::runtime::Runtime;
 
-pub use nostr;
-pub use nostr::Result;
+pub use nostr::{self, *};
 
 pub mod client;
 pub mod prelude;
