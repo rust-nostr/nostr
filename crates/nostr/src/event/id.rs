@@ -13,8 +13,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::{Kind, Tag};
-#[cfg(feature = "nip19")]
-use crate::nips::nip19::ToBech32;
 use crate::Timestamp;
 
 /// [`EventId`] error
@@ -87,13 +85,6 @@ impl AsRef<[u8]> for EventId {
 
 impl fmt::Display for EventId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(feature = "nip19")]
-        match self.to_bech32() {
-            Ok(r) => write!(f, "{r}"),
-            Err(_) => write!(f, "{}", self.to_hex()),
-        }
-
-        #[cfg(not(feature = "nip19"))]
         write!(f, "{}", self.to_hex())
     }
 }

@@ -156,13 +156,6 @@ impl ToBech32 for ChannelId {
 
 impl fmt::Display for ChannelId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(feature = "nip19")]
-        match self.to_bech32() {
-            Ok(r) => write!(f, "{r}"),
-            Err(_) => write!(f, "{}", self.to_hex()),
-        }
-
-        #[cfg(not(feature = "nip19"))]
         write!(f, "{}", self.to_hex())
     }
 }
