@@ -103,3 +103,9 @@ impl From<Sha256Hash> for EventId {
         Self(hash)
     }
 }
+
+impl From<EventId> for String {
+    fn from(event_id: EventId) -> Self {
+        event_id.to_string()
+    }
+}
