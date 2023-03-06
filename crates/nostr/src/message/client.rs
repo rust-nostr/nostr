@@ -129,7 +129,7 @@ impl ClientMessage {
             if v_len == 2 {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 return Ok(Self::new_req(subscription_id, Vec::new()));
-            } else if v_len == 3 {
+            } else if v_len >= 3 {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))?;
                 return Ok(Self::new_req(subscription_id, filters));
