@@ -10,6 +10,7 @@
 use std::str::FromStr;
 
 use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::Rng;
 pub use secp256k1::{KeyPair, SecretKey, XOnlyPublicKey};
 
 use crate::SECP256K1;
@@ -96,6 +97,15 @@ impl Keys {
     pub fn generate() -> Self {
         let mut rng = OsRng::default();
         let (secret_key, _) = SECP256K1.generate_keypair(&mut rng);
+        Self::new(secret_key)
+    }
+
+    /// Generate with random keys with custom [`Rng`]
+    pub fn generate_with_rng<R>(rng: &mut R) -> Self
+    where
+        R: Rng + ?Sized,
+    {
+        let (secret_key, _) = SECP256K1.generate_keypair(rng);
         Self::new(secret_key)
     }
 
