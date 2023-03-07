@@ -100,13 +100,27 @@ impl Keys {
         Self::new(secret_key)
     }
 
-    /// Generate with random keys with custom [`Rng`]
+    /// Generate random [`Key`] with custom [`Rng`]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
     where
         R: Rng + ?Sized,
     {
         let (secret_key, _) = SECP256K1.generate_keypair(rng);
         Self::new(secret_key)
+    }
+
+    /// Generate random [`Key`] with custom [`Rng`] and without [`KeyPair`]
+    pub fn generate_without_keypair<R>(rng: &mut R) -> Self
+    where
+        R: Rng + ?Sized,
+    {
+        let (secret_key, public_key) = SECP256K1.generate_keypair(rng);
+        let (public_key, _) = public_key.x_only_public_key();
+        Self {
+            public_key,
+            key_pair: None,
+            secret_key: Some(secret_key),
+        }
     }
 
     /// Get public key
