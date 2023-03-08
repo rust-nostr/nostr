@@ -8,7 +8,7 @@ use std::sync::mpsc::{sync_channel, RecvError};
 use std::sync::Arc;
 use std::thread;
 
-use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand;
 use secp256k1::SecretKey;
 
 use super::Keys;
@@ -60,14 +60,14 @@ impl Keys {
 
         let (tx, rx) = sync_channel::<SecretKey>(1);
         let found = Arc::new(AtomicBool::new(false));
-        let mut handles = vec![];
+        let mut handles = Vec::new();
 
         for _ in 0..num_cores {
             let tx = tx.clone();
             let found = found.clone();
             let prefixes = prefixes.clone();
             let handle = thread::spawn(move || {
-                let mut rng = OsRng::default();
+                let mut rng = rand::thread_rng();
                 loop {
                     if found.load(Ordering::SeqCst) {
                         break;
