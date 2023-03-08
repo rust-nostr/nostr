@@ -6,12 +6,13 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/13.md>
 
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
-
-/// Gets the number of leading zero bits of a hash. Result is between 0 and 255.
-pub fn get_leading_zero_bits(h: Sha256Hash) -> u8 {
-    let mut res = 0_u8;
-    for b in h.as_ref() {
+/// Gets the number of leading zero bits. Result is between 0 and 255.
+pub fn get_leading_zero_bits<T>(h: T) -> u8
+where
+    T: AsRef<[u8]>,
+{
+    let mut res: u8 = 0_u8;
+    for b in h.as_ref().iter() {
         if *b == 0 {
             res += 8;
         } else {
@@ -53,8 +54,10 @@ pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
     use bitcoin_hashes::hex::FromHex;
+    use bitcoin_hashes::sha256::Hash as Sha256Hash;
+
+    use super::*;
 
     #[test]
     fn check_get_leading_zeroes() {
