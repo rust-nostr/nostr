@@ -607,13 +607,16 @@ impl Client {
 
         for event in events.into_iter() {
             for tag in event.tags.into_iter() {
-                if let Tag::ContactList {
-                    pk,
-                    relay_url,
-                    alias,
-                } = tag
-                {
-                    contact_list.push(Contact::new(pk, relay_url, alias));
+                match tag {
+                    Tag::PubKey(pk, relay_url) => {
+                        contact_list.push(Contact::new(pk, relay_url, None))
+                    }
+                    Tag::ContactList {
+                        pk,
+                        relay_url,
+                        alias,
+                    } => contact_list.push(Contact::new(pk, relay_url, alias)),
+                    _ => (),
                 }
             }
         }
