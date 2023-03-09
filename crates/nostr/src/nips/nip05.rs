@@ -29,8 +29,8 @@ pub enum Error {
     /// Reqwest error
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
-    /// Error serializing or deserializing JSON data
-    #[error(transparent)]
+    /// Error deserializing JSON data
+    #[error("impossible to deserialize NIP05 data: {0}")]
     Json(#[from] serde_json::Error),
     /// Secp256k1 error
     #[error(transparent)]
