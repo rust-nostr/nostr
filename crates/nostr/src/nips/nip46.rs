@@ -22,7 +22,6 @@ use super::nip04;
 use super::nip26::{Conditions, DelegationToken};
 use crate::key::{self, Keys};
 use crate::UnsignedEvent;
-use crate::SECP256K1;
 
 /// NIP46 error
 #[derive(Debug, thiserror::Error)]
@@ -173,10 +172,9 @@ impl Request {
                 Some(Response::Nip04Decrypt(decrypted_content))
             }
             Self::SignSchnorr(value) => {
-                let keypair = keys.key_pair()?;
                 let hash = Sha256Hash::hash(value.as_bytes());
                 let message = Secp256k1Message::from_slice(&hash)?;
-                let sig: Signature = SECP256K1.sign_schnorr(&message, &keypair);
+                let sig: Signature = keys.sign_schnorr(&message)?;
                 Some(Response::SignSchnorr(sig))
             }
         };

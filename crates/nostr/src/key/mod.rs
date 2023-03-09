@@ -11,6 +11,8 @@ use std::str::FromStr;
 
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::Rng;
+use secp256k1::schnorr::Signature;
+use secp256k1::Message;
 pub use secp256k1::{KeyPair, SecretKey, XOnlyPublicKey};
 
 use crate::SECP256K1;
@@ -38,6 +40,7 @@ pub enum Error {
     #[error("Key pair missing")]
     KeyPairMissing,
     /// Failed to generate new keys
+    #[deprecated]
     #[error("Failed to generate new keys")]
     KeyGenerationFailure,
     /// Unsupported char
@@ -149,6 +152,12 @@ impl Keys {
             let sk = self.secret_key()?;
             Ok(KeyPair::from_secret_key(SECP256K1, &sk))
         }
+    }
+
+    /// Sign schnorr [`Message`]
+    pub fn sign_schnorr(&self, message: &Message) -> Result<Signature, Error> {
+        let keypair: &KeyPair = &self.key_pair()?;
+        Ok(SECP256K1.sign_schnorr(message, keypair))
     }
 }
 

@@ -4,10 +4,10 @@
 //! Unsigned Event
 
 use secp256k1::schnorr::Signature;
-use secp256k1::{KeyPair, Message, XOnlyPublicKey};
+use secp256k1::{Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 
-use crate::{Event, EventId, Keys, Kind, Tag, Timestamp, SECP256K1};
+use crate::{Event, EventId, Keys, Kind, Tag, Timestamp};
 
 /// [`UnsignedEvent`] error
 #[derive(Debug, thiserror::Error)]
@@ -46,7 +46,6 @@ pub struct UnsignedEvent {
 impl UnsignedEvent {
     /// Sign an [`UnsignedEvent`]
     pub fn sign(self, keys: &Keys) -> Result<Event, Error> {
-        let keypair: &KeyPair = &keys.key_pair()?;
         let message = Message::from_slice(self.id.as_bytes())?;
         Ok(Event {
             id: self.id,
@@ -55,7 +54,7 @@ impl UnsignedEvent {
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-            sig: SECP256K1.sign_schnorr(&message, keypair),
+            sig: keys.sign_schnorr(&message)?,
             #[cfg(feature = "nip03")]
             ots: None,
         })

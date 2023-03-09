@@ -11,7 +11,7 @@ use std::str::FromStr;
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
-use secp256k1::{KeyPair, Message, XOnlyPublicKey};
+use secp256k1::{Message, XOnlyPublicKey};
 use serde::de::Error as DeserializerError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
@@ -69,11 +69,10 @@ pub fn sign_delegation(
     delegatee_pk: XOnlyPublicKey,
     conditions: Conditions,
 ) -> Result<Signature, Error> {
-    let keypair: &KeyPair = &delegator_keys.key_pair()?;
     let unhashed_token = DelegationToken::new(delegatee_pk, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(&hashed_token)?;
-    Ok(SECP256K1.sign_schnorr(&message, keypair))
+    Ok(delegator_keys.sign_schnorr(&message)?)
 }
 
 /// Verify delegation signature
