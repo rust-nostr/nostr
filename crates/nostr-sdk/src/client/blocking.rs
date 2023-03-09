@@ -210,6 +210,13 @@ impl Client {
         RUNTIME.block_on(async { self.client.get_contact_list(timeout).await })
     }
 
+    pub fn get_contact_list_public_keys(
+        &self,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<XOnlyPublicKey>, Error> {
+        RUNTIME.block_on(async { self.client.get_contact_list_public_keys(timeout).await })
+    }
+
     #[cfg(feature = "nip04")]
     pub fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<EventId, Error>
     where

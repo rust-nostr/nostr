@@ -624,6 +624,35 @@ impl Client {
         Ok(contact_list)
     }
 
+    /// Get contact list public keys
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
+    /// ```
+    pub async fn get_contact_list_public_keys(
+        &self,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<XOnlyPublicKey>, Error> {
+        let mut pubkeys: Vec<XOnlyPublicKey> = Vec::new();
+
+        let filter = Filter::new()
+            .authors(vec![self.keys.public_key()])
+            .kind(Kind::ContactList)
+            .limit(1);
+        let events: Vec<Event> = self.get_events_of(vec![filter], timeout).await?;
+
+        for event in events.into_iter() {
+            for tag in event.tags.into_iter() {
+                match tag {
+                    Tag::PubKey(pk, _) => pubkeys.push(pk),
+                    Tag::ContactList { pk, .. } => pubkeys.push(pk),
+                    _ => (),
+                }
+            }
+        }
+
+        Ok(pubkeys)
+    }
+
     /// Send encrypted direct message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
