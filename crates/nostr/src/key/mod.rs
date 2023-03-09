@@ -34,6 +34,7 @@ pub enum Error {
     #[error("Secrete key missing")]
     SkMissing,
     /// Key pair missing
+    #[deprecated]
     #[error("Key pair missing")]
     KeyPairMissing,
     /// Failed to generate new keys
@@ -93,14 +94,14 @@ impl Keys {
         }
     }
 
-    /// Generate new random keys
+    /// Generate new random [`Keys`]
     pub fn generate() -> Self {
         let mut rng = OsRng::default();
         let (secret_key, _) = SECP256K1.generate_keypair(&mut rng);
         Self::new(secret_key)
     }
 
-    /// Generate random [`Key`] with custom [`Rng`]
+    /// Generate random [`Keys`] with custom [`Rng`]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
     where
         R: Rng + ?Sized,
@@ -109,7 +110,8 @@ impl Keys {
         Self::new(secret_key)
     }
 
-    /// Generate random [`Key`] with custom [`Rng`] and without [`KeyPair`]
+    /// Generate random [`Keys`] with custom [`Rng`] and without [`KeyPair`]
+    /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
     pub fn generate_without_keypair<R>(rng: &mut R) -> Self
     where
         R: Rng + ?Sized,
@@ -138,11 +140,14 @@ impl Keys {
     }
 
     /// Get keypair
+    ///
+    /// If not exists, will be created
     pub fn key_pair(&self) -> Result<KeyPair, Error> {
         if let Some(key_pair) = self.key_pair {
             Ok(key_pair)
         } else {
-            Err(Error::KeyPairMissing)
+            let sk = self.secret_key()?;
+            Ok(KeyPair::from_secret_key(SECP256K1, &sk))
         }
     }
 }
