@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
+use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
     ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, Keys, Kind,
@@ -50,6 +51,9 @@ pub enum Error {
     /// Hex error
     #[error("hex decoding error: {0}")]
     Hex(#[from] nostr::hashes::hex::Error),
+    /// Metadata error
+    #[error(transparent)]
+    Metadata(#[from] MetadataError),
 }
 
 /// Nostr client
@@ -651,6 +655,36 @@ impl Client {
         }
 
         Ok(pubkeys)
+    }
+
+    /// Get contact list [`Metadata`]
+    /// ```
+    pub async fn get_contact_list_metadata(
+        &self,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<(XOnlyPublicKey, Metadata)>, Error> {
+        let public_keys = self.get_contact_list_public_keys(timeout).await?;
+        let mut contacts: Vec<(XOnlyPublicKey, Metadata)> = Vec::with_capacity(public_keys.len());
+
+        let chunk_size: usize = self.opts.get_req_filters_chunk_size();
+        for chunk in public_keys.chunks(chunk_size) {
+            let mut filters: Vec<Filter> = Vec::new();
+            for public_key in chunk.iter() {
+                filters.push(
+                    Filter::new()
+                        .author(*public_key)
+                        .kind(Kind::Metadata)
+                        .limit(1),
+                );
+            }
+            let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
+            for event in events.into_iter() {
+                let metadata = Metadata::from_json(&event.content)?;
+                contacts.push((event.pubkey, metadata));
+            }
+        }
+
+        Ok(contacts)
     }
 
     /// Send encrypted direct message

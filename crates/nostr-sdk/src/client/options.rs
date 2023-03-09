@@ -14,6 +14,8 @@ pub struct Options {
     wait_for_send: Arc<AtomicBool>,
     /// POW difficulty (for all events)
     difficulty: Arc<AtomicU8>,
+    /// REQ filters chunk size
+    req_filters_chunk_size: Arc<AtomicU8>,
 }
 
 impl Default for Options {
@@ -22,6 +24,7 @@ impl Default for Options {
             wait_for_connection: Arc::new(AtomicBool::new(false)),
             wait_for_send: Arc::new(AtomicBool::new(false)),
             difficulty: Arc::new(AtomicU8::new(0)),
+            req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
         }
     }
 }
@@ -72,5 +75,17 @@ impl Options {
         let _ = self
             .difficulty
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(difficulty));
+    }
+
+    /// Set `REQ` filters chunk size
+    pub fn req_filters_chunk_size(self, size: u8) -> Self {
+        Self {
+            req_filters_chunk_size: Arc::new(AtomicU8::new(size)),
+            ..self
+        }
+    }
+
+    pub(crate) fn get_req_filters_chunk_size(&self) -> usize {
+        self.req_filters_chunk_size.load(Ordering::SeqCst) as usize
     }
 }
