@@ -164,6 +164,12 @@ pub struct Relay {
     notification_sender: broadcast::Sender<RelayPoolNotification>,
 }
 
+impl PartialEq for Relay {
+    fn eq(&self, other: &Self) -> bool {
+        self.url == other.url
+    }
+}
+
 impl Relay {
     /// Create new `Relay`
     pub fn new(
