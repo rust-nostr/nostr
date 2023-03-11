@@ -97,6 +97,19 @@ impl Filter {
         }
     }
 
+    /// Deserialize from `JSON` string
+    pub fn from_json<S>(json: S) -> Result<Self, serde_json::Error>
+    where
+        S: Into<String>,
+    {
+        serde_json::from_str(&json.into())
+    }
+
+    /// Serialize to `JSON` string
+    pub fn as_json(&self) -> String {
+        serde_json::json!(self).to_string()
+    }
+
     /// Set event id or prefix
     pub fn id(self, id: impl Into<String>) -> Self {
         Self {
