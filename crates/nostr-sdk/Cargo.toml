@@ -16,7 +16,7 @@ default = ["all-nips"]
 sqlite = ["dep:nostr-sdk-sqlite"]
 blocking = ["nostr/blocking"]
 vanity = ["nostr/vanity"]
-all-nips = ["nip03", "nip04", "nip05", "nip06", "nip11", "nip19", "nip46"]
+all-nips = ["nip04", "nip05", "nip06", "nip11", "nip19", "nip46"]
 nip03 = ["nostr/nip03"]
 nip04 = ["nostr/nip04"]
 nip05 = ["nostr/nip05"]
@@ -32,11 +32,19 @@ nostr = { version = "0.19", path = "../nostr", default-features = false }
 nostr-sdk-sqlite = { version = "0.19", path = "../nostr-sdk-sqlite", optional = true }
 once_cell = "1"
 thiserror = "1.0"
-tokio = { version = "1", features = ["full"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.26", default-features = false, features = ["rt-multi-thread", "time", "macros", "sync"] }
 tokio-rustls = "0.23"
 tokio-socks = "0.5"
 tokio-tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"] }
 webpki-roots = "0.22"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ewebsock = { version = "0.2", features = ["tls"] }
+futures = { version = "0.3", features = ["executor"] }
+tokio = { version = "1.26", default-features = false, features = ["rt", "time", "macros", "sync"] }
+wasm_thread = "0.2"
 
 [dev-dependencies]
 env_logger = "0.10"

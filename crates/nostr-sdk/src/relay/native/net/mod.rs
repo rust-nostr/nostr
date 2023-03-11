@@ -47,7 +47,7 @@ pub enum Error {
     Url(#[from] nostr::url::ParseError),
 }
 
-pub(crate) async fn get_connection(
+pub async fn connect(
     url: &Url,
     proxy: Option<SocketAddr>,
     timeout: Option<Duration>,
