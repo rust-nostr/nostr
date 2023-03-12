@@ -220,7 +220,7 @@ impl Client {
     pub fn get_contact_list_metadata(
         &self,
         timeout: Option<Duration>,
-    ) -> Result<Vec<(XOnlyPublicKey, Metadata)>, Error> {
+    ) -> Result<HashMap<XOnlyPublicKey, Metadata>, Error> {
         RUNTIME.block_on(async { self.client.get_contact_list_metadata(timeout).await })
     }
 

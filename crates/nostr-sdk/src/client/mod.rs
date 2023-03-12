@@ -662,9 +662,10 @@ impl Client {
     pub async fn get_contact_list_metadata(
         &self,
         timeout: Option<Duration>,
-    ) -> Result<Vec<(XOnlyPublicKey, Metadata)>, Error> {
+    ) -> Result<HashMap<XOnlyPublicKey, Metadata>, Error> {
         let public_keys = self.get_contact_list_public_keys(timeout).await?;
-        let mut contacts: Vec<(XOnlyPublicKey, Metadata)> = Vec::with_capacity(public_keys.len());
+        let mut contacts: HashMap<XOnlyPublicKey, Metadata> =
+            public_keys.iter().map(|p| (*p, Metadata::new())).collect();
 
         let chunk_size: usize = self.opts.get_req_filters_chunk_size();
         for chunk in public_keys.chunks(chunk_size) {
@@ -680,7 +681,9 @@ impl Client {
             let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(&event.content)?;
-                contacts.push((event.pubkey, metadata));
+                if let Some(m) = contacts.get_mut(&event.pubkey) {
+                    *m = metadata
+                };
             }
         }
 
