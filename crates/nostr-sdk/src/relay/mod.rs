@@ -20,11 +20,10 @@ use tokio::sync::Mutex;
 
 mod net;
 pub mod pool;
+mod thread;
 
 use self::net::Message as WsMessage;
-use self::pool::RelayPoolMessage;
-use crate::thread;
-use crate::RelayPoolNotification;
+pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 

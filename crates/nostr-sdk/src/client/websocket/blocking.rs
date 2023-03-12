@@ -9,11 +9,12 @@ use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Tag};
+use nostr::{
+    ChannelId, ClientMessage, Contact, Entity, Event, EventId, Filter, Keys, Metadata, Tag,
+};
 use tokio::sync::broadcast;
 
 use super::{Error, Options};
-use crate::client::Entity;
 use crate::relay::pool::RelayPoolNotification;
 use crate::relay::{Relay, RelayOptions};
 use crate::RUNTIME;
@@ -225,6 +226,7 @@ impl Client {
     }
 
     #[cfg(feature = "nip04")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "nip04")))]
     pub fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<EventId, Error>
     where
         S: Into<String>,

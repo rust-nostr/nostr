@@ -13,10 +13,21 @@ keywords = ["nostr", "sdk", "rust"]
 
 [features]
 default = ["all-nips"]
+websocket = [
+    "dep:futures-util", 
+    "dep:log", 
+    "dep:once_cell", 
+    "dep:tokio", 
+    "dep:tokio-rustls", 
+    "dep:tokio-socks", 
+    "dep:tokio-tungstenite", 
+    "dep:webpki-roots"
+]
+rest-api = ["dep:reqwest", "dep:serde", "dep:serde_json"]
 sqlite = ["dep:nostr-sdk-sqlite"]
 blocking = ["dep:once_cell", "nostr/blocking"]
 vanity = ["nostr/vanity"]
-all-nips = ["nip03", "nip04", "nip05", "nip06", "nip11", "nip19", "nip46"]
+all-nips = ["nip04", "nip05", "nip06", "nip11", "nip19", "nip46"]
 nip03 = ["nostr/nip03"]
 nip04 = ["nostr/nip04"]
 nip05 = ["nostr/nip05"]
@@ -26,38 +37,50 @@ nip19 = ["nostr/nip19"]
 nip46 = ["nostr/nip46"]
 
 [dependencies]
-futures-util = "0.3"
-log = "0.4"
 nostr = { version = "0.19", path = "../nostr", default-features = false }
+thiserror = "1.0"
+
+# WebSocket dependencies
+futures-util = { version = "0.3", optional = true }
+log = { version = "0.4", optional = true }
 nostr-sdk-sqlite = { version = "0.19", path = "../nostr-sdk-sqlite", optional = true }
 once_cell = { version = "1.17", optional = true }
-thiserror = "1.0"
-tokio = { version = "1", features = ["full"] }
-tokio-rustls = "0.23"
-tokio-socks = "0.5"
-tokio-tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"] }
-webpki-roots = "0.22"
+tokio = { version = "1.26", features = ["rt-multi-thread", "time", "macros", "sync"], optional = true }
+tokio-rustls = { version = "0.23", optional = true }
+tokio-socks = { version = "0.5", optional = true }
+tokio-tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"], optional = true }
+webpki-roots = { version = "0.22", optional = true }
+
+# Rest API dependencies
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots"], optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
 
 [dev-dependencies]
 env_logger = "0.10"
 serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
 
 [[example]]
 name = "client"
-required-features = ["all-nips"]
+required-features = ["all-nips", "websocket"]
 
 [[example]]
 name = "client_with_opts"
-required-features = ["all-nips"]
+required-features = ["all-nips", "websocket"]
 
 [[example]]
 name = "sqlite"
-required-features = ["all-nips", "sqlite"]
+required-features = ["all-nips", "sqlite", "websocket"]
 
 [[example]]
 name = "blocking"
-required-features = ["all-nips", "blocking"]
+required-features = ["all-nips", "websocket", "blocking"]
 
 [[example]]
 name = "nostr_connect"
-required-features = ["nip46"]
+required-features = ["nip46", "websocket"]
+
+[[example]]
+name = "client_rest"
+required-features = ["all-nips", "rest-api"]

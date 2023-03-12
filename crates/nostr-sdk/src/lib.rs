@@ -3,31 +3,35 @@
 
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
-
-//! High level Nostr client library.
-
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(
-    feature = "all-nips",
+    all(feature = "all-nips", feature = "websocket"),
     doc = include_str!("../README.md")
 )]
 
-#[cfg(feature = "blocking")]
+//! High level Nostr client library.
+
+#[cfg(all(feature = "websocket", feature = "rest-api"))]
+compile_error!("Feature 'websocket' and 'rest-api' can't be enabled at the same time");
+
+#[cfg(all(feature = "websocket", feature = "blocking"))]
 use once_cell::sync::Lazy;
-#[cfg(feature = "blocking")]
+#[cfg(all(feature = "websocket", feature = "blocking"))]
 use tokio::runtime::Runtime;
 
 pub use nostr::{self, *};
 
 pub mod client;
 pub mod prelude;
+#[cfg(feature = "websocket")]
 pub mod relay;
-mod thread;
 
-#[cfg(feature = "blocking")]
-pub use self::client::blocking;
-pub use self::client::{Client, Options};
-pub use self::relay::pool::{RelayPool, RelayPoolNotification};
-pub use self::relay::{Relay, RelayOptions, RelayStatus};
+#[cfg(feature = "rest-api")]
+pub use self::client::rest::Client;
+#[cfg(feature = "websocket")]
+pub use self::client::websocket::{Client, Options};
+#[cfg(feature = "websocket")]
+pub use self::relay::{Relay, RelayOptions, RelayPoolNotification, RelayStatus};
 
-#[cfg(feature = "blocking")]
+#[cfg(all(feature = "websocket", feature = "blocking"))]
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));

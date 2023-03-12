@@ -7,7 +7,10 @@
 pub use nostr::prelude::*;
 
 // Internal modules
-pub use crate::client::*;
-pub use crate::relay::pool::*;
+#[cfg(feature = "rest-api")]
+pub use crate::client::rest::*;
+#[cfg(feature = "websocket")]
+pub use crate::client::websocket::*;
+#[cfg(feature = "websocket")]
 pub use crate::relay::*;
 pub use crate::*;

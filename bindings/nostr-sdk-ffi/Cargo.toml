@@ -17,7 +17,7 @@ crate-type = ["cdylib", "staticlib"]
 log = "0.4"
 nostr  = { path = "../../crates/nostr" }
 nostr-ffi  = { path = "../nostr-ffi" }
-nostr-sdk  = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "blocking"] }
+nostr-sdk  = { path = "../../crates/nostr-sdk", features = ["websocket", "blocking"] }
 parking_lot = "0.12.1"
 uniffi = { git = "https://github.com/mozilla/uniffi-rs", rev = "b50a66fb95ca1f9cf69b25e020f7c3382c0ce528" }
 uniffi_macros = { git = "https://github.com/mozilla/uniffi-rs", rev = "b50a66fb95ca1f9cf69b25e020f7c3382c0ce528" }

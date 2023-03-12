@@ -18,8 +18,8 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 use tokio::time;
 
+use super::thread;
 use super::{Error as RelayError, Relay, RelayOptions};
-use crate::thread;
 
 /// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]

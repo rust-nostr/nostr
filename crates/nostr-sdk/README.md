@@ -23,7 +23,7 @@ other lower-level crates. If you're attempting something more custom, you might 
 
 ```toml
 [dependencies]
-nostr-sdk = "0.19"
+nostr-sdk = { version = "0.19", features = ["websocket"] }
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -103,17 +103,40 @@ async fn main() -> Result<()> {
 
 More examples can be found in the [examples/](https://github.com/rust-nostr/nostr/tree/master/crates/nostr-sdk/examples) directory.
 
+## WASM
+
+This crate supports the `wasm32` targets if used with `rest-api` instead of `websocket` feature:
+
+```toml
+[dependencies]
+nostr-sdk = { version = "0.19", default-features = false, features = ["rest-api"] }
+```
+
+An example can be found at [`nostr-sdk-wasm-example`](https://github.com/NostrDevKit/nostr-sdk-wasm-example) repo.
+
+On macOS you need to install `llvm`:
+
+```shell
+brew install llvm
+LLVM_PATH=$(brew --prefix llvm)
+AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target wasm32-unknown-unknown
+```
+
+NOTE: Currently you must disable `nip03` feature to allow compilation on `wasm` targets.
+
 ## Crate Feature Flags
 
 The following crate feature flags are available:
 
 | Feature             | Default | Description                                                                                                                |
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
+| `websocket`         |   No    | Interact with relays using `websocket` (classical way, **NOT support WASM**)                                               |
+| `rest-api`          |   No    | Interact with relays using `Rest API` (need a `bridge` like [`ndk-rest`][], **support WASM**)                              |
 | `sqlite`            |   No    | Persistent storage of data on SQLite database                                                                              |
 | `blocking`          |   No    | Needed to use this library in not async/await context                                                                      |
 | `vanity`            |   No    | Enable vanity public key mining module                                                                                     |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
-| `nip03`             |   Yes   | Enable NIP-03: OpenTimestamps Attestations for Events                                                                      |
+| `nip03`             |   Yes   | Enable NIP-03: OpenTimestamps Attestations for Events (currently **NOT support WASM**)                                     |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                                                    |
 | `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                                                        |
 | `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
@@ -138,3 +161,7 @@ This project is distributed under the MIT software license - see the [LICENSE](.
 ⚡ Tips: <https://getalby.com/p/yuki>
 
 ⚡ Lightning Address: yuki@getalby.com
+
+
+
+[`ndk-rest`]: https://github.com/NostrDevKit/ndk-rest
