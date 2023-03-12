@@ -10,5 +10,4 @@ pub use nostr::prelude::*;
 pub use crate::client::*;
 pub use crate::relay::pool::*;
 pub use crate::relay::*;
-pub use crate::subscription::*;
 pub use crate::*;

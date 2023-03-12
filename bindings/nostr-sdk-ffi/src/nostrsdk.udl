@@ -115,25 +115,6 @@ interface AccountMetadata {
 
 // NOSTR-SDK
 
-interface Channel {
-    [Throws=NostrSdkError]
-    constructor(string relay_url);
-    string id();
-    string relay_url();
-};
-
-interface Subscription {
-    constructor();
-    void update_filters(sequence<Filter> filters);
-    sequence<Filter> get_filters();
-    [Throws=NostrSdkError]
-    void add_channel(string relay_url, Channel channel);
-    [Throws=NostrSdkError]
-    Channel? remove_channel(string relay_url);
-    [Throws=NostrSdkError]
-    Channel get_channel(string relay_url);
-};
-
 callback interface HandleNotification {
     void handle(Event event);
 };

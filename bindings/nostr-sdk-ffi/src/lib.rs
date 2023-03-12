@@ -6,7 +6,6 @@ use nostr::Timestamp;
 mod client;
 mod error;
 mod logger;
-mod subscription;
 mod thread;
 
 trait FromResult<T>: Sized {
@@ -30,7 +29,6 @@ mod ffi {
     // Nostr SDK
     pub use crate::client::{Client, HandleNotification};
     pub use crate::error::NostrSdkError;
-    pub use crate::subscription::{Channel, Subscription};
 
     // UDL
     uniffi_macros::include_scaffolding!("nostrsdk");

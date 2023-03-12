@@ -23,7 +23,6 @@ pub mod pool;
 
 use self::net::Message as WsMessage;
 use self::pool::RelayPoolMessage;
-use self::pool::SUBSCRIPTION;
 use crate::thread;
 use crate::RelayPoolNotification;
 #[cfg(feature = "blocking")]
@@ -148,6 +147,31 @@ impl RelayOptions {
     }
 }
 
+/// Relay instance's actual subscription with its unique id
+#[derive(Debug, Clone)]
+pub struct ActiveSubscription {
+    /// SubscriptionId to update or cancel subscription
+    pub id: SubscriptionId,
+    /// Subscriptions filters
+    pub filters: Vec<Filter>,
+}
+
+impl Default for ActiveSubscription {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ActiveSubscription {
+    /// Create new [`ActiveSubscription`]
+    pub fn new() -> Self {
+        Self {
+            id: SubscriptionId::generate(),
+            filters: Vec::new(),
+        }
+    }
+}
+
 /// Relay
 #[derive(Debug, Clone)]
 pub struct Relay {
@@ -162,6 +186,7 @@ pub struct Relay {
     relay_sender: Sender<Message>,
     relay_receiver: Arc<Mutex<Receiver<Message>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
+    subscription: Arc<Mutex<ActiveSubscription>>,
 }
 
 impl PartialEq for Relay {
@@ -193,6 +218,7 @@ impl Relay {
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
             notification_sender,
+            subscription: Arc::new(Mutex::new(ActiveSubscription::new())),
         }
     }
 
@@ -240,6 +266,18 @@ impl Relay {
     async fn set_document(&self, document: RelayInformationDocument) {
         let mut d = self.document.lock().await;
         *d = document;
+    }
+
+    /// Get [`ActiveSubscription`]
+    pub async fn subscription(&self) -> ActiveSubscription {
+        let subscription = self.subscription.lock().await;
+        subscription.clone()
+    }
+
+    /// Update [`ActiveSubscription`]
+    pub async fn update_subscription_filters(&self, filters: Vec<Filter>) {
+        let mut s = self.subscription.lock().await;
+        s.filters = filters;
     }
 
     /// Get [`RelayOptions`]
@@ -428,9 +466,9 @@ impl Relay {
 
                 // Subscribe to relay
                 if self.opts.read() {
-                    if let Err(e) = self.subscribe(false).await {
+                    if let Err(e) = self.resubscribe(false).await {
                         match e {
-                            Error::FiltersEmpty => (),
+                            Error::FiltersEmpty => log::debug!("Filters empty for {}", self.url()),
                             _ => log::error!(
                                 "Impossible to subscribe to {}: {}",
                                 self.url(),
@@ -516,26 +554,37 @@ impl Relay {
         }
     }
 
+    /// Subscribes relay with existing filter
+    async fn resubscribe(&self, wait: bool) -> Result<SubscriptionId, Error> {
+        if !self.opts.read() {
+            return Err(Error::ReadDisabled);
+        }
+        let subscription = self.subscription().await;
+
+        if subscription.filters.is_empty() {
+            return Err(Error::FiltersEmpty);
+        }
+
+        self.send_msg(
+            ClientMessage::new_req(subscription.id.clone(), subscription.filters),
+            wait,
+        )
+        .await?;
+        Ok(subscription.id)
+    }
+
     /// Subscribe
-    pub async fn subscribe(&self, wait: bool) -> Result<SubscriptionId, Error> {
+    pub async fn subscribe(
+        &self,
+        filters: Vec<Filter>,
+        wait: bool,
+    ) -> Result<SubscriptionId, Error> {
         if !self.opts.read() {
             return Err(Error::ReadDisabled);
         }
 
-        let mut subscription = SUBSCRIPTION.lock().await;
-        let filters = subscription.get_filters();
-
-        if filters.is_empty() {
-            return Err(Error::FiltersEmpty);
-        }
-
-        let channel = subscription.get_channel(&self.url());
-        let channel_id = channel.id();
-
-        self.send_msg(ClientMessage::new_req(channel_id.clone(), filters), wait)
-            .await?;
-
-        Ok(channel_id)
+        self.update_subscription_filters(filters).await;
+        self.resubscribe(wait).await
     }
 
     /// Unsubscribe
@@ -544,11 +593,9 @@ impl Relay {
             return Err(Error::ReadDisabled);
         }
 
-        let mut subscription = SUBSCRIPTION.lock().await;
-        if let Some(channel) = subscription.remove_channel(&self.url()) {
-            self.send_msg(ClientMessage::close(channel.id()), wait)
-                .await?;
-        }
+        let subscription = self.subscription().await;
+        self.send_msg(ClientMessage::close(subscription.id), wait)
+            .await?;
         Ok(())
     }
 
