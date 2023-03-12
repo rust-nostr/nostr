@@ -179,7 +179,7 @@ pub struct RelayPool {
     relays: Arc<Mutex<HashMap<Url, Relay>>>,
     pool_task_sender: Sender<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
-    subscriptions: Arc<Mutex<Vec<Filter>>>,
+    filters: Arc<Mutex<Vec<Filter>>>,
     #[cfg(feature = "sqlite")]
     store: Option<Store>,
 }
@@ -205,7 +205,7 @@ impl RelayPool {
             relays: Arc::new(Mutex::new(HashMap::new())),
             pool_task_sender,
             notification_sender,
-            subscriptions: Arc::new(Mutex::new(Vec::new())),
+            filters: Arc::new(Mutex::new(Vec::new())),
             #[cfg(feature = "sqlite")]
             store: None,
         }
@@ -234,7 +234,7 @@ impl RelayPool {
             relays: Arc::new(Mutex::new(HashMap::new())),
             pool_task_sender,
             notification_sender,
-            subscriptions: Arc::new(Mutex::new(Vec::new())),
+            filters: Arc::new(Mutex::new(Vec::new())),
             #[cfg(feature = "sqlite")]
             store,
         })
@@ -257,9 +257,15 @@ impl RelayPool {
         self.store.clone()
     }
 
-    /// Get subscriptions
-    pub async fn subscription(&self) -> Vec<Filter> {
-        self.subscriptions.lock().await.clone()
+    /// Get subscription filters
+    pub async fn subscription_filters(&self) -> Vec<Filter> {
+        self.filters.lock().await.clone()
+    }
+
+    /// Update subscription filters
+    async fn update_subscription_filters(&self, filters: Vec<Filter>) {
+        let mut f = self.filters.lock().await;
+        *f = filters;
     }
 
     /// Add new relay
@@ -358,9 +364,7 @@ impl RelayPool {
     /// Subscribe to filters
     pub async fn subscribe(&self, filters: Vec<Filter>, wait: bool) {
         let relays = self.relays().await;
-
-        *self.subscriptions.lock().await = filters.clone();
-
+        self.update_subscription_filters(filters.clone()).await;
         for relay in relays.values() {
             if let Err(e) = relay.subscribe(filters.clone(), wait).await {
                 log::error!("{e}");
@@ -438,13 +442,9 @@ impl RelayPool {
 
     /// Connect to relay
     pub async fn connect_relay(&self, relay: &Relay, wait_for_connection: bool) {
+        let filters: Vec<Filter> = self.subscription_filters().await;
+        relay.update_subscription_filters(filters).await;
         relay.connect(wait_for_connection).await;
-        if let Err(error) = relay
-            .subscribe(self.subscriptions.lock().await.clone(), wait_for_connection)
-            .await
-        {
-            log::error!("Cannot subscribe new relay to existing subscriptions: {error}");
-        }
         #[cfg(feature = "sqlite")]
         if let Some(store) = &self.store {
             if let Err(e) = store.enable_relay(relay.url()) {

@@ -14,7 +14,7 @@ keywords = ["nostr", "sdk", "rust"]
 [features]
 default = ["all-nips"]
 sqlite = ["dep:nostr-sdk-sqlite"]
-blocking = ["nostr/blocking"]
+blocking = ["dep:once_cell", "nostr/blocking"]
 vanity = ["nostr/vanity"]
 all-nips = ["nip03", "nip04", "nip05", "nip06", "nip11", "nip19", "nip46"]
 nip03 = ["nostr/nip03"]
@@ -30,7 +30,7 @@ futures-util = "0.3"
 log = "0.4"
 nostr = { version = "0.19", path = "../nostr", default-features = false }
 nostr-sdk-sqlite = { version = "0.19", path = "../nostr-sdk-sqlite", optional = true }
-once_cell = "1"
+once_cell = { version = "1.17", optional = true }
 thiserror = "1.0"
 tokio = { version = "1", features = ["full"] }
 tokio-rustls = "0.23"
