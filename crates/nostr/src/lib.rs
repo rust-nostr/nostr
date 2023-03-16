@@ -12,7 +12,7 @@
 )]
 
 #[macro_use]
-extern crate serde;
+pub extern crate serde;
 
 #[cfg(feature = "nip19")]
 pub use bech32;
@@ -22,6 +22,7 @@ pub use bip39;
 pub use bitcoin;
 pub use bitcoin_hashes as hashes;
 pub use secp256k1::{self, SECP256K1};
+pub use serde_json;
 pub use url::{self, Url};
 
 pub mod event;

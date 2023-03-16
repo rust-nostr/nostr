@@ -12,6 +12,7 @@ pub use bip39::*;
 pub use bitcoin::*;
 pub use bitcoin_hashes::*;
 pub use secp256k1::*;
+pub use serde_json::*;
 pub use url::*;
 
 // Internal modules
