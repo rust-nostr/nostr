@@ -6,12 +6,16 @@
 
 #![allow(missing_docs)]
 
+use std::fmt;
+
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::RngCore;
 use secp256k1::XOnlyPublicKey;
-use serde_json::json;
+use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
+use serde::ser::{Serialize, SerializeMap, Serializer};
+use serde_json::{json, Map, Value};
 
 use crate::{EventId, Kind, Timestamp};
 
@@ -41,34 +45,24 @@ impl ToString for SubscriptionId {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Filter {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ids: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub authors: Option<Vec<XOnlyPublicKey>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub kinds: Option<Vec<Kind>>,
-    #[serde(rename = "#e")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// #e tag
     pub events: Option<Vec<EventId>>,
-    #[serde(rename = "#p")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// #p tag
     pub pubkeys: Option<Vec<XOnlyPublicKey>>,
-    #[serde(rename = "#t")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// #t tag
     pub hashtags: Option<Vec<String>>,
-    #[serde(rename = "#r")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// #r tag
     pub references: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub search: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub since: Option<Timestamp>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub until: Option<Timestamp>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    pub custom: Map<String, Value>,
 }
 
 impl Default for Filter {
@@ -81,6 +75,7 @@ impl Filter {
     pub fn new() -> Self {
         Self {
             ids: None,
+            authors: None,
             kinds: None,
             events: None,
             pubkeys: None,
@@ -89,8 +84,8 @@ impl Filter {
             search: None,
             since: None,
             until: None,
-            authors: None,
             limit: None,
+            custom: Map::new(),
         }
     }
 
@@ -260,5 +255,181 @@ impl Filter {
             limit: Some(limit),
             ..self
         }
+    }
+
+    /// Set custom filters
+    pub fn custom(self, map: Map<String, Value>) -> Self {
+        Self {
+            custom: map,
+            ..self
+        }
+    }
+}
+
+impl Serialize for Filter {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let len: usize = 11 + self.custom.len();
+        let mut map = serializer.serialize_map(Some(len))?;
+        if let Some(value) = &self.ids {
+            map.serialize_entry("ids", &json!(value))?;
+        }
+        if let Some(value) = &self.kinds {
+            map.serialize_entry("kinds", &json!(value))?;
+        }
+        if let Some(value) = &self.authors {
+            map.serialize_entry("authors", &json!(value))?;
+        }
+        if let Some(value) = &self.events {
+            map.serialize_entry("#e", &json!(value))?;
+        }
+        if let Some(value) = &self.pubkeys {
+            map.serialize_entry("#p", &json!(value))?;
+        }
+        if let Some(value) = &self.hashtags {
+            map.serialize_entry("#t", &json!(value))?;
+        }
+        if let Some(value) = &self.references {
+            map.serialize_entry("#r", &json!(value))?;
+        }
+        if let Some(value) = &self.search {
+            map.serialize_entry("search", &json!(value))?;
+        }
+        if let Some(value) = &self.since {
+            map.serialize_entry("since", &json!(value))?;
+        }
+        if let Some(value) = &self.until {
+            map.serialize_entry("until", &json!(value))?;
+        }
+        if let Some(value) = &self.limit {
+            map.serialize_entry("limit", &json!(value))?;
+        }
+        for (k, v) in &self.custom {
+            map.serialize_entry(&k, &v)?;
+        }
+        map.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Filter {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_map(FilterVisitor)
+    }
+}
+
+struct FilterVisitor;
+
+impl<'de> Visitor<'de> for FilterVisitor {
+    type Value = Filter;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "A JSON object")
+    }
+
+    fn visit_map<M>(self, mut access: M) -> Result<Filter, M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        let mut map: Map<String, Value> = Map::new();
+        while let Some((key, value)) = access.next_entry::<String, Value>()? {
+            let _ = map.insert(key, value);
+        }
+
+        let mut f: Filter = Filter::new();
+
+        if let Some(value) = map.remove("ids") {
+            let ids: Vec<String> = serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.ids = Some(ids);
+        }
+
+        if let Some(value) = map.remove("authors") {
+            let authors: Vec<XOnlyPublicKey> =
+                serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.authors = Some(authors);
+        }
+
+        if let Some(value) = map.remove("kinds") {
+            let kinds: Vec<Kind> = serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.kinds = Some(kinds);
+        }
+
+        if let Some(value) = map.remove("#e") {
+            let events: Vec<EventId> = serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.events = Some(events);
+        }
+
+        if let Some(value) = map.remove("#p") {
+            let pubkeys: Vec<XOnlyPublicKey> =
+                serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.pubkeys = Some(pubkeys);
+        }
+
+        if let Some(value) = map.remove("#t") {
+            let hashtags: Vec<String> = serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.hashtags = Some(hashtags);
+        }
+
+        if let Some(value) = map.remove("#r") {
+            let references: Vec<String> =
+                serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.references = Some(references);
+        }
+
+        if let Some(Value::String(search)) = map.remove("search") {
+            f.search = Some(search);
+        }
+
+        if let Some(value) = map.remove("since") {
+            let since: Timestamp = serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.since = Some(since);
+        }
+
+        if let Some(value) = map.remove("until") {
+            let until: Timestamp = serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.until = Some(until);
+        }
+
+        if let Some(value) = map.remove("limit") {
+            let limit: usize = serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.limit = Some(limit);
+        }
+
+        f.custom = map;
+
+        Ok(f)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_filter_serialization() {
+        let mut custom = Map::new();
+        custom.insert("#a".to_string(), Value::String("...".to_string()));
+        let filter = Filter::new().search("test").custom(custom);
+        let json = r##"{"#a":"...","search":"test"}"##;
+        assert_eq!(filter.as_json(), json.to_string());
+    }
+
+    #[test]
+    fn test_filter_deserialization() {
+        let json = r##"{"#a":"...","search":"test","ids":["myid", "mysecondid"]}"##;
+        let filter = Filter::from_json(json).unwrap();
+        let mut custom = Map::new();
+        custom.insert("#a".to_string(), Value::String("...".to_string()));
+        assert_eq!(
+            filter,
+            Filter::new()
+                .ids(vec!["myid".to_string(), "mysecondid".to_string()])
+                .search("test")
+                .custom(custom)
+        );
     }
 }
