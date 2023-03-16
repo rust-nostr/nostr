@@ -9,7 +9,6 @@
 
 use bech32::{self, FromBase32, ToBase32, Variant};
 use secp256k1::{SecretKey, XOnlyPublicKey};
-use serde::{Deserialize, Serialize};
 
 use crate::event::id::{self, EventId};
 use crate::Kind;

@@ -8,7 +8,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
-use serde::{Serialize, Serializer};
+use serde::ser::{Serialize, Serializer};
 
 /// Event [`Kind`]
 #[derive(Debug, Copy, Clone, Eq, Ord, PartialOrd)]

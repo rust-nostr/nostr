@@ -8,7 +8,6 @@ use std::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, XOnlyPublicKey};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub mod builder;

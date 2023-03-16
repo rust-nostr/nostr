@@ -4,7 +4,6 @@
 //! Contact
 
 use secp256k1::XOnlyPublicKey;
-use serde::{Deserialize, Serialize};
 
 /// Contact
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Deserialize, Serialize)]

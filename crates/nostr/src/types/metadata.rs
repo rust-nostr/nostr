@@ -3,7 +3,6 @@
 
 //! Metadata
 
-use serde::{Deserialize, Serialize};
 use url::Url;
 
 /// [`Metadata`] error

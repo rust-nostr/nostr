@@ -11,6 +11,9 @@
     doc = include_str!("../README.md")
 )]
 
+#[macro_use]
+extern crate serde;
+
 #[cfg(feature = "nip19")]
 pub use bech32;
 #[cfg(feature = "nip06")]

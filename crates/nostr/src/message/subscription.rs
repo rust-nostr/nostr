@@ -11,7 +11,7 @@ use bitcoin_hashes::Hash;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::RngCore;
 use secp256k1::XOnlyPublicKey;
-use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::{EventId, Kind, Timestamp};
 
@@ -104,7 +104,7 @@ impl Filter {
 
     /// Serialize to `JSON` string
     pub fn as_json(&self) -> String {
-        serde_json::json!(self).to_string()
+        json!(self).to_string()
     }
 
     /// Set event id or prefix

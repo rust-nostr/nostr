@@ -10,7 +10,6 @@ use bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
-use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "nip19")]
 use crate::nips::nip19::{
