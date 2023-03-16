@@ -456,12 +456,6 @@ impl Client {
         self.send_event(event).await
     }
 
-    /// Update profile metadata
-    #[deprecated(since = "0.19.0", note = "Use `set_metadata` method")]
-    pub async fn update_profile(&self, metadata: Metadata) -> Result<EventId, Error> {
-        self.set_metadata(metadata).await
-    }
-
     /// Update metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -862,20 +856,6 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn new_channel(&self, metadata: Metadata) -> Result<EventId, Error> {
         let builder = EventBuilder::new_channel(metadata);
-        self.send_event_builder(builder).await
-    }
-
-    /// Update channel metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated(since = "0.19.0", note = "Use `set_channel_metadata` method")]
-    pub async fn update_channel(
-        &self,
-        channel_id: ChannelId,
-        relay_url: Option<Url>,
-        metadata: Metadata,
-    ) -> Result<EventId, Error> {
-        let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata);
         self.send_event_builder(builder).await
     }
 

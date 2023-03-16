@@ -11,9 +11,6 @@ pub use self::client::ClientMessage;
 pub use self::relay::RelayMessage;
 pub use self::subscription::{Filter, SubscriptionId};
 
-#[allow(deprecated)]
-pub use self::subscription::SubscriptionFilter;
-
 /// Messages error
 #[derive(Debug, thiserror::Error)]
 pub enum MessageHandleError {

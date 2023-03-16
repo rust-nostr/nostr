@@ -41,9 +41,6 @@ impl ToString for SubscriptionId {
     }
 }
 
-#[deprecated(since = "0.19.0", note = "Use `Filter` instead.")]
-pub type SubscriptionFilter = Filter;
-
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Filter {
     #[serde(skip_serializing_if = "Option::is_none")]

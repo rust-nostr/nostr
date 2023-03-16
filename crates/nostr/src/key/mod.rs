@@ -35,14 +35,6 @@ pub enum Error {
     /// Secrete key missing
     #[error("Secrete key missing")]
     SkMissing,
-    /// Key pair missing
-    #[deprecated]
-    #[error("Key pair missing")]
-    KeyPairMissing,
-    /// Failed to generate new keys
-    #[deprecated]
-    #[error("Failed to generate new keys")]
-    KeyGenerationFailure,
     /// Unsupported char
     #[error("Unsupported char: {0}")]
     InvalidChar(char),
