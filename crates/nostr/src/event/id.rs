@@ -4,6 +4,7 @@
 //! Event Id
 
 use std::fmt;
+use std::str::FromStr;
 
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
@@ -73,6 +74,13 @@ impl EventId {
     /// Get [`EventId`] as [`Sha256Hash`]
     pub fn inner(&self) -> Sha256Hash {
         self.0
+    }
+}
+
+impl FromStr for EventId {
+    type Err = Error;
+    fn from_str(hex: &str) -> Result<Self, Self::Err> {
+        Self::from_hex(hex)
     }
 }
 
