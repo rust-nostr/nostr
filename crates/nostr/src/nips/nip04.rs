@@ -44,10 +44,10 @@ pub fn encrypt<T>(sk: &SecretKey, pk: &XOnlyPublicKey, text: T) -> Result<String
 where
     T: AsRef<[u8]>,
 {
-    let key: Vec<u8> = generate_shared_key(sk, pk)?;
+    let key: [u8; 32] = generate_shared_key(sk, pk)?;
     let iv: [u8; 16] = secp256k1::rand::random();
 
-    let cipher = Aes256CbcEnc::new(key.as_slice().into(), &iv.into());
+    let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
     let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_ref());
 
     Ok(format!(
@@ -78,9 +78,9 @@ where
     let iv: Vec<u8> = general_purpose::STANDARD
         .decode(parsed_content[1])
         .map_err(|_| Error::Base64Decode)?;
-    let key: Vec<u8> = generate_shared_key(sk, pk)?;
+    let key: [u8; 32] = generate_shared_key(sk, pk)?;
 
-    let cipher = Aes256CbcDec::new(key.as_slice().into(), iv.as_slice().into());
+    let cipher = Aes256CbcDec::new(&key.into(), iv.as_slice().into());
     let result = cipher
         .decrypt_padded_vec_mut::<Pkcs7>(&encrypted_content)
         .map_err(|_| Error::WrongBlockMode)?;
@@ -88,13 +88,12 @@ where
     String::from_utf8(result).map_err(|_| Error::Utf8Encode)
 }
 
-fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<Vec<u8>, Error> {
+fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<[u8; 32], Error> {
     let pk_normalized: PublicKey = from_schnorr_pk(pk)?;
     let ssp = ecdh::shared_secret_point(&pk_normalized, sk);
-
-    let mut shared_key = [0u8; 32];
+    let mut shared_key: [u8; 32] = [0u8; 32];
     shared_key.copy_from_slice(&ssp[..32]);
-    Ok(shared_key.to_vec())
+    Ok(shared_key)
 }
 
 fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
