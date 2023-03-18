@@ -92,7 +92,7 @@ The following crate feature flags are available:
 | `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                                                    |
 | `vanity`            |   No    | Enable vanity public key mining module                                                                                     |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
-| `nip03`             |   Yes   | Enable NIP-03: OpenTimestamps Attestations for Events                                                                      |
+| `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                                                      |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                                                    |
 | `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                                                        |
 | `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
