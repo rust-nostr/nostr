@@ -88,15 +88,17 @@ where
     String::from_utf8(result).map_err(|_| Error::Utf8Encode)
 }
 
-fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<[u8; 32], Error> {
-    let pk_normalized: PublicKey = from_schnorr_pk(pk)?;
+/// Generate shared key
+pub fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<[u8; 32], Error> {
+    let pk_normalized: PublicKey = normalize_schnorr_pk(pk)?;
     let ssp = ecdh::shared_secret_point(&pk_normalized, sk);
     let mut shared_key: [u8; 32] = [0u8; 32];
     shared_key.copy_from_slice(&ssp[..32]);
     Ok(shared_key)
 }
 
-fn from_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
+/// Normalize Schnorr public key
+pub fn normalize_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
     let mut pk = String::from("02");
     pk.push_str(&schnorr_pk.to_string());
     Ok(PublicKey::from_str(&pk)?)
