@@ -16,7 +16,7 @@ use url::Url;
 
 use super::id::{self, EventId};
 use crate::nips::nip26::Conditions;
-use crate::{Event, Kind, Timestamp};
+use crate::{Kind, Timestamp};
 
 /// [`Tag`] error
 #[derive(Debug, thiserror::Error)]
@@ -54,6 +54,9 @@ pub enum Error {
     /// Event Error
     #[error(transparent)]
     Event(#[from] crate::event::Error),
+    /// Invalid Zap Request
+    #[error("Invalid Zap request")]
+    InvalidZapRequest,
 }
 
 /// Marker
@@ -296,7 +299,7 @@ pub enum Tag {
     Title(String),
     Image(String),
     Summary(String),
-    Description(Event),
+    Description(String),
     Bolt11(String),
     Preimage(String),
     Relays(Vec<Url>),
@@ -367,7 +370,7 @@ where
                 TagKind::Image => Ok(Self::Image(content.to_string())),
                 TagKind::Summary => Ok(Self::Summary(content.to_string())),
                 TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(content)?)),
-                TagKind::Description => Ok(Self::Description(Event::from_json(content)?)),
+                TagKind::Description => Ok(Self::Description(content.to_string())),
                 TagKind::Bolt11 => Ok(Self::Bolt11(content.to_string())),
                 TagKind::Preimage => Ok(Self::Preimage(content.to_string())),
                 TagKind::Amount => Ok(Self::Amount(content.parse()?)),
@@ -537,7 +540,7 @@ impl From<Tag> for Vec<String> {
                 vec![TagKind::PublishedAt.to_string(), timestamp.to_string()]
             }
             Tag::Description(description) => {
-                vec![TagKind::Description.to_string(), description.as_json()]
+                vec![TagKind::Description.to_string(), description]
             }
             Tag::Bolt11(bolt11) => {
                 vec![TagKind::Bolt11.to_string(), bolt11]
@@ -1098,7 +1101,7 @@ mod tests {
                 "description",
                 "{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}"
             ])?,
-            Tag::Description(Event {id: EventId::from_hex("d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d")?, pubkey: XOnlyPublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")?, created_at: Timestamp::from(1674164539), kind: Kind::ZapRequest, tags: vec![Tag::Event(EventId::from_str("3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8")?, None, None), Tag::PubKey(XOnlyPublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")?, None), Tag::Relays(vec![Url::from_str("wss://relay.damus.io")?, Url::from_str("wss://nostr-relay.wlvs.space")?, Url::from_str("wss://nostr.fmt.wiz.biz")?, Url::from_str("wss://relay.nostr.bg")?, Url::from_str("wss://nostr.oxtr.dev")?, Url::from_str("wss://nostr.v0l.io")?, Url::from_str("wss://brb.io")?, Url::from_str("wss://nostr.bitcoiner.social")?, Url::from_str("ws://monad.jb55.com:8080")?, Url::from_str("wss://relay.snort.social")?])], content: "".to_string(), sig: Signature::from_str("77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d")?})
+            Tag::Description("{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}".to_string())
         );
 
         assert_eq!(Tag::parse(vec!["amount", "10000"])?, Tag::Amount(10000));
