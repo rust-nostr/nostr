@@ -16,10 +16,10 @@ use url::Url;
 
 use super::id::{self, EventId};
 use crate::nips::nip26::Conditions;
-use crate::{Kind, Timestamp};
+use crate::{Event, Kind, Timestamp};
 
 /// [`Tag`] error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Impossible to parse [`Marker`]
     #[error("impossible to parse marker")]
@@ -51,6 +51,9 @@ pub enum Error {
     /// NIP26 error
     #[error(transparent)]
     Nip26(#[from] crate::nips::nip26::Error),
+    /// Event Error
+    #[error(transparent)]
+    Event(#[from] crate::event::Error),
 }
 
 /// Marker
@@ -170,6 +173,16 @@ pub enum TagKind {
     Summary,
     /// PublishedAt (NIP23)
     PublishedAt,
+    /// Description (NIP57)
+    Description,
+    /// Bolt11 Invoice (NIP57)
+    Bolt11,
+    /// Preimage (NIP57)
+    Preimage,
+    /// Relays (NIP57)
+    Relays,
+    /// Amount (NIP57)
+    Amount,
     /// Custom tag kind
     Custom(String),
 }
@@ -195,6 +208,11 @@ impl fmt::Display for TagKind {
             Self::Image => write!(f, "image"),
             Self::Summary => write!(f, "summary"),
             Self::PublishedAt => write!(f, "published_at"),
+            Self::Description => write!(f, "description"),
+            Self::Bolt11 => write!(f, "bolt11"),
+            Self::Preimage => write!(f, "preimage"),
+            Self::Relays => write!(f, "relays"),
+            Self::Amount => write!(f, "amount"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -225,6 +243,11 @@ where
             "image" => Self::Image,
             "summary" => Self::Summary,
             "published_at" => Self::PublishedAt,
+            "description" => Self::Description,
+            "bolt11" => Self::Bolt11,
+            "preimage" => Self::Preimage,
+            "relays" => Self::Relays,
+            "amount" => Self::Amount,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -273,6 +296,11 @@ pub enum Tag {
     Title(String),
     Image(String),
     Summary(String),
+    Description(Event),
+    Bolt11(String),
+    Preimage(String),
+    Relays(Vec<Url>),
+    Amount(u64),
     PublishedAt(Timestamp),
 }
 
@@ -305,7 +333,16 @@ where
             None => return Err(Error::KindNotFound),
         };
 
-        if tag_len == 1 {
+        if tag_kind.eq(&TagKind::Relays) {
+            // Relays vec is of unknown length so checked here based on kind
+            let urls = tag
+                .iter()
+                .skip(1)
+                .filter_map(|tag_str| Url::parse(tag_str).ok())
+                .collect::<Vec<Url>>();
+
+            Ok(Self::Relays(urls))
+        } else if tag_len == 1 {
             match tag_kind {
                 TagKind::ContentWarning => Ok(Self::ContentWarning { reason: None }),
                 _ => Ok(Self::Generic(tag_kind, Vec::new())),
@@ -330,6 +367,10 @@ where
                 TagKind::Image => Ok(Self::Image(content.to_string())),
                 TagKind::Summary => Ok(Self::Summary(content.to_string())),
                 TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(content)?)),
+                TagKind::Description => Ok(Self::Description(Event::from_json(content)?)),
+                TagKind::Bolt11 => Ok(Self::Bolt11(content.to_string())),
+                TagKind::Preimage => Ok(Self::Preimage(content.to_string())),
+                TagKind::Amount => Ok(Self::Amount(content.parse()?)),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -494,6 +535,26 @@ impl From<Tag> for Vec<String> {
             Tag::Summary(summary) => vec![TagKind::Summary.to_string(), summary],
             Tag::PublishedAt(timestamp) => {
                 vec![TagKind::PublishedAt.to_string(), timestamp.to_string()]
+            }
+            Tag::Description(description) => {
+                vec![TagKind::Description.to_string(), description.as_json()]
+            }
+            Tag::Bolt11(bolt11) => {
+                vec![TagKind::Bolt11.to_string(), bolt11]
+            }
+            Tag::Preimage(preimage) => {
+                vec![TagKind::Preimage.to_string(), preimage]
+            }
+            Tag::Relays(relays) => vec![TagKind::Relays.to_string()]
+                .into_iter()
+                .chain(
+                    relays
+                        .iter()
+                        .map(|relay| relay.to_string().trim_end_matches('/').to_string()),
+                )
+                .collect::<Vec<_>>(),
+            Tag::Amount(amount) => {
+                vec![TagKind::Amount.to_string(), amount.to_string()]
             }
         }
     }
@@ -794,10 +855,10 @@ mod tests {
 
     #[test]
     fn test_tag_parser() -> Result<()> {
-        assert_eq!(
-            Tag::parse::<String>(vec![]).unwrap_err(),
-            Error::KindNotFound
-        );
+        match Tag::parse::<String>(vec![]) {
+            Err(Error::KindNotFound) => (),
+            _ => panic!(),
+        }
 
         assert_eq!(
             Tag::parse(vec!["content-warning"])?,
@@ -1000,6 +1061,47 @@ mod tests {
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             )?, conditions: Conditions::from_str("kind=1")?, sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8")? }
         );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "relays",
+                "wss://relay.damus.io/",
+                "wss://nostr-relay.wlvs.space",
+                "wss://nostr.fmt.wiz.biz"
+            ])?,
+            Tag::Relays(vec![
+                Url::from_str("wss://relay.damus.io")?,
+                Url::from_str("wss://nostr-relay.wlvs.space")?,
+                Url::from_str("wss://nostr.fmt.wiz.biz")?
+            ])
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "bolt11", 
+                "lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0"])?, 
+                Tag::Bolt11("lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0".to_string())
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "preimage",
+                "5d006d2cf1e73c7148e7519a4c68adc81642ce0e25a432b2434c99f97344c15f"
+            ])?,
+            Tag::Preimage(
+                "5d006d2cf1e73c7148e7519a4c68adc81642ce0e25a432b2434c99f97344c15f".to_string()
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(vec![
+                "description",
+                "{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}"
+            ])?,
+            Tag::Description(Event {id: EventId::from_hex("d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d")?, pubkey: XOnlyPublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")?, created_at: Timestamp::from(1674164539), kind: Kind::ZapRequest, tags: vec![Tag::Event(EventId::from_str("3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8")?, None, None), Tag::PubKey(XOnlyPublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")?, None), Tag::Relays(vec![Url::from_str("wss://relay.damus.io")?, Url::from_str("wss://nostr-relay.wlvs.space")?, Url::from_str("wss://nostr.fmt.wiz.biz")?, Url::from_str("wss://relay.nostr.bg")?, Url::from_str("wss://nostr.oxtr.dev")?, Url::from_str("wss://nostr.v0l.io")?, Url::from_str("wss://brb.io")?, Url::from_str("wss://nostr.bitcoiner.social")?, Url::from_str("ws://monad.jb55.com:8080")?, Url::from_str("wss://relay.snort.social")?])], content: "".to_string(), sig: Signature::from_str("77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d")?})
+        );
+
+        assert_eq!(Tag::parse(vec!["amount", "10000"])?, Tag::Amount(10000));
 
         Ok(())
     }
