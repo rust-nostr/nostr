@@ -22,7 +22,7 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             wait_for_connection: Arc::new(AtomicBool::new(false)),
-            wait_for_send: Arc::new(AtomicBool::new(false)),
+            wait_for_send: Arc::new(AtomicBool::new(true)),
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
         }

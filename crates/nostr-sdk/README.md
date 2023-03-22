@@ -91,12 +91,6 @@ async fn main() -> Result<()> {
     // Send custom event to a specific previously added relay
     client.send_event_to("wss://relay.damus.io", event).await?;
 
-    // Handle notifications
-    let mut notifications = client.notifications();
-    while let Ok(notification) = notifications.recv().await {
-        println!("{notification:?}");
-    }
-
     Ok(())
 }
 ```
