@@ -187,7 +187,7 @@ impl RelayMessage {
 
             return Ok(Self::new_ok(event_id, status, message));
         }
-        
+
         // OK (NIP-42)
         // Relay response format: ["AUTH", <challenge>]
         if v[0] == "AUTH" {
