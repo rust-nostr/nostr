@@ -187,6 +187,17 @@ impl RelayMessage {
 
             return Ok(Self::new_ok(event_id, status, message));
         }
+        
+        // OK (NIP-42)
+        // Relay response format: ["AUTH", <challenge>]
+        if v[0] == "AUTH" {
+            if v_len != 2 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+
+            let challenge: String = serde_json::from_value(v[1].clone())?;
+            return Ok(Self::Auth { challenge });
+        }
 
         Err(MessageHandleError::InvalidMessageFormat)
     }
