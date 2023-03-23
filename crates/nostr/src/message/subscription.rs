@@ -7,6 +7,9 @@
 #![allow(missing_docs)]
 use core::fmt;
 
+#[cfg(feature = "alloc")]
+use alloc::{fmt, string::String, vec::Vec};
+
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::rand::rngs::OsRng;

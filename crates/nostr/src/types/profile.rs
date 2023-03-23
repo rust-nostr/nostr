@@ -10,8 +10,9 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "nip19")]
 use crate::nips::nip19::{Error, FromBech32, ToBech32, PREFIX_BECH32_PROFILE, RELAY, SPECIAL};
-use alloc::vec::Vec;
-use alloc::string::String;
+
+#[cfg(feature = "alloc")]
+use alloc::{string::String, vec::Vec};
 
 /// Profile
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

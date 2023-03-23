@@ -6,6 +6,8 @@
 use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
+#[cfg(feature = "alloc")]
+use alloc::{vec::Vec, string::String};
 
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;

@@ -5,6 +5,8 @@
 
 use core::fmt;
 use core::str::FromStr;
+#[cfg(feature = "alloc")]
+use alloc::{vec::Vec, string::String};
 
 #[cfg(feature = "nip19")]
 use bech32::{self, FromBase32, ToBase32, Variant};
