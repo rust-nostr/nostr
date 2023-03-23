@@ -98,7 +98,7 @@ pub fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<[u8; 3
 }
 
 /// Normalize Schnorr public key
-pub fn normalize_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
+fn normalize_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
     let mut pk = String::from("02");
     pk.push_str(&schnorr_pk.to_string());
     Ok(PublicKey::from_str(&pk)?)

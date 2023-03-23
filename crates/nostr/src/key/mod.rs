@@ -13,7 +13,7 @@ use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::Rng;
 use secp256k1::schnorr::Signature;
 use secp256k1::Message;
-pub use secp256k1::{KeyPair, SecretKey, XOnlyPublicKey};
+pub use secp256k1::{KeyPair, SecretKey, XOnlyPublicKey, PublicKey};
 
 use crate::SECP256K1;
 
@@ -120,7 +120,7 @@ impl Keys {
         }
     }
 
-    /// Get public key
+    /// Get [`XOnlyPublicKey`]
     pub fn public_key(&self) -> XOnlyPublicKey {
         self.public_key
     }
@@ -132,6 +132,11 @@ impl Keys {
         } else {
             Err(Error::SkMissing)
         }
+    }
+
+    /// Get [`PublicKey`]
+    pub fn normalized_public_key(&self) -> Result<PublicKey, Error> {
+        Ok(self.secret_key()?.public_key(SECP256K1))
     }
 
     /// Get keypair
