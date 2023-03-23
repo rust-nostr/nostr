@@ -3,6 +3,7 @@
 
 //! Tag
 
+use bitcoin_hashes::hex::{FromHex, ToHex};
 use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
@@ -170,6 +171,12 @@ pub enum TagKind {
     Summary,
     /// PublishedAt (NIP23)
     PublishedAt,
+    /// Bolt11 (NIP57)
+    Bolt11,
+    /// Preimage (NIP57)
+    Preimage,
+    /// Description (NIP57)
+    Description,
     /// Custom tag kind
     Custom(String),
 }
@@ -195,6 +202,9 @@ impl fmt::Display for TagKind {
             Self::Image => write!(f, "image"),
             Self::Summary => write!(f, "summary"),
             Self::PublishedAt => write!(f, "published_at"),
+            Self::Bolt11 => write!(f, "bolt11"),
+            Self::Preimage => write!(f, "preimage"),
+            Self::Description => write!(f, "description"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -225,6 +235,9 @@ where
             "image" => Self::Image,
             "summary" => Self::Summary,
             "published_at" => Self::PublishedAt,
+            "bolt11" => Self::Bolt11,
+            "preimage" => Self::Preimage,
+            "description" => Self::Description,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -273,6 +286,9 @@ pub enum Tag {
     Title(String),
     Image(String),
     Summary(String),
+    Bolt11(String),
+    Preimage(Vec<u8>),
+    Description(String),
     PublishedAt(Timestamp),
 }
 
@@ -330,6 +346,9 @@ where
                 TagKind::Image => Ok(Self::Image(content.to_string())),
                 TagKind::Summary => Ok(Self::Summary(content.to_string())),
                 TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(content)?)),
+                TagKind::Bolt11 => Ok(Self::Bolt11(content.to_string())),
+                TagKind::Preimage => Ok(Self::Preimage(Vec::<u8>::from_hex(content)?)),
+                TagKind::Description => Ok(Self::Description(content.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -495,6 +514,9 @@ impl From<Tag> for Vec<String> {
             Tag::PublishedAt(timestamp) => {
                 vec![TagKind::PublishedAt.to_string(), timestamp.to_string()]
             }
+            Tag::Bolt11(bolt11) => vec![TagKind::Bolt11.to_string(), bolt11],
+            Tag::Preimage(preimage) => vec![TagKind::Preimage.to_string(), preimage.to_hex()],
+            Tag::Description(description) => vec![TagKind::Description.to_string(), description],
         }
     }
 }

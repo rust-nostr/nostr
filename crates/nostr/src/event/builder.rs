@@ -408,6 +408,38 @@ impl EventBuilder {
     {
         Self::new(Kind::Reporting, content, tags)
     }
+
+    /// Create zap event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    pub fn new_zap(bolt11: String, preimage: Vec<u8>, zap_request: Event) -> Self {
+        let mut tags = vec![
+            Tag::Preimage(preimage),
+            Tag::Bolt11(bolt11),
+            Tag::Description(zap_request.as_json()),
+        ];
+
+        // add e tag
+        if let Some(tag) = zap_request
+            .tags
+            .clone()
+            .into_iter()
+            .find(|t| t.as_vec().first() == Some(&"e".to_string()))
+        {
+            tags.push(tag);
+        }
+
+        // add p tag
+        if let Some(tag) = zap_request
+            .tags
+            .into_iter()
+            .find(|t| t.as_vec().first() == Some(&"p".to_string()))
+        {
+            tags.push(tag);
+        }
+
+        Self::new(Kind::Zap, "", &tags)
+    }
 }
 
 #[cfg(test)]
