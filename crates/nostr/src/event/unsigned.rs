@@ -5,11 +5,26 @@
 
 use core::fmt;
 
-use secp256k1::schnorr::Signature;
-use secp256k1::{Message, XOnlyPublicKey};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::{String, ToString};
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
+use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 
-use crate::{Event, EventId, Keys, Kind, Tag, Timestamp};
+#[cfg(feature = "std")]
+use secp256k1::Message;
+
+use crate::{Event, EventId, Kind, Tag, Timestamp};
+
+#[cfg(feature = "std")]
+use crate::Keys;
 
 /// [`UnsignedEvent`] error
 #[derive(Debug)]
@@ -24,7 +39,7 @@ pub enum Error {
     Event(super::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -80,6 +95,7 @@ pub struct UnsignedEvent {
 
 impl UnsignedEvent {
     /// Sign an [`UnsignedEvent`]
+    #[cfg(feature = "std")]
     pub fn sign(self, keys: &Keys) -> Result<Event, Error> {
         let message = Message::from_slice(self.id.as_bytes())?;
         Ok(Event {
@@ -95,7 +111,24 @@ impl UnsignedEvent {
         })
     }
 
+    /// Sign an [`UnsignedEvent`] with specified signature
+    #[cfg(not(feature = "std"))]
+    pub fn sign_with_signature(self, sig: Signature) -> Result<Event, Error> {
+        Ok(Event {
+            id: self.id,
+            pubkey: self.pubkey,
+            created_at: self.created_at,
+            kind: self.kind,
+            tags: self.tags,
+            content: self.content,
+            sig,
+            #[cfg(feature = "nip03")]
+            ots: None,
+        })
+    }
+
     /// Add signature to [`UnsignedEvent`]
+    #[cfg(feature = "std")]
     pub fn add_signature(self, sig: Signature) -> Result<Event, Error> {
         let event = Event {
             id: self.id,

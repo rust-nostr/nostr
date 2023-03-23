@@ -9,6 +9,13 @@ use core::str::FromStr;
 use serde::{Deserialize, Serialize};
 use url::{ParseError, Url};
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::String;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 /// Url Error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
@@ -16,7 +23,7 @@ pub enum Error {
     Url(ParseError),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

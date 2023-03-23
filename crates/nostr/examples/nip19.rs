@@ -3,7 +3,10 @@
 
 use std::str::FromStr;
 
+use nostr::key::XOnlyPublicKey;
+use nostr::nips::nip19::ToBech32;
 use nostr::prelude::*;
+use nostr::Profile;
 
 fn main() -> Result<()> {
     env_logger::init();

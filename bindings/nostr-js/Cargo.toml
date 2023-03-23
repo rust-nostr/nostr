@@ -12,7 +12,7 @@ crate-type = ["lib", "cdylib"]
 [dependencies]
 console_error_panic_hook = "0.1"
 js-sys = "0.3"
-nostr = { path = "../../crates/nostr" }
+nostr = { path = "../../crates/nostr", features = ["std"]}
 serde-wasm-bindgen = "0.5"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"

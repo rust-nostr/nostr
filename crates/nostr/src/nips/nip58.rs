@@ -4,6 +4,24 @@
 
 use core::fmt;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use crate::alloc::borrow::ToOwned;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::String;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{vec, vec::Vec};
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use crate::prelude::{Secp256k1, Signing};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use crate::types::Timestamp;
+
 use secp256k1::XOnlyPublicKey;
 
 use crate::event::builder::Error as BuilderError;
@@ -20,7 +38,7 @@ pub enum Error {
     EventBuilder(crate::event::builder::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -99,7 +117,29 @@ impl BadgeDefinitionBuilder {
     }
 
     /// Build [`Event`]
+    #[cfg(feature = "std")]
     pub fn build(self, keys: &Keys) -> Result<BadgeDefinition, BuilderError> {
+        let event_builder = self.build_internal()?;
+        let event = event_builder.to_event(keys)?;
+
+        Ok(BadgeDefinition(event))
+    }
+
+    /// Build [`Event`]
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    pub fn build<C: Signing>(
+        self,
+        keys: &Keys,
+        created_at: Timestamp,
+        secp: &Secp256k1<C>,
+    ) -> Result<BadgeDefinition, BuilderError> {
+        let event_builder = self.build_internal()?;
+        let event = event_builder.to_event_with_timestamp_with_secp(&keys, created_at, secp)?;
+
+        Ok(BadgeDefinition(event))
+    }
+    /// Build [`Event`]
+    fn build_internal(self) -> Result<EventBuilder, BuilderError> {
         let mut tags: Vec<Tag> = Vec::new();
         let badge_id = Tag::Identifier(self.badge_id);
         tags.push(badge_id);
@@ -137,8 +177,7 @@ impl BadgeDefinitionBuilder {
         }
 
         let event_builder = EventBuilder::new(Kind::BadgeDefinition, String::new(), &tags);
-        let event = event_builder.to_event(keys)?;
-        Ok(BadgeDefinition(event))
+        Ok(event_builder)
     }
 }
 
@@ -151,12 +190,39 @@ pub struct BadgeDefinition(Event);
 pub struct BadgeAward(Event);
 
 impl BadgeAward {
-    ///
+    /// New [`BadgeAward`]
+    #[cfg(feature = "std")]
     pub fn new(
         badge_definition: &Event,
         awarded_pub_keys: Vec<Tag>,
         keys: &Keys,
     ) -> Result<BadgeAward, Error> {
+        let event_builder = BadgeAward::new_internal(badge_definition, awarded_pub_keys, keys)?;
+        let event = event_builder.to_event(keys)?;
+
+        Ok(BadgeAward(event))
+    }
+
+    /// New [`BadgeAward`]
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    pub fn new<C: Signing>(
+        badge_definition: &Event,
+        awarded_pub_keys: Vec<Tag>,
+        keys: &Keys,
+        created_at: Timestamp,
+        secp: &Secp256k1<C>,
+    ) -> Result<BadgeAward, Error> {
+        let event_builder = BadgeAward::new_internal(badge_definition, awarded_pub_keys, keys)?;
+        let event = event_builder.to_event_with_timestamp_with_secp(&keys, created_at, secp)?;
+
+        Ok(BadgeAward(event))
+    }
+
+    fn new_internal(
+        badge_definition: &Event,
+        awarded_pub_keys: Vec<Tag>,
+        keys: &Keys,
+    ) -> Result<EventBuilder, Error> {
         let badge_id = match badge_definition.kind {
             Kind::BadgeDefinition => badge_definition.tags.iter().find_map(|t| match t {
                 Tag::Identifier(id) => Some(id),
@@ -185,9 +251,7 @@ impl BadgeAward {
         tags.extend(awarded_pub_keys);
 
         let event_builder = EventBuilder::new(Kind::BadgeAward, String::new(), &tags);
-        let event = event_builder.to_event(keys)?;
-
-        Ok(BadgeAward(event))
+        Ok(event_builder)
     }
 }
 
@@ -214,7 +278,7 @@ pub enum ProfileBadgesEventError {
     EventBuilder(crate::event::builder::Error),
 }
 
-impl std::error::Error for ProfileBadgesEventError {}
+impl StdError for ProfileBadgesEventError {}
 
 impl fmt::Display for ProfileBadgesEventError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -269,6 +333,24 @@ impl ProfileBadgesEvent {
         })
     }
 
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    /// Create a new [`ProfileBadgesEvent`] from badge definition and awards events
+    /// [`badge_definitions`] and [`badge_awards`] must be ordered, so on the same position they refer to the same badge
+    pub fn new<C: Signing>(
+        badge_definitions: Vec<Event>,
+        badge_awards: Vec<Event>,
+        pubkey_awarded: &XOnlyPublicKey,
+        keys: &Keys,
+        created_at: Timestamp,
+        secp: &Secp256k1<C>,
+    ) -> Result<ProfileBadgesEvent, ProfileBadgesEventError> {
+        let event_builder =
+            ProfileBadgesEvent::new_internal(badge_definitions, badge_awards, pubkey_awarded)?;
+        let event = event_builder.to_event_with_timestamp_with_secp(keys, created_at, &secp)?;
+
+        Ok(ProfileBadgesEvent(event))
+    }
+    #[cfg(feature = "std")]
     /// Create a new [`ProfileBadgesEvent`] from badge definition and awards events
     /// [`badge_definitions`] and [`badge_awards`] must be ordered, so on the same position they refer to the same badge
     pub fn new(
@@ -277,6 +359,20 @@ impl ProfileBadgesEvent {
         pubkey_awarded: &XOnlyPublicKey,
         keys: &Keys,
     ) -> Result<ProfileBadgesEvent, ProfileBadgesEventError> {
+        let event_builder =
+            ProfileBadgesEvent::new_internal(badge_definitions, badge_awards, pubkey_awarded)?;
+        let event = event_builder.to_event(keys)?;
+
+        Ok(ProfileBadgesEvent(event))
+    }
+
+    /// Create a new [`ProfileBadgesEvent`] from badge definition and awards events
+    /// [`badge_definitions`] and [`badge_awards`] must be ordered, so on the same position they refer to the same badge
+    fn new_internal(
+        badge_definitions: Vec<Event>,
+        badge_awards: Vec<Event>,
+        pubkey_awarded: &XOnlyPublicKey,
+    ) -> Result<EventBuilder, ProfileBadgesEventError> {
         if badge_definitions.len() != badge_awards.len() {
             return Err(ProfileBadgesEventError::InvalidLength);
         }
@@ -362,9 +458,7 @@ impl ProfileBadgesEvent {
         // Badge definitions and awards have been validated
 
         let event_builder = EventBuilder::new(Kind::ProfileBadges, String::new(), &tags);
-        let event = event_builder.to_event(keys)?;
-
-        Ok(ProfileBadgesEvent(event))
+        Ok(event_builder)
     }
 }
 

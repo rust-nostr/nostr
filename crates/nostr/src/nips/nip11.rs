@@ -7,6 +7,13 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/11.md>
 
 use core::fmt;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 
@@ -28,7 +35,7 @@ pub enum Error {
     Reqwest(reqwest::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

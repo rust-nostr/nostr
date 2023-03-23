@@ -1,6 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use nostr::nips::nip19::ToBech32;
 use nostr::prelude::*;
 
 fn main() -> Result<()> {

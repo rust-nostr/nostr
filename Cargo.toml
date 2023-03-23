@@ -8,7 +8,7 @@ members = [
     "crates/nostr-sdk",
     "crates/nostr-sdk-net",
 ]
-default-members = ["crates/*"]
+default-members = ["crates/nostr*"]
 resolver = "2"
 
 [workspace.package]
@@ -20,3 +20,7 @@ rust-version = "1.64.0"
 [profile.release]
 lto = true
 codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

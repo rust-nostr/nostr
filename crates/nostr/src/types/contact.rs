@@ -3,6 +3,9 @@
 
 //! Contact
 
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+
 use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 

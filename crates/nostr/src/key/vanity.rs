@@ -9,6 +9,12 @@ use std::sync::mpsc::{sync_channel, RecvError};
 use std::sync::Arc;
 use std::thread;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 use secp256k1::rand;
 use secp256k1::SecretKey;
 
@@ -30,7 +36,7 @@ pub enum Error {
     JoinHandleError,
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

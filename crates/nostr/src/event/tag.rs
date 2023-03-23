@@ -2,10 +2,22 @@
 // Distributed under the MIT software license
 
 //! Tag
-
 use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::format;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::{String, ToString};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{vec, vec::Vec};
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
@@ -48,7 +60,7 @@ pub enum Error {
     InvalidIdentity,
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

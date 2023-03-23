@@ -8,6 +8,12 @@
 use core::fmt;
 use core::str::FromStr;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 use bip39::Mnemonic;
 use bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
 use bitcoin::Network;
@@ -27,7 +33,7 @@ pub enum Error {
     BIP39(bip39::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

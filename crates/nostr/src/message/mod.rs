@@ -5,6 +5,12 @@
 
 use core::fmt;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 pub mod client;
 pub mod relay;
 pub mod subscription;
@@ -24,7 +30,7 @@ pub enum MessageHandleError {
     Event(crate::event::Error),
 }
 
-impl std::error::Error for MessageHandleError {}
+impl StdError for MessageHandleError {}
 
 impl fmt::Display for MessageHandleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

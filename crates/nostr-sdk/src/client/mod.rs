@@ -133,6 +133,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
     ///
     /// let my_keys = Keys::generate();
@@ -248,6 +249,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
@@ -286,6 +288,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
@@ -331,8 +334,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -377,6 +380,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
@@ -407,6 +411,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
@@ -435,8 +440,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -452,8 +457,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -469,8 +474,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -500,9 +505,8 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::time::Duration;
-    ///
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -633,8 +637,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -660,8 +664,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -686,8 +690,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -750,9 +754,8 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::time::Duration;
-    ///
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -849,8 +852,8 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -935,9 +938,8 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::str::FromStr;
-    ///
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -969,9 +971,8 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::str::FromStr;
-    ///
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
@@ -1003,9 +1004,8 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::str::FromStr;
-    ///
+
     /// use nostr_sdk::prelude::*;
-    ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();

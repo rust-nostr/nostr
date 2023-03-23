@@ -7,8 +7,18 @@
 use core::fmt;
 use core::str::FromStr;
 
-use secp256k1::schnorr::Signature;
-use secp256k1::{Message, XOnlyPublicKey};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::{String, ToString};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::vec::Vec;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
+use secp256k1::{schnorr::Signature, Message, Secp256k1, Verification, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -23,7 +33,9 @@ pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::tag::{Marker, Tag, TagKind};
 pub use self::unsigned::UnsignedEvent;
-use crate::{Timestamp, SECP256K1};
+use crate::Timestamp;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 
 /// [`Event`] error
 #[derive(Debug)]
@@ -41,7 +53,7 @@ pub enum Error {
     OpenTimestamps(nostr_ots::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -105,8 +117,14 @@ pub struct Event {
 }
 
 impl Event {
-    /// Verify event
+    /// Verify Event
+    #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
+        self.verify_with_context(SECP256K1)
+    }
+
+    /// Verify Event
+    pub fn verify_with_context<C: Verification>(&self, secp: &Secp256k1<C>) -> Result<(), Error> {
         let id = EventId::new(
             &self.pubkey,
             self.created_at,
@@ -115,15 +133,13 @@ impl Event {
             &self.content,
         );
         let message = Message::from_slice(id.as_bytes())?;
-        SECP256K1
-            .verify_schnorr(&self.sig, &message, &self.pubkey)
+        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }
 
     /// New event from [`Value`]
     pub fn from_value(value: Value) -> Result<Self, Error> {
         let event: Self = serde_json::from_value(value)?;
-        event.verify()?;
         Ok(event)
     }
 
@@ -133,7 +149,6 @@ impl Event {
         S: Into<String>,
     {
         let event: Self = serde_json::from_str(&json.into())?;
-        event.verify()?;
         Ok(event)
     }
 
@@ -144,11 +159,18 @@ impl Event {
 
     /// Returns `true` if the event has an expiration tag that is expired.
     /// If an event has no `Expiration` tag, then it will return `false`.
+    #[cfg(feature = "std")]
     pub fn is_expired(&self) -> bool {
         let now = Timestamp::now();
+        self.is_expired_since(now)
+    }
+
+    /// Returns `true` if the event has an expiration tag that is expired `since`.
+    /// If an event has no `Expiration` tag, then it will return `false`.
+    pub fn is_expired_since(&self, since: Timestamp) -> bool {
         for tag in self.tags.iter() {
             if let Tag::Expiration(timestamp) = tag {
-                return timestamp < &now;
+                return timestamp < &since;
             }
         }
         false
@@ -191,8 +213,6 @@ impl Event {
             #[cfg(feature = "nip03")]
             ots: None,
         };
-
-        event.verify()?;
 
         Ok(event)
     }

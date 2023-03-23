@@ -7,7 +7,19 @@
 
 #![allow(missing_docs)]
 
+#[cfg(not(feature = "std"))]
+use alloc::string::{FromUtf8Error, ToString};
+#[cfg(not(feature = "std"))]
+use alloc::vec::{self, Vec};
 use core::fmt;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
+#[cfg(feature = "std")]
 use std::string::FromUtf8Error;
 
 use bech32::{self, FromBase32, ToBase32, Variant};
@@ -54,7 +66,7 @@ pub enum Error {
     TryFromSlice,
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
