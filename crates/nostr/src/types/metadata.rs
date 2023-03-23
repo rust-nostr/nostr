@@ -8,6 +8,8 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use alloc::string::String;
+
 /// [`Metadata`] error
 #[derive(Debug)]
 pub enum Error {
