@@ -4,6 +4,7 @@
 
 //! Subscription filters
 
+#![allow(missing_docs)]
 use core::fmt;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;

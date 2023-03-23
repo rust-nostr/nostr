@@ -3,15 +3,15 @@
 
 //! Time
 
-use std::fmt;
+use core::time::Duration;
+use core::ops::{Add, Sub};
+use core::str::FromStr;
 
-use std::time::Duration;
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{
-    ops::{Add, Sub},
-    str::FromStr,
-};
+#[cfg(feature = "std")]
+use std::{fmt, time::{SystemTime, UNIX_EPOCH}};
+
+#[cfg(feature = "alloc")]
+use alloc::{fmt, vec::Vec, string::String};
 
 #[cfg(target_arch = "wasm32")]
 use instant::SystemTime;
@@ -25,6 +25,7 @@ const UNIX_EPOCH: SystemTime = SystemTime::UNIX_EPOCH;
 pub struct Timestamp(i64);
 
 impl Timestamp {
+    #[cfg(not(feature = "alloc"))]
     /// Get UNIX timestamp
     pub fn now() -> Self {
         let ts: u64 = SystemTime::now()
@@ -32,6 +33,10 @@ impl Timestamp {
             .unwrap_or_default()
             .as_secs();
         Self(ts as i64)
+    }
+    #[cfg(feature = "alloc")]
+    pub fn from_secs(external_time_stamp: u64) -> Self {
+        Self(external_time_stamp)
     }
 
     /// Get timestamp as [`u64`]
