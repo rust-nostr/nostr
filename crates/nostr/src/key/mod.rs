@@ -13,7 +13,7 @@ use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::Rng;
 use secp256k1::schnorr::Signature;
 use secp256k1::Message;
-pub use secp256k1::{KeyPair, SecretKey, XOnlyPublicKey, PublicKey};
+pub use secp256k1::{KeyPair, PublicKey, SecretKey, XOnlyPublicKey};
 
 use crate::SECP256K1;
 
