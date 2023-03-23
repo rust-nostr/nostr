@@ -12,7 +12,8 @@ rust-version.workspace = true
 keywords = ["nostr", "protocol", "sdk"]
 
 [features]
-default = ["all-nips"]
+default = ["all-nips", "std"]
+std = []
 blocking = ["reqwest?/blocking"]
 vanity = ["nip19"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip19", "nip21", "nip46"]
