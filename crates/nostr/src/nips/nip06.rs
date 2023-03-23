@@ -8,7 +8,7 @@
 use std::str::FromStr;
 
 use bip39::Mnemonic;
-use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
+use bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
 use bitcoin::Network;
 use bitcoin_hashes::hmac::{Hmac, HmacEngine};
 use bitcoin_hashes::{sha512, Hash, HashEngine};
@@ -22,7 +22,7 @@ use crate::{Keys, SECP256K1};
 pub enum Error {
     /// BIP32 error
     #[error(transparent)]
-    BIP32(#[from] bitcoin::util::bip32::Error),
+    BIP32(#[from] bitcoin::bip32::Error),
     /// BIP39 error
     #[error(transparent)]
     BIP39(#[from] bip39::Error),
@@ -68,7 +68,7 @@ impl GenerateMnemonic for Keys {
         let mut os_random = [0u8; 32];
         OsRng.fill_bytes(&mut os_random);
         h.input(&os_random);
-        let entropy: [u8; 64] = Hmac::from_engine(h).into_inner();
+        let entropy: [u8; 64] = Hmac::from_engine(h).to_byte_array();
         let len: usize = word_count * 4 / 3;
         Ok(Mnemonic::from_entropy(&entropy[0..len])?)
     }

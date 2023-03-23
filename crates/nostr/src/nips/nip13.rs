@@ -54,7 +54,8 @@ pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
 
 #[cfg(test)]
 pub mod tests {
-    use bitcoin_hashes::hex::FromHex;
+    use std::str::FromStr;
+
     use bitcoin_hashes::sha256::Hash as Sha256Hash;
 
     use super::*;
@@ -64,7 +65,7 @@ pub mod tests {
         assert_eq!(
             4,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -73,7 +74,7 @@ pub mod tests {
         assert_eq!(
             3,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -82,7 +83,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "2fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -91,7 +92,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -100,7 +101,7 @@ pub mod tests {
         assert_eq!(
             1,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "4fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -109,7 +110,7 @@ pub mod tests {
         assert_eq!(
             1,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "5fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -118,7 +119,7 @@ pub mod tests {
         assert_eq!(
             1,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "6fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -127,7 +128,7 @@ pub mod tests {
         assert_eq!(
             1,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -137,7 +138,7 @@ pub mod tests {
         assert_eq!(
             0,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "8fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -146,7 +147,7 @@ pub mod tests {
         assert_eq!(
             0,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "9fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -155,7 +156,7 @@ pub mod tests {
         assert_eq!(
             0,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "afffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -164,7 +165,7 @@ pub mod tests {
         assert_eq!(
             0,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "bfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -173,7 +174,7 @@ pub mod tests {
         assert_eq!(
             0,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "cfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -182,7 +183,7 @@ pub mod tests {
         assert_eq!(
             0,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -191,7 +192,7 @@ pub mod tests {
         assert_eq!(
             0,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -200,7 +201,7 @@ pub mod tests {
         assert_eq!(
             0,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -210,7 +211,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "20ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -219,7 +220,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "21ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -228,7 +229,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "22ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -237,7 +238,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "23ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -246,7 +247,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "24ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -255,7 +256,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "25ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -264,7 +265,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "26ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -273,7 +274,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "27ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -282,7 +283,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "28ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -291,7 +292,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "29ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -300,7 +301,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "2affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -309,7 +310,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "2bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -318,7 +319,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "2cffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -327,7 +328,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "2dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -336,7 +337,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "2effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -345,7 +346,7 @@ pub mod tests {
         assert_eq!(
             2,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "2fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
                 )
                 .unwrap()
@@ -355,7 +356,7 @@ pub mod tests {
         assert_eq!(
             248,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "00000000000000000000000000000000000000000000000000000000000000ff"
                 )
                 .unwrap()
@@ -364,7 +365,7 @@ pub mod tests {
         assert_eq!(
             252,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "000000000000000000000000000000000000000000000000000000000000000f"
                 )
                 .unwrap()
@@ -373,7 +374,7 @@ pub mod tests {
         assert_eq!(
             255,
             get_leading_zero_bits(
-                Sha256Hash::from_hex(
+                Sha256Hash::from_str(
                     "0000000000000000000000000000000000000000000000000000000000000001"
                 )
                 .unwrap()

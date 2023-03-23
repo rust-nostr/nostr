@@ -3,11 +3,10 @@
 
 //! Channel Id
 
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 #[cfg(feature = "nip19")]
 use bech32::{self, FromBase32, ToBase32, Variant};
-use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 
@@ -50,7 +49,7 @@ impl ChannelId {
     where
         S: Into<String>,
     {
-        Ok(Self::new(Sha256Hash::from_hex(&hex.into())?, Vec::new()))
+        Ok(Self::new(Sha256Hash::from_str(&hex.into())?, Vec::new()))
     }
 
     /// [`ChannelId`] from bytes
@@ -137,7 +136,7 @@ impl ToBech32 for ChannelId {
     type Err = Bech32Error;
     fn to_bech32(&self) -> Result<String, Self::Err> {
         let mut bytes: Vec<u8> = vec![SPECIAL, 32];
-        bytes.extend(self.hash().iter());
+        bytes.extend(self.hash().as_byte_array());
 
         for relay in self.relays.iter() {
             bytes.extend([RELAY, relay.len() as u8]);
