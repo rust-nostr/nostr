@@ -320,6 +320,40 @@ impl Tag {
     pub fn as_vec(&self) -> Vec<String> {
         self.clone().into()
     }
+
+    /// Get [`TagKind`]
+    pub fn kind(&self) -> TagKind {
+        match self {
+            Tag::Generic(kind, ..) => kind.clone(),
+            Tag::Event(..) => TagKind::E,
+            Tag::PubKey(..) => TagKind::P,
+            Tag::EventReport(..) => TagKind::E,
+            Tag::PubKeyReport(..) => TagKind::P,
+            Tag::Reference(..) => TagKind::R,
+            Tag::RelayMetadata(..) => TagKind::R,
+            Tag::Hashtag(..) => TagKind::T,
+            Tag::Geohash(..) => TagKind::G,
+            Tag::Identifier(..) => TagKind::D,
+            Tag::A { .. } => TagKind::A,
+            Tag::Relay(..) => TagKind::Relay,
+            Tag::ContactList { .. } => TagKind::P,
+            Tag::POW { .. } => TagKind::Nonce,
+            Tag::Delegation { .. } => TagKind::Delegation,
+            Tag::ContentWarning { .. } => TagKind::ContentWarning,
+            Tag::Expiration(..) => TagKind::Expiration,
+            Tag::Subject(..) => TagKind::Subject,
+            Tag::Challenge(..) => TagKind::Challenge,
+            Tag::Title(..) => TagKind::Title,
+            Tag::Image(..) => TagKind::Image,
+            Tag::Summary(..) => TagKind::Summary,
+            Tag::PublishedAt(..) => TagKind::PublishedAt,
+            Tag::Description(..) => TagKind::Description,
+            Tag::Bolt11(..) => TagKind::Bolt11,
+            Tag::Preimage(..) => TagKind::Preimage,
+            Tag::Relays(..) => TagKind::Relays,
+            Tag::Amount(..) => TagKind::Amount,
+        }
+    }
 }
 
 impl<S> TryFrom<Vec<S>> for Tag
