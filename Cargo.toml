@@ -6,6 +6,7 @@ members = [
     "bindings/nostr-sdk-nodejs",
     "crates/nostr",
     "crates/nostr-sdk",
+    "crates/nostr-sdk-net",
     "crates/nostr-sdk-sqlite",
 ]
 

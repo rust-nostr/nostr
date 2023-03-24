@@ -6,7 +6,7 @@
 #[cfg(feature = "blocking")]
 use std::time::Duration;
 
-use futures_util::Future;
+use nostr_sdk_net::futures_util::Future;
 #[cfg(feature = "blocking")]
 use tokio::runtime::{Builder, Runtime};
 

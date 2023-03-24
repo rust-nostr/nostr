@@ -1,0 +1,33 @@
+[package]
+name = "nostr-sdk-net"
+version = "0.19.0"
+edition = "2021"
+description = "Nostr SDK Network library."
+authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "sdk", "rust"]
+
+[dependencies]
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+http = "0.2"
+httparse = "1.3"
+thiserror = "1.0"
+url = "2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.26", default-features = false, features = ["net", "time"] }
+tokio-rustls = "0.23"
+tokio-socks = "0.5"
+tokio-tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"] }
+webpki = "0.22"
+webpki-roots = "0.22"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+futures-channel = "0.3"
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["WebSocket", "MessageEvent", "CloseEvent", "Event", "ErrorEvent", "BinaryType", "Blob"] }

@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use nostr_ffi::{Event, Filter, Keys};
 use nostr_sdk::client::blocking::Client as ClientSdk;
-use nostr_sdk::relay::pool::RelayPoolNotification as RelayPoolNotificationSdk;
+use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 
 use crate::error::Result;
 
