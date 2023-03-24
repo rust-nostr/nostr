@@ -5,7 +5,7 @@
 //! Relay messages
 
 #[cfg(feature = "alloc")]
-use alloc::string::String;
+use alloc::{boxed::Box, string::{String, ToString}, vec};
 
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};

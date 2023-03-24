@@ -7,6 +7,11 @@
 use core::fmt;
 use core::str::FromStr;
 
+#[cfg(feature = "alloc")]
+use alloc::{string::{String, ToString};
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};

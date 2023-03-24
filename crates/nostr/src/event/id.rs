@@ -6,6 +6,12 @@
 use core::fmt;
 use core::str::FromStr;
 
+#[cfg(feature = "alloc")]
+use alloc::string::{String, ToString};
+#[cfg(feature = "alloc")]
+use alloc::vec;
+
+
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::XOnlyPublicKey;

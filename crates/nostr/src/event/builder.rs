@@ -2,6 +2,8 @@
 // Distributed under the MIT software license
 
 //! Event builder
+#[cfg(feature = "alloc")]
+use alloc::{string::{String, ToString}, vec::Vec};
 
 use core::fmt;
 #[cfg(not(target_arch = "wasm32"))]
@@ -129,9 +131,13 @@ impl EventBuilder {
 
     /// Build POW [`Event`]
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
-        let pubkey: XOnlyPublicKey = keys.public_key();
-        Ok(self.to_unsigned_pow_event(pubkey, difficulty).sign(keys)?)
-    }
+        #[cfg(target_arch = "wasm32")]
+        use instant::Instant;
+        #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
+        use std::{cmp, time::Instant};
+
+        #[cfg(feature = "alloc")]
+        use core::cmp;
 
     /// Build unsigned POW [`Event`]
     pub fn to_unsigned_pow_event(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
@@ -153,7 +159,7 @@ impl EventBuilder {
                     "{} iterations in {} ms. Avg rate {} hashes/second",
                     nonce,
                     now.elapsed().as_millis(),
-                    nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
+                    nonce * 1000 / cmp::max(1, now.elapsed().as_millis())
                 );
 
                 return UnsignedEvent {

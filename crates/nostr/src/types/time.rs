@@ -8,10 +8,12 @@ use core::ops::{Add, Sub};
 use core::str::FromStr;
 
 #[cfg(feature = "std")]
-use std::{fmt, time::{SystemTime, UNIX_EPOCH}};
+use std::{fmt, num, time::{SystemTime, UNIX_EPOCH}};
 
 #[cfg(feature = "alloc")]
-use alloc::{fmt, vec::Vec, string::String};
+use alloc::fmt;
+#[cfg(feature = "alloc")]
+use core::num;
 
 #[cfg(target_arch = "wasm32")]
 use instant::SystemTime;
@@ -144,7 +146,7 @@ impl From<u64> for Timestamp {
 }
 
 impl FromStr for Timestamp {
-    type Err = std::num::ParseIntError;
+    type Err = num::ParseIntError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(s.parse::<i64>()?))
     }

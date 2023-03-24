@@ -7,7 +7,11 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 #[cfg(feature = "alloc")]
-use alloc::{vec::Vec, string::String};
+use alloc::string::{String, ToString};
+#[cfg(feature = "alloc")]
+use alloc::{vec, vec::Vec};
+#[cfg(feature = "alloc")]
+use alloc::format;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
