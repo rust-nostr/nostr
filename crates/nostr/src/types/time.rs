@@ -22,13 +22,25 @@ use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
 const UNIX_EPOCH: SystemTime = SystemTime::UNIX_EPOCH;
 
+
+/// Helper trait for acquiring time in `no_std` environments.
+#[cfg(not(feature = "std"))]
+pub trait TimeSupplier {
+    type Now;
+
+    fn now(&self) -> Self::Now;
+    fn elapsed_since(&self, since: Self::Now) -> Duration;
+
+    fn as_i64(&self) -> i64;
+}
+
 /// Unix timestamp in seconds
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Timestamp(i64);
 
 impl Timestamp {
-    #[cfg(not(feature = "alloc"))]
     /// Get UNIX timestamp
+    #[cfg(feature = "std")]
     pub fn now() -> Self {
         let ts: u64 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -36,9 +48,10 @@ impl Timestamp {
             .as_secs();
         Self(ts as i64)
     }
-    #[cfg(feature = "alloc")]
-    pub fn from_secs(external_time_stamp: u64) -> Self {
-        Self(external_time_stamp)
+
+    #[cfg(not(feature = "std"))]
+    pub fn now_no_std(time_supplier: &impl TimeSupplier) -> Self {
+        Self(time_supplier.as_i64())
     }
 
     /// Get timestamp as [`u64`]
