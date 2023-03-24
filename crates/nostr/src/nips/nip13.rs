@@ -6,6 +6,13 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/13.md>
 
+#[cfg(feature = "alloc")]
+use alloc::format;
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+#[cfg(feature = "alloc")]
+use alloc::{vec, vec::Vec};
+
 /// Gets the number of leading zero bits. Result is between 0 and 255.
 pub fn get_leading_zero_bits<T>(h: T) -> u8
 where
