@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk"
-version = "0.19.1"
+version = "0.20.0"
 edition = "2021"
 description = "High level Nostr client library."
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
@@ -27,8 +27,8 @@ nip46 = ["nostr/nip46"]
 
 [dependencies]
 log = "0.4"
-nostr = { version = "0.19", path = "../nostr", default-features = false }
-nostr-sdk-net = { version = "0.19", path = "../nostr-sdk-net" }
+nostr = { version = "0.20", path = "../nostr", default-features = false }
+nostr-sdk-net = { version = "0.20", path = "../nostr-sdk-net" }
 nostr-sdk-sqlite = { version = "0.19", path = "../nostr-sdk-sqlite", optional = true }
 once_cell = { version = "1.17", optional = true }
 thiserror = "1.0"
