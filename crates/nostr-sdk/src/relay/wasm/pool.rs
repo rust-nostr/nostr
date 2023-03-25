@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::url::Url;
-use nostr::{ClientMessage, EventId, Filter, RelayMessage};
+use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 use wasm_bindgen_futures::spawn_local;
@@ -239,37 +239,29 @@ impl RelayPool {
         }
     }
 
-    /* /// Get events of filters
+    /// Get events of filters
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
-        let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
-        let mut handles = Vec::new();
+        let mut events: Vec<Event> = Vec::new();
         let relays = self.relays().await;
         for (url, relay) in relays.into_iter() {
-            let filters = filters.clone();
-            let events = events.clone();
-            let handle = thread::spawn(async move {
-                if let Err(e) = relay
-                    .get_events_of_with_callback(filters, timeout, |event| async {
-                        events.lock().await.push(event);
-                    })
-                    .await
-                {
-                    log::error!("Failed to get events from {url}: {e}");
-                }
-            });
-            handles.push(handle);
+            if let Err(e) = relay
+                .get_events_of_with_callback(filters.clone(), timeout, |event| {
+                    if !events.contains(&event) {
+                        events.push(event);
+                    }
+                })
+                .await
+            {
+                log::error!("Failed to get events from {url}: {e}");
+            }
         }
 
-        for handle in handles.into_iter().flatten() {
-            handle.join().await?;
-        }
-
-        Ok(events.lock_owned().await.clone())
-    } */
+        Ok(events)
+    }
 
     /// Request events of filter. All events will be sent to notification listener
     pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {

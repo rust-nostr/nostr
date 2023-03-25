@@ -9,7 +9,7 @@ use std::time::Duration;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Url};
-use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
+use nostr_sdk_net::futures_util::{SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, Message as WsMessage};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -193,7 +193,7 @@ impl Relay {
                         _ => (),
                     };
 
-                    gloo_timers::future::TimeoutFuture::new(20_000).await;
+                    gloo_timers::future::sleep(Duration::from_secs(20)).await;
                 }
             });
         }
@@ -422,15 +422,12 @@ impl Relay {
     }
 
     /// Get events of filters with custom callback
-    pub async fn get_events_of_with_callback<F>(
+    pub async fn get_events_of_with_callback(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
-        callback: impl Fn(Event) -> F,
-    ) -> Result<(), Error>
-    where
-        F: Future<Output = ()>,
-    {
+        _timeout: Option<Duration>,
+        mut callback: impl FnMut(Event),
+    ) -> Result<(), Error> {
         if !self.opts.read() {
             return Err(Error::ReadDisabled);
         }
@@ -450,7 +447,7 @@ impl Relay {
                             event,
                         } => {
                             if subscription_id.eq(&id) {
-                                callback(*event).await;
+                                callback(*event);
                             }
                         }
                         RelayMessage::EndOfStoredEvents(subscription_id) => {
@@ -478,17 +475,16 @@ impl Relay {
         filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
-        let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
-        self.get_events_of_with_callback(filters, timeout, |event| async {
-            let mut events = events.lock().await;
+        let mut events: Vec<Event> = Vec::new();
+        self.get_events_of_with_callback(filters, timeout, |event| {
             events.push(event);
         })
         .await?;
-        Ok(events.into_inner())
+        Ok(events)
     }
 
     /// Request events of filter. All events will be sent to notification listener
-    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+    pub fn req_events_of(&self, filters: Vec<Filter>, _timeout: Option<Duration>) {
         if !self.opts.read() {
             log::error!("{}", Error::ReadDisabled);
         }

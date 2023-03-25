@@ -11,7 +11,8 @@ use nostr::key::XOnlyPublicKey;
 use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
-    ChannelId, ClientMessage, Contact, Event, EventBuilder, EventId, Filter, Keys, Metadata, Tag,
+    ChannelId, ClientMessage, Contact, Event, EventBuilder, EventId, Filter, Keys, Kind, Metadata,
+    Tag,
 };
 use tokio::sync::broadcast;
 
@@ -293,7 +294,7 @@ impl Client {
         self.pool.unsubscribe().await;
     }
 
-    /* /// Get events of filters
+    /// Get events of filters
     ///
     /// # Example
     /// ```rust,no_run
@@ -322,7 +323,7 @@ impl Client {
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
         Ok(self.pool.get_events_of(filters, timeout).await?)
-    } */
+    }
 
     /// Request events of filters
     /// All events will be received on notification listener (`client.notifications()`)
@@ -487,7 +488,7 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /* /// Get contact list
+    /// Get contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     ///
@@ -531,9 +532,9 @@ impl Client {
         }
 
         Ok(contact_list)
-    } */
+    }
 
-    /* /// Get contact list public keys
+    /// Get contact list public keys
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     /// ```
@@ -572,7 +573,7 @@ impl Client {
         let mut contacts: HashMap<XOnlyPublicKey, Metadata> =
             public_keys.iter().map(|p| (*p, Metadata::new())).collect();
 
-        let chunk_size: usize = self.opts.get_req_filters_chunk_size();
+        let chunk_size: usize = 10; // TODO: add Options for WASM Client
         for chunk in public_keys.chunks(chunk_size) {
             let mut filters: Vec<Filter> = Vec::new();
             for public_key in chunk.iter() {
@@ -593,7 +594,7 @@ impl Client {
         }
 
         Ok(contacts)
-    } */
+    }
 
     /// Send encrypted direct message
     ///
