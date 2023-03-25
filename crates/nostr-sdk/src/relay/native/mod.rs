@@ -11,7 +11,7 @@ use std::time::Duration;
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Url};
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
-use nostr_sdk_net::{self as net, Message as WsMessage};
+use nostr_sdk_net::{self as net, WsMessage};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::oneshot;

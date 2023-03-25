@@ -15,8 +15,11 @@ use url::Url;
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::{CloseEvent, ErrorEvent, MessageEvent, WebSocket};
 
-use crate::error::{Error, Result, UrlError};
-use crate::Message;
+pub mod error;
+pub mod message;
+
+use self::error::{Error, Result, UrlError};
+use self::message::{CloseFrame, Message};
 
 type Sink = SplitSink<WebSocketStream, Message>;
 type Stream = SplitStream<WebSocketStream>;
@@ -38,7 +41,6 @@ pub struct WebSocketStream {
 impl WebSocketStream {
     async fn new(url: &Url) -> Result<Self> {
         match web_sys::WebSocket::new(url.to_string().as_str()) {
-            Err(_err) => Err(Error::Url(UrlError::UnsupportedUrlScheme)),
             Ok(ws) => {
                 ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
@@ -99,12 +101,12 @@ impl WebSocketStream {
                     let waker = Rc::clone(&waker);
                     let queue = Rc::clone(&queue);
                     Closure::wrap(Box::new(move |event: CloseEvent| {
-                        queue.borrow_mut().push_back(Ok(Message::Close(Some(
-                            crate::message::CloseFrame {
+                        queue
+                            .borrow_mut()
+                            .push_back(Ok(Message::Close(Some(CloseFrame {
                                 code: event.code().into(),
                                 reason: event.reason().into(),
-                            },
-                        ))));
+                            }))));
                         if let Some(waker) = waker.borrow_mut().take() {
                             waker.wake();
                         }
@@ -121,6 +123,7 @@ impl WebSocketStream {
                     _on_close_callback: on_close_callback,
                 })
             }
+            Err(_) => Err(Error::Url(UrlError::UnsupportedUrlScheme)),
         }
     }
 }

@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use crate::error::Error;
+use super::error::Error;
 
 /// An enum representing the various forms of a WebSocket message.
 #[derive(Debug, Eq, PartialEq, Clone)]

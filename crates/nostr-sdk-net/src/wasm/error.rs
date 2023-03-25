@@ -9,7 +9,7 @@ use http::header::HeaderName;
 use http::Response;
 use thiserror::Error;
 
-use crate::Message;
+use super::message::Message;
 
 /// Result type of all Tungstenite library calls.
 pub type Result<T, E = Error> = result::Result<T, E>;
@@ -79,10 +79,6 @@ pub enum Error {
     /// Unknown data format
     #[error("Unknown data format encountered")]
     UnknownFormat,
-    /// Native error
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("native error: {0}")]
-    Native(#[from] crate::native::NativeError),
 }
 
 impl From<str::Utf8Error> for Error {
