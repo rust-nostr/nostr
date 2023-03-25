@@ -11,6 +11,12 @@
     doc = include_str!("../README.md")
 )]
 
+#[cfg(all(target_arch = "wasm32", feature = "blocking"))]
+compile_error!("`blocking` feature can't be enabled for WASM targets");
+
+#[cfg(all(target_arch = "wasm32", feature = "sqlite"))]
+compile_error!("`sqlite` feature can't be enabled for WASM targets");
+
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
