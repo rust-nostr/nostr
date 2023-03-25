@@ -26,17 +26,20 @@ nip19 = ["nostr/nip19"]
 nip46 = ["nostr/nip46"]
 
 [dependencies]
-futures-util = "0.3"
 log = "0.4"
 nostr = { version = "0.19", path = "../nostr", default-features = false }
+nostr-sdk-net = { version = "0.19", path = "../nostr-sdk-net" }
 nostr-sdk-sqlite = { version = "0.19", path = "../nostr-sdk-sqlite", optional = true }
 once_cell = { version = "1.17", optional = true }
 thiserror = "1.0"
-tokio = { version = "1", features = ["full"] }
-tokio-rustls = "0.23"
-tokio-socks = "0.5"
-tokio-tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"] }
-webpki-roots = "0.22"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.26", default-features = false, features = ["rt-multi-thread", "time", "macros", "sync"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+gloo-timers = { version = "0.2", features = ["futures"] }
+tokio = { version = "1.26", default-features = false, features = ["rt", "macros", "sync"] }
+wasm-bindgen-futures = "0.4"
 
 [dev-dependencies]
 env_logger = "0.10"

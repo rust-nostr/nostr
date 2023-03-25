@@ -4,6 +4,7 @@
 //! Client
 
 use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 #[cfg(feature = "sqlite")]
 use std::path::Path;
@@ -24,11 +25,11 @@ use tokio::sync::broadcast;
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
-mod options;
+pub mod options;
 
 pub use self::options::Options;
-use crate::relay::pool::{Error as RelayPoolError, RelayPool, RelayPoolNotification};
-use crate::{Relay, RelayOptions};
+use crate::relay::pool::{Error as RelayPoolError, RelayPool};
+use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
 
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
@@ -169,6 +170,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn add_relay<S>(&self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
     where
         S: Into<String>,
@@ -178,6 +180,15 @@ impl Client {
     }
 
     /// Add new relay
+    #[cfg(target_arch = "wasm32")]
+    pub async fn add_relay<S>(&self, url: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        self.add_relay_with_opts(url, RelayOptions::default()).await
+    }
+
+    /// Add new relay with [`Options`]
     ///
     /// # Example
     /// ```rust,no_run
@@ -196,6 +207,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn add_relay_with_opts<S>(
         &self,
         url: S,
@@ -207,6 +219,17 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         self.pool.add_relay(url, proxy, opts).await?;
+        Ok(())
+    }
+
+    /// Add new relay with [`Options`]
+    #[cfg(target_arch = "wasm32")]
+    pub async fn add_relay_with_opts<S>(&self, url: S, opts: RelayOptions) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        let url = Url::parse(&url.into())?;
+        self.pool.add_relay(url, opts).await?;
         Ok(())
     }
 
@@ -233,12 +256,25 @@ impl Client {
     }
 
     /// Add multiple relays
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn add_relays<S>(&self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
     where
         S: Into<String>,
     {
         for (url, proxy) in relays.into_iter() {
             self.add_relay(url, proxy).await?;
+        }
+        Ok(())
+    }
+
+    /// Add multiple relays
+    #[cfg(target_arch = "wasm32")]
+    pub async fn add_relays<S>(&self, relays: Vec<S>) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        for url in relays.into_iter() {
+            self.add_relay(url).await?;
         }
         Ok(())
     }
@@ -271,9 +307,12 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
+            #[cfg(not(target_arch = "wasm32"))]
             self.pool
                 .connect_relay(relay, self.opts.get_wait_for_connection())
                 .await;
+            #[cfg(target_arch = "wasm32")]
+            self.pool.connect_relay(relay).await;
             return Ok(());
         }
         Err(Error::RelayNotFound)
@@ -321,7 +360,10 @@ impl Client {
     /// # }
     /// ```
     pub async fn connect(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
         self.pool.connect(self.opts.get_wait_for_connection()).await;
+        #[cfg(target_arch = "wasm32")]
+        self.pool.connect().await;
     }
 
     /// Disconnect from all relays
@@ -359,14 +401,20 @@ impl Client {
     /// # }
     /// ```
     pub async fn subscribe(&self, filters: Vec<Filter>) {
+        #[cfg(not(target_arch = "wasm32"))]
         self.pool
             .subscribe(filters, self.opts.get_wait_for_send())
             .await;
+        #[cfg(target_arch = "wasm32")]
+        self.pool.subscribe(filters).await;
     }
 
     /// Unsubscribe
     pub async fn unsubscribe(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
         self.pool.unsubscribe(self.opts.get_wait_for_send()).await;
+        #[cfg(target_arch = "wasm32")]
+        self.pool.unsubscribe().await;
     }
 
     /// Get events of filters
@@ -408,10 +456,14 @@ impl Client {
 
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
-        Ok(self
-            .pool
+        #[cfg(not(target_arch = "wasm32"))]
+        self.pool
             .send_msg(msg, self.opts.get_wait_for_send())
-            .await?)
+            .await?;
+        #[cfg(target_arch = "wasm32")]
+        self.pool.send_msg(msg).await?;
+
+        Ok(())
     }
 
     /// Send client message to a specific relay
@@ -420,10 +472,13 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        Ok(self
-            .pool
+        #[cfg(not(target_arch = "wasm32"))]
+        self.pool
             .send_msg_to(url, msg, self.opts.get_wait_for_send())
-            .await?)
+            .await?;
+        #[cfg(target_arch = "wasm32")]
+        self.pool.send_msg_to(url, msg).await?;
+        Ok(())
     }
 
     /// Send event

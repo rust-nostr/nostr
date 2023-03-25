@@ -97,6 +97,22 @@ async fn main() -> Result<()> {
 
 More examples can be found in the [examples/](https://github.com/rust-nostr/nostr/tree/master/crates/nostr-sdk/examples) directory.
 
+## WASM
+
+This crate supports the `wasm32` targets.
+
+An example can be found at [`nostr-sdk-wasm-example`](https://github.com/NostrDevKit/nostr-sdk-wasm-example) repo.
+
+On macOS you need to install `llvm`:
+
+```shell
+brew install llvm
+LLVM_PATH=$(brew --prefix llvm)
+AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target wasm32-unknown-unknown
+```
+
+NOTE: Currently `nip03` feature not support WASM.
+
 ## Crate Feature Flags
 
 The following crate feature flags are available:

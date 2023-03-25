@@ -12,10 +12,9 @@ use nostr::url::Url;
 use nostr::{ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Tag};
 use tokio::sync::broadcast;
 
-use super::{Error, Options};
-use crate::client::Entity;
-use crate::relay::pool::RelayPoolNotification;
-use crate::relay::{Relay, RelayOptions};
+use super::{Entity, Error, Options};
+use crate::relay::native::Relay;
+use crate::relay::{RelayOptions, RelayPoolNotification};
 use crate::RUNTIME;
 
 #[derive(Debug, Clone)]

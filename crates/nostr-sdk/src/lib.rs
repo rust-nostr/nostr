@@ -11,6 +11,12 @@
     doc = include_str!("../README.md")
 )]
 
+#[cfg(all(target_arch = "wasm32", feature = "blocking"))]
+compile_error!("`blocking` feature can't be enabled for WASM targets");
+
+#[cfg(all(target_arch = "wasm32", feature = "sqlite"))]
+compile_error!("`sqlite` feature can't be enabled for WASM targets");
+
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
@@ -21,13 +27,11 @@ pub use nostr::{self, *};
 pub mod client;
 pub mod prelude;
 pub mod relay;
-mod thread;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;
 pub use self::client::{Client, Options};
-pub use self::relay::pool::{RelayPool, RelayPoolNotification};
-pub use self::relay::{Relay, RelayOptions, RelayStatus};
+pub use self::relay::{RelayOptions, RelayPoolNotification, RelayStatus};
 
 #[cfg(feature = "blocking")]
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
