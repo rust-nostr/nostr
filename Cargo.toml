@@ -9,6 +9,7 @@ members = [
     "crates/nostr-sdk-net",
     "crates/nostr-sdk-sqlite",
 ]
+resolver = "2"
 
 [workspace.package]
 homepage = "https://github.com/rust-nostr/nostr"
