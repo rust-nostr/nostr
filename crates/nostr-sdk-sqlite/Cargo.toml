@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk-sqlite"
-version = "0.19.0"
+version = "0.20.0"
 edition = "2021"
 description = "SQLite for Nostr SDK"
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
@@ -13,7 +13,7 @@ keywords = ["nostr", "sdk", "db", "sqlite"]
 
 [dependencies]
 log = "0.4"
-nostr = { version = "0.19", path = "../nostr" }
+nostr = { version = "0.20", path = "../nostr" }
 r2d2 = "0.8"
 r2d2_sqlite = "0.21"
 rusqlite = { version = "0.28", features = ["bundled", "serde_json", "url"] }
