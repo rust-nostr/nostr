@@ -44,6 +44,7 @@
   },
   "scripts": {
     "build": "WASM_PACK_ARGS=--release ./scripts/build.sh",
-    "build:dev": "WASM_PACK_ARGS=--dev ./scripts/build.sh"
+    "build:dev": "WASM_PACK_ARGS=--dev ./scripts/build.sh",
+    "package": "npm run build && npm pack"
   }
 }

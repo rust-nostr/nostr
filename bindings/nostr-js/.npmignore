@@ -1,0 +1,12 @@
+.cargo/
+target/
+src/
+scripts/
+examples/
+pkg/README.md 
+pkg/package.json
+pkg/*.wasm
+.gitignore
+Cargo.toml
+Cargo.lock
+*.tgz
