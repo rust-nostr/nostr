@@ -18,7 +18,7 @@ If you're writing a typical Nostr client or bot, you may be interested in [nostr
 
 ```toml
 [dependencies]
-nostr = "0.19"
+nostr = "0.20"
 tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"]}
 ```
 
