@@ -9,6 +9,7 @@ use std::time::Duration;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Url};
+use nostr_sdk_net::futures_util::future::{AbortHandle, Abortable};
 use nostr_sdk_net::futures_util::{SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use tokio::sync::broadcast;
@@ -425,7 +426,7 @@ impl Relay {
     pub async fn get_events_of_with_callback(
         &self,
         filters: Vec<Filter>,
-        _timeout: Option<Duration>,
+        timeout: Option<Duration>,
         mut callback: impl FnMut(Event),
     ) -> Result<(), Error> {
         if !self.opts.read() {
@@ -438,30 +439,43 @@ impl Relay {
             .await?;
 
         let mut notifications = self.notification_sender.subscribe();
-        let recv = async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message(_, msg) = notification {
-                    match msg {
-                        RelayMessage::Event {
-                            subscription_id,
-                            event,
-                        } => {
-                            if subscription_id.eq(&id) {
-                                callback(*event);
+        let (abort_handle, abort_registration) = AbortHandle::new_pair();
+        let recv = Abortable::new(
+            async {
+                while let Ok(notification) = notifications.recv().await {
+                    if let RelayPoolNotification::Message(_, msg) = notification {
+                        match msg {
+                            RelayMessage::Event {
+                                subscription_id,
+                                event,
+                            } => {
+                                if subscription_id.eq(&id) {
+                                    callback(*event);
+                                }
                             }
-                        }
-                        RelayMessage::EndOfStoredEvents(subscription_id) => {
-                            if subscription_id.eq(&id) {
-                                break;
+                            RelayMessage::EndOfStoredEvents(subscription_id) => {
+                                if subscription_id.eq(&id) {
+                                    break;
+                                }
                             }
-                        }
-                        _ => log::debug!("Receive unhandled message {msg:?} on get_events_of"),
-                    };
+                            _ => log::debug!("Receive unhandled message {msg:?} on get_events_of"),
+                        };
+                    }
                 }
-            }
-        };
+            },
+            abort_registration,
+        );
 
-        recv.await;
+        if let Some(timeout) = timeout {
+            spawn_local(async move {
+                gloo_timers::callback::Timeout::new(timeout.as_millis() as u32, move || {
+                    abort_handle.abort();
+                })
+                .forget();
+            });
+        }
+
+        recv.await.map_err(|_| Error::Timeout)?;
 
         // Unsubscribe
         self.send_msg(ClientMessage::close(id)).await?;
