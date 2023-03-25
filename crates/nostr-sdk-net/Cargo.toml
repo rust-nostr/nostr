@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk-net"
-version = "0.19.0"
+version = "0.20.0"
 edition = "2021"
 description = "Nostr SDK Network library."
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
