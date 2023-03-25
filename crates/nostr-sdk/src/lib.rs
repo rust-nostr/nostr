@@ -30,9 +30,7 @@ pub mod relay;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;
-pub use self::client::Client;
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::client::Options;
+pub use self::client::{Client, Options};
 pub use self::relay::{RelayOptions, RelayPoolNotification, RelayStatus};
 
 #[cfg(feature = "blocking")]
