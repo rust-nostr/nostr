@@ -29,13 +29,13 @@
     }
   ],
   "main": "pkg/nostr_js.js",
-    "types": "pkg/nostr_js.d.ts",
-    "files": [
-        "pkg/nostr_js_bg.wasm.js",
-        "pkg/nostr_js_bg.wasm.d.ts",
-        "pkg/nostr_js.js",
-        "pkg/nostr_js.d.ts"
-    ],
+  "types": "pkg/nostr_js.d.ts",
+  "files": [
+      "pkg/nostr_js_bg.wasm.js",
+      "pkg/nostr_js_bg.wasm.d.ts",
+      "pkg/nostr_js.js",
+      "pkg/nostr_js.d.ts"
+  ],
   "devDependencies": {
     "wasm-pack": "^0.10.2"
   },
@@ -43,8 +43,7 @@
     "node": ">= 10"
   },
   "scripts": {
-    "build": "WASM_PACK_ARGS=--release ./build.sh",
-    "build:dev": "WASM_PACK_ARGS=--dev ./build.sh",
-    "doc": "typedoc --tsconfig ."
+    "build": "WASM_PACK_ARGS=--release ./scripts/build.sh",
+    "build:dev": "WASM_PACK_ARGS=--dev ./scripts/build.sh"
   }
 }

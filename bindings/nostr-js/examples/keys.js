@@ -1,4 +1,4 @@
-const { Keys, SecretKey, PublicKey } = require("../pkg/nostr_js");
+const { Keys, SecretKey, PublicKey } = require("../");
 
 function main() {
     // Generate new random keys
