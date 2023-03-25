@@ -166,36 +166,36 @@ impl Relay {
             self.set_status(RelayStatus::Disconnected).await;
 
             let relay = self.clone();
-            /*             spawn_local(async move {
-            loop { */
-            log::debug!(
-                "{} channel capacity: {}",
-                relay.url(),
-                relay.relay_sender.capacity()
-            );
+            spawn_local(async move {
+                loop {
+                    log::debug!(
+                        "{} channel capacity: {}",
+                        relay.url(),
+                        relay.relay_sender.capacity()
+                    );
 
-            // Schedule relay for termination
-            // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
-            if relay.is_scheduled_for_termination().await {
-                relay.set_status(RelayStatus::Terminated).await;
-                relay.schedule_for_termination(false).await;
-                log::debug!("Auto connect loop terminated for {}", relay.url);
-                //break;
-            }
+                    // Schedule relay for termination
+                    // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
+                    if relay.is_scheduled_for_termination().await {
+                        relay.set_status(RelayStatus::Terminated).await;
+                        relay.schedule_for_termination(false).await;
+                        log::debug!("Auto connect loop terminated for {}", relay.url);
+                        break;
+                    }
 
-            // Check status
-            match relay.status().await {
-                RelayStatus::Disconnected => relay.try_connect().await,
-                RelayStatus::Terminated => {
-                    log::debug!("Auto connect loop terminated for {}", relay.url);
-                    //break;
+                    // Check status
+                    match relay.status().await {
+                        RelayStatus::Disconnected => relay.try_connect().await,
+                        RelayStatus::Terminated => {
+                            log::debug!("Auto connect loop terminated for {}", relay.url);
+                            break;
+                        }
+                        _ => (),
+                    };
+
+                    gloo_timers::future::TimeoutFuture::new(20_000).await;
                 }
-                _ => (),
-            };
-
-            /*                     wasm_thread::sleep(Duration::from_secs(20));
-                }
-            }); */
+            });
         }
     }
 
