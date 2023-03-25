@@ -14,6 +14,11 @@ pub mod native;
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::native::*;
+#[cfg(target_arch = "wasm32")]
+pub use self::wasm::*;
+
 /// Relay connection status
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RelayStatus {

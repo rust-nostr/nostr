@@ -5,6 +5,7 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native;
+pub mod options;
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;
 

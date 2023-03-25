@@ -24,9 +24,8 @@ use tokio::sync::broadcast;
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
-mod options;
 
-pub use self::options::Options;
+pub use super::options::Options;
 use crate::relay::native::pool::{Error as RelayPoolError, RelayPool};
 use crate::relay::native::Relay;
 use crate::relay::{RelayOptions, RelayPoolNotification};

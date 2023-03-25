@@ -16,6 +16,7 @@ use nostr::{
 };
 use tokio::sync::broadcast;
 
+pub use super::options::Options;
 use crate::relay::wasm::pool::{Error as RelayPoolError, RelayPool};
 use crate::relay::wasm::Relay;
 use crate::relay::{RelayOptions, RelayPoolNotification};
@@ -51,6 +52,7 @@ pub enum Error {
 pub struct Client {
     pool: RelayPool,
     keys: Keys,
+    opts: Options,
 }
 
 impl Client {
@@ -64,10 +66,30 @@ impl Client {
     /// let client = Client::new(&my_keys);
     /// ```
     pub fn new(keys: &Keys) -> Self {
+        Self::new_with_opts(keys, Options::default())
+    }
+
+    /// Create a new [`Client`] with [`Options`]
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// let my_keys = Keys::generate();
+    /// let opts = Options::new().wait_for_send(true);
+    /// let client = Client::new_with_opts(&my_keys, opts);
+    /// ```
+    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
             pool: RelayPool::new(),
             keys: keys.clone(),
+            opts,
         }
+    }
+
+    /// Update default difficulty for new [`Event`]
+    pub fn update_difficulty(&self, difficulty: u8) {
+        self.opts.update_difficulty(difficulty);
     }
 
     /// Get current [`Keys`]
@@ -364,7 +386,14 @@ impl Client {
     }
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
-        let event: Event = builder.to_event(&self.keys)?;
+        let event: Event = {
+            let difficulty: u8 = self.opts.get_difficulty();
+            if difficulty > 0 {
+                builder.to_pow_event(&self.keys, difficulty)?
+            } else {
+                builder.to_event(&self.keys)?
+            }
+        };
         self.send_event(event).await
     }
 
@@ -573,7 +602,7 @@ impl Client {
         let mut contacts: HashMap<XOnlyPublicKey, Metadata> =
             public_keys.iter().map(|p| (*p, Metadata::new())).collect();
 
-        let chunk_size: usize = 10; // TODO: add Options for WASM Client
+        let chunk_size: usize = self.opts.get_req_filters_chunk_size();
         for chunk in public_keys.chunks(chunk_size) {
             let mut filters: Vec<Filter> = Vec::new();
             for public_key in chunk.iter() {
