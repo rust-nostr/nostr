@@ -9,7 +9,7 @@
 
 ## Bindings
 
-**nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift, Kotlin, Python, Flutter and JavaScript. 
+**nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift, Kotlin, Python and JavaScript. 
 Please, explore the [`bindings/`](./bindings/) directory to learn more.
 
 ## Minimum Supported Rust Version (MSRV)
