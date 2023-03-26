@@ -1,0 +1,50 @@
+{
+  "name": "@rust-nostr/nostr-sdk-js",
+  "version": "0.1.0",
+  "description": "High level Nostr client library.",
+  "keywords": [
+    "nostr",
+    "sdk",
+    "rust",
+    "javascript"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/rust-nostr/nostr",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rust-nostr/nostr.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rust-nostr/nostr/issues"
+  },
+  "author": {
+    "name": "Yuki Kishimoto",
+    "email": "yukikishimoto@protonmail.com",
+    "url": "https://github.com/yukibtc"
+  },
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://getalby.com/p/yuki"
+    }
+  ],
+  "main": "pkg/nostr_sdk_js.js",
+  "types": "pkg/nostr_sdk_js.d.ts",
+  "files": [
+      "pkg/nostr_sdk_js_bg.wasm.js",
+      "pkg/nostr_sdk_js_bg.wasm.d.ts",
+      "pkg/nostr_sdk_js.js",
+      "pkg/nostr_sdk_js.d.ts"
+  ],
+  "devDependencies": {
+    "wasm-pack": "^0.10.2"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "scripts": {
+    "build": "WASM_PACK_ARGS=--release ./scripts/build.sh",
+    "build:dev": "WASM_PACK_ARGS=--dev ./scripts/build.sh",
+    "package": "npm run build && npm pack"
+  }
+}

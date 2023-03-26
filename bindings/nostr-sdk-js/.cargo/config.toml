@@ -1,0 +1,7 @@
+[build]
+target = "wasm32-unknown-unknown"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
