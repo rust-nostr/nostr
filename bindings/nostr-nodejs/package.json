@@ -1,12 +1,13 @@
 {
-  "name": "@rust-nostr/nostr",
-  "version": "0.2.0",
+  "name": "@rust-nostr/nostr-nodejs",
+  "version": "0.1.0",
   "description": "Rust implementation of the Nostr protocol.",
   "keywords": [
     "nostr",
     "protocol",
     "rust",
-    "napi"
+    "napi",
+    "nodejs"
   ],
   "license": "MIT",
   "homepage": "https://github.com/rust-nostr/nostr",

@@ -4,14 +4,20 @@
 
 NodeJS bindings of the [`nostr`](https://crates.io/crates/nostr) crate.
 
+This library works only on native environments (Linux, macOS and Windows).
+
+Check also [`@rust-nostr/nostr`](https://www.npmjs.com/package/@rust-nostr/nostr) for the JavaScript bindings.
+
 ## Getting started
 
 ```sh
-npm i @rust-nostr/nostr
+npm i @rust-nostr/nostr-nodejs
 ```
+
+When installing, NPM will download the corresponding prebuilt Rust library for your current host system.
     
 ```javascript
-const { Keys } = require("@rust-nostr/nostr");
+const { Keys } = require("@rust-nostr/nostr-nodejs");
 
 async function main() {
      let keys = Keys.generate();

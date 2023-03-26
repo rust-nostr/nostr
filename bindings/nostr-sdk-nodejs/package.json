@@ -1,12 +1,13 @@
 {
-  "name": "@rust-nostr/nostr-sdk",
+  "name": "@rust-nostr/nostr-sdk-nodejs",
   "version": "0.1.0",
   "description": "High level Nostr client library.",
   "keywords": [
     "nostr",
     "sdk",
     "rust",
-    "napi"
+    "napi",
+    "nodejs"
   ],
   "license": "MIT",
   "homepage": "https://github.com/rust-nostr/nostr",

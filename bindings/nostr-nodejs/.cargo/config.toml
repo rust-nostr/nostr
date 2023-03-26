@@ -3,7 +3,7 @@ linker = "aarch64-linux-musl-gcc"
 rustflags = ["-C", "target-feature=-crt-static"]
 
 [profile.release]
-opt-level = 'z'
+opt-level = 's'
 lto = true
 codegen-units = 1
 debug = true
