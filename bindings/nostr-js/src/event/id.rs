@@ -18,6 +18,12 @@ impl From<EventId> for JsEventId {
     }
 }
 
+impl From<JsEventId> for EventId {
+    fn from(event_id: JsEventId) -> Self {
+        event_id.inner
+    }
+}
+
 impl From<&JsEventId> for EventId {
     fn from(event_id: &JsEventId) -> Self {
         event_id.inner

@@ -1,3 +1,6 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Distributed under the MIT software license
+
 use wasm_bindgen::JsValue;
 
 pub type Result<T, E = JsValue> = std::result::Result<T, E>;

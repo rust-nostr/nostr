@@ -241,3 +241,9 @@ impl JsFilter {
         }
     }
 }
+
+impl JsFilter {
+    pub fn inner(&self) -> Filter {
+        self.inner.clone()
+    }
+}

@@ -5,13 +5,18 @@
 
 use wasm_bindgen::prelude::*;
 
-mod error;
-pub mod event;
-pub mod key;
-pub mod message;
+pub mod error;
+mod event;
+mod key;
+mod message;
 pub mod nips;
-pub mod types;
-mod util;
+mod types;
+pub mod util;
+
+pub use self::event::{JsEvent, JsEventBuilder, JsEventId};
+pub use self::key::{JsKeys, JsPublicKey, JsSecretKey};
+pub use self::message::{JsFilter, JsSubscriptionId};
+pub use self::types::{JsChannelId, JsContact, JsMetadata};
 
 /// Run some stuff when the Wasm module is instantiated.
 ///

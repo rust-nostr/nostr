@@ -38,6 +38,12 @@ impl From<JsEvent> for Event {
     }
 }
 
+impl From<&JsEvent> for Event {
+    fn from(event: &JsEvent) -> Self {
+        event.inner
+    }
+}
+
 #[wasm_bindgen(js_class = Event)]
 impl JsEvent {
     #[wasm_bindgen(getter)]

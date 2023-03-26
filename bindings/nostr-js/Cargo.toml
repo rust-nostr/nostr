@@ -6,7 +6,7 @@ authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
 publish = false
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib", "cdylib"]
 
 [dependencies]
 console_error_panic_hook = "0.1"
@@ -23,6 +23,3 @@ wasm-opt = false
 debug-js-glue = false
 demangle-name-section = true
 dwarf-debug-info = true
-
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-Oz']

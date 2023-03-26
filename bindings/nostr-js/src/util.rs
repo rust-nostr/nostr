@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::*;
 /// https://github.com/rustwasm/wasm-bindgen/issues/2231#issuecomment-656293288.
 ///
 /// The returned value is likely to be a `wasm_bindgen::__ref::Ref<T>`.
-pub(crate) fn downcast<T>(value: &JsValue, classname: &str) -> Result<T::Anchor, JsError>
+pub fn downcast<T>(value: &JsValue, classname: &str) -> Result<T::Anchor, JsError>
 where
     T: RefFromWasmAbi<Abi = u32>,
 {
@@ -36,7 +36,7 @@ where
 
 /* /// Transform a value `JS` from JavaScript to a Rust wrapper, to a
 /// Rust wrapped type.
-pub(crate) fn try_array_to_vec<JS, Rust>(
+pub fn try_array_to_vec<JS, Rust>(
     array: Array,
 ) -> Result<Vec<Rust>, <JS as TryFrom<JsValue>>::Error>
 where

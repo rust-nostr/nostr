@@ -10,7 +10,7 @@ use crate::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = Contact)]
 pub struct JsContact {
-    pub(crate) inner: Contact,
+    inner: Contact,
 }
 
 impl Deref for JsContact {
@@ -39,5 +39,11 @@ impl JsContact {
         Self {
             inner: Contact::new(public_key.into(), relay_url, alias),
         }
+    }
+}
+
+impl JsContact {
+    pub fn inner(&self) -> Contact {
+        self.inner.clone()
     }
 }

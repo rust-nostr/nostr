@@ -92,7 +92,7 @@ impl JsEventBuilder {
     pub fn set_contact_list(list: Array) -> Result<JsEventBuilder> {
         let list = list
             .iter()
-            .map(|v| Ok(util::downcast::<JsContact>(&v, "Contact")?.inner.clone()))
+            .map(|v| Ok(util::downcast::<JsContact>(&v, "Contact")?.inner()))
             .collect::<Result<Vec<Contact>, JsError>>()?;
         Ok(Self {
             builder: EventBuilder::set_contact_list(list),
