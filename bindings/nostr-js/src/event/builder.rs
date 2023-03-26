@@ -7,7 +7,7 @@ use js_sys::Array;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use super::{JsEvent, JsEventId};
+use super::{JsEvent, JsEventId, JsTags};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::types::{JsChannelId, JsContact, JsMetadata};
@@ -28,7 +28,7 @@ impl Deref for JsEventBuilder {
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
-    pub fn new(kind: u64, content: String, tags: Array) -> Result<JsEventBuilder> {
+    pub fn new(kind: u64, content: String, tags: JsTags) -> Result<JsEventBuilder> {
         let tags: Vec<Vec<String>> = serde_wasm_bindgen::from_value(tags.into())?;
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
         for tag in tags.into_iter() {
@@ -76,7 +76,7 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = newTextNote)]
-    pub fn new_text_note(content: String, tags: Array) -> Result<JsEventBuilder> {
+    pub fn new_text_note(content: String, tags: JsTags) -> Result<JsEventBuilder> {
         let tags: Vec<Vec<String>> = serde_wasm_bindgen::from_value(tags.into())?;
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
         for tag in tags.into_iter() {

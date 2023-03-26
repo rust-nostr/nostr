@@ -8,9 +8,11 @@ use wasm_bindgen::prelude::*;
 
 mod builder;
 mod id;
+mod tag;
 
 pub use self::builder::JsEventBuilder;
 pub use self::id::JsEventId;
+pub use self::tag::JsTags;
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
 
@@ -38,12 +40,6 @@ impl From<JsEvent> for Event {
     }
 }
 
-impl From<&JsEvent> for Event {
-    fn from(event: &JsEvent) -> Self {
-        event.inner
-    }
-}
-
 #[wasm_bindgen(js_class = Event)]
 impl JsEvent {
     #[wasm_bindgen(getter)]
@@ -67,7 +63,7 @@ impl JsEvent {
     }
 
     /* #[wasm_bindgen(getter)]
-    pub fn tags(&self) -> Vec<Vec<String>> {
+    pub fn tags(&self) -> JsTags {
         self.inner.tags.iter().map(|t| t.as_vec()).collect()
     } */
 
