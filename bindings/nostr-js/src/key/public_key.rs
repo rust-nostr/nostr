@@ -5,13 +5,15 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use nostr::prelude::*;
+use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 
+#[derive(Deserialize)]
 #[wasm_bindgen(js_name = PublicKey)]
 pub struct JsPublicKey {
-    inner: XOnlyPublicKey,
+    pub(crate) inner: XOnlyPublicKey,
 }
 
 impl Deref for JsPublicKey {

@@ -1,6 +1,6 @@
 use wasm_bindgen::JsValue;
 
-pub type Result<T> = std::result::Result<T, JsValue>;
+pub type Result<T, E = JsValue> = std::result::Result<T, E>;
 
 /// Helper to replace the `E` to `Error` to `napi::Error` conversion.
 #[inline]
