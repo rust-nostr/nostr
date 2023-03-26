@@ -8,10 +8,10 @@ use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use super::{JsEvent, JsEventId};
+use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::types::{JsChannelId, JsContact, JsMetadata};
-
-use crate::error::{into_err, Result};
+use crate::util;
 
 #[wasm_bindgen(js_name = EventBuilder)]
 pub struct JsEventBuilder {
@@ -90,8 +90,10 @@ impl JsEventBuilder {
 
     #[wasm_bindgen(js_name = setContactList)]
     pub fn set_contact_list(list: Array) -> Result<JsEventBuilder> {
-        let list: Vec<JsContact> = serde_wasm_bindgen::from_value(list.into())?;
-        let list: Vec<Contact> = list.into_iter().map(|c| c.deref().clone()).collect();
+        let list = list
+            .iter()
+            .map(|v| Ok(util::downcast::<JsContact>(&v, "Contact")?.inner.clone()))
+            .collect::<Result<Vec<Contact>, JsError>>()?;
         Ok(Self {
             builder: EventBuilder::set_contact_list(list),
         })
@@ -120,13 +122,16 @@ impl JsEventBuilder {
         }
     }
 
-    /* #[wasm_bindgen]
-    pub fn delete(ids: Vec<JsEventId>, reason: Option<String>) -> Self {
-        let ids: Vec<EventId> = ids.into_iter().map(|id| id.into()).collect();
-        Self {
+    #[wasm_bindgen]
+    pub fn delete(ids: Array, reason: Option<String>) -> Result<JsEventBuilder> {
+        let ids = ids
+            .iter()
+            .map(|v| Ok(util::downcast::<JsEventId>(&v, "EventId")?.inner))
+            .collect::<Result<Vec<EventId>, JsError>>()?;
+        Ok(Self {
             builder: EventBuilder::delete(ids, reason.as_deref()),
-        }
-    } */
+        })
+    }
 
     #[wasm_bindgen(js_name = newReaction)]
     pub fn new_reaction(event_id: &JsEventId, public_key: &JsPublicKey, content: String) -> Self {

@@ -4,15 +4,13 @@
 use std::ops::Deref;
 
 use nostr::prelude::*;
-use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 use crate::key::JsPublicKey;
 
-#[derive(Deserialize)]
 #[wasm_bindgen(js_name = Contact)]
 pub struct JsContact {
-    inner: Contact,
+    pub(crate) inner: Contact,
 }
 
 impl Deref for JsContact {
