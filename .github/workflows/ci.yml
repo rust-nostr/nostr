@@ -73,6 +73,7 @@ jobs:
           [
             -p nostr,
             -p nostr-sdk,
+            -p nostr-js,
           ]
     steps:
     - name: Checkout
