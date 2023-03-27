@@ -39,13 +39,14 @@ log = "0.4"
 nostr-ots = { version = "0.2", optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
 secp256k1 = { version = "0.27", features = ["global-context", "rand-std", "serde"] }
+
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 url = { version = "2", features = ["serde"] }
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
+#[target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
-instant = { version = "0.1", features = [ "wasm-bindgen", "inaccurate" ] }
+instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
 
 [dev-dependencies]
 csv = "1.1.5"

@@ -3,7 +3,10 @@
 
 //! Event builder
 #[cfg(feature = "alloc")]
-use alloc::{string::{String, ToString}, vec::Vec};
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 
 use core::fmt;
 #[cfg(not(target_arch = "wasm32"))]
@@ -24,6 +27,7 @@ use crate::nips::nip04;
 use crate::nips::nip13;
 #[cfg(feature = "nip46")]
 use crate::nips::nip46::Message as NostrConnectMessage;
+use crate::types::time::TimeSupplier;
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 
 /// [`EventBuilder`] error
@@ -118,7 +122,11 @@ impl EventBuilder {
     }
 
     #[cfg(not(feature = "std"))]
-    pub fn to_event_with_timestamp(self, keys: &Keys, created_at: Timestamp) -> Result<Event, Error> {
+    pub fn to_event_with_timestamp(
+        self,
+        keys: &Keys,
+        created_at: Timestamp,
+    ) -> Result<Event, Error> {
         Self::to_event_internal(self, keys, created_at)
     }
 
@@ -138,15 +146,22 @@ impl EventBuilder {
 
     /// Build POW [`Event`]
     #[cfg(feature = "std")]
-    pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
-
-    }
+    pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {}
     #[cfg(feature = "std")]
-    pub fn to_pow_event_with_time_supplier(self, keys: &Keys, difficulty: u8, time_supplier: &impl TimeSupplier) -> Result<Event, Error> {
-
+    pub fn to_pow_event_with_time_supplier(
+        self,
+        keys: &Keys,
+        difficulty: u8,
+        time_supplier: &impl TimeSupplier,
+    ) -> Result<Event, Error> {
     }
 
-    fn to_pow_event_internal(self, keys: &Keys, difficulty: u8, time_supplier: &impl TimeSupplier) -> Result<Event, Error> {
+    fn to_pow_event_internal(
+        self,
+        keys: &Keys,
+        difficulty: u8,
+        time_supplier: &impl TimeSupplier,
+    ) -> Result<Event, Error> {
         #[cfg(target_arch = "wasm32")]
         use instant::Instant;
         #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
@@ -160,7 +175,10 @@ impl EventBuilder {
         let mut nonce: u128 = 0;
         let mut tags: Vec<Tag> = self.tags;
 
-        let now = Instant::now();
+        let pubkey = keys.public_key();
+
+        //let now = Instant::now();
+        let now = time_supplier.now();
 
         loop {
             nonce += 1;
@@ -198,12 +216,21 @@ impl EventBuilder {
         let created_at: Timestamp = Timestamp::now();
 
         Self::to_unsigned_event_internal(self, pubkey, created_at)
-        
-    pub fn to_unsigned_event_with_timestamp(self, pubkey: XOnlyPublicKey, created_at: Timestamp) -> UnsignedEvent {
+    }
+    #[cfg(not(feature = "std"))]
+    pub fn to_unsigned_event_with_timestamp(
+        self,
+        pubkey: XOnlyPublicKey,
+        created_at: Timestamp,
+    ) -> UnsignedEvent {
         Self::to_unsigned_event_internal(self, pubkey, created_at)
     }
 
-    fn to_unsigned_event_internal(self, pubkey: XOnlyPublicKey, created_at: Timestamp) -> UnsignedEvent {
+    fn to_unsigned_event_internal(
+        self,
+        pubkey: XOnlyPublicKey,
+        created_at: Timestamp,
+    ) -> UnsignedEvent {
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
         UnsignedEvent {
             id,
@@ -213,7 +240,6 @@ impl EventBuilder {
             tags: self.tags,
             content: self.content,
         }
-
     }
 }
 
