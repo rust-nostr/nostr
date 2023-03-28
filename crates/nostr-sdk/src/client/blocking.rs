@@ -9,7 +9,9 @@ use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Tag};
+use nostr::{
+    ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Result, Tag,
+};
 use tokio::sync::broadcast;
 
 use super::{Entity, Error, Options};
@@ -329,12 +331,12 @@ impl Client {
 
     pub fn handle_notifications<F>(&self, func: F) -> Result<(), Error>
     where
-        F: Fn(RelayPoolNotification) -> Result<(), Error>,
+        F: Fn(RelayPoolNotification) -> Result<()>,
     {
         RUNTIME.block_on(async {
             let mut notifications = self.client.notifications();
             while let Ok(notification) = notifications.recv().await {
-                func(notification)?;
+                func(notification).map_err(|e| Error::Handler(e.to_string()))?;
             }
             Ok(())
         })

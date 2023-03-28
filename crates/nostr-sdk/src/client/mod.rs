@@ -17,7 +17,7 @@ use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
     ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, Keys, Kind,
-    Metadata, Tag,
+    Metadata, Result, Tag,
 };
 use nostr_sdk_net::futures_util::Future;
 #[cfg(feature = "sqlite")]
@@ -56,6 +56,9 @@ pub enum Error {
     /// Metadata error
     #[error(transparent)]
     Metadata(#[from] MetadataError),
+    /// Notification Handler error
+    #[error("notification handler error: {0}")]
+    Handler(String),
 }
 
 /// Nostr client
@@ -1018,11 +1021,13 @@ impl Client {
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
         F: Fn(RelayPoolNotification) -> Fut,
-        Fut: Future<Output = Result<(), Error>>,
+        Fut: Future<Output = Result<()>>,
     {
         let mut notifications = self.notifications();
         while let Ok(notification) = notifications.recv().await {
-            func(notification).await?;
+            func(notification)
+                .await
+                .map_err(|e| Error::Handler(e.to_string()))?;
         }
         Ok(())
     }

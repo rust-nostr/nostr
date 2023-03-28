@@ -59,12 +59,34 @@ async fn main() -> Result<()> {
 
     client.subscribe(vec![subscription]).await;
 
-    let mut notifications = client.notifications();
+    // Handle subscription notifications with `handle_notifications` method
+    client
+        .handle_notifications(|notification| async {
+            if let RelayPoolNotification::Event(_url, event) = notification {
+                if event.kind == Kind::EncryptedDirectMessage {
+                    if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
+                    {
+                        println!("New DM: {msg}");
+                        client.send_direct_msg(event.pubkey, msg).await?;
+                    } else {
+                        log::error!("Impossible to decrypt direct message");
+                    }
+                } else {
+                    println!("{:?}", event);
+                }
+            }
+            Ok(())
+        })
+        .await?;
+
+    // Handle subscription notifications with `notifications` channel receiver
+    /* let mut notifications = client.notifications();
     while let Ok(notification) = notifications.recv().await {
         if let RelayPoolNotification::Event(_url, event) = notification {
             if event.kind == Kind::EncryptedDirectMessage {
                 if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content) {
-                    println!("New DM: {}", msg);
+                    println!("New DM: {msg}");
+                    client.send_direct_msg(event.pubkey, msg).await?;
                 } else {
                     log::error!("Impossible to decrypt direct message");
                 }
@@ -72,7 +94,7 @@ async fn main() -> Result<()> {
                 println!("{:?}", event);
             }
         }
-    }
+    } */
 
     Ok(())
 }
