@@ -11,6 +11,7 @@ members = [
     "crates/nostr-sdk-net",
     "crates/nostr-sdk-sqlite",
 ]
+default-members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
