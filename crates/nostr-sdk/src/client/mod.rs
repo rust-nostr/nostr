@@ -19,6 +19,7 @@ use nostr::{
     ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, Keys, Kind,
     Metadata, Tag,
 };
+use nostr_sdk_net::futures_util::Future;
 #[cfg(feature = "sqlite")]
 use nostr_sdk_sqlite::Store;
 use tokio::sync::broadcast;
@@ -1014,16 +1015,15 @@ impl Client {
     }
 
     /// Handle notifications
-    pub async fn handle_notifications<F>(&self, func: F) -> Result<(), Error>
+    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
-        F: Fn(RelayPoolNotification) -> Result<(), Error>,
+        F: Fn(RelayPoolNotification) -> Fut,
+        Fut: Future<Output = Result<(), Error>>,
     {
-        loop {
-            let mut notifications = self.notifications();
-
-            while let Ok(notification) = notifications.recv().await {
-                func(notification)?;
-            }
+        let mut notifications = self.notifications();
+        while let Ok(notification) = notifications.recv().await {
+            func(notification).await?;
         }
+        Ok(())
     }
 }

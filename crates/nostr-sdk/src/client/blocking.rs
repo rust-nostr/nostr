@@ -331,6 +331,12 @@ impl Client {
     where
         F: Fn(RelayPoolNotification) -> Result<(), Error>,
     {
-        RUNTIME.block_on(async { self.client.handle_notifications(func).await })
+        RUNTIME.block_on(async {
+            let mut notifications = self.client.notifications();
+            while let Ok(notification) = notifications.recv().await {
+                func(notification)?;
+            }
+            Ok(())
+        })
     }
 }
