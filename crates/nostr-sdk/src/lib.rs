@@ -18,6 +18,8 @@ compile_error!("`blocking` feature can't be enabled for WASM targets");
 compile_error!("`sqlite` feature can't be enabled for WASM targets");
 
 #[cfg(feature = "blocking")]
+use nostr_sdk_net::futures_util::Future;
+#[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
 use tokio::runtime::Runtime;
@@ -35,3 +37,9 @@ pub use self::relay::{RelayOptions, RelayPoolNotification, RelayStatus};
 
 #[cfg(feature = "blocking")]
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
+
+#[allow(missing_docs)]
+#[cfg(feature = "blocking")]
+pub fn block_on<F: Future>(future: F) -> F::Output {
+    RUNTIME.block_on(future)
+}
