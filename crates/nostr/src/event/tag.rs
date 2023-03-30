@@ -3,15 +3,15 @@
 
 //! Tag
 
-use core::fmt;
-use core::num::ParseIntError;
-use core::str::FromStr;
+#[cfg(feature = "alloc")]
+use alloc::format;
 #[cfg(feature = "alloc")]
 use alloc::string::{String, ToString};
 #[cfg(feature = "alloc")]
 use alloc::{vec, vec::Vec};
-#[cfg(feature = "alloc")]
-use alloc::format;
+use core::fmt;
+use core::num::ParseIntError;
+use core::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;

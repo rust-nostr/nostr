@@ -146,7 +146,12 @@ impl EventBuilder {
 
     /// Build POW [`Event`]
     #[cfg(feature = "std")]
-    pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {}
+    pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
+        #[cfg(target_arch = "wasm32")]
+        use instant::Instant;
+        #[cfg(target_arch = "wasm32")]
+        self.to_pow_event_with_time_supplier(self, keys, difficulty, Instant);
+    }
     #[cfg(feature = "std")]
     pub fn to_pow_event_with_time_supplier(
         self,
@@ -156,12 +161,15 @@ impl EventBuilder {
     ) -> Result<Event, Error> {
     }
 
-    fn to_pow_event_internal(
+    fn to_pow_event_internal<T>(
         self,
         keys: &Keys,
         difficulty: u8,
-        time_supplier: &impl TimeSupplier,
-    ) -> Result<Event, Error> {
+        time_supplier: &T,
+    ) -> Result<Event, Error>
+    where
+        T: TimeSupplier,
+    {
         #[cfg(target_arch = "wasm32")]
         use instant::Instant;
         #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
@@ -185,15 +193,21 @@ impl EventBuilder {
 
             tags.push(Tag::POW { nonce, difficulty });
 
-            let created_at: Timestamp = Timestamp::now();
+            //let created_at: Timestamp = Timestamp::now();
+            let new_now = time_supplier.now();
+            let starting_point = time_supplier.starting_point();
+            let created_at = time_supplier.elapsed_duration(new_now.clone(), starting_point);
+            let created_at = time_supplier.to_timestamp(created_at);
             let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
                 log::debug!(
                     "{} iterations in {} ms. Avg rate {} hashes/second",
                     nonce,
-                    now.elapsed().as_millis(),
-                    nonce * 1000 / cmp::max(1, now.elapsed().as_millis())
+                    //now.elapsed().as_millis(),
+                    time_supplier.elapsed_since(now.clone(), new_now.clone()).as_millis(),
+                    nonce * 1000
+                        / cmp::max(1, time_supplier.elapsed_since(now, new_now).as_millis())
                 );
 
                 return UnsignedEvent {

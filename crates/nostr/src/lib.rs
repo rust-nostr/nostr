@@ -1,10 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-
-
 #![cfg_attr(not(feature = "std"), feature(error_in_core))]
-
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
@@ -14,7 +11,6 @@
     feature = "default",
     doc = include_str!("../README.md")
 )]
-
 #![cfg_attr(not(feature = "std"), no_std)]
 #[cfg(feature = "alloc")]
 extern crate alloc;

@@ -27,16 +27,16 @@ const UNIX_EPOCH: SystemTime = SystemTime::UNIX_EPOCH;
 
 /// Helper trait for acquiring time in `no_std` environments.
 pub trait TimeSupplier {
-    type Now;
+    type Now: Clone;
     type StartingPoint;
 
     fn now(&self) -> Self::Now;
     fn starting_point(&self) -> Self::StartingPoint;
-    fn elapsed_since(now: Self::Now, since: Self::Now) -> Duration;
-    fn elapsed_duration(now: Self::Now, since: Self::StartingPoint) -> Duration;
+    fn elapsed_since(&self, now: Self::Now, since: Self::Now) -> Duration;
+    fn elapsed_duration(&self, now: Self::Now, since: Self::StartingPoint) -> Duration;
 
-    fn as_i64(duration: Duration) -> i64;
-    fn to_timestamp(duration: Duration) -> Timestamp;
+    fn as_i64(&self, duration: Duration) -> i64;
+    fn to_timestamp(&self, duration: Duration) -> Timestamp;
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -54,15 +54,15 @@ impl TimeSupplier for InstantWasm32 {
         std::time::UNIX_EPOCH
     }
 
-    fn elapsed_since(now: Self::Now, since: Self::Now) -> Duration {
+    fn elapsed_since(&self, now: Self::Now, since: Self::Now) -> Duration {
         now - since
     }
 
-    fn as_i64(duration: Duration) -> i64 {
+    fn as_i64(&self, duration: Duration) -> i64 {
         duration.as_millis() as i64
     }
 
-    fn to_timestamp(duration: Duration) -> Timestamp {
+    fn to_timestamp(&self, duration: Duration) -> Timestamp {
         Timestamp(duration.as_millis() as i64)
     }
 }
@@ -77,15 +77,15 @@ impl TimeSupplier for Instant {
         Instant::now()
     }
 
-    fn elapsed_since(now: Self::Now, since: Self::Now) -> Duration {
+    fn elapsed_since(&self, now: Self::Now, since: Self::Now) -> Duration {
         now - since
     }
 
-    fn as_i64(duration: Duration) -> i64 {
+    fn as_i64(&self, duration: Duration) -> i64 {
         duration.as_millis() as i64
     }
 
-    fn to_timestamp(duration: Duration) -> Timestamp {
+    fn to_timestamp(&self, duration: Duration) -> Timestamp {
         Timestamp(duration.as_i64())
     }
 }
@@ -112,9 +112,9 @@ impl Timestamp {
     {
         let now = time_supplier.now();
         let starting_point = time_supplier.starting_point();
-        let duration = <T as TimeSupplier>::elapsed_duration(now, starting_point);
+        let duration = time_supplier.elapsed_duration(now, starting_point);
 
-        <T as TimeSupplier>::to_timestamp(duration)
+        time_supplier.to_timestamp(duration)
     }
 
     /// Get timestamp as [`u64`]
