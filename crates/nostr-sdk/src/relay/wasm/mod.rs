@@ -275,34 +275,32 @@ impl Relay {
                 let relay = self.clone();
                 spawn_local(async move {
                     log::debug!("Relay Message Thread Started");
-                    while let Some(msg_res) = ws_rx.next().await {
-                        if let Ok(msg) = msg_res {
-                            let data: Vec<u8> = msg.into_data();
+                    while let Some(msg) = ws_rx.next().await {
+                        let data: Vec<u8> = msg.as_ref().to_vec();
 
-                            match String::from_utf8(data) {
-                                Ok(data) => match RelayMessage::from_json(&data) {
-                                    Ok(msg) => {
-                                        log::trace!("Received message to {}: {:?}", relay.url, msg);
-                                        if let Err(err) = relay
-                                            .pool_sender
-                                            .send(RelayPoolMessage::ReceivedMsg {
-                                                relay_url: relay.url(),
-                                                msg,
-                                            })
-                                            .await
-                                        {
-                                            log::error!(
-                                                "Impossible to send ReceivedMsg to pool: {}",
-                                                &err
-                                            );
-                                        };
-                                    }
-                                    Err(err) => {
-                                        log::error!("{}: {}", err, data);
-                                    }
-                                },
-                                Err(err) => log::error!("{}", err),
-                            }
+                        match String::from_utf8(data) {
+                            Ok(data) => match RelayMessage::from_json(&data) {
+                                Ok(msg) => {
+                                    log::trace!("Received message to {}: {:?}", relay.url, msg);
+                                    if let Err(err) = relay
+                                        .pool_sender
+                                        .send(RelayPoolMessage::ReceivedMsg {
+                                            relay_url: relay.url(),
+                                            msg,
+                                        })
+                                        .await
+                                    {
+                                        log::error!(
+                                            "Impossible to send ReceivedMsg to pool: {}",
+                                            &err
+                                        );
+                                    };
+                                }
+                                Err(err) => {
+                                    log::error!("{}: {}", err, data);
+                                }
+                            },
+                            Err(err) => log::error!("{}", err),
                         }
                     }
 

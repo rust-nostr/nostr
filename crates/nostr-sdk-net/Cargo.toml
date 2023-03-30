@@ -13,12 +13,10 @@ keywords = ["nostr", "sdk", "net"]
 
 [dependencies]
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
-http = "0.2"
-httparse = "1.3"
-thiserror = "1.0"
 url = "2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+thiserror = "1.0"
 tokio = { version = "1.26", default-features = false, features = ["net", "time"] }
 tokio-rustls = "0.23"
 tokio-socks = "0.5"
@@ -27,7 +25,4 @@ webpki = "0.22"
 webpki-roots = "0.22"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-futures-channel = "0.3"
-js-sys = "0.3"
-wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ["BinaryType", "Blob", "CloseEvent", "ErrorEvent", "Event", "MessageEvent", "WebSocket" ] }
+ws_stream_wasm = "0.7"

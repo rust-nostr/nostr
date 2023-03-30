@@ -13,4 +13,4 @@ pub mod wasm;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::native::Message as WsMessage;
 #[cfg(target_arch = "wasm32")]
-pub use self::wasm::message::Message as WsMessage;
+pub use ws_stream_wasm::WsMessage;
