@@ -3,8 +3,8 @@ target/
 src/
 scripts/
 examples/
-pkg/README.md 
 pkg/package.json
+pkg/*.md
 pkg/*.wasm
 .gitignore
 Cargo.toml

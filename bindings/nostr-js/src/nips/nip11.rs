@@ -1,10 +1,12 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use js_sys::Promise;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use crate::error::{into_err, Result};
+use crate::error::into_err;
+use crate::future::future_to_promise;
 
 #[wasm_bindgen(js_name = RelayInformationDocument)]
 pub struct JsRelayInformationDocument {
@@ -28,10 +30,12 @@ impl JsRelayInformationDocument {
     }
 
     #[wasm_bindgen]
-    pub async fn get(url: String) -> Result<JsRelayInformationDocument> {
-        let url = Url::parse(&url).map_err(into_err)?;
-        Ok(Self {
-            inner: RelayInformationDocument::get(url).await.map_err(into_err)?,
+    pub fn get(url: String) -> Promise {
+        future_to_promise(async move {
+            let url = Url::parse(&url).map_err(into_err)?;
+            Ok(Self {
+                inner: RelayInformationDocument::get(url).await.map_err(into_err)?,
+            })
         })
     }
 

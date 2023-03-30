@@ -2,6 +2,7 @@
 name = "nostr-js"
 version = "0.1.0"
 edition = "2021"
+description = "Nostr protocol implementation, for JavaScript"
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
 publish = false
 
@@ -23,3 +24,6 @@ wasm-opt = false
 debug-js-glue = false
 demangle-name-section = true
 dwarf-debug-info = true
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ['-Os']

@@ -27,6 +27,12 @@ impl From<XOnlyPublicKey> for JsPublicKey {
     }
 }
 
+impl From<JsPublicKey> for XOnlyPublicKey {
+    fn from(public_key: JsPublicKey) -> Self {
+        public_key.inner
+    }
+}
+
 impl From<&JsPublicKey> for XOnlyPublicKey {
     fn from(public_key: &JsPublicKey) -> Self {
         public_key.inner
