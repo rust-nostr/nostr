@@ -50,5 +50,6 @@ pub use self::types::{ChannelId, Contact, Entity, Metadata, Profile, Timestamp, 
 /// Result
 #[cfg(feature = "std")]
 pub type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;
+/// Result
 #[cfg(feature = "alloc")]
 pub type Result<T, E = Box<dyn core::error::Error>> = core::result::Result<T, E>;

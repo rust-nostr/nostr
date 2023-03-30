@@ -27,15 +27,25 @@ const UNIX_EPOCH: SystemTime = SystemTime::UNIX_EPOCH;
 
 /// Helper trait for acquiring time in `no_std` environments.
 pub trait TimeSupplier {
+    /// The current time from the specified `TimeSupplier`
     type Now: Clone;
+    /// The starting point for the specified `TimeSupplier`
     type StartingPoint;
 
+    /// Get the current time as the associated `Now` type
     fn now(&self) -> Self::Now;
+    /// Get the starting point from the specified `TimeSupplier`
     fn starting_point(&self) -> Self::StartingPoint;
+    /// Get the elapsed time as `Duration` starting from `since` to `now`
     fn elapsed_since(&self, now: Self::Now, since: Self::Now) -> Duration;
+    /// Get the elapsed time as `Duration` starting from `since` to `now`
+    /// This is the specialised case for handling the `StartingPoint` in case its type is different
+    /// than the `Now` type.
     fn elapsed_duration(&self, now: Self::Now, since: Self::StartingPoint) -> Duration;
 
+    /// Convert the specified `Duration` to `i64`
     fn as_i64(&self, duration: Duration) -> i64;
+    /// Convert the specified `Duration` to `Timestamp`
     fn to_timestamp(&self, duration: Duration) -> Timestamp;
 }
 
@@ -105,7 +115,8 @@ impl Timestamp {
         Self(ts as i64)
     }
 
-    //#[cfg(not(feature = "std"))]
+    /// Get UNIX timestamp from the specified `TimeSupplier`
+    #[cfg(not(feature = "std"))]
     pub fn now_nostd<T>(time_supplier: &T) -> Self
     where
         T: TimeSupplier,

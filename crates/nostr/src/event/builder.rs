@@ -121,6 +121,7 @@ impl EventBuilder {
         Self::to_event_internal(self, keys, created_at)
     }
 
+    /// Build [`Event`] with a `timestamp`
     #[cfg(not(feature = "std"))]
     pub fn to_event_with_timestamp(
         self,
@@ -153,6 +154,7 @@ impl EventBuilder {
         self.to_pow_event_with_time_supplier(self, keys, difficulty, Instant);
     }
 
+    /// Build POW [`Event`] using the given time supplier
     pub fn to_pow_event_with_time_supplier<T>(
         self,
         keys: &Keys,
@@ -235,6 +237,9 @@ impl EventBuilder {
         Self::to_unsigned_event_internal(self, pubkey, created_at)
     }
     #[cfg(not(feature = "std"))]
+    /// Build [`UnsignedEvent`] with the given `Timestamp`
+    /// Mostly useful for cases where the time source comes from the outside, not from builtin
+    /// functions
     pub fn to_unsigned_event_with_timestamp(
         self,
         pubkey: XOnlyPublicKey,
