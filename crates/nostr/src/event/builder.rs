@@ -2,19 +2,18 @@
 // Distributed under the MIT software license
 
 //! Event builder
+use core::fmt;
+
 #[cfg(feature = "alloc")]
 use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
 
-use core::fmt;
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::Instant;
-
-#[cfg(target_arch = "wasm32")]
-use instant::Instant;
-use secp256k1::XOnlyPublicKey;
+use secp256k1::schnorr::Signature;
+use secp256k1::{Message, XOnlyPublicKey};
+#[cfg(not(feature = "std"))]
+use secp256k1::{Secp256k1, Signing};
 use serde_json::{json, Value};
 use url::Url;
 
@@ -116,24 +115,24 @@ impl EventBuilder {
     /// Build [`Event`]
     #[cfg(feature = "std")]
     pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
+        let pubkey: XOnlyPublicKey = keys.public_key();
         let created_at: Timestamp = Timestamp::now();
+        let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
+        let message = Message::from_slice(id.as_bytes())?;
+        let signature = keys.sign_schnorr(&message)?;
 
-        Self::to_event_internal(self, keys, created_at)
+        Self::to_event_internal(self, keys, created_at, id, signature)
     }
 
     /// Build [`Event`] with a `timestamp`
     #[cfg(not(feature = "std"))]
-    pub fn to_event_with_timestamp(
+    pub fn to_event_with_timestamp_with_secp<C: Signing>(
         self,
         keys: &Keys,
         created_at: Timestamp,
+        secp: &Secp256k1<C>,
     ) -> Result<Event, Error> {
-        Self::to_event_internal(self, keys, created_at)
-    }
-
-    fn to_event_internal(self, keys: &Keys, created_at: Timestamp) -> Result<Event, Error> {
         let pubkey: XOnlyPublicKey = keys.public_key();
-
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
         UnsignedEvent {
             id,
@@ -151,27 +150,29 @@ impl EventBuilder {
         #[cfg(target_arch = "wasm32")]
         use instant::Instant;
         #[cfg(target_arch = "wasm32")]
-        self.to_pow_event_with_time_supplier(self, keys, difficulty, Instant);
+        self.to_pow_event_with_time_supplier_with_secp(self, keys, difficulty, Instant, SECP256K1);
     }
 
     /// Build POW [`Event`] using the given time supplier
-    pub fn to_pow_event_with_time_supplier<T>(
+    pub fn to_pow_event_with_time_supplier_with_secp<T, C: Signing>(
         self,
         keys: &Keys,
         difficulty: u8,
         time_supplier: &impl TimeSupplier,
+        secp: &Secp256k1<C>,
     ) -> Result<Event, Error>
     where
         T: TimeSupplier,
     {
-        self.to_pow_event_internal(keys, difficulty, time_supplier)
+        self.to_pow_event_internal(keys, difficulty, time_supplier, secp)
     }
 
-    fn to_pow_event_internal<T>(
+    fn to_pow_event_internal<T, C: Signing>(
         self,
         keys: &Keys,
         difficulty: u8,
         time_supplier: &T,
+        secp: &Secp256k1<C>,
     ) -> Result<Event, Error>
     where
         T: TimeSupplier,
@@ -187,7 +188,7 @@ impl EventBuilder {
     /// Build unsigned POW [`Event`]
     pub fn to_unsigned_pow_event(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
         let mut nonce: u128 = 0;
-        let mut tags: Vec<Tag> = self.tags;
+        let mut tags: Vec<Tag> = self.tags.clone();
 
         let pubkey = keys.public_key();
 
@@ -215,14 +216,10 @@ impl EventBuilder {
                         / cmp::max(1, time_supplier.elapsed_since(now, new_now).as_millis())
                 );
 
-                return UnsignedEvent {
-                    id,
-                    pubkey,
-                    created_at,
-                    kind: self.kind,
-                    tags,
-                    content: self.content,
-                };
+                let message = Message::from_slice(id.as_bytes())?;
+                let sig = keys.sign_schnorr_with_secp(&message, &secp)?;
+
+                return self.to_event_internal(keys, created_at, id, sig);
             }
 
             tags.pop();
