@@ -25,7 +25,10 @@ pub use crate::event::*;
 pub use crate::key::*;
 pub use crate::message::*;
 pub use crate::types::*;
-pub use crate::{Result, SECP256K1};
+pub use crate::Result;
+
+#[cfg(feature = "std")]
+pub use crate::SECP256K1;
 
 // NIPs
 #[cfg(feature = "nip04")]

@@ -17,8 +17,10 @@ use alloc::{
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
+#[cfg(feature = "alloc")]
+use rand_core::{OsRng, RngCore};
+#[cfg(feature = "std")]
+use secp256k1::rand::{rngs::OsRng, RngCore};
 use secp256k1::XOnlyPublicKey;
 use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};

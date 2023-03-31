@@ -28,7 +28,9 @@ pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::tag::{Marker, Tag, TagKind};
 pub use self::unsigned::UnsignedEvent;
-use crate::{Timestamp, SECP256K1};
+use crate::Timestamp;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 
 /// [`Event`] error
 #[derive(Debug)]
@@ -111,6 +113,7 @@ pub struct Event {
 
 impl Event {
     /// Verify event
+    #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
         let id = EventId::new(
             &self.pubkey,
@@ -121,6 +124,21 @@ impl Event {
         );
         let message = Message::from_slice(id.as_bytes())?;
         SECP256K1
+            .verify_schnorr(&self.sig, &message, &self.pubkey)
+            .map_err(|_| Error::InvalidSignature)
+    }
+
+    #[cfg(not(feature = "std"))]
+    pub fn verify_with_context(&self, context: &impl secp256k1::Verification) -> Result<(), Error> {
+        let id = EventId::new(
+            &self.pubkey,
+            self.created_at,
+            &self.kind,
+            &self.tags,
+            &self.content,
+        );
+        let message = Message::from_slice(id.as_bytes())?;
+        context
             .verify_schnorr(&self.sig, &message, &self.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }

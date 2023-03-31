@@ -27,7 +27,12 @@ use serde_json::{json, Value};
 
 use crate::event::Event;
 use crate::key::{self, Keys};
+
+#[cfg(feature = "std")]
 use crate::SECP256K1;
+
+#[cfg(not(feature = "std"))]
+use secp256k1::{Secp256k1, Signing};
 
 const DELEGATION_KEYWORD: &str = "delegation";
 
@@ -131,6 +136,7 @@ pub fn sign_delegation(
 }
 
 /// Verify delegation signature
+#[cfg(feature = "std")]
 pub fn verify_delegation_signature(
     delegator_public_key: XOnlyPublicKey,
     signature: Signature,
@@ -141,6 +147,22 @@ pub fn verify_delegation_signature(
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(hashed_token.as_byte_array())?;
     SECP256K1.verify_schnorr(&signature, &message, &delegator_public_key)?;
+    Ok(())
+}
+
+/// Verify delegation signature
+#[cfg(not(feature = "std"))]
+pub fn verify_delegation_signature<C: Signing>(
+    delegator_public_key: XOnlyPublicKey,
+    signature: Signature,
+    delegatee_public_key: XOnlyPublicKey,
+    conditions: Conditions,
+    secp: &Secp256k1<C>,
+) -> Result<(), Error> {
+    let unhashed_token = DelegationToken::new(delegatee_public_key, conditions);
+    let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
+    let message = Message::from_slice(&hashed_token)?;
+    secp.verify_schnorr(&signature, &message, &delegator_public_key)?;
     Ok(())
 }
 

@@ -13,8 +13,28 @@ keywords = ["nostr", "protocol", "sdk"]
 
 [features]
 default = ["all-nips", "std"]
-std = ["dep:thiserror"]
-alloc = ["dep:thiserror-core"]
+std = [
+    "dep:thiserror",
+    "bitcoin_hashes/serde",
+    "serde/derive",
+    "serde/std",
+    "serde_json/std",
+    "url",
+    "secp256k1/global-context",
+    "secp256k1/rand-std",
+    "secp256k1/serde",
+]
+alloc = [
+    "dep:thiserror-core",
+    "bitcoin_hashes/alloc",
+    "bitcoin_hashes/serde",
+    "serde/derive",
+    "serde_json/alloc",
+    "url_no_std",
+    "secp256k1/alloc",
+    "rand_core",
+
+]
 blocking = ["reqwest?/blocking"]
 vanity = ["nip19"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip19", "nip21", "nip46"]
@@ -35,18 +55,29 @@ bip39 = { version = "2.0", optional = true }
 bitcoin = { version = "0.30", optional = true }
 bitcoin_hashes = { version = "0.12", features = ["serde"] }
 cbc = { version = "0.1", features = ["alloc"], optional = true }
-log = "0.4"
+log = "0.4" # no_std compatible by-default
 nostr-ots = { version = "0.2", optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
-secp256k1 = { version = "0.27", features = ["global-context", "rand-std", "serde"] }
+secp256k1 = { version = "0.27", default-features = false }
 
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
-url = { version = "2", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"], default-features = false, optional = true }
+serde_json = { version = "1.0", optional = true, default-features = false }
+
+url = { version = "2", features = ["serde"], optional = true }
+url_no_std = { package = "url", features = [
+    "serde",
+], branch = "no_std", git = "https://github.com/OverOrion/rust-url", optional = true }
+
+rand_core = { version = "0.6", features = [
+    "alloc",
+    "getrandom",
+], optional = true }
+
+rand = { version = "0.8", features = ["alloc", "getrandom"], optional = true }
 
 #[target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
-instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
+#getrandom = { version = "0.2", features = ["js"] }
+#instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
 
 [dev-dependencies]
 csv = "1.1.5"

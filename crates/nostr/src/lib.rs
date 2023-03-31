@@ -31,9 +31,17 @@ pub use bip39;
 #[cfg(feature = "nip06")]
 pub use bitcoin;
 pub use bitcoin_hashes as hashes;
-pub use secp256k1::{self, SECP256K1};
+pub use secp256k1;
+#[cfg(feature = "std")]
+pub use secp256k1::SECP256K1;
 pub use serde_json;
-pub use url::{self, Url};
+
+#[cfg(feature = "std")]
+pub use url;
+#[cfg(feature = "alloc")]
+extern crate url_no_std as url;
+
+pub use url::Url;
 
 pub mod event;
 pub mod key;
