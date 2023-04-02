@@ -13,6 +13,8 @@ use std::time::Duration;
 
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
+#[cfg(feature = "nip46")]
+use nostr::nips::nip46::{NostrConnectMetadata, NostrConnectURI, Request, Response};
 use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
@@ -26,8 +28,12 @@ use tokio::sync::broadcast;
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
+#[cfg(feature = "nip46")]
+pub mod connect;
 pub mod options;
 
+#[cfg(feature = "nip46")]
+use self::connect::NostrConnect;
 pub use self::options::Options;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool};
 use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
@@ -59,6 +65,10 @@ pub enum Error {
     /// Notification Handler error
     #[error("notification handler error: {0}")]
     Handler(String),
+    /// NIP46 client not configured
+    #[cfg(feature = "nip46")]
+    #[error("nip46 client not configured")]
+    NIP46ClientNotConfigured,
 }
 
 /// Nostr client
@@ -67,6 +77,8 @@ pub struct Client {
     pool: RelayPool,
     keys: Keys,
     opts: Options,
+    #[cfg(feature = "nip46")]
+    connect: Option<NostrConnect>,
 }
 
 impl Client {
@@ -98,6 +110,39 @@ impl Client {
             pool: RelayPool::new(),
             keys: keys.clone(),
             opts,
+            #[cfg(feature = "nip46")]
+            connect: None,
+        }
+    }
+
+    /// Create a new NIP46 Client
+    #[cfg(feature = "nip46")]
+    pub fn with_remote_signer(
+        app_keys: &Keys,
+        relay_url: Url,
+        signer_public_key: Option<XOnlyPublicKey>,
+    ) -> Self {
+        Self::with_remote_signer_and_opts(
+            app_keys,
+            relay_url,
+            signer_public_key,
+            Options::default(),
+        )
+    }
+
+    /// Create a new NIP46 Client with custom [`Options`]
+    #[cfg(feature = "nip46")]
+    pub fn with_remote_signer_and_opts(
+        app_keys: &Keys,
+        relay_url: Url,
+        signer_public_key: Option<XOnlyPublicKey>,
+        opts: Options,
+    ) -> Self {
+        Self {
+            pool: RelayPool::new(),
+            keys: app_keys.clone(),
+            opts,
+            connect: Some(NostrConnect::new(relay_url, signer_public_key)),
         }
     }
 
@@ -120,6 +165,8 @@ impl Client {
             pool: RelayPool::new_with_store(path)?,
             keys: keys.clone(),
             opts,
+            #[cfg(feature = "nip46")]
+            connect: None,
         })
     }
 
@@ -131,6 +178,23 @@ impl Client {
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.keys.clone()
+    }
+
+    /// Get NIP46 uri
+    #[cfg(feature = "nip46")]
+    pub fn nostr_connect_uri(
+        &self,
+        metadata: NostrConnectMetadata,
+    ) -> Result<NostrConnectURI, Error> {
+        let connect = self
+            .connect
+            .as_ref()
+            .ok_or(Error::NIP46ClientNotConfigured)?;
+        Ok(NostrConnectURI::new(
+            self.keys.public_key(),
+            connect.relay_url(),
+            metadata.name,
+        ))
     }
 
     /// Get [`Store`]
@@ -512,6 +576,39 @@ impl Client {
     }
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
+        #[cfg(feature = "nip46")]
+        let event: Event = if let Some(connect) = self.connect.as_ref() {
+            let signer_public_key = connect.signer_public_key().await.unwrap();
+            let unsigned_event = {
+                let difficulty: u8 = self.opts.get_difficulty();
+                if difficulty > 0 {
+                    builder.to_unsigned_pow_event(signer_public_key, difficulty)
+                } else {
+                    builder.to_unsigned_event(signer_public_key)
+                }
+            };
+            let res: Response = self
+                .send_request(
+                    Request::SignEvent(unsigned_event.clone()),
+                    self.opts.get_nip46_timeout(),
+                )
+                .await
+                .unwrap();
+            if let Response::SignEvent(sig) = res {
+                unsigned_event.add_signature(sig).unwrap()
+            } else {
+                todo!()
+            }
+        } else {
+            let difficulty: u8 = self.opts.get_difficulty();
+            if difficulty > 0 {
+                builder.to_pow_event(&self.keys, difficulty)?
+            } else {
+                builder.to_event(&self.keys)?
+            }
+        };
+
+        #[cfg(not(feature = "nip46"))]
         let event: Event = {
             let difficulty: u8 = self.opts.get_difficulty();
             if difficulty > 0 {
@@ -520,6 +617,7 @@ impl Client {
                 builder.to_event(&self.keys)?
             }
         };
+
         self.send_event(event).await
     }
 

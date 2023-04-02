@@ -24,6 +24,9 @@ pub struct Options {
     req_filters_chunk_size: Arc<AtomicU8>,
     /// Timeout (default: none)
     timeout: Option<Duration>,
+    /// NIP46 timeout (default: 180 secs)
+    #[cfg(feature = "nip46")]
+    nip46_timeout: Option<Duration>,
 }
 
 impl Default for Options {
@@ -36,6 +39,8 @@ impl Default for Options {
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
             timeout: None,
+            #[cfg(feature = "nip46")]
+            nip46_timeout: Some(Duration::from_secs(180)),
         }
     }
 }
@@ -105,14 +110,25 @@ impl Options {
     }
 
     /// Set default timeout
-    pub fn timeout(self, timeout: Duration) -> Self {
-        Self {
-            timeout: Some(timeout),
-            ..self
-        }
+    pub fn timeout(self, timeout: Option<Duration>) -> Self {
+        Self { timeout, ..self }
     }
 
     pub(crate) fn get_timeout(&self) -> Option<Duration> {
         self.timeout
+    }
+
+    /// Set NIP46 timeout
+    #[cfg(feature = "nip46")]
+    pub fn nip46_timeout(self, timeout: Option<Duration>) -> Self {
+        Self {
+            nip46_timeout: timeout,
+            ..self
+        }
+    }
+
+    #[cfg(feature = "nip46")]
+    pub(crate) fn get_nip46_timeout(&self) -> Option<Duration> {
+        self.nip46_timeout
     }
 }
