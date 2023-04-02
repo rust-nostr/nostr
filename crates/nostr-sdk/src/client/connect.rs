@@ -10,41 +10,16 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use nostr::nips::nip04;
 use nostr::nips::nip46::{Message, Request, Response};
-use nostr::nips::{nip04, nip46};
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::serde_json;
 use nostr::{ClientMessage, EventBuilder, Filter, Kind, SubscriptionId, Timestamp, Url};
 use tokio::sync::Mutex;
 
-use super::Client;
+use super::{Client, Error};
 use crate::relay::RelayPoolNotification;
 use crate::time;
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error(transparent)]
-    Keys(#[from] nostr::key::Error),
-    #[error(transparent)]
-    Builder(#[from] nostr::event::builder::Error),
-    #[error(transparent)]
-    Client(#[from] super::Error),
-    #[error(transparent)]
-    Nip04(#[from] nip04::Error),
-    #[error(transparent)]
-    Nip46(#[from] nip46::Error),
-    #[error(transparent)]
-    JSON(#[from] serde_json::Error),
-    #[error("generic error")]
-    Generic,
-    #[error("response error: {0}")]
-    Response(String),
-    #[error("signer public key not found")]
-    SignerPublicKeyNotFound,
-    /// Timeout
-    #[error("timeout")]
-    Timeout,
-}
 
 /// Nostr Connect Client Ext
 #[derive(Debug, Clone)]
@@ -81,7 +56,7 @@ impl Client {
         let connect: &NostrConnect = self
             .connect
             .as_ref()
-            .ok_or(Error::Client(super::Error::NIP46ClientNotConfigured))?;
+            .ok_or(Error::NIP46ClientNotConfigured)?;
 
         let id = SubscriptionId::generate();
         let filter = Filter::new()
@@ -135,7 +110,7 @@ impl Client {
         let connect: &NostrConnect = self
             .connect
             .as_ref()
-            .ok_or(Error::Client(super::Error::NIP46ClientNotConfigured))?;
+            .ok_or(Error::NIP46ClientNotConfigured)?;
         let signer_pubkey = connect
             .signer_public_key()
             .await

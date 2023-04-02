@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    // Listen for connect ACK
+    // Init Nostr Connect client
     client
         .init_nostr_connect(Some(Duration::from_secs(180)))
         .await?;

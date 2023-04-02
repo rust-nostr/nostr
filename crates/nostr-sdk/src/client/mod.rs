@@ -41,6 +41,9 @@ use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Keys error
+    #[error(transparent)]
+    Keys(#[from] nostr::key::Error),
     /// Url parse error
     #[error("impossible to parse URL: {0}")]
     Url(#[from] nostr::url::ParseError),
@@ -53,6 +56,9 @@ pub enum Error {
     /// [`EventBuilder`] error
     #[error("event builder error: {0}")]
     EventBuilder(#[from] EventBuilderError),
+    /// Unsigned event error
+    #[error("unsigned event error: {0}")]
+    UnsignedEvent(#[from] nostr::event::unsigned::Error),
     /// Secp256k1 error
     #[error("secp256k1 error: {0}")]
     Secp256k1(#[from] nostr::secp256k1::Error),
@@ -67,8 +73,40 @@ pub enum Error {
     Handler(String),
     /// NIP46 client not configured
     #[cfg(feature = "nip46")]
-    #[error("nip46 client not configured")]
+    #[error("NIP46 client not configured")]
     NIP46ClientNotConfigured,
+    /// NIP04 error
+    #[cfg(feature = "nip04")]
+    #[error(transparent)]
+    NIP04(#[from] nostr::nips::nip04::Error),
+    /// NIP46 error
+    #[cfg(feature = "nip46")]
+    #[error(transparent)]
+    NIP46(#[from] nostr::nips::nip46::Error),
+    /// JSON error
+    #[cfg(feature = "nip46")]
+    #[error(transparent)]
+    JSON(#[from] nostr::serde_json::Error),
+    /// Generig NIP46 error
+    #[cfg(feature = "nip46")]
+    #[error("generic error")]
+    Generic,
+    /// NIP46 response error
+    #[cfg(feature = "nip46")]
+    #[error("response error: {0}")]
+    Response(String),
+    /// Signer public key not found
+    #[cfg(feature = "nip46")]
+    #[error("signer public key not found")]
+    SignerPublicKeyNotFound,
+    /// Timeout
+    #[cfg(feature = "nip46")]
+    #[error("timeout")]
+    Timeout,
+    /// Response not match to the request
+    #[cfg(feature = "nip46")]
+    #[error("response not match to the request")]
+    ResponseNotMatchRequest,
 }
 
 /// Nostr client
@@ -578,7 +616,10 @@ impl Client {
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
         #[cfg(feature = "nip46")]
         let event: Event = if let Some(connect) = self.connect.as_ref() {
-            let signer_public_key = connect.signer_public_key().await.unwrap();
+            let signer_public_key = connect
+                .signer_public_key()
+                .await
+                .ok_or(Error::SignerPublicKeyNotFound)?;
             let unsigned_event = {
                 let difficulty: u8 = self.opts.get_difficulty();
                 if difficulty > 0 {
@@ -592,12 +633,11 @@ impl Client {
                     Request::SignEvent(unsigned_event.clone()),
                     self.opts.get_nip46_timeout(),
                 )
-                .await
-                .unwrap();
+                .await?;
             if let Response::SignEvent(sig) = res {
-                unsigned_event.add_signature(sig).unwrap()
+                unsigned_event.add_signature(sig)?
             } else {
-                todo!()
+                return Err(Error::ResponseNotMatchRequest);
             }
         } else {
             let difficulty: u8 = self.opts.get_difficulty();
