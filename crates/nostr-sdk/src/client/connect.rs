@@ -19,6 +19,7 @@ use tokio::sync::Mutex;
 
 use super::Client;
 use crate::relay::RelayPoolNotification;
+use crate::time;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -76,7 +77,7 @@ impl NostrConnect {
 }
 
 impl Client {
-    pub async fn init_nostr_connect(&self) -> Result<(), Error> {
+    pub async fn init_nostr_connect(&self, timeout: Option<Duration>) -> Result<(), Error> {
         let connect: &NostrConnect = self
             .connect
             .as_ref()
@@ -96,19 +97,28 @@ impl Client {
         .await?;
 
         let mut notifications = self.notifications();
-        while let Ok(notification) = notifications.recv().await {
-            if let RelayPoolNotification::Event(_url, event) = notification {
-                if event.kind == Kind::NostrConnect {
-                    let msg: String =
-                        nip04::decrypt(&self.keys.secret_key()?, &event.pubkey, &event.content)?;
-                    let msg = Message::from_json(msg)?;
-                    if let Ok(Request::Connect(public_key)) = msg.to_request() {
-                        connect.set_signer_public_key(public_key).await;
-                        break;
+        time::timeout(timeout, async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Event(_url, event) = notification {
+                    if event.kind == Kind::NostrConnect {
+                        let msg: String = nip04::decrypt(
+                            &self.keys.secret_key()?,
+                            &event.pubkey,
+                            &event.content,
+                        )?;
+                        let msg = Message::from_json(msg)?;
+                        if let Ok(Request::Connect(public_key)) = msg.to_request() {
+                            connect.set_signer_public_key(public_key).await;
+                            break;
+                        }
                     }
                 }
             }
-        }
+
+            Ok::<(), Error>(())
+        })
+        .await
+        .ok_or(Error::Timeout)??;
 
         // Unsubscribe
         self.send_msg_to(connect.relay_url(), ClientMessage::close(id))
@@ -225,13 +235,8 @@ impl Client {
             Err(Error::Generic)
         };
 
-        let res = if let Some(timeout) = timeout {
-            tokio::time::timeout(timeout, future)
-                .await
-                .map_err(|_| Error::Timeout)?
-        } else {
-            future.await
-        };
+        let res: Result<Response, Error> =
+            time::timeout(timeout, future).await.ok_or(Error::Timeout)?;
 
         // Unsubscribe
         self.send_msg_to(connect.relay_url(), ClientMessage::close(sub_id))
