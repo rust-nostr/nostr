@@ -9,7 +9,6 @@ use std::time::Duration;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Url};
-use nostr_sdk_net::futures_util::future::{AbortHandle, Abortable};
 use nostr_sdk_net::futures_util::{SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use tokio::sync::broadcast;
@@ -336,14 +335,14 @@ impl Relay {
     }
 
     async fn send_relay_event(&self, relay_msg: RelayEvent) -> Result<(), Error> {
-        time::timeout(Some(Duration::from_sec(60)), async {
+        time::timeout(Some(Duration::from_secs(60)), async {
             self.relay_sender
                 .send(relay_msg)
                 .await
-                .map_err(|_| Error::ChannelTimeout)
+                .map_err(|_| Error::MessagetNotSent)
         })
         .await
-        .ok_or(Error::ChannelTimeout)?;
+        .ok_or(Error::ChannelTimeout)??;
         Ok(())
     }
 
@@ -530,7 +529,7 @@ impl Relay {
                 log::error!(
                     "Impossible to recv events with {}: {}",
                     relay.url(),
-                    e.to_string()
+                    Error::Timeout
                 );
             }
 
