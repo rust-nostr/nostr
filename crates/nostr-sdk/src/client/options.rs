@@ -7,20 +7,23 @@
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 /// Options
 #[derive(Debug, Clone)]
 pub struct Options {
-    /// Wait for connection
+    /// Wait for connection (default: false)
     #[cfg(not(target_arch = "wasm32"))]
     wait_for_connection: Arc<AtomicBool>,
-    /// Wait for the msg to be sent
+    /// Wait for the msg to be sent (default: true)
     #[cfg(not(target_arch = "wasm32"))]
     wait_for_send: Arc<AtomicBool>,
-    /// POW difficulty (for all events)
+    /// POW difficulty for all events (default: 0)
     difficulty: Arc<AtomicU8>,
-    /// REQ filters chunk size
+    /// REQ filters chunk size (default: 10)
     req_filters_chunk_size: Arc<AtomicU8>,
+    /// Timeout (default: none)
+    timeout: Option<Duration>,
 }
 
 impl Default for Options {
@@ -32,6 +35,7 @@ impl Default for Options {
             wait_for_send: Arc::new(AtomicBool::new(true)),
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
+            timeout: None,
         }
     }
 }
@@ -98,5 +102,17 @@ impl Options {
 
     pub(crate) fn get_req_filters_chunk_size(&self) -> usize {
         self.req_filters_chunk_size.load(Ordering::SeqCst) as usize
+    }
+
+    /// Set default timeout
+    pub fn timeout(self, timeout: Duration) -> Self {
+        Self {
+            timeout: Some(timeout),
+            ..self
+        }
+    }
+
+    pub(crate) fn get_timeout(&self) -> Option<Duration> {
+        self.timeout
     }
 }

@@ -449,12 +449,20 @@ impl Client {
         filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
+        let timeout: Option<Duration> = match timeout {
+            Some(t) => Some(t),
+            None => self.opts.get_timeout(),
+        };
         Ok(self.pool.get_events_of(filters, timeout).await?)
     }
 
     /// Request events of filters
     /// All events will be received on notification listener (`client.notifications()`)
     pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+        let timeout = match timeout {
+            Some(t) => Some(t),
+            None => self.opts.get_timeout(),
+        };
         self.pool.req_events_of(filters, timeout).await;
     }
 
