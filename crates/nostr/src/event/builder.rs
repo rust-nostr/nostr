@@ -3,7 +3,12 @@
 
 //! Event builder
 
-use secp256k1::{Message, XOnlyPublicKey};
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
+
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
+use secp256k1::XOnlyPublicKey;
 use serde_json::{json, Value};
 use url::Url;
 
@@ -24,12 +29,15 @@ pub enum Error {
     /// Key error
     #[error(transparent)]
     Key(#[from] key::Error),
-    #[error(transparent)]
     /// Secp256k1 error
+    #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),
     /// JSON error
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    /// Unsigned event error
+    #[error(transparent)]
+    Unsigned(#[from] super::unsigned::Error),
     /// NIP04 error
     #[cfg(feature = "nip04")]
     #[error(transparent)]
@@ -60,35 +68,33 @@ impl EventBuilder {
     /// Build [`Event`]
     pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
         let pubkey: XOnlyPublicKey = keys.public_key();
+        Ok(self.to_unsigned_event(pubkey).sign(keys)?)
+    }
+
+    /// Build [`UnsignedEvent`]
+    pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
         let created_at: Timestamp = Timestamp::now();
-
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
-        let message = Message::from_slice(id.as_bytes())?;
-
-        Ok(Event {
+        UnsignedEvent {
             id,
             pubkey,
             created_at,
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-            sig: keys.sign_schnorr(&message)?,
-            #[cfg(feature = "nip03")]
-            ots: None,
-        })
+        }
     }
 
     /// Build POW [`Event`]
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
-        #[cfg(target_arch = "wasm32")]
-        use instant::Instant;
-        #[cfg(not(target_arch = "wasm32"))]
-        use std::time::Instant;
+        let pubkey: XOnlyPublicKey = keys.public_key();
+        Ok(self.to_unsigned_pow_event(pubkey, difficulty).sign(keys)?)
+    }
 
+    /// Build unsigned POW [`Event`]
+    pub fn to_unsigned_pow_event(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
         let mut nonce: u128 = 0;
         let mut tags: Vec<Tag> = self.tags;
-
-        let pubkey = keys.public_key();
 
         let now = Instant::now();
 
@@ -108,36 +114,17 @@ impl EventBuilder {
                     nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
                 );
 
-                let message = Message::from_slice(id.as_bytes())?;
-
-                return Ok(Event {
+                return UnsignedEvent {
                     id,
                     pubkey,
                     created_at,
                     kind: self.kind,
                     tags,
                     content: self.content,
-                    sig: keys.sign_schnorr(&message)?,
-                    #[cfg(feature = "nip03")]
-                    ots: None,
-                });
+                };
             }
 
             tags.pop();
-        }
-    }
-
-    /// Build [`UnsignedEvent`]
-    pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
-        let created_at: Timestamp = Timestamp::now();
-        let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
-        UnsignedEvent {
-            id,
-            pubkey,
-            created_at,
-            kind: self.kind,
-            tags: self.tags,
-            content: self.content,
         }
     }
 }
