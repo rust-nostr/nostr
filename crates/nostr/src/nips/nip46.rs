@@ -41,7 +41,6 @@ pub enum Error {
     #[error(transparent)]
     NIP04(#[from] nip04::Error),
     /// Unsigned event error
-
     #[error(transparent)]
     UnsignedEvent(#[from] crate::event::unsigned::Error),
     /// Invalid request
@@ -137,15 +136,20 @@ impl Request {
         }
     }
 
-    /// Generate [`Response`] message from [`Request`]
-    pub fn into_response(self, keys: &Keys) -> Result<Option<Response>, Error> {
+    /// Generate [`Response`] message for [`Request`]
+    pub fn generate_response(self, keys: &Keys) -> Result<Option<Response>, Error> {
         let res: Option<Response> = match self {
-            Self::Describe => Some(Response::Describe(json!({
-                "get_public_key": {
-                    "params": [],
-                    "result": "something",
-                }
-            }))),
+            Self::Describe => Some(Response::Describe(vec![
+                String::from("describe"),
+                String::from("get_public_key"),
+                String::from("sign_event"),
+                String::from("connect"),
+                String::from("disconnect"),
+                String::from("delegate"),
+                String::from("nip04_encrypt"),
+                String::from("nip04_decrypt"),
+                String::from("sign_schnorr"),
+            ])),
             Self::GetPublicKey => Some(Response::GetPublicKey(keys.public_key())),
 
             Self::SignEvent(unsigned_event) => {
@@ -154,7 +158,6 @@ impl Request {
             }
             Self::Connect(_) => None,
             Self::Disconnect => None,
-
             Self::Delegate {
                 public_key,
                 conditions,
@@ -185,7 +188,7 @@ impl Request {
 #[derive(Debug, Clone)]
 pub enum Response {
     /// Describe
-    Describe(Value),
+    Describe(Vec<String>),
     /// Get public key
     GetPublicKey(XOnlyPublicKey),
     /// Sign event
@@ -239,11 +242,9 @@ impl Message {
         Self::Response {
             id: req_id,
             result: Some(match res {
-                Response::Describe(value) => value,
+                Response::Describe(v) => json!(v),
                 Response::GetPublicKey(pubkey) => json!(pubkey),
-
                 Response::SignEvent(sig) => json!(sig),
-
                 Response::Delegate(token) => json!(token),
                 Response::Nip04Encrypt(encrypted_content) => json!(encrypted_content),
                 Response::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
@@ -292,7 +293,6 @@ impl Message {
             match method.as_str() {
                 "describe" => Ok(Request::Describe),
                 "get_public_key" => Ok(Request::GetPublicKey),
-
                 "sign_event" => {
                     if let Some(value) = params.first() {
                         let unsigned_event: UnsignedEvent =
@@ -311,7 +311,6 @@ impl Message {
                     Ok(Request::Connect(pubkey))
                 }
                 "disconnect" => Ok(Request::Disconnect),
-
                 "delegate" => {
                     if params.len() != 2 {
                         return Err(Error::InvalidParamsLength);
@@ -357,10 +356,10 @@ impl Message {
         }
     }
 
-    /// Generate response message
+    /// Generate [`Response`] message for [`Request`]
     pub fn generate_response(&self, keys: &Keys) -> Result<Option<Self>, Error> {
         let req = self.to_request()?;
-        if let Some(res) = req.into_response(keys)? {
+        if let Some(res) = req.generate_response(keys)? {
             Ok(Some(Self::response(self.id(), res)))
         } else {
             Ok(None)
@@ -395,6 +394,19 @@ pub struct NostrConnectMetadata {
 }
 
 impl NostrConnectMetadata {
+    /// New Nostr Connect Metadata
+    pub fn new<S>(name: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            name: name.into(),
+            url: None,
+            description: None,
+            icons: None,
+        }
+    }
+
     /// Serialize as JSON string
     pub fn as_json(&self) -> String {
         json!(self).to_string()
@@ -484,8 +496,6 @@ impl NostrConnectURI {
         }
     }
 }
-
-// nostrconnect://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=ws%3A%2F%2F192.168.7.233%3A7777%2F&metadata=%7B%22name%22%3A%22Nostr+SDK%22%2C%22url%22%3A%22https%3A%2F%2Fnostr.info%2F%22%7D
 
 impl FromStr for NostrConnectURI {
     type Err = Error;
