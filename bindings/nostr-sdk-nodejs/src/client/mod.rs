@@ -34,9 +34,9 @@ impl JsClient {
 
     /// Create a new `Client` with custom `Options`
     #[napi(factory)]
-    pub fn new_with_opts(keys: &JsKeys, opts: &JsOptions) -> Self {
+    pub fn with_opts(keys: &JsKeys, opts: &JsOptions) -> Self {
         Self {
-            inner: Client::new_with_opts(keys.deref(), opts.into()),
+            inner: Client::with_opts(keys.deref(), opts.into()),
         }
     }
 

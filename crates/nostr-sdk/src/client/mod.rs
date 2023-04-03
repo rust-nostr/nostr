@@ -130,7 +130,7 @@ impl Client {
     /// let client = Client::new(&my_keys);
     /// ```
     pub fn new(keys: &Keys) -> Self {
-        Self::new_with_opts(keys, Options::default())
+        Self::with_opts(keys, Options::default())
     }
 
     /// Create a new [`Client`] with [`Options`]
@@ -141,9 +141,9 @@ impl Client {
     ///
     /// let my_keys = Keys::generate();
     /// let opts = Options::new().wait_for_send(true);
-    /// let client = Client::new_with_opts(&my_keys, opts);
+    /// let client = Client::with_opts(&my_keys, opts);
     /// ```
-    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
+    pub fn with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
             pool: RelayPool::new(),
             keys: keys.clone(),
@@ -151,6 +151,12 @@ impl Client {
             #[cfg(feature = "nip46")]
             connect: None,
         }
+    }
+
+    #[allow(missing_docs)]
+    #[deprecated(since = "0.21.0", note = "use `with_opts` instead")]
+    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
+        Self::with_opts(keys, opts)
     }
 
     /// Create a new NIP46 Client
@@ -186,26 +192,46 @@ impl Client {
 
     /// New [`Client`] with [`Store`]
     #[cfg(feature = "sqlite")]
+    pub fn with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Self::with_store_and_opts(keys, path, Options::default())
+    }
+
+    #[allow(missing_docs)]
+    #[deprecated(since = "0.21.0", note = "use `with_store` instead")]
+    #[cfg(feature = "sqlite")]
     pub fn new_with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
-        Self::new_with_store_and_opts(keys, path, Options::default())
+        Self::with_store(keys, path)
     }
 
     /// New [`Client`] with [`Store`] and [`Options`]
     #[cfg(feature = "sqlite")]
-    pub fn new_with_store_and_opts<P>(keys: &Keys, path: P, opts: Options) -> Result<Self, Error>
+    pub fn with_store_and_opts<P>(keys: &Keys, path: P, opts: Options) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
         Ok(Self {
-            pool: RelayPool::new_with_store(path)?,
+            pool: RelayPool::with_store(path)?,
             keys: keys.clone(),
             opts,
             #[cfg(feature = "nip46")]
             connect: None,
         })
+    }
+
+    #[allow(missing_docs)]
+    #[deprecated(since = "0.21.0", note = "use `with_store and opts` instead")]
+    #[cfg(feature = "sqlite")]
+    pub fn new_with_store_and_opts<P>(keys: &Keys, path: P, opts: Options) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Self::with_store_and_opts(keys, path, opts)
     }
 
     /// Update default difficulty for new [`Event`]

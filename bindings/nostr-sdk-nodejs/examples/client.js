@@ -13,7 +13,7 @@ async function main() {
     console.log("Public key (bech32): ", keys.publicKey().toBech32());
     console.log("Secret key (bech32): ", keys.secretKey().toBech32());
 
-    let client = Client.newWithOpts(keys, opts);
+    let client = Client.withOpts(keys, opts);
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nostr.oxtr.dev");
     await client.addRelay("wss://nostr.bitcoiner.social");

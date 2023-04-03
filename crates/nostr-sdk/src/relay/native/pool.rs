@@ -72,7 +72,7 @@ impl RelayPoolTask {
     }
 
     #[cfg(feature = "sqlite")]
-    pub fn new_with_store(
+    pub fn with_store(
         pool_task_receiver: Receiver<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         store: Option<Store>,
@@ -187,7 +187,7 @@ impl RelayPool {
 
     /// Create new `RelayPool`
     #[cfg(feature = "sqlite")]
-    pub fn new_with_store<P>(path: P) -> Result<Self, Error>
+    pub fn with_store<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
@@ -196,7 +196,7 @@ impl RelayPool {
 
         let store = Some(Store::open(path)?);
 
-        let mut relay_pool_task = RelayPoolTask::new_with_store(
+        let mut relay_pool_task = RelayPoolTask::with_store(
             pool_task_receiver,
             notification_sender.clone(),
             store.clone(),
