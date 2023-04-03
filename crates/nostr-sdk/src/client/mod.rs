@@ -28,13 +28,13 @@ use tokio::sync::broadcast;
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
-#[cfg(feature = "nip46")]
-pub mod connect;
 pub mod options;
-
 #[cfg(feature = "nip46")]
-use self::connect::NostrConnect;
+pub mod remote_signer;
+
 pub use self::options::Options;
+#[cfg(feature = "nip46")]
+use self::remote_signer::RemoteSigner;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool};
 use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
 
@@ -116,7 +116,7 @@ pub struct Client {
     keys: Keys,
     opts: Options,
     #[cfg(feature = "nip46")]
-    connect: Option<NostrConnect>,
+    remote_signer: Option<RemoteSigner>,
 }
 
 impl Client {
@@ -149,7 +149,7 @@ impl Client {
             keys: keys.clone(),
             opts,
             #[cfg(feature = "nip46")]
-            connect: None,
+            remote_signer: None,
         }
     }
 
@@ -186,7 +186,7 @@ impl Client {
             pool: RelayPool::new(),
             keys: app_keys.clone(),
             opts,
-            connect: Some(NostrConnect::new(relay_url, signer_public_key)),
+            remote_signer: Some(RemoteSigner::new(relay_url, signer_public_key)),
         }
     }
 
@@ -220,7 +220,7 @@ impl Client {
             keys: keys.clone(),
             opts,
             #[cfg(feature = "nip46")]
-            connect: None,
+            remote_signer: None,
         })
     }
 
@@ -251,7 +251,7 @@ impl Client {
         metadata: NostrConnectMetadata,
     ) -> Result<NostrConnectURI, Error> {
         let connect = self
-            .connect
+            .remote_signer
             .as_ref()
             .ok_or(Error::NIP46ClientNotConfigured)?;
         Ok(NostrConnectURI::new(
@@ -259,6 +259,14 @@ impl Client {
             connect.relay_url(),
             metadata.name,
         ))
+    }
+
+    /// Get remote signer
+    #[cfg(feature = "nip46")]
+    pub fn remote_signer(&self) -> Result<RemoteSigner, Error> {
+        self.remote_signer
+            .clone()
+            .ok_or(Error::NIP46ClientNotConfigured)
     }
 
     /// Get [`Store`]
@@ -641,8 +649,8 @@ impl Client {
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
         #[cfg(feature = "nip46")]
-        let event: Event = if let Some(connect) = self.connect.as_ref() {
-            let signer_public_key = connect
+        let event: Event = if let Some(signer) = self.remote_signer.as_ref() {
+            let signer_public_key = signer
                 .signer_public_key()
                 .await
                 .ok_or(Error::SignerPublicKeyNotFound)?;
@@ -655,7 +663,7 @@ impl Client {
                 }
             };
             let res: Response = self
-                .send_request(
+                .send_req_to_signer(
                     Request::SignEvent(unsigned_event.clone()),
                     self.opts.get_nip46_timeout(),
                 )

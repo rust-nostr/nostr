@@ -1,8 +1,6 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-#![allow(missing_docs)]
-
 //! Nostr Connect Client (NIP46)
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/46.md>
@@ -21,14 +19,15 @@ use super::{Client, Error};
 use crate::relay::RelayPoolNotification;
 use crate::time;
 
-/// Nostr Connect Client Ext
+/// Remote Signer
 #[derive(Debug, Clone)]
-pub(crate) struct NostrConnect {
+pub struct RemoteSigner {
     relay_url: Url,
     signer_public_key: Arc<Mutex<Option<XOnlyPublicKey>>>,
 }
 
-impl NostrConnect {
+impl RemoteSigner {
+    /// New NIP46 remote signer
     pub fn new(relay_url: Url, signer_public_key: Option<XOnlyPublicKey>) -> Self {
         Self {
             relay_url,
@@ -36,10 +35,12 @@ impl NostrConnect {
         }
     }
 
+    /// Get signer relay [`Url`]
     pub fn relay_url(&self) -> Url {
         self.relay_url.clone()
     }
 
+    /// Get signer [`XOnlyPublicKey`]
     pub async fn signer_public_key(&self) -> Option<XOnlyPublicKey> {
         let pubkey = self.signer_public_key.lock().await;
         *pubkey
@@ -52,66 +53,112 @@ impl NostrConnect {
 }
 
 impl Client {
-    pub async fn init_nostr_connect(&self, timeout: Option<Duration>) -> Result<(), Error> {
-        let connect: &NostrConnect = self
-            .connect
+    /// Request the [`XOnlyPublicKey`] of the signer
+    ///
+    /// Call not required if you already added in `Client::with_remote_signer`.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use std::time::Duration;
+    ///
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let keys = Keys::generate();
+    ///     let relay_url = Url::parse("wss://relay.example.com").unwrap();
+    ///     let client = Client::with_remote_signer(&keys, relay_url, None);
+    ///
+    ///     // Signer public key MUST be requested in this case
+    ///     client
+    ///         .req_signer_public_key(Some(Duration::from_secs(180)))
+    ///         .await
+    ///         .unwrap();
+    /// }
+    /// ```
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use std::str::FromStr;
+    ///
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let keys = Keys::generate();
+    ///     let relay_url = Url::parse("wss://relay.example.com").unwrap();
+    ///     let signer_public_key = XOnlyPublicKey::from_str(
+    ///         "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
+    ///     )
+    ///     .unwrap();
+    ///
+    ///     // Signer public key request isn't needed since we already added in client constructor
+    ///     let _client = Client::with_remote_signer(&keys, relay_url, Some(signer_public_key));
+    /// }
+    /// ```
+    pub async fn req_signer_public_key(&self, timeout: Option<Duration>) -> Result<(), Error> {
+        let signer: &RemoteSigner = self
+            .remote_signer
             .as_ref()
             .ok_or(Error::NIP46ClientNotConfigured)?;
 
-        let id = SubscriptionId::generate();
-        let filter = Filter::new()
-            .pubkey(self.keys.public_key())
-            .kind(Kind::NostrConnect)
-            .since(Timestamp::now());
+        if signer.signer_public_key().await.is_none() {
+            let id = SubscriptionId::generate();
+            let filter = Filter::new()
+                .pubkey(self.keys.public_key())
+                .kind(Kind::NostrConnect)
+                .since(Timestamp::now());
 
-        // Subscribe
-        self.send_msg_to(
-            connect.relay_url(),
-            ClientMessage::new_req(id.clone(), vec![filter]),
-        )
-        .await?;
+            // Subscribe
+            self.send_msg_to(
+                signer.relay_url(),
+                ClientMessage::new_req(id.clone(), vec![filter]),
+            )
+            .await?;
 
-        let mut notifications = self.notifications();
-        time::timeout(timeout, async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event(_url, event) = notification {
-                    if event.kind == Kind::NostrConnect {
-                        let msg: String = nip04::decrypt(
-                            &self.keys.secret_key()?,
-                            &event.pubkey,
-                            &event.content,
-                        )?;
-                        let msg = Message::from_json(msg)?;
-                        if let Ok(Request::Connect(public_key)) = msg.to_request() {
-                            connect.set_signer_public_key(public_key).await;
-                            break;
+            let mut notifications = self.notifications();
+            time::timeout(timeout, async {
+                while let Ok(notification) = notifications.recv().await {
+                    if let RelayPoolNotification::Event(_url, event) = notification {
+                        if event.kind == Kind::NostrConnect {
+                            let msg: String = nip04::decrypt(
+                                &self.keys.secret_key()?,
+                                &event.pubkey,
+                                &event.content,
+                            )?;
+                            let msg = Message::from_json(msg)?;
+                            if let Ok(Request::Connect(public_key)) = msg.to_request() {
+                                signer.set_signer_public_key(public_key).await;
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            Ok::<(), Error>(())
-        })
-        .await
-        .ok_or(Error::Timeout)??;
+                Ok::<(), Error>(())
+            })
+            .await
+            .ok_or(Error::Timeout)??;
 
-        // Unsubscribe
-        self.send_msg_to(connect.relay_url(), ClientMessage::close(id))
-            .await?;
+            // Unsubscribe
+            self.send_msg_to(signer.relay_url(), ClientMessage::close(id))
+                .await?;
+        }
 
         Ok(())
     }
 
-    pub async fn send_request(
+    /// Send NIP46 [`Request`] to signer
+    pub async fn send_req_to_signer(
         &self,
         req: Request,
         timeout: Option<Duration>,
     ) -> Result<Response, Error> {
-        let connect: &NostrConnect = self
-            .connect
+        let signer: &RemoteSigner = self
+            .remote_signer
             .as_ref()
             .ok_or(Error::NIP46ClientNotConfigured)?;
-        let signer_pubkey = connect
+        let signer_pubkey = signer
             .signer_public_key()
             .await
             .ok_or(Error::SignerPublicKeyNotFound)?;
@@ -122,7 +169,7 @@ impl Client {
         // Send request to signer
         let event =
             EventBuilder::nostr_connect(&self.keys, signer_pubkey, msg)?.to_event(&self.keys)?;
-        self.send_event_to(connect.relay_url(), event).await?;
+        self.send_event_to(signer.relay_url(), event).await?;
 
         let sub_id = SubscriptionId::generate();
         let filter = Filter::new()
@@ -132,7 +179,7 @@ impl Client {
 
         // Subscribe
         self.send_msg_to(
-            connect.relay_url(),
+            signer.relay_url(),
             ClientMessage::new_req(sub_id.clone(), vec![filter]),
         )
         .await?;
@@ -183,7 +230,7 @@ impl Client {
 
                                     // Unsubscribe
                                     self.send_msg_to(
-                                        connect.relay_url(),
+                                        signer.relay_url(),
                                         ClientMessage::close(sub_id.clone()),
                                     )
                                     .await?;
@@ -193,7 +240,7 @@ impl Client {
                                 if let Some(error) = error {
                                     // Unsubscribe
                                     self.send_msg_to(
-                                        connect.relay_url(),
+                                        signer.relay_url(),
                                         ClientMessage::close(sub_id.clone()),
                                     )
                                     .await?;
@@ -214,7 +261,7 @@ impl Client {
             time::timeout(timeout, future).await.ok_or(Error::Timeout)?;
 
         // Unsubscribe
-        self.send_msg_to(connect.relay_url(), ClientMessage::close(sub_id))
+        self.send_msg_to(signer.relay_url(), ClientMessage::close(sub_id))
             .await?;
 
         res
