@@ -302,7 +302,7 @@ pub enum Tag {
     Description(String),
     Bolt11(String),
     Preimage(String),
-    Relays(Vec<Url>),
+    Relays(Vec<String>),
     Amount(u64),
     PublishedAt(Timestamp),
 }
@@ -372,11 +372,8 @@ where
 
         if tag_kind.eq(&TagKind::Relays) {
             // Relays vec is of unknown length so checked here based on kind
-            let urls = tag
-                .iter()
-                .skip(1)
-                .filter_map(|tag_str| Url::parse(tag_str).ok())
-                .collect::<Vec<Url>>();
+            let mut urls = tag;
+            urls.remove(0);
 
             Ok(Self::Relays(urls))
         } else if tag_len == 1 {
@@ -584,11 +581,7 @@ impl From<Tag> for Vec<String> {
             }
             Tag::Relays(relays) => vec![TagKind::Relays.to_string()]
                 .into_iter()
-                .chain(
-                    relays
-                        .iter()
-                        .map(|relay| relay.to_string().trim_end_matches('/').to_string()),
-                )
+                .chain(relays.iter().map(|relay| relay.to_string().to_string()))
                 .collect::<Vec<_>>(),
             Tag::Amount(amount) => {
                 vec![TagKind::Amount.to_string(), amount.to_string()]
@@ -1103,13 +1096,13 @@ mod tests {
             Tag::parse(vec![
                 "relays",
                 "wss://relay.damus.io/",
-                "wss://nostr-relay.wlvs.space",
+                "wss://nostr-relay.wlvs.space/",
                 "wss://nostr.fmt.wiz.biz"
             ])?,
             Tag::Relays(vec![
-                Url::from_str("wss://relay.damus.io")?,
-                Url::from_str("wss://nostr-relay.wlvs.space")?,
-                Url::from_str("wss://nostr.fmt.wiz.biz")?
+                "wss://relay.damus.io/".to_string(),
+                "wss://nostr-relay.wlvs.space/".to_string(),
+                "wss://nostr.fmt.wiz.biz".to_string()
             ])
         );
 
