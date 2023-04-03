@@ -70,7 +70,7 @@ serde_json = { version = "1.0", optional = true, default-features = false }
 url = { version = "2", features = ["serde"], optional = true }
 url_no_std = { package = "url", features = [
     "serde",
-], branch = "no_std", git = "https://github.com/OverOrion/rust-url", optional = true }
+], rev = "6385c81d9b8aa09744359155c180c252d7c111be", git = "https://github.com/servo/rust-url", optional = true }
 
 rand_core = { version = "0.6", features = [
     "alloc",
