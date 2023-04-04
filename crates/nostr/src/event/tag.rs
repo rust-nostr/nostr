@@ -256,6 +256,48 @@ where
     }
 }
 
+/// Relay Url type
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+pub struct RelayUrl {
+    url: Option<Url>,
+    url_string: String,
+}
+
+impl RelayUrl {
+    fn new(url_string: &str) -> Result<Self, Error> {
+        let url: Option<Url> = Url::parse(url_string).ok();
+
+        Ok(Self {
+            url,
+            url_string: url_string.to_string(),
+        })
+    }
+}
+
+impl FromStr for RelayUrl {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::new(s)
+    }
+}
+
+impl From<Url> for RelayUrl {
+    fn from(url: Url) -> Self {
+        let url_string = url.to_string();
+        Self {
+            url: Some(url),
+            url_string,
+        }
+    }
+}
+
+impl fmt::Display for RelayUrl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.url_string)
+    }
+}
+
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Tag {
@@ -302,7 +344,7 @@ pub enum Tag {
     Description(String),
     Bolt11(String),
     Preimage(String),
-    Relays(Vec<String>),
+    Relays(Vec<RelayUrl>),
     Amount(u64),
     PublishedAt(Timestamp),
 }
@@ -372,8 +414,12 @@ where
 
         if tag_kind.eq(&TagKind::Relays) {
             // Relays vec is of unknown length so checked here based on kind
-            let mut urls = tag;
-            urls.remove(0);
+
+            let urls = tag
+                .iter()
+                .skip(1)
+                .filter_map(|tag_str| RelayUrl::from_str(tag_str).ok())
+                .collect::<Vec<RelayUrl>>();
 
             Ok(Self::Relays(urls))
         } else if tag_len == 1 {
@@ -581,7 +627,7 @@ impl From<Tag> for Vec<String> {
             }
             Tag::Relays(relays) => vec![TagKind::Relays.to_string()]
                 .into_iter()
-                .chain(relays.iter().map(|relay| relay.to_string().to_string()))
+                .chain(relays.iter().map(|relay| relay.url_string.clone()))
                 .collect::<Vec<_>>(),
             Tag::Amount(amount) => {
                 vec![TagKind::Amount.to_string(), amount.to_string()]
@@ -1100,9 +1146,9 @@ mod tests {
                 "wss://nostr.fmt.wiz.biz"
             ])?,
             Tag::Relays(vec![
-                "wss://relay.damus.io/".to_string(),
-                "wss://nostr-relay.wlvs.space/".to_string(),
-                "wss://nostr.fmt.wiz.biz".to_string()
+                RelayUrl::from_str("wss://relay.damus.io/")?,
+                RelayUrl::from_str("wss://nostr-relay.wlvs.space/")?,
+                RelayUrl::from_str("wss://nostr.fmt.wiz.biz")?
             ])
         );
 
