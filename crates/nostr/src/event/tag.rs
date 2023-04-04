@@ -256,45 +256,36 @@ where
     }
 }
 
-/// Relay Url type
+/// Unchecked Relay Url
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
-pub struct RelayUrl {
-    url: Option<Url>,
-    url_string: String,
-}
+pub struct UncheckedRelayUrl(String);
 
-impl RelayUrl {
-    fn new(url_string: &str) -> Result<Self, Error> {
-        let url: Option<Url> = Url::parse(url_string).ok();
-
-        Ok(Self {
-            url,
-            url_string: url_string.to_string(),
-        })
-    }
-}
-
-impl FromStr for RelayUrl {
+impl FromStr for UncheckedRelayUrl {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::new(s)
+        Ok(UncheckedRelayUrl(s.to_owned()))
     }
 }
 
-impl From<Url> for RelayUrl {
+impl From<Url> for UncheckedRelayUrl {
     fn from(url: Url) -> Self {
         let url_string = url.to_string();
-        Self {
-            url: Some(url),
-            url_string,
-        }
+        UncheckedRelayUrl(url_string)
     }
 }
 
-impl fmt::Display for RelayUrl {
+impl TryFrom<UncheckedRelayUrl> for Url {
+    type Error = Error;
+
+    fn try_from(unchecked_url: UncheckedRelayUrl) -> Result<Url, Self::Error> {
+        Ok(Url::parse(&unchecked_url.0)?)
+    }
+}
+
+impl fmt::Display for UncheckedRelayUrl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.url_string)
+        write!(f, "{}", self.0)
     }
 }
 
@@ -344,7 +335,7 @@ pub enum Tag {
     Description(String),
     Bolt11(String),
     Preimage(String),
-    Relays(Vec<RelayUrl>),
+    Relays(Vec<UncheckedRelayUrl>),
     Amount(u64),
     PublishedAt(Timestamp),
 }
@@ -418,8 +409,8 @@ where
             let urls = tag
                 .iter()
                 .skip(1)
-                .filter_map(|tag_str| RelayUrl::from_str(tag_str).ok())
-                .collect::<Vec<RelayUrl>>();
+                .filter_map(|tag_str| UncheckedRelayUrl::from_str(tag_str).ok())
+                .collect::<Vec<UncheckedRelayUrl>>();
 
             Ok(Self::Relays(urls))
         } else if tag_len == 1 {
@@ -627,7 +618,7 @@ impl From<Tag> for Vec<String> {
             }
             Tag::Relays(relays) => vec![TagKind::Relays.to_string()]
                 .into_iter()
-                .chain(relays.iter().map(|relay| relay.url_string.clone()))
+                .chain(relays.iter().map(|relay| relay.to_string()))
                 .collect::<Vec<_>>(),
             Tag::Amount(amount) => {
                 vec![TagKind::Amount.to_string(), amount.to_string()]
@@ -1143,12 +1134,14 @@ mod tests {
                 "relays",
                 "wss://relay.damus.io/",
                 "wss://nostr-relay.wlvs.space/",
-                "wss://nostr.fmt.wiz.biz"
+                "wss://nostr.fmt.wiz.biz",
+                "wss//nostr.fmt.wiz.biz"
             ])?,
             Tag::Relays(vec![
-                RelayUrl::from_str("wss://relay.damus.io/")?,
-                RelayUrl::from_str("wss://nostr-relay.wlvs.space/")?,
-                RelayUrl::from_str("wss://nostr.fmt.wiz.biz")?
+                UncheckedRelayUrl::from_str("wss://relay.damus.io/")?,
+                UncheckedRelayUrl::from_str("wss://nostr-relay.wlvs.space/")?,
+                UncheckedRelayUrl::from_str("wss://nostr.fmt.wiz.biz")?,
+                UncheckedRelayUrl::from_str("wss//nostr.fmt.wiz.biz")?
             ])
         );
 
@@ -1178,6 +1171,24 @@ mod tests {
         );
 
         assert_eq!(Tag::parse(vec!["amount", "10000"])?, Tag::Amount(10000));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_unchecked_relay_url() -> Result<()> {
+        let relay = "wss://relay.damus.io/";
+        let relay_url = Url::from_str(relay)?;
+
+        println!("{}", relay_url.to_string());
+
+        let unchecked_relay_url = UncheckedRelayUrl::from(relay_url.clone());
+
+        assert_eq!(unchecked_relay_url, UncheckedRelayUrl::from_str(relay)?);
+
+        assert_eq!(Url::try_from(unchecked_relay_url.clone())?, relay_url);
+
+        assert_eq!(relay, unchecked_relay_url.to_string());
 
         Ok(())
     }
