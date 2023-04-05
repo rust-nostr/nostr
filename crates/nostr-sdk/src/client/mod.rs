@@ -13,6 +13,8 @@ use std::time::Duration;
 
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
+#[cfg(feature = "nip46")]
+use nostr::nips::nip46::{NostrConnectMetadata, NostrConnectURI, Request, Response};
 use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
@@ -27,14 +29,21 @@ use tokio::sync::broadcast;
 #[cfg(feature = "blocking")]
 pub mod blocking;
 pub mod options;
+#[cfg(feature = "nip46")]
+pub mod signer;
 
 pub use self::options::Options;
+#[cfg(feature = "nip46")]
+use self::signer::remote::RemoteSigner;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool};
 use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
 
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Keys error
+    #[error(transparent)]
+    Keys(#[from] nostr::key::Error),
     /// Url parse error
     #[error("impossible to parse URL: {0}")]
     Url(#[from] nostr::url::ParseError),
@@ -47,6 +56,9 @@ pub enum Error {
     /// [`EventBuilder`] error
     #[error("event builder error: {0}")]
     EventBuilder(#[from] EventBuilderError),
+    /// Unsigned event error
+    #[error("unsigned event error: {0}")]
+    UnsignedEvent(#[from] nostr::event::unsigned::Error),
     /// Secp256k1 error
     #[error("secp256k1 error: {0}")]
     Secp256k1(#[from] nostr::secp256k1::Error),
@@ -59,6 +71,42 @@ pub enum Error {
     /// Notification Handler error
     #[error("notification handler error: {0}")]
     Handler(String),
+    /// NIP46 client not configured
+    #[cfg(feature = "nip46")]
+    #[error("NIP46 client not configured")]
+    NIP46ClientNotConfigured,
+    /// NIP04 error
+    #[cfg(feature = "nip04")]
+    #[error(transparent)]
+    NIP04(#[from] nostr::nips::nip04::Error),
+    /// NIP46 error
+    #[cfg(feature = "nip46")]
+    #[error(transparent)]
+    NIP46(#[from] nostr::nips::nip46::Error),
+    /// JSON error
+    #[cfg(feature = "nip46")]
+    #[error(transparent)]
+    JSON(#[from] nostr::serde_json::Error),
+    /// Generig NIP46 error
+    #[cfg(feature = "nip46")]
+    #[error("generic error")]
+    Generic,
+    /// NIP46 response error
+    #[cfg(feature = "nip46")]
+    #[error("response error: {0}")]
+    Response(String),
+    /// Signer public key not found
+    #[cfg(feature = "nip46")]
+    #[error("signer public key not found")]
+    SignerPublicKeyNotFound,
+    /// Timeout
+    #[cfg(feature = "nip46")]
+    #[error("timeout")]
+    Timeout,
+    /// Response not match to the request
+    #[cfg(feature = "nip46")]
+    #[error("response not match to the request")]
+    ResponseNotMatchRequest,
 }
 
 /// Nostr client
@@ -67,6 +115,8 @@ pub struct Client {
     pool: RelayPool,
     keys: Keys,
     opts: Options,
+    #[cfg(feature = "nip46")]
+    remote_signer: Option<RemoteSigner>,
 }
 
 impl Client {
@@ -80,7 +130,7 @@ impl Client {
     /// let client = Client::new(&my_keys);
     /// ```
     pub fn new(keys: &Keys) -> Self {
-        Self::new_with_opts(keys, Options::default())
+        Self::with_opts(keys, Options::default())
     }
 
     /// Create a new [`Client`] with [`Options`]
@@ -91,36 +141,97 @@ impl Client {
     ///
     /// let my_keys = Keys::generate();
     /// let opts = Options::new().wait_for_send(true);
-    /// let client = Client::new_with_opts(&my_keys, opts);
+    /// let client = Client::with_opts(&my_keys, opts);
     /// ```
-    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
+    pub fn with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
             pool: RelayPool::new(),
             keys: keys.clone(),
             opts,
+            #[cfg(feature = "nip46")]
+            remote_signer: None,
+        }
+    }
+
+    #[allow(missing_docs)]
+    #[deprecated(since = "0.21.0", note = "use `with_opts` instead")]
+    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
+        Self::with_opts(keys, opts)
+    }
+
+    /// Create a new NIP46 Client
+    #[cfg(feature = "nip46")]
+    pub fn with_remote_signer(
+        app_keys: &Keys,
+        relay_url: Url,
+        signer_public_key: Option<XOnlyPublicKey>,
+    ) -> Self {
+        Self::with_remote_signer_and_opts(
+            app_keys,
+            relay_url,
+            signer_public_key,
+            Options::default(),
+        )
+    }
+
+    /// Create a new NIP46 Client with custom [`Options`]
+    #[cfg(feature = "nip46")]
+    pub fn with_remote_signer_and_opts(
+        app_keys: &Keys,
+        relay_url: Url,
+        signer_public_key: Option<XOnlyPublicKey>,
+        opts: Options,
+    ) -> Self {
+        Self {
+            pool: RelayPool::new(),
+            keys: app_keys.clone(),
+            opts,
+            remote_signer: Some(RemoteSigner::new(relay_url, signer_public_key)),
         }
     }
 
     /// New [`Client`] with [`Store`]
     #[cfg(feature = "sqlite")]
+    pub fn with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Self::with_store_and_opts(keys, path, Options::default())
+    }
+
+    #[allow(missing_docs)]
+    #[deprecated(since = "0.21.0", note = "use `with_store` instead")]
+    #[cfg(feature = "sqlite")]
     pub fn new_with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
-        Self::new_with_store_and_opts(keys, path, Options::default())
+        Self::with_store(keys, path)
     }
 
     /// New [`Client`] with [`Store`] and [`Options`]
+    #[cfg(feature = "sqlite")]
+    pub fn with_store_and_opts<P>(keys: &Keys, path: P, opts: Options) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(Self {
+            pool: RelayPool::with_store(path)?,
+            keys: keys.clone(),
+            opts,
+            #[cfg(feature = "nip46")]
+            remote_signer: None,
+        })
+    }
+
+    #[allow(missing_docs)]
+    #[deprecated(since = "0.21.0", note = "use `with_store and opts` instead")]
     #[cfg(feature = "sqlite")]
     pub fn new_with_store_and_opts<P>(keys: &Keys, path: P, opts: Options) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
-        Ok(Self {
-            pool: RelayPool::new_with_store(path)?,
-            keys: keys.clone(),
-            opts,
-        })
+        Self::with_store_and_opts(keys, path, opts)
     }
 
     /// Update default difficulty for new [`Event`]
@@ -131,6 +242,31 @@ impl Client {
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.keys.clone()
+    }
+
+    /// Get NIP46 uri
+    #[cfg(feature = "nip46")]
+    pub fn nostr_connect_uri(
+        &self,
+        metadata: NostrConnectMetadata,
+    ) -> Result<NostrConnectURI, Error> {
+        let connect = self
+            .remote_signer
+            .as_ref()
+            .ok_or(Error::NIP46ClientNotConfigured)?;
+        Ok(NostrConnectURI::new(
+            self.keys.public_key(),
+            connect.relay_url(),
+            metadata.name,
+        ))
+    }
+
+    /// Get remote signer
+    #[cfg(feature = "nip46")]
+    pub fn remote_signer(&self) -> Result<RemoteSigner, Error> {
+        self.remote_signer
+            .clone()
+            .ok_or(Error::NIP46ClientNotConfigured)
     }
 
     /// Get [`Store`]
@@ -512,6 +648,41 @@ impl Client {
     }
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
+        #[cfg(feature = "nip46")]
+        let event: Event = if let Some(signer) = self.remote_signer.as_ref() {
+            let signer_public_key = signer
+                .signer_public_key()
+                .await
+                .ok_or(Error::SignerPublicKeyNotFound)?;
+            let unsigned_event = {
+                let difficulty: u8 = self.opts.get_difficulty();
+                if difficulty > 0 {
+                    builder.to_unsigned_pow_event(signer_public_key, difficulty)
+                } else {
+                    builder.to_unsigned_event(signer_public_key)
+                }
+            };
+            let res: Response = self
+                .send_req_to_signer(
+                    Request::SignEvent(unsigned_event.clone()),
+                    self.opts.get_nip46_timeout(),
+                )
+                .await?;
+            if let Response::SignEvent(sig) = res {
+                unsigned_event.add_signature(sig)?
+            } else {
+                return Err(Error::ResponseNotMatchRequest);
+            }
+        } else {
+            let difficulty: u8 = self.opts.get_difficulty();
+            if difficulty > 0 {
+                builder.to_pow_event(&self.keys, difficulty)?
+            } else {
+                builder.to_event(&self.keys)?
+            }
+        };
+
+        #[cfg(not(feature = "nip46"))]
         let event: Event = {
             let difficulty: u8 = self.opts.get_difficulty();
             if difficulty > 0 {
@@ -520,6 +691,7 @@ impl Client {
                 builder.to_event(&self.keys)?
             }
         };
+
         self.send_event(event).await
     }
 

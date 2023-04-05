@@ -243,7 +243,7 @@ export type JsClient = Client
 export class Client {
   constructor(keys: JsKeys)
   /** Create a new `Client` with custom `Options` */
-  static newWithOpts(keys: JsKeys, opts: Options): JsClient
+  static withOpts(keys: JsKeys, opts: Options): JsClient
   /** Update default difficulty for new `Event` */
   updateDifficulty(difficulty: number): void
   /** Get current `Keys` */

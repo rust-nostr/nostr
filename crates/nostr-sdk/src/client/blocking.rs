@@ -21,7 +21,7 @@ use crate::RUNTIME;
 
 #[derive(Debug, Clone)]
 pub struct Client {
-    client: super::Client,
+    pub(crate) client: super::Client,
 }
 
 impl From<super::Client> for Client {
@@ -37,10 +37,15 @@ impl Client {
         }
     }
 
-    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
+    pub fn with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
-            client: super::Client::new_with_opts(keys, opts),
+            client: super::Client::with_opts(keys, opts),
         }
+    }
+
+    #[deprecated(since = "0.21.0", note = "use `with_opts` instead")]
+    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
+        Self::with_opts(keys, opts)
     }
 
     /// Get current [`Keys`]

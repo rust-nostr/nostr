@@ -26,7 +26,7 @@ async function main() {
 
     let opts = new Options().waitForSend(true);
 
-    let client = Client.newWithOpts(keys, opts);
+    let client = Client.withOpts(keys, opts);
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nostr.oxtr.dev");
     await client.addRelay("wss://nostr.bitcoiner.social");

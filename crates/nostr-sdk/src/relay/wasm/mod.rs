@@ -9,7 +9,6 @@ use std::time::Duration;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Url};
-use nostr_sdk_net::futures_util::future::{AbortHandle, Abortable};
 use nostr_sdk_net::futures_util::{SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use tokio::sync::broadcast;
@@ -23,6 +22,7 @@ use super::{
     ActiveSubscription, RelayEvent, RelayOptions, RelayPoolMessage, RelayPoolNotification,
     RelayStatus,
 };
+use crate::time;
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 
@@ -335,26 +335,14 @@ impl Relay {
     }
 
     async fn send_relay_event(&self, relay_msg: RelayEvent) -> Result<(), Error> {
-        let (abort_handle, abort_registration) = AbortHandle::new_pair();
-        let fut = Abortable::new(
-            async {
-                self.relay_sender
-                    .send(relay_msg)
-                    .await
-                    .map_err(|_| Error::ChannelTimeout)
-            },
-            abort_registration,
-        );
-
-        spawn_local(async move {
-            gloo_timers::callback::Timeout::new(60_000, move || {
-                abort_handle.abort();
-            })
-            .forget();
-        });
-
-        let _ = fut.await.map_err(|_| Error::ChannelTimeout)?;
-
+        time::timeout(Some(Duration::from_secs(60)), async {
+            self.relay_sender
+                .send(relay_msg)
+                .await
+                .map_err(|_| Error::MessagetNotSent)
+        })
+        .await
+        .ok_or(Error::ChannelTimeout)??;
         Ok(())
     }
 
@@ -454,43 +442,30 @@ impl Relay {
             .await?;
 
         let mut notifications = self.notification_sender.subscribe();
-        let (abort_handle, abort_registration) = AbortHandle::new_pair();
-        let recv = Abortable::new(
-            async {
-                while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotification::Message(_, msg) = notification {
-                        match msg {
-                            RelayMessage::Event {
-                                subscription_id,
-                                event,
-                            } => {
-                                if subscription_id.eq(&id) {
-                                    callback(*event);
-                                }
+        time::timeout(timeout, async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(_, msg) = notification {
+                    match msg {
+                        RelayMessage::Event {
+                            subscription_id,
+                            event,
+                        } => {
+                            if subscription_id.eq(&id) {
+                                callback(*event);
                             }
-                            RelayMessage::EndOfStoredEvents(subscription_id) => {
-                                if subscription_id.eq(&id) {
-                                    break;
-                                }
+                        }
+                        RelayMessage::EndOfStoredEvents(subscription_id) => {
+                            if subscription_id.eq(&id) {
+                                break;
                             }
-                            _ => log::debug!("Receive unhandled message {msg:?} on get_events_of"),
-                        };
-                    }
+                        }
+                        _ => log::debug!("Receive unhandled message {msg:?} on get_events_of"),
+                    };
                 }
-            },
-            abort_registration,
-        );
-
-        if let Some(timeout) = timeout {
-            spawn_local(async move {
-                gloo_timers::callback::Timeout::new(timeout.as_millis() as u32, move || {
-                    abort_handle.abort();
-                })
-                .forget();
-            });
-        }
-
-        recv.await.map_err(|_| Error::Timeout)?;
+            }
+        })
+        .await
+        .ok_or(Error::Timeout)?;
 
         // Unsubscribe
         self.send_msg(ClientMessage::close(id)).await?;
@@ -535,38 +510,26 @@ impl Relay {
             };
 
             let mut notifications = relay.notification_sender.subscribe();
-            let (abort_handle, abort_registration) = AbortHandle::new_pair();
-            let recv = Abortable::new(
-                async {
-                    while let Ok(notification) = notifications.recv().await {
-                        if let RelayPoolNotification::Message(
-                            _,
-                            RelayMessage::EndOfStoredEvents(subscription_id),
-                        ) = notification
-                        {
-                            if subscription_id.eq(&id) {
-                                break;
-                            }
+            if time::timeout(timeout, async {
+                while let Ok(notification) = notifications.recv().await {
+                    if let RelayPoolNotification::Message(
+                        _,
+                        RelayMessage::EndOfStoredEvents(subscription_id),
+                    ) = notification
+                    {
+                        if subscription_id.eq(&id) {
+                            break;
                         }
                     }
-                },
-                abort_registration,
-            );
-
-            if let Some(timeout) = timeout {
-                spawn_local(async move {
-                    gloo_timers::callback::Timeout::new(timeout.as_millis() as u32, move || {
-                        abort_handle.abort();
-                    })
-                    .forget();
-                });
-            }
-
-            if let Err(e) = recv.await.map_err(|_| Error::Timeout) {
+                }
+            })
+            .await
+            .is_none()
+            {
                 log::error!(
                     "Impossible to recv events with {}: {}",
                     relay.url(),
-                    e.to_string()
+                    Error::Timeout
                 );
             }
 

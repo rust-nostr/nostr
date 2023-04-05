@@ -24,6 +24,7 @@ use super::{
     ActiveSubscription, RelayEvent, RelayOptions, RelayPoolMessage, RelayPoolNotification,
     RelayStatus,
 };
+use crate::time;
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 
@@ -505,7 +506,7 @@ impl Relay {
             .await?;
 
         let mut notifications = self.notification_sender.subscribe();
-        let recv = async {
+        time::timeout(timeout, async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Message(_, msg) = notification {
                     match msg {
@@ -526,15 +527,9 @@ impl Relay {
                     };
                 }
             }
-        };
-
-        if let Some(timeout) = timeout {
-            if tokio::time::timeout(timeout, recv).await.is_err() {
-                return Err(Error::Timeout);
-            }
-        } else {
-            recv.await;
-        }
+        })
+        .await
+        .ok_or(Error::Timeout)?;
 
         // Unsubscribe
         self.send_msg(ClientMessage::close(id), false).await?;
@@ -580,7 +575,7 @@ impl Relay {
             };
 
             let mut notifications = relay.notification_sender.subscribe();
-            let recv = async {
+            if time::timeout(timeout, async {
                 while let Ok(notification) = notifications.recv().await {
                     if let RelayPoolNotification::Message(
                         _,
@@ -592,14 +587,11 @@ impl Relay {
                         }
                     }
                 }
-            };
-
-            if let Some(timeout) = timeout {
-                if tokio::time::timeout(timeout, recv).await.is_err() {
-                    log::error!("{}", Error::Timeout);
-                }
-            } else {
-                recv.await;
+            })
+            .await
+            .is_none()
+            {
+                log::error!("{}", Error::Timeout);
             }
 
             // Unsubscribe

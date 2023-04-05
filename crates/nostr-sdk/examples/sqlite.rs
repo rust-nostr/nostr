@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
 
     let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
 
-    let client = Client::new_with_store(&my_keys, "nostr.db")?;
+    let client = Client::with_store(&my_keys, "nostr.db")?;
 
     client.restore_relays().await?;
 

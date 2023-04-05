@@ -6,7 +6,7 @@ async function main() {
     let keys = Keys.fromSkStr("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
     let opts = new Options().waitForConnection(true).waitForSend(true);
 
-    let client = Client.newWithOpts(keys, opts);
+    let client = Client.withOpts(keys, opts);
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nostr.oxtr.dev");
     await client.addRelay("wss://nostr.bitcoiner.social");
