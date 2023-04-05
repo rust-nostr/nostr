@@ -21,7 +21,7 @@ use crate::RUNTIME;
 
 #[derive(Debug, Clone)]
 pub struct Client {
-    client: super::Client,
+    pub(crate) client: super::Client,
 }
 
 impl From<super::Client> for Client {

@@ -30,11 +30,11 @@ use tokio::sync::broadcast;
 pub mod blocking;
 pub mod options;
 #[cfg(feature = "nip46")]
-pub mod remote_signer;
+pub mod signer;
 
 pub use self::options::Options;
 #[cfg(feature = "nip46")]
-use self::remote_signer::RemoteSigner;
+use self::signer::remote::RemoteSigner;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool};
 use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
 

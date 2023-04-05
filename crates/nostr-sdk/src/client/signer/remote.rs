@@ -15,9 +15,13 @@ use nostr::serde_json;
 use nostr::{ClientMessage, EventBuilder, Filter, Kind, SubscriptionId, Timestamp, Url};
 use tokio::sync::Mutex;
 
-use super::{Client, Error};
+#[cfg(feature = "blocking")]
+use crate::client::blocking::Client as BlockingClient;
+use crate::client::{Client, Error};
 use crate::relay::RelayPoolNotification;
 use crate::time;
+#[cfg(feature = "blocking")]
+use crate::RUNTIME;
 
 /// Remote Signer
 #[derive(Debug, Clone)]
@@ -53,7 +57,7 @@ impl RemoteSigner {
 }
 
 impl Client {
-    /// Request the [`XOnlyPublicKey`] of the signer
+    /// Request the [`XOnlyPublicKey`] of the signer (sent with `Connect` request)
     ///
     /// Call not required if you already added in `Client::with_remote_signer`.
     ///
@@ -265,5 +269,22 @@ impl Client {
             .await?;
 
         res
+    }
+}
+
+#[cfg(feature = "blocking")]
+impl BlockingClient {
+    #[allow(missing_docs)]
+    pub fn req_signer_public_key(&self, timeout: Option<Duration>) -> Result<(), Error> {
+        RUNTIME.block_on(async { self.client.req_signer_public_key(timeout).await })
+    }
+
+    #[allow(missing_docs)]
+    pub fn send_req_to_signer(
+        &self,
+        req: Request,
+        timeout: Option<Duration>,
+    ) -> Result<Response, Error> {
+        RUNTIME.block_on(async { self.client.send_req_to_signer(req, timeout).await })
     }
 }
