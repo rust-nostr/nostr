@@ -29,12 +29,13 @@ pub use nostr::{self, *};
 pub mod client;
 pub mod prelude;
 pub mod relay;
+mod thread;
 mod time;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;
 pub use self::client::{Client, Options};
-pub use self::relay::{RelayOptions, RelayPoolNotification, RelayStatus};
+pub use self::relay::{Relay, RelayOptions, RelayPoolNotification, RelayStatus};
 
 #[cfg(feature = "blocking")]
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));

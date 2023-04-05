@@ -3,12 +3,14 @@
 
 //! Thread
 
-#[cfg(feature = "blocking")]
 use std::time::Duration;
 
 use nostr_sdk_net::futures_util::Future;
 #[cfg(feature = "blocking")]
 use tokio::runtime::{Builder, Runtime};
+
+#[cfg(target_arch = "wasm32")]
+mod wasm;
 
 #[cfg(feature = "blocking")]
 fn new_current_thread() -> nostr::Result<Runtime> {
@@ -23,19 +25,28 @@ pub enum Error {
 
 #[allow(dead_code)]
 pub enum JoinHandle<T> {
+    #[cfg(not(target_arch = "wasm32"))]
     Std(std::thread::JoinHandle<T>),
+    #[cfg(not(target_arch = "wasm32"))]
     Tokio(tokio::task::JoinHandle<T>),
+    #[cfg(target_arch = "wasm32")]
+    Wasm(self::wasm::JoinHandle<T>),
 }
 
 impl<T> JoinHandle<T> {
     pub async fn join(self) -> Result<T, Error> {
         match self {
+            #[cfg(not(target_arch = "wasm32"))]
             Self::Std(handle) => handle.join().map_err(|_| Error::JoinError),
+            #[cfg(not(target_arch = "wasm32"))]
             Self::Tokio(handle) => handle.await.map_err(|_| Error::JoinError),
+            #[cfg(target_arch = "wasm32")]
+            Self::Wasm(handle) => handle.join().await.map_err(|_| Error::JoinError),
         }
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn spawn<T>(future: T) -> Option<JoinHandle<T::Output>>
 where
     T: Future + Send + 'static,
@@ -62,4 +73,20 @@ where
         let handle = tokio::task::spawn(future);
         Some(JoinHandle::Tokio(handle))
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn spawn<T>(future: T) -> Option<JoinHandle<T::Output>>
+where
+    T: Future + 'static,
+{
+    let handle = self::wasm::spawn(future);
+    Some(JoinHandle::Wasm(handle))
+}
+
+pub async fn sleep(duration: Duration) {
+    #[cfg(not(target_arch = "wasm32"))]
+    tokio::time::sleep(duration).await;
+    #[cfg(target_arch = "wasm32")]
+    gloo_timers::future::sleep(duration).await;
 }

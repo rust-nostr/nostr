@@ -15,8 +15,7 @@ use nostr::{
 use tokio::sync::broadcast;
 
 use super::{Entity, Error, Options};
-use crate::relay::native::Relay;
-use crate::relay::{RelayOptions, RelayPoolNotification};
+use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
 use crate::RUNTIME;
 
 #[derive(Debug, Clone)]

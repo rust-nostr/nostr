@@ -3,9 +3,7 @@
 
 //! Client Options
 
-#[cfg(not(target_arch = "wasm32"))]
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -13,10 +11,8 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub struct Options {
     /// Wait for connection (default: false)
-    #[cfg(not(target_arch = "wasm32"))]
     wait_for_connection: Arc<AtomicBool>,
     /// Wait for the msg to be sent (default: true)
-    #[cfg(not(target_arch = "wasm32"))]
     wait_for_send: Arc<AtomicBool>,
     /// POW difficulty for all events (default: 0)
     difficulty: Arc<AtomicU8>,
@@ -32,9 +28,7 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Self {
         Self {
-            #[cfg(not(target_arch = "wasm32"))]
             wait_for_connection: Arc::new(AtomicBool::new(false)),
-            #[cfg(not(target_arch = "wasm32"))]
             wait_for_send: Arc::new(AtomicBool::new(true)),
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
@@ -52,7 +46,6 @@ impl Options {
     }
 
     /// If set to `true`, `Client` wait that `Relay` try at least one time to enstablish a connection before continue.
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn wait_for_connection(self, wait: bool) -> Self {
         Self {
             wait_for_connection: Arc::new(AtomicBool::new(wait)),
@@ -60,13 +53,11 @@ impl Options {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn get_wait_for_connection(&self) -> bool {
         self.wait_for_connection.load(Ordering::SeqCst)
     }
 
     /// If set to `true`, `Client` wait that an event is sent before continue.
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn wait_for_send(self, wait: bool) -> Self {
         Self {
             wait_for_send: Arc::new(AtomicBool::new(wait)),
@@ -74,7 +65,6 @@ impl Options {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn get_wait_for_send(&self) -> bool {
         self.wait_for_send.load(Ordering::SeqCst)
     }

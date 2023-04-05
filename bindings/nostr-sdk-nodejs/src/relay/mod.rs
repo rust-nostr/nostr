@@ -4,7 +4,6 @@
 use napi::bindgen_prelude::ToNapiValue;
 use nostr_nodejs::nips::nip11::JsRelayInformationDocument;
 use nostr_sdk::prelude::*;
-use nostr_sdk::relay::native::Relay;
 
 #[napi(js_name = "Relay")]
 pub struct JsRelay {

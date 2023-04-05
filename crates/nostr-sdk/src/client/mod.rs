@@ -447,12 +447,9 @@ impl Client {
     {
         let url = Url::parse(&url.into())?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
-            #[cfg(not(target_arch = "wasm32"))]
             self.pool
                 .connect_relay(relay, self.opts.get_wait_for_connection())
                 .await;
-            #[cfg(target_arch = "wasm32")]
-            self.pool.connect_relay(relay).await;
             return Ok(());
         }
         Err(Error::RelayNotFound)
@@ -500,10 +497,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn connect(&self) {
-        #[cfg(not(target_arch = "wasm32"))]
         self.pool.connect(self.opts.get_wait_for_connection()).await;
-        #[cfg(target_arch = "wasm32")]
-        self.pool.connect().await;
     }
 
     /// Disconnect from all relays
@@ -541,20 +535,14 @@ impl Client {
     /// # }
     /// ```
     pub async fn subscribe(&self, filters: Vec<Filter>) {
-        #[cfg(not(target_arch = "wasm32"))]
         self.pool
             .subscribe(filters, self.opts.get_wait_for_send())
             .await;
-        #[cfg(target_arch = "wasm32")]
-        self.pool.subscribe(filters).await;
     }
 
     /// Unsubscribe
     pub async fn unsubscribe(&self) {
-        #[cfg(not(target_arch = "wasm32"))]
         self.pool.unsubscribe(self.opts.get_wait_for_send()).await;
-        #[cfg(target_arch = "wasm32")]
-        self.pool.unsubscribe().await;
     }
 
     /// Get events of filters
@@ -604,13 +592,9 @@ impl Client {
 
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
-        #[cfg(not(target_arch = "wasm32"))]
         self.pool
             .send_msg(msg, self.opts.get_wait_for_send())
             .await?;
-        #[cfg(target_arch = "wasm32")]
-        self.pool.send_msg(msg).await?;
-
         Ok(())
     }
 
@@ -620,12 +604,9 @@ impl Client {
         S: Into<String>,
     {
         let url = Url::parse(&url.into())?;
-        #[cfg(not(target_arch = "wasm32"))]
         self.pool
             .send_msg_to(url, msg, self.opts.get_wait_for_send())
             .await?;
-        #[cfg(target_arch = "wasm32")]
-        self.pool.send_msg_to(url, msg).await?;
         Ok(())
     }
 

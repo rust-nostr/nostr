@@ -4,6 +4,7 @@
 //! Relay Pool
 
 use std::collections::{HashMap, VecDeque};
+#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 #[cfg(feature = "sqlite")]
 use std::path::Path;
@@ -16,11 +17,9 @@ use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
 use nostr_sdk_sqlite::Store;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
-use tokio::time;
 
-use super::thread;
 use super::{Error as RelayError, Relay, RelayOptions};
-use crate::relay::{RelayPoolMessage, RelayPoolNotification};
+use crate::thread;
 
 /// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]
@@ -45,6 +44,33 @@ pub enum Error {
     #[cfg(feature = "sqlite")]
     #[error("store not initialized")]
     StoreNotInitialized,
+}
+
+/// Relay Pool Message
+#[derive(Debug)]
+pub enum RelayPoolMessage {
+    /// Received new message
+    ReceivedMsg {
+        /// Relay url
+        relay_url: Url,
+        /// Relay message
+        msg: RelayMessage,
+    },
+    /// Event sent
+    EventSent(Box<Event>),
+    /// Shutdown
+    Shutdown,
+}
+
+/// Relay Pool Notification
+#[derive(Debug, Clone)]
+pub enum RelayPoolNotification {
+    /// Received an [`Event`]
+    Event(Url, Event),
+    /// Received a [`RelayMessage`]
+    Message(Url, RelayMessage),
+    /// Shutdown
+    Shutdown,
 }
 
 struct RelayPoolTask {
@@ -243,6 +269,7 @@ impl RelayPool {
     }
 
     /// Add new relay
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn add_relay(
         &self,
         url: Url,
@@ -262,6 +289,22 @@ impl RelayPool {
                 self.pool_task_sender.clone(),
                 self.notification_sender.clone(),
                 proxy,
+                opts,
+            );
+            relays.insert(relay.url(), relay);
+        }
+        Ok(())
+    }
+
+    /// Add new relay
+    #[cfg(target_arch = "wasm32")]
+    pub async fn add_relay(&self, url: Url, opts: RelayOptions) -> Result<(), Error> {
+        let mut relays = self.relays.lock().await;
+        if !relays.contains_key(&url) {
+            let relay = Relay::new(
+                url,
+                self.pool_task_sender.clone(),
+                self.notification_sender.clone(),
                 opts,
             );
             relays.insert(relay.url(), relay);
@@ -442,7 +485,7 @@ impl RelayPool {
     /// Completly shutdown pool
     pub async fn shutdown(self) -> Result<(), Error> {
         self.disconnect().await?;
-        time::sleep(Duration::from_secs(3)).await;
+        thread::sleep(Duration::from_secs(3)).await;
         if let Err(e) = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await {
             log::error!("Impossible to shutdown pool: {e}");
         };
