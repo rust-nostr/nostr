@@ -257,33 +257,33 @@ where
 }
 
 /// Unchecked Relay Url
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
-pub struct UncheckedRelayUrl(String);
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
+pub struct UncheckedUrl(String);
 
-impl FromStr for UncheckedRelayUrl {
+impl FromStr for UncheckedUrl {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(UncheckedRelayUrl(s.to_owned()))
+        Ok(Self(s.to_owned()))
     }
 }
 
-impl From<Url> for UncheckedRelayUrl {
+impl From<Url> for UncheckedUrl {
     fn from(url: Url) -> Self {
         let url_string = url.to_string();
-        UncheckedRelayUrl(url_string)
+        Self(url_string)
     }
 }
 
-impl TryFrom<UncheckedRelayUrl> for Url {
+impl TryFrom<UncheckedUrl> for Url {
     type Error = Error;
 
-    fn try_from(unchecked_url: UncheckedRelayUrl) -> Result<Url, Self::Error> {
-        Ok(Url::parse(&unchecked_url.0)?)
+    fn try_from(unchecked_url: UncheckedUrl) -> Result<Url, Self::Error> {
+        Ok(Self::parse(&unchecked_url.0)?)
     }
 }
 
-impl fmt::Display for UncheckedRelayUrl {
+impl fmt::Display for UncheckedUrl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -335,7 +335,7 @@ pub enum Tag {
     Description(String),
     Bolt11(String),
     Preimage(String),
-    Relays(Vec<UncheckedRelayUrl>),
+    Relays(Vec<UncheckedUrl>),
     Amount(u64),
     PublishedAt(Timestamp),
 }
@@ -409,8 +409,8 @@ where
             let urls = tag
                 .iter()
                 .skip(1)
-                .filter_map(|tag_str| UncheckedRelayUrl::from_str(tag_str).ok())
-                .collect::<Vec<UncheckedRelayUrl>>();
+                .filter_map(|tag_str| UncheckedUrl::from_str(tag_str).ok())
+                .collect::<Vec<UncheckedUrl>>();
 
             Ok(Self::Relays(urls))
         } else if tag_len == 1 {
@@ -1138,10 +1138,10 @@ mod tests {
                 "wss//nostr.fmt.wiz.biz"
             ])?,
             Tag::Relays(vec![
-                UncheckedRelayUrl::from_str("wss://relay.damus.io/")?,
-                UncheckedRelayUrl::from_str("wss://nostr-relay.wlvs.space/")?,
-                UncheckedRelayUrl::from_str("wss://nostr.fmt.wiz.biz")?,
-                UncheckedRelayUrl::from_str("wss//nostr.fmt.wiz.biz")?
+                UncheckedUrl::from_str("wss://relay.damus.io/")?,
+                UncheckedUrl::from_str("wss://nostr-relay.wlvs.space/")?,
+                UncheckedUrl::from_str("wss://nostr.fmt.wiz.biz")?,
+                UncheckedUrl::from_str("wss//nostr.fmt.wiz.biz")?
             ])
         );
 
@@ -1182,9 +1182,9 @@ mod tests {
 
         println!("{}", relay_url.to_string());
 
-        let unchecked_relay_url = UncheckedRelayUrl::from(relay_url.clone());
+        let unchecked_relay_url = UncheckedUrl::from(relay_url.clone());
 
-        assert_eq!(unchecked_relay_url, UncheckedRelayUrl::from_str(relay)?);
+        assert_eq!(unchecked_relay_url, UncheckedUrl::from_str(relay)?);
 
         assert_eq!(Url::try_from(unchecked_relay_url.clone())?, relay_url);
 
