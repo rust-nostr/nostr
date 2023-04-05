@@ -4,6 +4,7 @@
 use std::ops::Deref;
 use std::str::FromStr;
 
+use nostr::prelude::tag::UncheckedUrl;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::Contact as ContactSdk;
 
@@ -23,6 +24,7 @@ impl Deref for Contact {
 impl Contact {
     pub fn new(pk: String, relay_url: Option<String>, alias: Option<String>) -> Result<Self> {
         let pk = XOnlyPublicKey::from_str(&pk)?;
+        let relay_url = relay_url.map(|u| UncheckedUrl::from_str(&u).unwrap());
         Ok(Self {
             contact: ContactSdk::new(pk, relay_url, alias),
         })
@@ -37,6 +39,6 @@ impl Contact {
     }
 
     pub fn relay_url(&self) -> Option<String> {
-        self.contact.relay_url.clone()
+        self.contact.relay_url.clone().map(|u| u.to_string())
     }
 }

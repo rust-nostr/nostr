@@ -2,8 +2,9 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::str::FromStr;
 
-use nostr::prelude::*;
+use nostr::prelude::{tag::UncheckedUrl, *};
 use wasm_bindgen::prelude::*;
 
 use crate::key::JsPublicKey;
@@ -36,6 +37,7 @@ impl From<&JsContact> for Contact {
 impl JsContact {
     #[wasm_bindgen(constructor)]
     pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
+        let relay_url = relay_url.map(|u| UncheckedUrl::from_str(&u).unwrap());
         Self {
             inner: Contact::new(public_key.into(), relay_url, alias),
         }

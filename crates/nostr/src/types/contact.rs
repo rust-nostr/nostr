@@ -3,6 +3,7 @@
 
 //! Contact
 
+use crate::event::tag::UncheckedUrl;
 use secp256k1::XOnlyPublicKey;
 
 /// Contact
@@ -11,20 +12,20 @@ pub struct Contact {
     /// Public key
     pub pk: XOnlyPublicKey,
     /// Relay url
-    pub relay_url: Option<String>,
+    pub relay_url: Option<UncheckedUrl>,
     /// Alias
     pub alias: Option<String>,
 }
 
 impl Contact {
     /// Create new [`Contact`]
-    pub fn new<S>(pk: XOnlyPublicKey, relay_url: Option<S>, alias: Option<S>) -> Self
+    pub fn new<S>(pk: XOnlyPublicKey, relay_url: Option<UncheckedUrl>, alias: Option<S>) -> Self
     where
         S: Into<String>,
     {
         Self {
             pk,
-            relay_url: relay_url.map(|a| a.into()),
+            relay_url,
             alias: alias.map(|a| a.into()),
         }
     }
