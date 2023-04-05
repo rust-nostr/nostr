@@ -71,10 +71,10 @@ pub enum Error {
     /// Notification Handler error
     #[error("notification handler error: {0}")]
     Handler(String),
-    /// NIP46 client not configured
+    /// Signer not configured
     #[cfg(feature = "nip46")]
-    #[error("NIP46 client not configured")]
-    NIP46ClientNotConfigured,
+    #[error("signer not configured")]
+    SignerNotConfigured,
     /// NIP04 error
     #[cfg(feature = "nip04")]
     #[error(transparent)]
@@ -253,7 +253,7 @@ impl Client {
         let connect = self
             .remote_signer
             .as_ref()
-            .ok_or(Error::NIP46ClientNotConfigured)?;
+            .ok_or(Error::SignerNotConfigured)?;
         Ok(NostrConnectURI::new(
             self.keys.public_key(),
             connect.relay_url(),
@@ -264,9 +264,7 @@ impl Client {
     /// Get remote signer
     #[cfg(feature = "nip46")]
     pub fn remote_signer(&self) -> Result<RemoteSigner, Error> {
-        self.remote_signer
-            .clone()
-            .ok_or(Error::NIP46ClientNotConfigured)
+        self.remote_signer.clone().ok_or(Error::SignerNotConfigured)
     }
 
     /// Get [`Store`]

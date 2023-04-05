@@ -104,7 +104,7 @@ impl Client {
         let signer: &RemoteSigner = self
             .remote_signer
             .as_ref()
-            .ok_or(Error::NIP46ClientNotConfigured)?;
+            .ok_or(Error::SignerNotConfigured)?;
 
         if signer.signer_public_key().await.is_none() {
             let id = SubscriptionId::generate();
@@ -161,7 +161,7 @@ impl Client {
         let signer: &RemoteSigner = self
             .remote_signer
             .as_ref()
-            .ok_or(Error::NIP46ClientNotConfigured)?;
+            .ok_or(Error::SignerNotConfigured)?;
         let signer_pubkey = signer
             .signer_public_key()
             .await
@@ -200,7 +200,7 @@ impl Client {
                         )?;
                         let msg = Message::from_json(msg)?;
 
-                        log::debug!("New message received: {msg:#?}");
+                        log::debug!("New message received: {msg:?}");
 
                         if let Message::Response { id, result, error } = &msg {
                             if &req_id == id {
