@@ -6,11 +6,12 @@
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::StreamExt;
 use url::Url;
+use ws_stream_wasm::{WsErr, WsMessage, WsMeta, WsStream};
 
-type Sink = SplitSink<ws_stream_wasm::WsStream, ws_stream_wasm::WsMessage>;
-type Stream = SplitStream<ws_stream_wasm::WsStream>;
+type Sink = SplitSink<WsStream, WsMessage>;
+type Stream = SplitStream<WsStream>;
 
-pub async fn connect(url: &Url) -> Result<(Sink, Stream), ws_stream_wasm::WsErr> {
-    let (_ws, stream) = ws_stream_wasm::WsMeta::connect(url, None).await?;
+pub async fn connect(url: &Url) -> Result<(Sink, Stream), WsErr> {
+    let (_ws, stream) = WsMeta::connect(url, None).await?;
     Ok(stream.split())
 }
