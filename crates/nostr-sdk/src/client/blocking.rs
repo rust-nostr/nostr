@@ -14,6 +14,8 @@ use nostr::{
 };
 use tokio::sync::broadcast;
 
+#[cfg(feature = "nip46")]
+use super::signer::remote::RemoteSigner;
 use super::{Entity, Error, Options};
 use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
 use crate::RUNTIME;
@@ -49,13 +51,9 @@ impl Client {
 
     /// Create a new NIP46 Client
     #[cfg(feature = "nip46")]
-    pub fn with_remote_signer(
-        app_keys: &Keys,
-        relay_url: Url,
-        signer_public_key: Option<XOnlyPublicKey>,
-    ) -> Self {
+    pub fn with_remote_signer(app_keys: &Keys, remote_signer: RemoteSigner) -> Self {
         Self {
-            client: super::Client::with_remote_signer(app_keys, relay_url, signer_public_key),
+            client: super::Client::with_remote_signer(app_keys, remote_signer),
         }
     }
 
@@ -63,17 +61,11 @@ impl Client {
     #[cfg(feature = "nip46")]
     pub fn with_remote_signer_and_opts(
         app_keys: &Keys,
-        relay_url: Url,
-        signer_public_key: Option<XOnlyPublicKey>,
+        remote_signer: RemoteSigner,
         opts: Options,
     ) -> Self {
         Self {
-            client: super::Client::with_remote_signer_and_opts(
-                app_keys,
-                relay_url,
-                signer_public_key,
-                opts,
-            ),
+            client: super::Client::with_remote_signer_and_opts(app_keys, remote_signer, opts),
         }
     }
 

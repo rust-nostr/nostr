@@ -34,7 +34,7 @@ pub mod signer;
 
 pub use self::options::Options;
 #[cfg(feature = "nip46")]
-use self::signer::remote::RemoteSigner;
+pub use self::signer::remote::RemoteSigner;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool};
 use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
 
@@ -161,32 +161,22 @@ impl Client {
 
     /// Create a new NIP46 Client
     #[cfg(feature = "nip46")]
-    pub fn with_remote_signer(
-        app_keys: &Keys,
-        relay_url: Url,
-        signer_public_key: Option<XOnlyPublicKey>,
-    ) -> Self {
-        Self::with_remote_signer_and_opts(
-            app_keys,
-            relay_url,
-            signer_public_key,
-            Options::default(),
-        )
+    pub fn with_remote_signer(app_keys: &Keys, remote_signer: RemoteSigner) -> Self {
+        Self::with_remote_signer_and_opts(app_keys, remote_signer, Options::default())
     }
 
     /// Create a new NIP46 Client with custom [`Options`]
     #[cfg(feature = "nip46")]
     pub fn with_remote_signer_and_opts(
         app_keys: &Keys,
-        relay_url: Url,
-        signer_public_key: Option<XOnlyPublicKey>,
+        remote_signer: RemoteSigner,
         opts: Options,
     ) -> Self {
         Self {
             pool: RelayPool::new(),
             keys: app_keys.clone(),
             opts,
-            remote_signer: Some(RemoteSigner::new(relay_url, signer_public_key)),
+            remote_signer: Some(remote_signer),
         }
     }
 
@@ -250,13 +240,13 @@ impl Client {
         &self,
         metadata: NostrConnectMetadata,
     ) -> Result<NostrConnectURI, Error> {
-        let connect = self
+        let signer = self
             .remote_signer
             .as_ref()
             .ok_or(Error::SignerNotConfigured)?;
         Ok(NostrConnectURI::new(
             self.keys.public_key(),
-            connect.relay_url(),
+            signer.relay_url(),
             metadata.name,
         ))
     }

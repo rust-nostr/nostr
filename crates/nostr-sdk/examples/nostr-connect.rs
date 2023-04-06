@@ -14,9 +14,10 @@ async fn main() -> Result<()> {
     let secret_key = SecretKey::from_bech32(APP_SECRET_KEY)?;
     let app_keys = Keys::new(secret_key);
     let relay_url = Url::parse("wss://relay.damus.io")?;
+    let signer = RemoteSigner::new(relay_url.clone(), None);
 
-    let client = Client::with_remote_signer(&app_keys, relay_url, None);
-    client.add_relay("wss://relay.damus.io", None).await?;
+    let client = Client::with_remote_signer(&app_keys, signer);
+    client.add_relay(relay_url, None).await?;
 
     let metadata = NostrConnectMetadata::new("Nostr SDK").url(Url::parse("https://example.com")?);
     let nostr_connect_uri: NostrConnectURI = client.nostr_connect_uri(metadata)?;
