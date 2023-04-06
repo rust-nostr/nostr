@@ -209,27 +209,6 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Publish POW text note
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
-    #[napi]
-    pub async fn publish_pow_text_note(
-        &self,
-        content: String,
-        tags: Vec<Vec<String>>,
-        difficulty: u8,
-    ) -> Result<JsEventId> {
-        let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter() {
-            new_tags.push(Tag::try_from(tag).map_err(into_err)?);
-        }
-        self.inner
-            .publish_pow_text_note(content, &new_tags, difficulty)
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
     /// Add recommended relay
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>

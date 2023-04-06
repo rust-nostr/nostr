@@ -36,7 +36,15 @@ async fn main() -> Result<()> {
     let id = client
         .publish_text_note("Testing nostr-sdk nostr-connect client", &[])
         .await?;
-    println!("Published event {id}");
+    println!("Published text note: {id}\n");
+
+    let receiver = XOnlyPublicKey::from_bech32(
+        "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
+    )?;
+    client
+        .send_direct_msg(receiver, "Hello from nostr-sdk")
+        .await?;
+    println!("Sent DM: {id}");
 
     Ok(())
 }

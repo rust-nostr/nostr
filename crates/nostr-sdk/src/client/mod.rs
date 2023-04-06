@@ -717,38 +717,6 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /// Publish POW text note
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client
-    ///     .publish_pow_text_note("My first POW text note from Nostr SDK!", &[], 16)
-    ///     .await
-    ///     .unwrap();
-    /// # }
-    /// ```
-    pub async fn publish_pow_text_note<S>(
-        &self,
-        content: S,
-        tags: &[Tag],
-        difficulty: u8,
-    ) -> Result<EventId, Error>
-    where
-        S: Into<String>,
-    {
-        let event: Event =
-            EventBuilder::new_text_note(content, tags).to_pow_event(&self.keys, difficulty)?;
-        self.send_event(event).await
-    }
-
     /// Add recommended relay
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -784,6 +752,34 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
+    async fn get_contact_list_filters(&self) -> Result<Vec<Filter>, Error> {
+        #[cfg(feature = "nip46")]
+        let filter = {
+            let mut filter = Filter::new().kind(Kind::ContactList).limit(1);
+
+            if let Some(signer) = self.remote_signer.as_ref() {
+                let signer_public_key = signer
+                    .signer_public_key()
+                    .await
+                    .ok_or(Error::SignerPublicKeyNotFound)?;
+
+                filter = filter.author(signer_public_key);
+            } else {
+                filter = filter.author(self.keys.public_key());
+            }
+
+            filter
+        };
+
+        #[cfg(not(feature = "nip46"))]
+        let filter = Filter::new()
+            .author(self.keys.public_key())
+            .kind(Kind::ContactList)
+            .limit(1);
+
+        Ok(vec![filter])
+    }
+
     /// Get contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
@@ -804,12 +800,8 @@ impl Client {
     /// ```
     pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
-
-        let filter = Filter::new()
-            .authors(vec![self.keys.public_key()])
-            .kind(Kind::ContactList)
-            .limit(1);
-        let events: Vec<Event> = self.get_events_of(vec![filter], timeout).await?;
+        let filters: Vec<Filter> = self.get_contact_list_filters().await?;
+        let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
             for tag in event.tags.into_iter() {
@@ -839,12 +831,8 @@ impl Client {
         timeout: Option<Duration>,
     ) -> Result<Vec<XOnlyPublicKey>, Error> {
         let mut pubkeys: Vec<XOnlyPublicKey> = Vec::new();
-
-        let filter = Filter::new()
-            .authors(vec![self.keys.public_key()])
-            .kind(Kind::ContactList)
-            .limit(1);
-        let events: Vec<Event> = self.get_events_of(vec![filter], timeout).await?;
+        let filters: Vec<Filter> = self.get_contact_list_filters().await?;
+        let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
             for tag in event.tags.into_iter() {
@@ -924,7 +912,31 @@ impl Client {
     where
         S: Into<String>,
     {
+        #[cfg(feature = "nip46")]
+        let builder: EventBuilder = if self.remote_signer.is_some() {
+            let req = Request::Nip04Encrypt {
+                public_key: receiver,
+                text: msg.into(),
+            };
+            let res: Response = self
+                .send_req_to_signer(req, self.opts.get_nip46_timeout())
+                .await?;
+            if let Response::Nip04Encrypt(content) = res {
+                EventBuilder::new(
+                    Kind::EncryptedDirectMessage,
+                    content,
+                    &[Tag::PubKey(receiver, None)],
+                )
+            } else {
+                return Err(Error::ResponseNotMatchRequest);
+            }
+        } else {
+            EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg)?
+        };
+
+        #[cfg(not(feature = "nip46"))]
         let builder = EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg)?;
+
         self.send_event_builder(builder).await
     }
 

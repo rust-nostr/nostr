@@ -201,22 +201,6 @@ impl Client {
         RUNTIME.block_on(async { self.client.publish_text_note(content, tags).await })
     }
 
-    pub fn publish_pow_text_note<S>(
-        &self,
-        content: S,
-        tags: &[Tag],
-        difficulty: u8,
-    ) -> Result<EventId, Error>
-    where
-        S: Into<String>,
-    {
-        RUNTIME.block_on(async {
-            self.client
-                .publish_pow_text_note(content, tags, difficulty)
-                .await
-        })
-    }
-
     pub fn add_recommended_relay<S>(&self, url: S) -> Result<EventId, Error>
     where
         S: Into<String>,
