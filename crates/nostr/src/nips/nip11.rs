@@ -11,6 +11,7 @@ use std::net::SocketAddr;
 
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 /// `NIP11` error

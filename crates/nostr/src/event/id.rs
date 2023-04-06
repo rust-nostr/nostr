@@ -9,6 +9,7 @@ use std::str::FromStr;
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::XOnlyPublicKey;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::{Kind, Tag};

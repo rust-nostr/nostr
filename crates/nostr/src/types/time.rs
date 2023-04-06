@@ -15,6 +15,7 @@ use std::{
 
 #[cfg(target_arch = "wasm32")]
 use instant::SystemTime;
+use serde::{Deserialize, Serialize};
 
 #[cfg(target_arch = "wasm32")]
 const UNIX_EPOCH: SystemTime = SystemTime::UNIX_EPOCH;

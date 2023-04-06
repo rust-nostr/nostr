@@ -6,6 +6,7 @@
 #[cfg(feature = "nip19")]
 use bech32::{self, FromBase32, ToBase32, Variant};
 use secp256k1::XOnlyPublicKey;
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "nip19")]
 use crate::nips::nip19::{Error, FromBech32, ToBech32, PREFIX_BECH32_PROFILE, RELAY, SPECIAL};
