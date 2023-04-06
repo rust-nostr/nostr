@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::str::FromStr;
 
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -36,6 +37,13 @@ impl From<&JsContact> for Contact {
 impl JsContact {
     #[wasm_bindgen(constructor)]
     pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
+        let relay_url = match relay_url {
+            Some(relay_url) => match UncheckedUrl::from_str(&relay_url) {
+                Ok(url) => Some(url),
+                Err(_) => None,
+            },
+            None => None,
+        };
         Self {
             inner: Contact::new(public_key.into(), relay_url, alias),
         }

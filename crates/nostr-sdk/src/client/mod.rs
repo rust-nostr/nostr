@@ -825,7 +825,7 @@ impl Client {
             for tag in event.tags.into_iter() {
                 match tag {
                     Tag::PubKey(pk, relay_url) => {
-                        contact_list.push(Contact::new(pk, relay_url, None))
+                        contact_list.push(Contact::new::<String>(pk, relay_url, None))
                     }
                     Tag::ContactList {
                         pk,
