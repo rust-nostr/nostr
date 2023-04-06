@@ -115,6 +115,18 @@ impl From<crate::event::Error> for Error {
     }
 }
 
+impl From<secp256k1::Error> for Error {
+    fn from(error: secp256k1::Error) -> Self {
+        Self::Secp256k1(error)
+    }
+}
+
+impl From<bitcoin_hashes::hex::Error> for Error {
+    fn from(error: bitcoin_hashes::hex::Error) -> Self {
+        Self::Hex(error)
+    }
+}
+
 /// Marker
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Marker {

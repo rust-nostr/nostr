@@ -3,18 +3,18 @@
 
 //! Unsigned Event
 
-use core::fmt;
 #[cfg(feature = "alloc")]
 use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+use core::fmt;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 
-use crate::{Event, EventId, Kind, Tag, Timestamp};
+use crate::{Event, EventId, Keys, Kind, Tag, Timestamp};
 
 /// [`UnsignedEvent`] error
 #[derive(Debug)]
@@ -63,6 +63,12 @@ impl From<secp256k1::Error> for Error {
 impl From<super::Error> for Error {
     fn from(e: super::Error) -> Self {
         Self::Event(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(error: secp256k1::Error) -> Self {
+        Self::Secp256k1(error)
     }
 }
 

@@ -12,7 +12,6 @@ use alloc::{
 
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, XOnlyPublicKey};
-#[cfg(not(feature = "std"))]
 use secp256k1::{Secp256k1, Signing};
 use serde_json::{json, Value};
 use url::Url;
@@ -88,6 +87,12 @@ impl From<super::unsigned::Error> for Error {
 impl From<nip04::Error> for Error {
     fn from(e: nip04::Error) -> Self {
         Self::NIP04(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(error: secp256k1::Error) -> Self {
+        Self::Secp256k1(error)
     }
 }
 
