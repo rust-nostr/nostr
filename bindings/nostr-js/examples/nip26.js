@@ -1,6 +1,8 @@
-const { Keys, signDelegation, verifyDelegationSignature, PublicKey } = require("../");
+const { Keys, signDelegation, verifyDelegationSignature, PublicKey, loadWasmSync } = require("../");
 
 function main() {
+    loadWasmSync();
+    
     // Generate new random keys
     let keys = Keys.generate();
     let delegatee = PublicKey.fromBech32("npub1gae33na4gfaeelrx48arwc2sc8wmccs3tt38emmjg9ltjktfzwtqtl4l6u");

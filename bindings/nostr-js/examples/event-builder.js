@@ -1,6 +1,8 @@
-const { Keys, EventBuilder } = require("../");
+const { Keys, EventBuilder, loadWasmSync } = require("../");
 
 function main() {
+    loadWasmSync();
+    
     // Generate new random keys
     let keys = Keys.generate();
     

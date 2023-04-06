@@ -1,6 +1,8 @@
-const { Keys, SecretKey, PublicKey } = require("../");
+const { Keys, SecretKey, PublicKey, loadWasmSync } = require("../");
 
 function main() {
+    loadWasmSync();
+
     // Generate new random keys
     let keys = Keys.generate();
     console.log("Public key (hex): ", keys.publicKey.toHex());
