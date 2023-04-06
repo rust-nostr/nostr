@@ -71,7 +71,8 @@ impl Client {
     /// async fn main() {
     ///     let keys = Keys::generate();
     ///     let relay_url = Url::parse("wss://relay.example.com").unwrap();
-    ///     let client = Client::with_remote_signer(&keys, relay_url, None);
+    ///     let signer = RemoteSigner::new(relay_url, None);
+    ///     let client = Client::with_remote_signer(&keys, signer);
     ///
     ///     // Signer public key MUST be requested in this case
     ///     client
@@ -95,9 +96,10 @@ impl Client {
     ///         "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
     ///     )
     ///     .unwrap();
+    ///     let signer = RemoteSigner::new(relay_url, Some(signer_public_key));
     ///
     ///     // Signer public key request isn't needed since we already added in client constructor
-    ///     let _client = Client::with_remote_signer(&keys, relay_url, Some(signer_public_key));
+    ///     let _client = Client::with_remote_signer(&keys, signer);
     /// }
     /// ```
     pub async fn req_signer_public_key(&self, timeout: Option<Duration>) -> Result<(), Error> {
