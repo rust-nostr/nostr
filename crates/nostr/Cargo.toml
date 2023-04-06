@@ -23,7 +23,6 @@ std = [
     "url",
     "secp256k1/global-context",
     "secp256k1/rand-std",
-    "secp256k1/serde",
 ]
 alloc = [
     "dep:thiserror-core",
@@ -40,7 +39,6 @@ alloc = [
     "rand_core/getrandom",
     "rand/alloc",
     "rand/getrandom",
-    "rand/serde1",
 ]
 blocking = ["reqwest?/blocking"]
 vanity = ["nip19"]
@@ -86,7 +84,6 @@ rand_core = { version = "0.6", features = [
 rand = { version = "0.8", features = [
     "alloc",
     "getrandom",
-    "serde1",
 ], default-features = false, optional = true }
 
 

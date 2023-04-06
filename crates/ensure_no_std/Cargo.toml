@@ -9,9 +9,17 @@ edition = "2021"
 libc = { version = "0.2.119", default-features = false }
 
 nostr = { path = "../nostr", default-features = false, features = ["alloc"] }
-url_no_std = { package = "url", features = [
-    "idna",
-    "alloc",
-    "core-error",
-    "core-net",
-], path = "../../../rust-url/url", default-features = false }
+
+#secp256k1 = { version = "0.24", default-features = false, features = ["alloc", "serde", "rand"]}
+
+#rand = { version = "0.8", features = [
+#    "alloc",
+#    "getrandom",
+#], default-features = false }
+
+#url_no_std = { package = "url", features = [
+#    "idna",
+#    "alloc",
+#    "core-error",
+#    "core-net",
+#], path = "../../../rust-url/url", default-features = false }

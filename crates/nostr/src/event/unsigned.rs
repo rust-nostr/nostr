@@ -72,6 +72,12 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
+impl From<serde_json::Error> for Error {
+    fn from(error: serde_json::Error) -> Self {
+        Self::Json(error)
+    }
+}
+
 /// [`UnsignedEvent`] struct
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct UnsignedEvent {

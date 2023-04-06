@@ -47,3 +47,9 @@ impl From<crate::event::Error> for MessageHandleError {
         Self::Event(e)
     }
 }
+
+impl From<serde_json::Error> for MessageHandleError {
+    fn from(error: serde_json::Error) -> Self {
+        Self::Json(error)
+    }
+}

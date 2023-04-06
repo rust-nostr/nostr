@@ -90,6 +90,12 @@ impl From<nostr_ots::Error> for Error {
     }
 }
 
+impl From<serde_json::Error> for Error {
+    fn from(error: serde_json::Error) -> Self {
+        Self::Json(error)
+    }
+}
+
 impl From<secp256k1::Error> for Error {
     fn from(error: secp256k1::Error) -> Self {
         Self::Secp256k1(error)

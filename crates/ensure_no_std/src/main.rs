@@ -18,8 +18,9 @@ extern "C" {
     pub fn printf(format: *const u8, ...) -> i32;
 }
 
-// use nostr;
-use url_no_std;
+use nostr;
+// use url_no_std;
+// use rand;
 
 #[no_mangle]
 // The main function, with its input arguments ignored, and an exit status is returned
