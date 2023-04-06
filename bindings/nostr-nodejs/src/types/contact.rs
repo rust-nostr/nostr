@@ -4,7 +4,7 @@
 use std::ops::Deref;
 use std::str::FromStr;
 
-use nostr::prelude::{tag::UncheckedUrl, *};
+use nostr::prelude::*;
 
 use crate::key::JsPublicKey;
 
@@ -37,10 +37,7 @@ impl JsContact {
     #[napi(constructor)]
     pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
         let relay_url = match relay_url {
-            Some(relay_url) => match UncheckedUrl::from_str(&relay_url) {
-                Ok(url) => Some(url),
-                Err(_) => None,
-            },
+            Some(relay_url) => UncheckedUrl::from_str(&relay_url).ok(),
             None => None,
         };
 

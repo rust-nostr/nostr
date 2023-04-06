@@ -4,7 +4,7 @@
 use std::ops::Deref;
 use std::str::FromStr;
 
-use nostr::prelude::tag::UncheckedUrl;
+use nostr::event::tag::UncheckedUrl;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::Contact as ContactSdk;
 
