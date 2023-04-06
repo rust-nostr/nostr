@@ -16,6 +16,11 @@ pub use serde_json::*;
 pub use url::*;
 
 // Internal modules
+pub use crate::event::builder::*;
+pub use crate::event::id::*;
+pub use crate::event::kind::*;
+pub use crate::event::tag::*;
+pub use crate::event::unsigned::*;
 pub use crate::event::*;
 pub use crate::key::*;
 pub use crate::message::*;

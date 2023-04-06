@@ -4,7 +4,7 @@
 use std::ops::Deref;
 use std::str::FromStr;
 
-use nostr::prelude::{tag::UncheckedUrl, *};
+use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::key::JsPublicKey;
