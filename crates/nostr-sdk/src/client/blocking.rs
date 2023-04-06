@@ -47,6 +47,36 @@ impl Client {
         Self::with_opts(keys, opts)
     }
 
+    /// Create a new NIP46 Client
+    #[cfg(feature = "nip46")]
+    pub fn with_remote_signer(
+        app_keys: &Keys,
+        relay_url: Url,
+        signer_public_key: Option<XOnlyPublicKey>,
+    ) -> Self {
+        Self {
+            client: super::Client::with_remote_signer(app_keys, relay_url, signer_public_key),
+        }
+    }
+
+    /// Create a new NIP46 Client with custom [`Options`]
+    #[cfg(feature = "nip46")]
+    pub fn with_remote_signer_and_opts(
+        app_keys: &Keys,
+        relay_url: Url,
+        signer_public_key: Option<XOnlyPublicKey>,
+        opts: Options,
+    ) -> Self {
+        Self {
+            client: super::Client::with_remote_signer_and_opts(
+                app_keys,
+                relay_url,
+                signer_public_key,
+                opts,
+            ),
+        }
+    }
+
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.client.keys()
