@@ -3,8 +3,9 @@
 
 //! Contact
 
-use crate::event::tag::UncheckedUrl;
 use secp256k1::XOnlyPublicKey;
+
+use crate::event::tag::UncheckedUrl;
 
 /// Contact
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Deserialize, Serialize)]

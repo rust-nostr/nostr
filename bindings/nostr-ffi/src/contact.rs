@@ -24,7 +24,10 @@ impl Deref for Contact {
 impl Contact {
     pub fn new(pk: String, relay_url: Option<String>, alias: Option<String>) -> Result<Self> {
         let pk = XOnlyPublicKey::from_str(&pk)?;
-        let relay_url = relay_url.map(|u| UncheckedUrl::from_str(&u).unwrap());
+        let relay_url = match relay_url {
+            Some(relay_url) => Some(UncheckedUrl::from_str(&relay_url)?),
+            None => None,
+        };
         Ok(Self {
             contact: ContactSdk::new(pk, relay_url, alias),
         })
