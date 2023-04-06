@@ -15,12 +15,17 @@ npm i @rust-nostr/nostr
 ```
     
 ```javascript
-const { Keys } = require("@rust-nostr/nostr");
+const { Keys, loadWasmAsync } = require("@rust-nostr/nostr");
 
 async function main() {
-     let keys = Keys.generate();
+    // Load WASM 
+    // if you are in a non async context, use loadWasmSync()
+    await loadWasmAsync();
 
-     // Hex keys
+    // Generate random keys
+    let keys = Keys.generate();
+
+    // Hex keys
     console.log("Public key (hex): ", keys.publicKey().toHex());
     console.log("Secret key (hex): ", keys.secretKey().toHex());
 

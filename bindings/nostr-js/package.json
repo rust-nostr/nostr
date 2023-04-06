@@ -1,6 +1,6 @@
 {
   "name": "@rust-nostr/nostr",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Nostr protocol implementation, for JavaScript",
   "keywords": [
     "nostr",
