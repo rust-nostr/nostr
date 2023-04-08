@@ -105,11 +105,9 @@ impl Request {
         match self {
             Self::Describe => "describe".to_string(),
             Self::GetPublicKey => "get_public_key".to_string(),
-
             Self::SignEvent(_) => "sign_event".to_string(),
             Self::Connect(_) => "connect".to_string(),
             Self::Disconnect => "disconnect".to_string(),
-
             Self::Delegate { .. } => "delegate".to_string(),
             Self::Nip04Encrypt { .. } => "nip04_encrypt".to_string(),
             Self::Nip04Decrypt { .. } => "nip04_decrypt".to_string(),
@@ -122,11 +120,9 @@ impl Request {
         match self {
             Self::Describe => Vec::new(),
             Self::GetPublicKey => Vec::new(),
-
             Self::SignEvent(event) => vec![json!(event)],
             Self::Connect(pubkey) => vec![json!(pubkey)],
             Self::Disconnect => Vec::new(),
-
             Self::Delegate {
                 public_key,
                 conditions,
@@ -152,7 +148,6 @@ impl Request {
                 String::from("sign_schnorr"),
             ])),
             Self::GetPublicKey => Some(Response::GetPublicKey(keys.public_key())),
-
             Self::SignEvent(unsigned_event) => {
                 let signed_event = unsigned_event.sign(keys)?;
                 Some(Response::SignEvent(signed_event.sig))
