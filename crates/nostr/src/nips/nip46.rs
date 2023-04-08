@@ -19,7 +19,7 @@ use url::form_urlencoded::byte_serialize;
 use url::Url;
 
 use super::nip04;
-use super::nip26::{Conditions, DelegationToken};
+use super::nip26::{self, sign_delegation, Conditions};
 use crate::key::{self, Keys};
 use crate::UnsignedEvent;
 
@@ -41,6 +41,9 @@ pub enum Error {
     /// NIP04 error
     #[error(transparent)]
     NIP04(#[from] nip04::Error),
+    /// NIP26 error
+    #[error(transparent)]
+    NIP26(#[from] nip26::Error),
     /// Unsigned event error
     #[error(transparent)]
     UnsignedEvent(#[from] crate::event::unsigned::Error),
@@ -163,8 +166,15 @@ impl Request {
                 public_key,
                 conditions,
             } => {
-                let token = DelegationToken::new(public_key, conditions);
-                Some(Response::Delegate(token))
+                let sig = sign_delegation(keys, public_key, conditions.clone())?;
+                let delegation_result = DelegationResult {
+                    from: keys.public_key(),
+                    to: public_key,
+                    cond: conditions,
+                    sig,
+                };
+
+                Some(Response::Delegate(delegation_result))
             }
             Self::Nip04Encrypt { public_key, text } => {
                 let encrypted_content = nip04::encrypt(&keys.secret_key()?, &public_key, text)?;
@@ -185,6 +195,19 @@ impl Request {
     }
 }
 
+/// Delegation Response Result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DelegationResult {
+    /// Pubkey of Delegator
+    pub from: XOnlyPublicKey,
+    /// Pubkey of Delegatee
+    pub to: XOnlyPublicKey,
+    /// Conditions of delegation
+    pub cond: Conditions,
+    /// Signature of Delegation Token
+    pub sig: Signature,
+}
+
 /// Response
 #[derive(Debug, Clone)]
 pub enum Response {
@@ -195,7 +218,7 @@ pub enum Response {
     /// Sign event
     SignEvent(Signature),
     /// Delegation
-    Delegate(DelegationToken),
+    Delegate(DelegationResult),
     /// Encrypted content (NIP04)
     Nip04Encrypt(String),
     /// Decrypted content (NIP04)
@@ -246,7 +269,7 @@ impl Message {
                 Response::Describe(v) => json!(v),
                 Response::GetPublicKey(pubkey) => json!(pubkey),
                 Response::SignEvent(sig) => json!(sig),
-                Response::Delegate(token) => json!(token),
+                Response::Delegate(delegation_result) => json!(delegation_result),
                 Response::Nip04Encrypt(encrypted_content) => json!(encrypted_content),
                 Response::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
                 Response::SignSchnorr(sig) => json!(sig),
