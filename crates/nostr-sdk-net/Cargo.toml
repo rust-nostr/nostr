@@ -17,7 +17,7 @@ url = "2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 thiserror = "1.0"
-tokio = { version = "1.26", default-features = false, features = ["net", "time"] }
+tokio = { version = "1", default-features = false, features = ["net", "time"] }
 tokio-rustls = "0.23"
 tokio-socks = "0.5"
 tokio-tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"] }
