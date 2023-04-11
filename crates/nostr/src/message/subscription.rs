@@ -7,17 +7,16 @@
 #![allow(missing_docs)]
 use core::fmt;
 
-#[cfg(feature = "alloc")]
-use alloc::{
-    fmt,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::fmt;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::{String, ToString};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{vec, vec::Vec};
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use rand_core::{OsRng, RngCore};
 #[cfg(feature = "std")]
 use secp256k1::rand::{rngs::OsRng, RngCore};

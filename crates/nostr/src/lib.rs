@@ -38,7 +38,7 @@ pub use serde_json;
 
 #[cfg(feature = "std")]
 pub use url;
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate url_no_std as url;
 
 pub use url::Url;
@@ -59,5 +59,5 @@ pub use self::types::{ChannelId, Contact, Entity, Metadata, Profile, Timestamp, 
 #[cfg(feature = "std")]
 pub type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;
 /// Result
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 pub type Result<T, E = Box<dyn core::error::Error>> = core::result::Result<T, E>;

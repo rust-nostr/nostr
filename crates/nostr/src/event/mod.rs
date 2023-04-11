@@ -7,14 +7,18 @@
 use core::fmt;
 use core::str::FromStr;
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{string::{String, ToString};
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
 
+
 use secp256k1::schnorr::Signature;
-use secp256k1::{Message, XOnlyPublicKey};
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use secp256k1::Message;
+
+use secp256k1::XOnlyPublicKey;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use secp256k1::{Secp256k1, Verification};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

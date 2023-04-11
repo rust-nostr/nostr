@@ -6,9 +6,9 @@
 use core::fmt;
 use core::str::FromStr;
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::{String, ToString};
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
 
 #[cfg(feature = "nip19")]

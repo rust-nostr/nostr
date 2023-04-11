@@ -13,9 +13,9 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::fmt;
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::num;
 
 #[cfg(target_arch = "wasm32")]
@@ -82,12 +82,20 @@ use std::time::Instant;
 #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
 impl TimeSupplier for Instant {
     type Now = Instant;
+    type StartingPoint = std::time::SystemTime;
 
     fn now(&self) -> Self::Now {
         Instant::now()
     }
 
+    fn starting_point(&self) -> Self::StartingPoint {
+        std::time::UNIX_EPOCH
+    }
+
     fn elapsed_since(&self, now: Self::Now, since: Self::Now) -> Duration {
+        now - since
+    }
+    fn elapsed_duration(&self, now: Self::Now, since: Self::StartingPoint) -> Duration {
         now - since
     }
 

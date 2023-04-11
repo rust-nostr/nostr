@@ -10,7 +10,7 @@ use core::fmt;
 #[cfg(feature = "nip19")]
 use core::str::FromStr;
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use rand_core::OsRng;
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
@@ -20,7 +20,7 @@ use secp256k1::Secp256k1;
 #[cfg(feature = "alloc")]
 use secp256k1::Signing;
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use rand::Rng;
 #[cfg(feature = "std")]
 use secp256k1::rand::Rng;

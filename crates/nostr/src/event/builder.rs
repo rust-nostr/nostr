@@ -160,8 +160,13 @@ impl EventBuilder {
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
         #[cfg(target_arch = "wasm32")]
         use instant::Instant;
-        #[cfg(target_arch = "wasm32")]
-        self.to_pow_event_with_time_supplier_with_secp(self, keys, difficulty, Instant, SECP256K1);
+        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+        use std::time::Instant;
+
+        let now = Instant::now();
+
+        use secp256k1::SECP256K1;
+        self.to_pow_event_with_time_supplier_with_secp::<Instant, _>(keys, difficulty, &now, SECP256K1)
     }
 
     /// Build POW [`Event`] using the given time supplier
@@ -191,9 +196,9 @@ impl EventBuilder {
         #[cfg(target_arch = "wasm32")]
         use instant::Instant;
         #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
-        use std::{cmp, time::Instant};
+        use std::cmp;
 
-        #[cfg(feature = "alloc")]
+        #[cfg(all(feature = "alloc", not(feature = "std")))]
         use core::cmp;
 
     /// Build unsigned POW [`Event`]
@@ -228,7 +233,13 @@ impl EventBuilder {
                 );
 
                 let message = Message::from_slice(id.as_bytes())?;
+
+                #[cfg(all(feature = "alloc", not(feature = "std")))]
                 let sig = keys.sign_schnorr_with_secp(&message, &secp)?;
+
+                #[cfg(all(feature = "std", not(feature = "alloc")))]
+                let sig = keys.sign_schnorr(&message)?;
+
 
                 return self.to_event_internal(keys, created_at, id, sig);
             }

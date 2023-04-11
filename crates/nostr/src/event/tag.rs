@@ -2,16 +2,17 @@
 // Distributed under the MIT software license
 
 //! Tag
-
-#[cfg(feature = "alloc")]
-use alloc::format;
-#[cfg(feature = "alloc")]
-use alloc::string::{String, ToString};
-#[cfg(feature = "alloc")]
-use alloc::{vec, vec::Vec};
 use core::fmt;
+
 use core::num::ParseIntError;
 use core::str::FromStr;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::format;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::{String, ToString};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{vec, vec::Vec};
 
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
