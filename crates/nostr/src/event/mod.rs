@@ -14,11 +14,9 @@ use alloc::vec::Vec;
 
 
 use secp256k1::schnorr::Signature;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
 use secp256k1::Message;
 
 use secp256k1::XOnlyPublicKey;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
 use secp256k1::{Secp256k1, Verification};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -144,7 +142,7 @@ impl Event {
     }
 
     /// Verify Event
-    #[cfg(not(feature = "std"))]
+    //#[cfg(not(feature = "std"))]
     pub fn verify_with_context<C: Verification>(&self, secp: &Secp256k1<C>) -> Result<(), Error> {
         let id = EventId::new(
             &self.pubkey,

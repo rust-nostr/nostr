@@ -30,18 +30,25 @@ pub trait TimeSupplier {
     /// The current time from the specified `TimeSupplier`
     type Now: Clone;
     /// The starting point for the specified `TimeSupplier`
-    type StartingPoint;
+    type StartingPoint: Clone;
 
     /// Get the current time as the associated `Now` type
-    fn now(&self) -> Self::Now;
+    fn instant_now(&self) -> Self::Now;
+    /// Get the current time as the associated `StartingPoint` type
+    fn now(&self) -> Self::StartingPoint;
+    /// Get a duration since the StartingPoint.
+    fn duration_since_starting_point(&self, now: Self::StartingPoint) -> Duration;
     /// Get the starting point from the specified `TimeSupplier`
     fn starting_point(&self) -> Self::StartingPoint;
     /// Get the elapsed time as `Duration` starting from `since` to `now`
-    fn elapsed_since(&self, now: Self::Now, since: Self::Now) -> Duration;
+    fn elapsed_instant_since(&self, now: Self::Now, since: Self::Now) -> Duration;
     /// Get the elapsed time as `Duration` starting from `since` to `now`
-    /// This is the specialised case for handling the `StartingPoint` in case its type is different
-    /// than the `Now` type.
-    fn elapsed_duration(&self, now: Self::Now, since: Self::StartingPoint) -> Duration;
+    fn elapsed_since(&self, now: Self::StartingPoint, since: Self::StartingPoint) -> Duration;
+
+    //  /// Get the elapsed time as `Duration` starting from `since` to `now`
+    //  /// This is the specialised case for handling the `StartingPoint` in case its type is different
+    //  /// than the `Now` type.
+    //  fn elapsed_duration(&self, now: Self::Now, since: Self::StartingPoint) -> Duration;
 
     /// Convert the specified `Duration` to `i64`
     fn as_i64(&self, duration: Duration) -> i64;
@@ -56,7 +63,7 @@ impl TimeSupplier for InstantWasm32 {
     type Now = InstantWasm32;
     type StartingPoint = std::time::SystemTime;
 
-    fn now(&self) -> Self::Now {
+    fn instant_now(&self) -> Self::Now {
         InstantWasm32::now()
     }
 
@@ -84,27 +91,41 @@ impl TimeSupplier for Instant {
     type Now = Instant;
     type StartingPoint = std::time::SystemTime;
 
-    fn now(&self) -> Self::Now {
+    fn now(&self) -> Self::StartingPoint {
+        SystemTime::now()
+    }
+
+    fn instant_now(&self) -> Self::Now {
         Instant::now()
+    }
+
+    fn duration_since_starting_point(&self, now: Self::StartingPoint) -> Duration {
+        now.duration_since(self.starting_point()).expect("duration_since panicked")
     }
 
     fn starting_point(&self) -> Self::StartingPoint {
         std::time::UNIX_EPOCH
     }
 
-    fn elapsed_since(&self, now: Self::Now, since: Self::Now) -> Duration {
-        now - since
-    }
-    fn elapsed_duration(&self, now: Self::Now, since: Self::StartingPoint) -> Duration {
+    fn elapsed_instant_since(&self, now: Self::Now, since: Self::Now) -> Duration {
         now - since
     }
 
+    fn elapsed_since(&self, now: Self::StartingPoint, since: Self::StartingPoint) -> Duration {
+        now.duration_since(since).expect("duration_since panicked")
+    }
+
+//     fn elapsed_duration(&self, now: Self::Now, since: Self::StartingPoint) -> Duration {
+//         let dur = since.duration_since(self.starting_point).expect("Clock may have gone backwards");
+//         now - since
+//     }
+// 
     fn as_i64(&self, duration: Duration) -> i64 {
         duration.as_millis() as i64
     }
 
     fn to_timestamp(&self, duration: Duration) -> Timestamp {
-        Timestamp(duration.as_i64())
+        Timestamp(self.as_i64(duration))
     }
 }
 
