@@ -152,7 +152,7 @@ impl Timestamp {
     {
         let now = time_supplier.now();
         let starting_point = time_supplier.starting_point();
-        let duration = time_supplier.elapsed_duration(now, starting_point);
+        let duration = time_supplier.elapsed_since(now, starting_point);
 
         time_supplier.to_timestamp(duration)
     }
