@@ -65,11 +65,8 @@ serde_json = { version = "1.0", optional = true, default-features = false }
 
 url = { version = "2", features = ["serde"], optional = true }
 url_no_std = { package = "url", features = [
-    "idna",
     "alloc",
-    "core-error",
-    "core-net",
-], path = "../../../rust-url/url", optional = true, default-features = false }
+], git = "https://github.com/domenukk/rust-url", branch = "no_std", optional = true, default-features = false }
 
 rand_core = { version = "0.6", features = [
     "alloc",

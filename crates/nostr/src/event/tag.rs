@@ -128,6 +128,12 @@ impl From<bitcoin_hashes::hex::Error> for Error {
     }
 }
 
+impl From<url::ParseError> for Error {
+    fn from(error: url::ParseError) -> Self {
+        Self::Url(error)
+    }
+}
+
 /// Marker
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Marker {
