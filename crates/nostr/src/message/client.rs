@@ -22,6 +22,13 @@ pub enum ClientMessage {
         subscription_id: SubscriptionId,
         filters: Vec<Filter>,
     },
+    /// Count
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/45.md>
+    Count {
+        subscription_id: SubscriptionId,
+        filters: Vec<Filter>,
+    },
     /// Close
     Close(SubscriptionId),
     /// Auth
@@ -62,6 +69,14 @@ impl ClientMessage {
         }
     }
 
+    /// Create new `COUNT` message
+    pub fn new_count(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
+        Self::Count {
+            subscription_id,
+            filters,
+        }
+    }
+
     /// Create new `CLOSE` message
     pub fn close(subscription_id: SubscriptionId) -> Self {
         Self::Close(subscription_id)
@@ -81,6 +96,21 @@ impl ClientMessage {
                 filters,
             } => {
                 let mut json = json!(["REQ", subscription_id]);
+                let mut filters = json!(filters);
+
+                if let Some(json) = json.as_array_mut() {
+                    if let Some(filters) = filters.as_array_mut() {
+                        json.append(filters);
+                    }
+                }
+
+                json
+            }
+            Self::Count {
+                subscription_id,
+                filters,
+            } => {
+                let mut json = json!(["COUNT", subscription_id]);
                 let mut filters = json!(filters);
 
                 if let Some(json) = json.as_array_mut() {
@@ -133,6 +163,20 @@ impl ClientMessage {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))?;
                 return Ok(Self::new_req(subscription_id, filters));
+            } else {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+        }
+
+        // ["COUNT", <subscription_id>, <filter JSON>, <filter JSON>...]
+        if v[0] == "COUNT" {
+            if v_len == 2 {
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                return Ok(Self::new_count(subscription_id, Vec::new()));
+            } else if v_len >= 3 {
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))?;
+                return Ok(Self::new_count(subscription_id, filters));
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }

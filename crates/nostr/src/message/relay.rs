@@ -31,6 +31,10 @@ pub enum RelayMessage {
     Auth {
         challenge: String,
     },
+    Count {
+        subscription_id: SubscriptionId,
+        count: usize,
+    },
     Empty,
 }
 
@@ -100,6 +104,14 @@ impl RelayMessage {
         }
     }
 
+    /// Create new `EVENT` message
+    pub fn new_count(subscription_id: SubscriptionId, count: usize) -> Self {
+        Self::Count {
+            subscription_id,
+            count,
+        }
+    }
+
     fn as_value(&self) -> Value {
         match self {
             Self::Event {
@@ -116,6 +128,10 @@ impl RelayMessage {
                 message,
             } => json!(["OK", event_id, status, message]),
             Self::Auth { challenge } => json!(["AUTH", challenge]),
+            Self::Count {
+                subscription_id,
+                count,
+            } => json!(["COUNT", subscription_id, { "count": count }]),
             Self::Empty => Value::Null,
         }
     }
@@ -197,6 +213,25 @@ impl RelayMessage {
 
             let challenge: String = serde_json::from_value(v[1].clone())?;
             return Ok(Self::Auth { challenge });
+        }
+
+        // Relay response format: ["EVENT", <subscription id>, <event JSON>]
+        if v[0] == "COUNT" {
+            if v_len != 3 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+            let map = v[2]
+                .as_object()
+                .ok_or(MessageHandleError::InvalidMessageFormat)?;
+            let count: Value = map
+                .get("count")
+                .ok_or(MessageHandleError::InvalidMessageFormat)?
+                .clone();
+            let count: usize = serde_json::from_value(count)?;
+
+            return Ok(Self::new_count(subscription_id, count));
         }
 
         Err(MessageHandleError::InvalidMessageFormat)
