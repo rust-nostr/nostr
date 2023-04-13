@@ -763,9 +763,9 @@ impl Client {
                     .await
                     .ok_or(Error::SignerPublicKeyNotFound)?;
 
-                filter = filter.author(signer_public_key);
+                filter = filter.author(signer_public_key.to_string());
             } else {
-                filter = filter.author(self.keys.public_key());
+                filter = filter.author(self.keys.public_key().to_string());
             }
 
             filter
@@ -773,7 +773,7 @@ impl Client {
 
         #[cfg(not(feature = "nip46"))]
         let filter = Filter::new()
-            .author(self.keys.public_key())
+            .author(self.keys.public_key().to_string())
             .kind(Kind::ContactList)
             .limit(1);
 
@@ -863,7 +863,7 @@ impl Client {
             for public_key in chunk.iter() {
                 filters.push(
                     Filter::new()
-                        .author(*public_key)
+                        .author(public_key.to_string())
                         .kind(Kind::Metadata)
                         .limit(1),
                 );
@@ -1166,7 +1166,10 @@ impl Client {
         if events.is_empty() {
             let pubkey = XOnlyPublicKey::from_str(&entity)?;
             let events: Vec<Event> = self
-                .get_events_of(vec![Filter::new().author(pubkey).limit(1)], timeout)
+                .get_events_of(
+                    vec![Filter::new().author(pubkey.to_string()).limit(1)],
+                    timeout,
+                )
                 .await?;
             if events.is_empty() {
                 Ok(Entity::Unknown)

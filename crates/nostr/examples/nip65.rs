@@ -17,7 +17,7 @@ fn main() -> Result<()> {
     let subscribe_msg = ClientMessage::new_req(
         SubscriptionId::generate(),
         vec![Filter::new()
-            .authors(vec![public_key])
+            .author(public_key.to_string())
             .kind(Kind::RelayList)],
     );
 

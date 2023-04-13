@@ -96,13 +96,8 @@ impl Filter {
     }
 
     pub fn authors(self: Arc<Self>, authors: Vec<String>) -> Result<Arc<Self>> {
-        let mut new_authors: Vec<XOnlyPublicKey> = Vec::with_capacity(authors.len());
-        for a in authors.into_iter() {
-            new_authors.push(XOnlyPublicKey::from_str(&a)?);
-        }
-
         let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.authors(new_authors);
+        builder.sub_filter = builder.sub_filter.authors(authors);
 
         Ok(Arc::new(builder))
     }

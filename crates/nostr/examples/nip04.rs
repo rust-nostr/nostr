@@ -36,14 +36,14 @@ fn main() -> Result<()> {
     let subscribe_to_alice = ClientMessage::new_req(
         SubscriptionId::new("abcdefg"),
         vec![Filter::new()
-            .authors(vec![alice_keys.public_key()])
+            .author(alice_keys.public_key().to_string())
             .pubkey(bob_keys.public_key())],
     );
 
     let subscribe_to_bob = ClientMessage::new_req(
         SubscriptionId::new("123456"),
         vec![Filter::new()
-            .authors(vec![bob_keys.public_key()])
+            .author(bob_keys.public_key().to_string())
             .pubkey(alice_keys.public_key())],
     );
 

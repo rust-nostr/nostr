@@ -90,19 +90,16 @@ impl JsFilter {
 
     /// Set author
     #[wasm_bindgen]
-    pub fn author(&self, author: &JsPublicKey) -> Self {
+    pub fn author(&self, author: String) -> Self {
         Self {
-            inner: self.inner.to_owned().author(author.into()),
+            inner: self.inner.to_owned().author(author),
         }
     }
 
     /// Set authors
     #[wasm_bindgen]
-    pub fn authors(&self, authors: Array) -> Result<JsFilter> {
-        let authors = authors
-            .iter()
-            .map(|v| Ok(util::downcast::<JsPublicKey>(&v, "PublicKey")?.inner))
-            .collect::<Result<Vec<XOnlyPublicKey>, JsError>>()?;
+    pub fn authors(&self, authors: Vec<JsString>) -> Result<JsFilter> {
+        let authors: Vec<String> = authors.iter().filter_map(|a| a.as_string()).collect();
         Ok(Self {
             inner: self.inner.to_owned().authors(authors),
         })

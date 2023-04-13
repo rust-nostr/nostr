@@ -4,8 +4,6 @@
 
 //! Subscription filters
 
-#![allow(missing_docs)]
-
 use std::fmt;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
@@ -20,10 +18,12 @@ use serde_json::{json, Map, Value};
 
 use crate::{EventId, Kind, Timestamp};
 
+/// Subscription ID
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct SubscriptionId(String);
 
 impl SubscriptionId {
+    /// Create new [`SubscriptionId`]
     pub fn new<S>(id: S) -> Self
     where
         S: Into<String>,
@@ -40,16 +40,20 @@ impl SubscriptionId {
     }
 }
 
-impl ToString for SubscriptionId {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl fmt::Display for SubscriptionId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.clone())
     }
 }
 
+/// Subscription filters
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Filter {
+    /// List of event ids or prefixes
     pub ids: Option<Vec<String>>,
-    pub authors: Option<Vec<XOnlyPublicKey>>,
+    /// List of pubkeys or prefixes
+    pub authors: Option<Vec<String>>,
+    /// List of a kind numbers
     pub kinds: Option<Vec<Kind>>,
     /// #e tag
     pub events: Option<Vec<EventId>>,
@@ -59,10 +63,17 @@ pub struct Filter {
     pub hashtags: Option<Vec<String>>,
     /// #r tag
     pub references: Option<Vec<String>>,
+    /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
     pub search: Option<String>,
+    /// An integer unix timestamp, events must be newer than this to pass
     pub since: Option<Timestamp>,
+    /// An integer unix timestamp, events must be older than this to pass
     pub until: Option<Timestamp>,
+    /// Maximum number of events to be returned in the initial query
     pub limit: Option<usize>,
+    /// Custom fields
     pub custom: Map<String, Value>,
 }
 
@@ -73,6 +84,7 @@ impl Default for Filter {
 }
 
 impl Filter {
+    /// Create new empty [`Filter`]
     pub fn new() -> Self {
         Self {
             ids: None,
@@ -104,7 +116,10 @@ impl Filter {
     }
 
     /// Set event id or prefix
-    pub fn id(self, id: impl Into<String>) -> Self {
+    pub fn id<S>(self, id: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             ids: Some(vec![id.into()]),
             ..self
@@ -112,25 +127,34 @@ impl Filter {
     }
 
     /// Set event ids or prefixes
-    pub fn ids(self, ids: impl Into<Vec<String>>) -> Self {
+    pub fn ids<S>(self, ids: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
-            ids: Some(ids.into()),
+            ids: Some(ids.into_iter().map(|id| id.into()).collect()),
             ..self
         }
     }
 
     /// Set author
-    pub fn author(self, author: XOnlyPublicKey) -> Self {
+    pub fn author<S>(self, author: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
-            authors: Some(vec![author]),
+            authors: Some(vec![author.into()]),
             ..self
         }
     }
 
     /// Set authors
-    pub fn authors(self, authors: Vec<XOnlyPublicKey>) -> Self {
+    pub fn authors<S>(self, authors: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
-            authors: Some(authors),
+            authors: Some(authors.into_iter().map(|a| a.into()).collect()),
             ..self
         }
     }
@@ -349,8 +373,7 @@ impl<'de> Visitor<'de> for FilterVisitor {
         }
 
         if let Some(value) = map.remove("authors") {
-            let authors: Vec<XOnlyPublicKey> =
-                serde_json::from_value(value).map_err(de::Error::custom)?;
+            let authors: Vec<String> = serde_json::from_value(value).map_err(de::Error::custom)?;
             f.authors = Some(authors);
         }
 

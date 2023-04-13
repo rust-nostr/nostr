@@ -73,16 +73,15 @@ impl JsFilter {
 
     /// Set author
     #[napi]
-    pub fn author(&self, author: &JsPublicKey) -> Self {
+    pub fn author(&self, author: String) -> Self {
         Self {
-            inner: self.inner.to_owned().author(author.into()),
+            inner: self.inner.to_owned().author(author),
         }
     }
 
     /// Set authors
     #[napi]
-    pub fn authors(&self, authors: Vec<&JsPublicKey>) -> Self {
-        let authors = authors.into_iter().map(|a| a.into()).collect();
+    pub fn authors(&self, authors: Vec<String>) -> Self {
         Self {
             inner: self.inner.to_owned().authors(authors),
         }
