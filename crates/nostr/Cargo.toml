@@ -43,14 +43,15 @@ nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip05 = ["dep:reqwest"]
 nip06 = ["dep:bip39", "dep:bitcoin"]
 nip11 = ["dep:reqwest"]
-nip19 = ["dep:bech32"]
+nip19 = ["bech32/alloc"]
+nip19-std = ["bech32/std"]
 nip21 = ["nip19"]
 nip46 = ["nip04"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
 base64 = { version = "0.21", optional = true }
-bech32 = { version = "0.9", optional = true }
+bech32 = { git = "https://github.com/rust-bitcoin/rust-bech32", rev = "360af7e0647fa94bce892fa69f31c0ef02452b63", optional = true, default-features = false }
 bip39 = { version = "2.0", optional = true }
 bitcoin = { version = "0.30", optional = true }
 bitcoin_hashes = { version = "0.12", features = ["serde"] }
@@ -71,14 +72,12 @@ url_no_std = { package = "url", features = [
 rand_core = { version = "0.6", features = [
     "alloc",
     "getrandom",
-], optional = true, default-features = false}
+], optional = true, default-features = false }
 
 rand = { version = "0.8", features = [
     "alloc",
     "getrandom",
 ], default-features = false, optional = true }
-
-
 
 
 #[target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -76,8 +76,15 @@ impl From<secp256k1::Error> for Error {
 pub trait FromSkStr: Sized {
     /// Error
     type Err;
+    #[cfg(all(feature = "std", not(feature = "alloc")))]
     /// Init [`Keys`] from `hex` or `bech32` secret key string
     fn from_sk_str(secret_key: &str) -> Result<Self, Self::Err>;
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    /// Init [`Keys`] from `hex` or `bech32` secret key string
+    fn from_sk_str<C: secp256k1::Signing>(
+        secret_key: &str,
+        secp: &Secp256k1<C>,
+    ) -> Result<Self, Self::Err>;
 }
 
 /// Trait for [`Keys`]
@@ -270,7 +277,7 @@ impl Keys {
     }
 }
 
-#[cfg(feature = "nip19")]
+#[cfg(all(feature = "std", feature = "nip19", not(feature = "alloc")))]
 impl FromSkStr for Keys {
     type Err = Error;
 
@@ -285,7 +292,24 @@ impl FromSkStr for Keys {
         }
     }
 }
+#[cfg(all(feature = "alloc", feature = "nip19", not(feature = "std")))]
+impl FromSkStr for Keys {
+    type Err = Error;
 
+    /// Init [`Keys`] from `hex` or `bech32` secret key
+    fn from_sk_str<C: secp256k1::Signing>(
+        secret_key: &str,
+        secp: &Secp256k1<C>,
+    ) -> Result<Self, Self::Err> {
+        match SecretKey::from_str(secret_key) {
+            Ok(secret_key) => Ok(Self::new_with_secp(secret_key, &secp)),
+            Err(_) => match SecretKey::from_bech32(secret_key) {
+                Ok(secret_key) => Ok(Self::new_with_secp(secret_key, &secp)),
+                Err(_) => Err(Error::InvalidSecretKey),
+            },
+        }
+    }
+}
 #[cfg(feature = "nip19")]
 impl FromPkStr for Keys {
     type Err = Error;

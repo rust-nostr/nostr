@@ -159,6 +159,9 @@ impl FromBech32 for ChannelId {
     }
 }
 
+#[cfg(all(feature = "nip19", feature = "alloc", not(feature = "std")))]
+use alloc::vec;
+
 #[cfg(feature = "nip19")]
 impl ToBech32 for ChannelId {
     type Err = Bech32Error;
