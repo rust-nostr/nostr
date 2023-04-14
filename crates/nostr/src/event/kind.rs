@@ -29,6 +29,8 @@ pub enum Kind {
     Repost,
     /// Reaction (NIP25)
     Reaction,
+    /// Badge Award (NIP58)
+    BadgeAward,
     /// Channel Creation (NIP28)
     ChannelCreation,
     /// Channel Metadata (NIP28)
@@ -55,14 +57,30 @@ pub enum Kind {
     ZapRequest,
     /// Zap (NIP57)
     Zap,
+    /// Mute List (NIP51)
+    MuteList,
+    /// Pin List (NIP51)
+    PinList,
+    /// Relay List Metadata (NIP65)
+    RelayList,
     /// Client Authentication (NIP42)
     Authentication,
     /// Nostr Connect (NIP46)
     NostrConnect,
+    /// Categorized People List (NIP51)
+    CategorizedPeopleList,
+    /// Categorized Bookmark List (NIP51)
+    CategorizedBookmarkList,
+    /// Profile Badges (NIP58)
+    ProfileBadges,
+    /// Badge Definition (NIP58)
+    BadgeDefinition,
     /// Long-form Text Note (NIP23)
     LongFormTextNote,
-    /// Relay List Metadata (NIP65)
-    RelayList,
+    /// Application-specific Data (NIP78)
+    ApplicationSpecificData,
+    /// Regular Events (must be between 1000 and <=9999)
+    Regular(u16),
     /// Replacabe event (must be between 10000 and <20000)
     Replaceable(u16),
     /// Ephemeral event (must be between 20000 and <30000)
@@ -96,6 +114,7 @@ impl From<u64> for Kind {
             5 => Self::EventDeletion,
             6 => Self::Repost,
             7 => Self::Reaction,
+            8 => Self::BadgeAward,
             40 => Self::ChannelCreation,
             41 => Self::ChannelMetadata,
             42 => Self::ChannelMessage,
@@ -109,10 +128,18 @@ impl From<u64> for Kind {
             1984 => Self::Reporting,
             9734 => Self::ZapRequest,
             9735 => Self::Zap,
+            10000 => Self::MuteList,
+            10001 => Self::PinList,
             10002 => Self::RelayList,
             22242 => Self::Authentication,
             24133 => Self::NostrConnect,
+            30000 => Self::CategorizedPeopleList,
+            30001 => Self::CategorizedBookmarkList,
+            30008 => Self::ProfileBadges,
+            30009 => Self::BadgeDefinition,
             30023 => Self::LongFormTextNote,
+            30078 => Self::ApplicationSpecificData,
+            x if (1_000..10_000).contains(&x) => Self::Regular(x as u16),
             x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
             x if (20_000..30_000).contains(&x) => Self::Ephemeral(x as u16),
             x if (30_000..40_000).contains(&x) => Self::ParameterizedReplaceable(x as u16),
@@ -132,6 +159,7 @@ impl From<Kind> for u64 {
             Kind::EventDeletion => 5,
             Kind::Repost => 6,
             Kind::Reaction => 7,
+            Kind::BadgeAward => 8,
             Kind::ChannelCreation => 40,
             Kind::ChannelMetadata => 41,
             Kind::ChannelMessage => 42,
@@ -145,10 +173,18 @@ impl From<Kind> for u64 {
             Kind::Reporting => 1984,
             Kind::ZapRequest => 9734,
             Kind::Zap => 9735,
+            Kind::MuteList => 10000,
+            Kind::PinList => 10001,
             Kind::RelayList => 10002,
             Kind::Authentication => 22242,
             Kind::NostrConnect => 24133,
+            Kind::CategorizedPeopleList => 30000,
+            Kind::CategorizedBookmarkList => 30001,
+            Kind::ProfileBadges => 30008,
+            Kind::BadgeDefinition => 30009,
             Kind::LongFormTextNote => 30023,
+            Kind::ApplicationSpecificData => 30078,
+            Kind::Regular(u) => u as u64,
             Kind::Replaceable(u) => u as u64,
             Kind::Ephemeral(u) => u as u64,
             Kind::ParameterizedReplaceable(u) => u as u64,
