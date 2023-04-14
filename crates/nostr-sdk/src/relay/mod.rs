@@ -6,13 +6,13 @@
 use std::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
-use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Url};
+use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -144,6 +144,59 @@ impl RelayOptions {
     }
 }
 
+/// [`Relay`] connection stats
+#[derive(Debug, Clone)]
+pub struct RelayConnectionStats {
+    attempts: Arc<AtomicUsize>,
+    success: Arc<AtomicUsize>,
+    connected_at: Arc<AtomicU64>,
+}
+
+impl Default for RelayConnectionStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl RelayConnectionStats {
+    /// New connections stats
+    pub fn new() -> Self {
+        Self {
+            attempts: Arc::new(AtomicUsize::new(0)),
+            success: Arc::new(AtomicUsize::new(0)),
+            connected_at: Arc::new(AtomicU64::new(0)),
+        }
+    }
+
+    /// The number of times a connection has been attempted
+    pub fn attempts(&self) -> usize {
+        self.attempts.load(Ordering::SeqCst)
+    }
+
+    /// The number of times a connection has been successfully established
+    pub fn success(&self) -> usize {
+        self.success.load(Ordering::SeqCst)
+    }
+
+    /// Get the UNIX timestamp of the last started connection
+    pub fn connected_at(&self) -> Timestamp {
+        Timestamp::from(self.connected_at.load(Ordering::SeqCst))
+    }
+
+    pub(crate) fn new_attempt(&self) {
+        self.attempts.fetch_add(1, Ordering::SeqCst);
+    }
+
+    pub(crate) fn new_success(&self) {
+        self.success.fetch_add(1, Ordering::SeqCst);
+        let _ = self
+            .connected_at
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
+                Some(Timestamp::now().as_u64())
+            });
+    }
+}
+
 /// Relay instance's actual subscription with its unique id
 #[derive(Debug, Clone)]
 pub struct ActiveSubscription {
@@ -179,7 +232,8 @@ pub struct Relay {
     #[cfg(feature = "nip11")]
     document: Arc<Mutex<RelayInformationDocument>>,
     opts: RelayOptions,
-    scheduled_for_termination: Arc<Mutex<bool>>,
+    stats: RelayConnectionStats,
+    scheduled_for_termination: Arc<AtomicBool>,
     pool_sender: Sender<RelayPoolMessage>,
     relay_sender: Sender<Message>,
     relay_receiver: Arc<Mutex<Receiver<Message>>>,
@@ -212,7 +266,8 @@ impl Relay {
             #[cfg(feature = "nip11")]
             document: Arc::new(Mutex::new(RelayInformationDocument::new())),
             opts,
-            scheduled_for_termination: Arc::new(Mutex::new(false)),
+            stats: RelayConnectionStats::new(),
+            scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
@@ -237,7 +292,8 @@ impl Relay {
             #[cfg(feature = "nip11")]
             document: Arc::new(Mutex::new(RelayInformationDocument::new())),
             opts,
-            scheduled_for_termination: Arc::new(Mutex::new(false)),
+            stats: RelayConnectionStats::new(),
+            scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
@@ -310,14 +366,19 @@ impl Relay {
         self.opts.clone()
     }
 
-    async fn is_scheduled_for_termination(&self) -> bool {
-        let value = self.scheduled_for_termination.lock().await;
-        *value
+    /// Get [`RelayConnectionStats`]
+    pub fn stats(&self) -> RelayConnectionStats {
+        self.stats.clone()
     }
 
-    async fn schedule_for_termination(&self, value: bool) {
-        let mut s = self.scheduled_for_termination.lock().await;
-        *s = value;
+    fn is_scheduled_for_termination(&self) -> bool {
+        self.scheduled_for_termination.load(Ordering::SeqCst)
+    }
+
+    fn schedule_for_termination(&self, value: bool) {
+        let _ =
+            self.scheduled_for_termination
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
     }
 
     /// Connect to relay and keep alive connection
@@ -341,9 +402,9 @@ impl Relay {
 
                     // Schedule relay for termination
                     // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
-                    if relay.is_scheduled_for_termination().await {
+                    if relay.is_scheduled_for_termination() {
                         relay.set_status(RelayStatus::Terminated).await;
-                        relay.schedule_for_termination(false).await;
+                        relay.schedule_for_termination(false);
                         log::debug!("Auto connect loop terminated for {}", relay.url);
                         break;
                     }
@@ -365,6 +426,8 @@ impl Relay {
     }
 
     async fn try_connect(&self) {
+        self.stats.new_attempt();
+
         let url: String = self.url.to_string();
 
         // Set RelayStatus to `Connecting`
@@ -402,6 +465,8 @@ impl Relay {
             Ok((mut ws_tx, mut ws_rx)) => {
                 self.set_status(RelayStatus::Connected).await;
                 log::info!("Connected to {}", url);
+
+                self.stats.new_success();
 
                 let relay = self.clone();
                 thread::spawn(async move {
@@ -448,7 +513,7 @@ impl Relay {
                                 // Close stream
                                 let _ = ws_tx.close().await;
                                 relay.set_status(RelayStatus::Terminated).await;
-                                relay.schedule_for_termination(false).await;
+                                relay.schedule_for_termination(false);
                                 log::info!("Completely disconnected from {}", url);
                                 break;
                             }
@@ -558,7 +623,7 @@ impl Relay {
 
     /// Disconnect from relay and set status to 'Terminated'
     pub async fn terminate(&self) -> Result<(), Error> {
-        self.schedule_for_termination(true).await;
+        self.schedule_for_termination(true);
         let status = self.status().await;
         if status.ne(&RelayStatus::Disconnected) && status.ne(&RelayStatus::Terminated) {
             self.send_relay_event(RelayEvent::Terminate, None).await?;
