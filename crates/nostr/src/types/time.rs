@@ -44,12 +44,6 @@ pub trait TimeSupplier {
     fn elapsed_instant_since(&self, now: Self::Now, since: Self::Now) -> Duration;
     /// Get the elapsed time as `Duration` starting from `since` to `now`
     fn elapsed_since(&self, now: Self::StartingPoint, since: Self::StartingPoint) -> Duration;
-
-    //  /// Get the elapsed time as `Duration` starting from `since` to `now`
-    //  /// This is the specialised case for handling the `StartingPoint` in case its type is different
-    //  /// than the `Now` type.
-    //  fn elapsed_duration(&self, now: Self::Now, since: Self::StartingPoint) -> Duration;
-
     /// Convert the specified `Duration` to `i64`
     fn as_i64(&self, duration: Duration) -> i64;
     /// Convert the specified `Duration` to `Timestamp`
@@ -100,7 +94,8 @@ impl TimeSupplier for Instant {
     }
 
     fn duration_since_starting_point(&self, now: Self::StartingPoint) -> Duration {
-        now.duration_since(self.starting_point()).expect("duration_since panicked")
+        now.duration_since(self.starting_point())
+            .expect("duration_since panicked")
     }
 
     fn starting_point(&self) -> Self::StartingPoint {
@@ -115,11 +110,6 @@ impl TimeSupplier for Instant {
         now.duration_since(since).expect("duration_since panicked")
     }
 
-//     fn elapsed_duration(&self, now: Self::Now, since: Self::StartingPoint) -> Duration {
-//         let dur = since.duration_since(self.starting_point).expect("Clock may have gone backwards");
-//         now - since
-//     }
-// 
     fn as_i64(&self, duration: Duration) -> i64 {
         duration.as_millis() as i64
     }
