@@ -186,6 +186,8 @@ pub enum TagKind {
     Relays,
     /// Amount (NIP57)
     Amount,
+    /// Lnurl (NIP57)
+    Lnurl,
     /// Custom tag kind
     Custom(String),
 }
@@ -216,6 +218,7 @@ impl fmt::Display for TagKind {
             Self::Preimage => write!(f, "preimage"),
             Self::Relays => write!(f, "relays"),
             Self::Amount => write!(f, "amount"),
+            Self::Lnurl => write!(f, "lnurl"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -251,6 +254,7 @@ where
             "preimage" => Self::Preimage,
             "relays" => Self::Relays,
             "amount" => Self::Amount,
+            "lnurl" => Self::Lnurl,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -337,6 +341,7 @@ pub enum Tag {
     Preimage(String),
     Relays(Vec<UncheckedUrl>),
     Amount(u64),
+    Lnurl(String),
     PublishedAt(Timestamp),
 }
 
@@ -385,6 +390,7 @@ impl Tag {
             Tag::Preimage(..) => TagKind::Preimage,
             Tag::Relays(..) => TagKind::Relays,
             Tag::Amount(..) => TagKind::Amount,
+            Tag::Lnurl(..) => TagKind::Lnurl,
         }
     }
 }
@@ -442,6 +448,7 @@ where
                 TagKind::Bolt11 => Ok(Self::Bolt11(content.to_string())),
                 TagKind::Preimage => Ok(Self::Preimage(content.to_string())),
                 TagKind::Amount => Ok(Self::Amount(content.parse()?)),
+                TagKind::Lnurl => Ok(Self::Lnurl(content.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -626,6 +633,9 @@ impl From<Tag> for Vec<String> {
                 .collect::<Vec<_>>(),
             Tag::Amount(amount) => {
                 vec![TagKind::Amount.to_string(), amount.to_string()]
+            }
+            Tag::Lnurl(lnurl) => {
+                vec![TagKind::Lnurl.to_string(), lnurl]
             }
         }
     }
@@ -919,6 +929,11 @@ mod tests {
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             )?, conditions: Conditions::from_str("kind=1")?, sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8")? }
             .as_vec()
+        );
+
+        assert_eq!(
+            vec!["lnurl", "https://lnurltest.com/lnurl/payreq/1337"],
+            Tag::Lnurl(String::from("https://lnurltest.com/lnurl/payreq/1337")).as_vec(),
         );
 
         Ok(())
