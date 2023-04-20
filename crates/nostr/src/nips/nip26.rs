@@ -146,7 +146,7 @@ pub fn sign_delegation_with_signer<C: Signing>(
 ) -> Result<Signature, Error> {
     let unhashed_token = DelegationToken::new(delegatee_pk, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
-    let message = Message::from_slice(&hashed_token)?;
+    let message = Message::from_slice(hashed_token.as_byte_array())?;
     Ok(delegator_keys.sign_schnorr_with_secp(&message, secp)?)
 }
 
@@ -176,7 +176,7 @@ pub fn verify_delegation_signature<C: Verification>(
 ) -> Result<(), Error> {
     let unhashed_token = DelegationToken::new(delegatee_public_key, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
-    let message = Message::from_slice(&hashed_token)?;
+    let message = Message::from_slice(hashed_token.as_byte_array())?;
     secp.verify_schnorr(&signature, &message, &delegator_public_key)?;
     Ok(())
 }

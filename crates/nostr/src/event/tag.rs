@@ -3,7 +3,6 @@
 
 //! Tag
 use core::fmt;
-
 use core::num::ParseIntError;
 use core::str::FromStr;
 

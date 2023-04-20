@@ -7,6 +7,7 @@ use core::fmt;
 #[cfg(feature = "alloc")]
 use alloc::{
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
 
@@ -127,6 +128,12 @@ impl EventBuilder {
     #[cfg(feature = "std")]
     pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
         let pubkey: XOnlyPublicKey = keys.public_key();
+        Ok(self.to_unsigned_event(pubkey).sign(keys)?)
+    }
+
+    /// Build [`UnsignedEvent`]
+    #[cfg(feature = "std")]
+    pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
         let created_at: Timestamp = Timestamp::now();
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
         let message = Message::from_slice(id.as_bytes())?;
@@ -145,19 +152,42 @@ impl EventBuilder {
     ) -> Result<Event, Error> {
         let pubkey: XOnlyPublicKey = keys.public_key();
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
-        UnsignedEvent {
+        let message = Message::from_slice(id.as_bytes())?;
+        let signature = keys.sign_schnorr_with_secp(&message, secp)?;
+
+        Self::to_event_internal(self, keys, created_at, id, signature)
+    }
+
+    fn to_event_internal(
+        self,
+        keys: &Keys,
+        created_at: Timestamp,
+        id: EventId,
+        sig: Signature,
+    ) -> Result<Event, Error> {
+        let pubkey: XOnlyPublicKey = keys.public_key();
+
+        Ok(Event {
             id,
             pubkey,
             created_at,
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-        }
+            sig,
+        })
     }
 
     /// Build POW [`Event`]
     #[cfg(feature = "std")]
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
+        let pubkey: XOnlyPublicKey = keys.public_key();
+        Ok(self.to_unsigned_pow_event(pubkey, difficulty).sign(keys)?)
+    }
+
+    /// Build unsigned POW [`Event`]
+    #[cfg(feature = "std")]
+    pub fn to_unsigned_pow_event(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
         #[cfg(target_arch = "wasm32")]
         use instant::Instant;
         #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
@@ -166,7 +196,9 @@ impl EventBuilder {
         let now = Instant::now();
 
         use secp256k1::SECP256K1;
-        self.to_pow_event_with_time_supplier_with_secp::<Instant, _>(keys, difficulty, &now, SECP256K1)
+        self.to_pow_event_with_time_supplier_with_secp::<Instant, _>(
+            keys, difficulty, &now, SECP256K1,
+        )
     }
 
     /// Build POW [`Event`] using the given time supplier
@@ -201,8 +233,6 @@ impl EventBuilder {
         #[cfg(all(feature = "alloc", not(feature = "std")))]
         use core::cmp;
 
-    /// Build unsigned POW [`Event`]
-    pub fn to_unsigned_pow_event(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
         let mut nonce: u128 = 0;
         let mut tags: Vec<Tag> = self.tags.clone();
 
@@ -238,7 +268,6 @@ impl EventBuilder {
 
                 #[cfg(all(feature = "std", not(feature = "alloc")))]
                 let sig = keys.sign_schnorr(&message)?;
-
 
                 return self.to_event_internal(keys, created_at, id, sig);
             }
@@ -290,6 +319,7 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
+    /// use nostr::url::Url;
     /// use nostr::{EventBuilder, Metadata};
     ///
     /// let metadata = Metadata::new()

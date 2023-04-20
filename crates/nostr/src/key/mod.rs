@@ -228,6 +228,7 @@ impl Keys {
     }
 
     /// Get [`PublicKey`]
+    #[cfg(feature = "std")]
     pub fn normalized_public_key(&self) -> Result<PublicKey, Error> {
         Ok(self.secret_key()?.public_key(SECP256K1))
     }
