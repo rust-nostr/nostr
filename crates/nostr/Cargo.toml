@@ -80,9 +80,9 @@ rand = { version = "0.8", features = [
 ], default-features = false, optional = true }
 
 
-#[target.'cfg(target_arch = "wasm32")'.dependencies]
-#getrandom = { version = "0.2", features = ["js"] }
-#instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
 
 [dev-dependencies]
 csv = "1.1.5"
