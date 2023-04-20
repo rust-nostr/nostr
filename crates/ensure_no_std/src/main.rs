@@ -63,6 +63,7 @@ static ALLOCATOR: SimpleAllocator = SimpleAllocator {
 };
 unsafe impl Sync for SimpleAllocator {}
 
+// From https://doc.rust-lang.org/core/alloc/trait.GlobalAlloc.html
 unsafe impl GlobalAlloc for SimpleAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let size = layout.size();
