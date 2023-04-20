@@ -19,8 +19,6 @@ extern "C" {
 }
 
 use nostr;
-// use url_no_std;
-// use rand;
 
 #[no_mangle]
 // The main function, with its input arguments ignored, and an exit status is returned
