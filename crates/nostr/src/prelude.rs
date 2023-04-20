@@ -9,8 +9,7 @@ pub use ::url::*;
 pub use bech32;
 #[cfg(feature = "nip06")]
 pub use bip39::*;
-pub use secp256k1::*;
-//pub use serde_json::*;
+pub use secp256k1;
 
 // Internal modules
 pub use crate::event::builder::*;
