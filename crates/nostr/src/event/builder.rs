@@ -402,14 +402,13 @@ impl EventBuilder {
     /// Create zap event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    pub fn new_zap<S>(bolt11: S, amount: u64, preimage: S, zap_request: Event) -> Self
+    pub fn new_zap<S>(bolt11: S, preimage: S, zap_request: Event) -> Self
     where
         S: Into<String>,
     {
         let mut tags = vec![
             Tag::Preimage(preimage.into()),
             Tag::Bolt11(bolt11.into()),
-            Tag::Amount(amount),
             Tag::Description(zap_request.as_json()),
         ];
 
