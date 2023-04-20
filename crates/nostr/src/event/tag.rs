@@ -932,8 +932,8 @@ mod tests {
         );
 
         assert_eq!(
-            vec!["lnurl", "https://lnurltest.com/lnurl/payreq/1337"],
-            Tag::Lnurl(String::from("https://lnurltest.com/lnurl/payreq/1337")).as_vec(),
+            vec!["lnurl", "lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"],
+            Tag::Lnurl(String::from("lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp")).as_vec(),
         );
 
         Ok(())

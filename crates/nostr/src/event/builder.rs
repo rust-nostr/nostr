@@ -399,6 +399,35 @@ impl EventBuilder {
         Self::new(Kind::Reporting, content, tags)
     }
 
+    /// Create zap request event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    pub fn new_zap_request<S>(
+        pubkey: XOnlyPublicKey,
+        event_id: Option<EventId>,
+        amount: Option<u64>,
+        lnurl: Option<S>,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
+        let mut tags = vec![Tag::PubKey(pubkey, None)];
+
+        if let Some(event_id) = event_id {
+            tags.push(Tag::Event(event_id, None, None));
+        }
+
+        if let Some(amount) = amount {
+            tags.push(Tag::Amount(amount));
+        }
+
+        if let Some(lnurl) = lnurl {
+            tags.push(Tag::Lnurl(lnurl.into()));
+        }
+
+        Self::new(Kind::ZapRequest, "", &tags)
+    }
+
     /// Create zap event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
