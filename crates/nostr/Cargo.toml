@@ -54,7 +54,7 @@ base64 = { version = "0.21", optional = true }
 bech32 = { git = "https://github.com/rust-bitcoin/rust-bech32", rev = "360af7e0647fa94bce892fa69f31c0ef02452b63", optional = true, default-features = false }
 bip39 = { version = "2.0", optional = true }
 bitcoin = { version = "0.30", optional = true }
-bitcoin_hashes = { version = "0.12", features = ["serde"] }
+bitcoin_hashes = { version = "0.12", default-features = false, features = ["serde"] }
 cbc = { version = "0.1", features = ["alloc"], optional = true }
 log = "0.4" # no_std compatible by-default
 nostr-ots = { version = "0.2", optional = true }
