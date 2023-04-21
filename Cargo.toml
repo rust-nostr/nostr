@@ -9,7 +9,7 @@ members = [
     "crates/nostr-sdk-net",
     "crates/ensure_no_std",
 ]
-default-members = ["crates/*"]
+default-members = ["crates/nostr*"]
 resolver = "2"
 
 [workspace.package]

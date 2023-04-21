@@ -3,6 +3,12 @@
 
 use std::time::Duration;
 
+use nostr_sdk::client::RemoteSigner;
+use nostr_sdk::key::SecretKey;
+use nostr_sdk::key::XOnlyPublicKey;
+use nostr_sdk::nips::nip46::NostrConnectMetadata;
+use nostr_sdk::nips::nip46::NostrConnectURI;
+use nostr_sdk::prelude::nip19::FromBech32;
 use nostr_sdk::prelude::*;
 
 const APP_SECRET_KEY: &str = "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";

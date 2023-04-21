@@ -131,17 +131,6 @@ impl EventBuilder {
         Ok(self.to_unsigned_event(pubkey).sign(keys)?)
     }
 
-    /// Build [`UnsignedEvent`]
-    #[cfg(feature = "std")]
-    pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
-        let created_at: Timestamp = Timestamp::now();
-        let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
-        let message = Message::from_slice(id.as_bytes())?;
-        let signature = keys.sign_schnorr(&message)?;
-
-        Self::to_event_internal(self, keys, created_at, id, signature)
-    }
-
     /// Build [`Event`] with a `timestamp`
     #[cfg(not(feature = "std"))]
     pub fn to_event_with_timestamp_with_secp<C: Signing>(
@@ -196,8 +185,8 @@ impl EventBuilder {
         let now = Instant::now();
 
         use secp256k1::SECP256K1;
-        self.to_pow_event_with_time_supplier_with_secp::<Instant, _>(
-            keys, difficulty, &now, SECP256K1,
+        self.to_unsigned_pow_event_with_time_supplier_with_secp::<Instant, _>(
+            pubkey, difficulty, &now, SECP256K1,
         )
     }
 
@@ -266,10 +255,74 @@ impl EventBuilder {
                 #[cfg(all(feature = "alloc", not(feature = "std")))]
                 let sig = keys.sign_schnorr_with_secp(&message, &_secp)?;
 
-                #[cfg(all(feature = "std", not(feature = "alloc")))]
+                #[cfg(feature = "std")]
                 let sig = keys.sign_schnorr(&message)?;
 
                 return self.to_event_internal(keys, created_at, id, sig);
+            }
+
+            tags.pop();
+        }
+    }
+    /// Build POW [`Event`] using the given time supplier
+    pub fn to_unsigned_pow_event_with_time_supplier_with_secp<T, C: Signing>(
+        self,
+        pubkey: XOnlyPublicKey,
+        difficulty: u8,
+        time_supplier: &impl TimeSupplier,
+        secp: &Secp256k1<C>,
+    ) -> UnsignedEvent
+    where
+        T: TimeSupplier,
+    {
+        self.to_pow_unsigned_event_internal(pubkey, difficulty, time_supplier, secp)
+    }
+
+    fn to_pow_unsigned_event_internal<T, C: Signing>(
+        self,
+        pubkey: XOnlyPublicKey,
+        difficulty: u8,
+        time_supplier: &T,
+        _secp: &Secp256k1<C>,
+    ) -> UnsignedEvent
+    where
+        T: TimeSupplier,
+    {
+        #[cfg(target_arch = "wasm32")]
+        use instant::Instant;
+        #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
+        use std::cmp;
+
+        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        use core::cmp;
+
+        let mut nonce: u128 = 0;
+        let mut tags: Vec<Tag> = self.tags.clone();
+
+        let now = time_supplier.now();
+
+        loop {
+            nonce += 1;
+
+            tags.push(Tag::POW { nonce, difficulty });
+
+            let new_now = time_supplier.now();
+            let created_at = time_supplier.duration_since_starting_point(now.clone());
+            let created_at = time_supplier.to_timestamp(created_at);
+            let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
+
+            if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
+                log::debug!(
+                    "{} iterations in {} ms. Avg rate {} hashes/second",
+                    nonce,
+                    time_supplier
+                        .elapsed_since(now.clone(), new_now.clone())
+                        .as_millis(),
+                    nonce * 1000
+                        / cmp::max(1, time_supplier.elapsed_since(now, new_now).as_millis())
+                );
+
+                return self.to_unsigned_event(pubkey);
             }
 
             tags.pop();

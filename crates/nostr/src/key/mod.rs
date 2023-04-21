@@ -15,9 +15,9 @@ use rand_core::OsRng;
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use secp256k1::Secp256k1;
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use secp256k1::Signing;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]

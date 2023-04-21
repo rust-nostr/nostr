@@ -32,17 +32,17 @@ pub use crate::SECP256K1;
 
 // NIPs
 #[cfg(feature = "nip04")]
-pub use crate::nips::nip04::*;
+pub use crate::nips::nip04;
 #[cfg(feature = "nip05")]
-pub use crate::nips::nip05::*;
+pub use crate::nips::nip05;
 #[cfg(feature = "nip06")]
-pub use crate::nips::nip06::*;
+pub use crate::nips::nip06;
 #[cfg(feature = "nip11")]
-pub use crate::nips::nip11::*;
-pub use crate::nips::nip13::*;
+pub use crate::nips::nip11;
+pub use crate::nips::nip13;
 #[cfg(feature = "nip19")]
 pub use crate::nips::nip19::*;
 pub use crate::nips::nip26::*;
 #[cfg(feature = "nip46")]
-pub use crate::nips::nip46::*;
-pub use crate::nips::nip65::*;
+pub use crate::nips::nip46;
+pub use crate::nips::nip65;

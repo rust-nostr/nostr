@@ -545,7 +545,7 @@ mod test {
     use std::str::FromStr;
 
     use super::*;
-    use crate::prelude::SecretKey;
+    use crate::key::SecretKey;
 
     #[test]
     fn test_serialize_conditions() {

@@ -24,6 +24,12 @@ tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"]}
 
 ```rust,no_run
 use nostr::prelude::*;
+use nostr::Keys;
+use nostr::Event;
+use nostr::Metadata;
+use nostr::EventBuilder;
+use nostr::ClientMessage;
+use crate::nostr::nips::nip19::ToBech32;
 use tungstenite::{Message as WsMessage};
 
 fn main() -> Result<()> {

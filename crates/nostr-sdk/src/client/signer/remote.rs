@@ -66,6 +66,7 @@ impl Client {
     /// use std::time::Duration;
     ///
     /// use nostr_sdk::prelude::*;
+    /// use nostr_sdk::client::RemoteSigner;
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -87,6 +88,8 @@ impl Client {
     /// use std::str::FromStr;
     ///
     /// use nostr_sdk::prelude::*;
+    /// use nostr_sdk::key::XOnlyPublicKey;
+    /// use nostr_sdk::client::RemoteSigner;
     ///
     /// #[tokio::main]
     /// async fn main() {
