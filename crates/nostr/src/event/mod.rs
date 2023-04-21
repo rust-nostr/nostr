@@ -12,12 +12,7 @@ use alloc::{string::{String, ToString};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
 
-
-use secp256k1::schnorr::Signature;
-use secp256k1::Message;
-
-use secp256k1::XOnlyPublicKey;
-use secp256k1::{Secp256k1, Verification};
+use secp256k1::{schnorr::Signature, Message, Secp256k1, Verification, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
