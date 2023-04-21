@@ -106,6 +106,18 @@ impl Event {
         serde_json::json!(self).to_string()
     }
 
+    /// Returns `true` if the event has an expiration tag that is expired.
+    /// If an event has no `Expiration` tag, then it will return `false`.
+    pub fn is_expired(&self) -> bool {
+        let now = Timestamp::now();
+        for tag in self.tags.iter() {
+            if let Tag::Expiration(timestamp) = tag {
+                return timestamp < &now;
+            }
+        }
+        false
+    }
+
     /// Timestamp this event with OpenTimestamps, according to NIP-03
     #[cfg(feature = "nip03")]
     pub fn timestamp(&mut self) -> Result<(), Error> {
