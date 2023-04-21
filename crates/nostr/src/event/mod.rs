@@ -166,7 +166,7 @@ impl Event {
 mod tests {
     use super::*;
 
-    use crate::Keys;
+    use crate::{Keys, Result};
 
     #[test]
     fn test_tags_deser_without_recommended_relay() {
@@ -189,5 +189,44 @@ mod tests {
         assert_eq!(e, deserialized);
         assert_eq!(Kind::Custom(123), e.kind);
         assert_eq!(Kind::Custom(123), deserialized.kind);
+    }
+    #[test]
+    fn test_event_expired() -> Result<()> {
+        let my_keys = Keys::generate();
+        let event = EventBuilder::new_text_note(
+            "my content",
+            &[Tag::Expiration(Timestamp::from(1600000000))],
+        )
+        .to_event(&my_keys)?;
+
+        assert!(&event.is_expired());
+        Ok(())
+    }
+
+    #[test]
+    fn test_event_not_expired() -> Result<()> {
+        let now = Timestamp::now().as_i64();
+
+        // To make sure it is never considered expired
+        let expiry_date: u64 = (now * 2).try_into().unwrap();
+
+        let my_keys = Keys::generate();
+        let event = EventBuilder::new_text_note(
+            "my content",
+            &[Tag::Expiration(Timestamp::from(expiry_date))],
+        )
+        .to_event(&my_keys)?;
+
+        assert!(!&event.is_expired());
+        Ok(())
+    }
+
+    #[test]
+    fn test_event_without_expiration_tag() -> Result<()> {
+        let my_keys = Keys::generate();
+        let event = EventBuilder::new_text_note("my content", &[]).to_event(&my_keys)?;
+
+        assert!(!&event.is_expired());
+        Ok(())
     }
 }
