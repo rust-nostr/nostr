@@ -144,8 +144,9 @@ impl JsClient {
         }
     }
 
-    /// Request events of filters
+    /// Request events of filters.
     /// All events will be received on notification listener
+    /// until the EOSE "end of stored events" message is received from the relay.
     #[napi]
     pub async fn req_events_of(&self, filters: Vec<&JsFilter>, timeout: Option<u32>) {
         let filters = filters.into_iter().map(|f| f.into()).collect();

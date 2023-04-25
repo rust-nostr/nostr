@@ -130,8 +130,9 @@ impl JsClient {
         }
     }
 
-    /// Request events of filters
+    /// Request events of filters.
     /// All events will be received on notification listener
+    /// until the EOSE "end of stored events" message is received from the relay.
     #[wasm_bindgen(js_name = reqEventsOf)]
     pub async fn req_events_of(&self, filters: Array, timeout: Option<u64>) -> Result<()> {
         let filters = filters
