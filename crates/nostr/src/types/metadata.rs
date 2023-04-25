@@ -21,7 +21,7 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// Display name
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", alias = "displayName")]
     pub display_name: Option<String>,
     /// Description
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -186,6 +186,16 @@ mod tests {
                 .name("myname")
                 .about("Description")
                 .display_name("")
+        );
+
+        let content = r#"{"name":"myname","about":"Description","displayName":"Jack"}"#;
+        let metadata = Metadata::from_json(content).unwrap();
+        assert_eq!(
+            metadata,
+            Metadata::new()
+                .name("myname")
+                .about("Description")
+                .display_name("Jack")
         );
     }
 }
