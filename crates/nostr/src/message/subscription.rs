@@ -63,6 +63,8 @@ pub struct Filter {
     pub hashtags: Option<Vec<String>>,
     /// #r tag
     pub references: Option<Vec<String>>,
+    /// #d tag
+    pub identifiers: Option<Vec<String>>,
     /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
@@ -94,6 +96,7 @@ impl Filter {
             pubkeys: None,
             hashtags: None,
             references: None,
+            identifiers: None,
             search: None,
             since: None,
             until: None,
@@ -210,7 +213,10 @@ impl Filter {
     /// Set hashtag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    pub fn hashtag(self, hashtag: impl Into<String>) -> Self {
+    pub fn hashtag<S>(self, hashtag: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             hashtags: Some(vec![hashtag.into()]),
             ..self
@@ -220,9 +226,12 @@ impl Filter {
     /// Set hashtags
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    pub fn hashtags(self, hashtags: impl Into<Vec<String>>) -> Self {
+    pub fn hashtags<S>(self, hashtags: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
-            hashtags: Some(hashtags.into()),
+            hashtags: Some(hashtags.into_iter().map(|a| a.into()).collect()),
             ..self
         }
     }
@@ -230,7 +239,10 @@ impl Filter {
     /// Set reference
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    pub fn reference(self, v: impl Into<String>) -> Self {
+    pub fn reference<S>(self, v: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             references: Some(vec![v.into()]),
             ..self
@@ -240,9 +252,38 @@ impl Filter {
     /// Set references
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    pub fn references(self, v: impl Into<Vec<String>>) -> Self {
+    pub fn references<S>(self, v: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
-            references: Some(v.into()),
+            references: Some(v.into_iter().map(|a| a.into()).collect()),
+            ..self
+        }
+    }
+
+    /// Set identifier
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/33.md>
+    pub fn identifier<S>(self, identifier: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            identifiers: Some(vec![identifier.into()]),
+            ..self
+        }
+    }
+
+    /// Set identifiers
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/33.md>
+    pub fn identifiers<S>(self, identifiers: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            identifiers: Some(identifiers.into_iter().map(|a| a.into()).collect()),
             ..self
         }
     }
@@ -318,6 +359,9 @@ impl Serialize for Filter {
         }
         if let Some(value) = &self.references {
             map.serialize_entry("#r", &json!(value))?;
+        }
+        if let Some(value) = &self.identifiers {
+            map.serialize_entry("#d", &json!(value))?;
         }
         if let Some(value) = &self.search {
             map.serialize_entry("search", &json!(value))?;
@@ -404,6 +448,12 @@ impl<'de> Visitor<'de> for FilterVisitor {
             f.references = Some(references);
         }
 
+        if let Some(value) = map.remove("#d") {
+            let identifiers: Vec<String> =
+                serde_json::from_value(value).map_err(de::Error::custom)?;
+            f.identifiers = Some(identifiers);
+        }
+
         if let Some(Value::String(search)) = map.remove("search") {
             f.search = Some(search);
         }
@@ -436,18 +486,27 @@ mod test {
     #[test]
     fn test_filter_serialization() {
         let mut custom = Map::new();
-        custom.insert("#a".to_string(), Value::String("...".to_string()));
-        let filter = Filter::new().search("test").custom(custom);
-        let json = r##"{"#a":"...","search":"test"}"##;
+        custom.insert(
+            "#a".to_string(),
+            Value::Array(vec![Value::String("...".to_string())]),
+        );
+        let filter = Filter::new()
+            .identifier("identifier")
+            .search("test")
+            .custom(custom);
+        let json = r##"{"#a":["..."],"#d":["identifier"],"search":"test"}"##;
         assert_eq!(filter.as_json(), json.to_string());
     }
 
     #[test]
     fn test_filter_deserialization() {
-        let json = r##"{"#a":"...","search":"test","ids":["myid", "mysecondid"]}"##;
+        let json = r##"{"#a":["..."],"search":"test","ids":["myid", "mysecondid"]}"##;
         let filter = Filter::from_json(json).unwrap();
         let mut custom = Map::new();
-        custom.insert("#a".to_string(), Value::String("...".to_string()));
+        custom.insert(
+            "#a".to_string(),
+            Value::Array(vec![Value::String("...".to_string())]),
+        );
         assert_eq!(
             filter,
             Filter::new()
