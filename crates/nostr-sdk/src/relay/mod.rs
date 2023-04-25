@@ -781,7 +781,8 @@ impl Relay {
         Ok(events.into_inner())
     }
 
-    /// Request events of filter. All events will be sent to notification listener
+    /// Request events of filter. All events will be sent to notification listener,
+    /// until the EOSE "end of stored events" message is received from the relay.
     pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         if !self.opts.read() {
             log::error!("{}", Error::ReadDisabled);

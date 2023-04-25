@@ -570,6 +570,7 @@ impl Client {
 
     /// Request events of filters
     /// All events will be received on notification listener (`client.notifications()`)
+    /// until the EOSE "end of stored events" message is received from the relay.
     pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         let timeout = match timeout {
             Some(t) => Some(t),
