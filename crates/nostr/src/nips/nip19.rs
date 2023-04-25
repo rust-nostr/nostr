@@ -166,8 +166,8 @@ impl ToBech32 for EventId {
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Nip19Event {
-    event_id: EventId,
-    relays: Vec<String>,
+    pub event_id: EventId,
+    pub relays: Vec<String>,
 }
 
 impl Nip19Event {
@@ -247,10 +247,10 @@ impl ToBech32 for Nip19Event {
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct ParameterizedReplaceableEvent {
-    kind: Kind,
-    pubkey: XOnlyPublicKey,
-    identifier: String,
-    relays: Vec<String>,
+    pub kind: Kind,
+    pub pubkey: XOnlyPublicKey,
+    pub identifier: String,
+    pub relays: Vec<String>,
 }
 
 impl FromBech32 for ParameterizedReplaceableEvent {
