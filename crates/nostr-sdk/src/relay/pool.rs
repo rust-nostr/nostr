@@ -63,7 +63,7 @@ pub enum RelayPoolMessage {
 }
 
 /// Relay Pool Notification
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelayPoolNotification {
     /// Received an [`Event`]
     Event(Url, Event),

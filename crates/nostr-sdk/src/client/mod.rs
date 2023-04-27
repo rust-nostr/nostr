@@ -1190,9 +1190,13 @@ impl Client {
     {
         let mut notifications = self.notifications();
         while let Ok(notification) = notifications.recv().await {
+            let shutdown: bool = RelayPoolNotification::Shutdown == notification;
             func(notification)
                 .await
                 .map_err(|e| Error::Handler(e.to_string()))?;
+            if shutdown {
+                break;
+            }
         }
         Ok(())
     }
