@@ -486,12 +486,14 @@ impl RelayPool {
     /// Completly shutdown pool
     pub async fn shutdown(self) -> Result<(), Error> {
         self.disconnect().await?;
-        thread::sleep(Duration::from_secs(3)).await;
-        let _ = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await;
-        #[cfg(feature = "sqlite")]
-        if let Some(store) = self.store {
-            store.close();
-        }
+        thread::spawn(async move {
+            thread::sleep(Duration::from_secs(3)).await;
+            let _ = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await;
+            #[cfg(feature = "sqlite")]
+            if let Some(store) = self.store {
+                store.close();
+            }
+        });
         Ok(())
     }
 }
