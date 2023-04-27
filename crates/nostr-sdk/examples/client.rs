@@ -18,7 +18,13 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
+    // Publish a text note
     client.publish_text_note("Hello world", &[]).await?;
+
+    // Create a text note POW event
+    let event: Event = EventBuilder::new_text_note("POW text note from nostr-sdk", &[])
+        .to_pow_event(&my_keys, 20)?;
+    client.send_event(event).await?;
 
     Ok(())
 }

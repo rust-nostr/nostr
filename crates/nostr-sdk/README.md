@@ -79,6 +79,10 @@ async fn main() -> Result<()> {
     // Publish a text note
     client.publish_text_note("My first text note from Nostr SDK!", &[]).await?;
 
+    // Create a POW text note
+    let event: Event = EventBuilder::new_text_note("POW text note from nostr-sdk", &[]).to_pow_event(&my_keys, 20)?;
+    client.send_event(event).await?;
+
     // Send custom event
     let event_id = EventId::from_bech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r")?;
     let public_key = XOnlyPublicKey::from_bech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz")?;
