@@ -171,6 +171,8 @@ pub enum TagKind {
     Title,
     /// Image (NIP23)
     Image,
+    /// Thumbnail
+    Thumb,
     /// Summary (NIP23)
     Summary,
     /// PublishedAt (NIP23)
@@ -212,6 +214,7 @@ impl fmt::Display for TagKind {
             Self::Challenge => write!(f, "challenge"),
             Self::Title => write!(f, "title"),
             Self::Image => write!(f, "image"),
+            Self::Thumb => write!(f, "thumb"),
             Self::Summary => write!(f, "summary"),
             Self::PublishedAt => write!(f, "published_at"),
             Self::Description => write!(f, "description"),
@@ -249,6 +252,7 @@ where
             "challenge" => Self::Challenge,
             "title" => Self::Title,
             "image" => Self::Image,
+            "thumb" => Self::Thumb,
             "summary" => Self::Summary,
             "published_at" => Self::PublishedAt,
             "description" => Self::Description,
@@ -305,6 +309,7 @@ pub enum Tag {
     Challenge(String),
     Title(String),
     Image(String, Option<(u64, u64)>),
+    Thumb(String, Option<(u64, u64)>),
     Summary(String),
     Description(String),
     Bolt11(String),
@@ -354,6 +359,7 @@ impl Tag {
             Tag::Challenge(..) => TagKind::Challenge,
             Tag::Title(..) => TagKind::Title,
             Tag::Image(..) => TagKind::Image,
+            Tag::Thumb(..) => TagKind::Thumb,
             Tag::Summary(..) => TagKind::Summary,
             Tag::PublishedAt(..) => TagKind::PublishedAt,
             Tag::Description(..) => TagKind::Description,
@@ -411,7 +417,8 @@ where
                 TagKind::Subject => Ok(Self::Subject(content.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(content.to_string())),
                 TagKind::Title => Ok(Self::Title(content.to_string())),
-                TagKind::Image => Ok(Self::Image(content.to_string())),
+                TagKind::Image => Ok(Self::Image(content.to_string(), None)),
+                TagKind::Thumb => Ok(Self::Thumb(content.to_string(), None)),
                 TagKind::Summary => Ok(Self::Summary(content.to_string())),
                 TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(content)?)),
                 TagKind::Description => Ok(Self::Description(content.to_string())),
@@ -466,6 +473,26 @@ where
                             identifier: kpi[2].to_string(),
                             relay_url: UncheckedUrl::from(tag[2].clone()),
                         })
+                    } else {
+                        Err(Error::InvalidLength)
+                    }
+                }
+                TagKind::Image => {
+                    let image = tag[1].clone();
+                    let dimensions: Vec<&str> = tag[2].split('x').collect();
+                    if dimensions.len() == 2 {
+                        let (width, height) = (dimensions[0], dimensions[1]);
+                        Ok(Self::Image(image, Some((width.parse()?, height.parse()?))))
+                    } else {
+                        Err(Error::InvalidLength)
+                    }
+                }
+                TagKind::Thumb => {
+                    let thumb = tag[1].clone();
+                    let dimensions: Vec<&str> = tag[2].split('x').collect();
+                    if dimensions.len() == 2 {
+                        let (width, height) = (dimensions[0], dimensions[1]);
+                        Ok(Self::Thumb(thumb, Some((width.parse()?, height.parse()?))))
                     } else {
                         Err(Error::InvalidLength)
                     }
@@ -587,7 +614,22 @@ impl From<Tag> for Vec<String> {
             Tag::Subject(sub) => vec![TagKind::Subject.to_string(), sub],
             Tag::Challenge(challenge) => vec![TagKind::Challenge.to_string(), challenge],
             Tag::Title(title) => vec![TagKind::Title.to_string(), title],
-            Tag::Image(image) => vec![TagKind::Image.to_string(), image],
+            Tag::Image(image, dimensions) => match dimensions {
+                None => vec![TagKind::Image.to_string(), image],
+                Some((width, height)) => vec![
+                    TagKind::Image.to_string(),
+                    image,
+                    format!("{}x{}", height, width),
+                ],
+            },
+            Tag::Thumb(thumb, dimensions) => match dimensions {
+                None => vec![TagKind::Thumb.to_string(), thumb],
+                Some((width, height)) => vec![
+                    TagKind::Thumb.to_string(),
+                    thumb,
+                    format!("{}x{}", height, width),
+                ],
+            },
             Tag::Summary(summary) => vec![TagKind::Summary.to_string(), summary],
             Tag::PublishedAt(timestamp) => {
                 vec![TagKind::PublishedAt.to_string(), timestamp.to_string()]
