@@ -2,7 +2,21 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/58.md>
 
-use crate::{event::builder::Error, Event, EventBuilder, Keys, Kind, Tag};
+use crate::{event::builder::Error as BuilderError, Event, EventBuilder, Keys, Kind, Tag};
+
+#[derive(Debug, thiserror::Error)]
+/// [`BadgeAward`] error
+pub enum Error {
+    /// Invalid kind
+    #[error("invalid kind")]
+    InvalidKind,
+    /// Identifier tag not found
+    #[error("identifier tag not found")]
+    IdentifierTagNotFound,
+    /// Event builder Error
+    #[error(transparent)]
+    Event(#[from] crate::event::builder::Error),
+}
 
 /// Simple struct to hold `width` x `height.
 pub struct ImageDimensions(u64, u64);
@@ -106,3 +120,47 @@ impl BadgeDefinitionBuilder {
 
 /// Badge definition event as specified in NIP-58
 pub struct BadgeDefinition(Event);
+
+/// Badge award event as specified in NIP-58
+pub struct BadgeAward(Event);
+
+impl BadgeAward {
+    ///
+    pub fn new(
+        badge_definition: &Event,
+        awarded_pub_keys: Vec<Tag>,
+        keys: &Keys,
+    ) -> Result<BadgeAward, Error> {
+        let badge_id = match badge_definition.kind {
+            Kind::BadgeDefinition => badge_definition.tags.iter().find_map(|t| match t {
+                Tag::Identifier(id) => Some(id),
+                _ => None,
+            }),
+            _ => return Err(Error::InvalidKind),
+        }
+        .ok_or(Error::IdentifierTagNotFound)?;
+
+        let awarded_pub_keys: Vec<Tag> = awarded_pub_keys
+            .into_iter()
+            .filter(|e| matches!(e, Tag::PubKey(..)))
+            .collect();
+
+        if awarded_pub_keys.is_empty() {
+            return Err(Error::InvalidKind);
+        }
+
+        let a_tag = Tag::A {
+            kind: Kind::BadgeDefinition,
+            public_key: keys.public_key(),
+            identifier: badge_id.to_owned(),
+            relay_url: None,
+        };
+        let mut tags = vec![a_tag];
+        tags.extend(awarded_pub_keys);
+
+        let event_builder = EventBuilder::new(Kind::BadgeAward, String::new(), &tags);
+        let event = event_builder.to_event(keys)?;
+
+        Ok(BadgeAward(event))
+    }
+}
