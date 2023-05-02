@@ -37,8 +37,8 @@ impl From<&JsContact> for Contact {
 impl JsContact {
     #[wasm_bindgen(constructor)]
     pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
-        let relay_url = match relay_url {
-            Some(relay_url) => UncheckedUrl::from_str(&relay_url).ok(),
+        let relay_url: Option<UncheckedUrl> = match relay_url {
+            Some(relay_url) => Some(UncheckedUrl::from(&relay_url)),
             None => None,
         };
         Self {

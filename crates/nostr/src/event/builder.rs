@@ -193,7 +193,7 @@ impl EventBuilder {
     ///     Tag::Title("Lorem Ipsum".to_string()),
     ///     Tag::PublishedAt(Timestamp::from(1296962229)),
     ///     Tag::Hashtag("placeholder".to_string()),
-    ///     Tag::Event(event_id, Some(UncheckedUrl::from_str("wss://relay.example.com").unwrap()), None),
+    ///     Tag::Event(event_id, Some(UncheckedUrl::from("wss://relay.example.com")), None),
     /// ];
     /// let builder = EventBuilder::long_form_text_note("My first text note from Nostr SDK!", &[]);
     /// ```
@@ -369,7 +369,7 @@ impl EventBuilder {
         Self::new(
             Kind::Authentication,
             "",
-            &[Tag::Challenge(challenge.into()), Tag::Relay(relay)],
+            &[Tag::Challenge(challenge.into()), Tag::Relay(relay.into())],
         )
     }
 

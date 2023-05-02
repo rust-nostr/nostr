@@ -43,7 +43,7 @@ pub enum Error {
     #[error(transparent)]
     Hex(#[from] bitcoin_hashes::hex::Error),
     /// Url parse error
-    #[error("invalid url")]
+    #[error("invalid url: {0}")]
     Url(#[from] url::ParseError),
     /// EventId error
     #[error(transparent)]
@@ -264,18 +264,12 @@ where
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Default)]
 pub struct UncheckedUrl(String);
 
-impl FromStr for UncheckedUrl {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(s.to_owned()))
-    }
-}
-
-impl From<Url> for UncheckedUrl {
-    fn from(url: Url) -> Self {
-        let url_string = url.to_string();
-        Self(url_string)
+impl<S> From<S> for UncheckedUrl
+where
+    S: Into<String>,
+{
+    fn from(url: S) -> Self {
+        Self(url.into())
     }
 }
 
@@ -302,7 +296,7 @@ pub enum Tag {
     EventReport(EventId, Report),
     PubKeyReport(XOnlyPublicKey, Report),
     Reference(String),
-    RelayMetadata(String, Option<String>),
+    RelayMetadata(UncheckedUrl, Option<String>),
     Hashtag(String),
     Geohash(String),
     Identifier(String),
@@ -312,7 +306,7 @@ pub enum Tag {
         identifier: String,
         relay_url: UncheckedUrl,
     },
-    Relay(Url),
+    Relay(UncheckedUrl),
     ContactList {
         pk: XOnlyPublicKey,
         relay_url: Option<UncheckedUrl>,
@@ -411,13 +405,11 @@ where
 
         if tag_kind.eq(&TagKind::Relays) {
             // Relays vec is of unknown length so checked here based on kind
-
             let urls = tag
                 .iter()
                 .skip(1)
-                .filter_map(|tag_str| UncheckedUrl::from_str(tag_str).ok())
+                .map(UncheckedUrl::from)
                 .collect::<Vec<UncheckedUrl>>();
-
             Ok(Self::Relays(urls))
         } else if tag_len == 1 {
             match tag_kind {
@@ -433,7 +425,7 @@ where
                 TagKind::T => Ok(Self::Hashtag(content.to_string())),
                 TagKind::G => Ok(Self::Geohash(content.to_string())),
                 TagKind::D => Ok(Self::Identifier(content.to_string())),
-                TagKind::Relay => Ok(Self::Relay(Url::parse(content)?)),
+                TagKind::Relay => Ok(Self::Relay(UncheckedUrl::from(content))),
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(content.to_string()),
                 }),
@@ -555,7 +547,7 @@ impl From<Tag> for Vec<String> {
             }
             Tag::Reference(r) => vec![TagKind::R.to_string(), r],
             Tag::RelayMetadata(url, rw) => {
-                let mut tag = vec![TagKind::R.to_string(), url];
+                let mut tag = vec![TagKind::R.to_string(), url.to_string()];
                 if let Some(rw) = rw {
                     tag.push(rw);
                 }
@@ -791,7 +783,7 @@ mod tests {
                 XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )?,
-                Some(UncheckedUrl::from_str("wss://relay.damus.io")?)
+                Some(UncheckedUrl::from("wss://relay.damus.io"))
             )
             .as_vec()
         );
@@ -822,7 +814,7 @@ mod tests {
                 EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
-                Some(UncheckedUrl::from_str("wss://relay.damus.io")?),
+                Some(UncheckedUrl::from("wss://relay.damus.io")),
                 None
             )
             .as_vec()
@@ -879,7 +871,7 @@ mod tests {
                     "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
                 )?,
                 identifier: String::from("ipsum"),
-                relay_url: UncheckedUrl::from_str("wss://relay.nostr.org")?
+                relay_url: UncheckedUrl::from("wss://relay.nostr.org")
             }
             .as_vec()
         );
@@ -895,7 +887,7 @@ mod tests {
                 pk: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )?,
-                relay_url: Some(UncheckedUrl::from_str("wss://relay.damus.io")?),
+                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 alias: Some(String::from("alias"))
             }
             .as_vec()
@@ -1018,7 +1010,7 @@ mod tests {
                 XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )?,
-                Some(UncheckedUrl::from_str("wss://relay.damus.io")?)
+                Some(UncheckedUrl::from("wss://relay.damus.io"))
             )
         );
 
@@ -1047,7 +1039,7 @@ mod tests {
                 EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
-                Some(UncheckedUrl::from_str("wss://relay.damus.io")?),
+                Some(UncheckedUrl::from("wss://relay.damus.io")),
                 None
             )
         );
@@ -1100,7 +1092,7 @@ mod tests {
                     "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
                 )?,
                 identifier: String::from("ipsum"),
-                relay_url: UncheckedUrl::from_str("wss://relay.nostr.org")?
+                relay_url: UncheckedUrl::from("wss://relay.nostr.org")
             }
         );
 
@@ -1115,7 +1107,7 @@ mod tests {
                 pk: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )?,
-                relay_url: Some(UncheckedUrl::from_str("wss://relay.damus.io")?),
+                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 alias: Some(String::from("alias"))
             }
         );
@@ -1157,10 +1149,10 @@ mod tests {
                 "wss//nostr.fmt.wiz.biz"
             ])?,
             Tag::Relays(vec![
-                UncheckedUrl::from_str("wss://relay.damus.io/")?,
-                UncheckedUrl::from_str("wss://nostr-relay.wlvs.space/")?,
-                UncheckedUrl::from_str("wss://nostr.fmt.wiz.biz")?,
-                UncheckedUrl::from_str("wss//nostr.fmt.wiz.biz")?
+                UncheckedUrl::from("wss://relay.damus.io/"),
+                UncheckedUrl::from("wss://nostr-relay.wlvs.space/"),
+                UncheckedUrl::from("wss://nostr.fmt.wiz.biz"),
+                UncheckedUrl::from("wss//nostr.fmt.wiz.biz")
             ])
         );
 
@@ -1203,7 +1195,7 @@ mod tests {
 
         let unchecked_relay_url = UncheckedUrl::from(relay_url.clone());
 
-        assert_eq!(unchecked_relay_url, UncheckedUrl::from_str(relay)?);
+        assert_eq!(unchecked_relay_url, UncheckedUrl::from(relay));
 
         assert_eq!(Url::try_from(unchecked_relay_url.clone())?, relay_url);
 

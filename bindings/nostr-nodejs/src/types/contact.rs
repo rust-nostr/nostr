@@ -2,7 +2,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 
 use nostr::prelude::*;
 
@@ -36,11 +35,8 @@ impl From<&JsContact> for Contact {
 impl JsContact {
     #[napi(constructor)]
     pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
-        let relay_url = match relay_url {
-            Some(relay_url) => UncheckedUrl::from_str(&relay_url).ok(),
-            None => None,
-        };
-
+        let relay_url: Option<UncheckedUrl> =
+            relay_url.map(|relay_url| UncheckedUrl::from(&relay_url));
         Self {
             inner: Contact::new(public_key.into(), relay_url, alias),
         }
