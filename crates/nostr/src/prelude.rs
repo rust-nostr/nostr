@@ -4,6 +4,7 @@
 //! Prelude
 
 // External crates
+pub use ::url::*;
 #[cfg(feature = "nip19")]
 pub use bech32::*;
 #[cfg(feature = "nip06")]
@@ -13,7 +14,6 @@ pub use bitcoin::*;
 pub use bitcoin_hashes::*;
 pub use secp256k1::*;
 pub use serde_json::*;
-pub use url::*;
 
 // Internal modules
 pub use crate::event::builder::*;

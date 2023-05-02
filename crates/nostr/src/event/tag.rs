@@ -12,11 +12,10 @@ use secp256k1::XOnlyPublicKey;
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use url::Url;
 
 use super::id::{self, EventId};
 use crate::nips::nip26::Conditions;
-use crate::{Kind, Timestamp};
+use crate::{Kind, Timestamp, UncheckedUrl};
 
 /// [`Tag`] error
 #[derive(Debug, thiserror::Error)]
@@ -260,33 +259,6 @@ where
     }
 }
 
-/// Unchecked Relay Url
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Default)]
-pub struct UncheckedUrl(String);
-
-impl<S> From<S> for UncheckedUrl
-where
-    S: Into<String>,
-{
-    fn from(url: S) -> Self {
-        Self(url.into())
-    }
-}
-
-impl TryFrom<UncheckedUrl> for Url {
-    type Error = Error;
-
-    fn try_from(unchecked_url: UncheckedUrl) -> Result<Url, Self::Error> {
-        Ok(Self::parse(&unchecked_url.0)?)
-    }
-}
-
-impl fmt::Display for UncheckedUrl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Tag {
@@ -452,7 +424,10 @@ where
                     } else {
                         match Report::try_from(tag[2].as_str()) {
                             Ok(report) => Ok(Self::PubKeyReport(pubkey, report)),
-                            Err(_) => Ok(Self::PubKey(pubkey, Some(UncheckedUrl(tag[2].clone())))),
+                            Err(_) => Ok(Self::PubKey(
+                                pubkey,
+                                Some(UncheckedUrl::from(tag[2].clone())),
+                            )),
                         }
                     }
                 }
@@ -465,7 +440,7 @@ where
                             Ok(report) => Ok(Self::EventReport(event_id, report)),
                             Err(_) => Ok(Self::Event(
                                 event_id,
-                                Some(UncheckedUrl(tag[2].clone())),
+                                Some(UncheckedUrl::from(tag[2].clone())),
                                 None,
                             )),
                         }
@@ -482,7 +457,7 @@ where
                             kind: Kind::from_str(kpi[0])?,
                             public_key: XOnlyPublicKey::from_str(kpi[1])?,
                             identifier: kpi[2].to_string(),
-                            relay_url: UncheckedUrl(tag[2].clone()),
+                            relay_url: UncheckedUrl::from(tag[2].clone()),
                         })
                     } else {
                         Err(Error::InvalidLength)
@@ -494,12 +469,12 @@ where
             match tag_kind {
                 TagKind::P => Ok(Self::ContactList {
                     pk: XOnlyPublicKey::from_str(&tag[1])?,
-                    relay_url: Some(UncheckedUrl(tag[2].clone())),
+                    relay_url: Some(UncheckedUrl::from(tag[2].clone())),
                     alias: (!tag[3].is_empty()).then_some(tag[3].clone()),
                 }),
                 TagKind::E => Ok(Self::Event(
                     EventId::from_hex(&tag[1])?,
-                    (!tag[2].is_empty()).then_some(UncheckedUrl(tag[2].clone())),
+                    (!tag[2].is_empty()).then_some(UncheckedUrl::from(tag[2].clone())),
                     (!tag[3].is_empty()).then_some(Marker::from(&tag[3])),
                 )),
                 TagKind::Delegation => Ok(Self::Delegation {
@@ -1182,24 +1157,6 @@ mod tests {
         );
 
         assert_eq!(Tag::parse(vec!["amount", "10000"])?, Tag::Amount(10000));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_unchecked_relay_url() -> Result<()> {
-        let relay = "wss://relay.damus.io/";
-        let relay_url = Url::from_str(relay)?;
-
-        println!("{}", relay_url.to_string());
-
-        let unchecked_relay_url = UncheckedUrl::from(relay_url.clone());
-
-        assert_eq!(unchecked_relay_url, UncheckedUrl::from(relay));
-
-        assert_eq!(Url::try_from(unchecked_relay_url.clone())?, relay_url);
-
-        assert_eq!(relay, unchecked_relay_url.to_string());
 
         Ok(())
     }

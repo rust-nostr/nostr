@@ -6,7 +6,7 @@
 use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 
-use crate::event::tag::UncheckedUrl;
+use crate::UncheckedUrl;
 
 /// Contact
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Deserialize, Serialize)]

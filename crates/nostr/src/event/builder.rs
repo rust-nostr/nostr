@@ -183,8 +183,7 @@ impl EventBuilder {
     /// ```rust,no_run
     /// use std::str::FromStr;
     ///
-    /// use nostr::{EventBuilder, Tag, Timestamp, EventId};
-    /// use nostr::prelude::tag::UncheckedUrl;
+    /// use nostr::{EventBuilder, Tag, Timestamp, EventId, UncheckedUrl};
     ///
     /// let event_id = EventId::from_hex("b3e392b11f5d4f28321cedd09303a748acfd0487aea5a7450b3481c60b6e4f87").unwrap();
     /// let content: &str = "Lorem [ipsum][4] dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nRead more at #[3].";
