@@ -64,3 +64,7 @@ required-features = ["all-nips", "blocking"]
 [[example]]
 name = "nostr-connect"
 required-features = ["nip46"]
+
+[[example]]
+name = "bot"
+required-features = ["all-nips"]
