@@ -62,7 +62,7 @@ impl JsClient {
     /// Add new relay
     #[wasm_bindgen(js_name = addRelay)]
     pub async fn add_relay(&self, url: String) -> Result<()> {
-        self.inner.add_relay(url).await.map_err(into_err)
+        self.inner.add_relay(url, None).await.map_err(into_err)
     }
 
     /// Remove relay
