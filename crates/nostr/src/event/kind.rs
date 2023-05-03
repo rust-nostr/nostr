@@ -52,6 +52,8 @@ pub enum Kind {
     PublicChatReserved48,
     /// Public Chat Reserved (NIP28)
     PublicChatReserved49,
+    /// Wallet Service Info (NIP47)
+    WalletConnectInfo,
     /// Reporting (NIP56)
     Reporting,
     /// Zap Request (NIP57)
@@ -66,6 +68,10 @@ pub enum Kind {
     RelayList,
     /// Client Authentication (NIP42)
     Authentication,
+    /// Wallet Connect Request (NIP47)
+    WalletConnectRequest,
+    /// Wallet Connect Response (NIP47)
+    WalletConnectResponse,
     /// Nostr Connect (NIP46)
     NostrConnect,
     /// Categorized People List (NIP51)
@@ -126,6 +132,7 @@ impl From<u64> for Kind {
             47 => Self::PublicChatReserved47,
             48 => Self::PublicChatReserved48,
             49 => Self::PublicChatReserved49,
+            13194 => Self::WalletConnectInfo,
             1984 => Self::Reporting,
             9734 => Self::ZapRequest,
             9735 => Self::Zap,
@@ -133,6 +140,8 @@ impl From<u64> for Kind {
             10001 => Self::PinList,
             10002 => Self::RelayList,
             22242 => Self::Authentication,
+            23194 => Self::WalletConnectRequest,
+            23195 => Self::WalletConnectResponse,
             24133 => Self::NostrConnect,
             30000 => Self::CategorizedPeopleList,
             30001 => Self::CategorizedBookmarkList,
@@ -171,6 +180,7 @@ impl From<Kind> for u64 {
             Kind::PublicChatReserved47 => 47,
             Kind::PublicChatReserved48 => 48,
             Kind::PublicChatReserved49 => 49,
+            Kind::WalletConnectInfo => 13194,
             Kind::Reporting => 1984,
             Kind::ZapRequest => 9734,
             Kind::Zap => 9735,
@@ -178,6 +188,8 @@ impl From<Kind> for u64 {
             Kind::PinList => 10001,
             Kind::RelayList => 10002,
             Kind::Authentication => 22242,
+            Kind::WalletConnectRequest => 23194,
+            Kind::WalletConnectResponse => 23195,
             Kind::NostrConnect => 24133,
             Kind::CategorizedPeopleList => 30000,
             Kind::CategorizedBookmarkList => 30001,
