@@ -65,9 +65,9 @@ pub enum RelayPoolMessage {
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelayPoolNotification {
-    /// Received an [`Event`]
+    /// Received an [`Event`]. Does not include events sent by this client.
     Event(Url, Event),
-    /// Received a [`RelayMessage`]
+    /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
     Message(Url, RelayMessage),
     /// Shutdown
     Shutdown,
