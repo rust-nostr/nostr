@@ -326,7 +326,14 @@ impl ProfileBadgesEvent {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
+
+    fn get_badge_with_id_only(id: String, keys: &Keys) -> BadgeDefinition {
+        let builder = BadgeDefinitionBuilder::new(id);
+        builder.build(keys).unwrap()
+    }
 
     #[test]
     fn test_badge_definition_builder() {
@@ -353,5 +360,46 @@ mod tests {
 
         assert_eq!(badge_definition_event.kind, Kind::BadgeDefinition);
         assert_eq!(badge_definition_event.tags, example_event.tags);
+    }
+    #[test]
+    fn test_badge_award() {
+        let keys = Keys::generate();
+        let pub_key = keys.public_key();
+
+        let example_event_json = format!(
+            r#"{{
+            "content": "",
+            "id": "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+            "kind": 8,
+            "pubkey": "{}",
+            "sig": "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
+            "created_at": 1671739153,
+            "tags": [
+                ["a", "30009:{}:bravery"],
+                ["p", "{}", "wss://relay"],
+                ["p", "{}", "wss://relay"]
+            ]
+            }}"#,
+            pub_key.to_string(),
+            pub_key.to_string(),
+            pub_key.to_string(),
+            pub_key.to_string()
+        );
+
+        let example_event: Event = serde_json::from_str(&example_event_json).unwrap();
+
+        let relay_url = UncheckedUrl::from_str("wss://relay").unwrap();
+        let badge_definition = get_badge_with_id_only("bravery".to_owned(), &keys).0;
+
+        let awarded_pub_keys = vec![
+            Tag::PubKey(pub_key.clone(), Some(relay_url.clone())),
+            Tag::PubKey(pub_key.clone(), Some(relay_url.clone())),
+        ];
+        let badge_award = BadgeAward::new(&badge_definition, awarded_pub_keys, &keys)
+            .unwrap()
+            .0;
+
+        assert_eq!(badge_award.kind, Kind::BadgeAward);
+        assert_eq!(badge_award.tags, example_event.tags);
     }
 }
