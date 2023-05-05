@@ -323,3 +323,35 @@ impl ProfileBadgesEvent {
         Ok(ProfileBadgesEvent(event))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_badge_definition_builder() {
+        let example_event_json = r#"{"content":"","id":"378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7","sig":"fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8","created_at":1671739153,"pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","kind":30009,"tags":[["d","bravery"],["name","Medal of Bravery"],["image","https://nostr.academy/awards/bravery.png","1024x1024"],["description","Awarded to users demonstrating bravery"],["thumb","https://nostr.academy/awards/bravery_256x256.png","256x256"]]}"#;
+
+        let example_event: Event = serde_json::from_str(example_event_json).unwrap();
+
+        let mut builder = BadgeDefinitionBuilder::new("bravery".to_owned());
+        let image_dimensions = ImageDimensions(1024, 1024);
+        let thumb_size = ImageDimensions(256, 256);
+        let thumbs = vec![(
+            "https://nostr.academy/awards/bravery_256x256.png".to_owned(),
+            Some(thumb_size),
+        )];
+        builder = builder
+            .name("Medal of Bravery".to_owned())
+            .description("Awarded to users demonstrating bravery".to_owned())
+            .image("https://nostr.academy/awards/bravery.png".to_owned())
+            .image_dimensions(image_dimensions)
+            .thumbs(thumbs);
+
+        let keys = Keys::generate();
+        let badge_definition_event = builder.build(&keys).unwrap().0;
+
+        assert_eq!(badge_definition_event.kind, Kind::BadgeDefinition);
+        assert_eq!(badge_definition_event.tags, example_event.tags);
+    }
+}
