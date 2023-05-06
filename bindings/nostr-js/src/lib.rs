@@ -2,6 +2,8 @@
 // Distributed under the MIT software license
 
 #![allow(clippy::drop_non_drop)]
+// TODO: remove when `per-package-target` feature will be stable
+#![cfg(target_arch = "wasm32")]
 
 use wasm_bindgen::prelude::*;
 
