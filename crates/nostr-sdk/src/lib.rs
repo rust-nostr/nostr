@@ -14,9 +14,6 @@
 #[cfg(all(target_arch = "wasm32", feature = "blocking"))]
 compile_error!("`blocking` feature can't be enabled for WASM targets");
 
-#[cfg(all(target_arch = "wasm32", feature = "sqlite"))]
-compile_error!("`sqlite` feature can't be enabled for WASM targets");
-
 #[cfg(feature = "blocking")]
 use nostr_sdk_net::futures_util::Future;
 #[cfg(feature = "blocking")]

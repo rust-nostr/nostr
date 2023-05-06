@@ -11,7 +11,7 @@ env_logger = "0.10"
 napi = { version = "2.11", default-features = false, features = ["async", "napi4"] }
 napi-derive = "2.11"
 nostr-nodejs = { path = "../nostr-nodejs" }
-nostr-sdk = { path = "../../crates/nostr-sdk", features = ["sqlite"] }
+nostr-sdk = { path = "../../crates/nostr-sdk" }
 
 [build-dependencies]
 napi-build = "2.0"

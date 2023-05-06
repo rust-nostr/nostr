@@ -13,7 +13,6 @@ keywords = ["nostr", "sdk", "rust"]
 
 [features]
 default = ["all-nips"]
-sqlite = ["dep:nostr-sdk-sqlite"]
 blocking = ["dep:once_cell", "nostr/blocking"]
 vanity = ["nostr/vanity"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip19", "nip46"]
@@ -29,7 +28,6 @@ nip46 = ["nostr/nip46"]
 log = "0.4"
 nostr = { version = "0.21", path = "../nostr", default-features = false }
 nostr-sdk-net = { version = "0.21", path = "../nostr-sdk-net" }
-nostr-sdk-sqlite = { version = "0.21", path = "../nostr-sdk-sqlite", optional = true }
 once_cell = { version = "1.17", optional = true }
 thiserror = "1.0"
 
@@ -52,10 +50,6 @@ required-features = ["all-nips"]
 [[example]]
 name = "client-with-opts"
 required-features = ["all-nips"]
-
-[[example]]
-name = "sqlite"
-required-features = ["all-nips", "sqlite"]
 
 [[example]]
 name = "blocking"

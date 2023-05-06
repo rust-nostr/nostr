@@ -9,7 +9,6 @@ members = [
     "crates/nostr",
     "crates/nostr-sdk",
     "crates/nostr-sdk-net",
-    "crates/nostr-sdk-sqlite",
 ]
 default-members = ["crates/*"]
 resolver = "2"

@@ -6,8 +6,6 @@
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-#[cfg(feature = "sqlite")]
-use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -22,8 +20,6 @@ use nostr::{
     Metadata, Result, Tag,
 };
 use nostr_sdk_net::futures_util::Future;
-#[cfg(feature = "sqlite")]
-use nostr_sdk_sqlite::Store;
 use tokio::sync::broadcast;
 
 #[cfg(feature = "blocking")]
@@ -180,50 +176,6 @@ impl Client {
         }
     }
 
-    /// New [`Client`] with [`Store`]
-    #[cfg(feature = "sqlite")]
-    pub fn with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
-    where
-        P: AsRef<Path>,
-    {
-        Self::with_store_and_opts(keys, path, Options::default())
-    }
-
-    #[allow(missing_docs)]
-    #[deprecated(since = "0.21.0", note = "use `with_store` instead")]
-    #[cfg(feature = "sqlite")]
-    pub fn new_with_store<P>(keys: &Keys, path: P) -> Result<Self, Error>
-    where
-        P: AsRef<Path>,
-    {
-        Self::with_store(keys, path)
-    }
-
-    /// New [`Client`] with [`Store`] and [`Options`]
-    #[cfg(feature = "sqlite")]
-    pub fn with_store_and_opts<P>(keys: &Keys, path: P, opts: Options) -> Result<Self, Error>
-    where
-        P: AsRef<Path>,
-    {
-        Ok(Self {
-            pool: RelayPool::with_store(path)?,
-            keys: keys.clone(),
-            opts,
-            #[cfg(feature = "nip46")]
-            remote_signer: None,
-        })
-    }
-
-    #[allow(missing_docs)]
-    #[deprecated(since = "0.21.0", note = "use `with_store and opts` instead")]
-    #[cfg(feature = "sqlite")]
-    pub fn new_with_store_and_opts<P>(keys: &Keys, path: P, opts: Options) -> Result<Self, Error>
-    where
-        P: AsRef<Path>,
-    {
-        Self::with_store_and_opts(keys, path, opts)
-    }
-
     /// Update default difficulty for new [`Event`]
     pub fn update_difficulty(&self, difficulty: u8) {
         self.opts.update_difficulty(difficulty);
@@ -255,12 +207,6 @@ impl Client {
     #[cfg(feature = "nip46")]
     pub fn remote_signer(&self) -> Result<RemoteSigner, Error> {
         self.remote_signer.clone().ok_or(Error::SignerNotConfigured)
-    }
-
-    /// Get [`Store`]
-    #[cfg(feature = "sqlite")]
-    pub fn store(&self) -> Option<Store> {
-        self.pool.store()
     }
 
     /// Completly shutdown [`Client`]
@@ -405,12 +351,6 @@ impl Client {
             self.add_relay(url).await?;
         }
         Ok(())
-    }
-
-    /// Restore previous added relays from store
-    #[cfg(feature = "sqlite")]
-    pub async fn restore_relays(&self) -> Result<(), Error> {
-        Ok(self.pool.restore_relays().await?)
     }
 
     /// Connect relay

@@ -6,15 +6,11 @@
 use std::collections::{HashMap, VecDeque};
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-#[cfg(feature = "sqlite")]
-use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::url::Url;
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
-#[cfg(feature = "sqlite")]
-use nostr_sdk_sqlite::Store;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 
@@ -36,14 +32,6 @@ pub enum Error {
     /// Thread error
     #[error(transparent)]
     Thread(#[from] thread::Error),
-    /// Store error
-    #[cfg(feature = "sqlite")]
-    #[error(transparent)]
-    Store(#[from] nostr_sdk_sqlite::Error),
-    /// Store not initialized
-    #[cfg(feature = "sqlite")]
-    #[error("store not initialized")]
-    StoreNotInitialized,
 }
 
 /// Relay Pool Message
@@ -77,8 +65,6 @@ struct RelayPoolTask {
     receiver: Receiver<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     events: VecDeque<EventId>,
-    #[cfg(feature = "sqlite")]
-    store: Option<Store>,
 }
 
 const MAX_EVENTS: usize = 100000;
@@ -92,22 +78,6 @@ impl RelayPoolTask {
             receiver: pool_task_receiver,
             events: VecDeque::new(),
             notification_sender,
-            #[cfg(feature = "sqlite")]
-            store: None,
-        }
-    }
-
-    #[cfg(feature = "sqlite")]
-    pub fn with_store(
-        pool_task_receiver: Receiver<RelayPoolMessage>,
-        notification_sender: broadcast::Sender<RelayPoolNotification>,
-        store: Option<Store>,
-    ) -> Self {
-        Self {
-            receiver: pool_task_receiver,
-            events: VecDeque::new(),
-            notification_sender,
-            store,
         }
     }
 
@@ -132,17 +102,6 @@ impl RelayPoolTask {
                                 let notification =
                                     RelayPoolNotification::Event(relay_url, event.as_ref().clone());
                                 let _ = self.notification_sender.send(notification);
-                            }
-
-                            // Save event into store
-                            #[cfg(feature = "sqlite")]
-                            if let Some(store) = &self.store {
-                                match store.insert_event(*event) {
-                                    Ok(_) => log::trace!("Event saved into store"),
-                                    Err(e) => {
-                                        log::error!("Imposible to insert event into store: {e}")
-                                    }
-                                }
                             }
                         }
                     }
@@ -180,8 +139,6 @@ pub struct RelayPool {
     pool_task_sender: Sender<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     filters: Arc<Mutex<Vec<Filter>>>,
-    #[cfg(feature = "sqlite")]
-    store: Option<Store>,
 }
 
 impl Default for RelayPool {
@@ -206,38 +163,7 @@ impl RelayPool {
             pool_task_sender,
             notification_sender,
             filters: Arc::new(Mutex::new(Vec::new())),
-            #[cfg(feature = "sqlite")]
-            store: None,
         }
-    }
-
-    /// Create new `RelayPool`
-    #[cfg(feature = "sqlite")]
-    pub fn with_store<P>(path: P) -> Result<Self, Error>
-    where
-        P: AsRef<Path>,
-    {
-        let (notification_sender, _) = broadcast::channel(1024);
-        let (pool_task_sender, pool_task_receiver) = mpsc::channel(1024);
-
-        let store = Some(Store::open(path)?);
-
-        let mut relay_pool_task = RelayPoolTask::with_store(
-            pool_task_receiver,
-            notification_sender.clone(),
-            store.clone(),
-        );
-
-        thread::spawn(async move { relay_pool_task.run().await });
-
-        Ok(Self {
-            relays: Arc::new(Mutex::new(HashMap::new())),
-            pool_task_sender,
-            notification_sender,
-            filters: Arc::new(Mutex::new(Vec::new())),
-            #[cfg(feature = "sqlite")]
-            store,
-        })
     }
 
     /// Get new notification listener
@@ -249,12 +175,6 @@ impl RelayPool {
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         let relays = self.relays.lock().await;
         relays.clone()
-    }
-
-    /// Get [`Store`]
-    #[cfg(feature = "sqlite")]
-    pub fn store(&self) -> Option<Store> {
-        self.store.clone()
     }
 
     /// Get subscription filters
@@ -278,12 +198,6 @@ impl RelayPool {
     ) -> Result<(), Error> {
         let mut relays = self.relays.lock().await;
         if !relays.contains_key(&url) {
-            #[cfg(feature = "sqlite")]
-            if let Some(store) = &self.store {
-                store.insert_relay(url.clone(), proxy)?;
-                store.enable_relay(url.clone())?;
-            }
-
             let relay = Relay::new(
                 url,
                 self.pool_task_sender.clone(),
@@ -317,27 +231,8 @@ impl RelayPool {
         let mut relays = self.relays.lock().await;
         if let Some(relay) = relays.remove(&url) {
             self.disconnect_relay(&relay).await?;
-            #[cfg(feature = "sqlite")]
-            if let Some(store) = &self.store {
-                store.delete_relay(url)?;
-            }
         }
         Ok(())
-    }
-
-    /// Restore previous added relays from store
-    #[cfg(feature = "sqlite")]
-    pub async fn restore_relays(&self) -> Result<(), Error> {
-        match &self.store {
-            Some(store) => {
-                let relays = store.get_relays(true)?;
-                for (url, proxy) in relays.into_iter() {
-                    self.add_relay(url, proxy, RelayOptions::default()).await?;
-                }
-                Ok(())
-            }
-            None => Err(Error::StoreNotInitialized),
-        }
     }
 
     /// Send client message
@@ -454,7 +349,6 @@ impl RelayPool {
         for relay in relays.values() {
             self.disconnect_relay(relay).await?;
         }
-
         Ok(())
     }
 
@@ -463,23 +357,11 @@ impl RelayPool {
         let filters: Vec<Filter> = self.subscription_filters().await;
         relay.update_subscription_filters(filters).await;
         relay.connect(wait_for_connection).await;
-        #[cfg(feature = "sqlite")]
-        if let Some(store) = &self.store {
-            if let Err(e) = store.enable_relay(relay.url()) {
-                log::error!("Impossible to enable relay: {e}");
-            }
-        }
     }
 
     /// Disconnect from relay
     pub async fn disconnect_relay(&self, relay: &Relay) -> Result<(), Error> {
         relay.terminate().await?;
-        #[cfg(feature = "sqlite")]
-        if let Some(store) = &self.store {
-            if let Err(e) = store.enable_relay(relay.url()) {
-                log::error!("Impossible to disable relay: {e}");
-            }
-        }
         Ok(())
     }
 
@@ -489,10 +371,6 @@ impl RelayPool {
         thread::spawn(async move {
             thread::sleep(Duration::from_secs(3)).await;
             let _ = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await;
-            #[cfg(feature = "sqlite")]
-            if let Some(store) = self.store {
-                store.close();
-            }
         });
         Ok(())
     }

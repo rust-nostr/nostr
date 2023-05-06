@@ -5,7 +5,6 @@
 * [**nostr**](./crates/nostr/): Rust implementation of Nostr protocol.
 * [**nostr-sdk**](./crates/nostr-sdk/): High level client library.
 * [**nostr-sdk-net**](./crates/nostr-sdk-net/): Network library for [**nostr-sdk**](./crates/nostr-sdk/)
-* [**nostr-sdk-sqlite**](./crates/nostr-sdk-sqlite/): SQLite for [**nostr-sdk**](./crates/nostr-sdk/)
 
 ## Bindings
 
