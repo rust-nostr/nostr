@@ -56,7 +56,6 @@ pub enum Error {
     #[error(transparent)]
     Hash(#[from] bitcoin_hashes::Error),
     /// EventId error
-
     #[error(transparent)]
     EventId(#[from] id::Error),
 }
