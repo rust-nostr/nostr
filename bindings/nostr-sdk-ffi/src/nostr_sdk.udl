@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-namespace nostrsdk {
+namespace nostr_sdk {
     void init_logger(optional string? level = null);
     u64 timestamp();
 };
