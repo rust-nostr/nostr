@@ -13,8 +13,6 @@ buildargs=(
     "-p nostr-sdk --features blocking"
     "-p nostr-ffi"
     "-p nostr-sdk-ffi"
-    "-p nostr-nodejs"
-    "-p nostr-sdk-nodejs"
 )
 
 for arg in "${buildargs[@]}"; do
