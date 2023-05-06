@@ -2,11 +2,13 @@
 
 ## Project structure
 
+The project is split up into several crates in the `crates/` directory:
+
 * [**nostr**](./crates/nostr/): Rust implementation of Nostr protocol.
 * [**nostr-sdk**](./crates/nostr-sdk/): High level client library.
 * [**nostr-sdk-net**](./crates/nostr-sdk-net/): Network library for [**nostr-sdk**](./crates/nostr-sdk/)
 
-## Bindings
+### Bindings
 
 **nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift, Kotlin, Python and JavaScript. 
 Please, explore the [`bindings/`](./bindings/) directory to learn more.
