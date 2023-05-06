@@ -1,9 +1,7 @@
 [bindings.kotlin]
-package_name = "com.p2kishimoto.nostr.sdk"
-cdylib_name = "nostrsdk"
+package_name = "nostr_sdk"
+cdylib_name = "nostr_sdk_ffi"
 
 [bindings.swift]
-cdylib_name = "nostrsdk"
-
-[bindings.python]
-cdylib_name = "nostrsdk"
+ffi_module_name = "nostr_sdk"
+cdylib_name = "nostr_sdk_ffi"

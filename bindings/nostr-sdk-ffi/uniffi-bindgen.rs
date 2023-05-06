@@ -2,5 +2,5 @@
 // Distributed under the MIT software license
 
 fn main() {
-    uniffi::generate_scaffolding("./src/nostr_sdk.udl").expect("Building the UDL file failed");
+    uniffi::uniffi_bindgen_main()
 }

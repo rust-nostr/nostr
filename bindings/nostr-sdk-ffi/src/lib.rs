@@ -31,6 +31,6 @@ mod ffi {
     pub use crate::error::NostrSdkError;
 
     // UDL
-    uniffi_macros::include_scaffolding!("nostrsdk");
+    uniffi_macros::include_scaffolding!("nostr_sdk");
 }
 pub use ffi::*;
