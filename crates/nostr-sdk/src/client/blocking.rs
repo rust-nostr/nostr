@@ -44,11 +44,6 @@ impl Client {
         }
     }
 
-    #[deprecated(since = "0.21.0", note = "use `with_opts` instead")]
-    pub fn new_with_opts(keys: &Keys, opts: Options) -> Self {
-        Self::with_opts(keys, opts)
-    }
-
     /// Create a new NIP46 Client
     #[cfg(feature = "nip46")]
     pub fn with_remote_signer(app_keys: &Keys, remote_signer: RemoteSigner) -> Self {
