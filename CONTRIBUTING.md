@@ -47,6 +47,10 @@ debt inside this library.
 If you deprecated an API as part of a contribution, we encourage you to "own" that API
 and send a follow-up to remove it as part of the next release cycle.
 
+## Unwrap and expect
+
+Usage of `.unwrap()` or `.expect("...")` methods is allowed **only** in `examples` or `tests`.
+
 ## Peer review
 
 Anyone may participate in peer review which is expressed by comments in the
