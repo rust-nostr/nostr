@@ -140,7 +140,7 @@ The following crate feature flags are available:
 | ✅         | [51 - Lists](https://github.com/nostr-protocol/nips/blob/master/51.md)                                                              |
 | ✅         | [56 - Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)                                                          |
 | ✅         | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                                     |
-| ❌         | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                                             |
+| ✅         | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                                             |
 | ✅         | [65 - Relay List Metadata](https://github.com/nostr-protocol/nips/blob/master/65.md)                                                |
 | ✅         | [78 - Arbitrary custom app data](https://github.com/nostr-protocol/nips/blob/master/78.md)                                          |
 | ❌         | [94 - File Metadata](https://github.com/nostr-protocol/nips/blob/master/94.md)                                                      |
