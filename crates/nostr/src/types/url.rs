@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use url::{ParseError, Url};
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::String;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
