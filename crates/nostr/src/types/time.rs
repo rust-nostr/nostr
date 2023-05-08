@@ -16,6 +16,10 @@ use std::{
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::fmt;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::String;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::vec::Vec;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::num;
 
 #[cfg(target_arch = "wasm32")]
