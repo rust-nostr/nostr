@@ -171,6 +171,8 @@ pub enum TagKind {
     Title,
     /// Image (NIP23)
     Image,
+    /// Thumbnail
+    Thumb,
     /// Summary (NIP23)
     Summary,
     /// PublishedAt (NIP23)
@@ -187,6 +189,8 @@ pub enum TagKind {
     Amount,
     /// Lnurl (NIP57)
     Lnurl,
+    /// Name tag
+    Name,
     /// Custom tag kind
     Custom(String),
 }
@@ -210,6 +214,7 @@ impl fmt::Display for TagKind {
             Self::Challenge => write!(f, "challenge"),
             Self::Title => write!(f, "title"),
             Self::Image => write!(f, "image"),
+            Self::Thumb => write!(f, "thumb"),
             Self::Summary => write!(f, "summary"),
             Self::PublishedAt => write!(f, "published_at"),
             Self::Description => write!(f, "description"),
@@ -218,6 +223,7 @@ impl fmt::Display for TagKind {
             Self::Relays => write!(f, "relays"),
             Self::Amount => write!(f, "amount"),
             Self::Lnurl => write!(f, "lnurl"),
+            Self::Name => write!(f, "name"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -246,6 +252,7 @@ where
             "challenge" => Self::Challenge,
             "title" => Self::Title,
             "image" => Self::Image,
+            "thumb" => Self::Thumb,
             "summary" => Self::Summary,
             "published_at" => Self::PublishedAt,
             "description" => Self::Description,
@@ -254,6 +261,7 @@ where
             "relays" => Self::Relays,
             "amount" => Self::Amount,
             "lnurl" => Self::Lnurl,
+            "name" => Self::Name,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -276,7 +284,7 @@ pub enum Tag {
         kind: Kind,
         public_key: XOnlyPublicKey,
         identifier: String,
-        relay_url: UncheckedUrl,
+        relay_url: Option<UncheckedUrl>,
     },
     Relay(UncheckedUrl),
     ContactList {
@@ -300,7 +308,8 @@ pub enum Tag {
     Subject(String),
     Challenge(String),
     Title(String),
-    Image(String),
+    Image(String, Option<(u64, u64)>),
+    Thumb(String, Option<(u64, u64)>),
     Summary(String),
     Description(String),
     Bolt11(String),
@@ -308,6 +317,7 @@ pub enum Tag {
     Relays(Vec<UncheckedUrl>),
     Amount(u64),
     Lnurl(String),
+    Name(String),
     PublishedAt(Timestamp),
 }
 
@@ -349,6 +359,7 @@ impl Tag {
             Tag::Challenge(..) => TagKind::Challenge,
             Tag::Title(..) => TagKind::Title,
             Tag::Image(..) => TagKind::Image,
+            Tag::Thumb(..) => TagKind::Thumb,
             Tag::Summary(..) => TagKind::Summary,
             Tag::PublishedAt(..) => TagKind::PublishedAt,
             Tag::Description(..) => TagKind::Description,
@@ -356,6 +367,7 @@ impl Tag {
             Tag::Preimage(..) => TagKind::Preimage,
             Tag::Relays(..) => TagKind::Relays,
             Tag::Amount(..) => TagKind::Amount,
+            Tag::Name(..) => TagKind::Name,
             Tag::Lnurl(..) => TagKind::Lnurl,
         }
     }
@@ -390,7 +402,21 @@ where
             }
         } else if tag_len == 2 {
             let content: &str = &tag[1];
+
             match tag_kind {
+                TagKind::A => {
+                    let kpi: Vec<&str> = tag[1].split(':').collect();
+                    if kpi.len() == 3 {
+                        Ok(Self::A {
+                            kind: Kind::from_str(kpi[0])?,
+                            public_key: XOnlyPublicKey::from_str(kpi[1])?,
+                            identifier: kpi[2].to_string(),
+                            relay_url: None,
+                        })
+                    } else {
+                        Err(Error::InvalidLength)
+                    }
+                }
                 TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?, None)),
                 TagKind::E => Ok(Self::Event(EventId::from_hex(content)?, None, None)),
                 TagKind::R => Ok(Self::Reference(content.to_string())),
@@ -405,7 +431,8 @@ where
                 TagKind::Subject => Ok(Self::Subject(content.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(content.to_string())),
                 TagKind::Title => Ok(Self::Title(content.to_string())),
-                TagKind::Image => Ok(Self::Image(content.to_string())),
+                TagKind::Image => Ok(Self::Image(content.to_string(), None)),
+                TagKind::Thumb => Ok(Self::Thumb(content.to_string(), None)),
                 TagKind::Summary => Ok(Self::Summary(content.to_string())),
                 TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(content)?)),
                 TagKind::Description => Ok(Self::Description(content.to_string())),
@@ -413,6 +440,7 @@ where
                 TagKind::Preimage => Ok(Self::Preimage(content.to_string())),
                 TagKind::Amount => Ok(Self::Amount(content.parse()?)),
                 TagKind::Lnurl => Ok(Self::Lnurl(content.to_string())),
+                TagKind::Name => Ok(Self::Name(content.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -457,8 +485,28 @@ where
                             kind: Kind::from_str(kpi[0])?,
                             public_key: XOnlyPublicKey::from_str(kpi[1])?,
                             identifier: kpi[2].to_string(),
-                            relay_url: UncheckedUrl::from(tag[2].clone()),
+                            relay_url: Some(UncheckedUrl::from(tag[2].clone())),
                         })
+                    } else {
+                        Err(Error::InvalidLength)
+                    }
+                }
+                TagKind::Image => {
+                    let image = tag[1].clone();
+                    let dimensions: Vec<&str> = tag[2].split('x').collect();
+                    if dimensions.len() == 2 {
+                        let (width, height) = (dimensions[0], dimensions[1]);
+                        Ok(Self::Image(image, Some((width.parse()?, height.parse()?))))
+                    } else {
+                        Err(Error::InvalidLength)
+                    }
+                }
+                TagKind::Thumb => {
+                    let thumb = tag[1].clone();
+                    let dimensions: Vec<&str> = tag[2].split('x').collect();
+                    if dimensions.len() == 2 {
+                        let (width, height) = (dimensions[0], dimensions[1]);
+                        Ok(Self::Thumb(thumb, Some((width.parse()?, height.parse()?))))
                     } else {
                         Err(Error::InvalidLength)
                     }
@@ -536,11 +584,16 @@ impl From<Tag> for Vec<String> {
                 public_key,
                 identifier,
                 relay_url,
-            } => vec![
-                TagKind::A.to_string(),
-                format!("{}:{public_key}:{identifier}", kind.as_u64()),
-                relay_url.to_string(),
-            ],
+            } => {
+                let mut vec = vec![
+                    TagKind::A.to_string(),
+                    format!("{}:{public_key}:{identifier}", kind.as_u64()),
+                ];
+                if let Some(relay) = relay_url {
+                    vec.push(relay.to_string());
+                }
+                vec
+            }
             Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
             Tag::ContactList {
                 pk,
@@ -580,7 +633,22 @@ impl From<Tag> for Vec<String> {
             Tag::Subject(sub) => vec![TagKind::Subject.to_string(), sub],
             Tag::Challenge(challenge) => vec![TagKind::Challenge.to_string(), challenge],
             Tag::Title(title) => vec![TagKind::Title.to_string(), title],
-            Tag::Image(image) => vec![TagKind::Image.to_string(), image],
+            Tag::Image(image, dimensions) => match dimensions {
+                None => vec![TagKind::Image.to_string(), image],
+                Some((width, height)) => vec![
+                    TagKind::Image.to_string(),
+                    image,
+                    format!("{}x{}", height, width),
+                ],
+            },
+            Tag::Thumb(thumb, dimensions) => match dimensions {
+                None => vec![TagKind::Thumb.to_string(), thumb],
+                Some((width, height)) => vec![
+                    TagKind::Thumb.to_string(),
+                    thumb,
+                    format!("{}x{}", height, width),
+                ],
+            },
             Tag::Summary(summary) => vec![TagKind::Summary.to_string(), summary],
             Tag::PublishedAt(timestamp) => {
                 vec![TagKind::PublishedAt.to_string(), timestamp.to_string()]
@@ -600,6 +668,9 @@ impl From<Tag> for Vec<String> {
                 .collect::<Vec<_>>(),
             Tag::Amount(amount) => {
                 vec![TagKind::Amount.to_string(), amount.to_string()]
+            }
+            Tag::Name(name) => {
+                vec![TagKind::Name.to_string(), name]
             }
             Tag::Lnurl(lnurl) => {
                 vec![TagKind::Lnurl.to_string(), lnurl]
@@ -846,7 +917,7 @@ mod tests {
                     "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
                 )?,
                 identifier: String::from("ipsum"),
-                relay_url: UncheckedUrl::from("wss://relay.nostr.org")
+                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org")?)
             }
             .as_vec()
         );
@@ -1067,7 +1138,7 @@ mod tests {
                     "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
                 )?,
                 identifier: String::from("ipsum"),
-                relay_url: UncheckedUrl::from("wss://relay.nostr.org")
+                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org")?)
             }
         );
 
