@@ -42,6 +42,8 @@ x86_64-linux-android: $(SOURCES) ndk-home
 	cargo ndk -t x86_64-linux-android -o ffi/kotlin/jniLibs build --release
 
 bindings-android: sdk-root kotlin
+	rm -rf bindings-android/lib/src/main/jniLibs
+	rm -rf bindings-android/lib/src/main/kotlin
 	cp -r ffi/kotlin/jniLibs bindings-android/lib/src/main
 	cp -r ffi/kotlin/nostr bindings-android/lib/src/main/kotlin/
 	cd bindings-android && ./gradlew assemble
