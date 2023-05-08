@@ -171,11 +171,18 @@ impl Event {
 
     /// Returns `true` if the event has an expiration tag that is expired.
     /// If an event has no `Expiration` tag, then it will return `false`.
+    #[cfg(feature = "std")]
     pub fn is_expired(&self) -> bool {
         let now = Timestamp::now();
+        self.is_expired_since(now)
+    }
+
+    /// Returns `true` if the event has an expiration tag that is expired `since`.
+    /// If an event has no `Expiration` tag, then it will return `false`.
+    pub fn is_expired_since(&self, since: Timestamp) -> bool {
         for tag in self.tags.iter() {
             if let Tag::Expiration(timestamp) = tag {
-                return timestamp < &now;
+                return timestamp < &since;
             }
         }
         false
