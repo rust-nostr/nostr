@@ -8,4 +8,8 @@ edition = "2021"
 [dependencies]
 libc = { version = "0.2.119", default-features = false }
 
-nostr = { path = "../nostr", default-features = false, features = ["alloc"] }
+nostr = { path = "../../../nostr", default-features = false, features = [
+    "alloc",
+] }
+
+[workspace]

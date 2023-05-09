@@ -7,7 +7,6 @@ members = [
     "crates/nostr",
     "crates/nostr-sdk",
     "crates/nostr-sdk-net",
-    "crates/ensure_no_std",
 ]
 default-members = ["crates/nostr*"]
 resolver = "2"
