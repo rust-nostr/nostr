@@ -17,7 +17,7 @@ use alloc::{vec, vec::Vec};
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use rand_core::{OsRng, RngCore};
+use rand::{rngs::OsRng, RngCore};
 #[cfg(feature = "std")]
 use secp256k1::rand::{rngs::OsRng, RngCore};
 use secp256k1::XOnlyPublicKey;

@@ -30,8 +30,6 @@ alloc = [
     "url_no_std",
     "secp256k1/alloc",
     "secp256k1/rand",
-    "rand_core/alloc",
-    "rand_core/getrandom",
     "rand/alloc",
     "rand/getrandom",
 ]
@@ -68,11 +66,6 @@ url = { version = "2", features = ["serde"], optional = true }
 url_no_std = { package = "url", features = [
     "alloc",
 ], git = "https://github.com/OverOrion/rust-url", branch = "no_std_net", optional = true, default-features = false }
-
-rand_core = { version = "0.6", features = [
-    "alloc",
-    "getrandom",
-], optional = true, default-features = false }
 
 rand = { version = "0.8", features = [
     "alloc",
