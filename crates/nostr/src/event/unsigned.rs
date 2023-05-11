@@ -4,7 +4,7 @@
 //! Unsigned Event
 
 use core::fmt;
-=======
+
 use alloc::string::{String, ToString};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
