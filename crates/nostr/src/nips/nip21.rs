@@ -7,6 +7,12 @@
 
 use core::fmt;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 use secp256k1::XOnlyPublicKey;
 
 use super::nip19::{

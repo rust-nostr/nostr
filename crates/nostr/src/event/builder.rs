@@ -334,7 +334,7 @@ impl EventBuilder {
 
         Self::to_unsigned_event_internal(self, pubkey, created_at)
     }
-    #[cfg(not(feature = "std"))]
+
     /// Build [`UnsignedEvent`] with the given `Timestamp`
     /// Mostly useful for cases where the time source comes from the outside, not from builtin
     /// functions

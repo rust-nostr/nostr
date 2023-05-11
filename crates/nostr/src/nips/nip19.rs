@@ -12,6 +12,13 @@ use alloc::string::{FromUtf8Error, ToString};
 #[cfg(not(feature = "std"))]
 use alloc::vec::{self, Vec};
 use core::fmt;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 #[cfg(feature = "std")]
 use std::string::FromUtf8Error;
 
@@ -104,23 +111,6 @@ impl From<bitcoin_hashes::Error> for Error {
 impl From<id::Error> for Error {
     fn from(e: id::Error) -> Self {
         Self::EventId(e)
-    }
-}
-impl From<secp256k1::Error> for Error {
-    fn from(error: secp256k1::Error) -> Self {
-        Self::Secp256k1(error)
-    }
-}
-
-impl From<bitcoin_hashes::Error> for Error {
-    fn from(error: bitcoin_hashes::Error) -> Self {
-        Self::Hash(error)
-    }
-}
-
-impl From<bech32::Error> for Error {
-    fn from(error: bech32::Error) -> Self {
-        Self::Bech32(error)
     }
 }
 

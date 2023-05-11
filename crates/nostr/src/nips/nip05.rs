@@ -7,6 +7,13 @@
 
 use core::fmt;
 use core::str::FromStr;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 

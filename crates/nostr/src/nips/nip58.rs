@@ -119,7 +119,7 @@ impl BadgeDefinitionBuilder {
     /// Build [`Event`]
     #[cfg(feature = "std")]
     pub fn build(self, keys: &Keys) -> Result<BadgeDefinition, BuilderError> {
-        let event_builder = self.build_internal(keys)?;
+        let event_builder = self.build_internal()?;
         let event = event_builder.to_event(keys)?;
 
         Ok(BadgeDefinition(event))

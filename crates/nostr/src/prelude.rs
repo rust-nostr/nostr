@@ -2,12 +2,16 @@
 // Distributed under the MIT software license
 
 //! Prelude
-#![allow(ambiguous_glob_reexports)]
+//#![allow(ambiguous_glob_reexports)]
+#![cfg_attr(
+    all(not(feature = "std"), feature = "alloc"),
+    allow(ambiguous_glob_reexports)
+)]
 
 // External crates
-pub use ::url::*;
 #[cfg(feature = "nip19")]
-pub use bech32::*;
+pub use ::bech32::*;
+pub use ::url::*;
 #[cfg(feature = "nip06")]
 pub use bip39::*;
 #[cfg(feature = "nip06")]

@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-#![feature(error_in_core)]
+#![cfg_attr(all(not(feature = "std"), feature = "alloc"), feature(error_in_core))]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
