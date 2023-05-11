@@ -40,7 +40,7 @@ impl fmt::Display for Error {
             Self::Hash(e) => write!(f, "{e}"),
         }
     }
-
+}
 
 impl From<bitcoin_hashes::hex::Error> for Error {
     fn from(e: bitcoin_hashes::hex::Error) -> Self {
