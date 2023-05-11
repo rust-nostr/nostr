@@ -5,6 +5,8 @@
 use core::fmt;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
+use crate::alloc::borrow::ToOwned;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::String;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec, vec::Vec};
