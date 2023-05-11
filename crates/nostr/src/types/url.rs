@@ -33,8 +33,23 @@ impl From<ParseError> for Error {
 }
 
 /// Unchecked Url
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct UncheckedUrl(String);
+
+impl UncheckedUrl {
+    /// New unchecked url
+    pub fn new<S>(url: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self(url.into())
+    }
+
+    /// Empty unchecked url
+    pub fn empty() -> Self {
+        Self(String::new())
+    }
+}
 
 impl<S> From<S> for UncheckedUrl
 where
