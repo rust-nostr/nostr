@@ -52,7 +52,7 @@ impl From<reqwest::Error> for Error {
 }
 
 /// Relay information document
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RelayInformationDocument {
     /// Name
     pub name: Option<String>,

@@ -4,7 +4,7 @@
 
 //! Subscription filters
 
-use std::fmt;
+use core::fmt;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
@@ -19,7 +19,7 @@ use serde_json::{json, Map, Value};
 use crate::{EventId, Kind, Timestamp};
 
 /// Subscription ID
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct SubscriptionId(String);
 
 impl SubscriptionId {
@@ -47,7 +47,7 @@ impl fmt::Display for SubscriptionId {
 }
 
 /// Subscription filters
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Filter {
     /// List of event ids or prefixes
     pub ids: Option<Vec<String>>,

@@ -137,7 +137,7 @@ pub fn verify_delegation_signature(
 }
 
 /// Delegation token
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct DelegationToken(String);
 
 impl DelegationToken {
@@ -161,7 +161,7 @@ impl fmt::Display for DelegationToken {
 }
 
 /// Delegation tag, as defined in NIP-26
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DelegationTag {
     delegator_pubkey: XOnlyPublicKey,
     conditions: Conditions,
@@ -272,7 +272,7 @@ impl FromStr for DelegationTag {
 }
 
 /// A condition from the delegation conditions.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Condition {
     /// Event kind, e.g. kind=1
     Kind(u64),
@@ -345,7 +345,7 @@ impl FromStr for Condition {
 }
 
 /// Set of conditions of a delegation.
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Conditions(Vec<Condition>);
 
 impl Default for Conditions {

@@ -3,15 +3,16 @@
 
 //! Kind
 
-use std::fmt;
-use std::num::ParseIntError;
-use std::str::FromStr;
+use core::fmt;
+use core::hash::{Hash, Hasher};
+use core::num::ParseIntError;
+use core::str::FromStr;
 
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
 /// Event [`Kind`]
-#[derive(Debug, Copy, Clone, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord)]
 pub enum Kind {
     /// Metadata (NIP01 and NIP05)
     Metadata,
@@ -204,6 +205,15 @@ impl FromStr for Kind {
 impl PartialEq<Kind> for Kind {
     fn eq(&self, other: &Kind) -> bool {
         self.as_u64() == other.as_u64()
+    }
+}
+
+impl Hash for Kind {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.as_u64().hash(state);
     }
 }
 

@@ -76,7 +76,7 @@ pub trait FromPkStr: Sized {
 }
 
 /// Keys
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keys {
     public_key: XOnlyPublicKey,
     key_pair: Option<KeyPair>,

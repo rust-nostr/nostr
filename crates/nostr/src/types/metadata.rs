@@ -32,7 +32,7 @@ impl From<serde_json::Error> for Error {
 }
 
 /// Metadata
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Metadata {
     /// Name
     #[serde(skip_serializing_if = "Option::is_none")]

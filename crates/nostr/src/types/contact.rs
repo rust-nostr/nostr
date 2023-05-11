@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::UncheckedUrl;
 
 /// Contact
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct Contact {
     /// Public key
     pub pk: XOnlyPublicKey,

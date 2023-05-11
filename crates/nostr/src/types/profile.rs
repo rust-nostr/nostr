@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::nips::nip19::{Error, FromBech32, ToBech32, PREFIX_BECH32_PROFILE, RELAY, SPECIAL};
 
 /// Profile
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Profile {
     /// Public key
     pub public_key: XOnlyPublicKey,

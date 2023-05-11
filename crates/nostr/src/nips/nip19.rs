@@ -205,7 +205,7 @@ impl ToBech32 for EventId {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Nip19Event {
     pub event_id: EventId,
     pub relays: Vec<String>,
@@ -286,7 +286,7 @@ impl ToBech32 for Nip19Event {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ParameterizedReplaceableEvent {
     pub kind: Kind,
     pub pubkey: XOnlyPublicKey,

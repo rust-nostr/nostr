@@ -12,7 +12,7 @@ use super::{Filter, MessageHandleError, SubscriptionId};
 use crate::Event;
 
 /// Messages sent by clients, received by relays
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClientMessage {
     /// Event
     Event(Box<Event>),

@@ -13,7 +13,7 @@ use crate::{Event, EventId, SubscriptionId};
 
 /// Messages sent by relays, received by clients
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RelayMessage {
     Event {
         subscription_id: SubscriptionId,

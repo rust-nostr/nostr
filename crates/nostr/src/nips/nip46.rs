@@ -116,7 +116,7 @@ impl From<unsigned::Error> for Error {
 }
 
 /// Request
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Request {
     /// Describe
     Describe,
@@ -242,7 +242,7 @@ impl Request {
 }
 
 /// Delegation Response Result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct DelegationResult {
     /// Pubkey of Delegator
     pub from: XOnlyPublicKey,
@@ -255,7 +255,7 @@ pub struct DelegationResult {
 }
 
 /// Response
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Response {
     /// Describe
     Describe(Vec<String>),
@@ -274,7 +274,7 @@ pub enum Response {
 }
 
 /// Message
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Message {
     /// Request
@@ -448,7 +448,7 @@ where
 pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";
 
 /// Nostr Connect Metadata
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct NostrConnectMetadata {
     /// Human-readable name of the `App`
     pub name: String,

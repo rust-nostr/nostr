@@ -110,7 +110,7 @@ impl From<crate::event::Error> for Error {
 }
 
 /// Marker
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Marker {
     /// Root
     Root,
@@ -145,7 +145,7 @@ where
 }
 
 /// Report
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Report {
     /// Depictions of nudity, porn, etc
     Nudity,
@@ -188,7 +188,7 @@ impl TryFrom<&str> for Report {
 }
 
 /// Tag kind
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TagKind {
     /// Public key
     P,
@@ -319,7 +319,7 @@ where
 }
 
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Tag {
     Generic(TagKind, Vec<String>),
     Event(EventId, Option<UncheckedUrl>, Option<Marker>),
@@ -499,7 +499,7 @@ where
                 TagKind::P => {
                     let pubkey = XOnlyPublicKey::from_str(&tag[1])?;
                     if tag[2].is_empty() {
-                        Ok(Self::PubKey(pubkey, Some(UncheckedUrl::default())))
+                        Ok(Self::PubKey(pubkey, Some(UncheckedUrl::empty())))
                     } else {
                         match Report::try_from(tag[2].as_str()) {
                             Ok(report) => Ok(Self::PubKeyReport(pubkey, report)),
@@ -513,7 +513,7 @@ where
                 TagKind::E => {
                     let event_id = EventId::from_hex(&tag[1])?;
                     if tag[2].is_empty() {
-                        Ok(Self::Event(event_id, Some(UncheckedUrl::default()), None))
+                        Ok(Self::Event(event_id, Some(UncheckedUrl::empty()), None))
                     } else {
                         match Report::try_from(tag[2].as_str()) {
                             Ok(report) => Ok(Self::EventReport(event_id, report)),
@@ -895,7 +895,7 @@ mod tests {
                 EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
-                Some(UncheckedUrl::default()),
+                Some(UncheckedUrl::empty()),
                 None
             )
             .as_vec()
@@ -1121,7 +1121,7 @@ mod tests {
                 EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )?,
-                Some(UncheckedUrl::default()),
+                Some(UncheckedUrl::empty()),
                 None
             )
         );

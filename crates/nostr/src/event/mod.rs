@@ -82,7 +82,7 @@ impl From<nostr_ots::Error> for Error {
 }
 
 /// [`Event`] struct
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Event {
     /// Id
     pub id: EventId,

@@ -143,9 +143,11 @@ impl BadgeDefinitionBuilder {
 }
 
 /// Badge definition event as specified in NIP-58
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BadgeDefinition(Event);
 
 /// Badge award event as specified in NIP-58
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BadgeAward(Event);
 
 impl BadgeAward {
@@ -190,6 +192,7 @@ impl BadgeAward {
 }
 
 ///  Profile Badges event as specified in NIP-58
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ProfileBadgesEvent(Event);
 
 /// [`ProfileBadgesEvent`] errors
