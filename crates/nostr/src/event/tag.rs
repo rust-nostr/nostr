@@ -3,9 +3,9 @@
 
 //! Tag
 
-use std::fmt;
-use std::num::ParseIntError;
-use std::str::FromStr;
+use core::fmt;
+use core::num::ParseIntError;
+use core::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
@@ -14,48 +14,99 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::id::{self, EventId};
-use crate::nips::nip26::Conditions;
+use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::{Kind, Timestamp, UncheckedUrl};
 
 /// [`Tag`] error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum Error {
     /// Impossible to parse [`Marker`]
-    #[error("impossible to parse marker")]
     MarkerParseError,
     /// Unknown [`Report`]
-    #[error("unknown report type")]
     UnknownReportType,
     /// Impossible to find tag kind
-    #[error("impossible to find tag kind")]
     KindNotFound,
     /// Invalid length
-    #[error("invalid length")]
     InvalidLength,
-    /// Impossible to parse integer
-    #[error(transparent)]
-    ParseIntError(#[from] ParseIntError),
-    /// Secp256k1
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
-    /// Hex decoding error
-    #[error(transparent)]
-    Hex(#[from] bitcoin_hashes::hex::Error),
-    /// Url parse error
-    #[error("invalid url: {0}")]
-    Url(#[from] url::ParseError),
-    /// EventId error
-    #[error(transparent)]
-    EventId(#[from] id::Error),
-    /// NIP26 error
-    #[error(transparent)]
-    Nip26(#[from] crate::nips::nip26::Error),
-    /// Event Error
-    #[error(transparent)]
-    Event(#[from] crate::event::Error),
     /// Invalid Zap Request
-    #[error("Invalid Zap request")]
     InvalidZapRequest,
+    /// Impossible to parse integer
+    ParseIntError(ParseIntError),
+    /// Secp256k1
+    Secp256k1(secp256k1::Error),
+    /// Hex decoding error
+    Hex(bitcoin_hashes::hex::Error),
+    /// Url parse error
+    Url(url::ParseError),
+    /// EventId error
+    EventId(id::Error),
+    /// NIP26 error
+    NIP26(Nip26Error),
+    /// Event Error
+    Event(crate::event::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MarkerParseError => write!(f, "impossible to parse marker"),
+            Self::UnknownReportType => write!(f, "unknown report type"),
+            Self::KindNotFound => write!(f, "impossible to find tag kind"),
+            Self::InvalidLength => write!(f, "invalid length"),
+            Self::InvalidZapRequest => write!(f, "invalid Zap request"),
+            Self::ParseIntError(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Hex(e) => write!(f, "{e}"),
+            Self::Url(e) => write!(f, "{e}"),
+            Self::EventId(e) => write!(f, "{e}"),
+            Self::NIP26(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(e: ParseIntError) -> Self {
+        Self::ParseIntError(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
+}
+
+impl From<bitcoin_hashes::hex::Error> for Error {
+    fn from(e: bitcoin_hashes::hex::Error) -> Self {
+        Self::Hex(e)
+    }
+}
+
+impl From<url::ParseError> for Error {
+    fn from(e: url::ParseError) -> Self {
+        Self::Url(e)
+    }
+}
+
+impl From<id::Error> for Error {
+    fn from(e: id::Error) -> Self {
+        Self::EventId(e)
+    }
+}
+
+impl From<Nip26Error> for Error {
+    fn from(e: Nip26Error) -> Self {
+        Self::NIP26(e)
+    }
+}
+
+impl From<crate::event::Error> for Error {
+    fn from(e: crate::event::Error) -> Self {
+        Self::Event(e)
+    }
 }
 
 /// Marker

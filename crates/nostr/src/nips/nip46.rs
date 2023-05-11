@@ -5,9 +5,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/46.md>
 
+use core::fmt;
+use core::str::FromStr;
 use std::borrow::Cow;
-use std::fmt;
-use std::str::FromStr;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
@@ -20,48 +20,99 @@ use url::Url;
 
 use super::nip04;
 use super::nip26::{self, sign_delegation, Conditions};
+use crate::event::unsigned::{self, UnsignedEvent};
 use crate::key::{self, Keys};
-use crate::UnsignedEvent;
 
 /// NIP46 error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum Error {
     /// Key error
-    #[error(transparent)]
-    Key(#[from] key::Error),
+    Key(key::Error),
     /// JSON error
-    #[error(transparent)]
-    JSON(#[from] serde_json::Error),
+    Json(serde_json::Error),
     /// Url parse error
-    #[error(transparent)]
-    Url(#[from] url::ParseError),
+    Url(url::ParseError),
     /// Secp256k1 error
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
+    Secp256k1(secp256k1::Error),
     /// NIP04 error
-    #[error(transparent)]
-    NIP04(#[from] nip04::Error),
+    NIP04(nip04::Error),
     /// NIP26 error
-    #[error(transparent)]
-    NIP26(#[from] nip26::Error),
+    NIP26(nip26::Error),
     /// Unsigned event error
-    #[error(transparent)]
-    UnsignedEvent(#[from] crate::event::unsigned::Error),
+    UnsignedEvent(unsigned::Error),
     /// Invalid request
-    #[error("invalid request")]
     InvalidRequest,
     /// Too many/few params
-    #[error("too many/few params")]
     InvalidParamsLength,
     /// Unsupported method
-    #[error("unsupported method: {0}")]
     UnsupportedMethod(String),
     /// Invalid URI
-    #[error("invalid uri")]
     InvalidURI,
     /// Invalid URI scheme
-    #[error("invalid uri scheme")]
     InvalidURIScheme,
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Key(e) => write!(f, "{e}"),
+            Self::Json(e) => write!(f, "{e}"),
+            Self::Url(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::NIP04(e) => write!(f, "{e}"),
+            Self::NIP26(e) => write!(f, "{e}"),
+            Self::UnsignedEvent(e) => write!(f, "{e}"),
+            Self::InvalidRequest => write!(f, "invalid request"),
+            Self::InvalidParamsLength => write!(f, "too many/few params"),
+            Self::UnsupportedMethod(name) => write!(f, "unsupported method: {name}"),
+            Self::InvalidURI => write!(f, "invalid uri"),
+            Self::InvalidURIScheme => write!(f, "invalid uri scheme"),
+        }
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Key(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Json(e)
+    }
+}
+
+impl From<url::ParseError> for Error {
+    fn from(e: url::ParseError) -> Self {
+        Self::Url(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
+}
+
+impl From<nip04::Error> for Error {
+    fn from(e: nip04::Error) -> Self {
+        Self::NIP04(e)
+    }
+}
+
+impl From<nip26::Error> for Error {
+    fn from(e: nip26::Error) -> Self {
+        Self::NIP26(e)
+    }
+}
+
+impl From<unsigned::Error> for Error {
+    fn from(e: unsigned::Error) -> Self {
+        Self::UnsignedEvent(e)
+    }
 }
 
 /// Request

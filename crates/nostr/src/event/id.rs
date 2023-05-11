@@ -3,8 +3,8 @@
 
 //! Event Id
 
-use std::fmt;
-use std::str::FromStr;
+use core::fmt;
+use core::str::FromStr;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
@@ -16,14 +16,35 @@ use super::{Kind, Tag};
 use crate::Timestamp;
 
 /// [`EventId`] error
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Hex error
-    #[error(transparent)]
-    Hex(#[from] bitcoin_hashes::hex::Error),
+    Hex(bitcoin_hashes::hex::Error),
     /// Hash error
-    #[error(transparent)]
-    Hash(#[from] bitcoin_hashes::Error),
+    Hash(bitcoin_hashes::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Hex(e) => write!(f, "{e}"),
+            Self::Hash(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<bitcoin_hashes::hex::Error> for Error {
+    fn from(e: bitcoin_hashes::hex::Error) -> Self {
+        Self::Hex(e)
+    }
+}
+
+impl From<bitcoin_hashes::Error> for Error {
+    fn from(e: bitcoin_hashes::Error) -> Self {
+        Self::Hash(e)
+    }
 }
 
 /// Event Id

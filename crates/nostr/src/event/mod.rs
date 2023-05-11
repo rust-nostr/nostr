@@ -4,7 +4,8 @@
 
 //! Event
 
-use std::str::FromStr;
+use core::fmt;
+use core::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, XOnlyPublicKey};
@@ -25,24 +26,59 @@ pub use self::unsigned::UnsignedEvent;
 use crate::{Timestamp, SECP256K1};
 
 /// [`Event`] error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum Error {
     /// Invalid signature
-    #[error("invalid signature")]
     InvalidSignature,
     /// Error serializing or deserializing JSON data
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
+    Json(serde_json::Error),
     /// Secp256k1 error
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
+    Secp256k1(secp256k1::Error),
     /// Hex decoding error
-    #[error(transparent)]
-    Hex(#[from] bitcoin_hashes::hex::Error),
+    Hex(bitcoin_hashes::hex::Error),
     /// OpenTimestamps error
     #[cfg(feature = "nip03")]
-    #[error(transparent)]
-    OpenTimestamps(#[from] nostr_ots::Error),
+    OpenTimestamps(nostr_ots::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidSignature => write!(f, "Invalid signature"),
+            Self::Json(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Hex(e) => write!(f, "{e}"),
+            #[cfg(feature = "nip03")]
+            Self::OpenTimestamps(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Json(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
+}
+
+impl From<bitcoin_hashes::hex::Error> for Error {
+    fn from(e: bitcoin_hashes::hex::Error) -> Self {
+        Self::Hex(e)
+    }
+}
+
+#[cfg(feature = "nip03")]
+impl From<nostr_ots::Error> for Error {
+    fn from(e: nostr_ots::Error) -> Self {
+        Self::OpenTimestamps(e)
+    }
 }
 
 /// [`Event`] struct

@@ -6,6 +6,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/11.md>
 
+use core::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 
@@ -15,20 +16,39 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 /// `NIP11` error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum Error {
-    /// Reqwest error
-    #[error(transparent)]
-    Reqwest(#[from] reqwest::Error),
     /// The relay information document is invalid
-    #[error("The relay information document is invalid")]
     InvalidInformationDocument,
     /// The relay information document is not accessible
-    #[error("The relay information document is not accessible")]
     InaccessibleInformationDocument,
     /// Provided URL scheme is not valid
-    #[error("Provided URL scheme is not valid")]
     InvalidScheme,
+    /// Reqwest error
+    Reqwest(reqwest::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidInformationDocument => {
+                write!(f, "The relay information document is invalid")
+            }
+            Self::InaccessibleInformationDocument => {
+                write!(f, "The relay information document is not accessible")
+            }
+            Self::InvalidScheme => write!(f, "Provided URL scheme is not valid"),
+            Self::Reqwest(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        Self::Reqwest(e)
+    }
 }
 
 /// Relay information document

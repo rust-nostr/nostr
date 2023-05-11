@@ -3,6 +3,7 @@
 
 //! Event builder
 
+use core::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
@@ -24,24 +25,65 @@ use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 
 /// [`EventBuilder`] error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum Error {
     /// Key error
-    #[error(transparent)]
-    Key(#[from] key::Error),
-    /// Secp256k1 error
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
+    Key(key::Error),
     /// JSON error
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
+    Json(serde_json::Error),
+    /// Secp256k1 error
+    Secp256k1(secp256k1::Error),
     /// Unsigned event error
-    #[error(transparent)]
-    Unsigned(#[from] super::unsigned::Error),
+    Unsigned(super::unsigned::Error),
     /// NIP04 error
     #[cfg(feature = "nip04")]
-    #[error(transparent)]
-    NIP04(#[from] nip04::Error),
+    NIP04(nip04::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Key(e) => write!(f, "{e}"),
+            Self::Json(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Unsigned(e) => write!(f, "{e}"),
+            #[cfg(feature = "nip04")]
+            Self::NIP04(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Key(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Json(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
+}
+
+impl From<super::unsigned::Error> for Error {
+    fn from(e: super::unsigned::Error) -> Self {
+        Self::Unsigned(e)
+    }
+}
+
+#[cfg(feature = "nip04")]
+impl From<nip04::Error> for Error {
+    fn from(e: nip04::Error) -> Self {
+        Self::NIP04(e)
+    }
 }
 
 /// [`Event`] builder

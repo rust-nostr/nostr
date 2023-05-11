@@ -5,7 +5,8 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/06.md>
 
-use std::str::FromStr;
+use core::fmt;
+use core::str::FromStr;
 
 use bip39::Mnemonic;
 use bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
@@ -18,14 +19,35 @@ use secp256k1::rand::RngCore;
 use crate::{Keys, SECP256K1};
 
 /// `NIP06` error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     /// BIP32 error
-    #[error(transparent)]
-    BIP32(#[from] bitcoin::bip32::Error),
+    BIP32(bitcoin::bip32::Error),
     /// BIP39 error
-    #[error(transparent)]
-    BIP39(#[from] bip39::Error),
+    BIP39(bip39::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BIP32(e) => write!(f, "{e}"),
+            Self::BIP39(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<bitcoin::bip32::Error> for Error {
+    fn from(e: bitcoin::bip32::Error) -> Self {
+        Self::BIP32(e)
+    }
+}
+
+impl From<bip39::Error> for Error {
+    fn from(e: bip39::Error) -> Self {
+        Self::BIP39(e)
+    }
 }
 
 #[allow(missing_docs)]

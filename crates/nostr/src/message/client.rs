@@ -12,21 +12,24 @@ use super::{Filter, MessageHandleError, SubscriptionId};
 use crate::Event;
 
 /// Messages sent by clients, received by relays
-#[allow(missing_docs)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClientMessage {
     /// Event
     Event(Box<Event>),
     /// Req
     Req {
+        /// Subscription ID
         subscription_id: SubscriptionId,
+        /// Filters
         filters: Vec<Filter>,
     },
     /// Count
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/45.md>
     Count {
+        /// Subscription ID
         subscription_id: SubscriptionId,
+        /// Filters
         filters: Vec<Filter>,
     },
     /// Close

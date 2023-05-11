@@ -6,8 +6,9 @@
 //!
 //! This module defines the [`Keys`] structure.
 
+use core::fmt;
 #[cfg(feature = "nip19")]
-use std::str::FromStr;
+use core::str::FromStr;
 
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::Rng;
@@ -24,23 +25,38 @@ pub mod vanity;
 use crate::nips::nip19::FromBech32;
 
 /// [`Keys`] error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     /// Invalid secret key
-    #[error("Invalid secret key")]
     InvalidSecretKey,
     /// Invalid public key
-    #[error("Invalid public key")]
     InvalidPublicKey,
-    /// Secrete key missing
-    #[error("Secrete key missing")]
+    /// Secret key missing
     SkMissing,
     /// Unsupported char
-    #[error("Unsupported char: {0}")]
     InvalidChar(char),
     /// Secp256k1 error
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
+    Secp256k1(secp256k1::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidSecretKey => write!(f, "Invalid secret key"),
+            Self::InvalidPublicKey => write!(f, "Invalid public key"),
+            Self::SkMissing => write!(f, "Secret key missing"),
+            Self::InvalidChar(c) => write!(f, "Unsupported char: {c}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
 }
 
 /// Trait for [`Keys`]

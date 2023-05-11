@@ -3,6 +3,8 @@
 
 //! Unsigned Event
 
+use core::fmt;
+
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
@@ -10,20 +12,53 @@ use serde::{Deserialize, Serialize};
 use crate::{Event, EventId, Keys, Kind, Tag, Timestamp};
 
 /// [`UnsignedEvent`] error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum Error {
     /// Key error
-    #[error(transparent)]
-    Key(#[from] crate::key::Error),
+    Key(crate::key::Error),
     /// Error serializing or deserializing JSON data
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
+    Json(serde_json::Error),
     /// Secp256k1 error
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
+    Secp256k1(secp256k1::Error),
     /// Event error
-    #[error(transparent)]
-    Event(#[from] super::Error),
+    Event(super::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Key(e) => write!(f, "{e}"),
+            Self::Json(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<crate::key::Error> for Error {
+    fn from(e: crate::key::Error) -> Self {
+        Self::Key(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Json(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
+}
+
+impl From<super::Error> for Error {
+    fn from(e: super::Error) -> Self {
+        Self::Event(e)
+    }
 }
 
 /// [`UnsignedEvent`] struct

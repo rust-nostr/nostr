@@ -5,9 +5,10 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/05.md>
 
+use core::fmt;
+use core::str::FromStr;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-use std::str::FromStr;
 
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
@@ -17,23 +18,50 @@ use serde_json::Value;
 use crate::Profile;
 
 /// `NIP05` error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum Error {
     /// Invalid format
-    #[error("invalid format")]
     InvalidFormat,
     /// Impossible to verify
-    #[error("impossible to verify")]
     ImpossibleToVerify,
     /// Reqwest error
-    #[error(transparent)]
-    Reqwest(#[from] reqwest::Error),
+    Reqwest(reqwest::Error),
     /// Error deserializing JSON data
-    #[error("impossible to deserialize NIP05 data: {0}")]
-    Json(#[from] serde_json::Error),
+    Json(serde_json::Error),
     /// Secp256k1 error
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
+    Secp256k1(secp256k1::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidFormat => write!(f, "invalid format"),
+            Self::ImpossibleToVerify => write!(f, "impossible to verify"),
+            Self::Reqwest(e) => write!(f, "{e}"),
+            Self::Json(e) => write!(f, "impossible to deserialize NIP05 data: {e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        Self::Reqwest(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Json(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
 }
 
 fn compose_url(nip05: &str) -> Result<(String, &str), Error> {

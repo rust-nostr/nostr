@@ -3,15 +3,32 @@
 
 //! Metadata
 
+use core::fmt;
+
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 /// [`Metadata`] error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum Error {
     /// Error serializing or deserializing JSON data
-    #[error("json error: {0}")]
-    Json(#[from] serde_json::Error),
+    Json(serde_json::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Json(e) => write!(f, "json error: {e}"),
+        }
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Json(e)
+    }
 }
 
 /// Metadata

@@ -5,8 +5,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/26.md>
 
-use std::fmt;
-use std::str::FromStr;
+use core::fmt;
+use core::num::ParseIntError;
+use core::str::FromStr;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
@@ -23,43 +24,89 @@ use crate::SECP256K1;
 const DELEGATION_KEYWORD: &str = "delegation";
 
 /// `NIP26` error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     /// Key error
-    #[error(transparent)]
-    Key(#[from] key::Error),
+    Key(key::Error),
     /// Secp256k1 error
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
-    /// Invalid condition in conditions string
-    #[error("Invalid condition in conditions string")]
-    ConditionsParseInvalidCondition,
+    Secp256k1(secp256k1::Error),
     /// Invalid condition, cannot parse expected number
-    #[error("Invalid condition, cannot parse expected number")]
-    ConditionsParseNumeric(#[from] std::num::ParseIntError),
+    ConditionsParseNumeric(ParseIntError),
     /// Conditions not satisfied
-    #[error("Conditions not satisfied")]
-    ConditionsValidation(#[from] ValidationError),
+    ConditionsValidation(ValidationError),
+    /// Invalid condition in conditions string
+    ConditionsParseInvalidCondition,
     /// Delegation tag parse error
-    #[error("Delegation tag parse error")]
     DelegationTagParse,
 }
 
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Key(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::ConditionsParseNumeric(_) => {
+                write!(f, "Invalid condition, cannot parse expected number")
+            }
+            Self::ConditionsValidation(_) => write!(f, "Conditions not satisfied"),
+            Self::ConditionsParseInvalidCondition => {
+                write!(f, "Invalid condition in conditions string")
+            }
+            Self::DelegationTagParse => write!(f, "Delegation tag parse error"),
+        }
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Key(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(e: ParseIntError) -> Self {
+        Self::ConditionsParseNumeric(e)
+    }
+}
+
+impl From<ValidationError> for Error {
+    fn from(e: ValidationError) -> Self {
+        Self::ConditionsValidation(e)
+    }
+}
+
 /// Tag validation errors
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ValidationError {
     /// Signature does not match
-    #[error("Signature does not match")]
     InvalidSignature,
     /// Event kind does not match
-    #[error("Event kind does not match")]
     InvalidKind,
     /// Creation time is earlier than validity period
-    #[error("Creation time is earlier than validity period")]
     CreatedTooEarly,
     /// Creation time is later than validity period
-    #[error("Creation time is later than validity period")]
     CreatedTooLate,
+}
+
+impl std::error::Error for ValidationError {}
+
+impl fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidSignature => write!(f, "Signature does not match"),
+            Self::InvalidKind => write!(f, "Event kind does not match"),
+            Self::CreatedTooEarly => write!(f, "Creation time is earlier than validity period"),
+            Self::CreatedTooLate => write!(f, "Creation time is later than validity period"),
+        }
+    }
 }
 
 /// Sign delegation.

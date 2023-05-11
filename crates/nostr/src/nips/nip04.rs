@@ -6,8 +6,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/04.md>
 
-use std::convert::From;
-use std::str::FromStr;
+use core::convert::From;
+use core::fmt;
+use core::str::FromStr;
 
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
@@ -20,23 +21,41 @@ type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
 
 /// `NIP04` error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     /// Invalid content format
-    #[error("Invalid content format")]
     InvalidContentFormat,
     /// Error while decoding from base64
-    #[error("Error while decoding from base64")]
     Base64Decode,
     /// Error while encoding to UTF-8
-    #[error("Error while encoding to UTF-8")]
     Utf8Encode,
     /// Wrong encryption block mode
-    #[error("Wrong encryption block mode. The content must be encrypted using CBC mode!")]
     WrongBlockMode,
     /// Secp256k1 error
-    #[error("secp256k1 error: {0}")]
-    Secp256k1(#[from] secp256k1::Error),
+    Secp256k1(secp256k1::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidContentFormat => write!(f, "Invalid content format"),
+            Self::Base64Decode => write!(f, "Error while decoding from base64"),
+            Self::Utf8Encode => write!(f, "Error while encoding to UTF-8"),
+            Self::WrongBlockMode => write!(
+                f,
+                "Wrong encryption block mode. The content must be encrypted using CBC mode!"
+            ),
+            Self::Secp256k1(e) => write!(f, "secp256k1 error: {e}"),
+        }
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
 }
 
 /// Entrypt

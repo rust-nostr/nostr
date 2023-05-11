@@ -3,7 +3,8 @@
 
 //! Channel Id
 
-use std::{fmt, str::FromStr};
+use core::fmt;
+use core::str::FromStr;
 
 #[cfg(feature = "nip19")]
 use bech32::{self, FromBase32, ToBase32, Variant};
@@ -18,14 +19,35 @@ use crate::nips::nip19::{
 use crate::EventId;
 
 /// [`ChannelId`] error
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Hex error
-    #[error(transparent)]
-    Hex(#[from] bitcoin_hashes::hex::Error),
+    Hex(bitcoin_hashes::hex::Error),
     /// Hash error
-    #[error(transparent)]
-    Hash(#[from] bitcoin_hashes::Error),
+    Hash(bitcoin_hashes::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Hex(e) => write!(f, "{e}"),
+            Self::Hash(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<bitcoin_hashes::hex::Error> for Error {
+    fn from(e: bitcoin_hashes::hex::Error) -> Self {
+        Self::Hex(e)
+    }
+}
+
+impl From<bitcoin_hashes::Error> for Error {
+    fn from(e: bitcoin_hashes::Error) -> Self {
+        Self::Hash(e)
+    }
 }
 
 /// Channel Id

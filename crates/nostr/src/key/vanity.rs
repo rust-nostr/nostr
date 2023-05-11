@@ -3,7 +3,8 @@
 
 //! Vanity
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use core::fmt;
+use core::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, RecvError};
 use std::sync::Arc;
 use std::thread;
@@ -19,17 +20,32 @@ const BECH32_CHARS: &str = "023456789acdefghjklmnpqrstuvwxyz";
 const HEX_CHARS: &str = "0123456789abcdef";
 
 /// [`Keys`] vanity error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     /// Unsupported char
-    #[error("Unsupported char: {0}")]
     InvalidChar(char),
     /// RecvError
-    #[error(transparent)]
-    RecvError(#[from] RecvError),
+    RecvError(RecvError),
     /// Thread Join failed
-    #[error("Impossible to join threads")]
     JoinHandleError,
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidChar(c) => write!(f, "Unsupported char: {c}"),
+            Self::RecvError(e) => write!(f, "{e}"),
+            Self::JoinHandleError => write!(f, "impossible to join threads"),
+        }
+    }
+}
+
+impl From<RecvError> for Error {
+    fn from(e: RecvError) -> Self {
+        Self::RecvError(e)
+    }
 }
 
 impl Keys {

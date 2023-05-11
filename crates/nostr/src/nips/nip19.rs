@@ -7,6 +7,9 @@
 
 #![allow(missing_docs)]
 
+use core::fmt;
+use std::string::FromUtf8Error;
+
 use bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin_hashes::Hash;
 use secp256k1::{SecretKey, XOnlyPublicKey};
@@ -29,35 +32,74 @@ pub const AUTHOR: u8 = 2;
 pub const KIND: u8 = 3;
 
 /// `NIP19` error
-#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Error {
-    /// Wrong prefix or variant
-    #[error("wrong prefix or variant")]
-    WrongPrefixOrVariant,
     /// Bech32 error.
-    #[error(transparent)]
-    Bech32(#[from] bech32::Error),
+    Bech32(bech32::Error),
+    /// UFT-8 error
+    UTF8(FromUtf8Error),
+    /// Secp256k1 error
+    Secp256k1(secp256k1::Error),
+    /// Hash error
+    Hash(bitcoin_hashes::Error),
+    /// EventId error
+    EventId(id::Error),
+    /// Wrong prefix or variant
+    WrongPrefixOrVariant,
     /// Field missing
-    #[error("field missing: {0}")]
     FieldMissing(String),
     /// TLV error
-    #[error("type-length-value error")]
     TLV,
-    /// UFT-8 error
-    #[error(transparent)]
-    UTF8(#[from] std::string::FromUtf8Error),
     /// From slice error
-    #[error("impossible to perform conversion from slice")]
     TryFromSlice,
-    /// Secp256k1 error
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
-    /// Hash error
-    #[error(transparent)]
-    Hash(#[from] bitcoin_hashes::Error),
-    /// EventId error
-    #[error(transparent)]
-    EventId(#[from] id::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Bech32(e) => write!(f, "{e}"),
+            Self::UTF8(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Hash(e) => write!(f, "{e}"),
+            Self::EventId(e) => write!(f, "{e}"),
+            Self::WrongPrefixOrVariant => write!(f, "wrong prefix or variant"),
+            Self::FieldMissing(name) => write!(f, "field missing: {name}"),
+            Self::TLV => write!(f, "type-length-value error"),
+            Self::TryFromSlice => write!(f, "impossible to perform conversion from slice"),
+        }
+    }
+}
+
+impl From<bech32::Error> for Error {
+    fn from(e: bech32::Error) -> Self {
+        Self::Bech32(e)
+    }
+}
+
+impl From<FromUtf8Error> for Error {
+    fn from(e: FromUtf8Error) -> Self {
+        Self::UTF8(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
+}
+
+impl From<bitcoin_hashes::Error> for Error {
+    fn from(e: bitcoin_hashes::Error) -> Self {
+        Self::Hash(e)
+    }
+}
+
+impl From<id::Error> for Error {
+    fn from(e: id::Error) -> Self {
+        Self::EventId(e)
+    }
 }
 
 pub trait FromBech32: Sized {

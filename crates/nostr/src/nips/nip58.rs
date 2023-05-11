@@ -2,23 +2,44 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/58.md>
 
+use core::fmt;
+
 use secp256k1::XOnlyPublicKey;
 
 use crate::event::builder::Error as BuilderError;
 use crate::{Event, EventBuilder, Keys, Kind, Tag, UncheckedUrl};
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 /// [`BadgeAward`] error
 pub enum Error {
     /// Invalid kind
-    #[error("invalid kind")]
     InvalidKind,
     /// Identifier tag not found
-    #[error("identifier tag not found")]
     IdentifierTagNotFound,
-    /// Event builder Error
-    #[error(transparent)]
-    Event(#[from] crate::event::builder::Error),
+    /// Event builder error
+    EventBuilder(crate::event::builder::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidKind => {
+                write!(f, "invalid kind")
+            }
+            Self::IdentifierTagNotFound => {
+                write!(f, "identifier tag not found")
+            }
+            Self::EventBuilder(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<crate::event::builder::Error> for Error {
+    fn from(e: crate::event::builder::Error) -> Self {
+        Self::EventBuilder(e)
+    }
 }
 
 /// Simple struct to hold `width` x `height.
@@ -172,29 +193,50 @@ impl BadgeAward {
 pub struct ProfileBadgesEvent(Event);
 
 /// [`ProfileBadgesEvent`] errors
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum ProfileBadgesEventError {
     /// Invalid length
-    #[error("invalid length")]
     InvalidLength,
     /// Invalid kind
-    #[error("invalid kind")]
     InvalidKind,
     /// Mismatched badge definition or award
-    #[error("mismatched badge definition/award")]
     MismatchedBadgeDefinitionOrAward,
     /// Badge awards lack the awarded public key
-    #[error("badge award events lack the awarded public key")]
     BadgeAwardsLackAwardedPublicKey,
     /// Badge awards lack the awarded public key
-    #[error("badge award event lacks `a` tag")]
     BadgeAwardMissingATag,
     /// Badge Definition Event error
-    #[error(transparent)]
-    BadgeDefinitionError(#[from] Error),
+    BadgeDefinition(Error),
     /// Event builder Error
-    #[error(transparent)]
-    EventBuilder(#[from] crate::event::builder::Error),
+    EventBuilder(crate::event::builder::Error),
+}
+
+impl std::error::Error for ProfileBadgesEventError {}
+
+impl fmt::Display for ProfileBadgesEventError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidLength => write!(f, "invalid length"),
+            Self::InvalidKind => write!(f, "invalid kind"),
+            Self::MismatchedBadgeDefinitionOrAward => write!(f, "mismatched badge definition/award"),
+            Self::BadgeAwardsLackAwardedPublicKey => write!(f, "badge award events lack the awarded public keybadge award events lack the awarded public key"),
+            Self::BadgeAwardMissingATag => write!(f, "badge award event lacks `a` tag"),
+            Self::BadgeDefinition(e) => write!(f, "{e}"),
+            Self::EventBuilder(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<Error> for ProfileBadgesEventError {
+    fn from(e: Error) -> Self {
+        Self::BadgeDefinition(e)
+    }
+}
+
+impl From<crate::event::builder::Error> for ProfileBadgesEventError {
+    fn from(e: crate::event::builder::Error) -> Self {
+        Self::EventBuilder(e)
+    }
 }
 
 impl ProfileBadgesEvent {
@@ -265,15 +307,14 @@ impl ProfileBadgesEvent {
             .map(|event| {
                 let tags = core::mem::take(&mut event.tags);
                 let id = Self::extract_identifier(tags).ok_or(
-                    ProfileBadgesEventError::BadgeDefinitionError(Error::IdentifierTagNotFound),
+                    ProfileBadgesEventError::BadgeDefinition(Error::IdentifierTagNotFound),
                 )?;
 
                 Ok((event.clone(), id))
             })
             .collect::<Result<Vec<(Event, Tag)>, ProfileBadgesEventError>>();
-        let badge_definitions_identifiers = badge_definitions_identifiers.map_err(|_| {
-            ProfileBadgesEventError::BadgeDefinitionError(Error::IdentifierTagNotFound)
-        })?;
+        let badge_definitions_identifiers = badge_definitions_identifiers
+            .map_err(|_| ProfileBadgesEventError::BadgeDefinition(Error::IdentifierTagNotFound))?;
 
         let badge_awards_identifiers = badge_awards
             .iter_mut()

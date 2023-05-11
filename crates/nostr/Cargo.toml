@@ -39,7 +39,6 @@ reqwest = { version = "0.11", default-features = false, features = ["json", "rus
 secp256k1 = { version = "0.27", features = ["global-context", "rand-std", "serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
-thiserror = "1.0"
 url = { version = "2", features = ["serde"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
