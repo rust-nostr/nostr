@@ -39,6 +39,7 @@ impl fmt::Display for Error {
             Self::Hex(e) => write!(f, "{e}"),
             Self::Hash(e) => write!(f, "{e}"),
         }
+    }
 
 
 impl From<bitcoin_hashes::hex::Error> for Error {
