@@ -11,6 +11,12 @@ use alloc::string::{String, ToString};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::XOnlyPublicKey;
@@ -29,7 +35,7 @@ pub enum Error {
     Hash(bitcoin_hashes::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

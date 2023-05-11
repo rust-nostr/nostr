@@ -13,6 +13,12 @@ use alloc::string::{String, ToString};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec, vec::Vec};
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
 use serde::de::Error as DeserializerError;
@@ -52,7 +58,7 @@ pub enum Error {
     Event(crate::event::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

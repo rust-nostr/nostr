@@ -9,6 +9,12 @@ use alloc::string::String;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec, vec::Vec};
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 use secp256k1::XOnlyPublicKey;
 
 use crate::event::builder::Error as BuilderError;
@@ -25,7 +31,7 @@ pub enum Error {
     EventBuilder(crate::event::builder::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -219,7 +225,7 @@ pub enum ProfileBadgesEventError {
     EventBuilder(crate::event::builder::Error),
 }
 
-impl std::error::Error for ProfileBadgesEventError {}
+impl StdError for ProfileBadgesEventError {}
 
 impl fmt::Display for ProfileBadgesEventError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

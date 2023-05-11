@@ -12,6 +12,12 @@ use alloc::string::{String, ToString};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 use secp256k1::{schnorr::Signature, Message, Secp256k1, Verification, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -47,7 +53,7 @@ pub enum Error {
     OpenTimestamps(nostr_ots::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

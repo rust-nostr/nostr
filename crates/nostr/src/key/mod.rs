@@ -11,6 +11,12 @@ use core::fmt;
 use core::str::FromStr;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use rand::rngs::OsRng;
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
@@ -52,7 +58,7 @@ pub enum Error {
     Secp256k1(secp256k1::Error),
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
