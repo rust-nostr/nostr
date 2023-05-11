@@ -16,9 +16,6 @@
 extern crate alloc;
 
 #[cfg(feature = "alloc")]
-extern crate thiserror_core as thiserror;
-
-#[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 
 #[macro_use]

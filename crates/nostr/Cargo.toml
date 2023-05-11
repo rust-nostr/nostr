@@ -14,7 +14,6 @@ keywords = ["nostr", "protocol", "sdk"]
 [features]
 default = ["all-nips", "std"]
 std = [
-    "dep:thiserror",
     "bitcoin_hashes/std",
     "serde/std",
     "serde_json/std",
@@ -23,7 +22,6 @@ std = [
     "secp256k1/rand-std",
 ]
 alloc = [
-    "dep:thiserror-core",
     "bitcoin_hashes/alloc",
     "serde/alloc",
     "serde_json/alloc",
