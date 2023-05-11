@@ -95,18 +95,6 @@ impl From<nip04::Error> for Error {
     }
 }
 
-impl From<secp256k1::Error> for Error {
-    fn from(error: secp256k1::Error) -> Self {
-        Self::Secp256k1(error)
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(error: serde_json::Error) -> Self {
-        Self::Json(error)
-    }
-}
-
 /// [`Event`] builder
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct EventBuilder {
