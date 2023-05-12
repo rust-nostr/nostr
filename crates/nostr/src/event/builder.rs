@@ -193,10 +193,10 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        self.to_pow_event_internal(keys, difficulty, time_supplier, secp)
+        self.into_pow_event_internal(keys, difficulty, time_supplier, secp)
     }
 
-    fn to_pow_event_internal<T, C: Signing>(
+    fn into_pow_event_internal<T, C: Signing>(
         self,
         keys: &Keys,
         difficulty: u8,
@@ -267,10 +267,10 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        self.to_pow_unsigned_event_internal(pubkey, difficulty, time_supplier, secp)
+        self.into_pow_unsigned_event_internal(pubkey, difficulty, time_supplier, secp)
     }
 
-    fn to_pow_unsigned_event_internal<T, C: Signing>(
+    fn into_pow_unsigned_event_internal<T, C: Signing>(
         self,
         pubkey: XOnlyPublicKey,
         difficulty: u8,
