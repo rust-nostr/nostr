@@ -19,6 +19,7 @@ extern crate alloc;
 use alloc::boxed::Box;
 
 #[macro_use]
+/// Serde crate
 pub extern crate serde;
 
 #[cfg(feature = "nip19")]

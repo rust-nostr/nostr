@@ -1,5 +1,6 @@
 #![feature(start, libc, lang_items)]
 #![feature(alloc_error_handler)]
+#![allow(unused_imports)]
 #![no_std]
 #![no_main]
 
@@ -18,6 +19,7 @@ extern "C" {
     pub fn printf(format: *const u8, ...) -> i32;
 }
 
+#[allow(clippy::single_component_path_imports)]
 use nostr;
 
 #[no_mangle]
@@ -64,6 +66,7 @@ static ALLOCATOR: SimpleAllocator = SimpleAllocator {
 unsafe impl Sync for SimpleAllocator {}
 
 // From https://doc.rust-lang.org/core/alloc/trait.GlobalAlloc.html
+#[allow(clippy::blocks_in_if_conditions)]
 unsafe impl GlobalAlloc for SimpleAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let size = layout.size();
