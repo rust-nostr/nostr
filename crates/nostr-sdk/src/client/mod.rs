@@ -120,7 +120,6 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
     /// use nostr_sdk::prelude::*;
     ///
     /// let my_keys = Keys::generate();
@@ -134,7 +133,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     ///
     /// let my_keys = Keys::generate();
@@ -224,7 +223,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
@@ -263,7 +262,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
@@ -309,7 +308,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -355,7 +354,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
@@ -386,7 +385,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
@@ -415,7 +414,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -432,7 +431,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -449,7 +448,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -478,8 +477,7 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::time::Duration;
-    ///
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -611,7 +609,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -638,7 +636,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -664,7 +662,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -728,8 +726,7 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::time::Duration;
-    ///
-    /// use nostr::Keys;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -827,9 +824,7 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::Keys;
-    /// use nostr_sdk::key::XOnlyPublicKey;
-    /// use nostr_sdk::prelude::FromBech32;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -915,9 +910,7 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::str::FromStr;
-    ///
-    /// use nostr::Keys;
-    /// use nostr_sdk::key::XOnlyPublicKey;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -950,9 +943,7 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::str::FromStr;
-    ///
-    /// use nostr::Keys;
-    /// use nostr_sdk::key::XOnlyPublicKey;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
@@ -985,9 +976,7 @@ impl Client {
     /// # Example
     /// ```rust,no_run
     /// use std::str::FromStr;
-    ///
-    /// use nostr::Keys;
-    /// use nostr_sdk::key::XOnlyPublicKey;
+
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {

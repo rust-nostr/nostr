@@ -3,11 +3,7 @@
 
 use std::str::FromStr;
 
-use nostr::key::SecretKey;
 use nostr::prelude::*;
-use nostr::Event;
-use nostr::EventBuilder;
-use nostr::Keys;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 

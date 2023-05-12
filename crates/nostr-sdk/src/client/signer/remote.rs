@@ -65,7 +65,6 @@ impl Client {
     /// ```rust,no_run
     /// use std::time::Duration;
     ///
-    /// use nostr_sdk::client::RemoteSigner;
     /// use nostr_sdk::prelude::*;
     ///
     /// #[tokio::main]
@@ -87,8 +86,6 @@ impl Client {
     /// ```rust,no_run
     /// use std::str::FromStr;
     ///
-    /// use nostr_sdk::client::RemoteSigner;
-    /// use nostr_sdk::key::XOnlyPublicKey;
     /// use nostr_sdk::prelude::*;
     ///
     /// #[tokio::main]

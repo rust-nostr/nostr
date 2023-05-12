@@ -1,8 +1,6 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr_sdk::key::SecretKey;
-use nostr_sdk::prelude::FromBech32;
 use nostr_sdk::prelude::*;
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";

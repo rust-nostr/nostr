@@ -32,7 +32,6 @@ tokio = { version = "1", features = ["full"] }
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use nostr_sdk::prelude::*;
-use nostr_sdk::key::XOnlyPublicKey;
 
 #[tokio::main]
 async fn main() -> Result<()> {
