@@ -7,6 +7,6 @@
 pub use nostr::prelude::*;
 
 // Internal modules
-pub use crate::client;
-pub use crate::relay;
+pub use crate::client::*;
+pub use crate::relay::*;
 pub use crate::*;
