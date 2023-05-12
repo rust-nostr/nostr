@@ -829,7 +829,7 @@ impl Client {
     /// ```rust,no_run
     /// use nostr::Keys;
     /// use nostr_sdk::key::XOnlyPublicKey;
-    /// use nostr_sdk::prelude::nip19::FromBech32;
+    /// use nostr_sdk::prelude::FromBech32;
     /// use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
