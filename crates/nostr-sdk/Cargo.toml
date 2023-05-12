@@ -26,7 +26,7 @@ nip46 = ["nostr/nip46"]
 
 [dependencies]
 log = "0.4"
-nostr = { version = "0.21", path = "../nostr", default-features = false }
+nostr = { version = "0.21", path = "../nostr", default-features = false, features = ["std"]}
 nostr-sdk-net = { version = "0.21", path = "../nostr-sdk-net" }
 once_cell = { version = "1.17", optional = true }
 thiserror = "1.0"
