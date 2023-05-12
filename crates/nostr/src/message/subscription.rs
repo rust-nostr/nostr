@@ -8,8 +8,6 @@
 use core::fmt;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::fmt;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::{String, ToString};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec, vec::Vec};
