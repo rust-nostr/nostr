@@ -22,12 +22,7 @@ use alloc::vec::Vec;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::num;
 
-#[cfg(target_arch = "wasm32")]
-use instant::SystemTime;
 use serde::{Deserialize, Serialize};
-
-#[cfg(target_arch = "wasm32")]
-const UNIX_EPOCH: SystemTime = SystemTime::UNIX_EPOCH;
 
 /// Helper trait for acquiring time in `no_std` environments.
 pub trait TimeSupplier {
@@ -61,16 +56,29 @@ impl TimeSupplier for InstantWasm32 {
     type Now = InstantWasm32;
     type StartingPoint = std::time::SystemTime;
 
+    fn now(&self) -> Self::StartingPoint {
+        SystemTime::now()
+    }
+
     fn instant_now(&self) -> Self::Now {
         InstantWasm32::now()
     }
 
-    fn starting_point(&self) -> Self::Now {
+    fn duration_since_starting_point(&self, now: Self::StartingPoint) -> Duration {
+        now.duration_since(self.starting_point())
+            .expect("duration_since panicked")
+    }
+
+    fn starting_point(&self) -> Self::StartingPoint {
         std::time::UNIX_EPOCH
     }
 
-    fn elapsed_since(&self, now: Self::Now, since: Self::Now) -> Duration {
+    fn elapsed_instant_since(&self, now: Self::Now, since: Self::Now) -> Duration {
         now - since
+    }
+
+    fn elapsed_since(&self, now: Self::StartingPoint, since: Self::StartingPoint) -> Duration {
+        now.duration_since(since).expect("duration_since panicked")
     }
 
     fn as_i64(&self, duration: Duration) -> i64 {
@@ -78,7 +86,7 @@ impl TimeSupplier for InstantWasm32 {
     }
 
     fn to_timestamp(&self, duration: Duration) -> Timestamp {
-        Timestamp(duration.as_millis() as i64)
+        Timestamp(self.as_i64(duration))
     }
 }
 

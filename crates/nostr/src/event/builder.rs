@@ -206,9 +206,7 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        #[cfg(target_arch = "wasm32")]
-        use instant::Instant;
-        #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
+        #[cfg(feature = "std")]
         use std::cmp;
 
         #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -280,9 +278,7 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        #[cfg(target_arch = "wasm32")]
-        use instant::Instant;
-        #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
+        #[cfg(feature = "std")]
         use std::cmp;
 
         #[cfg(all(feature = "alloc", not(feature = "std")))]
