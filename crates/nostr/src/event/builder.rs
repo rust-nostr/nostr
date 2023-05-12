@@ -136,10 +136,10 @@ impl EventBuilder {
         let message = Message::from_slice(id.as_bytes())?;
         let signature = keys.sign_schnorr_with_secp(&message, secp)?;
 
-        Self::to_event_internal(self, keys, created_at, id, signature)
+        Self::into_event_internal(self, keys, created_at, id, signature)
     }
 
-    fn to_event_internal(
+    fn into_event_internal(
         self,
         keys: &Keys,
         created_at: Timestamp,
@@ -250,7 +250,7 @@ impl EventBuilder {
                 #[cfg(feature = "std")]
                 let sig = keys.sign_schnorr(&message)?;
 
-                return self.to_event_internal(keys, created_at, id, sig);
+                return self.into_event_internal(keys, created_at, id, sig);
             }
 
             tags.pop();
@@ -301,13 +301,7 @@ impl EventBuilder {
             let new_now = time_supplier.now();
             let created_at = time_supplier.duration_since_starting_point(now.clone());
             let created_at = time_supplier.to_timestamp(created_at);
-            let id = EventId::new(
-                &pubkey,
-                created_at.clone(),
-                &self.kind,
-                &tags,
-                &self.content,
-            );
+            let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
                 log::debug!(
@@ -332,7 +326,7 @@ impl EventBuilder {
     pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
         let created_at: Timestamp = Timestamp::now();
 
-        Self::to_unsigned_event_internal(self, pubkey, created_at)
+        Self::into_unsigned_event_internal(self, pubkey, created_at)
     }
 
     /// Build [`UnsignedEvent`] with the given `Timestamp`
@@ -343,10 +337,10 @@ impl EventBuilder {
         pubkey: XOnlyPublicKey,
         created_at: Timestamp,
     ) -> UnsignedEvent {
-        Self::to_unsigned_event_internal(self, pubkey, created_at)
+        Self::into_unsigned_event_internal(self, pubkey, created_at)
     }
 
-    fn to_unsigned_event_internal(
+    fn into_unsigned_event_internal(
         self,
         pubkey: XOnlyPublicKey,
         created_at: Timestamp,
