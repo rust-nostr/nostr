@@ -1,5 +1,5 @@
 use nostr::nips::nip65;
-use nostr::prelude::nip19::FromBech32;
+use nostr::prelude::FromBech32;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{ClientMessage, Filter, Kind, RelayMessage, Result, SubscriptionId};
 use tungstenite::{connect, Message as WsMessage};
