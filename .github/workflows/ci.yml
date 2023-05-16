@@ -97,7 +97,7 @@ jobs:
       run: cargo clippy ${{ matrix.build-args }} --target wasm32-unknown-unknown -- -D warnings
     
   buld-no-std:
-    name: Build the `no_std` crate (ensure_no_std)
+    name: Build no_std
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -117,11 +117,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-wasm32-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-no-std-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
       - name: Set default toolchain
         run: rustup default ${{ matrix.rust.version }}
-      - name: Add WASM
-        run: rustup target add wasm32-unknown-unknown
       - name: Set profile
         run: rustup set profile minimal && rustup component add clippy
       - name: Build
