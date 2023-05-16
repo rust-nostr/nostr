@@ -5,9 +5,16 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/47.md>
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::borrow::Cow;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
+use core::fmt;
+use core::str::FromStr;
+#[cfg(feature = "std")]
 use std::borrow::Cow;
-use std::fmt;
-use std::str::FromStr;
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
 
 use secp256k1::{SecretKey, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
@@ -45,7 +52,7 @@ pub enum Error {
     InvalidURIScheme,
 }
 
-impl std::error::Error for Error {}
+impl StdError for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

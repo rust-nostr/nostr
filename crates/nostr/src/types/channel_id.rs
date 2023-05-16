@@ -3,17 +3,16 @@
 
 //! Channel Id
 
-use core::fmt;
-use core::str::FromStr;
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::{String, ToString};
+#[cfg(all(feature = "nip19", feature = "alloc", not(feature = "std")))]
+use alloc::vec;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
-
+use core::fmt;
+use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
 
@@ -164,9 +163,6 @@ impl FromBech32 for ChannelId {
         ))
     }
 }
-
-#[cfg(all(feature = "nip19", feature = "alloc", not(feature = "std")))]
-use alloc::vec;
 
 #[cfg(feature = "nip19")]
 impl ToBech32 for ChannelId {

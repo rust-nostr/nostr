@@ -4,21 +4,19 @@
 
 //! Event
 
-use core::fmt;
-use core::str::FromStr;
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::{String, ToString};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
-
+use core::fmt;
+use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
 
-use secp256k1::{schnorr::Signature, Message, Secp256k1, Verification, XOnlyPublicKey};
+use secp256k1::schnorr::Signature;
+use secp256k1::{Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -33,9 +31,7 @@ pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::tag::{Marker, Tag, TagKind};
 pub use self::unsigned::UnsignedEvent;
-use crate::Timestamp;
-#[cfg(feature = "std")]
-use crate::SECP256K1;
+use crate::{Timestamp, SECP256K1};
 
 /// [`Event`] error
 #[derive(Debug)]
@@ -118,13 +114,7 @@ pub struct Event {
 
 impl Event {
     /// Verify Event
-    #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
-        self.verify_with_context(SECP256K1)
-    }
-
-    /// Verify Event
-    pub fn verify_with_context<C: Verification>(&self, secp: &Secp256k1<C>) -> Result<(), Error> {
         let id = EventId::new(
             &self.pubkey,
             self.created_at,
@@ -133,13 +123,15 @@ impl Event {
             &self.content,
         );
         let message = Message::from_slice(id.as_bytes())?;
-        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
+        SECP256K1
+            .verify_schnorr(&self.sig, &message, &self.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }
 
     /// New event from [`Value`]
     pub fn from_value(value: Value) -> Result<Self, Error> {
         let event: Self = serde_json::from_value(value)?;
+        event.verify()?;
         Ok(event)
     }
 
@@ -149,6 +141,7 @@ impl Event {
         S: Into<String>,
     {
         let event: Self = serde_json::from_str(&json.into())?;
+        event.verify()?;
         Ok(event)
     }
 

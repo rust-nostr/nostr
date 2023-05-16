@@ -16,21 +16,23 @@ default = ["all-nips", "std"]
 std = [
     "bech32?/std",
     "bitcoin_hashes/std",
+    "once_cell/std",
+    "secp256k1/rand-std",
     "serde/std",
     "serde_json/std",
     "url",
-    "secp256k1/global-context",
-    "secp256k1/rand-std",
 ]
 alloc = [
     "bech32?/alloc",
     "bitcoin_hashes/alloc",
+    "once_cell/alloc",
+    "rand/alloc",
+    "rand/getrandom",
+    "secp256k1/alloc",
+    "secp256k1/rand",
     "serde/alloc",
     "serde_json/alloc",
     "url_no_std",
-    "secp256k1/alloc",
-    "secp256k1/rand",
-    "rand",
 ]
 blocking = ["reqwest?/blocking"]
 vanity = ["nip19"]
@@ -51,30 +53,17 @@ base64 = { version = "0.21", optional = true }
 bech32 = { git = "https://github.com/rust-bitcoin/rust-bech32", rev = "360af7e0647fa94bce892fa69f31c0ef02452b63", optional = true, default-features = false }
 bip39 = { version = "2.0", optional = true }
 bitcoin = { version = "0.30", optional = true }
-bitcoin_hashes = { version = "0.12", default-features = false, features = [
-    "serde",
-] }
+bitcoin_hashes = { version = "0.12", default-features = false, features = [ "serde"] }
 cbc = { version = "0.1", features = ["alloc"], optional = true }
-log = "0.4" # no_std compatible by-default
 nostr-ots = { version = "0.2", optional = true }
-reqwest = { version = "0.11", default-features = false, features = [
-    "json",
-    "rustls-tls-webpki-roots",
-    "socks",
-], optional = true }
+once_cell = { version = "1.17", default-features = false }
+rand = { version = "0.8", default-features = false }
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
 secp256k1 = { version = "0.27", default-features = false, features = ["serde"] }
-
-serde = { version = "1.0", features = [
-    "derive",
-], default-features = false, optional = true }
+serde = { version = "1.0", features = ["derive"], default-features = false, optional = true }
 serde_json = { version = "1.0", optional = true, default-features = false }
-
 url = { version = "2", features = ["serde"], optional = true }
-url_no_std = { package = "url", features = [
-    "alloc",
-], git = "https://github.com/OverOrion/rust-url", branch = "no_std_net", optional = true, default-features = false }
-
-rand = { version = "0.8", features = ["alloc", "getrandom"], default-features = false, optional = true }
+url_no_std = { package = "url", features = ["alloc"], git = "https://github.com/OverOrion/rust-url", branch = "no_std_net", optional = true, default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

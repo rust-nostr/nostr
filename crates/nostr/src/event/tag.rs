@@ -2,9 +2,6 @@
 // Distributed under the MIT software license
 
 //! Tag
-use core::fmt;
-use core::num::ParseIntError;
-use core::str::FromStr;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::format;
@@ -12,10 +9,11 @@ use alloc::format;
 use alloc::string::{String, ToString};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec, vec::Vec};
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
-
+use core::fmt;
+use core::num::ParseIntError;
+use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
 

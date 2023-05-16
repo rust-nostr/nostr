@@ -1,0 +1,8 @@
+[package]
+name = "no_std_example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libc = { version = "0.2", default-features = false }
+nostr = { path = "../../../nostr", default-features = false, features = ["alloc"] }

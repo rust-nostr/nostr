@@ -3,18 +3,17 @@
 
 //! Url
 
-use core::fmt;
-use core::str::FromStr;
-
-use serde::{Deserialize, Serialize};
-use url::{ParseError, Url};
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::String;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
+use core::fmt;
+use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
+
+use serde::{Deserialize, Serialize};
+use url::{ParseError, Url};
 
 /// Url Error
 #[derive(Debug, PartialEq, Eq)]

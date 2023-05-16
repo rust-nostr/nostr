@@ -2,7 +2,7 @@
 // Distributed under the MIT software license
 
 //! Prelude
-//#![allow(ambiguous_glob_reexports)]
+
 #![cfg_attr(
     all(not(feature = "std"), feature = "alloc"),
     allow(ambiguous_glob_reexports)

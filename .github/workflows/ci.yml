@@ -105,7 +105,7 @@ jobs:
           - version: nightly
         build-args:
           [
-            --no-default-features,
+            -p no_std_example,
           ]
     steps:
       - name: Checkout
@@ -124,8 +124,6 @@ jobs:
         run: rustup set profile minimal && rustup component add clippy
       - name: Build
         run: cargo build ${{ matrix.build-args }}
-        working-directory: ./crates/nostr/examples/ensure_no_std
       - name: Clippy
         run: cargo clippy ${{ matrix.build-args }} -- -D warnings
-        working-directory: ./crates/nostr/examples/ensure_no_std
   

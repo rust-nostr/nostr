@@ -3,11 +3,9 @@
 
 //! Messages
 
-use core::fmt;
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
-
+use core::fmt;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
 

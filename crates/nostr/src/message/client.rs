@@ -9,7 +9,9 @@ use alloc::boxed::Box;
 #[cfg(feature = "alloc")]
 use alloc::string::{String, ToString};
 #[cfg(feature = "alloc")]
-use alloc::{vec, vec::Vec};
+use alloc::vec;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -223,7 +225,6 @@ impl ClientMessage {
         S: Into<String>,
     {
         let msg: &str = &msg.into();
-        log::trace!("{}", msg);
 
         if msg.is_empty() {
             return Err(MessageHandleError::InvalidMessageFormat);

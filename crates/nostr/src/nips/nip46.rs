@@ -5,13 +5,14 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/46.md>
 
-use core::fmt;
-use core::str::FromStr;
-use std::borrow::Cow;
-
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::borrow::Cow;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
-
+use core::fmt;
+use core::str::FromStr;
+#[cfg(feature = "std")]
+use std::borrow::Cow;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
 

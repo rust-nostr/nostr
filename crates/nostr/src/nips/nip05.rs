@@ -5,15 +5,12 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/05.md>
 
-use core::fmt;
-use core::str::FromStr;
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
-
+use core::fmt;
+use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
-
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 

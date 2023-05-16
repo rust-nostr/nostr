@@ -7,12 +7,10 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/04.md>
 
 use core::convert::From;
-use core::fmt;
-use core::str::FromStr;
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
-
+use core::fmt;
+use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
 
@@ -21,7 +19,7 @@ use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::engine::{general_purpose, Engine};
 use cbc::{Decryptor, Encryptor};
-use secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
+use secp256k1::{ecdh, rand, PublicKey, SecretKey, XOnlyPublicKey};
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
@@ -70,7 +68,7 @@ where
     T: AsRef<[u8]>,
 {
     let key: [u8; 32] = generate_shared_key(sk, pk)?;
-    let iv: [u8; 16] = secp256k1::rand::random();
+    let iv: [u8; 16] = rand::random();
 
     let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
     let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_ref());
@@ -142,13 +140,13 @@ mod tests {
         let sender_sk = SecretKey::from_str(
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let sender_key_pair = KeyPair::from_secret_key(SECP256K1, &sender_sk);
+        let sender_key_pair = KeyPair::from_secret_key(&SECP256K1, &sender_sk);
         let sender_pk = XOnlyPublicKey::from_keypair(&sender_key_pair).0;
 
         let receiver_sk = SecretKey::from_str(
             "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let receiver_key_pair = KeyPair::from_secret_key(SECP256K1, &receiver_sk);
+        let receiver_key_pair = KeyPair::from_secret_key(&SECP256K1, &receiver_sk);
         let receiver_pk = XOnlyPublicKey::from_keypair(&receiver_key_pair).0;
 
         let encrypted_content_from_outside =

@@ -5,6 +5,7 @@ members = [
     "bindings/nostr-sdk-ffi",
     "bindings/nostr-sdk-js",
     "crates/nostr",
+    "crates/nostr/examples/no_std",
     "crates/nostr-sdk",
     "crates/nostr-sdk-net",
 ]

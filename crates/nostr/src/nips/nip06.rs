@@ -5,12 +5,10 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/06.md>
 
-use core::fmt;
-use core::str::FromStr;
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
-
+use core::fmt;
+use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
 
@@ -82,7 +80,7 @@ impl FromMnemonic for Keys {
         let seed = mnemonic.to_seed(passphrase.map(|p| p.into()).unwrap_or_default());
         let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)?;
         let path = DerivationPath::from_str("m/44'/1237'/0'/0/0")?;
-        let child_xprv = root_key.derive_priv(SECP256K1, &path)?;
+        let child_xprv = root_key.derive_priv(&SECP256K1, &path)?;
         Ok(Self::new(child_xprv.private_key))
     }
 }

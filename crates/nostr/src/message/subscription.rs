@@ -5,19 +5,17 @@
 //! Subscription filters
 
 #![allow(missing_docs)]
-use core::fmt;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::{String, ToString};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec, vec::Vec};
+use core::fmt;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use rand::{rngs::OsRng, RngCore};
-#[cfg(feature = "std")]
-use secp256k1::rand::{rngs::OsRng, RngCore};
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::RngCore;
 use secp256k1::XOnlyPublicKey;
 use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};

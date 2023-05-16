@@ -11,14 +11,11 @@
 use alloc::string::{FromUtf8Error, ToString};
 #[cfg(not(feature = "std"))]
 use alloc::vec::{self, Vec};
-use core::fmt;
-
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
-
+use core::fmt;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
-
 #[cfg(feature = "std")]
 use std::string::FromUtf8Error;
 

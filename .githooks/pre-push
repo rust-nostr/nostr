@@ -4,10 +4,10 @@ cargo fmt --all -- --config format_code_in_doc_comments=true
 
 buildargs=(
     "-p nostr"
-    "-p nostr --no-default-features"
-    "-p nostr --no-default-features --features all-nips"
-    "-p nostr --no-default-features --features vanity"
-    "-p nostr --features blocking"
+    "-p nostr --no-default-features --features std"
+    "-p nostr --no-default-features --features 'std all-nips'"
+    "-p nostr --no-default-features --features 'std vanity'"
+    "-p nostr --features 'std blocking'"
     "-p nostr-sdk"
     "-p nostr-sdk --no-default-features"
     "-p nostr-sdk --features blocking"

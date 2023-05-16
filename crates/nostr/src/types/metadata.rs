@@ -3,9 +3,11 @@
 
 //! Metadata
 
-use core::fmt;
+#[cfg(feature = "alloc")]
+use alloc::string::{String, ToString};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use core::error::Error as StdError;
+use core::fmt;
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
 
@@ -14,9 +16,6 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use url::Url;
-
-#[cfg(feature = "alloc")]
-use alloc::string::{String, ToString};
 
 /// [`Metadata`] error
 #[derive(Debug)]

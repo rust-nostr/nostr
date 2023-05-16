@@ -3,17 +3,15 @@
 
 //! Vanity
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use core::error::Error as StdError;
 use core::fmt;
 use core::sync::atomic::{AtomicBool, Ordering};
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
 use std::sync::mpsc::{sync_channel, RecvError};
 use std::sync::Arc;
 use std::thread;
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use core::error::Error as StdError;
-
-#[cfg(feature = "std")]
-use std::error::Error as StdError;
 
 use secp256k1::rand;
 use secp256k1::SecretKey;
