@@ -203,7 +203,7 @@ impl Client {
         self.remote_signer.clone().ok_or(Error::SignerNotConfigured)
     }
 
-    /// Completly shutdown [`Client`]
+    /// Completely shutdown [`Client`]
     pub async fn shutdown(self) -> Result<(), Error> {
         Ok(self.pool.shutdown().await?)
     }

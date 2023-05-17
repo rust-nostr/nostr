@@ -27,7 +27,7 @@ pub enum JsRelayStatus {
     Connecting,
     /// Relay disconnected, will retry to connect again
     Disconnected,
-    /// Relay completly disconnected
+    /// Relay completely disconnected
     Terminated,
 }
 
