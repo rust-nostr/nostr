@@ -201,9 +201,9 @@ impl RelayConnectionStats {
 #[derive(Debug, Clone)]
 pub struct ActiveSubscription {
     /// SubscriptionId to update or cancel subscription
-    pub id: SubscriptionId,
+    id: SubscriptionId,
     /// Subscriptions filters
-    pub filters: Vec<Filter>,
+    filters: Vec<Filter>,
 }
 
 impl Default for ActiveSubscription {
@@ -219,6 +219,16 @@ impl ActiveSubscription {
             id: SubscriptionId::generate(),
             filters: Vec::new(),
         }
+    }
+
+    /// Get [`SubscriptionId`]
+    pub fn id(&self) -> SubscriptionId {
+        self.id.clone()
+    }
+
+    /// Get subscription filters
+    pub fn filters(&self) -> Vec<Filter> {
+        self.filters.clone()
     }
 }
 
