@@ -458,13 +458,15 @@ impl Client {
     /// ```
     pub async fn subscribe(&self, filters: Vec<Filter>) {
         self.pool
-            .subscribe(filters, self.opts.get_wait_for_send())
+            .subscribe(filters, self.opts.get_wait_for_subscription())
             .await;
     }
 
     /// Unsubscribe
     pub async fn unsubscribe(&self) {
-        self.pool.unsubscribe(self.opts.get_wait_for_send()).await;
+        self.pool
+            .unsubscribe(self.opts.get_wait_for_subscription())
+            .await;
     }
 
     /// Get events of filters

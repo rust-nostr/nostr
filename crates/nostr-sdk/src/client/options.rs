@@ -14,6 +14,8 @@ pub struct Options {
     wait_for_connection: Arc<AtomicBool>,
     /// Wait for the msg to be sent (default: true)
     wait_for_send: Arc<AtomicBool>,
+    /// Wait for the subscription msg to be sent (default: false)
+    wait_for_subscription: Arc<AtomicBool>,
     /// POW difficulty for all events (default: 0)
     difficulty: Arc<AtomicU8>,
     /// REQ filters chunk size (default: 10)
@@ -30,6 +32,7 @@ impl Default for Options {
         Self {
             wait_for_connection: Arc::new(AtomicBool::new(false)),
             wait_for_send: Arc::new(AtomicBool::new(true)),
+            wait_for_subscription: Arc::new(AtomicBool::new(false)),
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
             timeout: None,
@@ -67,6 +70,18 @@ impl Options {
 
     pub(crate) fn get_wait_for_send(&self) -> bool {
         self.wait_for_send.load(Ordering::SeqCst)
+    }
+
+    /// If set to `true`, `Client` wait that a subscription msg is sent before continue (`subscribe` and `unsubscribe` methods)
+    pub fn wait_for_subscription(self, wait: bool) -> Self {
+        Self {
+            wait_for_subscription: Arc::new(AtomicBool::new(wait)),
+            ..self
+        }
+    }
+
+    pub(crate) fn get_wait_for_subscription(&self) -> bool {
+        self.wait_for_subscription.load(Ordering::SeqCst)
     }
 
     /// Set default POW diffficulty for `Event`
