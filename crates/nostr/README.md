@@ -19,7 +19,7 @@ If you're writing a typical Nostr client or bot, you may be interested in [nostr
 ```toml
 [dependencies]
 nostr = "0.21"
-tungstenite = { version = "0.18", features = ["rustls-tls-webpki-roots"]}
+tungstenite = { version = "0.19", features = ["rustls-tls-webpki-roots"]}
 ```
 
 ```rust,no_run
