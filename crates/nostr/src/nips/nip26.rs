@@ -791,14 +791,14 @@ mod test {
             .unwrap()
         {
             Error::ConditionsParseInvalidCondition => {}
-            _ => panic!("Exepected ConditionsParseInvalidCondition"),
+            _ => panic!("Expected ConditionsParseInvalidCondition"),
         }
         match Conditions::from_str("kind=__invalid_number__")
             .err()
             .unwrap()
         {
             Error::ConditionsParseNumeric(_) => {}
-            _ => panic!("Exepected ConditionsParseNumeric"),
+            _ => panic!("Expected ConditionsParseNumeric"),
         }
     }
 

@@ -19,7 +19,7 @@ pub fn timestamp() -> u64 {
 #[allow(missing_docs)]
 #[allow(unused_imports)]
 mod ffi {
-    // Extenal
+    // External
     pub use nostr_ffi::{AccountMetadata, Contact, Event, EventBuilder, Filter, Keys, NostrError};
 
     // Namespace

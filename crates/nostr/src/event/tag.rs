@@ -153,7 +153,7 @@ pub enum Report {
     Profanity,
     /// Something which may be illegal in some jurisdiction
     ///
-    /// Remenber: there is what is right and there is the law.
+    /// Remember: there is what is right and there is the law.
     Illegal,
     /// Spam
     Spam,

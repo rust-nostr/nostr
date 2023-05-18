@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_handle_invalid_event() {
-        //Mising Event field
+        // Missing Event field
         let invalid_event_msg = r#"["EVENT", "random_string"]"#;
         //Event JSON with incomplete content
         let invalid_event_msg_content = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"}]"#;

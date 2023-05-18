@@ -42,7 +42,7 @@ impl JsClient {
         self.inner.keys().into()
     }
 
-    /// Completly shutdown `Client`
+    /// Completely shutdown `Client`
     #[wasm_bindgen]
     pub async fn shutdown(&self) -> Result<()> {
         self.inner.clone().shutdown().await.map_err(into_err)

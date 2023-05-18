@@ -60,7 +60,7 @@ fn main() -> Result<()> {
 
     loop {
         let msg = socket.read_message().expect("Error reading message");
-        let msg_text = msg.to_text().expect("Failed to conver message to text");
+        let msg_text = msg.to_text().expect("Failed to convert message to text");
         if let Ok(handled_message) = RelayMessage::from_json(msg_text) {
             match handled_message {
                 RelayMessage::Notice { message } => {

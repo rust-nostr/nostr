@@ -67,7 +67,7 @@ pub enum RelayStatus {
     Connecting,
     /// Relay disconnected, will retry to connect again
     Disconnected,
-    /// Relay completly disconnected
+    /// Relay completely disconnected
     Terminated,
 }
 
@@ -91,7 +91,7 @@ pub enum RelayEvent {
     // Ping,
     /// Close
     Close,
-    /// Completly disconnect
+    /// Completely disconnect
     Terminate,
 }
 

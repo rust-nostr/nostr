@@ -365,7 +365,7 @@ impl RelayPool {
         Ok(())
     }
 
-    /// Completly shutdown pool
+    /// Completely shutdown pool
     pub async fn shutdown(self) -> Result<(), Error> {
         self.disconnect().await?;
         thread::spawn(async move {
