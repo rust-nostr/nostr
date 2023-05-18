@@ -218,6 +218,11 @@ impl Client {
         self.pool.relays().await
     }
 
+    /// Get [`Relay`]
+    pub async fn relay(&self, url: &Url) -> Result<Relay, Error> {
+        Ok(self.pool.relay(url).await?)
+    }
+
     /// Add new relay
     ///
     /// # Example

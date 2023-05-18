@@ -177,6 +177,12 @@ impl RelayPool {
         relays.clone()
     }
 
+    /// Get [`Relay`]
+    pub async fn relay(&self, url: &Url) -> Result<Relay, Error> {
+        let relays = self.relays.lock().await;
+        relays.get(url).cloned().ok_or(Error::RelayNotFound)
+    }
+
     /// Get subscription filters
     pub async fn subscription_filters(&self) -> Vec<Filter> {
         self.filters.lock().await.clone()
