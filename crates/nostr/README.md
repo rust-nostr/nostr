@@ -18,9 +18,11 @@ If you're writing a typical Nostr client or bot, you may be interested in [nostr
 
 ```toml
 [dependencies]
-nostr = "0.21"
+nostr = "0.22"
 tungstenite = { version = "0.19", features = ["rustls-tls-webpki-roots"]}
 ```
+
+NOTE: if you are using `bitcoin` v0.29, use version `nostr = "0.22.0-bitcoin-v0.29"` insead.
 
 ```rust,no_run
 use nostr::prelude::*;
@@ -99,8 +101,8 @@ The following crate feature flags are available:
 | `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                                                  |
 | `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
 | `nip21`             |   Yes   | Enable NIP-21: `nostr` URI scheme                                                                                          |
-| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
+| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                                                        |
 
 ## Supported NIPs
 
