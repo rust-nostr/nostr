@@ -28,7 +28,7 @@ nostr-sdk = "0.22"
 tokio = { version = "1", features = ["full"] }
 ```
 
-NOTE: if you are using `bitcoin` v0.29, use version `nostr-sdk = "0.22.0-bitcoin-v0.29"` insead.
+NOTE: if you are using `bitcoin` v0.29, use version `nostr-sdk = "=0.22.0-bitcoin-v0.29"` insead.
 
 ```rust,no_run
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};

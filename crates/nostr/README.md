@@ -22,7 +22,7 @@ nostr = "0.22"
 tungstenite = { version = "0.19", features = ["rustls-tls-webpki-roots"]}
 ```
 
-NOTE: if you are using `bitcoin` v0.29, use version `nostr = "0.22.0-bitcoin-v0.29"` insead.
+NOTE: if you are using `bitcoin` v0.29, use version `nostr = "=0.22.0-bitcoin-v0.29"` insead.
 
 ```rust,no_run
 use nostr::prelude::*;
