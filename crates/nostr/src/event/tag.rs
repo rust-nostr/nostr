@@ -7,6 +7,7 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
+use bitcoin_hashes::sha256::Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
 use serde::de::Error as DeserializerError;
@@ -242,6 +243,8 @@ pub enum TagKind {
     Lnurl,
     /// Name tag
     Name,
+    /// Merkle mountain range
+    Mmr,
     /// Custom tag kind
     Custom(String),
 }
@@ -275,6 +278,7 @@ impl fmt::Display for TagKind {
             Self::Amount => write!(f, "amount"),
             Self::Lnurl => write!(f, "lnurl"),
             Self::Name => write!(f, "name"),
+            Self::Mmr => write!(f, "mmr"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -313,6 +317,7 @@ where
             "amount" => Self::Amount,
             "lnurl" => Self::Lnurl,
             "name" => Self::Name,
+            "mmr" => Self::Mmr,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -370,6 +375,11 @@ pub enum Tag {
     Lnurl(String),
     Name(String),
     PublishedAt(Timestamp),
+    Mmr {
+        prev_event_id: Hash,
+        prev_mmr_root: Hash,
+        prev_event_pos: i64,
+    },
 }
 
 impl Tag {
@@ -420,6 +430,7 @@ impl Tag {
             Tag::Amount(..) => TagKind::Amount,
             Tag::Name(..) => TagKind::Name,
             Tag::Lnurl(..) => TagKind::Lnurl,
+            Tag::Mmr { .. } => TagKind::Mmr,
         }
     }
 }
@@ -581,6 +592,11 @@ where
                     conditions: Conditions::from_str(&tag[2])?,
                     sig: Signature::from_str(&tag[3])?,
                 }),
+                TagKind::Mmr => Ok(Self::Mmr {
+                    prev_event_id: Hash::from_str(tag[1].as_str())?,
+                    prev_mmr_root: Hash::from_str(tag[2].as_str())?,
+                    prev_event_pos: i64::from_str(tag[3].as_str())?,
+                }),
                 _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
             }
         } else {
@@ -725,6 +741,18 @@ impl From<Tag> for Vec<String> {
             }
             Tag::Lnurl(lnurl) => {
                 vec![TagKind::Lnurl.to_string(), lnurl]
+            }
+            Tag::Mmr {
+                prev_event_id,
+                prev_mmr_root,
+                prev_event_pos,
+            } => {
+                vec![
+                    TagKind::Mmr.to_string(),
+                    prev_event_id.to_string(),
+                    prev_mmr_root.to_string(),
+                    prev_event_pos.to_string(),
+                ]
             }
         }
     }

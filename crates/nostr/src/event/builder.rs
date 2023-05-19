@@ -7,6 +7,7 @@ use core::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
+use bitcoin_hashes::sha256::Hash;
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
 use secp256k1::XOnlyPublicKey;
@@ -167,6 +168,47 @@ impl EventBuilder {
             }
 
             tags.pop();
+        }
+    }
+
+    /// Build MMR [`Event`]
+    pub fn to_mmr_event(
+        self,
+        keys: &Keys,
+        prev_event_hash: Hash,
+        prev_mmr_root: Hash,
+        prev_event_pos: i64,
+    ) -> Result<Event, Error> {
+        let pubkey: XOnlyPublicKey = keys.public_key();
+        Ok(self
+            .to_unsigned_mmr_event(pubkey, prev_event_hash, prev_mmr_root, prev_event_pos)
+            .sign(keys)?)
+    }
+
+    /// Build unsigned MMR [`Event`]
+    pub fn to_unsigned_mmr_event(
+        self,
+        pubkey: XOnlyPublicKey,
+        prev_event_id: Hash,
+        prev_mmr_root: Hash,
+        prev_event_pos: i64,
+    ) -> UnsignedEvent {
+        let mut tags: Vec<Tag> = self.tags;
+        tags.push(Tag::Mmr {
+            prev_event_id,
+            prev_mmr_root,
+            prev_event_pos,
+        });
+        let created_at: Timestamp = Timestamp::now();
+        let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
+        // TODO verify if valid MMR append operation for vector commitment
+        UnsignedEvent {
+            id,
+            pubkey,
+            created_at,
+            kind: self.kind,
+            tags,
+            content: self.content,
         }
     }
 }
