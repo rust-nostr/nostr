@@ -25,6 +25,7 @@ nip19 = ["dep:bech32"]
 nip21 = ["nip19"]
 nip46 = ["nip04"]
 nip47 = ["nip04"]
+mmr = []
 
 [dependencies]
 aes = { version = "0.8", optional = true }

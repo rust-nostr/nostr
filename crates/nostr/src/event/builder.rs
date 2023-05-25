@@ -3,15 +3,15 @@
 
 //! Event builder
 
-use core::fmt;
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::Instant;
-
+#[cfg(feature = "mmr")]
 use bitcoin_hashes::sha256::Hash;
+use core::fmt;
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
 use secp256k1::XOnlyPublicKey;
 use serde_json::{json, Value};
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 use url::Url;
 
 pub use super::kind::Kind;
@@ -172,6 +172,7 @@ impl EventBuilder {
     }
 
     /// Build MMR [`Event`]
+    #[cfg(feature = "mmr")]
     pub fn to_mmr_event(
         self,
         keys: &Keys,
@@ -186,6 +187,7 @@ impl EventBuilder {
     }
 
     /// Build unsigned MMR [`Event`]
+    #[cfg(feature = "mmr")]
     pub fn to_unsigned_mmr_event(
         self,
         pubkey: XOnlyPublicKey,

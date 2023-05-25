@@ -7,6 +7,7 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
+#[cfg(feature = "mmr")]
 use bitcoin_hashes::sha256::Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
@@ -243,6 +244,7 @@ pub enum TagKind {
     Lnurl,
     /// Name tag
     Name,
+    #[cfg(feature = "mmr")]
     /// Merkle mountain range
     Mmr,
     /// Custom tag kind
@@ -278,6 +280,7 @@ impl fmt::Display for TagKind {
             Self::Amount => write!(f, "amount"),
             Self::Lnurl => write!(f, "lnurl"),
             Self::Name => write!(f, "name"),
+            #[cfg(feature = "mmr")]
             Self::Mmr => write!(f, "mmr"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
@@ -317,6 +320,7 @@ where
             "amount" => Self::Amount,
             "lnurl" => Self::Lnurl,
             "name" => Self::Name,
+            #[cfg(feature = "mmr")]
             "mmr" => Self::Mmr,
             tag => Self::Custom(tag.to_string()),
         }
@@ -375,6 +379,7 @@ pub enum Tag {
     Lnurl(String),
     Name(String),
     PublishedAt(Timestamp),
+    #[cfg(feature = "mmr")]
     Mmr {
         prev_event_id: Hash,
         prev_mmr_root: Hash,
@@ -430,6 +435,7 @@ impl Tag {
             Tag::Amount(..) => TagKind::Amount,
             Tag::Name(..) => TagKind::Name,
             Tag::Lnurl(..) => TagKind::Lnurl,
+            #[cfg(feature = "mmr")]
             Tag::Mmr { .. } => TagKind::Mmr,
         }
     }
@@ -592,6 +598,7 @@ where
                     conditions: Conditions::from_str(&tag[2])?,
                     sig: Signature::from_str(&tag[3])?,
                 }),
+                #[cfg(feature = "mmr")]
                 TagKind::Mmr => Ok(Self::Mmr {
                     prev_event_id: Hash::from_str(tag[1].as_str())?,
                     prev_mmr_root: Hash::from_str(tag[2].as_str())?,
@@ -742,6 +749,7 @@ impl From<Tag> for Vec<String> {
             Tag::Lnurl(lnurl) => {
                 vec![TagKind::Lnurl.to_string(), lnurl]
             }
+            #[cfg(feature = "mmr")]
             Tag::Mmr {
                 prev_event_id,
                 prev_mmr_root,
