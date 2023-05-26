@@ -1,5 +1,5 @@
 precommit:
-	@sh .githooks/pre-push
+	@bash .githooks/pre-push
 
 clean:
 	cargo clean
