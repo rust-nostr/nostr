@@ -60,7 +60,7 @@ impl Client {
                     handler.handle(Arc::new(event.into()));
                 }
 
-                Ok(())
+                Ok(false)
             })?)
         });
     }

@@ -42,6 +42,7 @@ fn main() -> Result<()> {
                     &event.content,
                 ) {
                     println!("New DM: {}", msg);
+                    // return Ok(true);
                 } else {
                     log::error!("Impossible to decrypt direct message");
                 }
@@ -50,7 +51,7 @@ fn main() -> Result<()> {
             }
         }
 
-        Ok(())
+        Ok(false) // Set to true to exit from the loop
     })?;
 
     Ok(())

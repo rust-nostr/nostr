@@ -1127,15 +1127,15 @@ impl Client {
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
         F: Fn(RelayPoolNotification) -> Fut,
-        Fut: Future<Output = Result<()>>,
+        Fut: Future<Output = Result<bool>>,
     {
         let mut notifications = self.notifications();
         while let Ok(notification) = notifications.recv().await {
             let shutdown: bool = RelayPoolNotification::Shutdown == notification;
-            func(notification)
+            let exit: bool = func(notification)
                 .await
                 .map_err(|e| Error::Handler(e.to_string()))?;
-            if shutdown {
+            if exit || shutdown {
                 break;
             }
         }

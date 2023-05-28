@@ -336,12 +336,16 @@ impl Client {
 
     pub fn handle_notifications<F>(&self, func: F) -> Result<(), Error>
     where
-        F: Fn(RelayPoolNotification) -> Result<()>,
+        F: Fn(RelayPoolNotification) -> Result<bool>,
     {
         RUNTIME.block_on(async {
             let mut notifications = self.client.notifications();
             while let Ok(notification) = notifications.recv().await {
-                func(notification).map_err(|e| Error::Handler(e.to_string()))?;
+                let shutdown: bool = RelayPoolNotification::Shutdown == notification;
+                let exit: bool = func(notification).map_err(|e| Error::Handler(e.to_string()))?;
+                if exit || shutdown {
+                    break;
+                }
             }
             Ok(())
         })
