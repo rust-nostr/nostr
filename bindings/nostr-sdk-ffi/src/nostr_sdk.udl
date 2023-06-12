@@ -13,8 +13,10 @@ interface NostrSdkError {
 
 // NOSTR
 
-[External="nostr-ffi"]
-typedef extern NostrError;
+[Error]
+interface NostrError {
+    Generic(string err);
+};
 
 interface Keys {
     [Throws=NostrError]

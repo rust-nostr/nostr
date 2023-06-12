@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr::Timestamp;
+use nostr_sdk::Timestamp;
 
 mod client;
 mod error;

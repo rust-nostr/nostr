@@ -31,8 +31,8 @@ impl From<AddrParseError> for NostrSdkError {
     }
 }
 
-impl From<nostr::url::ParseError> for NostrSdkError {
-    fn from(e: nostr::url::ParseError) -> NostrSdkError {
+impl From<nostr_sdk::url::ParseError> for NostrSdkError {
+    fn from(e: nostr_sdk::url::ParseError) -> NostrSdkError {
         Self::Generic { err: e.to_string() }
     }
 }

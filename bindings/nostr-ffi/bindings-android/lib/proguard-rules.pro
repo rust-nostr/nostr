@@ -23,8 +23,8 @@
 # for JNA
 -dontwarn java.awt.*
 -keep class com.sun.jna.* { *; }
--keep class com.rustnostr.* { *; }
+-keep class rust.nostr.* { *; }
 -keep class nostr.** { *; }
--keepclassmembers class * extends com.rustnostr.* { public *; }
+-keepclassmembers class * extends rust.nostr.* { public *; }
 -keepclassmembers class * extends nostr.** { public *; }
 -keepclassmembers class * extends com.sun.jna.* { public *; }
