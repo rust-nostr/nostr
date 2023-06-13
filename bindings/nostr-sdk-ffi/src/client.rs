@@ -5,9 +5,9 @@ use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_sdk::nostr::Filter as FilterSdk;
 use nostr_ffi::{Event, Filter, Keys};
 use nostr_sdk::client::blocking::Client as ClientSdk;
+use nostr_sdk::nostr::Filter as FilterSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 
 use crate::error::Result;
