@@ -44,6 +44,8 @@ pub enum Error {
     NIP26(Nip26Error),
     /// Event Error
     Event(crate::event::Error),
+    /// NIP-39 Error
+    InvalidIdentity,
 }
 
 impl std::error::Error for Error {}
@@ -63,6 +65,7 @@ impl fmt::Display for Error {
             Self::EventId(e) => write!(f, "{e}"),
             Self::NIP26(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
+            Self::InvalidIdentity => write!(f, "invalid identity tag"),
         }
     }
 }
@@ -204,6 +207,8 @@ pub enum TagKind {
     D,
     /// Referencing and tagging
     A,
+    /// External Identities
+    I,
     /// Relay
     Relay,
     /// Nonce
@@ -256,6 +261,7 @@ impl fmt::Display for TagKind {
             Self::G => write!(f, "g"),
             Self::D => write!(f, "d"),
             Self::A => write!(f, "a"),
+            Self::I => write!(f, "i"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
@@ -294,6 +300,7 @@ where
             "g" => Self::G,
             "d" => Self::D,
             "a" => Self::A,
+            "i" => Self::I,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,
@@ -331,6 +338,7 @@ pub enum Tag {
     Hashtag(String),
     Geohash(String),
     Identifier(String),
+    ExternalIdentity(Identity),
     A {
         kind: Kind,
         public_key: XOnlyPublicKey,
@@ -399,6 +407,7 @@ impl Tag {
             Tag::Hashtag(..) => TagKind::T,
             Tag::Geohash(..) => TagKind::G,
             Tag::Identifier(..) => TagKind::D,
+            Tag::ExternalIdentity(..) => TagKind::I,
             Tag::A { .. } => TagKind::A,
             Tag::Relay(..) => TagKind::Relay,
             Tag::ContactList { .. } => TagKind::P,
@@ -525,6 +534,7 @@ where
                         }
                     }
                 }
+                TagKind::I => Ok(Self::ExternalIdentity(Identity::new(&tag[1], &tag[2])?)),
                 TagKind::Nonce => Ok(Self::POW {
                     nonce: tag[1].parse()?,
                     difficulty: tag[2].parse()?,
@@ -645,6 +655,7 @@ impl From<Tag> for Vec<String> {
                 }
                 vec
             }
+            Tag::ExternalIdentity(identity) => identity.into(),
             Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
             Tag::ContactList {
                 pk,
@@ -752,6 +763,97 @@ impl<'de> Deserialize<'de> for Tag {
         type Data = Vec<String>;
         let vec: Vec<String> = Data::deserialize(deserializer)?;
         Self::try_from(vec).map_err(DeserializerError::custom)
+    }
+}
+
+/// Supported external identity providers
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ExternalIdentity {
+    /// github.com
+    GitHub,
+    /// twitter.com
+    Twitter,
+    /// mastodon.social
+    Mastodon,
+    /// telegram.org
+    Telegram,
+}
+
+impl fmt::Display for ExternalIdentity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::GitHub => write!(f, "github"),
+            Self::Twitter => write!(f, "twitter"),
+            Self::Mastodon => write!(f, "mastodon"),
+            Self::Telegram => write!(f, "telegram"),
+        }
+    }
+}
+
+impl TryFrom<String> for ExternalIdentity {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "github" => Ok(Self::GitHub),
+            "twitter" => Ok(Self::Twitter),
+            "mastodon" => Ok(Self::Mastodon),
+            "telegram" => Ok(Self::Telegram),
+            _ => Err(Error::InvalidIdentity),
+        }
+    }
+}
+
+/// A NIP-39 external identity
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Identity {
+    /// The external identity provider
+    pub platform: ExternalIdentity,
+    /// The user's identity (username) on the provider
+    pub ident: String,
+    /// The user's proof on the provider
+    pub proof: String,
+}
+
+impl Identity {
+    fn new(platform_iden: &str, proof: &str) -> Result<Self, Error> {
+        let (platform, ident) = platform_iden
+            .rsplit_once(':')
+            .ok_or(Error::InvalidIdentity)?;
+        let platform: ExternalIdentity = platform.to_string().try_into()?;
+
+        Ok(Self {
+            platform,
+            ident: ident.to_string(),
+            proof: proof.to_string(),
+        })
+    }
+}
+
+impl TryFrom<Tag> for Identity {
+    type Error = Error;
+
+    fn try_from(value: Tag) -> Result<Self, Self::Error> {
+        match value {
+            Tag::ExternalIdentity(iden) => Ok(iden),
+            _ => Err(Error::InvalidIdentity),
+        }
+    }
+}
+
+impl From<Identity> for Tag {
+    fn from(value: Identity) -> Self {
+        Self::ExternalIdentity(value)
+    }
+}
+
+impl From<Identity> for Vec<String> {
+    fn from(value: Identity) -> Self {
+        vec![
+            TagKind::I.to_string(),
+            format!("{}:{}", value.platform, value.ident),
+            value.proof,
+        ]
     }
 }
 
@@ -1098,6 +1200,15 @@ mod tests {
         );
 
         assert_eq!(
+            Tag::parse(vec!["i", "github:12345678", "abcdefghijklmnop"])?,
+            Tag::ExternalIdentity(Identity {
+                platform: ExternalIdentity::GitHub,
+                ident: "12345678".to_string(),
+                proof: "abcdefghijklmnop".to_string()
+            })
+        );
+
+        assert_eq!(
             Tag::parse(vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
@@ -1255,8 +1366,8 @@ mod tests {
 
         assert_eq!(
             Tag::parse(vec![
-                "bolt11", 
-                "lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0"])?, 
+                "bolt11",
+                "lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0"])?,
                 Tag::Bolt11("lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0".to_string())
         );
 
