@@ -3,6 +3,9 @@
 
 //! Prelude
 
+#![allow(unknown_lints)]
+#![allow(ambiguous_glob_reexports)]
+
 // External crates
 pub use nostr::prelude::*;
 
