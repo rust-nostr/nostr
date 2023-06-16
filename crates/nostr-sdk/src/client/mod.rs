@@ -203,6 +203,17 @@ impl Client {
         self.remote_signer.clone().ok_or(Error::SignerNotConfigured)
     }
 
+    /// Start a previously stopped client
+    pub async fn start(&self) {
+        self.pool.start();
+        self.connect().await;
+    }
+
+    /// Stop the client
+    pub async fn stop(&self) -> Result<(), Error> {
+        Ok(self.pool.stop().await?)
+    }
+
     /// Completely shutdown [`Client`]
     pub async fn shutdown(self) -> Result<(), Error> {
         Ok(self.pool.shutdown().await?)
@@ -1131,11 +1142,12 @@ impl Client {
     {
         let mut notifications = self.notifications();
         while let Ok(notification) = notifications.recv().await {
+            let stop: bool = RelayPoolNotification::Stop == notification;
             let shutdown: bool = RelayPoolNotification::Shutdown == notification;
             let exit: bool = func(notification)
                 .await
                 .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit || shutdown {
+            if exit || stop || shutdown {
                 break;
             }
         }

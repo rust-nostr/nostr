@@ -69,6 +69,21 @@ impl Client {
         self.client.keys()
     }
 
+    /// Start a previously stopped client
+    pub fn start(&self) {
+        RUNTIME.block_on(async { self.client.start().await })
+    }
+
+    /// Stop the client
+    pub fn stop(&self) -> Result<(), Error> {
+        RUNTIME.block_on(async { self.client.stop().await })
+    }
+
+    /// Completely shutdown [`Client`]
+    pub fn shutdown(self) -> Result<(), Error> {
+        RUNTIME.block_on(async { self.client.shutdown().await })
+    }
+
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.client.notifications()
     }
@@ -341,9 +356,10 @@ impl Client {
         RUNTIME.block_on(async {
             let mut notifications = self.client.notifications();
             while let Ok(notification) = notifications.recv().await {
+                let stop: bool = RelayPoolNotification::Stop == notification;
                 let shutdown: bool = RelayPoolNotification::Shutdown == notification;
                 let exit: bool = func(notification).map_err(|e| Error::Handler(e.to_string()))?;
-                if exit || shutdown {
+                if exit || stop || shutdown {
                     break;
                 }
             }

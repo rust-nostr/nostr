@@ -6,6 +6,7 @@
 use std::collections::{HashMap, VecDeque};
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -46,6 +47,8 @@ pub enum RelayPoolMessage {
     },
     /// Event sent
     EventSent(Box<Event>),
+    /// Stop
+    Stop,
     /// Shutdown
     Shutdown,
 }
@@ -57,14 +60,18 @@ pub enum RelayPoolNotification {
     Event(Url, Event),
     /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
     Message(Url, RelayMessage),
+    /// Stop
+    Stop,
     /// Shutdown
     Shutdown,
 }
 
+#[derive(Debug, Clone)]
 struct RelayPoolTask {
-    receiver: Receiver<RelayPoolMessage>,
+    receiver: Arc<Mutex<Receiver<RelayPoolMessage>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
-    events: VecDeque<EventId>,
+    events: Arc<Mutex<VecDeque<EventId>>>,
+    running: Arc<AtomicBool>,
 }
 
 const MAX_EVENTS: usize = 100000;
@@ -75,60 +82,100 @@ impl RelayPoolTask {
         notification_sender: broadcast::Sender<RelayPoolNotification>,
     ) -> Self {
         Self {
-            receiver: pool_task_receiver,
-            events: VecDeque::new(),
+            receiver: Arc::new(Mutex::new(pool_task_receiver)),
+            events: Arc::new(Mutex::new(VecDeque::new())),
             notification_sender,
+            running: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    pub async fn run(&mut self) {
-        log::debug!("RelayPoolTask Thread Started");
-        while let Some(msg) = self.receiver.recv().await {
-            match msg {
-                RelayPoolMessage::ReceivedMsg { relay_url, msg } => {
-                    let _ = self
-                        .notification_sender
-                        .send(RelayPoolNotification::Message(
-                            relay_url.clone(),
-                            msg.clone(),
-                        ));
+    pub fn is_running(&self) -> bool {
+        self.running.load(Ordering::SeqCst)
+    }
 
-                    if let RelayMessage::Event { event, .. } = msg {
-                        // Verifies if the event is valid
-                        if event.verify().is_ok() {
-                            // Adds only new events
-                            if !self.events.contains(&event.id) {
-                                self.add_event(event.id);
-                                let notification =
-                                    RelayPoolNotification::Event(relay_url, event.as_ref().clone());
-                                let _ = self.notification_sender.send(notification);
+    fn set_running_to(&self, value: bool) {
+        let _ = self
+            .running
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
+    }
+
+    pub fn run(&self) {
+        if self.is_running() {
+            log::warn!("Relay Pool Task is already running!")
+        } else {
+            log::debug!("RelayPoolTask Thread Started");
+            self.set_running_to(true);
+            let this = self.clone();
+            thread::spawn(async move {
+                let mut receiver = this.receiver.lock().await;
+                while let Some(msg) = receiver.recv().await {
+                    match msg {
+                        RelayPoolMessage::ReceivedMsg { relay_url, msg } => {
+                            let _ = this
+                                .notification_sender
+                                .send(RelayPoolNotification::Message(
+                                    relay_url.clone(),
+                                    msg.clone(),
+                                ));
+
+                            if let RelayMessage::Event { event, .. } = msg {
+                                // Verifies if the event is valid
+                                if event.verify().is_ok() {
+                                    // Adds only new events
+                                    if this.add_event(event.id).await {
+                                        let notification = RelayPoolNotification::Event(
+                                            relay_url,
+                                            event.as_ref().clone(),
+                                        );
+                                        let _ = this.notification_sender.send(notification);
+                                    }
+                                }
                             }
+                        }
+                        RelayPoolMessage::EventSent(event) => {
+                            this.add_event(event.id).await;
+                        }
+                        RelayPoolMessage::Stop => {
+                            log::debug!("Received stop msg");
+                            if let Err(e) =
+                                this.notification_sender.send(RelayPoolNotification::Stop)
+                            {
+                                log::error!("Impossible to send STOP notification: {}", e);
+                            }
+                            this.set_running_to(false);
+                            break;
+                        }
+                        RelayPoolMessage::Shutdown => {
+                            log::debug!("Received shutdown msg");
+                            if let Err(e) = this
+                                .notification_sender
+                                .send(RelayPoolNotification::Shutdown)
+                            {
+                                log::error!("Impossible to send SHUTDOWN notification: {}", e);
+                            }
+                            this.set_running_to(false);
+                            receiver.close();
+                            break;
                         }
                     }
                 }
-                RelayPoolMessage::EventSent(event) => {
-                    self.add_event(event.id);
-                }
-                RelayPoolMessage::Shutdown => {
-                    if let Err(e) = self
-                        .notification_sender
-                        .send(RelayPoolNotification::Shutdown)
-                    {
-                        log::error!("Impossible to send shutdown notification: {}", e);
-                    }
-                    log::debug!("Exited from RelayPoolTask thread");
-                    self.receiver.close();
-                    break;
-                }
-            }
+
+                log::debug!("Exited from RelayPoolTask thread");
+            });
         }
     }
 
-    fn add_event(&mut self, event_id: EventId) {
-        while self.events.len() >= MAX_EVENTS {
-            self.events.pop_front();
+    async fn add_event(&self, event_id: EventId) -> bool {
+        let mut events = self.events.lock().await;
+        if events.contains(&event_id) {
+            false
+        } else {
+            while events.len() >= MAX_EVENTS {
+                events.pop_front();
+            }
+            events.push_back(event_id);
+            true
         }
-        self.events.push_back(event_id);
     }
 }
 
@@ -139,6 +186,7 @@ pub struct RelayPool {
     pool_task_sender: Sender<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     filters: Arc<Mutex<Vec<Filter>>>,
+    pool_task: RelayPoolTask,
 }
 
 impl Default for RelayPool {
@@ -153,17 +201,45 @@ impl RelayPool {
         let (notification_sender, _) = broadcast::channel(1024);
         let (pool_task_sender, pool_task_receiver) = mpsc::channel(1024);
 
-        let mut relay_pool_task =
-            RelayPoolTask::new(pool_task_receiver, notification_sender.clone());
+        let relay_pool_task = RelayPoolTask::new(pool_task_receiver, notification_sender.clone());
 
-        thread::spawn(async move { relay_pool_task.run().await });
-
-        Self {
+        let pool = Self {
             relays: Arc::new(Mutex::new(HashMap::new())),
             pool_task_sender,
             notification_sender,
             filters: Arc::new(Mutex::new(Vec::new())),
+            pool_task: relay_pool_task,
+        };
+
+        pool.start();
+
+        pool
+    }
+
+    /// Start [`RelayPoolTask`]
+    pub fn start(&self) {
+        self.pool_task.run();
+    }
+
+    /// Stop
+    pub async fn stop(&self) -> Result<(), Error> {
+        let relays = self.relays().await;
+        for relay in relays.values() {
+            relay.stop().await?;
         }
+        if let Err(e) = self.pool_task_sender.send(RelayPoolMessage::Stop).await {
+            log::error!("Impossible to send STOP message: {e}");
+        }
+        Ok(())
+    }
+
+    /// Completely shutdown pool
+    pub async fn shutdown(self) -> Result<(), Error> {
+        self.disconnect().await?;
+        if let Err(e) = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await {
+            log::error!("Impossible to send SHUTDOWN message: {e}");
+        }
+        Ok(())
     }
 
     /// Get new notification listener
@@ -368,16 +444,6 @@ impl RelayPool {
     /// Disconnect from relay
     pub async fn disconnect_relay(&self, relay: &Relay) -> Result<(), Error> {
         relay.terminate().await?;
-        Ok(())
-    }
-
-    /// Completely shutdown pool
-    pub async fn shutdown(self) -> Result<(), Error> {
-        self.disconnect().await?;
-        thread::spawn(async move {
-            thread::sleep(Duration::from_secs(3)).await;
-            let _ = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await;
-        });
         Ok(())
     }
 }

@@ -67,6 +67,8 @@ pub enum RelayStatus {
     Connecting,
     /// Relay disconnected, will retry to connect again
     Disconnected,
+    /// Stop
+    Stopped,
     /// Relay completely disconnected
     Terminated,
 }
@@ -78,6 +80,7 @@ impl fmt::Display for RelayStatus {
             Self::Connected => write!(f, "Connected"),
             Self::Connecting => write!(f, "Connecting"),
             Self::Disconnected => write!(f, "Disconnected"),
+            Self::Stopped => write!(f, "Stopped"),
             Self::Terminated => write!(f, "Terminated"),
         }
     }
@@ -91,6 +94,8 @@ pub enum RelayEvent {
     // Ping,
     /// Close
     Close,
+    /// Stop
+    Stop,
     /// Completely disconnect
     Terminate,
 }
@@ -243,6 +248,7 @@ pub struct Relay {
     document: Arc<Mutex<RelayInformationDocument>>,
     opts: RelayOptions,
     stats: RelayConnectionStats,
+    scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
     pool_sender: Sender<RelayPoolMessage>,
     relay_sender: Sender<Message>,
@@ -277,6 +283,7 @@ impl Relay {
             document: Arc::new(Mutex::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
+            scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,
             relay_sender,
@@ -303,6 +310,7 @@ impl Relay {
             document: Arc::new(Mutex::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
+            scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,
             relay_sender,
@@ -381,6 +389,16 @@ impl Relay {
         self.stats.clone()
     }
 
+    fn is_scheduled_for_stop(&self) -> bool {
+        self.scheduled_for_stop.load(Ordering::SeqCst)
+    }
+
+    fn schedule_for_stop(&self, value: bool) {
+        let _ = self
+            .scheduled_for_stop
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
+    }
+
     fn is_scheduled_for_termination(&self) -> bool {
         self.scheduled_for_termination.load(Ordering::SeqCst)
     }
@@ -393,7 +411,12 @@ impl Relay {
 
     /// Connect to relay and keep alive connection
     pub async fn connect(&self, wait_for_connection: bool) {
-        if let RelayStatus::Initialized | RelayStatus::Terminated = self.status().await {
+        self.schedule_for_stop(false);
+        self.schedule_for_termination(false);
+
+        if let RelayStatus::Initialized | RelayStatus::Stopped | RelayStatus::Terminated =
+            self.status().await
+        {
             if wait_for_connection {
                 self.try_connect().await
             } else {
@@ -415,7 +438,7 @@ impl Relay {
                     if relay.is_scheduled_for_termination() {
                         relay.set_status(RelayStatus::Terminated).await;
                         relay.schedule_for_termination(false);
-                        log::debug!("Auto connect loop terminated for {}", relay.url);
+                        log::debug!("Auto connect loop terminated for {} [schedule]", relay.url);
                         break;
                     }
 
@@ -511,21 +534,32 @@ impl Relay {
                                 log::info!("Disconnected from {}", url);
                                 break;
                             }
-                            RelayEvent::Terminate => {
-                                // Unsubscribe from relay
-                                if let Err(e) = relay.unsubscribe(false).await {
-                                    log::error!(
-                                        "Impossible to unsubscribe from {}: {}",
-                                        relay.url(),
-                                        e.to_string()
-                                    )
+                            RelayEvent::Stop => {
+                                if relay.is_scheduled_for_stop() {
+                                    let _ = ws_tx.close().await;
+                                    relay.set_status(RelayStatus::Stopped).await;
+                                    relay.schedule_for_stop(false);
+                                    log::info!("Stopped {}", url);
+                                    break;
                                 }
-                                // Close stream
-                                let _ = ws_tx.close().await;
-                                relay.set_status(RelayStatus::Terminated).await;
-                                relay.schedule_for_termination(false);
-                                log::info!("Completely disconnected from {}", url);
-                                break;
+                            }
+                            RelayEvent::Terminate => {
+                                if relay.is_scheduled_for_termination() {
+                                    // Unsubscribe from relay
+                                    if let Err(e) = relay.unsubscribe(false).await {
+                                        log::error!(
+                                            "Impossible to unsubscribe from {}: {}",
+                                            relay.url(),
+                                            e.to_string()
+                                        )
+                                    }
+                                    // Close stream
+                                    let _ = ws_tx.close().await;
+                                    relay.set_status(RelayStatus::Terminated).await;
+                                    relay.schedule_for_termination(false);
+                                    log::info!("Completely disconnected from {}", url);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -578,10 +612,8 @@ impl Relay {
 
                     log::debug!("Exited from Message Thread of {}", relay.url);
 
-                    if relay.status().await != RelayStatus::Terminated {
-                        if let Err(err) = relay.disconnect().await {
-                            log::error!("Impossible to disconnect {}: {}", relay.url, err);
-                        }
+                    if let Err(err) = relay.disconnect().await {
+                        log::error!("Impossible to disconnect {}: {}", relay.url, err);
                     }
                 });
 
@@ -625,8 +657,24 @@ impl Relay {
     /// Disconnect from relay and set status to 'Disconnected'
     async fn disconnect(&self) -> Result<(), Error> {
         let status = self.status().await;
-        if status.ne(&RelayStatus::Disconnected) && status.ne(&RelayStatus::Terminated) {
+        if status.ne(&RelayStatus::Disconnected)
+            && status.ne(&RelayStatus::Stopped)
+            && status.ne(&RelayStatus::Terminated)
+        {
             self.send_relay_event(RelayEvent::Close, None).await?;
+        }
+        Ok(())
+    }
+
+    /// Disconnect from relay and set status to 'Stopped'
+    pub async fn stop(&self) -> Result<(), Error> {
+        self.schedule_for_stop(true);
+        let status = self.status().await;
+        if status.ne(&RelayStatus::Disconnected)
+            && status.ne(&RelayStatus::Stopped)
+            && status.ne(&RelayStatus::Terminated)
+        {
+            self.send_relay_event(RelayEvent::Stop, None).await?;
         }
         Ok(())
     }
@@ -635,7 +683,10 @@ impl Relay {
     pub async fn terminate(&self) -> Result<(), Error> {
         self.schedule_for_termination(true);
         let status = self.status().await;
-        if status.ne(&RelayStatus::Disconnected) && status.ne(&RelayStatus::Terminated) {
+        if status.ne(&RelayStatus::Disconnected)
+            && status.ne(&RelayStatus::Stopped)
+            && status.ne(&RelayStatus::Terminated)
+        {
             self.send_relay_event(RelayEvent::Terminate, None).await?;
         }
         Ok(())
