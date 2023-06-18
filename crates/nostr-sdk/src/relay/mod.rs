@@ -41,7 +41,7 @@ pub enum Error {
     Timeout,
     /// Message not sent
     #[error("message not sent")]
-    MessagetNotSent,
+    MessageNotSent,
     /// Impossible to receive oneshot message
     #[error("impossible to recv msg")]
     OneShotRecvError,
@@ -647,7 +647,7 @@ impl Relay {
             self.relay_sender
                 .send((relay_msg, sender))
                 .await
-                .map_err(|_| Error::MessagetNotSent)
+                .map_err(|_| Error::MessageNotSent)
         })
         .await
         .ok_or(Error::ChannelTimeout)??;
@@ -718,7 +718,7 @@ impl Relay {
                         if val {
                             Ok(())
                         } else {
-                            Err(Error::MessagetNotSent)
+                            Err(Error::MessageNotSent)
                         }
                     }
                     Err(_) => Err(Error::OneShotRecvError),

@@ -100,7 +100,7 @@ pub enum ErrorCode {
     NotImplemented,
     /// The wallet does not have enough funds to cover a fee reserve or the payment amount
     #[serde(rename = "INSUFFICIENT_BALANCE")]
-    InsufficantBalance,
+    InsufficientBalance,
     /// The wallet has exceeded its spending quota
     #[serde(rename = "QUOTA_EXCEEDED")]
     QuotaExceeded,

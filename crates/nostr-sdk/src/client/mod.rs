@@ -83,7 +83,7 @@ pub enum Error {
     #[cfg(feature = "nip46")]
     #[error(transparent)]
     JSON(#[from] nostr::serde_json::Error),
-    /// Generig NIP46 error
+    /// Generic NIP46 error
     #[cfg(feature = "nip46")]
     #[error("generic error")]
     Generic,
