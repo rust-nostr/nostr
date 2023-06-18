@@ -224,6 +224,11 @@ impl Client {
         Ok(self.pool.shutdown().await?)
     }
 
+    /// Clear already seen events
+    pub async fn clear_already_seen_events(&self) {
+        self.pool.clear_already_seen_events().await;
+    }
+
     /// Get new notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.pool.notifications()

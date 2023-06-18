@@ -99,6 +99,11 @@ impl RelayPoolTask {
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
     }
 
+    pub async fn clear_already_seen_events(&self) {
+        let mut events = self.events.lock().await;
+        events.clear();
+    }
+
     pub fn run(&self) {
         if self.is_running() {
             log::warn!("Relay Pool Task is already running!")
@@ -246,6 +251,11 @@ impl RelayPool {
             let _ = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await;
         });
         Ok(())
+    }
+
+    /// Clear already seen events
+    pub async fn clear_already_seen_events(&self) {
+        self.pool_task.clear_already_seen_events().await;
     }
 
     /// Get new notification listener
