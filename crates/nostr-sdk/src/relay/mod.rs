@@ -348,6 +348,11 @@ impl Relay {
         *s = status;
     }
 
+    /// Check if [`Relay`] is connected
+    pub async fn is_connected(&self) -> bool {
+        self.status().await == RelayStatus::Connected
+    }
+
     /// Get [`RelayInformationDocument`]
     #[cfg(feature = "nip11")]
     pub async fn document(&self) -> RelayInformationDocument {
