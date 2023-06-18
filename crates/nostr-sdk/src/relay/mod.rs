@@ -563,13 +563,14 @@ impl Relay {
                             }
                         }
                     }
+                    log::debug!("Exited from Relay Event Thread");
                 });
 
                 let relay = self.clone();
                 thread::spawn(async move {
                     log::debug!("Relay Message Thread Started");
 
-                    async fn func(relay: &Relay, data: Vec<u8>) {
+                    async fn func(relay: &Relay, data: Vec<u8>) -> bool {
                         match String::from_utf8(data) {
                             Ok(data) => match RelayMessage::from_json(&data) {
                                 Ok(msg) => {
@@ -586,6 +587,7 @@ impl Relay {
                                             "Impossible to send ReceivedMsg to pool: {}",
                                             &err
                                         );
+                                        return true; // Exit
                                     };
                                 }
                                 Err(err) => {
@@ -594,20 +596,28 @@ impl Relay {
                             },
                             Err(err) => log::error!("{}", err),
                         }
+
+                        false
                     }
 
                     #[cfg(not(target_arch = "wasm32"))]
                     while let Some(msg_res) = ws_rx.next().await {
                         if let Ok(msg) = msg_res {
                             let data: Vec<u8> = msg.into_data();
-                            func(&relay, data).await;
+                            let exit: bool = func(&relay, data).await;
+                            if exit {
+                                break;
+                            }
                         }
                     }
 
                     #[cfg(target_arch = "wasm32")]
                     while let Some(msg) = ws_rx.next().await {
                         let data: Vec<u8> = msg.as_ref().to_vec();
-                        func(&relay, data).await;
+                        let exit: bool = func(&relay, data).await;
+                        if exit {
+                            break;
+                        }
                     }
 
                     log::debug!("Exited from Message Thread of {}", relay.url);
