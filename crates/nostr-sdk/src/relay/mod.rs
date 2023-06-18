@@ -509,7 +509,7 @@ impl Relay {
                         match relay_event {
                             RelayEvent::SendMsg(msg) => {
                                 log::debug!("Sending message {}", msg.as_json());
-                                if let Err(e) = ws_tx.send(WsMessage::Text(msg.as_json())).await {
+                                if let Err(e) = ws_tx.feed(WsMessage::Text(msg.as_json())).await {
                                     log::error!(
                                         "Impossible to send msg to {}: {}",
                                         relay.url(),
