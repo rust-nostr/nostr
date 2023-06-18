@@ -214,6 +214,11 @@ impl Client {
         Ok(self.pool.stop().await?)
     }
 
+    /// Check if [`RelayPool`] is running
+    pub fn is_running(&self) -> bool {
+        self.pool.is_running()
+    }
+
     /// Completely shutdown [`Client`]
     pub async fn shutdown(self) -> Result<(), Error> {
         Ok(self.pool.shutdown().await?)

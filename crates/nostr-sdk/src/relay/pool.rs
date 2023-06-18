@@ -233,6 +233,11 @@ impl RelayPool {
         Ok(())
     }
 
+    /// Check if [`RelayPool`] is running
+    pub fn is_running(&self) -> bool {
+        self.pool_task.is_running()
+    }
+
     /// Completely shutdown pool
     pub async fn shutdown(self) -> Result<(), Error> {
         self.disconnect().await?;
