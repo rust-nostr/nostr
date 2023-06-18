@@ -241,9 +241,10 @@ impl RelayPool {
     /// Completely shutdown pool
     pub async fn shutdown(self) -> Result<(), Error> {
         self.disconnect().await?;
-        if let Err(e) = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await {
-            log::error!("Impossible to send SHUTDOWN message: {e}");
-        }
+        thread::spawn(async move {
+            thread::sleep(Duration::from_secs(3)).await;
+            let _ = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await;
+        });
         Ok(())
     }
 
