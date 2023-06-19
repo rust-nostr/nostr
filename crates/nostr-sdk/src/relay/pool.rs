@@ -24,9 +24,12 @@ pub enum Error {
     /// Relay error
     #[error(transparent)]
     Relay(#[from] RelayError),
-    /// No relay connected
-    #[error("no relay connected")]
-    NoRelayConnected,
+    /// No relays
+    #[error("no relays")]
+    NoRelays,
+    /// Msg not sent
+    #[error("msg not sent")]
+    MsgNotSent,
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
@@ -338,7 +341,7 @@ impl RelayPool {
         let relays = self.relays().await;
 
         if relays.is_empty() {
-            return Err(Error::NoRelayConnected);
+            return Err(Error::NoRelays);
         }
 
         if let ClientMessage::Event(event) = &msg {
@@ -351,10 +354,30 @@ impl RelayPool {
             };
         }
 
+        let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+        let mut handles = Vec::new();
+
         for (url, relay) in relays.into_iter() {
-            if let Err(e) = relay.send_msg(msg.clone(), wait).await {
-                log::error!("Impossible to send msg to {url}: {e}");
-            }
+            let msg = msg.clone();
+            let sent = sent_to_at_least_one_relay.clone();
+            let handle = thread::spawn(async move {
+                match relay.send_msg(msg, wait).await {
+                    Ok(_) => {
+                        let _ =
+                            sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                    }
+                    Err(e) => log::error!("Impossible to send msg to {url}: {e}"),
+                }
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles.into_iter().flatten() {
+            handle.join().await?;
+        }
+
+        if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
+            return Err(Error::MsgNotSent);
         }
 
         Ok(())
