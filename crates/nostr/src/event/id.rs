@@ -82,6 +82,16 @@ impl EventId {
         Ok(Self(Sha256Hash::from_slice(sl)?))
     }
 
+    /// [`EventId`] from hash
+    pub fn from_hash(hash: Sha256Hash) -> Self {
+        Self(hash)
+    }
+
+    /// All zeros
+    pub fn all_zeros() -> Self {
+        Self(Sha256Hash::all_zeros())
+    }
+
     /// Get as bytes
     pub fn as_bytes(&self) -> &[u8] {
         self.as_ref()
