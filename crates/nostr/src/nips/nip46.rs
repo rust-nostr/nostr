@@ -22,6 +22,7 @@ use super::nip04;
 use super::nip26::{self, sign_delegation, Conditions};
 use crate::event::unsigned::{self, UnsignedEvent};
 use crate::key::{self, Keys};
+use crate::Event;
 
 /// NIP46 error
 #[derive(Debug)]
@@ -204,7 +205,7 @@ impl Request {
             Self::GetPublicKey => Some(Response::GetPublicKey(keys.public_key())),
             Self::SignEvent(unsigned_event) => {
                 let signed_event = unsigned_event.sign(keys)?;
-                Some(Response::SignEvent(signed_event.sig))
+                Some(Response::SignEvent(signed_event))
             }
             Self::Connect(_) => None,
             Self::Disconnect => None,
@@ -262,7 +263,7 @@ pub enum Response {
     /// Get public key
     GetPublicKey(XOnlyPublicKey),
     /// Sign event
-    SignEvent(Signature),
+    SignEvent(Event),
     /// Delegation
     Delegate(DelegationResult),
     /// Encrypted content (NIP04)

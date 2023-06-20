@@ -600,8 +600,8 @@ impl Client {
                     self.opts.get_nip46_timeout(),
                 )
                 .await?;
-            if let Response::SignEvent(sig) = res {
-                unsigned_event.add_signature(sig)?
+            if let Response::SignEvent(event) = res {
+                event
             } else {
                 return Err(Error::ResponseNotMatchRequest);
             }
