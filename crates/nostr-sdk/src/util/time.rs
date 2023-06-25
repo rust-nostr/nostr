@@ -11,7 +11,8 @@ use nostr_sdk_net::futures_util::future::{AbortHandle, Abortable};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::spawn_local;
 
-pub(crate) async fn timeout<F>(timeout: Option<Duration>, future: F) -> Option<F::Output>
+/// Timeout
+pub async fn timeout<F>(timeout: Option<Duration>, future: F) -> Option<F::Output>
 where
     F: Future,
 {

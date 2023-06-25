@@ -26,8 +26,7 @@ pub use nostr::{self, *};
 pub mod client;
 pub mod prelude;
 pub mod relay;
-mod thread;
-mod time;
+pub mod util;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;

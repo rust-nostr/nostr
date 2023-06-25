@@ -17,23 +17,29 @@ fn new_current_thread() -> nostr::Result<Runtime> {
     Ok(Builder::new_current_thread().enable_all().build()?)
 }
 
+/// Thread Error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Join Error
     #[error("Impossible to join thread")]
     JoinError,
 }
 
-#[allow(dead_code)]
+/// Join Handle
 pub enum JoinHandle<T> {
+    /// Std
     #[cfg(not(target_arch = "wasm32"))]
     Std(std::thread::JoinHandle<T>),
+    /// Tokio
     #[cfg(not(target_arch = "wasm32"))]
     Tokio(tokio::task::JoinHandle<T>),
+    /// Wasm
     #[cfg(target_arch = "wasm32")]
     Wasm(self::wasm::JoinHandle<T>),
 }
 
 impl<T> JoinHandle<T> {
+    /// Join
     pub async fn join(self) -> Result<T, Error> {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
@@ -46,6 +52,7 @@ impl<T> JoinHandle<T> {
     }
 }
 
+/// Spawn
 #[cfg(not(target_arch = "wasm32"))]
 pub fn spawn<T>(future: T) -> Option<JoinHandle<T::Output>>
 where
@@ -75,6 +82,7 @@ where
     }
 }
 
+/// Spawn
 #[cfg(target_arch = "wasm32")]
 pub fn spawn<T>(future: T) -> Option<JoinHandle<T::Output>>
 where
@@ -84,6 +92,7 @@ where
     Some(JoinHandle::Wasm(handle))
 }
 
+/// Sleep
 pub async fn sleep(duration: Duration) {
     #[cfg(not(target_arch = "wasm32"))]
     tokio::time::sleep(duration).await;

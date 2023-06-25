@@ -19,7 +19,7 @@ use tokio::sync::Mutex;
 use crate::client::blocking::Client as BlockingClient;
 use crate::client::{Client, Error};
 use crate::relay::RelayPoolNotification;
-use crate::time;
+use crate::util::time;
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 

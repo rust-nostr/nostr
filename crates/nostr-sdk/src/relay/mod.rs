@@ -21,9 +21,9 @@ use tokio::sync::{broadcast, oneshot, Mutex};
 pub mod pool;
 
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
+use crate::util::{thread, time};
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
-use crate::{thread, time};
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 

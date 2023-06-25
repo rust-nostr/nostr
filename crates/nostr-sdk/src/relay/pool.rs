@@ -16,7 +16,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 
 use super::{Error as RelayError, Relay, RelayOptions};
-use crate::thread;
+use crate::util::thread;
 
 /// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]
