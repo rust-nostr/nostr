@@ -5,6 +5,7 @@
 
 use std::time::Duration;
 
+use nostr_sdk_net::futures_util::stream::{AbortHandle, Abortable};
 use nostr_sdk_net::futures_util::Future;
 #[cfg(feature = "blocking")]
 use tokio::runtime::{Builder, Runtime};
@@ -90,6 +91,29 @@ where
 {
     let handle = self::wasm::spawn(future);
     Some(JoinHandle::Wasm(handle))
+}
+
+/// Spawn abortable thread
+#[cfg(not(target_arch = "wasm32"))]
+pub fn abortable<T>(future: T) -> AbortHandle
+where
+    T: Future + Send + 'static,
+    T::Output: Send + 'static,
+{
+    let (abort_handle, abort_registration) = AbortHandle::new_pair();
+    spawn(Abortable::new(future, abort_registration));
+    abort_handle
+}
+
+/// Spawn abortable thread
+#[cfg(target_arch = "wasm32")]
+pub fn abortable<T>(future: T) -> AbortHandle
+where
+    T: Future + 'static,
+{
+    let (abort_handle, abort_registration) = AbortHandle::new_pair();
+    spawn(Abortable::new(future, abort_registration));
+    abort_handle
 }
 
 /// Sleep
