@@ -8,6 +8,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_utility::time;
 use nostr::nips::nip04;
 use nostr::nips::nip46::{Message, Request, Response};
 use nostr::secp256k1::XOnlyPublicKey;
@@ -19,7 +20,6 @@ use tokio::sync::Mutex;
 use crate::client::blocking::Client as BlockingClient;
 use crate::client::{Client, Error};
 use crate::relay::RelayPoolNotification;
-use crate::util::time;
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 

@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_utility::{thread, time};
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
@@ -21,7 +22,6 @@ use tokio::sync::{broadcast, oneshot, Mutex};
 pub mod pool;
 
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
-use crate::util::{thread, time};
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 

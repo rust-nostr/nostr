@@ -10,13 +10,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_utility::thread;
 use nostr::url::Url;
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 
 use super::{Error as RelayError, Relay, RelayOptions};
-use crate::util::thread;
 
 /// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]

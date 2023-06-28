@@ -13,7 +13,7 @@ keywords = ["nostr", "sdk", "rust"]
 
 [features]
 default = ["all-nips"]
-blocking = ["dep:once_cell", "nostr/blocking"]
+blocking = ["dep:once_cell", "async-utility/blocking", "nostr/blocking"]
 vanity = ["nostr/vanity"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip19", "nip46", "nip47"]
 nip03 = ["nostr/nip03"]
@@ -26,6 +26,7 @@ nip46 = ["nostr/nip46"]
 nip47 = ["nostr/nip47"]
 
 [dependencies]
+async-utility = "0.1"
 log = "0.4"
 nostr = { version = "0.22", path = "../nostr", default-features = false }
 nostr-sdk-net = { version = "0.22", path = "../nostr-sdk-net" }
@@ -36,9 +37,7 @@ thiserror = "1.0"
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "time", "macros", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-gloo-timers = { version = "0.2", features = ["futures"] }
 tokio = { version = "1", default-features = false, features = ["rt", "macros", "sync"] }
-wasm-bindgen-futures = "0.4"
 
 [dev-dependencies]
 env_logger = "0.10"

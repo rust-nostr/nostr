@@ -14,6 +14,7 @@
 #[cfg(all(target_arch = "wasm32", feature = "blocking"))]
 compile_error!("`blocking` feature can't be enabled for WASM targets");
 
+pub use nostr::{self, *};
 #[cfg(feature = "blocking")]
 use nostr_sdk_net::futures_util::Future;
 #[cfg(feature = "blocking")]
@@ -21,12 +22,9 @@ use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
 use tokio::runtime::Runtime;
 
-pub use nostr::{self, *};
-
 pub mod client;
 pub mod prelude;
 pub mod relay;
-pub mod util;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;
