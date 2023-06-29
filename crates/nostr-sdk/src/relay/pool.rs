@@ -415,6 +415,39 @@ impl RelayPool {
         }
     }
 
+    /// Get all events of filters, stored and new incoming ones, which are received within the
+    /// `wait_duration`
+    pub async fn get_all_events_of(
+        &self,
+        filters: Vec<Filter>,
+        wait_duration: Duration,
+    ) -> Result<Vec<Event>, Error> {
+        let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
+        let mut handles = Vec::new();
+        let relays = self.relays().await;
+        for (url, relay) in relays.into_iter() {
+            let filters = filters.clone();
+            let events = events.clone();
+            let handle = thread::spawn(async move {
+                if let Err(e) = relay
+                    .get_all_events_of_with_callback(filters, wait_duration, |event| async {
+                        events.lock().await.push(event);
+                    })
+                    .await
+                {
+                    log::error!("Failed to get events from {url}: {e}");
+                }
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles.into_iter().flatten() {
+            handle.join().await?;
+        }
+
+        Ok(events.lock_owned().await.clone())
+    }
+
     /// Get stored events of filters
     pub async fn get_stored_events_of(
         &self,

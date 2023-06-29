@@ -495,6 +495,38 @@ impl Client {
             .await;
     }
 
+    /// Query the relays for all events matching the given filters, stored and new, received within
+    /// the `wait_duration`.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use std::time::Duration;
+    ///
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Keys::generate();
+    /// #   let client = Client::new(&my_keys);
+    /// let subscription = Filter::new()
+    ///     .pubkeys(vec![my_keys.public_key()])
+    ///     .since(Timestamp::now());
+    ///
+    /// let wait_duration = Duration::from_secs(10);
+    /// let _events = client
+    ///     .get_all_events_of(vec![subscription], wait_duration)
+    ///     .await
+    ///     .unwrap();
+    /// # }
+    /// ```
+    pub async fn get_all_events_of(
+        &self,
+        filters: Vec<Filter>,
+        wait_duration: Duration,
+    ) -> Result<Vec<Event>, Error> {
+        Ok(self.pool.get_all_events_of(filters, wait_duration).await?)
+    }
+
     /// Query the relays for stored events matching the given filters.
     ///
     /// Stored events are those already known to the relays at the moment this query was made.

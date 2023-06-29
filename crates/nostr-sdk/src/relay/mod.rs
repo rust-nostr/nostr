@@ -791,6 +791,53 @@ impl Relay {
         Ok(())
     }
 
+    /// Get all events of filters with custom callback
+    pub async fn get_all_events_of_with_callback<F>(
+        &self,
+        filters: Vec<Filter>,
+        wait_duration: Duration,
+        callback: impl Fn(Event) -> F,
+    ) -> Result<(), Error>
+    where
+        F: Future<Output = ()>,
+    {
+        if !self.opts.read() {
+            return Err(Error::ReadDisabled);
+        }
+
+        let id = SubscriptionId::generate();
+
+        self.send_msg(ClientMessage::new_req(id.clone(), filters), false)
+            .await?;
+
+        let mut notifications = self.notification_sender.subscribe();
+
+        // We process events for the set wait_duration
+        time::timeout(Some(wait_duration), async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(_, msg) = notification {
+                    match msg {
+                        RelayMessage::Event {
+                            subscription_id,
+                            event,
+                        } => {
+                            if subscription_id.eq(&id) {
+                                callback(*event).await;
+                            }
+                        }
+                        _ => log::debug!("Receive unhandled message {msg:?} on get_stored_events_of_with_callback"),
+                    };
+                }
+            }
+        })
+        .await;
+
+        // Unsubscribe
+        self.send_msg(ClientMessage::close(id), false).await?;
+
+        Ok(())
+    }
+
     /// Get stored events of filters with custom callback
     pub async fn get_stored_events_of_with_callback<F>(
         &self,
