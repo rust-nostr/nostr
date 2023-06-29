@@ -112,15 +112,18 @@ impl JsClient {
         self.inner.unsubscribe().await;
     }
 
-    /// Get events of filters
-    #[wasm_bindgen(js_name = getEventsOf)]
-    pub async fn get_events_of(&self, filters: Array, timeout: Option<u64>) -> Result<Array> {
+    #[wasm_bindgen(js_name = getStoredEventsOf)]
+    pub async fn get_stored_events_of(
+        &self,
+        filters: Array,
+        timeout: Option<u64>,
+    ) -> Result<Array> {
         let filters = filters
             .iter()
             .map(|v| Ok(util::downcast::<JsFilter>(&v, "Filter")?.inner()))
             .collect::<Result<Vec<Filter>, JsError>>()?;
         let timeout = timeout.map(Duration::from_secs);
-        match self.inner.get_events_of(filters, timeout).await {
+        match self.inner.get_stored_events_of(filters, timeout).await {
             Ok(events) => {
                 let events: Vec<JsEvent> = events.into_iter().map(|e| e.into()).collect();
                 let events = events.into_iter().map(JsValue::from).collect();
@@ -130,17 +133,17 @@ impl JsClient {
         }
     }
 
-    /// Request events of filters.
+    /// Request stored events of filters.
     /// All events will be received on notification listener
     /// until the EOSE "end of stored events" message is received from the relay.
-    #[wasm_bindgen(js_name = reqEventsOf)]
-    pub async fn req_events_of(&self, filters: Array, timeout: Option<u64>) -> Result<()> {
+    #[wasm_bindgen(js_name = reqStoredEventsOf)]
+    pub async fn req_stored_events_of(&self, filters: Array, timeout: Option<u64>) -> Result<()> {
         let filters = filters
             .iter()
             .map(|v| Ok(util::downcast::<JsFilter>(&v, "Filter")?.inner()))
             .collect::<Result<Vec<Filter>, JsError>>()?;
         let timeout = timeout.map(Duration::from_secs);
-        self.inner.req_events_of(filters, timeout).await;
+        self.inner.req_stored_events_of(filters, timeout).await;
         Ok(())
     }
 

@@ -415,8 +415,8 @@ impl RelayPool {
         }
     }
 
-    /// Get events of filters
-    pub async fn get_events_of(
+    /// Get stored events of filters
+    pub async fn get_stored_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
@@ -429,7 +429,7 @@ impl RelayPool {
             let events = events.clone();
             let handle = thread::spawn(async move {
                 if let Err(e) = relay
-                    .get_events_of_with_callback(filters, timeout, |event| async {
+                    .get_stored_events_of_with_callback(filters, timeout, |event| async {
                         events.lock().await.push(event);
                     })
                     .await
@@ -447,12 +447,12 @@ impl RelayPool {
         Ok(events.lock_owned().await.clone())
     }
 
-    /// Request events of filter. All events will be sent to notification listener
+    /// Request stored events of filter. All events will be sent to notification listener
     /// until the EOSE "end of stored events" message is received from the relay.
-    pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+    pub async fn req_stored_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         let relays = self.relays().await;
         for relay in relays.values() {
-            relay.req_events_of(filters.clone(), timeout);
+            relay.req_stored_events_of(filters.clone(), timeout);
         }
     }
 

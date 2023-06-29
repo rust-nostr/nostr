@@ -495,7 +495,10 @@ impl Client {
             .await;
     }
 
-    /// Get events of filters
+    /// Query the relays for stored events matching the given filters.
+    ///
+    /// Stored events are those already known to the relays at the moment this query was made.
+    /// In other words, these are the events returned until `EOSE`.
     ///
     /// # Example
     /// ```rust,no_run
@@ -513,12 +516,12 @@ impl Client {
     ///
     /// let timeout = Duration::from_secs(10);
     /// let _events = client
-    ///     .get_events_of(vec![subscription], Some(timeout))
+    ///     .get_stored_events_of(vec![subscription], Some(timeout))
     ///     .await
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn get_events_of(
+    pub async fn get_stored_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
@@ -527,18 +530,18 @@ impl Client {
             Some(t) => Some(t),
             None => self.opts.get_timeout(),
         };
-        Ok(self.pool.get_events_of(filters, timeout).await?)
+        Ok(self.pool.get_stored_events_of(filters, timeout).await?)
     }
 
-    /// Request events of filters
+    /// Request stored events of filters
     /// All events will be received on notification listener (`client.notifications()`)
     /// until the EOSE "end of stored events" message is received from the relay.
-    pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+    pub async fn req_stored_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         let timeout = match timeout {
             Some(t) => Some(t),
             None => self.opts.get_timeout(),
         };
-        self.pool.req_events_of(filters, timeout).await;
+        self.pool.req_stored_events_of(filters, timeout).await;
     }
 
     /// Send client message
@@ -764,7 +767,7 @@ impl Client {
     pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
+        let events: Vec<Event> = self.get_stored_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
             for tag in event.tags.into_iter() {
@@ -795,7 +798,7 @@ impl Client {
     ) -> Result<Vec<XOnlyPublicKey>, Error> {
         let mut pubkeys: Vec<XOnlyPublicKey> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
+        let events: Vec<Event> = self.get_stored_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
             for tag in event.tags.into_iter() {
@@ -831,7 +834,7 @@ impl Client {
                         .limit(1),
                 );
             }
-            let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
+            let events: Vec<Event> = self.get_stored_events_of(filters, timeout).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(&event.content)?;
                 if let Some(m) = contacts.get_mut(&event.pubkey) {
@@ -1103,7 +1106,7 @@ impl Client {
 
     /// Get a list of channels
     pub async fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
-        self.get_events_of(vec![Filter::new().kind(Kind::ChannelCreation)], timeout)
+        self.get_stored_events_of(vec![Filter::new().kind(Kind::ChannelCreation)], timeout)
             .await
     }
 
@@ -1118,7 +1121,7 @@ impl Client {
     {
         let entity: String = entity.into();
         let events: Vec<Event> = self
-            .get_events_of(
+            .get_stored_events_of(
                 vec![Filter::new()
                     .id(&entity)
                     .kind(Kind::ChannelCreation)
@@ -1129,7 +1132,7 @@ impl Client {
         if events.is_empty() {
             let pubkey = XOnlyPublicKey::from_str(&entity)?;
             let events: Vec<Event> = self
-                .get_events_of(
+                .get_stored_events_of(
                     vec![Filter::new().author(pubkey.to_string()).limit(1)],
                     timeout,
                 )

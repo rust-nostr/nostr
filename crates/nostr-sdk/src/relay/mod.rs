@@ -791,8 +791,8 @@ impl Relay {
         Ok(())
     }
 
-    /// Get events of filters with custom callback
-    pub async fn get_events_of_with_callback<F>(
+    /// Get stored events of filters with custom callback
+    pub async fn get_stored_events_of_with_callback<F>(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
@@ -828,7 +828,7 @@ impl Relay {
                                 break;
                             }
                         }
-                        _ => log::debug!("Receive unhandled message {msg:?} on get_events_of"),
+                        _ => log::debug!("Receive unhandled message {msg:?} on get_stored_events_of_with_callback"),
                     };
                 }
             }
@@ -842,14 +842,14 @@ impl Relay {
         Ok(())
     }
 
-    /// Get events of filters
-    pub async fn get_events_of(
+    /// Get stored events of filters
+    pub async fn get_stored_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
         let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
-        self.get_events_of_with_callback(filters, timeout, |event| async {
+        self.get_stored_events_of_with_callback(filters, timeout, |event| async {
             let mut events = events.lock().await;
             events.push(event);
         })
@@ -859,7 +859,7 @@ impl Relay {
 
     /// Request events of filter. All events will be sent to notification listener,
     /// until the EOSE "end of stored events" message is received from the relay.
-    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+    pub fn req_stored_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         if !self.opts.read() {
             log::error!("{}", Error::ReadDisabled);
         }

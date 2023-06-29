@@ -168,17 +168,17 @@ impl Client {
         })
     }
 
-    pub fn get_events_of(
+    pub fn get_stored_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
-        RUNTIME.block_on(async { self.client.get_events_of(filters, timeout).await })
+        RUNTIME.block_on(async { self.client.get_stored_events_of(filters, timeout).await })
     }
 
-    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+    pub fn req_stored_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         RUNTIME.block_on(async {
-            self.client.req_events_of(filters, timeout).await;
+            self.client.req_stored_events_of(filters, timeout).await;
         })
     }
 
