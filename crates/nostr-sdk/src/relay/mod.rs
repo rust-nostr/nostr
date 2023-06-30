@@ -19,8 +19,10 @@ use nostr_sdk_net::{self as net, WsMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex};
 
+mod options;
 pub mod pool;
 
+pub use self::options::{FilterOptions, RelayOptions};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
@@ -98,55 +100,6 @@ pub enum RelayEvent {
     Stop,
     /// Completely disconnect
     Terminate,
-}
-
-/// [`Relay`] options
-#[derive(Debug, Clone)]
-pub struct RelayOptions {
-    /// Allow/disallow read actions
-    read: Arc<AtomicBool>,
-    /// Allow/disallow write actions
-    write: Arc<AtomicBool>,
-}
-
-impl Default for RelayOptions {
-    fn default() -> Self {
-        Self::new(true, true)
-    }
-}
-
-impl RelayOptions {
-    /// New [`RelayOptions`]
-    pub fn new(read: bool, write: bool) -> Self {
-        Self {
-            read: Arc::new(AtomicBool::new(read)),
-            write: Arc::new(AtomicBool::new(write)),
-        }
-    }
-
-    /// Get read option
-    pub fn read(&self) -> bool {
-        self.read.load(Ordering::SeqCst)
-    }
-
-    /// Set read option
-    pub fn set_read(&self, read: bool) {
-        let _ = self
-            .read
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(read));
-    }
-
-    /// Get write option
-    pub fn write(&self) -> bool {
-        self.write.load(Ordering::SeqCst)
-    }
-
-    /// Set write option
-    pub fn set_write(&self, write: bool) {
-        let _ = self
-            .write
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(write));
-    }
 }
 
 /// [`Relay`] connection stats
@@ -791,11 +744,85 @@ impl Relay {
         Ok(())
     }
 
+    async fn handle_events_of<F>(
+        &self,
+        id: SubscriptionId,
+        timeout: Option<Duration>,
+        opts: FilterOptions,
+        callback: impl Fn(Event) -> F,
+    ) -> Result<(), Error>
+    where
+        F: Future<Output = ()>,
+    {
+        let mut counter = 0;
+        let mut received_eose: bool = false;
+
+        let mut notifications = self.notification_sender.subscribe();
+        time::timeout(timeout, async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(_, msg) = notification {
+                    match msg {
+                        RelayMessage::Event {
+                            subscription_id,
+                            event,
+                        } => {
+                            if subscription_id.eq(&id) {
+                                callback(*event).await;
+                                if let FilterOptions::WaitForEventsAfterEOSE(num) = opts {
+                                    if received_eose {
+                                        counter += 1;
+                                        if counter >= num {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        RelayMessage::EndOfStoredEvents(subscription_id) => {
+                            if subscription_id.eq(&id) {
+                                received_eose = true;
+                                if let FilterOptions::ExitOnEOSE
+                                | FilterOptions::WaitDurationAfterEOSE(_) = opts
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        _ => log::debug!("Receive unhandled message {msg:?} on handle_events_of"),
+                    };
+                }
+            }
+
+            if let FilterOptions::WaitDurationAfterEOSE(duration) = opts {
+                time::timeout(Some(duration), async {
+                    while let Ok(notification) = notifications.recv().await {
+                        if let RelayPoolNotification::Message(
+                            _,
+                            RelayMessage::Event {
+                                subscription_id,
+                                event,
+                            },
+                        ) = notification
+                        {
+                            if subscription_id.eq(&id) {
+                                callback(*event).await;
+                            }
+                        }
+                    }
+                })
+                .await;
+            }
+        })
+        .await
+        .ok_or(Error::Timeout)
+    }
+
     /// Get events of filters with custom callback
     pub async fn get_events_of_with_callback<F>(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
+        opts: FilterOptions,
         callback: impl Fn(Event) -> F,
     ) -> Result<(), Error>
     where
@@ -810,31 +837,8 @@ impl Relay {
         self.send_msg(ClientMessage::new_req(id.clone(), filters), false)
             .await?;
 
-        let mut notifications = self.notification_sender.subscribe();
-        time::timeout(timeout, async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message(_, msg) = notification {
-                    match msg {
-                        RelayMessage::Event {
-                            subscription_id,
-                            event,
-                        } => {
-                            if subscription_id.eq(&id) {
-                                callback(*event).await;
-                            }
-                        }
-                        RelayMessage::EndOfStoredEvents(subscription_id) => {
-                            if subscription_id.eq(&id) {
-                                break;
-                            }
-                        }
-                        _ => log::debug!("Receive unhandled message {msg:?} on get_events_of"),
-                    };
-                }
-            }
-        })
-        .await
-        .ok_or(Error::Timeout)?;
+        self.handle_events_of(id.clone(), timeout, opts, callback)
+            .await?;
 
         // Unsubscribe
         self.send_msg(ClientMessage::close(id), false).await?;
@@ -847,9 +851,10 @@ impl Relay {
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
+        opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
         let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
-        self.get_events_of_with_callback(filters, timeout, |event| async {
+        self.get_events_of_with_callback(filters, timeout, opts, |event| async {
             let mut events = events.lock().await;
             events.push(event);
         })
@@ -859,7 +864,12 @@ impl Relay {
 
     /// Request events of filter. All events will be sent to notification listener,
     /// until the EOSE "end of stored events" message is received from the relay.
-    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+    pub fn req_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+        opts: FilterOptions,
+    ) {
         if !self.opts.read() {
             log::error!("{}", Error::ReadDisabled);
         }
@@ -880,24 +890,11 @@ impl Relay {
                 );
             };
 
-            let mut notifications = relay.notification_sender.subscribe();
-            if time::timeout(timeout, async {
-                while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotification::Message(
-                        _,
-                        RelayMessage::EndOfStoredEvents(subscription_id),
-                    ) = notification
-                    {
-                        if subscription_id.eq(&id) {
-                            break;
-                        }
-                    }
-                }
-            })
-            .await
-            .is_none()
+            if let Err(e) = relay
+                .handle_events_of(id.clone(), timeout, opts, |_| async {})
+                .await
             {
-                log::error!("{}", Error::Timeout);
+                log::error!("{e}");
             }
 
             // Unsubscribe
