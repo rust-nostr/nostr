@@ -744,13 +744,22 @@ impl Relay {
         Ok(())
     }
 
-    async fn handle_events_of<F>(
+    async fn handle_events_of(
+        &self,
+        id: SubscriptionId,
+        timeout: Option<Duration>,
+        opts: FilterOptions,
+    ) -> Result<(), Error> {
+        self.handle_events_of_with_callback(id, timeout, opts, |_| async {})
+            .await
+    }
+
+    async fn handle_events_of_with_callback<F>(
         &self,
         id: SubscriptionId,
         timeout: Option<Duration>,
         opts: FilterOptions,
         callback: impl Fn(Event) -> F,
-        use_callback: bool,
     ) -> Result<(), Error>
     where
         F: Future<Output = ()>,
@@ -768,9 +777,7 @@ impl Relay {
                             event,
                         } => {
                             if subscription_id.eq(&id) {
-                                if use_callback {
-                                    callback(*event).await;
-                                }
+                                callback(*event).await;
 
                                 if let FilterOptions::WaitForEventsAfterEOSE(num) = opts {
                                     if received_eose {
@@ -801,7 +808,7 @@ impl Relay {
                                                     },
                                                 ) = notification
                                                 {
-                                                    if subscription_id.eq(&id) && use_callback {
+                                                    if subscription_id.eq(&id) {
                                                         callback(*event).await;
                                                     }
                                                 }
@@ -845,7 +852,7 @@ impl Relay {
         self.send_msg(ClientMessage::new_req(id.clone(), filters), false)
             .await?;
 
-        self.handle_events_of(id.clone(), timeout, opts, callback, true)
+        self.handle_events_of_with_callback(id.clone(), timeout, opts, callback)
             .await?;
 
         // Unsubscribe
@@ -898,10 +905,7 @@ impl Relay {
                 );
             };
 
-            if let Err(e) = relay
-                .handle_events_of(id.clone(), timeout, opts, |_| async {}, false)
-                .await
-            {
+            if let Err(e) = relay.handle_events_of(id.clone(), timeout, opts).await {
                 log::error!("{e}");
             }
 
