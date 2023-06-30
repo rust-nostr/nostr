@@ -32,7 +32,7 @@ pub use self::options::Options;
 #[cfg(feature = "nip46")]
 pub use self::signer::remote::RemoteSigner;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool};
-use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
+use crate::relay::{FilterOptions, Relay, RelayOptions, RelayPoolNotification};
 
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
@@ -523,22 +523,44 @@ impl Client {
         filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<Vec<Event>, Error> {
+        self.get_events_of_with_opts(filters, timeout, FilterOptions::ExitOnEOSE)
+            .await
+    }
+
+    /// Get events of filters with [`FilterOptions`]
+    pub async fn get_events_of_with_opts(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+        opts: FilterOptions,
+    ) -> Result<Vec<Event>, Error> {
         let timeout: Option<Duration> = match timeout {
             Some(t) => Some(t),
             None => self.opts.get_timeout(),
         };
-        Ok(self.pool.get_events_of(filters, timeout).await?)
+        Ok(self.pool.get_events_of(filters, timeout, opts).await?)
     }
 
     /// Request events of filters
     /// All events will be received on notification listener (`client.notifications()`)
     /// until the EOSE "end of stored events" message is received from the relay.
     pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+        self.req_events_of_with_opts(filters, timeout, FilterOptions::ExitOnEOSE)
+            .await
+    }
+
+    /// Request events of filters with [`FilterOptions`]
+    pub async fn req_events_of_with_opts(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+        opts: FilterOptions,
+    ) {
         let timeout = match timeout {
             Some(t) => Some(t),
             None => self.opts.get_timeout(),
         };
-        self.pool.req_events_of(filters, timeout).await;
+        self.pool.req_events_of(filters, timeout, opts).await;
     }
 
     /// Send client message

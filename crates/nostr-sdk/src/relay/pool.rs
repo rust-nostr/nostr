@@ -16,7 +16,7 @@ use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 
-use super::{Error as RelayError, Relay, RelayOptions};
+use super::{Error as RelayError, FilterOptions, Relay, RelayOptions};
 
 /// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]
@@ -420,6 +420,7 @@ impl RelayPool {
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
+        opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
         let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
         let mut handles = Vec::new();
@@ -429,7 +430,7 @@ impl RelayPool {
             let events = events.clone();
             let handle = thread::spawn(async move {
                 if let Err(e) = relay
-                    .get_events_of_with_callback(filters, timeout, |event| async {
+                    .get_events_of_with_callback(filters, timeout, opts, |event| async {
                         events.lock().await.push(event);
                     })
                     .await
@@ -449,10 +450,15 @@ impl RelayPool {
 
     /// Request events of filter. All events will be sent to notification listener
     /// until the EOSE "end of stored events" message is received from the relay.
-    pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+    pub async fn req_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+        opts: FilterOptions,
+    ) {
         let relays = self.relays().await;
         for relay in relays.values() {
-            relay.req_events_of(filters.clone(), timeout);
+            relay.req_events_of(filters.clone(), timeout, opts);
         }
     }
 
