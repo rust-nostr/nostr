@@ -9,11 +9,13 @@ use core::fmt;
 use core::str::FromStr;
 use std::borrow::Cow;
 
+use bitcoin::psbt::PartiallySignedTransaction;
+use bitcoin::Network;
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::{rand, Message as Secp256k1Message, XOnlyPublicKey};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 use url::form_urlencoded::byte_serialize;
 use url::Url;
@@ -117,7 +119,7 @@ impl From<unsigned::Error> for Error {
 }
 
 /// Request
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Request {
     /// Describe
     Describe,
@@ -152,6 +154,19 @@ pub enum Request {
     },
     /// Sign Schnorr
     SignSchnorr(String),
+    /// Sign PSBT
+    SignPSBT {
+        /// Bitcoin Network
+        network: Network,
+        /// PSBT
+        #[serde(
+            serialize_with = "serialize_psbt",
+            deserialize_with = "deserialize_psbt"
+        )]
+        psbt: PartiallySignedTransaction,
+        /// Descriptor
+        descriptor: Option<String>,
+    },
 }
 
 impl Request {
@@ -167,6 +182,7 @@ impl Request {
             Self::Nip04Encrypt { .. } => "nip04_encrypt".to_string(),
             Self::Nip04Decrypt { .. } => "nip04_decrypt".to_string(),
             Self::SignSchnorr(_) => "sign_schnorr".to_string(),
+            Self::SignPSBT { .. } => "sign_psbt".to_string(),
         }
     }
 
@@ -185,6 +201,17 @@ impl Request {
             Self::Nip04Encrypt { public_key, text } => vec![json!(public_key), json!(text)],
             Self::Nip04Decrypt { public_key, text } => vec![json!(public_key), json!(text)],
             Self::SignSchnorr(value) => vec![json!(value)],
+            Self::SignPSBT {
+                network,
+                psbt,
+                descriptor,
+            } => {
+                let mut params = vec![json!(network.to_string()), json!(psbt.to_string())];
+                if let Some(descriptor) = descriptor {
+                    params.push(json!(descriptor));
+                }
+                params
+            }
         }
     }
 
@@ -237,6 +264,7 @@ impl Request {
                 let sig: Signature = keys.sign_schnorr(&message)?;
                 Some(Response::SignSchnorr(sig))
             }
+            Self::SignPSBT { .. } => None,
         };
         Ok(res)
     }
@@ -256,7 +284,7 @@ pub struct DelegationResult {
 }
 
 /// Response
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Response {
     /// Describe
     Describe(Vec<String>),
@@ -272,6 +300,17 @@ pub enum Response {
     Nip04Decrypt(String),
     /// Sign Schnorr
     SignSchnorr(Signature),
+    /// Sign PSBT
+    SignPSBT {
+        /// PSBT
+        #[serde(
+            serialize_with = "serialize_psbt",
+            deserialize_with = "deserialize_psbt"
+        )]
+        psbt: PartiallySignedTransaction,
+        /// Finalized
+        finalized: bool,
+    },
 }
 
 /// Message
@@ -320,6 +359,10 @@ impl Message {
                 Response::Nip04Encrypt(encrypted_content) => json!(encrypted_content),
                 Response::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
                 Response::SignSchnorr(sig) => json!(sig),
+                Response::SignPSBT { psbt, finalized } => json!({
+                    "psbt": psbt.to_string(),
+                    "finalized": finalized,
+                }),
             }),
             error: None,
         }
@@ -622,6 +665,21 @@ impl fmt::Display for NostrConnectURI {
             url_encode(self.metadata.as_json())
         )
     }
+}
+
+fn serialize_psbt<S>(psbt: &PartiallySignedTransaction, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&psbt.to_string())
+}
+
+fn deserialize_psbt<'de, D>(deserializer: D) -> Result<PartiallySignedTransaction, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let psbt = String::deserialize(deserializer)?;
+    PartiallySignedTransaction::from_str(&psbt).map_err(serde::de::Error::custom)
 }
 
 #[cfg(test)]

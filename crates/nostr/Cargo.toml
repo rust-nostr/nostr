@@ -23,7 +23,7 @@ nip06 = ["dep:bip39", "dep:bitcoin"]
 nip11 = ["dep:reqwest"]
 nip19 = ["dep:bech32"]
 nip21 = ["nip19"]
-nip46 = ["nip04"]
+nip46 = ["dep:bitcoin", "bitcoin?/base64", "bitcoin?/serde", "nip04"]
 nip47 = ["nip04"]
 
 [dependencies]
