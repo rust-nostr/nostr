@@ -757,8 +757,14 @@ impl Relay {
         let mut counter = 0;
         let mut received_eose: bool = false;
 
+        let (tx_eose_timeout, mut rx_eose_timeout) = broadcast::channel::<()>(1);
+        let (tx_got_eose, mut rx_got_eose) = broadcast::channel::<()>(1);
+        let (tx_wait_duration, mut rx_wait_duration) = broadcast::channel::<()>(1);
+        let (tx_wait_num, mut rx_wait_num) = broadcast::channel::<()>(1);
+
         let mut notifications = self.notification_sender.subscribe();
-        time::timeout(timeout, async {
+        let tx_got_eose_clone = tx_got_eose.clone();
+        let receive_and_handle_notifications = || async move {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Message(_, msg) = notification {
                     match msg {
@@ -772,7 +778,7 @@ impl Relay {
                                     if received_eose {
                                         counter += 1;
                                         if counter >= num {
-                                            break;
+                                            tx_wait_num.send(()).expect(""); // TODO TBD err mgmt
                                         }
                                     }
                                 }
@@ -781,10 +787,14 @@ impl Relay {
                         RelayMessage::EndOfStoredEvents(subscription_id) => {
                             if subscription_id.eq(&id) {
                                 received_eose = true;
-                                if let FilterOptions::ExitOnEOSE
-                                | FilterOptions::WaitDurationAfterEOSE(_) = opts
-                                {
-                                    break;
+                                let _ = tx_got_eose_clone.send(()); // TODO TBD err mgmt
+
+                                if let FilterOptions::WaitDurationAfterEOSE(duration) = opts {
+                                    let tx_wait_duration_clone = tx_wait_duration.clone();
+                                    thread::spawn(async move {
+                                        thread::sleep(duration).await;
+                                        let _ = tx_wait_duration_clone.send(());
+                                    });
                                 }
                             }
                         }
@@ -792,29 +802,26 @@ impl Relay {
                     };
                 }
             }
+        };
 
-            if let FilterOptions::WaitDurationAfterEOSE(duration) = opts {
-                time::timeout(Some(duration), async {
-                    while let Ok(notification) = notifications.recv().await {
-                        if let RelayPoolNotification::Message(
-                            _,
-                            RelayMessage::Event {
-                                subscription_id,
-                                event,
-                            },
-                        ) = notification
-                        {
-                            if subscription_id.eq(&id) {
-                                callback(*event).await;
-                            }
-                        }
-                    }
-                })
-                .await;
+        // Use a clone of tx_eose_timeout, such that the original tx_eose_timeout remains in scope
+        // If it's not in scope, as soon as the EOSE is received, the tx_eose_timeout will be dropped,
+        // causing the rx_eose_timeout select branch to return first with a RecvError::Closed
+        let tx_eose_timeout_clone = tx_eose_timeout.clone();
+        thread::spawn(async move {
+            let mut rx1 = tx_got_eose.subscribe();
+            if time::timeout(timeout, rx1.recv()).await.is_none() {
+                tx_eose_timeout_clone.send(()).expect(""); // TODO TBD err mgmt
             }
-        })
-        .await
-        .ok_or(Error::Timeout)
+        });
+
+        tokio::select! {
+            _ = receive_and_handle_notifications() => Err(Error::RecvTimeout), // TODO correct err type?
+            _ = rx_eose_timeout.recv() => Err(Error::Timeout),
+            _ = rx_got_eose.recv(), if matches!(opts, FilterOptions::ExitOnEOSE) => Ok(()),
+            _ = rx_wait_duration.recv(), if matches!(opts, FilterOptions::WaitDurationAfterEOSE(_)) => Ok(()),
+            _ = rx_wait_num.recv(), if matches!(opts, FilterOptions::WaitForEventsAfterEOSE(_)) => Ok(())
+        }
     }
 
     /// Get events of filters with custom callback
