@@ -24,7 +24,7 @@ nostr-sdk  = { path = "../../crates/nostr-sdk", default-features = false, featur
 parking_lot = "0.12"
 uniffi = { version = "0.23", features = ["cli"] }
 uniffi_bindgen = "0.23"
-uniffi_macros = "0.23"
+uniffi_macros = "0.24"
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13"
