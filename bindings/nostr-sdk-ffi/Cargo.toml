@@ -22,7 +22,7 @@ log = "0.4"
 nostr-ffi  = { path = "../nostr-ffi" }
 nostr-sdk  = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "blocking"] }
 parking_lot = "0.12"
-uniffi = { version = "0.23", features = ["cli"] }
+uniffi = { version = "0.24", features = ["cli"] }
 uniffi_bindgen = "0.23"
 uniffi_macros = "0.23"
 
@@ -30,4 +30,4 @@ uniffi_macros = "0.23"
 android_logger = "0.13"
 
 [build-dependencies]
-uniffi = { version = "0.23", features = ["build"] }
+uniffi = { version = "0.24", features = ["build"] }

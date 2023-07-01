@@ -19,9 +19,9 @@ path = "uniffi-bindgen.rs"
 
 [dependencies]
 nostr  = { path = "../../crates/nostr" }
-uniffi = { version = "0.23", features = ["cli"] }
+uniffi = { version = "0.24", features = ["cli"] }
 uniffi_bindgen = "0.23"
 uniffi_macros = "0.23"
 
 [build-dependencies]
-uniffi = { version = "0.23", features = ["build"] }
+uniffi = { version = "0.24", features = ["build"] }
