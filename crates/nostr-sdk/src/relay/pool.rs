@@ -337,7 +337,7 @@ impl RelayPool {
     }
 
     /// Send client message
-    pub async fn send_msg(&self, msg: ClientMessage, wait: bool) -> Result<(), Error> {
+    pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
         let relays = self.relays().await;
 
         if relays.is_empty() {
@@ -384,7 +384,12 @@ impl RelayPool {
     }
 
     /// Send client message
-    pub async fn send_msg_to(&self, url: Url, msg: ClientMessage, wait: bool) -> Result<(), Error> {
+    pub async fn send_msg_to(
+        &self,
+        url: Url,
+        msg: ClientMessage,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
         let relays = self.relays().await;
         if let Some(relay) = relays.get(&url) {
             relay.send_msg(msg, wait).await?;
@@ -395,7 +400,7 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&self, filters: Vec<Filter>, wait: bool) {
+    pub async fn subscribe(&self, filters: Vec<Filter>, wait: Option<Duration>) {
         let relays = self.relays().await;
         self.update_subscription_filters(filters.clone()).await;
         for relay in relays.values() {
@@ -406,7 +411,7 @@ impl RelayPool {
     }
 
     /// Unsubscribe from filters
-    pub async fn unsubscribe(&self, wait: bool) {
+    pub async fn unsubscribe(&self, wait: Option<Duration>) {
         let relays = self.relays().await;
         for relay in relays.values() {
             if let Err(e) = relay.unsubscribe(wait).await {

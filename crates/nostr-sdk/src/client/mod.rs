@@ -483,16 +483,32 @@ impl Client {
     /// # }
     /// ```
     pub async fn subscribe(&self, filters: Vec<Filter>) {
-        self.pool
-            .subscribe(filters, self.opts.get_wait_for_subscription())
-            .await;
+        let wait: Option<Duration> = if self.opts.get_wait_for_subscription() {
+            self.opts.get_send_timeout()
+        } else {
+            None
+        };
+        self.pool.subscribe(filters, wait).await;
+    }
+
+    /// Subscribe to filters with custom wait
+    pub async fn subscribe_with_custom_wait(&self, filters: Vec<Filter>, wait: Option<Duration>) {
+        self.pool.subscribe(filters, wait).await;
     }
 
     /// Unsubscribe
     pub async fn unsubscribe(&self) {
-        self.pool
-            .unsubscribe(self.opts.get_wait_for_subscription())
-            .await;
+        let wait: Option<Duration> = if self.opts.get_wait_for_subscription() {
+            self.opts.get_send_timeout()
+        } else {
+            None
+        };
+        self.pool.unsubscribe(wait).await;
+    }
+
+    /// Unsubscribe with custom wait
+    pub async fn unsubscribe_with_custom_wait(&self, wait: Option<Duration>) {
+        self.pool.unsubscribe(wait).await;
     }
 
     /// Get events of filters
@@ -565,9 +581,22 @@ impl Client {
 
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
-        self.pool
-            .send_msg(msg, self.opts.get_wait_for_send())
-            .await?;
+        let wait: Option<Duration> = if self.opts.get_wait_for_send() {
+            self.opts.get_send_timeout()
+        } else {
+            None
+        };
+        self.pool.send_msg(msg, wait).await?;
+        Ok(())
+    }
+
+    /// Send client message with custom wait
+    pub async fn send_msg_with_custom_wait(
+        &self,
+        msg: ClientMessage,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
+        self.pool.send_msg(msg, wait).await?;
         Ok(())
     }
 
@@ -576,10 +605,26 @@ impl Client {
     where
         S: Into<String>,
     {
+        let wait: Option<Duration> = if self.opts.get_wait_for_send() {
+            self.opts.get_send_timeout()
+        } else {
+            None
+        };
+        self.send_msg_to_with_custom_wait(url, msg, wait).await
+    }
+
+    /// Send client message to a specific relay with custom wait
+    pub async fn send_msg_to_with_custom_wait<S>(
+        &self,
+        url: S,
+        msg: ClientMessage,
+        wait: Option<Duration>,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
         let url = Url::parse(&url.into())?;
-        self.pool
-            .send_msg_to(url, msg, self.opts.get_wait_for_send())
-            .await?;
+        self.pool.send_msg_to(url, msg, wait).await?;
         Ok(())
     }
 
