@@ -1,3 +1,4 @@
+CURRENT_DIR := $(shell pwd)
 SOURCES=$(sort $(wildcard ./src/*.rs ./src/**/*.rs))
 
 .PHONY: init
@@ -49,3 +50,28 @@ bindings-android: sdk-root kotlin
 	cd bindings-android && ./gradlew assemble
 	mkdir -p ffi/android
 	cp bindings-android/lib/build/outputs/aar/lib-release.aar ffi/android
+
+ios-universal: $(SOURCES)		
+	mkdir -p ../../target/ios-universal/release
+	mkdir -p ../../target/ios-universal-sim/release
+	cargo build --release --target aarch64-apple-ios
+	cargo build --release --target x86_64-apple-ios
+	cargo build --release --target aarch64-apple-ios-sim
+	lipo -create -output ../../target/ios-universal/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-ios/release/libnostr_sdk_ffi.a
+	lipo -create -output ../../target/ios-universal-sim/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-ios-sim/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-ios/release/libnostr_sdk_ffi.a
+
+swift-ios: ios-universal
+	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl -l swift -o ffi/swift-ios
+	cp ../../target/ios-universal/release/libnostr_sdk_ffi.a ffi/swift-ios
+	cd ffi/swift-ios && "swiftc" "-emit-module" "-module-name" "nostr_sdk_ffi"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-ios/nostr_sdkFFI.modulemap" "-I" "."  "-L" "." "-lnostr_sdk_ffi" nostr_sdk.swift
+
+bindings-swift: ios-universal
+	mkdir -p bindings-swift/Sources/NostrSDK
+	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --no-format --language swift --out-dir bindings-swift/Sources/NostrSDK
+	mv bindings-swift/Sources/NostrSDK/nostr_sdk.swift bindings-swift/Sources/NostrSDK/NostrSDK.swift
+	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64/nostr_sdkFFI.framework/Headers
+	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/nostr_sdkFFI.framework/Headers
+	cp ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/ios-arm64/nostr_sdkFFI.framework/nostr_sdkFFI
+	cp ../../target/ios-universal-sim/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/nostr_sdkFFI.framework/nostr_sdkFFI
+	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h
+	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.modulemap
