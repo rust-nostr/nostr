@@ -117,7 +117,7 @@ impl From<unsigned::Error> for Error {
 }
 
 /// Request
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Request {
     /// Describe
     Describe,
@@ -256,7 +256,7 @@ pub struct DelegationResult {
 }
 
 /// Response
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Response {
     /// Describe
     Describe(Vec<String>),
