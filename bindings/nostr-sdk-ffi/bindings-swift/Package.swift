@@ -6,6 +6,7 @@ import PackageDescription
 let package = Package(
     name: "nostr-sdk-swift",
     platforms: [
+        .macOS(.v12),
         .iOS(.v14),
     ],
     products: [

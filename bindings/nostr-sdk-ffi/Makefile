@@ -3,9 +3,8 @@ SOURCES=$(sort $(wildcard ./src/*.rs ./src/**/*.rs))
 
 .PHONY: init
 init:
-	rustup target add aarch64-apple-ios x86_64-apple-ios
+	rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
 	rustup target add aarch64-apple-darwin x86_64-apple-darwin
-	rustup target add aarch64-apple-ios-sim
 	rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 	@if [ $$(uname) == "Darwin" ] ; then cargo install cargo-lipo ; fi
 	cargo install cbindgen
@@ -60,18 +59,32 @@ ios-universal: $(SOURCES)
 	lipo -create -output ../../target/ios-universal/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-ios/release/libnostr_sdk_ffi.a
 	lipo -create -output ../../target/ios-universal-sim/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-ios-sim/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-ios/release/libnostr_sdk_ffi.a
 
+darwin-universal: $(SOURCES)
+	mkdir -p ../target/darwin-universal/release
+	cargo lipo --release --targets aarch64-apple-darwin
+	cargo lipo --release --targets x86_64-apple-darwin
+	lipo -create -output ../target/darwin-universal/release/libnostr_sdk_bindings.dylib ../target/aarch64-apple-darwin/release/libnostr_sdk_bindings.dylib ../target/x86_64-apple-darwin/release/libnostr_sdk_bindings.dylib
+	lipo -create -output ../target/darwin-universal/release/libnostr_sdk_bindings.a ../target/aarch64-apple-darwin/release/libnostr_sdk_bindings.a ../target/x86_64-apple-darwin/release/libnostr_sdk_bindings.a
+
 swift-ios: ios-universal
 	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl -l swift -o ffi/swift-ios
 	cp ../../target/ios-universal/release/libnostr_sdk_ffi.a ffi/swift-ios
 	cd ffi/swift-ios && "swiftc" "-emit-module" "-module-name" "nostr_sdk_ffi"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-ios/nostr_sdkFFI.modulemap" "-I" "."  "-L" "." "-lnostr_sdk_ffi" nostr_sdk.swift
 
-bindings-swift: ios-universal
+swift-darwin: darwin-universal
+	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl -l swift -o ffi/swift-darwin
+	cp ../target/darwin-universal/release/libnostr_sdk_bindings.dylib ffi/swift-darwin
+	cd ffi/swift-darwin && "swiftc" "-emit-module" "-module-name" "nostr_sdk_bindings"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-darwin/nostr_sdkFFI.modulemap" "-I" "."  "-L" "." "-lnostr_sdk_bindings" nostr_sdk.swift
+
+bindings-swift: ios-universal darwin-universal
 	mkdir -p bindings-swift/Sources/NostrSDK
 	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --no-format --language swift --out-dir bindings-swift/Sources/NostrSDK
 	mv bindings-swift/Sources/NostrSDK/nostr_sdk.swift bindings-swift/Sources/NostrSDK/NostrSDK.swift
 	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64/nostr_sdkFFI.framework/Headers
 	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/nostr_sdkFFI.framework/Headers
+	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/nostr_sdkFFI.framework/Headers
 	cp ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/ios-arm64/nostr_sdkFFI.framework/nostr_sdkFFI
 	cp ../../target/ios-universal-sim/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/nostr_sdkFFI.framework/nostr_sdkFFI
+	cp ../target/darwin-universal/release/libnostr_sdk_bindings.a bindings-swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/nostr_sdkFFI.framework/nostr_sdkFFI
 	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h
 	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.modulemap

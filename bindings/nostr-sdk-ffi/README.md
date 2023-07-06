@@ -43,10 +43,14 @@ If you want to compile from source or need more options, read on.
 
 #### Swift Module
 
-These commands will build libraries for different architectures in `../../target/` and generate Swift bindings as well as Swift module artifacts in `ffi/swift-ios/`:
+These commands will build libraries for different architectures in `../../target/` and generate Swift bindings as well as Swift module artifacts in `ffi/swift-ios/` and `ffi/swift-darwin/` respectively:
 
 ```
 make swift-ios
+```
+
+```
+make swift-darwin
 ```
 
 #### Swift Package
