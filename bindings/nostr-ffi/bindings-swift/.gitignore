@@ -1,0 +1,7 @@
+.swiftpm/
+.build/
+*.xcodeproj
+Sources/
+**/nostrFFI.h
+**/nostrFFI
+**/nostrFFI.modulemap

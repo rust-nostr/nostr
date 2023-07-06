@@ -1,0 +1,6 @@
+framework module nostrFFI {
+  umbrella header "nostrFFI-umbrella.h"
+
+  export *
+  module * { export * }
+}

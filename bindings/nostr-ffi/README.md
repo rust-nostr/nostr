@@ -34,6 +34,33 @@ make bindings-android
 
 See [Add your AAR or JAR as a dependency](https://developer.android.com/studio/projects/android-library#psd-add-aar-jar-dependency) in Android's docs for more information on how to integrate such an archive into your project.
 
+### Swift
+
+For most users, we recommend using our official Swift package: [rust-nostr/nostr-swift](https://github.com/rust-nostr/nostr-swift).
+
+If you want to compile from source or need more options, read on.
+
+#### Swift Module
+
+These commands will build libraries for different architectures in `../../target/` and generate Swift bindings as well as Swift module artifacts in `ffi/swift-ios/` and `ffi/swift-darwin/` respectively:
+
+```
+make swift-ios
+```
+
+```
+make swift-darwin
+```
+
+#### Swift Package
+
+This command will produce a fully configured Swift Package in `bindings-swift/`.
+See [Adding package dependencies to your app](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) in Apple's docs for more information on how to integrate such a package into your project.
+
+```
+make bindings-swift
+```
+
 ## License
 
 This project is distributed under the MIT software license - see the [LICENSE](../../LICENSE) file for details
