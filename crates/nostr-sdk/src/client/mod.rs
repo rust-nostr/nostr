@@ -635,6 +635,18 @@ impl Client {
         Ok(event_id)
     }
 
+    /// Send event with custom wait
+    pub async fn send_event_with_custom_wait(
+        &self,
+        event: Event,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
+        self.pool
+            .send_msg(ClientMessage::new_event(event), wait)
+            .await?;
+        Ok(())
+    }
+
     /// Send event to specific relay
     pub async fn send_event_to<S>(&self, url: S, event: Event) -> Result<EventId, Error>
     where
@@ -644,6 +656,20 @@ impl Client {
         self.send_msg_to(url, ClientMessage::new_event(event))
             .await?;
         Ok(event_id)
+    }
+
+    /// Send event to a specific relay with custom wait
+    pub async fn send_event_to_with_custom_wait<S>(
+        &self,
+        url: S,
+        event: Event,
+        wait: Option<Duration>,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        self.send_msg_to_with_custom_wait(url, ClientMessage::new_event(event), wait)
+            .await
     }
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
