@@ -71,3 +71,9 @@ impl From<nostr::event::id::Error> for NostrError {
         Self::Generic { err: e.to_string() }
     }
 }
+
+impl From<nostr::types::channel_id::Error> for NostrError {
+    fn from(e: nostr::types::channel_id::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}

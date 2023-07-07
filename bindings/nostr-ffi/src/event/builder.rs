@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, EventId, Tag};
+use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, EventId, Tag, ChannelId};
 
 use super::Event;
 use crate::contact::Contact;
@@ -85,6 +85,17 @@ impl EventBuilder {
         })
     }
 
+    pub fn long_form_text_note(content: String, tags: Vec<Vec<String>>) -> Result<Self> {
+        let mut new_tags: Vec<Tag> = Vec::new();
+        for tag in tags.into_iter() {
+            new_tags.push(Tag::try_from(tag)?);
+        }
+
+        Ok(Self {
+            builder: EventBuilderSdk::long_form_text_note(content, &new_tags),
+        })
+    }
+
     pub fn set_contact_list(list: Vec<Arc<Contact>>) -> Self {
         let list: Vec<ContactSdk> = list
             .into_iter()
@@ -111,6 +122,15 @@ impl EventBuilder {
         })
     }
 
+    pub fn repost(event_id: String, public_key: String) -> Result<Self> {
+        Ok(Self {
+            builder: EventBuilderSdk::repost(
+                EventId::from_hex(&event_id)?,
+                XOnlyPublicKey::from_str(&public_key)?,
+            ),
+        })
+    }
+
     /// Create delete event
     pub fn delete(ids: Vec<String>, reason: Option<String>) -> Result<Self> {
         let mut new_ids: Vec<EventId> = Vec::with_capacity(ids.len());
@@ -129,6 +149,40 @@ impl EventBuilder {
         let public_key = XOnlyPublicKey::from_str(&public_key)?;
         Ok(Self {
             builder: EventBuilderSdk::new_reaction(event_id, public_key, content),
+        })
+    }
+
+    pub fn new_channel(metadata: Arc<Metadata>) -> Self {
+        Self {
+            builder: EventBuilderSdk::new_channel(metadata.as_ref().deref().clone()),
+        }
+    }
+
+    pub fn set_channel_metadata(channel_id: String, relay_url: Option<String>, metadata: Arc<Metadata>) -> Result<Self> {
+        let relay_url = match relay_url {
+            Some(url) => Some(Url::parse(&url)?),
+            None => None,
+        };
+        Ok(Self {
+            builder: EventBuilderSdk::set_channel_metadata(ChannelId::from_hex(channel_id)?, relay_url, metadata.as_ref().deref().clone()),
+        })
+    }
+
+    pub fn new_channel_msg(channel_id: String, relay_url: String, content: String) -> Result<Self> {
+        Ok(Self {
+            builder: EventBuilderSdk::new_channel_msg(ChannelId::from_hex(channel_id)?, Url::parse(&relay_url)?, content),
+        })
+    }
+
+    pub fn hide_channel_msg(message_id: String, reason: Option<String>) -> Result<Self> {
+        Ok(Self {
+            builder: EventBuilderSdk::hide_channel_msg(EventId::from_hex(message_id)?, reason),
+        })
+    }
+
+    pub fn mute_channel_user(public_key: String, reason: Option<String>) -> Result<Self> {
+        Ok(Self {
+            builder: EventBuilderSdk::mute_channel_user(XOnlyPublicKey::from_str(&public_key)?, reason),
         })
     }
 }

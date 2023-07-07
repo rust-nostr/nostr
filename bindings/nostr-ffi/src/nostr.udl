@@ -67,12 +67,17 @@ interface EventBuilder {
     Event to_event(Keys keys);
     [Throws=NostrError]
     Event to_pow_event(Keys keys, u8 difficulty);
+
     [Name=set_metadata]
     constructor(AccountMetadata metadata);
     [Throws=NostrError, Name=add_recommended_relay]
     constructor(string url);
     [Throws=NostrError, Name=new_text_note]
     constructor(string content, sequence<sequence<string>> tags);
+    [Throws=NostrError, Name=long_form_text_note]
+    constructor(string content, sequence<sequence<string>> tags);
+    [Throws=NostrError, Name=repost]
+    constructor(string event_id, string public_key);
     [Name=set_contact_list]
     constructor(sequence<Contact> list);
     [Throws=NostrError, Name=new_encrypted_direct_msg]
@@ -81,6 +86,17 @@ interface EventBuilder {
     constructor(sequence<string> ids, optional string? reason = null);
     [Throws=NostrError, Name=new_reaction]
     constructor(string event_id, string public_key, string content);
+
+    [Name=new_channel]
+    constructor(AccountMetadata metadata);
+    [Throws=NostrError, Name=set_channel_metadata]
+    constructor(string channel_id, string? relay_url, AccountMetadata metadata);
+    [Throws=NostrError, Name=new_channel_msg]
+    constructor(string channel_id, string relay_url, string content);
+    [Throws=NostrError, Name=hide_channel_msg]
+    constructor(string message_id, string? reason);
+    [Throws=NostrError, Name=mute_channel_user]
+    constructor(string public_key, string? reason);
 };
 
 interface Contact {
