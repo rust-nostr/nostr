@@ -200,4 +200,10 @@ impl EventBuilder {
             ),
         })
     }
+
+    pub fn auth(challenge: String, relay_url: String) -> Result<Self> {
+        Ok(Self {
+            builder: EventBuilderSdk::auth(challenge, Url::parse(&relay_url)?),
+        })
+    }
 }
