@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::url::Url;
-use nostr::{Contact as ContactSdk, EventBuilder as EventBuilderSdk, EventId, Tag, ChannelId};
+use nostr::{ChannelId, Contact as ContactSdk, EventBuilder as EventBuilderSdk, EventId, Tag};
 
 use super::Event;
 use crate::contact::Contact;
@@ -125,7 +125,7 @@ impl EventBuilder {
     pub fn repost(event_id: String, public_key: String) -> Result<Self> {
         Ok(Self {
             builder: EventBuilderSdk::repost(
-                EventId::from_hex(&event_id)?,
+                EventId::from_hex(event_id)?,
                 XOnlyPublicKey::from_str(&public_key)?,
             ),
         })
@@ -158,19 +158,31 @@ impl EventBuilder {
         }
     }
 
-    pub fn set_channel_metadata(channel_id: String, relay_url: Option<String>, metadata: Arc<Metadata>) -> Result<Self> {
+    pub fn set_channel_metadata(
+        channel_id: String,
+        relay_url: Option<String>,
+        metadata: Arc<Metadata>,
+    ) -> Result<Self> {
         let relay_url = match relay_url {
             Some(url) => Some(Url::parse(&url)?),
             None => None,
         };
         Ok(Self {
-            builder: EventBuilderSdk::set_channel_metadata(ChannelId::from_hex(channel_id)?, relay_url, metadata.as_ref().deref().clone()),
+            builder: EventBuilderSdk::set_channel_metadata(
+                ChannelId::from_hex(channel_id)?,
+                relay_url,
+                metadata.as_ref().deref().clone(),
+            ),
         })
     }
 
     pub fn new_channel_msg(channel_id: String, relay_url: String, content: String) -> Result<Self> {
         Ok(Self {
-            builder: EventBuilderSdk::new_channel_msg(ChannelId::from_hex(channel_id)?, Url::parse(&relay_url)?, content),
+            builder: EventBuilderSdk::new_channel_msg(
+                ChannelId::from_hex(channel_id)?,
+                Url::parse(&relay_url)?,
+                content,
+            ),
         })
     }
 
@@ -182,7 +194,10 @@ impl EventBuilder {
 
     pub fn mute_channel_user(public_key: String, reason: Option<String>) -> Result<Self> {
         Ok(Self {
-            builder: EventBuilderSdk::mute_channel_user(XOnlyPublicKey::from_str(&public_key)?, reason),
+            builder: EventBuilderSdk::mute_channel_user(
+                XOnlyPublicKey::from_str(&public_key)?,
+                reason,
+            ),
         })
     }
 }
