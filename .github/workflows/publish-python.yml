@@ -1,0 +1,171 @@
+name: Publish nostr-sdk to PyPI
+
+on: [workflow_dispatch]
+
+# We use manylinux2014 because older CentOS versions used by 2010 and 1 have a very old glibc version, which
+# makes it very hard to use GitHub's javascript actions (checkout, upload-artifact, etc).
+# They mount their own nodejs interpreter inside your container, but since that's not statically linked it
+# tries to load glibc and fails because it requires a more recent version.
+
+jobs:
+  build-manylinux2014-x86_64-wheels:
+    name: "Build Manylinux 2014 x86_64 wheel"
+    runs-on: ubuntu-20.04
+    defaults:
+      run:
+        working-directory: bindings/nostr-sdk-ffi/bindings-python
+    container:
+      image: quay.io/pypa/manylinux2014_x86_64
+      env:
+        PLAT: manylinux2014_x86_64
+    strategy:
+      matrix:
+        python: # Update this list whenever the docker image is updated (check /opt/python/)
+          - cp38-cp38
+          - cp39-cp39
+          - cp310-cp310
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v3
+        
+      - name: "Generate nostr_sdk.py and binaries"
+        run: bash ./scripts/generate-linux.sh
+
+      - name: "Build wheel"
+        # Specifying the plat-name argument is necessary to build a wheel with the correct name,
+        # see issue #350 for more information
+        run: python setup.py bdist_wheel --plat-name manylinux_2_17_x86_64 --verbose
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: nostr_sdk-manylinux2014-x86_64-${{ matrix.python }}
+          path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
+
+  build-macos-arm64-wheels:
+    name: "Build macOS arm64 wheel"
+    runs-on: macos-13
+    defaults:
+      run:
+        working-directory: bindings/nostr-sdk-ffi/bindings-python
+    strategy:
+      matrix:
+        python:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: "Install Python"
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: "Generate nostr_sdk.py and binaries"
+        run: bash ./scripts/generate-macos-arm64.sh
+
+      - name: "Build wheel"
+        # Specifying the plat-name argument is necessary to build a wheel with the correct name,
+        # see issue #350 for more information
+        run: python3 setup.py bdist_wheel --plat-name macosx_11_0_arm64 --verbose
+
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v3
+        with:
+          name: nostr_sdk-macos-arm64-${{ matrix.python }}
+          path: /Users/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
+
+  build-macos-x86_64-wheels:
+    name: "Build macOS x86_64 wheel"
+    runs-on: macos-13
+    defaults:
+      run:
+        working-directory: bindings/nostr-sdk-ffi/bindings-python
+    strategy:
+      matrix:
+        python:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: "Install Python"
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: "Generate nostr_sdk.py and binaries"
+        run: bash ./scripts/generate-macos-x86_64.sh
+
+      - name: "Build wheel"
+        # Specifying the plat-name argument is necessary to build a wheel with the correct name,
+        # see issue #350 for more information
+        run: python3 setup.py bdist_wheel --plat-name macosx_11_0_x86_64 --verbose
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: nostr_sdk-macos-x86_64-${{ matrix.python }}
+          path: /Users/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
+
+  build-windows-wheels:
+    name: "Build Windows wheel"
+    runs-on: windows-2022
+    defaults:
+      run:
+        working-directory: bindings/nostr-sdk-ffi/bindings-python
+    strategy:
+      matrix:
+        python:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: "Generate nostr_sdk.py and binaries"
+        run: bash ./scripts/generate-windows.sh
+
+      - name: "Build wheel"
+        run: python setup.py bdist_wheel --verbose
+
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v3
+        with:
+          name: nostr_sdk-win-${{ matrix.python }}
+          path: D:\a\nostr\nostr\bindings\nostr-sdk-ffi\bindings-python\dist\*.whl
+
+  publish-pypi:
+    name: "Publish on PyPI"
+    runs-on: ubuntu-20.04
+    defaults:
+      run:
+        working-directory: bindings/nostr-sdk-ffi/bindings-python
+    needs: [build-manylinux2014-x86_64-wheels, build-macos-arm64-wheels, build-macos-x86_64-wheels, build-windows-wheels]
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v3
+
+      - name: "Download artifacts in dist/ directory"
+        uses: actions/download-artifact@v3
+        with:
+          path: dist/
+
+      - name: "Publish on PyPI"
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages_dir: dist/*/
