@@ -1,0 +1,16 @@
+.tox/
+dist/
+nostr_sdk.egg-info/
+__pycache__/
+libnostr_sdk_ffi.dylib
+.idea/
+.DS_Store
+
+*.swp
+
+src/nostr-sdk/nostr_sdk.py
+src/nostr-sdk/*.so
+*.whl
+build/
+
+testing-setup-py-simple-example.py

@@ -1,0 +1,3 @@
+include ./src/nostr-sdk/libnostr_sdk_ffi.dylib
+include ./src/nostr-sdk/libnostr_sdk_ffi.so
+include ./src/nostr-sdk/nostr_sdk_ffi.dll

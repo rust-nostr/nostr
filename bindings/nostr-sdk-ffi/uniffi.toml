@@ -5,3 +5,6 @@ cdylib_name = "nostr_sdk_ffi"
 [bindings.swift]
 ffi_module_filename = "nostr_sdkFFI"
 cdylib_name = "nostr_sdk_ffi"
+
+[bindings.python]
+cdylib_name = "nostr_sdk_ffi"
