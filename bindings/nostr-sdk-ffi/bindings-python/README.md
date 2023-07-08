@@ -1,8 +1,6 @@
 # Nostr SDK - Python Package
 
-The Python language bindings for [nostr-sdk](../../../crates/nostr-sdk/).
-
-See the [package on PyPI](https://pypi.org/project/nostr-sdk/).  
+The Python language bindings for [nostr-sdk](https://github.com/rust-nostr/nostr).
 
 ## Getting started
 
@@ -38,7 +36,7 @@ Look at <https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-
 
 ## License
 
-This project is distributed under the MIT software license - see the [LICENSE](./LICENSE) file for details
+This project is distributed under the MIT software license - see the [LICENSE](https://github.com/rust-nostr/nostr/tree/master/LICENSE) file for details
 
 ## Donations
 
