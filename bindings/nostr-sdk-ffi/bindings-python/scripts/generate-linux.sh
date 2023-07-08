@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+python --version
+pip install -r requirements.txt
+
+echo "Generating nostr_sdk.py..."
+cd ../
+cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --language python --no-format -o bindings-python/src/nostr-sdk/
+
+echo "Generating native binaries..."
+cargo build --release
+
+echo "Copying linux libnostr_sdk_ffi.so..."
+cp ../../target/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/
+
+echo "All done!"
