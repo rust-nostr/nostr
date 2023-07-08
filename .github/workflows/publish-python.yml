@@ -28,6 +28,10 @@ jobs:
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
         
       - name: "Generate nostr_sdk.py and binaries"
         run: bash ./scripts/generate-linux.sh
