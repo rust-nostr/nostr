@@ -13,6 +13,6 @@ rustup target add x86_64-apple-darwin
 cargo build --release --target x86_64-apple-darwin
 
 echo "Copying libraries libnostr_sdk_ffi.dylib..."
-cp ../../target/x86_64-apple-darwin/release-smaller/libnostr_sdk_ffi.dylib bindings-python/src/nostr-sdk/
+cp ../../target/x86_64-apple-darwin/release/libnostr_sdk_ffi.dylib bindings-python/src/nostr-sdk/
 
 echo "All done!"

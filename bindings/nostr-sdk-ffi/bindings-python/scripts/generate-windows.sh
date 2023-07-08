@@ -13,6 +13,6 @@ rustup target add x86_64-pc-windows-msvc
 cargo build --release --target x86_64-pc-windows-msvc
 
 echo "Copying libraries nostr_sdk_ffi.dll..."
-cp ../../target/x86_64-pc-windows-msvc/release-smaller/nostr_sdk_ffi.dll bindings-python/src/nostr-sdk/
+cp ../../target/x86_64-pc-windows-msvc/release/nostr_sdk_ffi.dll bindings-python/src/nostr-sdk/
 
 echo "All done!"
