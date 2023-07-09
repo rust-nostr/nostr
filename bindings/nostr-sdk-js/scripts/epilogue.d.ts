@@ -5,4 +5,6 @@
  *
  * @returns {Promise<void>}
  */
- export function initAsync(): Promise<void>;
+ export function loadWasmAsync(): Promise<void>;
+
+ export function loadWasmSync(): void;

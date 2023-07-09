@@ -1,16 +1,5 @@
-// Initially, 'wasm' is set to a Proxy object which will synchronously load the WebAssembly module and
-// replace 'wasm' with a reference to the exports from the wasm module.
-//
-// Ideally this will never get used because the application will call initAsync instead.
-wasm = new Proxy(
-    {},
-    {
-        get: (target, prop, receiver) => __initSync()[prop],
-    },
-);
-
 let inited = false;
-__initSync = function () {
+module.exports.loadWasmSync = function () {
     if (inited) {
         return;
     }
@@ -23,7 +12,6 @@ __initSync = function () {
     wasm = instance.exports;
     wasm.__wbindgen_start();
     inited = true;
-    return wasm;
 };
 
 let initPromise = null;
@@ -35,7 +23,7 @@ let initPromise = null;
  *
  * @returns {Promise<void>}
  */
-module.exports.initAsync = function () {
+module.exports.loadWasmAsync = function () {
     if (inited) {
         return Promise.resolve();
     }

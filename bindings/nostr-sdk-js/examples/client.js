@@ -1,6 +1,8 @@
-const { Keys, Client, Metadata, EventId, PublicKey, EventBuilder, initLogger } = require("../");
+const { Keys, Client, Metadata, EventId, PublicKey, EventBuilder, initLogger, loadWasmAsync } = require("../");
 
 async function main() {
+    await loadWasmAsync();
+    
     initLogger();
 
     // Generate random keys

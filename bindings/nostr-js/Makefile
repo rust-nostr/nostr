@@ -1,12 +1,8 @@
-# Use 'verbose=1' to echo all commands, for example 'make help verbose=1'.
-ifdef verbose
-  Q :=
-else
-  Q := @
-endif
+init:
+	cargo install wasm-pack
 
 publish: pack
-	$(Q)npm publish --access public
+	npm publish --access public
 
 pack:
-	$(Q)npm run package
+	npm run package
