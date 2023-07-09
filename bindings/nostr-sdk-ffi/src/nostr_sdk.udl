@@ -137,7 +137,7 @@ interface AccountMetadata {
 // NOSTR-SDK
 
 callback interface HandleNotification {
-    void handle(Event event);
+    void handle(string relay_url, Event event);
 };
 
 interface Client {

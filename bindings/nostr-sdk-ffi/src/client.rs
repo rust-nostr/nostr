@@ -1,6 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -57,8 +58,8 @@ impl Client {
         crate::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
             Ok(self.client.handle_notifications(|notification| {
-                if let RelayPoolNotificationSdk::Event(_url, event) = notification {
-                    handler.handle(Arc::new(event.into()));
+                if let RelayPoolNotificationSdk::Event(url, event) = notification {
+                    handler.handle(url.to_string(), Arc::new(event.into()));
                 }
 
                 Ok(false)
@@ -67,6 +68,6 @@ impl Client {
     }
 }
 
-pub trait HandleNotification: Send + Sync {
-    fn handle(&self, event: Arc<Event>);
+pub trait HandleNotification: Send + Sync + Debug {
+    fn handle(&self, relay_url: String, event: Arc<Event>);
 }
