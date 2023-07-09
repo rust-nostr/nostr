@@ -11,6 +11,9 @@ use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::nostr::Filter as FilterSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 
+mod options;
+
+pub use self::options::Options;
 use crate::error::Result;
 
 pub struct Client {
@@ -21,6 +24,12 @@ impl Client {
     pub fn new(keys: Arc<Keys>) -> Self {
         Self {
             client: ClientSdk::new(keys.as_ref().deref()),
+        }
+    }
+
+    pub fn with_opts(keys: Arc<Keys>, opts: Arc<Options>) -> Self {
+        Self {
+            client: ClientSdk::with_opts(keys.as_ref().deref(), opts.as_ref().deref().clone()),
         }
     }
 

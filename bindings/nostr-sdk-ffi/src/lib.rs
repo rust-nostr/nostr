@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+#![allow(clippy::new_without_default)]
+
 use nostr_sdk::Timestamp;
 
 mod client;
@@ -30,7 +32,7 @@ mod ffi {
     pub use crate::timestamp;
 
     // Nostr SDK
-    pub use crate::client::{Client, HandleNotification};
+    pub use crate::client::{Client, HandleNotification, Options};
     pub use crate::error::NostrSdkError;
 
     // UDL

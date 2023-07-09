@@ -147,8 +147,30 @@ callback interface HandleNotification {
     void handle(string relay_url, Event event);
 };
 
+interface Options {
+    constructor();
+    [Self=ByArc]
+    Options wait_for_connection(boolean wait);
+    [Self=ByArc]
+    Options wait_for_send(boolean wait);
+    [Self=ByArc]
+    Options wait_for_subscription(boolean wait);
+    [Self=ByArc]
+    Options difficulty(u8 difficulty);
+    [Self=ByArc]
+    Options req_filters_chunk_size(u8 req_filters_chunk_size);
+    [Self=ByArc]
+    Options timeout(duration? timeout);
+    [Self=ByArc]
+    Options send_timeout(duration? send_timeout);
+    [Self=ByArc]
+    Options nip46_timeout(duration? nip46_timeout);
+};
+
 interface Client {
     constructor(Keys keys);
+    [Name=with_opts]
+    constructor(Keys keys, Options opts);
     [Throws=NostrSdkError]
     void add_relay(string url, optional string? proxy = null);
     [Throws=NostrSdkError]

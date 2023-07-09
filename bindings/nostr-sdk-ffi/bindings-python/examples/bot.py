@@ -13,7 +13,7 @@ client.add_relay("wss://offchain.pub")
 client.add_relay("wss://nostr.oxtr.dev")
 client.connect()
 
-filter = Filter().pubkey(pk).since(timestamp())
+filter = Filter().pubkey(pk).kind(4).since(timestamp())
 client.subscribe([filter])
 
 class NotificationHandler(HandleNotification):
