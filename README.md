@@ -13,6 +13,19 @@ The project is split up into several crates in the `crates/` directory:
 **nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift, Kotlin, Python and JavaScript. 
 Please, explore the [`bindings/`](./bindings/) directory to learn more.
 
+#### Available packages
+
+* **nostr**:
+    * Kotlin: TODO
+    * Swift: https://github.com/rust-nostr/nostr-swift
+    * Python: TODO
+    * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr
+* **nostr-sdk**:
+    * Kotlin: TODO
+    * Swift: https://github.com/rust-nostr/nostr-sdk-swift
+    * Python: https://pypi.org/project/nostr-sdk
+    * JavaScript: TODO
+
 ## Minimum Supported Rust Version (MSRV)
 
 These crates are built with the Rust language version 2021 and require a minimum compiler version of `1.64`
