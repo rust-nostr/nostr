@@ -64,6 +64,10 @@ impl Client {
         }
     }
 
+    pub fn update_difficulty(&self, difficulty: u8) {
+        self.client.update_difficulty(difficulty);
+    }
+
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.client.keys()

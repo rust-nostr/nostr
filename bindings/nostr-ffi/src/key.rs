@@ -23,6 +23,12 @@ impl Deref for Keys {
     }
 }
 
+impl From<KeysSdk> for Keys {
+    fn from(keys: KeysSdk) -> Self {
+        Self { keys }
+    }
+}
+
 impl Keys {
     pub fn new(sk: String) -> Result<Self> {
         let sk = SecretKey::from_str(&sk)?;

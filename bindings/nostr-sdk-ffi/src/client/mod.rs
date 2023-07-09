@@ -17,20 +17,32 @@ pub use self::options::Options;
 use crate::error::Result;
 
 pub struct Client {
-    client: ClientSdk,
+    inner: ClientSdk,
 }
 
 impl Client {
     pub fn new(keys: Arc<Keys>) -> Self {
         Self {
-            client: ClientSdk::new(keys.as_ref().deref()),
+            inner: ClientSdk::new(keys.as_ref().deref()),
         }
     }
 
     pub fn with_opts(keys: Arc<Keys>, opts: Arc<Options>) -> Self {
         Self {
-            client: ClientSdk::with_opts(keys.as_ref().deref(), opts.as_ref().deref().clone()),
+            inner: ClientSdk::with_opts(keys.as_ref().deref(), opts.as_ref().deref().clone()),
         }
+    }
+
+    // TODO: add with_remote_signer
+
+    // TODO: add with_remote_signer_and_opts
+
+    pub fn update_difficulty(&self, difficulty: u8) {
+        self.inner.update_difficulty(difficulty);
+    }
+
+    pub fn keys(&self) -> Arc<Keys> {
+        Arc::new(self.inner.keys().into())
     }
 
     pub fn add_relay(&self, url: String, proxy: Option<String>) -> Result<()> {
@@ -39,15 +51,15 @@ impl Client {
             None => None,
         };
 
-        Ok(self.client.add_relay(url, proxy)?)
+        Ok(self.inner.add_relay(url, proxy)?)
     }
 
     pub fn connect_relay(&self, url: String) -> Result<()> {
-        Ok(self.client.connect_relay(url)?)
+        Ok(self.inner.connect_relay(url)?)
     }
 
     pub fn connect(&self) {
-        self.client.connect()
+        self.inner.connect()
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<Filter>>) {
@@ -55,18 +67,18 @@ impl Client {
         for filter in filters.into_iter() {
             new_filters.push(filter.as_ref().deref().clone());
         }
-        self.client.subscribe(new_filters);
+        self.inner.subscribe(new_filters);
     }
 
     pub fn send_event(&self, event: Arc<Event>) -> Result<()> {
-        self.client.send_event(event.as_ref().deref().clone())?;
+        self.inner.send_event(event.as_ref().deref().clone())?;
         Ok(())
     }
 
     pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
         crate::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
-            Ok(self.client.handle_notifications(|notification| {
+            Ok(self.inner.handle_notifications(|notification| {
                 if let RelayPoolNotificationSdk::Event(url, event) = notification {
                     handler.handle(url.to_string(), Arc::new(event.into()));
                 }

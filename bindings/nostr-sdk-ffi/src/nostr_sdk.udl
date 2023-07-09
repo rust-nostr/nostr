@@ -171,6 +171,10 @@ interface Client {
     constructor(Keys keys);
     [Name=with_opts]
     constructor(Keys keys, Options opts);
+
+    void update_difficulty(u8 difficulty);
+    Keys keys();
+
     [Throws=NostrSdkError]
     void add_relay(string url, optional string? proxy = null);
     [Throws=NostrSdkError]
