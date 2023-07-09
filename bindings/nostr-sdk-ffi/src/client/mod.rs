@@ -65,6 +65,14 @@ impl Client {
         Ok(self.inner.clone().shutdown()?)
     }
 
+    pub fn clear_already_seen_events(&self) {
+        self.inner.clear_already_seen_events()
+    }
+
+    // TODO: add relays
+
+    // TODO: add relay
+
     pub fn add_relay(&self, url: String, proxy: Option<String>) -> Result<()> {
         let proxy: Option<SocketAddr> = match proxy {
             Some(proxy) => Some(proxy.parse()?),
@@ -74,12 +82,28 @@ impl Client {
         Ok(self.inner.add_relay(url, proxy)?)
     }
 
+    // TODO: add add_relay_with_opts
+
+    pub fn remove_relay(&self, url: String) -> Result<()> {
+        Ok(self.inner.remove_relay(url)?)
+    }
+
+    // TODO: add add_relays
+
     pub fn connect_relay(&self, url: String) -> Result<()> {
         Ok(self.inner.connect_relay(url)?)
     }
 
+    pub fn disconnect_relay(&self, url: String) -> Result<()> {
+        Ok(self.inner.disconnect_relay(url)?)
+    }
+
     pub fn connect(&self) {
         self.inner.connect()
+    }
+
+    pub fn disconnect(&self) -> Result<()> {
+        Ok(self.inner.disconnect()?)
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<Filter>>) {

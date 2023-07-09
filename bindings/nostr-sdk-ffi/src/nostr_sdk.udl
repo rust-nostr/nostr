@@ -181,12 +181,20 @@ interface Client {
     boolean is_running();
     [Throws=NostrSdkError]
     void shutdown();
+    void clear_already_seen_events();
 
     [Throws=NostrSdkError]
     void add_relay(string url, optional string? proxy = null);
     [Throws=NostrSdkError]
+    void remove_relay(string url);
+    [Throws=NostrSdkError]
     void connect_relay(string url);
+    [Throws=NostrSdkError]
+    void disconnect_relay(string url);
     void connect();
+    [Throws=NostrSdkError]
+    void disconnect();
+
     void subscribe(sequence<Filter> filters);
     [Throws=NostrSdkError]
     void send_event(Event event);
