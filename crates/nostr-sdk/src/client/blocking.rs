@@ -358,17 +358,15 @@ impl Client {
     where
         F: Fn(RelayPoolNotification) -> Result<bool>,
     {
-        RUNTIME.block_on(async {
-            let mut notifications = self.client.notifications();
-            while let Ok(notification) = notifications.recv().await {
-                let stop: bool = RelayPoolNotification::Stop == notification;
-                let shutdown: bool = RelayPoolNotification::Shutdown == notification;
-                let exit: bool = func(notification).map_err(|e| Error::Handler(e.to_string()))?;
-                if exit || stop || shutdown {
-                    break;
-                }
+        let mut notifications = self.client.notifications();
+        while let Ok(notification) = RUNTIME.block_on(notifications.recv()) {
+            let stop: bool = RelayPoolNotification::Stop == notification;
+            let shutdown: bool = RelayPoolNotification::Shutdown == notification;
+            let exit: bool = func(notification).map_err(|e| Error::Handler(e.to_string()))?;
+            if exit || stop || shutdown {
+                break;
             }
-            Ok(())
-        })
+        }
+        Ok(())
     }
 }
