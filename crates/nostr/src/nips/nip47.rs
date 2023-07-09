@@ -328,6 +328,25 @@ impl fmt::Display for NostrWalletConnectURI {
     }
 }
 
+impl Serialize for NostrWalletConnectURI {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'a> Deserialize<'a> for NostrWalletConnectURI {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        let uri = String::deserialize(deserializer)?;
+        NostrWalletConnectURI::from_str(&uri).map_err(serde::de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
