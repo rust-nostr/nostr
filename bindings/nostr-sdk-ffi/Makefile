@@ -88,3 +88,13 @@ bindings-swift: ios-universal darwin-universal
 	cp ../../target/darwin-universal/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/nostr_sdkFFI.framework/nostr_sdkFFI
 	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h
 	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.modulemap
+
+python-dev:
+	pip install -r bindings-python/requirements.txt
+	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --language python --no-format -o bindings-python/src/nostr-sdk/
+	cargo build --release
+	cp ../../target/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/ | true
+	cp ../../target/release/libnostr_sdk_ffi.dylib bindings-python/src/nostr-sdk/ | true
+	cp ../../target/release/libnostr_sdk_ffi.dll bindings-python/src/nostr-sdk/ | true
+	cd bindings-python && python setup.py --verbose bdist_wheel
+	pip install ./bindings-python/dist/nostr_sdk-*.whl --force-reinstall
