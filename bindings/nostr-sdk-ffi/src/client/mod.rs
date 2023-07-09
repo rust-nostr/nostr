@@ -5,10 +5,10 @@ use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::time::Duration;
 
 use nostr_ffi::{Event, Filter, Keys};
 use nostr_sdk::client::blocking::Client as ClientSdk;
-use nostr_sdk::nostr::Filter as FilterSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 
 mod options;
@@ -107,17 +107,75 @@ impl Client {
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<Filter>>) {
-        let mut new_filters: Vec<FilterSdk> = Vec::with_capacity(filters.len());
-        for filter in filters.into_iter() {
-            new_filters.push(filter.as_ref().deref().clone());
-        }
-        self.inner.subscribe(new_filters);
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        self.inner.subscribe(filters);
     }
 
-    pub fn send_event(&self, event: Arc<Event>) -> Result<()> {
-        self.inner.send_event(event.as_ref().deref().clone())?;
-        Ok(())
+    // TODO: add subscribe_with_custom_wait
+
+    pub fn unsubscribe(&self) {
+        self.inner.unsubscribe();
     }
+
+    // TODO: add unsubscribe_with_custom_wait
+
+    pub fn get_events_of(
+        &self,
+        filters: Vec<Arc<Filter>>,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<Arc<Event>>> {
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        Ok(self
+            .inner
+            .get_events_of(filters, timeout)?
+            .into_iter()
+            .map(|e| Arc::new(e.into()))
+            .collect())
+    }
+
+    // TODO: add get_events_of_with_opts
+
+    pub fn req_events_of(&self, filters: Vec<Arc<Filter>>, timeout: Option<Duration>) {
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        self.inner.req_events_of(filters, timeout);
+    }
+
+    // TODO: add req_events_of_with_opts
+
+    // TODO: add send_msg
+
+    // TODO: add send_msg_with_custom_wait
+
+    // TODO: add send_msg_to
+
+    // TODO: add send_msg_to_with_custom_wait
+
+    pub fn send_event(&self, event: Arc<Event>) -> Result<String> {
+        Ok(self
+            .inner
+            .send_event(event.as_ref().deref().clone())?
+            .to_hex())
+    }
+
+    // TODO: add send_event_with_custom_wait
+
+    pub fn send_event_to(&self, url: String, event: Arc<Event>) -> Result<String> {
+        Ok(self
+            .inner
+            .send_event_to(url, event.as_ref().deref().clone())?
+            .to_hex())
+    }
+
+    // TODO: add send_event_to_with_custom_wait
 
     pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
         crate::thread::spawn("client", move || {

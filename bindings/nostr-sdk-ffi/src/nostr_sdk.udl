@@ -196,8 +196,17 @@ interface Client {
     void disconnect();
 
     void subscribe(sequence<Filter> filters);
+    void unsubscribe();
+
     [Throws=NostrSdkError]
-    void send_event(Event event);
+    sequence<Event> get_events_of(sequence<Filter> filters, duration? timeout);
+    void req_events_of(sequence<Filter> filters, duration? timeout);
+
+    [Throws=NostrSdkError]
+    string send_event(Event event);
+    [Throws=NostrSdkError]
+    string send_event_to(string url, Event event);
+
     [Self=ByArc]
     void handle_notifications(HandleNotification handler);
 };
