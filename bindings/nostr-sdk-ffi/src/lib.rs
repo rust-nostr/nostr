@@ -20,7 +20,10 @@ pub fn timestamp() -> u64 {
 #[allow(unused_imports)]
 mod ffi {
     // External
-    pub use nostr_ffi::{AccountMetadata, Contact, Event, EventBuilder, Filter, Keys, NostrError};
+    pub use nostr_ffi::{
+        nip04_decrypt, nip04_encrypt, AccountMetadata, Contact, Event, EventBuilder, Filter, Keys,
+        NostrError,
+    };
 
     // Namespace
     pub use crate::logger::init_logger;

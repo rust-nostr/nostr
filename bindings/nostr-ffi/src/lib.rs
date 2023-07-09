@@ -7,6 +7,7 @@ mod event;
 pub mod helper;
 mod key;
 mod metadata;
+mod nips;
 mod subscription;
 
 #[allow(missing_docs)]
@@ -21,6 +22,7 @@ mod ffi {
     pub use crate::event::Event;
     pub use crate::key::Keys;
     pub use crate::metadata::Metadata as AccountMetadata;
+    pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
     pub use crate::subscription::Filter;
 
     // UDL

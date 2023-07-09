@@ -1,7 +1,12 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-namespace nostr {};
+namespace nostr {
+    [Throws=NostrError]
+    string nip04_encrypt(string secret_key, string public_key, string content);
+    [Throws=NostrError]
+    string nip04_decrypt(string secret_key, string public_key, string encrypted_content);
+};
 
 [Error]
 interface NostrError {

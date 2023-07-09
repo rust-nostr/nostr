@@ -2,6 +2,13 @@
 // Distributed under the MIT software license
 
 namespace nostr_sdk {
+    // Nostr
+    [Throws=NostrError]
+    string nip04_encrypt(string secret_key, string public_key, string content);
+    [Throws=NostrError]
+    string nip04_decrypt(string secret_key, string public_key, string encrypted_content);
+
+    // Nostr SDK
     void init_logger(optional string? level = null);
     u64 timestamp();
 };
