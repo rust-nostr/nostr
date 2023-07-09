@@ -83,6 +83,11 @@ impl Client {
         RUNTIME.block_on(async { self.client.stop().await })
     }
 
+    /// Check if [`RelayPool`] is running
+    pub fn is_running(&self) -> bool {
+        self.client.is_running()
+    }
+
     /// Completely shutdown [`Client`]
     pub fn shutdown(self) -> Result<(), Error> {
         RUNTIME.block_on(async { self.client.shutdown().await })

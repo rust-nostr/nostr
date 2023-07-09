@@ -175,6 +175,13 @@ interface Client {
     void update_difficulty(u8 difficulty);
     Keys keys();
 
+    void start();
+    [Throws=NostrSdkError]
+    void stop();
+    boolean is_running();
+    [Throws=NostrSdkError]
+    void shutdown();
+
     [Throws=NostrSdkError]
     void add_relay(string url, optional string? proxy = null);
     [Throws=NostrSdkError]

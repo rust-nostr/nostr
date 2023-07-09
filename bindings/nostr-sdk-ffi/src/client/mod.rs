@@ -45,6 +45,26 @@ impl Client {
         Arc::new(self.inner.keys().into())
     }
 
+    // TODO: add nostr_connect_uri
+
+    // TODO: add remote_signer
+
+    pub fn start(&self) {
+        self.inner.start();
+    }
+
+    pub fn stop(&self) -> Result<()> {
+        Ok(self.inner.stop()?)
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.inner.is_running()
+    }
+
+    pub fn shutdown(&self) -> Result<()> {
+        Ok(self.inner.clone().shutdown()?)
+    }
+
     pub fn add_relay(&self, url: String, proxy: Option<String>) -> Result<()> {
         let proxy: Option<SocketAddr> = match proxy {
             Some(proxy) => Some(proxy.parse()?),
