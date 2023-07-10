@@ -47,6 +47,8 @@ pub enum Error {
     InvalidParamsLength,
     /// Unsupported method
     UnsupportedMethod(String),
+    /// Unsupported batch response
+    UnsupportedBatchResponse,
     /// Invalid URI
     InvalidURI,
     /// Invalid URI scheme
@@ -68,6 +70,7 @@ impl fmt::Display for Error {
             Self::InvalidRequest => write!(f, "invalid request"),
             Self::InvalidParamsLength => write!(f, "too many/few params"),
             Self::UnsupportedMethod(name) => write!(f, "unsupported method: {name}"),
+            Self::UnsupportedBatchResponse => write!(f, "unsupported batch response"),
             Self::InvalidURI => write!(f, "invalid uri"),
             Self::InvalidURIScheme => write!(f, "invalid uri scheme"),
         }
@@ -116,6 +119,126 @@ impl From<unsigned::Error> for Error {
     }
 }
 
+/// Batch request
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum BatchRequest {
+    /// Sign [`UnsignedEvent`]
+    SignEvent(UnsignedEvent),
+    /// Delegate
+    Delegate {
+        /// Pubkey
+        public_key: XOnlyPublicKey,
+        /// NIP26 conditions
+        conditions: Conditions,
+    },
+    /// Encrypt text (NIP04)
+    Nip04Encrypt {
+        /// Pubkey
+        public_key: XOnlyPublicKey,
+        /// Plain text
+        text: String,
+    },
+    /// Decrypt (NIP04)
+    Nip04Decrypt {
+        /// Pubkey
+        public_key: XOnlyPublicKey,
+        /// Ciphertext
+        text: String,
+    },
+    /// Sign Schnorr
+    SignSchnorr(String),
+}
+
+impl From<BatchRequest> for Request {
+    fn from(batch: BatchRequest) -> Self {
+        match batch {
+            BatchRequest::Delegate {
+                public_key,
+                conditions,
+            } => Self::Delegate {
+                public_key,
+                conditions,
+            },
+            BatchRequest::Nip04Decrypt { public_key, text } => {
+                Self::Nip04Decrypt { public_key, text }
+            }
+            BatchRequest::Nip04Encrypt { public_key, text } => {
+                Self::Nip04Encrypt { public_key, text }
+            }
+            BatchRequest::SignEvent(unsigned) => Self::SignEvent(unsigned),
+            BatchRequest::SignSchnorr(data) => Self::SignSchnorr(data),
+        }
+    }
+}
+
+impl BatchRequest {
+    /// From value
+    pub fn from_value(value: &Value) -> Result<Self, Error> {
+        let map = value.as_object().unwrap();
+        let method = map.get("method").unwrap().as_str().unwrap();
+        let params = map.get("params").unwrap().as_array().unwrap();
+
+        match method {
+            "sign_event" => {
+                if let Some(value) = params.first() {
+                    let unsigned_event: UnsignedEvent = serde_json::from_value(value.to_owned())?;
+                    Ok(Self::SignEvent(unsigned_event))
+                } else {
+                    Err(Error::InvalidRequest)
+                }
+            }
+            "delegate" => {
+                if params.len() != 2 {
+                    return Err(Error::InvalidParamsLength);
+                }
+
+                Ok(Self::Delegate {
+                    public_key: serde_json::from_value(params[0].clone())?,
+                    conditions: serde_json::from_value(params[1].clone())?,
+                })
+            }
+            "nip04_encrypt" => {
+                if params.len() != 2 {
+                    return Err(Error::InvalidParamsLength);
+                }
+
+                Ok(Self::Nip04Encrypt {
+                    public_key: serde_json::from_value(params[0].clone())?,
+                    text: serde_json::from_value(params[1].clone())?,
+                })
+            }
+            "nip04_decrypt" => {
+                if params.len() != 2 {
+                    return Err(Error::InvalidParamsLength);
+                }
+
+                Ok(Self::Nip04Decrypt {
+                    public_key: serde_json::from_value(params[0].clone())?,
+                    text: serde_json::from_value(params[1].clone())?,
+                })
+            }
+            "sign_schnorr" => {
+                if params.len() != 1 {
+                    return Err(Error::InvalidParamsLength);
+                }
+
+                let value: String = serde_json::from_value(params[0].clone())?;
+                Ok(Self::SignSchnorr(value))
+            }
+            other => Err(Error::UnsupportedMethod(other.to_string())),
+        }
+    }
+
+    /// Get batch request as [`Value`]
+    pub fn as_value(&self) -> Value {
+        let req: Request = self.clone().into();
+        json!({
+            "method": req.method(),
+            "params": req.params(),
+        })
+    }
+}
+
 /// Request
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Request {
@@ -152,6 +275,8 @@ pub enum Request {
     },
     /// Sign Schnorr
     SignSchnorr(String),
+    /// Batch
+    Batch(Vec<BatchRequest>),
 }
 
 impl Request {
@@ -167,6 +292,7 @@ impl Request {
             Self::Nip04Encrypt { .. } => "nip04_encrypt".to_string(),
             Self::Nip04Decrypt { .. } => "nip04_decrypt".to_string(),
             Self::SignSchnorr(_) => "sign_schnorr".to_string(),
+            Self::Batch(_) => "batch".to_string(),
         }
     }
 
@@ -185,6 +311,7 @@ impl Request {
             Self::Nip04Encrypt { public_key, text } => vec![json!(public_key), json!(text)],
             Self::Nip04Decrypt { public_key, text } => vec![json!(public_key), json!(text)],
             Self::SignSchnorr(value) => vec![json!(value)],
+            Self::Batch(requests) => requests.iter().map(|r| r.as_value()).collect(),
         }
     }
 
@@ -201,6 +328,7 @@ impl Request {
                 String::from("nip04_encrypt"),
                 String::from("nip04_decrypt"),
                 String::from("sign_schnorr"),
+                String::from("batch"),
             ])),
             Self::GetPublicKey => Some(Response::GetPublicKey(keys.public_key())),
             Self::SignEvent(unsigned_event) => {
@@ -237,6 +365,23 @@ impl Request {
                 let sig: Signature = keys.sign_schnorr(&message)?;
                 Some(Response::SignSchnorr(sig))
             }
+            Self::Batch(requests) => {
+                if requests.len() > 20 {
+                    // TODO: add response error: "too many batch requests (limit: 20)"
+                    None
+                } else {
+                    let mut responses = Vec::with_capacity(requests.len());
+                    for req in requests.into_iter() {
+                        let req: Request = req.into();
+                        let res = match req.generate_response(keys)? {
+                            Some(res) => Some(res.try_into()?),
+                            None => None,
+                        };
+                        responses.push(res);
+                    }
+                    Some(Response::Batch(responses))
+                }
+            }
         };
         Ok(res)
     }
@@ -253,6 +398,48 @@ pub struct DelegationResult {
     pub cond: Conditions,
     /// Signature of Delegation Token
     pub sig: Signature,
+}
+
+/// Batch response
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum BatchResponse {
+    /// Sign event
+    SignEvent(Event),
+    /// Delegation
+    Delegate(DelegationResult),
+    /// Encrypted content (NIP04)
+    Nip04Encrypt(String),
+    /// Decrypted content (NIP04)
+    Nip04Decrypt(String),
+    /// Sign Schnorr
+    SignSchnorr(Signature),
+}
+
+impl TryFrom<Response> for BatchResponse {
+    type Error = Error;
+    fn try_from(res: Response) -> Result<Self, Self::Error> {
+        match res {
+            Response::Delegate(res) => Ok(Self::Delegate(res)),
+            Response::Nip04Decrypt(content) => Ok(Self::Nip04Decrypt(content)),
+            Response::Nip04Encrypt(content) => Ok(Self::Nip04Encrypt(content)),
+            Response::SignEvent(evet) => Ok(Self::SignEvent(evet)),
+            Response::SignSchnorr(sig) => Ok(Self::SignSchnorr(sig)),
+            _ => Err(Error::UnsupportedBatchResponse),
+        }
+    }
+}
+
+impl BatchResponse {
+    /// Get batch response as [`Value`]
+    pub fn as_value(&self) -> Value {
+        match self {
+            Self::SignEvent(sig) => json!(sig),
+            Self::Delegate(delegation_result) => json!(delegation_result),
+            Self::Nip04Encrypt(encrypted_content) => json!(encrypted_content),
+            Self::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
+            Self::SignSchnorr(sig) => json!(sig),
+        }
+    }
 }
 
 /// Response
@@ -272,6 +459,8 @@ pub enum Response {
     Nip04Decrypt(String),
     /// Sign Schnorr
     SignSchnorr(Signature),
+    /// Batch
+    Batch(Vec<Option<BatchResponse>>),
 }
 
 /// Message
@@ -292,8 +481,10 @@ pub enum Message {
         /// Request id
         id: String,
         /// Result
+        #[serde(skip_serializing_if = "Option::is_none")]
         result: Option<Value>,
         /// Reason, if failed
+        #[serde(skip_serializing_if = "Option::is_none")]
         error: Option<String>,
     },
 }
@@ -320,6 +511,10 @@ impl Message {
                 Response::Nip04Encrypt(encrypted_content) => json!(encrypted_content),
                 Response::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
                 Response::SignSchnorr(sig) => json!(sig),
+                Response::Batch(responses) => json!(responses
+                    .into_iter()
+                    .map(|r| r.map(|r| r.as_value()))
+                    .collect::<Vec<Option<Value>>>()),
             }),
             error: None,
         }
@@ -419,6 +614,13 @@ impl Message {
 
                     let value: String = serde_json::from_value(params[0].clone())?;
                     Ok(Request::SignSchnorr(value))
+                }
+                "batch" => {
+                    let mut requests = Vec::new();
+                    for value in params.iter() {
+                        requests.push(BatchRequest::from_value(value)?);
+                    }
+                    Ok(Request::Batch(requests))
                 }
                 other => Err(Error::UnsupportedMethod(other.to_string())),
             }
@@ -629,6 +831,7 @@ mod test {
     use std::str::FromStr;
 
     use super::*;
+    use crate::key::FromSkStr;
     use crate::Result;
 
     #[test]
@@ -657,6 +860,46 @@ mod test {
         let relay_url = Url::parse("wss://relay.damus.io")?;
         let app_name = "Example";
         assert_eq!(uri, NostrConnectURI::new(pubkey, relay_url, app_name));
+        Ok(())
+    }
+
+    #[test]
+    fn test_batch_req() -> Result<()> {
+        let public_key = XOnlyPublicKey::from_str(
+            "f572561e79d30c334e7ce864a2055e887eafdf5dad71242adc0c43567cc269f8",
+        )?;
+        let req = Request::Batch(vec![
+            BatchRequest::Nip04Decrypt {
+                public_key,
+                text: "dJc+WbBgaFCD2/kfg1XCWJParplBDxnZIdJGZ6FCTOg=?iv=M6VxRPkMZu7aIdD+10xPuw=="
+                    .to_string(),
+            },
+            BatchRequest::Nip04Decrypt {
+                public_key,
+                text: "dJc+WbBgaFCD2/kfg1XCWJParplBDxnZIdJGZ6FCTOg=?iv=M6VxRPkMZu7aIdD+10xPuw=="
+                    .to_string(),
+            },
+        ]);
+        let msg = Message::Request {
+            id: 12345.to_string(),
+            method: req.method(),
+            params: req.params(),
+        };
+
+        assert_eq!(
+            msg.as_json(),
+            r##"{"id":"12345","method":"batch","params":[{"method":"nip04_decrypt","params":["f572561e79d30c334e7ce864a2055e887eafdf5dad71242adc0c43567cc269f8","dJc+WbBgaFCD2/kfg1XCWJParplBDxnZIdJGZ6FCTOg=?iv=M6VxRPkMZu7aIdD+10xPuw=="]},{"method":"nip04_decrypt","params":["f572561e79d30c334e7ce864a2055e887eafdf5dad71242adc0c43567cc269f8","dJc+WbBgaFCD2/kfg1XCWJParplBDxnZIdJGZ6FCTOg=?iv=M6VxRPkMZu7aIdD+10xPuw=="]}]}"##
+        );
+
+        let keys =
+            Keys::from_sk_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?;
+        let msg = msg.generate_response(&keys)?.unwrap();
+
+        assert_eq!(
+            msg.as_json(),
+            r##"{"id":"12345","result":["Saturn, bringer of old age","Saturn, bringer of old age"]}"##
+        );
+
         Ok(())
     }
 }
