@@ -1,5 +1,17 @@
 CURRENT_DIR := $(shell pwd)
 SOURCES=$(sort $(wildcard ./src/*.rs ./src/**/*.rs))
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
+COPY = cp
+EXT = so
+else ifeq ($(UNAME), Darwin)
+COPY = cp
+EXT = dylib
+else
+COPY = copy
+EXT = dll
+endif
 
 .PHONY: init
 init:
@@ -96,8 +108,6 @@ python-dev:
 	pip install -r bindings-python/requirements.txt
 	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --language python --no-format -o bindings-python/src/nostr-sdk/
 	cargo build --release
-	cp ../../target/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/ | true
-	cp ../../target/release/libnostr_sdk_ffi.dylib bindings-python/src/nostr-sdk/ | true
-	cp ../../target/release/libnostr_sdk_ffi.dll bindings-python/src/nostr-sdk/ | true
+	$(COPY) ../../target/release/libnostr_sdk_ffi.$(EXT) bindings-python/src/nostr-sdk/
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr_sdk-*.whl --force-reinstall
