@@ -50,6 +50,9 @@ bindings-android: sdk-root kotlin
 	mkdir -p ffi/android
 	cp bindings-android/lib/build/outputs/aar/lib-release.aar ffi/android
 
+publish-bindings-android: bindings-android
+	cd bindings-android && ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+
 ios-universal: $(SOURCES)		
 	mkdir -p ../../target/ios-universal/release
 	mkdir -p ../../target/ios-universal-sim/release

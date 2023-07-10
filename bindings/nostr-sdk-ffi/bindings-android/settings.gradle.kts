@@ -1,3 +1,3 @@
-rootProject.name = "bindings-android"
+rootProject.name = "nostr-sdk"
 
 include(":lib")
