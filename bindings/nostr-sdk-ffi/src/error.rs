@@ -25,6 +25,12 @@ impl From<nostr_sdk::client::Error> for NostrSdkError {
     }
 }
 
+impl From<nostr_sdk::relay::Error> for NostrSdkError {
+    fn from(e: nostr_sdk::relay::Error) -> NostrSdkError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<AddrParseError> for NostrSdkError {
     fn from(e: AddrParseError) -> NostrSdkError {
         Self::Generic { err: e.to_string() }

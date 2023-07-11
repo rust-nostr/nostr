@@ -143,8 +143,49 @@ interface AccountMetadata {
 
 // NOSTR-SDK
 
-callback interface HandleNotification {
-    void handle(string relay_url, Event event);
+interface RelayConnectionStats {
+    u64 attempts();
+    u64 success();
+    u64 connected_at();
+};
+
+enum RelayStatus {
+    "Initialized",
+    "Connected",
+    "Connecting",
+    "Disconnected",
+    "Stopped",
+    "Terminated",
+};
+
+interface ActiveSubscription {
+    string id();
+    sequence<Filter> filters();
+};
+
+interface Relay {
+    string url();
+    string? proxy();
+    RelayStatus status();
+    boolean is_connected();
+    ActiveSubscription subscription();
+    void update_subscription_filters(sequence<Filter> filters);
+    RelayConnectionStats stats();
+
+    void connect(boolean wait_for_connection);
+    [Throws=NostrSdkError]
+    void stop();
+    [Throws=NostrSdkError]
+    void terminate();
+
+    [Throws=NostrSdkError]
+    string subscribe(sequence<Filter> filters, duration? wait);
+    [Throws=NostrSdkError]
+    void unsubscribe(duration? wait);
+
+    [Throws=NostrSdkError]
+    sequence<Event> get_events_of(sequence<Filter> filters, duration? timeout);
+    void req_events_of(sequence<Filter> filters, duration? timeout);
 };
 
 interface Options {
@@ -209,4 +250,8 @@ interface Client {
 
     [Self=ByArc]
     void handle_notifications(HandleNotification handler);
+};
+
+callback interface HandleNotification {
+    void handle(string relay_url, Event event);
 };

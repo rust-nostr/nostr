@@ -8,6 +8,7 @@ use nostr_sdk::Timestamp;
 mod client;
 mod error;
 mod logger;
+mod relay;
 mod thread;
 
 trait FromResult<T>: Sized {
@@ -26,6 +27,7 @@ mod ffi {
         nip04_decrypt, nip04_encrypt, AccountMetadata, Contact, Event, EventBuilder, Filter, Keys,
         NostrError,
     };
+    pub use nostr_sdk::RelayStatus;
 
     // Namespace
     pub use crate::logger::init_logger;
@@ -34,6 +36,7 @@ mod ffi {
     // Nostr SDK
     pub use crate::client::{Client, HandleNotification, Options};
     pub use crate::error::NostrSdkError;
+    pub use crate::relay::{ActiveSubscription, Relay, RelayConnectionStats};
 
     // UDL
     uniffi_macros::include_scaffolding!("nostr_sdk");
