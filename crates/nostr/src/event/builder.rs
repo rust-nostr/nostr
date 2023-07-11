@@ -19,10 +19,12 @@ use super::{Event, EventId, UnsignedEvent};
 use crate::key::{self, Keys};
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
-use crate::nips::nip13;
 #[cfg(feature = "nip46")]
 use crate::nips::nip46::Message as NostrConnectMessage;
+use crate::nips::nip58::Error as Nip58Error;
+use crate::nips::{nip13, nip58};
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
+use crate::UncheckedUrl;
 
 /// [`EventBuilder`] error
 #[derive(Debug)]
@@ -38,6 +40,8 @@ pub enum Error {
     /// NIP04 error
     #[cfg(feature = "nip04")]
     NIP04(nip04::Error),
+    /// NIP58 error
+    NIP58(nip58::Error),
 }
 
 impl std::error::Error for Error {}
@@ -51,6 +55,7 @@ impl fmt::Display for Error {
             Self::Unsigned(e) => write!(f, "{e}"),
             #[cfg(feature = "nip04")]
             Self::NIP04(e) => write!(f, "{e}"),
+            Self::NIP58(e) => write!(f, "{e}"),
         }
     }
 }
@@ -83,6 +88,12 @@ impl From<super::unsigned::Error> for Error {
 impl From<nip04::Error> for Error {
     fn from(e: nip04::Error) -> Self {
         Self::NIP04(e)
+    }
+}
+
+impl From<nip58::Error> for Error {
+    fn from(e: nip58::Error) -> Self {
+        Self::NIP58(e)
     }
 }
 
@@ -507,15 +518,296 @@ impl EventBuilder {
 
         Self::new(Kind::Zap, "", &tags)
     }
+
+    /// Create a badge definition event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr::nips::nip58::ImageDimensions;
+    /// use nostr::EventBuilder;
+    ///
+    /// let badge_id = String::from("nostr-sdk-test-badge");
+    /// let name = Some(String::from("Nostr SDK test badge"));
+    /// let description = Some(String::from("This is a test badge"));
+    /// let image_url = Some(String::from("https://nostr.build/someimage/1337"));
+    /// let image_size = Some(ImageDimensions(1024, 1024));
+    /// let thumbs = Some(vec![(
+    ///     String::from("https://nostr.build/somethumbnail/1337"),
+    ///     Some(ImageDimensions(256, 256)),
+    /// )]);
+    ///
+    /// let event_builder =
+    ///     EventBuilder::define_badge(badge_id, name, description, image_url, image_size, thumbs);
+    /// ```
+    pub fn define_badge<S>(
+        badge_id: S,
+        name: Option<S>,
+        description: Option<S>,
+        image: Option<S>,
+        image_dimensions: Option<nip58::ImageDimensions>,
+        thumbnails: Option<Vec<(S, Option<nip58::ImageDimensions>)>>,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
+        let mut tags: Vec<Tag> = Vec::new();
+
+        // Set identifier tag
+        tags.push(Tag::Identifier(badge_id.into()));
+
+        // Set name tag
+        if let Some(name) = name {
+            tags.push(Tag::Name(name.into()));
+        }
+
+        // Set description tag
+        if let Some(description) = description {
+            tags.push(Tag::Description(description.into()));
+        }
+
+        // Set image tag
+        if let Some(image) = image {
+            let image_tag = if let Some(dimensions) = image_dimensions {
+                let nip58::ImageDimensions(width, height) = dimensions;
+                Tag::Image(image.into(), Some((width, height)))
+            } else {
+                Tag::Image(image.into(), None)
+            };
+            tags.push(image_tag);
+        }
+
+        // Set thumbnail tags
+        if let Some(thumbs) = thumbnails {
+            for thumb in thumbs {
+                let thumb_url = thumb.0.into();
+                let thumb_tag = if let Some(width_height) = thumb.1 {
+                    let nip58::ImageDimensions(width, height) = width_height;
+                    Tag::Thumb(thumb_url, Some((width, height)))
+                } else {
+                    Tag::Thumb(thumb_url, None)
+                };
+                tags.push(thumb_tag);
+            }
+        }
+
+        Self::new(Kind::BadgeDefinition, "", &tags)
+    }
+
+    /// Create a badge award event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr::event::tag::{Tag, TagKind};
+    /// use nostr::key::Keys;
+    /// use nostr::EventBuilder;
+    /// use nostr::UncheckedUrl;
+    /// use secp256k1::XOnlyPublicKey;
+    /// use std::str::FromStr;
+    ///
+    /// let keys = Keys::generate();
+    ///
+    /// // Create a new badge event
+    /// let badge_id = String::from("bravery");
+    /// let badge_definition_event = EventBuilder::define_badge(badge_id, None, None, None, None, None)
+    ///     .to_event(&keys)
+    ///     .unwrap();
+    ///
+    /// let awarded_pubkeys = vec![
+    ///     Tag::PubKey(
+    ///         XOnlyPublicKey::from_str(
+    ///             "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
+    ///         )
+    ///         .unwrap(),
+    ///         None,
+    ///     ),
+    ///     Tag::PubKey(
+    ///         XOnlyPublicKey::from_str(
+    ///             "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
+    ///         )
+    ///         .unwrap(),
+    ///         None,
+    ///     ),
+    /// ];
+    /// let event_builder = EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys.clone());
+    /// ```
+    pub fn award_badge(badge_definition: &Event, awarded_pubkeys: Vec<Tag>) -> Result<Self, Error> {
+        let mut tags = Vec::new();
+
+        let badge_id = badge_definition
+            .tags
+            .iter()
+            .find_map(|t| match t {
+                Tag::Identifier(id) => Some(id),
+                _ => None,
+            })
+            .ok_or(Error::NIP58(nip58::Error::IdentifierTagNotFound))?;
+
+        // Add identity tag
+        tags.push(Tag::A {
+            kind: Kind::BadgeDefinition,
+            public_key: badge_definition.pubkey,
+            identifier: badge_id.clone(),
+            relay_url: None,
+        });
+
+        // Add awarded pubkeys
+        let ptags: Vec<Tag> = awarded_pubkeys
+            .into_iter()
+            .filter(|p| matches!(p, Tag::PubKey(..)))
+            .collect();
+
+        tags.extend(ptags);
+
+        // Build event
+        Ok(Self::new(Kind::BadgeAward, "", &tags))
+    }
+
+    /// Create a profile badges event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr::event::tag::{Tag, TagKind};
+    /// use nostr::key::Keys;
+    /// use nostr::EventBuilder;
+    /// use nostr::UncheckedUrl;
+    /// use secp256k1::XOnlyPublicKey;
+    /// use std::str::FromStr;
+    ///
+    /// // Keys used for defining a badge and awarding it
+    /// let new_badge_keys = Keys::generate();
+    ///
+    /// // Keys that will create the profile badges event
+    /// let profile_badges_keys = Keys::generate();
+    ///
+    /// // Create a new badge event
+    /// let badge_id = String::from("bravery");
+    /// let badge_definition_event = EventBuilder::define_badge(badge_id, None, None, None, None, None)
+    ///     .to_event(&new_badge_keys)
+    ///     .unwrap();
+    ///
+    /// let awarded_pubkeys = vec![Tag::PubKey(profile_badges_keys.public_key(), None)];
+    /// let award_badge_event =
+    ///     EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys.clone())
+    ///         .unwrap()
+    ///         .to_event(&new_badge_keys)
+    ///         .unwrap();
+    ///
+    /// let profile_badges_event = EventBuilder::profile_badges(
+    ///     vec![badge_definition_event],
+    ///     vec![award_badge_event],
+    ///     &profile_badges_keys.public_key(),
+    /// )
+    /// .unwrap()
+    /// .to_event(&profile_badges_keys)
+    /// .unwrap();
+    /// ```
+    pub fn profile_badges(
+        badge_definitions: Vec<Event>,
+        badge_awards: Vec<Event>,
+        pubkey_awarded: &XOnlyPublicKey,
+    ) -> Result<Self, Error> {
+        if badge_definitions.len() != badge_awards.len() {
+            return Err(Error::NIP58(nip58::Error::InvalidLength));
+        }
+
+        let mut badge_awards = nip58::filter_for_kind(badge_awards, &Kind::BadgeAward);
+        if badge_awards.is_empty() {
+            return Err(Error::NIP58(Nip58Error::InvalidKind));
+        }
+
+        for award in &badge_awards {
+            if !award.tags.iter().any(|t| match t {
+                Tag::PubKey(pub_key, _) => pub_key == pubkey_awarded,
+                _ => false,
+            }) {
+                return Err(Error::NIP58(Nip58Error::BadgeAwardsLackAwardedPublicKey));
+            }
+        }
+
+        let mut badge_definitions =
+            nip58::filter_for_kind(badge_definitions, &Kind::BadgeDefinition);
+        if badge_definitions.is_empty() {
+            return Err(Error::NIP58(Nip58Error::InvalidKind));
+        }
+
+        // Add identifier `d` tag
+        let id_tag = Tag::Identifier("profile_badges".to_owned());
+        let mut tags: Vec<Tag> = vec![id_tag];
+
+        let badge_definitions_identifiers = badge_definitions
+            .iter_mut()
+            .map(|event| {
+                let tags = core::mem::take(&mut event.tags);
+                let id =
+                    nip58::extract_identifier(tags).ok_or(Nip58Error::IdentifierTagNotFound)?;
+
+                Ok((event.clone(), id))
+            })
+            .collect::<Result<Vec<(Event, Tag)>, Nip58Error>>();
+        let badge_definitions_identifiers =
+            badge_definitions_identifiers.map_err(|_| nip58::Error::IdentifierTagNotFound)?;
+
+        let badge_awards_identifiers = badge_awards
+            .iter_mut()
+            .map(|event| {
+                let tags = core::mem::take(&mut event.tags);
+                let (_, relay_url) = nip58::extract_awarded_public_key(&tags, pubkey_awarded)
+                    .ok_or(Nip58Error::BadgeAwardsLackAwardedPublicKey)?;
+                let (id, a_tag) = tags
+                    .iter()
+                    .find_map(|t| match t {
+                        Tag::A { identifier, .. } => Some((identifier.clone(), t.clone())),
+                        _ => None,
+                    })
+                    .ok_or(Nip58Error::BadgeAwardMissingATag)?;
+                Ok((event.clone(), id, a_tag, relay_url))
+            })
+            .collect::<Result<Vec<(Event, String, Tag, Option<UncheckedUrl>)>, Nip58Error>>();
+        let badge_awards_identifiers = badge_awards_identifiers?;
+
+        // This collection has been filtered for the needed tags
+        let users_badges: Vec<(_, _)> =
+            core::iter::zip(badge_definitions_identifiers, badge_awards_identifiers).collect();
+
+        for (badge_definition, badge_award) in users_badges {
+            match (&badge_definition, &badge_award) {
+                ((_, Tag::Identifier(identifier)), (_, badge_id, ..)) if badge_id != identifier => {
+                    return Err(Error::NIP58(Nip58Error::MismatchedBadgeDefinitionOrAward));
+                }
+                (
+                    (_, Tag::Identifier(identifier)),
+                    (badge_award_event, badge_id, a_tag, relay_url),
+                ) if badge_id == identifier => {
+                    let badge_definition_event_tag = a_tag.clone().to_owned();
+                    let badge_award_event_tag =
+                        Tag::Event(badge_award_event.clone().id, relay_url.clone(), None);
+                    tags.extend_from_slice(&[badge_definition_event_tag, badge_award_event_tag]);
+                }
+                _ => {}
+            }
+        }
+
+        let event_builder = EventBuilder::new(Kind::ProfileBadges, String::new(), &tags);
+
+        Ok(event_builder)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
 
-    use secp256k1::SecretKey;
+    use secp256k1::{SecretKey, XOnlyPublicKey};
 
-    use crate::{Event, EventBuilder, Keys, Result, Tag};
+    use crate::{
+        nips::nip58::ImageDimensions, Event, EventBuilder, Keys, Kind, Result, Tag, UncheckedUrl,
+    };
 
     #[test]
     fn round_trip() -> Result<()> {
@@ -593,5 +885,192 @@ mod tests {
             .is_some();
 
         assert_eq!(false, has_preimage_tag);
+    }
+
+    #[test]
+    fn test_badge_definition_event_builder_badge_id_only() {
+        let badge_id = String::from("bravery");
+        let event_builder = EventBuilder::define_badge(badge_id, None, None, None, None, None);
+
+        let has_id = event_builder
+            .tags
+            .clone()
+            .iter()
+            .find(|t| matches!(t, Tag::Identifier(_)))
+            .is_some();
+        assert_eq!(true, has_id);
+
+        assert_eq!(Kind::BadgeDefinition, event_builder.kind);
+    }
+
+    #[test]
+    fn test_badge_definition_event_builder_full() {
+        let badge_id = String::from("bravery");
+        let name = Some(String::from("Bravery"));
+        let description = Some(String::from("Brave pubkey"));
+        let image_url = Some(String::from("https://nostr.build/someimage/1337"));
+        let image_size = Some(ImageDimensions(1024, 1024));
+        let thumbs = Some(vec![(
+            String::from("https://nostr.build/somethumbnail/1337"),
+            Some(ImageDimensions(256, 256)),
+        )]);
+
+        let event_builder =
+            EventBuilder::define_badge(badge_id, name, description, image_url, image_size, thumbs);
+
+        let has_id = event_builder
+            .tags
+            .clone()
+            .iter()
+            .find(|t| matches!(t, Tag::Identifier(_)))
+            .is_some();
+        assert_eq!(true, has_id);
+
+        assert_eq!(Kind::BadgeDefinition, event_builder.kind);
+    }
+
+    #[test]
+    fn test_badge_award_event_builder() -> Result<()> {
+        let keys = Keys::generate();
+        let pub_key = keys.public_key();
+
+        // Set up badge definition
+        let badge_definition_event_json = format!(
+            r#"{{
+                "id": "4d16822726cefcb45768988c6451b6de5a20b504b8df85efe0808caf346e167c",
+                "pubkey": "{}",
+                "created_at": 1677921759,
+                "kind": 30009,
+                "tags": [
+                  ["d", "bravery"],
+                  ["name", "Bravery"],
+                  ["description", "A brave soul"]
+                ],
+                "content": "",
+                "sig": "cf154350a615f0355d165b52c7ecccce563d9a935801181e9016d077f38d31a1dc992a757ef8d652a416885f33d836cf408c79f5d983d6f1f03c966ace946d59"
+              }}"#,
+            pub_key.to_string()
+        );
+        let badge_definition_event: Event =
+            serde_json::from_str(&badge_definition_event_json).unwrap();
+
+        // Set up goal event
+        let example_event_json = format!(
+            r#"{{
+            "content": "",
+            "id": "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+            "kind": 8,
+            "pubkey": "{}",
+            "sig": "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
+            "created_at": 1671739153,
+            "tags": [
+                ["a", "30009:{}:bravery"],
+                ["p", "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245", "wss://nostr.oxtr.dev"],
+                ["p", "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df", "wss://nostr.oxtr.dev"]
+            ]
+            }}"#,
+            pub_key.to_string(),
+            pub_key.to_string()
+        );
+        let example_event: Event = serde_json::from_str(&example_event_json).unwrap();
+
+        // Create new event with the event builder
+        let awarded_pubkeys = vec![
+            Tag::PubKey(
+                XOnlyPublicKey::from_str(
+                    "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
+                )?,
+                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev")?),
+            ),
+            Tag::PubKey(
+                XOnlyPublicKey::from_str(
+                    "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
+                )?,
+                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev")?),
+            ),
+        ];
+        let event_builder: Event =
+            EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)?
+                .to_event(&keys)
+                .unwrap();
+
+        assert_eq!(event_builder.kind, Kind::BadgeAward);
+        assert_eq!(event_builder.content, "");
+        assert_eq!(event_builder.tags, example_event.tags);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_profile_badges() -> Result<()> {
+        // The pubkey used for profile badges event
+        let keys = Keys::generate();
+        let pub_key = keys.public_key();
+
+        // Create badge 1
+        let badge_one_keys = Keys::generate();
+        let badge_one_pubkey = badge_one_keys.public_key();
+        let relay_url = UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap();
+
+        let awarded_pubkeys = vec![
+            Tag::PubKey(pub_key.clone(), Some(relay_url.clone())),
+            Tag::PubKey(
+                XOnlyPublicKey::from_str(
+                    "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
+                )?,
+                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev")?),
+            ),
+        ];
+        let bravery_badge_event =
+            self::EventBuilder::define_badge("bravery", None, None, None, None, None)
+                .to_event(&badge_one_keys)?;
+        let bravery_badge_award =
+            self::EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())?
+                .to_event(&badge_one_keys)?;
+
+        //Badge 2
+        let badge_two_keys = Keys::generate();
+        let badge_two_pubkey = badge_two_keys.public_key();
+
+        let honor_badge_event =
+            self::EventBuilder::define_badge("honor", None, None, None, None, None)
+                .to_event(&badge_two_keys)?;
+        let honor_badge_award =
+            self::EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())?
+                .to_event(&badge_two_keys)?;
+
+        let example_event_json = format!(
+            r#"{{
+            "content":"",
+            "id": "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+            "kind": 30008,
+            "pubkey": "{}",
+            "sig":"fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
+            "created_at":1671739153,
+            "tags":[
+                ["d", "profile_badges"],
+                ["a", "30009:{}:bravery"],
+                ["e", "{}", "wss://nostr.oxtr.dev"],
+                ["a", "30009:{}:honor"],
+                ["e", "{}", "wss://nostr.oxtr.dev"]
+            ]
+            }}"#,
+            pub_key.to_string(),
+            badge_one_pubkey.to_string(),
+            bravery_badge_award.id.to_string(),
+            badge_two_pubkey.to_string(),
+            honor_badge_award.id.to_string(),
+        );
+        let example_event: Event = serde_json::from_str(&example_event_json).unwrap();
+
+        let badge_definitions = vec![bravery_badge_event, honor_badge_event];
+        let badge_awards = vec![bravery_badge_award, honor_badge_award];
+        let profile_badges =
+            EventBuilder::profile_badges(badge_definitions, badge_awards, &pub_key)?
+                .to_event(&keys)?;
+
+        assert_eq!(profile_badges.kind, Kind::ProfileBadges);
+        assert_eq!(profile_badges.tags, example_event.tags);
+        Ok(())
     }
 }
