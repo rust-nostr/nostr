@@ -107,6 +107,11 @@ impl Client {
         RUNTIME.block_on(async { self.client.relays().await })
     }
 
+    /// Get [`Relay`]
+    pub fn relay(&self, url: &Url) -> Result<Relay, Error> {
+        RUNTIME.block_on(async { self.client.relay(url).await })
+    }
+
     /// Add multiple relays
     pub fn add_relays<S>(&self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
     where
