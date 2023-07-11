@@ -1,6 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::ops::Deref;
@@ -10,11 +11,13 @@ use std::time::Duration;
 use nostr_ffi::{Event, Filter, Keys};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
+use nostr_sdk::Url;
 
 mod options;
 
 pub use self::options::Options;
 use crate::error::Result;
+use crate::Relay;
 
 pub struct Client {
     inner: ClientSdk,
@@ -69,9 +72,18 @@ impl Client {
         self.inner.clear_already_seen_events()
     }
 
-    // TODO: add relays
+    pub fn relays(&self) -> HashMap<String, Arc<Relay>> {
+        self.inner
+            .relays()
+            .into_iter()
+            .map(|(u, r)| (u.to_string(), Arc::new(r.into())))
+            .collect()
+    }
 
-    // TODO: add relay
+    pub fn relay(&self, url: String) -> Result<Arc<Relay>> {
+        let url = Url::parse(&url)?;
+        Ok(Arc::new(self.inner.relay(&url)?.into()))
+    }
 
     pub fn add_relay(&self, url: String, proxy: Option<String>) -> Result<()> {
         let proxy: Option<SocketAddr> = match proxy {

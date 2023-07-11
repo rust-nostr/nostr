@@ -62,6 +62,12 @@ pub struct Relay {
     inner: relay::Relay,
 }
 
+impl From<relay::Relay> for Relay {
+    fn from(inner: relay::Relay) -> Self {
+        Self { inner }
+    }
+}
+
 impl Relay {
     pub fn url(&self) -> String {
         self.inner.url().to_string()

@@ -224,6 +224,9 @@ interface Client {
     void shutdown();
     void clear_already_seen_events();
 
+    record<DOMString, Relay> relays();
+    [Throws=NostrSdkError]
+    Relay relay(string url);
     [Throws=NostrSdkError]
     void add_relay(string url, optional string? proxy = null);
     [Throws=NostrSdkError]
