@@ -22,7 +22,7 @@ use tokio::sync::{broadcast, oneshot, Mutex};
 mod options;
 pub mod pool;
 
-pub use self::options::{FilterOptions, RelayOptions};
+pub use self::options::{FilterOptions, RelayOptions, RelayPoolOptions};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;

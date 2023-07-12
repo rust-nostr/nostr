@@ -7,6 +7,8 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::relay::RelayPoolOptions;
+
 /// Options
 #[derive(Debug, Clone)]
 pub struct Options {
@@ -27,6 +29,8 @@ pub struct Options {
     /// NIP46 timeout (default: 180 secs)
     #[cfg(feature = "nip46")]
     nip46_timeout: Option<Duration>,
+    /// Pool Options
+    pool: RelayPoolOptions,
 }
 
 impl Default for Options {
@@ -41,6 +45,7 @@ impl Default for Options {
             send_timeout: Some(Duration::from_secs(60)),
             #[cfg(feature = "nip46")]
             nip46_timeout: Some(Duration::from_secs(180)),
+            pool: RelayPoolOptions::default(),
         }
     }
 }
@@ -150,5 +155,14 @@ impl Options {
     #[cfg(feature = "nip46")]
     pub(crate) fn get_nip46_timeout(&self) -> Option<Duration> {
         self.nip46_timeout
+    }
+
+    /// Set pool options
+    pub fn pool(self, opts: RelayPoolOptions) -> Self {
+        Self { pool: opts, ..self }
+    }
+
+    pub(crate) fn get_pool(&self) -> RelayPoolOptions {
+        self.pool
     }
 }

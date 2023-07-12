@@ -141,7 +141,7 @@ impl Client {
     /// ```
     pub fn with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
-            pool: RelayPool::new(),
+            pool: RelayPool::new(opts.get_pool()),
             keys: keys.clone(),
             opts,
             #[cfg(feature = "nip46")]
@@ -163,7 +163,7 @@ impl Client {
         opts: Options,
     ) -> Self {
         Self {
-            pool: RelayPool::new(),
+            pool: RelayPool::new(opts.get_pool()),
             keys: app_keys.clone(),
             opts,
             remote_signer: Some(remote_signer),

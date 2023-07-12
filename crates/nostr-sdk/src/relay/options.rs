@@ -65,3 +65,27 @@ pub enum FilterOptions {
     /// After EOSE is received, keep listening for matching events for [`Duration`] more time, then return
     WaitDurationAfterEOSE(Duration),
 }
+
+/// Relay Pool Options
+#[derive(Debug, Clone, Copy)]
+pub struct RelayPoolOptions {
+    /// Notification channel size (default: 1024)
+    pub notification_channel_size: usize,
+    /// Task channel size (default: 1024)
+    pub task_channel_size: usize,
+    /// Max seen events by Task thread (default: 100000)
+    ///
+    /// A lower number can cause receiving in notification channel
+    /// the same event multiple times
+    pub task_max_seen_events: usize,
+}
+
+impl Default for RelayPoolOptions {
+    fn default() -> Self {
+        Self {
+            notification_channel_size: 1024,
+            task_channel_size: 1024,
+            task_max_seen_events: 100_000,
+        }
+    }
+}

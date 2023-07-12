@@ -16,6 +16,7 @@ use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 
+use super::options::RelayPoolOptions;
 use super::{Error as RelayError, FilterOptions, Relay, RelayOptions};
 
 /// [`RelayPool`] error
@@ -75,20 +76,21 @@ struct RelayPoolTask {
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     events: Arc<Mutex<VecDeque<EventId>>>,
     running: Arc<AtomicBool>,
+    max_seen_events: usize,
 }
-
-const MAX_EVENTS: usize = 100000;
 
 impl RelayPoolTask {
     pub fn new(
         pool_task_receiver: Receiver<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
+        max_seen_events: usize,
     ) -> Self {
         Self {
             receiver: Arc::new(Mutex::new(pool_task_receiver)),
             events: Arc::new(Mutex::new(VecDeque::new())),
             notification_sender,
             running: Arc::new(AtomicBool::new(false)),
+            max_seen_events,
         }
     }
 
@@ -178,7 +180,7 @@ impl RelayPoolTask {
         if events.contains(&event_id) {
             false
         } else {
-            while events.len() >= MAX_EVENTS {
+            while events.len() >= self.max_seen_events {
                 events.pop_front();
             }
             events.push_back(event_id);
@@ -197,19 +199,17 @@ pub struct RelayPool {
     pool_task: RelayPoolTask,
 }
 
-impl Default for RelayPool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl RelayPool {
     /// Create new `RelayPool`
-    pub fn new() -> Self {
-        let (notification_sender, _) = broadcast::channel(1024);
-        let (pool_task_sender, pool_task_receiver) = mpsc::channel(1024);
+    pub fn new(opts: RelayPoolOptions) -> Self {
+        let (notification_sender, _) = broadcast::channel(opts.notification_channel_size);
+        let (pool_task_sender, pool_task_receiver) = mpsc::channel(opts.task_channel_size);
 
-        let relay_pool_task = RelayPoolTask::new(pool_task_receiver, notification_sender.clone());
+        let relay_pool_task = RelayPoolTask::new(
+            pool_task_receiver,
+            notification_sender.clone(),
+            opts.task_max_seen_events,
+        );
 
         let pool = Self {
             relays: Arc::new(Mutex::new(HashMap::new())),
