@@ -2,10 +2,8 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 use std::sync::Arc;
 
-use nostr::secp256k1::XOnlyPublicKey;
 use nostr::url::Url;
 use nostr::{ChannelId, Contact as ContactSdk, EventBuilder as EventBuilderSdk, EventId, Tag};
 
@@ -14,6 +12,7 @@ use crate::contact::Contact;
 use crate::error::Result;
 use crate::key::Keys;
 use crate::metadata::Metadata;
+use crate::PublicKey;
 
 pub struct EventBuilder {
     builder: EventBuilderSdk,
@@ -110,23 +109,23 @@ impl EventBuilder {
     /// Create encrypted direct msg event
     pub fn new_encrypted_direct_msg(
         sender_keys: Arc<Keys>,
-        receiver_pubkey: String,
+        receiver_pubkey: Arc<PublicKey>,
         content: String,
     ) -> Result<Self> {
         Ok(Self {
             builder: EventBuilderSdk::new_encrypted_direct_msg(
                 sender_keys.deref(),
-                XOnlyPublicKey::from_str(&receiver_pubkey)?,
+                *receiver_pubkey.as_ref().deref(),
                 content,
             )?,
         })
     }
 
-    pub fn repost(event_id: String, public_key: String) -> Result<Self> {
+    pub fn repost(event_id: String, public_key: Arc<PublicKey>) -> Result<Self> {
         Ok(Self {
             builder: EventBuilderSdk::repost(
                 EventId::from_hex(event_id)?,
-                XOnlyPublicKey::from_str(&public_key)?,
+                *public_key.as_ref().deref(),
             ),
         })
     }
@@ -144,9 +143,13 @@ impl EventBuilder {
         })
     }
 
-    pub fn new_reaction(event_id: String, public_key: String, content: String) -> Result<Self> {
+    pub fn new_reaction(
+        event_id: String,
+        public_key: Arc<PublicKey>,
+        content: String,
+    ) -> Result<Self> {
         let event_id = EventId::from_hex(event_id)?;
-        let public_key = XOnlyPublicKey::from_str(&public_key)?;
+        let public_key = *public_key.as_ref().deref();
         Ok(Self {
             builder: EventBuilderSdk::new_reaction(event_id, public_key, content),
         })
@@ -192,12 +195,9 @@ impl EventBuilder {
         })
     }
 
-    pub fn mute_channel_user(public_key: String, reason: Option<String>) -> Result<Self> {
+    pub fn mute_channel_user(public_key: Arc<PublicKey>, reason: Option<String>) -> Result<Self> {
         Ok(Self {
-            builder: EventBuilderSdk::mute_channel_user(
-                XOnlyPublicKey::from_str(&public_key)?,
-                reason,
-            ),
+            builder: EventBuilderSdk::mute_channel_user(*public_key.as_ref().deref(), reason),
         })
     }
 

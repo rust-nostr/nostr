@@ -2,12 +2,11 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
+use std::sync::Arc;
 
-use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Contact as ContactSdk, UncheckedUrl};
 
-use crate::error::Result;
+use crate::PublicKey;
 
 pub struct Contact {
     contact: ContactSdk,
@@ -21,20 +20,19 @@ impl Deref for Contact {
 }
 
 impl Contact {
-    pub fn new(pk: String, relay_url: Option<String>, alias: Option<String>) -> Result<Self> {
-        let pk = XOnlyPublicKey::from_str(&pk)?;
+    pub fn new(pk: Arc<PublicKey>, relay_url: Option<String>, alias: Option<String>) -> Self {
         let relay_url = relay_url.map(|relay_url| UncheckedUrl::from(&relay_url));
-        Ok(Self {
-            contact: ContactSdk::new(pk, relay_url, alias),
-        })
+        Self {
+            contact: ContactSdk::new(*pk.as_ref().deref(), relay_url, alias),
+        }
     }
 
     pub fn alias(&self) -> Option<String> {
         self.contact.alias.clone()
     }
 
-    pub fn public_key(&self) -> String {
-        self.contact.pk.to_string()
+    pub fn public_key(&self) -> Arc<PublicKey> {
+        Arc::new(self.contact.pk.into())
     }
 
     pub fn relay_url(&self) -> Option<String> {

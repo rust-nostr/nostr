@@ -9,19 +9,29 @@ pip install nostr-sdk
 ```
 
 ```python
-from nostr_sdk import Keys, Client, EventBuilder
+from nostr_sdk import Keys, Client, EventBuilder, Filter
+import time
 
 keys = Keys.generate()
-pk = keys.public_key()
-print(pk)
+print(keys.public_key().to_bech32())
 
 client = Client(keys)
 
 client.add_relay("wss://relay.damus.io")
 client.connect()
 
+print("Mining a POW text note...")
 event = EventBuilder.new_text_note("Hello from Rust Nostr Python bindings!", []).to_pow_event(keys, 20)
-client.send_event(event)
+event_id = client.send_event(event)
+print(f"Event sent: {event_id}")
+
+time.sleep(2.0)
+
+print("Getting events from relays...")
+filter = Filter().authors([keys.public_key().to_hex()])
+events = client.get_events_of([filter], None)
+for event in events:
+    print(event.as_json())
 ```
 
 More examples can be found in the [examples/](https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-ffi/bindings-python/examples) directory.

@@ -4,9 +4,9 @@
 namespace nostr_sdk {
     // Nostr
     [Throws=NostrError]
-    string nip04_encrypt(string secret_key, string public_key, string content);
+    string nip04_encrypt(string secret_key, PublicKey public_key, string content);
     [Throws=NostrError]
-    string nip04_decrypt(string secret_key, string public_key, string encrypted_content);
+    string nip04_decrypt(string secret_key, PublicKey public_key, string encrypted_content);
 
     // Nostr SDK
     void init_logger(optional string? level = null);
@@ -25,22 +25,28 @@ interface NostrError {
     Generic(string err);
 };
 
+interface PublicKey {
+    [Throws=NostrError, Name=from_hex]
+    constructor(string hex);
+    [Throws=NostrError, Name=from_bech32]
+    constructor(string pk);
+    string to_hex();
+    [Throws=NostrError]
+    string to_bech32();
+};
+
 interface Keys {
     [Throws=NostrError]
     constructor(string sk);
     [Throws=NostrError, Name=from_public_key]
-    constructor(string pk);
-    [Throws=NostrError, Name=from_bech32_public_key]
-    constructor(string pk);
+    constructor(PublicKey pk);
     [Throws=NostrError, Name=from_bech32]
     constructor(string sk);
     [Name=generate]
     constructor();
     [Throws=NostrError, Name=from_mnemonic]
     constructor(string mnemonic, optional string? passphrase = null);
-    string public_key();
-    [Throws=NostrError]
-    string public_key_bech32();
+    PublicKey public_key();
     [Throws=NostrError]
     string secret_key();
     [Throws=NostrError]
@@ -49,21 +55,21 @@ interface Keys {
 
 [Enum]
 interface ClientMessage {
-    Ev(string event);
-    Req(string subscription_id, sequence<string> filters);
-    Count(string subscription_id, sequence<string> filters);
-    Close(string subscription_id);
-    Auth(string event);
+  Ev(string event);
+  Req(string subscription_id, sequence<string> filters);
+  Count(string subscription_id, sequence<string> filters);
+  Close(string subscription_id);
+  Auth(string event);
 };
 
 [Enum]
 interface RelayMessage {
-    Ev(string subscription_id, string event);
-    Notice(string message);
-    EndOfStoredEvents(string subscription_id);
-    Ok(string event_id, boolean status, string message);
-    Auth(string challenge);
-    Count(string subscription_id, u64 count);
+  Ev(string subscription_id, string event);
+  Notice(string message);
+  EndOfStoredEvents(string subscription_id);
+  Ok(string event_id, boolean status, string message);
+  Auth(string challenge);
+  Count(string subscription_id, u64 count);
 };
 
 interface Filter {
@@ -76,8 +82,8 @@ interface Filter {
     Filter kind(u64 kind);
     [Throws=NostrError, Self=ByArc]
     Filter event(string event_id);
-    [Throws=NostrError, Self=ByArc]
-    Filter pubkey(string pubkey);
+    [Self=ByArc]
+    Filter pubkey(PublicKey pubkey);
     [Self=ByArc]
     Filter since(u64 timestamp);
     [Self=ByArc]
@@ -87,7 +93,7 @@ interface Filter {
 };
 
 interface Event {
-    string pubkey();
+    PublicKey pubkey();
     u64 kind();
     string content();
     boolean verify();
@@ -113,15 +119,15 @@ interface EventBuilder {
     [Throws=NostrError, Name=long_form_text_note]
     constructor(string content, sequence<sequence<string>> tags);
     [Throws=NostrError, Name=repost]
-    constructor(string event_id, string public_key);
+    constructor(string event_id, PublicKey public_key);
     [Name=set_contact_list]
     constructor(sequence<Contact> list);
     [Throws=NostrError, Name=new_encrypted_direct_msg]
-    constructor(Keys sender_keys, string receiver_pubkey, string content);
+    constructor(Keys sender_keys, PublicKey receiver_pubkey, string content);
     [Throws=NostrError, Name=delete]
     constructor(sequence<string> ids, optional string? reason = null);
     [Throws=NostrError, Name=new_reaction]
-    constructor(string event_id, string public_key, string content);
+    constructor(string event_id, PublicKey public_key, string content);
 
     [Name=new_channel]
     constructor(AccountMetadata metadata);
@@ -132,17 +138,16 @@ interface EventBuilder {
     [Throws=NostrError, Name=hide_channel_msg]
     constructor(string message_id, string? reason);
     [Throws=NostrError, Name=mute_channel_user]
-    constructor(string public_key, string? reason);
+    constructor(PublicKey public_key, string? reason);
 
     [Throws=NostrError, Name=auth]
     constructor(string challenge, string relay_url);
 };
 
 interface Contact {
-    [Throws=NostrError]
-    constructor(string pk, optional string? relay_url = null, optional string? alias = null);
+    constructor(PublicKey pk, optional string? relay_url = null, optional string? alias = null);
     string? alias();
-    string public_key();
+    PublicKey public_key();
     string? relay_url();
 };
 

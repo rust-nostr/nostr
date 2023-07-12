@@ -3,12 +3,16 @@
 
 use std::ops::Deref;
 use std::str::FromStr;
+use std::sync::Arc;
 
-use nostr::key::{Keys as KeysSdk, XOnlyPublicKey};
+use nostr::key::Keys as KeysSdk;
 use nostr::nips::nip06::FromMnemonic;
 use nostr::nips::nip19::{FromBech32, ToBech32};
 use nostr::secp256k1::SecretKey;
 
+mod public_key;
+
+pub use self::public_key::PublicKey;
 use crate::error::{NostrError, Result};
 
 #[derive(Clone)]
@@ -38,11 +42,9 @@ impl Keys {
         })
     }
 
-    pub fn from_public_key(pk: String) -> Result<Self> {
-        let public_key = XOnlyPublicKey::from_str(&pk)?;
-
+    pub fn from_public_key(pk: Arc<PublicKey>) -> Result<Self> {
         Ok(Self {
-            keys: KeysSdk::from_public_key(public_key),
+            keys: KeysSdk::from_public_key(*pk.as_ref().deref()),
         })
     }
 
@@ -50,13 +52,6 @@ impl Keys {
         let sk = SecretKey::from_bech32(sk)?;
         Ok(Self {
             keys: KeysSdk::new(sk),
-        })
-    }
-
-    pub fn from_bech32_public_key(pk: String) -> Result<Self> {
-        let pk = XOnlyPublicKey::from_bech32(pk)?;
-        Ok(Self {
-            keys: KeysSdk::from_public_key(pk),
         })
     }
 
@@ -73,12 +68,8 @@ impl Keys {
         })
     }
 
-    pub fn public_key(&self) -> String {
-        self.keys.public_key().to_string()
-    }
-
-    pub fn public_key_bech32(&self) -> Result<String> {
-        Ok(self.keys.public_key().to_bech32()?)
+    pub fn public_key(&self) -> Arc<PublicKey> {
+        Arc::new(self.keys.public_key().into())
     }
 
     pub fn secret_key(&self) -> Result<String> {

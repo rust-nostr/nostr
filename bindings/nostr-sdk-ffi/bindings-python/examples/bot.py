@@ -4,7 +4,7 @@ import time
 keys = Keys.from_bech32("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
 sk = keys.secret_key()
 pk = keys.public_key()
-print(f"Bot public key: {pk}")
+print(f"Bot public key: {pk.to_bech32()}")
 
 client = Client(keys)
 

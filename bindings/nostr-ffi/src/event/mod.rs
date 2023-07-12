@@ -2,12 +2,14 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::sync::Arc;
 
 use nostr::Event as EventSdk;
 
 pub mod builder;
 
 use crate::error::Result;
+use crate::PublicKey;
 
 pub struct Event {
     event: EventSdk,
@@ -27,8 +29,8 @@ impl Deref for Event {
 }
 
 impl Event {
-    pub fn pubkey(&self) -> String {
-        self.event.pubkey.to_string()
+    pub fn pubkey(&self) -> Arc<PublicKey> {
+        Arc::new(self.event.pubkey.into())
     }
 
     pub fn kind(&self) -> u64 {

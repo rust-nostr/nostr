@@ -2,7 +2,7 @@ from nostr_sdk import Keys, Client, EventBuilder, Filter
 import time
 
 keys = Keys.generate()
-print(keys.public_key_bech32())
+print(keys.public_key().to_bech32())
 
 client = Client(keys)
 
@@ -17,7 +17,7 @@ print(f"Event sent: {event_id}")
 time.sleep(2.0)
 
 print("Getting events from relays...")
-filter = Filter().authors([keys.public_key()])
+filter = Filter().authors([keys.public_key().to_hex()])
 events = client.get_events_of([filter], None)
 for event in events:
     print(event.as_json())

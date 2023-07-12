@@ -2,14 +2,13 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 use std::sync::Arc;
 
-use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{EventId, Filter as FilterSdk, Timestamp};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
+use crate::PublicKey;
 
 #[derive(Clone)]
 pub struct Filter {
@@ -72,13 +71,10 @@ impl Filter {
         Ok(Arc::new(builder))
     }
 
-    pub fn pubkey(self: Arc<Self>, pubkey: String) -> Result<Arc<Self>> {
-        let pubkey = XOnlyPublicKey::from_str(&pubkey)?;
-
+    pub fn pubkey(self: Arc<Self>, pubkey: Arc<PublicKey>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.sub_filter = builder.sub_filter.pubkey(pubkey);
-
-        Ok(Arc::new(builder))
+        builder.sub_filter = builder.sub_filter.pubkey(*pubkey.as_ref().deref());
+        Arc::new(builder)
     }
 
     pub fn since(self: Arc<Self>, timestamp: u64) -> Arc<Self> {
