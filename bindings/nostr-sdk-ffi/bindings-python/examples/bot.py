@@ -28,6 +28,9 @@ class NotificationHandler(HandleNotification):
                 client.send_event(event)
             except Exception as e:
                 print(f"Error during content decryption: {e}")
+
+    def handle_msg(self, relay_url, msg):
+        None
     
 client.handle_notifications(NotificationHandler())
 
