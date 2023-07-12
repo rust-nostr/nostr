@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, Filter, Keys};
+use nostr_ffi::{ClientMessage, Event, Filter, Keys, RelayMessage};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 use nostr_sdk::Url;
@@ -197,8 +197,14 @@ impl Client {
         crate::thread::spawn("client", move || {
             log::debug!("Client Thread Started");
             Ok(self.inner.handle_notifications(|notification| {
-                if let RelayPoolNotificationSdk::Event(url, event) = notification {
-                    handler.handle(url.to_string(), Arc::new(event.into()));
+                match notification {
+                    RelayPoolNotificationSdk::Message(url, msg) => {
+                        handler.handle_msg(url.to_string(), msg.into())
+                    }
+                    RelayPoolNotificationSdk::Event(url, event) => {
+                        handler.handle(url.to_string(), Arc::new(event.into()))
+                    }
+                    _ => (),
                 }
 
                 Ok(false)
@@ -208,5 +214,6 @@ impl Client {
 }
 
 pub trait HandleNotification: Send + Sync + Debug {
+    fn handle_msg(&self, relay_url: String, msg: RelayMessage);
     fn handle(&self, relay_url: String, event: Arc<Event>);
 }

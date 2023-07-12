@@ -281,5 +281,6 @@ interface Client {
 };
 
 callback interface HandleNotification {
+    void handle_msg(string relay_url, RelayMessage msg);
     void handle(string relay_url, Event event);
 };
