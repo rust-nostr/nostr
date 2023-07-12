@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{Event, Filter};
+use nostr_ffi::{ClientMessage, Event, Filter};
 use nostr_sdk::{block_on, relay, FilterOptions, RelayStatus};
 
 use crate::error::Result;
@@ -120,7 +120,9 @@ impl Relay {
         block_on(async move { Ok(self.inner.terminate().await?) })
     }
 
-    // TODO: add send_msg
+    pub fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<()> {
+        block_on(async move { Ok(self.inner.send_msg(msg.try_into()?, wait).await?) })
+    }
 
     pub fn subscribe(&self, filters: Vec<Arc<Filter>>, wait: Option<Duration>) -> Result<String> {
         block_on(async move {

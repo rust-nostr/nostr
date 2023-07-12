@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{Event, Filter, Keys};
+use nostr_ffi::{ClientMessage, Event, Filter, Keys};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 use nostr_sdk::Url;
@@ -163,11 +163,15 @@ impl Client {
 
     // TODO: add req_events_of_with_opts
 
-    // TODO: add send_msg
+    pub fn send_msg(&self, msg: ClientMessage) -> Result<()> {
+        Ok(self.inner.send_msg(msg.try_into()?)?)
+    }
 
     // TODO: add send_msg_with_custom_wait
 
-    // TODO: add send_msg_to
+    pub fn send_msg_to(&self, url: String, msg: ClientMessage) -> Result<()> {
+        Ok(self.inner.send_msg_to(url, msg.try_into()?)?)
+    }
 
     // TODO: add send_msg_to_with_custom_wait
 

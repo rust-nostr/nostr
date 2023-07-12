@@ -19,6 +19,12 @@ impl fmt::Display for NostrSdkError {
     }
 }
 
+impl From<nostr_ffi::NostrError> for NostrSdkError {
+    fn from(e: nostr_ffi::NostrError) -> NostrSdkError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<nostr_sdk::client::Error> for NostrSdkError {
     fn from(e: nostr_sdk::client::Error) -> NostrSdkError {
         Self::Generic { err: e.to_string() }

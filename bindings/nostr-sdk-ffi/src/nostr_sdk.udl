@@ -198,6 +198,8 @@ interface Relay {
     void terminate();
 
     [Throws=NostrSdkError]
+    void send_msg(ClientMessage msg, duration? wait);
+    [Throws=NostrSdkError]
     string subscribe(sequence<Filter> filters, duration? wait);
     [Throws=NostrSdkError]
     void unsubscribe(duration? wait);
@@ -265,6 +267,10 @@ interface Client {
     sequence<Event> get_events_of(sequence<Filter> filters, duration? timeout);
     void req_events_of(sequence<Filter> filters, duration? timeout);
 
+    [Throws=NostrSdkError]
+    void send_msg(ClientMessage msg);
+    [Throws=NostrSdkError]
+    void send_msg_to(string url, ClientMessage msg);
     [Throws=NostrSdkError]
     string send_event(Event event);
     [Throws=NostrSdkError]
