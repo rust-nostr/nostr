@@ -22,6 +22,8 @@ pub enum MessageHandleError {
     Json(serde_json::Error),
     /// Event error
     Event(crate::event::Error),
+    /// Empty message
+    EmptyMsg,
 }
 
 impl std::error::Error for MessageHandleError {}
@@ -32,6 +34,7 @@ impl fmt::Display for MessageHandleError {
             Self::InvalidMessageFormat => write!(f, "Message has an invalid format"),
             Self::Json(e) => write!(f, "Json deserialization failed: {e}"),
             Self::Event(e) => write!(f, "{e}"),
+            Self::EmptyMsg => write!(f, "received empty message"),
         }
     }
 }

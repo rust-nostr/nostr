@@ -61,9 +61,6 @@ fn main() -> Result<()> {
         let msg_text = msg.to_text().expect("Failed to convert message to text");
         if let Ok(handled_message) = RelayMessage::from_json(msg_text) {
             match handled_message {
-                RelayMessage::Empty => {
-                    println!("Empty message")
-                }
                 RelayMessage::Notice { message } => {
                     println!("Got a notice: {}", message);
                 }

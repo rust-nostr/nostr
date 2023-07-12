@@ -35,7 +35,6 @@ pub enum RelayMessage {
         subscription_id: SubscriptionId,
         count: usize,
     },
-    Empty,
 }
 
 impl Serialize for RelayMessage {
@@ -132,7 +131,6 @@ impl RelayMessage {
                 subscription_id,
                 count,
             } => json!(["COUNT", subscription_id, { "count": count }]),
-            Self::Empty => Value::Null,
         }
     }
 
@@ -246,7 +244,7 @@ impl RelayMessage {
         log::trace!("{}", msg);
 
         if msg.is_empty() {
-            return Ok(Self::Empty);
+            return Err(MessageHandleError::EmptyMsg);
         }
 
         let value: Value = serde_json::from_str(msg)?;
