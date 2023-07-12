@@ -35,6 +35,25 @@ interface Keys {
     string secret_key_bech32();
 };
 
+[Enum]
+interface ClientMessage {
+  Ev(string event);
+  Req(string subscription_id, sequence<string> filters);
+  Count(string subscription_id, sequence<string> filters);
+  Close(string subscription_id);
+  Auth(string event);
+};
+
+[Enum]
+interface RelayMessage {
+  Ev(string subscription_id, string event);
+  Notice(string message);
+  EndOfStoredEvents(string subscription_id);
+  Ok(string event_id, boolean status, string message);
+  Auth(string challenge);
+  Count(string subscription_id, u64 count);
+};
+
 interface Filter {
     constructor();
     [Throws=NostrError, Self=ByArc]

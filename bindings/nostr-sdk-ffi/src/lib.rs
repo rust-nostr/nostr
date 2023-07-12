@@ -24,8 +24,8 @@ pub fn timestamp() -> u64 {
 mod ffi {
     // External
     pub use nostr_ffi::{
-        nip04_decrypt, nip04_encrypt, AccountMetadata, Contact, Event, EventBuilder, Filter, Keys,
-        NostrError,
+        nip04_decrypt, nip04_encrypt, AccountMetadata, ClientMessage, Contact, Event, EventBuilder,
+        Filter, Keys, NostrError, RelayMessage,
     };
     pub use nostr_sdk::RelayStatus;
 

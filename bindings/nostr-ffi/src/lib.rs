@@ -6,9 +6,9 @@ mod error;
 mod event;
 pub mod helper;
 mod key;
+mod message;
 mod metadata;
 mod nips;
-mod subscription;
 
 #[allow(missing_docs)]
 #[allow(unused_imports)]
@@ -21,9 +21,9 @@ mod ffi {
     pub use crate::event::builder::EventBuilder;
     pub use crate::event::Event;
     pub use crate::key::Keys;
+    pub use crate::message::{ClientMessage, Filter, RelayMessage};
     pub use crate::metadata::Metadata as AccountMetadata;
     pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
-    pub use crate::subscription::Filter;
 
     // UDL
     uniffi_macros::include_scaffolding!("nostr");
