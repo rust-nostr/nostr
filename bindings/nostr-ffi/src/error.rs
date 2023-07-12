@@ -72,6 +72,12 @@ impl From<nostr::hashes::hex::Error> for NostrError {
     }
 }
 
+impl From<nostr::serde_json::Error> for NostrError {
+    fn from(e: nostr::serde_json::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<nostr::event::id::Error> for NostrError {
     fn from(e: nostr::event::id::Error) -> NostrError {
         Self::Generic { err: e.to_string() }
