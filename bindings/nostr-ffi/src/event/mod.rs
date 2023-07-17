@@ -9,51 +9,63 @@ use nostr::Event as EventSdk;
 pub mod builder;
 
 use crate::error::Result;
-use crate::PublicKey;
+use crate::{PublicKey, Timestamp};
 
 pub struct Event {
-    event: EventSdk,
+    inner: EventSdk,
 }
 
 impl From<EventSdk> for Event {
-    fn from(event: EventSdk) -> Self {
-        Self { event }
+    fn from(inner: EventSdk) -> Self {
+        Self { inner }
     }
 }
 
 impl Deref for Event {
     type Target = EventSdk;
     fn deref(&self) -> &Self::Target {
-        &self.event
+        &self.inner
     }
 }
 
 impl Event {
+    pub fn id(&self) -> String {
+        self.inner.id.to_hex()
+    }
+
     pub fn pubkey(&self) -> Arc<PublicKey> {
-        Arc::new(self.event.pubkey.into())
+        Arc::new(self.inner.pubkey.into())
+    }
+
+    pub fn created_at(&self) -> Arc<Timestamp> {
+        Arc::new(self.inner.created_at.into())
     }
 
     pub fn kind(&self) -> u64 {
-        self.event.kind.into()
+        self.inner.kind.into()
     }
+
+    // TODO: add tags
 
     pub fn content(&self) -> String {
-        self.event.content.clone()
+        self.inner.content.clone()
     }
-}
 
-impl Event {
+    pub fn signature(&self) -> String {
+        self.inner.sig.to_string()
+    }
+
     pub fn verify(&self) -> bool {
-        self.event.verify().is_ok()
+        self.inner.verify().is_ok()
     }
 
     pub fn from_json(json: String) -> Result<Self> {
         Ok(Self {
-            event: EventSdk::from_json(json)?,
+            inner: EventSdk::from_json(json)?,
         })
     }
 
     pub fn as_json(&self) -> String {
-        self.event.as_json()
+        self.inner.as_json()
     }
 }
