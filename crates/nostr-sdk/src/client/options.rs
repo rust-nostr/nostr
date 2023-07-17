@@ -165,4 +165,15 @@ impl Options {
     pub(crate) fn get_pool(&self) -> RelayPoolOptions {
         self.pool
     }
+
+    /// Shutdown client on drop
+    pub fn shutdown_on_drop(self, value: bool) -> Self {
+        Self {
+            pool: RelayPoolOptions {
+                shutdown_on_drop: value,
+                ..self.pool
+            },
+            ..self
+        }
+    }
 }

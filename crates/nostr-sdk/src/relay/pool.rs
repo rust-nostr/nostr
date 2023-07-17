@@ -197,6 +197,21 @@ pub struct RelayPool {
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     filters: Arc<Mutex<Vec<Filter>>>,
     pool_task: RelayPoolTask,
+    opts: RelayPoolOptions,
+}
+
+impl Drop for RelayPool {
+    fn drop(&mut self) {
+        if self.opts.shutdown_on_drop {
+            log::debug!("Dropping the Relay Pool...");
+            let pool = self.clone();
+            thread::spawn(async move {
+                pool.shutdown()
+                    .await
+                    .expect("Impossible to drop the relay pool")
+            });
+        }
+    }
 }
 
 impl RelayPool {
@@ -217,6 +232,7 @@ impl RelayPool {
             notification_sender,
             filters: Arc::new(Mutex::new(Vec::new())),
             pool_task: relay_pool_task,
+            opts,
         };
 
         pool.start();

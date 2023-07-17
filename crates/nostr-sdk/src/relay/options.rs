@@ -78,6 +78,8 @@ pub struct RelayPoolOptions {
     /// A lower number can cause receiving in notification channel
     /// the same event multiple times
     pub task_max_seen_events: usize,
+    /// Shutdown on drop
+    pub shutdown_on_drop: bool,
 }
 
 impl Default for RelayPoolOptions {
@@ -86,6 +88,7 @@ impl Default for RelayPoolOptions {
             notification_channel_size: 1024,
             task_channel_size: 1024,
             task_max_seen_events: 100_000,
+            shutdown_on_drop: false,
         }
     }
 }
