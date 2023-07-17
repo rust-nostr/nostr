@@ -2,36 +2,19 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::str::FromStr;
 use std::sync::Arc;
 
-use nostr::Event as EventSdk;
+use nostr::secp256k1::schnorr::Signature;
 
-mod builder;
-mod unsigned;
-
-pub use self::builder::EventBuilder;
-pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
-use crate::{PublicKey, Timestamp};
+use crate::{Event, Keys, PublicKey, Timestamp};
 
-pub struct Event {
-    inner: EventSdk,
+pub struct UnsignedEvent {
+    inner: nostr::UnsignedEvent,
 }
 
-impl From<EventSdk> for Event {
-    fn from(inner: EventSdk) -> Self {
-        Self { inner }
-    }
-}
-
-impl Deref for Event {
-    type Target = EventSdk;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl Event {
+impl UnsignedEvent {
     pub fn id(&self) -> String {
         self.inner.id.to_hex()
     }
@@ -54,17 +37,23 @@ impl Event {
         self.inner.content.clone()
     }
 
-    pub fn signature(&self) -> String {
-        self.inner.sig.to_string()
+    pub fn sign(&self, keys: Arc<Keys>) -> Result<Arc<Event>> {
+        Ok(Arc::new(Event::from(
+            self.inner.clone().sign(keys.as_ref().deref())?,
+        )))
     }
 
-    pub fn verify(&self) -> bool {
-        self.inner.verify().is_ok()
+    /// Add signature to [`UnsignedEvent`]
+    pub fn add_signature(&self, sig: String) -> Result<Arc<Event>> {
+        let sig = Signature::from_str(&sig)?;
+        Ok(Arc::new(Event::from(
+            self.inner.clone().add_signature(sig)?,
+        )))
     }
 
     pub fn from_json(json: String) -> Result<Self> {
         Ok(Self {
-            inner: EventSdk::from_json(json)?,
+            inner: nostr::UnsignedEvent::from_json(json)?,
         })
     }
 

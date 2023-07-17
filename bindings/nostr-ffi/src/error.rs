@@ -36,6 +36,12 @@ impl From<nostr::event::builder::Error> for NostrError {
     }
 }
 
+impl From<nostr::event::unsigned::Error> for NostrError {
+    fn from(e: nostr::event::unsigned::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<nostr::event::tag::Error> for NostrError {
     fn from(e: nostr::event::tag::Error) -> NostrError {
         Self::Generic { err: e.to_string() }

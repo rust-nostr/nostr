@@ -98,6 +98,21 @@ interface Filter {
     Filter authors(sequence<string> authors);
 };
 
+interface UnsignedEvent {
+    string id();
+    PublicKey pubkey();
+    Timestamp created_at();
+    u64 kind();
+    string content();
+    [Throws=NostrError]
+    Event sign(Keys keys);
+    [Throws=NostrError]
+    Event add_signature(string sig);
+    [Throws=NostrError, Name=from_json]
+    constructor(string json);
+    string as_json();
+};
+
 interface Event {
     string id();
     PublicKey pubkey();
