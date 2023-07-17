@@ -1,7 +1,13 @@
-from nostr_sdk import Keys, Client, Event, EventBuilder, Filter, HandleNotification, timestamp, nip04_decrypt
+from nostr_sdk import Keys, Client, Event, EventBuilder, Filter, HandleNotification, timestamp, nip04_decrypt, SecretKey
 import time
 
-keys = Keys.from_bech32("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
+# sk = SecretKey.from_bech32("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
+# keys = Keys(sk)
+
+# OR
+
+keys = Keys.from_sk_str("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
+
 sk = keys.secret_key()
 pk = keys.public_key()
 print(f"Bot public key: {pk.to_bech32()}")
