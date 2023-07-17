@@ -198,18 +198,26 @@ pub struct RelayPool {
     filters: Arc<Mutex<Vec<Filter>>>,
     pool_task: RelayPoolTask,
     opts: RelayPoolOptions,
+    dropped: Arc<AtomicBool>,
 }
 
 impl Drop for RelayPool {
     fn drop(&mut self) {
         if self.opts.shutdown_on_drop {
-            log::debug!("Dropping the Relay Pool...");
-            let pool = self.clone();
-            thread::spawn(async move {
-                pool.shutdown()
-                    .await
-                    .expect("Impossible to drop the relay pool")
-            });
+            if self.dropped.load(Ordering::SeqCst) {
+                log::warn!("Relay Pool already dropped");
+            } else {
+                log::debug!("Dropping the Relay Pool...");
+                let _ = self
+                    .dropped
+                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                let pool = self.clone();
+                thread::spawn(async move {
+                    pool.shutdown()
+                        .await
+                        .expect("Impossible to drop the relay pool")
+                });
+            }
         }
     }
 }
@@ -233,6 +241,7 @@ impl RelayPool {
             filters: Arc::new(Mutex::new(Vec::new())),
             pool_task: relay_pool_task,
             opts,
+            dropped: Arc::new(AtomicBool::new(false)),
         };
 
         pool.start();
