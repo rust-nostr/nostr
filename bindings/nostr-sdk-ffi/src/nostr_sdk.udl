@@ -49,6 +49,10 @@ interface Keys {
     constructor(SecretKey sk);
     [Name=from_public_key]
     constructor(PublicKey pk);
+    [Throws=NostrError, Name=from_sk_str]
+    constructor(string sk);
+    [Throws=NostrError, Name=from_pk_str]
+    constructor(string pk);
     [Name=generate]
     constructor();
     [Throws=NostrError, Name=from_mnemonic]

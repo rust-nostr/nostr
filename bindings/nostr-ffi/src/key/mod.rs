@@ -4,7 +4,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::key::Keys as KeysSdk;
+use nostr::key::{FromPkStr, FromSkStr, Keys as KeysSdk};
 use nostr::nips::nip06::FromMnemonic;
 
 mod public_key;
@@ -43,6 +43,18 @@ impl Keys {
         Self {
             keys: KeysSdk::from_public_key(*pk.as_ref().deref()),
         }
+    }
+
+    pub fn from_sk_str(sk: String) -> Result<Self> {
+        Ok(Self {
+            keys: KeysSdk::from_sk_str(&sk)?,
+        })
+    }
+
+    pub fn from_pk_str(pk: String) -> Result<Self> {
+        Ok(Self {
+            keys: KeysSdk::from_pk_str(&pk)?,
+        })
     }
 
     pub fn generate() -> Self {
