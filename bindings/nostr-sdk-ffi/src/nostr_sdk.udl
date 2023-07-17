@@ -10,7 +10,6 @@ namespace nostr_sdk {
 
     // Nostr SDK
     void init_logger(optional string? level = null);
-    u64 timestamp();
 };
 
 [Error]
@@ -23,6 +22,15 @@ interface NostrSdkError {
 [Error]
 interface NostrError {
     Generic(string err);
+};
+
+interface Timestamp {
+    [Name=now]
+    constructor();
+    [Name=from_secs]
+    constructor(u64 secs);
+    u64 as_secs();
+    string to_human_datetime();
 };
 
 interface SecretKey {

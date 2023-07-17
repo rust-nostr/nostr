@@ -21,7 +21,7 @@ mod ffi {
     pub use crate::key::{Keys, PublicKey, SecretKey};
     pub use crate::message::{ClientMessage, Filter, RelayMessage};
     pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
-    pub use crate::types::{Contact, Metadata as AccountMetadata};
+    pub use crate::types::{Contact, Metadata as AccountMetadata, Timestamp};
 
     // UDL
     uniffi_macros::include_scaffolding!("nostr");

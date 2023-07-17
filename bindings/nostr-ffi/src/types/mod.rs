@@ -3,6 +3,8 @@
 
 mod contact;
 mod metadata;
+mod time;
 
 pub use self::contact::Contact;
 pub use self::metadata::Metadata;
+pub use self::time::Timestamp;
