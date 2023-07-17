@@ -14,6 +14,12 @@ pub struct UnsignedEvent {
     inner: nostr::UnsignedEvent,
 }
 
+impl From<nostr::UnsignedEvent> for UnsignedEvent {
+    fn from(inner: nostr::UnsignedEvent) -> Self {
+        Self { inner }
+    }
+}
+
 impl UnsignedEvent {
     pub fn id(&self) -> String {
         self.inner.id.to_hex()

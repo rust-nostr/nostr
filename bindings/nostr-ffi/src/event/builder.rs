@@ -11,7 +11,7 @@ use super::Event;
 use crate::error::Result;
 use crate::key::Keys;
 use crate::types::{Contact, Metadata};
-use crate::PublicKey;
+use crate::{PublicKey, UnsignedEvent};
 
 pub struct EventBuilder {
     builder: EventBuilderSdk,
@@ -54,6 +54,28 @@ impl EventBuilder {
                 .to_pow_event(keys.deref(), difficulty)?
                 .into(),
         ))
+    }
+
+    pub fn to_unsigned_event(&self, public_key: Arc<PublicKey>) -> Arc<UnsignedEvent> {
+        Arc::new(
+            self.builder
+                .clone()
+                .to_unsigned_event(*public_key.as_ref().deref())
+                .into(),
+        )
+    }
+
+    pub fn to_unsigned_pow_event(
+        &self,
+        public_key: Arc<PublicKey>,
+        difficulty: u8,
+    ) -> Arc<UnsignedEvent> {
+        Arc::new(
+            self.builder
+                .clone()
+                .to_unsigned_pow_event(*public_key.as_ref().deref(), difficulty)
+                .into(),
+        )
     }
 }
 

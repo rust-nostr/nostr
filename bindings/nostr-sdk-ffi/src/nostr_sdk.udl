@@ -144,6 +144,8 @@ interface EventBuilder {
     Event to_event(Keys keys);
     [Throws=NostrError]
     Event to_pow_event(Keys keys, u8 difficulty);
+    UnsignedEvent to_unsigned_event(PublicKey public_key);
+    UnsignedEvent to_unsigned_pow_event(PublicKey public_key, u8 difficulty);
 
     [Name=set_metadata]
     constructor(AccountMetadata metadata);
