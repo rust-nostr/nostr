@@ -8,10 +8,9 @@ use nostr::url::Url;
 use nostr::{ChannelId, Contact as ContactSdk, EventBuilder as EventBuilderSdk, EventId, Tag};
 
 use super::Event;
-use crate::contact::Contact;
 use crate::error::Result;
 use crate::key::Keys;
-use crate::metadata::Metadata;
+use crate::types::{Contact, Metadata};
 use crate::PublicKey;
 
 pub struct EventBuilder {
