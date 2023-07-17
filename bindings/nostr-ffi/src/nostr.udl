@@ -3,14 +3,24 @@
 
 namespace nostr {
     [Throws=NostrError]
-    string nip04_encrypt(string secret_key, PublicKey public_key, string content);
+    string nip04_encrypt(SecretKey secret_key, PublicKey public_key, string content);
     [Throws=NostrError]
-    string nip04_decrypt(string secret_key, PublicKey public_key, string encrypted_content);
+    string nip04_decrypt(SecretKey secret_key, PublicKey public_key, string encrypted_content);
 };
 
 [Error]
 interface NostrError {
     Generic(string err);
+};
+
+interface SecretKey {
+    [Throws=NostrError, Name=from_hex]
+    constructor(string hex);
+    [Throws=NostrError, Name=from_bech32]
+    constructor(string pk);
+    string to_hex();
+    [Throws=NostrError]
+    string to_bech32();
 };
 
 interface PublicKey {
@@ -24,21 +34,16 @@ interface PublicKey {
 };
 
 interface Keys {
-    [Throws=NostrError]
-    constructor(string sk);
-    [Throws=NostrError, Name=from_public_key]
+    constructor(SecretKey sk);
+    [Name=from_public_key]
     constructor(PublicKey pk);
-    [Throws=NostrError, Name=from_bech32]
-    constructor(string sk);
     [Name=generate]
     constructor();
     [Throws=NostrError, Name=from_mnemonic]
     constructor(string mnemonic, optional string? passphrase = null);
     PublicKey public_key();
     [Throws=NostrError]
-    string secret_key();
-    [Throws=NostrError]
-    string secret_key_bech32();
+    SecretKey secret_key();
 };
 
 [Enum]

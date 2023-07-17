@@ -2,32 +2,32 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip04;
-use nostr::secp256k1::SecretKey;
 
 use crate::error::Result;
-use crate::PublicKey;
+use crate::{PublicKey, SecretKey};
 
 pub fn nip04_encrypt(
-    secret_key: String,
+    secret_key: Arc<SecretKey>,
     public_key: Arc<PublicKey>,
     content: String,
 ) -> Result<String> {
-    let sk = SecretKey::from_str(&secret_key)?;
-    Ok(nip04::encrypt(&sk, public_key.as_ref().deref(), content)?)
+    Ok(nip04::encrypt(
+        secret_key.as_ref().deref(),
+        public_key.as_ref().deref(),
+        content,
+    )?)
 }
 
 pub fn nip04_decrypt(
-    secret_key: String,
+    secret_key: Arc<SecretKey>,
     public_key: Arc<PublicKey>,
     encrypted_content: String,
 ) -> Result<String> {
-    let sk = SecretKey::from_str(&secret_key)?;
     Ok(nip04::decrypt(
-        &sk,
+        secret_key.as_ref().deref(),
         public_key.as_ref().deref(),
         encrypted_content,
     )?)

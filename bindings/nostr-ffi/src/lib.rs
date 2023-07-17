@@ -20,7 +20,7 @@ mod ffi {
     pub use crate::contact::Contact;
     pub use crate::event::builder::EventBuilder;
     pub use crate::event::Event;
-    pub use crate::key::{Keys, PublicKey};
+    pub use crate::key::{Keys, PublicKey, SecretKey};
     pub use crate::message::{ClientMessage, Filter, RelayMessage};
     pub use crate::metadata::Metadata as AccountMetadata;
     pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};

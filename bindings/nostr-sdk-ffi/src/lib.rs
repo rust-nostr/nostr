@@ -25,7 +25,7 @@ mod ffi {
     // External
     pub use nostr_ffi::{
         nip04_decrypt, nip04_encrypt, AccountMetadata, ClientMessage, Contact, Event, EventBuilder,
-        Filter, Keys, NostrError, PublicKey, RelayMessage,
+        Filter, Keys, NostrError, PublicKey, RelayMessage, SecretKey,
     };
     pub use nostr_sdk::RelayStatus;
 
