@@ -80,21 +80,25 @@ interface RelayMessage {
 
 interface Filter {
     constructor();
-    [Throws=NostrError, Self=ByArc]
+    [Self=ByArc]
     Filter id(string id);
-    [Throws=NostrError, Self=ByArc]
+    [Self=ByArc]
     Filter ids(sequence<string> ids);
     [Self=ByArc]
     Filter kind(u64 kind);
-    [Throws=NostrError, Self=ByArc]
-    Filter event(string event_id);
+    [Self=ByArc]
+    Filter event(EventId event_id);
+    [Self=ByArc]
+    Filter events(sequence<EventId> ids);
     [Self=ByArc]
     Filter pubkey(PublicKey pubkey);
     [Self=ByArc]
-    Filter since(u64 timestamp);
+    Filter pubkeys(sequence<PublicKey> pubkeys);
     [Self=ByArc]
-    Filter until(u64 timestamp);
-    [Throws=NostrError, Self=ByArc]
+    Filter since(Timestamp timestamp);
+    [Self=ByArc]
+    Filter until(Timestamp timestamp);
+    [Self=ByArc]
     Filter authors(sequence<string> authors);
 };
 
