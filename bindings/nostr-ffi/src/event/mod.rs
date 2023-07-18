@@ -7,9 +7,11 @@ use std::sync::Arc;
 use nostr::Event as EventSdk;
 
 mod builder;
+mod id;
 mod unsigned;
 
 pub use self::builder::EventBuilder;
+pub use self::id::EventId;
 pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
 use crate::{PublicKey, Timestamp};
@@ -32,8 +34,8 @@ impl Deref for Event {
 }
 
 impl Event {
-    pub fn id(&self) -> String {
-        self.inner.id.to_hex()
+    pub fn id(&self) -> Arc<EventId> {
+        Arc::new(self.inner.id.into())
     }
 
     pub fn pubkey(&self) -> Arc<PublicKey> {

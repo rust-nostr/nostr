@@ -5,9 +5,9 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::url::Url;
-use nostr::{ChannelId, Contact as ContactSdk, EventBuilder as EventBuilderSdk, EventId, Tag};
+use nostr::{ChannelId, Contact as ContactSdk, EventBuilder as EventBuilderSdk, Tag};
 
-use super::Event;
+use super::{Event, EventId};
 use crate::error::Result;
 use crate::key::Keys;
 use crate::types::{Contact, Metadata};
@@ -142,38 +142,35 @@ impl EventBuilder {
         })
     }
 
-    pub fn repost(event_id: String, public_key: Arc<PublicKey>) -> Result<Self> {
-        Ok(Self {
+    pub fn repost(event_id: Arc<EventId>, public_key: Arc<PublicKey>) -> Self {
+        Self {
             builder: EventBuilderSdk::repost(
-                EventId::from_hex(event_id)?,
+                event_id.as_ref().into(),
                 *public_key.as_ref().deref(),
             ),
-        })
+        }
     }
 
     /// Create delete event
-    pub fn delete(ids: Vec<String>, reason: Option<String>) -> Result<Self> {
-        let mut new_ids: Vec<EventId> = Vec::with_capacity(ids.len());
-
-        for id in ids.into_iter() {
-            new_ids.push(EventId::from_hex(id)?);
+    pub fn delete(ids: Vec<Arc<EventId>>, reason: Option<String>) -> Self {
+        let ids: Vec<nostr::EventId> = ids.into_iter().map(|e| e.as_ref().into()).collect();
+        Self {
+            builder: EventBuilderSdk::delete(ids, reason.as_deref()),
         }
-
-        Ok(Self {
-            builder: EventBuilderSdk::delete(new_ids, reason.as_deref()),
-        })
     }
 
     pub fn new_reaction(
-        event_id: String,
+        event_id: Arc<EventId>,
         public_key: Arc<PublicKey>,
         content: String,
-    ) -> Result<Self> {
-        let event_id = EventId::from_hex(event_id)?;
-        let public_key = *public_key.as_ref().deref();
-        Ok(Self {
-            builder: EventBuilderSdk::new_reaction(event_id, public_key, content),
-        })
+    ) -> Self {
+        Self {
+            builder: EventBuilderSdk::new_reaction(
+                event_id.as_ref().into(),
+                *public_key.as_ref().deref(),
+                content,
+            ),
+        }
     }
 
     pub fn new_channel(metadata: Arc<Metadata>) -> Self {
@@ -210,16 +207,16 @@ impl EventBuilder {
         })
     }
 
-    pub fn hide_channel_msg(message_id: String, reason: Option<String>) -> Result<Self> {
-        Ok(Self {
-            builder: EventBuilderSdk::hide_channel_msg(EventId::from_hex(message_id)?, reason),
-        })
+    pub fn hide_channel_msg(message_id: Arc<EventId>, reason: Option<String>) -> Self {
+        Self {
+            builder: EventBuilderSdk::hide_channel_msg(message_id.as_ref().into(), reason),
+        }
     }
 
-    pub fn mute_channel_user(public_key: Arc<PublicKey>, reason: Option<String>) -> Result<Self> {
-        Ok(Self {
+    pub fn mute_channel_user(public_key: Arc<PublicKey>, reason: Option<String>) -> Self {
+        Self {
             builder: EventBuilderSdk::mute_channel_user(*public_key.as_ref().deref(), reason),
-        })
+        }
     }
 
     pub fn auth(challenge: String, relay_url: String) -> Result<Self> {

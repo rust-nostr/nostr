@@ -109,8 +109,23 @@ interface Filter {
     Filter authors(sequence<string> authors);
 };
 
+interface EventId {
+    [Throws=NostrError]
+    constructor(PublicKey pubkey, Timestamp created_at, u64 kind, sequence<sequence<string>> tags, string content);
+    [Throws=NostrError, Name=from_slice]
+    constructor(sequence<u8> bytes);
+    [Throws=NostrError, Name=from_hex]
+    constructor(string hex);
+    [Throws=NostrError, Name=from_bech32]
+    constructor(string id);
+    sequence<u8> as_bytes();
+    string to_hex();
+    [Throws=NostrError]
+    string to_bech32();
+};
+
 interface UnsignedEvent {
-    string id();
+    EventId id();
     PublicKey pubkey();
     Timestamp created_at();
     u64 kind();
@@ -125,7 +140,7 @@ interface UnsignedEvent {
 };
 
 interface Event {
-    string id();
+    EventId id();
     PublicKey pubkey();
     Timestamp created_at();
     u64 kind();
@@ -155,16 +170,16 @@ interface EventBuilder {
     constructor(string content, sequence<sequence<string>> tags);
     [Throws=NostrError, Name=long_form_text_note]
     constructor(string content, sequence<sequence<string>> tags);
-    [Throws=NostrError, Name=repost]
-    constructor(string event_id, PublicKey public_key);
+    [Name=repost]
+    constructor(EventId event_id, PublicKey public_key);
     [Name=set_contact_list]
     constructor(sequence<Contact> list);
     [Throws=NostrError, Name=new_encrypted_direct_msg]
     constructor(Keys sender_keys, PublicKey receiver_pubkey, string content);
-    [Throws=NostrError, Name=delete]
-    constructor(sequence<string> ids, optional string? reason = null);
-    [Throws=NostrError, Name=new_reaction]
-    constructor(string event_id, PublicKey public_key, string content);
+    [Name=delete]
+    constructor(sequence<EventId> ids, optional string? reason = null);
+    [Name=new_reaction]
+    constructor(EventId event_id, PublicKey public_key, string content);
 
     [Name=new_channel]
     constructor(AccountMetadata metadata);
@@ -172,9 +187,9 @@ interface EventBuilder {
     constructor(string channel_id, string? relay_url, AccountMetadata metadata);
     [Throws=NostrError, Name=new_channel_msg]
     constructor(string channel_id, string relay_url, string content);
-    [Throws=NostrError, Name=hide_channel_msg]
-    constructor(string message_id, string? reason);
-    [Throws=NostrError, Name=mute_channel_user]
+    [Name=hide_channel_msg]
+    constructor(EventId message_id, string? reason);
+    [Name=mute_channel_user]
     constructor(PublicKey public_key, string? reason);
 
     [Throws=NostrError, Name=auth]
@@ -314,9 +329,9 @@ interface Client {
     [Throws=NostrSdkError]
     void send_msg_to(string url, ClientMessage msg);
     [Throws=NostrSdkError]
-    string send_event(Event event);
+    EventId send_event(Event event);
     [Throws=NostrSdkError]
-    string send_event_to(string url, Event event);
+    EventId send_event_to(string url, Event event);
 
     [Self=ByArc]
     void handle_notifications(HandleNotification handler);

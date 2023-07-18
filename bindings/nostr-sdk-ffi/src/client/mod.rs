@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, Filter, Keys, RelayMessage};
+use nostr_ffi::{ClientMessage, Event, EventId, Filter, Keys, RelayMessage};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 use nostr_sdk::Url;
@@ -175,20 +175,22 @@ impl Client {
 
     // TODO: add send_msg_to_with_custom_wait
 
-    pub fn send_event(&self, event: Arc<Event>) -> Result<String> {
-        Ok(self
-            .inner
-            .send_event(event.as_ref().deref().clone())?
-            .to_hex())
+    pub fn send_event(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .send_event(event.as_ref().deref().clone())?
+                .into(),
+        ))
     }
 
     // TODO: add send_event_with_custom_wait
 
-    pub fn send_event_to(&self, url: String, event: Arc<Event>) -> Result<String> {
-        Ok(self
-            .inner
-            .send_event_to(url, event.as_ref().deref().clone())?
-            .to_hex())
+    pub fn send_event_to(&self, url: String, event: Arc<Event>) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .send_event_to(url, event.as_ref().deref().clone())?
+                .into(),
+        ))
     }
 
     // TODO: add send_event_to_with_custom_wait

@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 pub struct Timestamp {
     inner: nostr::Timestamp,
 }
@@ -8,6 +10,13 @@ pub struct Timestamp {
 impl From<nostr::Timestamp> for Timestamp {
     fn from(inner: nostr::Timestamp) -> Self {
         Self { inner }
+    }
+}
+
+impl Deref for Timestamp {
+    type Target = nostr::Timestamp;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 

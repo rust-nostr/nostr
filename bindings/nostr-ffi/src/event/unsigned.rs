@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use nostr::secp256k1::schnorr::Signature;
 
+use super::EventId;
 use crate::error::Result;
 use crate::{Event, Keys, PublicKey, Timestamp};
 
@@ -21,8 +22,8 @@ impl From<nostr::UnsignedEvent> for UnsignedEvent {
 }
 
 impl UnsignedEvent {
-    pub fn id(&self) -> String {
-        self.inner.id.to_hex()
+    pub fn id(&self) -> Arc<EventId> {
+        Arc::new(self.inner.id.into())
     }
 
     pub fn pubkey(&self) -> Arc<PublicKey> {
