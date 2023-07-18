@@ -63,6 +63,8 @@ interface Keys {
     constructor(string pk);
     [Name=generate]
     constructor();
+    [Throws=NostrError, Name=vanity]
+    constructor(sequence<string> prefixes, boolean bech32, u8 num_cores);
     [Throws=NostrError, Name=from_mnemonic]
     constructor(string mnemonic, optional string? passphrase = null);
     PublicKey public_key();

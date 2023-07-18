@@ -63,6 +63,12 @@ impl Keys {
         }
     }
 
+    pub fn vanity(prefixes: Vec<String>, bech32: bool, num_cores: u8) -> Result<Self> {
+        Ok(Self {
+            keys: KeysSdk::vanity(prefixes, bech32, num_cores as usize)?,
+        })
+    }
+
     pub fn from_mnemonic(mnemonic: String, passphrase: Option<String>) -> Result<Self> {
         Ok(Self {
             keys: KeysSdk::from_mnemonic(mnemonic, passphrase)

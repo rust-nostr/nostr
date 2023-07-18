@@ -24,6 +24,12 @@ impl From<nostr::key::Error> for NostrError {
     }
 }
 
+impl From<nostr::key::vanity::Error> for NostrError {
+    fn from(e: nostr::key::vanity::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<nostr::event::Error> for NostrError {
     fn from(e: nostr::event::Error) -> NostrError {
         Self::Generic { err: e.to_string() }
