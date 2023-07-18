@@ -23,7 +23,9 @@ client.connect()
 print("Mining a POW text note...")
 event = EventBuilder.new_text_note("Hello from Rust Nostr Python bindings!", []).to_pow_event(keys, 20)
 event_id = client.send_event(event)
-print(f"Event sent: {event_id}")
+print("Event sent:")
+print(f" hex:    {event_id.to_hex()}")
+print(f" bech32: {event_id.to_bech32()}")
 
 time.sleep(2.0)
 

@@ -1,11 +1,9 @@
-from nostr_sdk import Keys, Client, Event, EventBuilder, Filter, HandleNotification, timestamp, nip04_decrypt, SecretKey
+from nostr_sdk import Keys, Client, Event, EventBuilder, Filter, HandleNotification, Timestamp, nip04_decrypt, SecretKey
 import time
 
 # sk = SecretKey.from_bech32("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
 # keys = Keys(sk)
-
 # OR
-
 keys = Keys.from_sk_str("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
 
 sk = keys.secret_key()
@@ -19,7 +17,7 @@ client.add_relay("wss://offchain.pub")
 client.add_relay("wss://nostr.oxtr.dev")
 client.connect()
 
-filter = Filter().pubkey(pk).kind(4).since(timestamp())
+filter = Filter().pubkey(pk).kind(4).since(Timestamp.now())
 client.subscribe([filter])
 
 class NotificationHandler(HandleNotification):
