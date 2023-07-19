@@ -107,7 +107,7 @@ impl Keys {
 
     /// Generate new random [`Keys`]
     pub fn generate() -> Self {
-        let mut rng = OsRng::default();
+        let mut rng = OsRng;
         let (secret_key, _) = SECP256K1.generate_keypair(&mut rng);
         Self::new(secret_key)
     }
