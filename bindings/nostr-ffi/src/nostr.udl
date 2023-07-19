@@ -34,8 +34,12 @@ interface Profile {
     constructor(PublicKey public_key, sequence<string> relays);
     [Throws=NostrError, Name=from_bech32]
     constructor(string bech32);
+    [Throws=NostrError, Name=from_nostr_uri]
+    constructor(string uri);
     [Throws=NostrError]
     string to_bech32();
+    [Throws=NostrError]
+    string to_nostr_uri();
     PublicKey public_key();
     sequence<string> relays();
 };
@@ -64,9 +68,13 @@ interface PublicKey {
     constructor(string hex);
     [Throws=NostrError, Name=from_bech32]
     constructor(string pk);
+    [Throws=NostrError, Name=from_nostr_uri]
+    constructor(string uri);
     string to_hex();
     [Throws=NostrError]
     string to_bech32();
+    [Throws=NostrError]
+    string to_nostr_uri();
 };
 
 interface Keys {
@@ -140,10 +148,14 @@ interface EventId {
     constructor(string hex);
     [Throws=NostrError, Name=from_bech32]
     constructor(string id);
+    [Throws=NostrError, Name=from_nostr_uri]
+    constructor(string uri);
     sequence<u8> as_bytes();
     string to_hex();
     [Throws=NostrError]
     string to_bech32();
+    [Throws=NostrError]
+    string to_nostr_uri();
 };
 
 interface UnsignedEvent {

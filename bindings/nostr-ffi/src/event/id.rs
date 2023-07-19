@@ -4,6 +4,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
+use nostr::nips::nip21::NostrURI;
 use nostr::prelude::{FromBech32, ToBech32};
 use nostr::{Kind, Tag};
 
@@ -73,6 +74,12 @@ impl EventId {
         })
     }
 
+    pub fn from_nostr_uri(uri: String) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventId::from_nostr_uri(uri)?,
+        })
+    }
+
     pub fn as_bytes(&self) -> Vec<u8> {
         self.inner.as_bytes().to_vec()
     }
@@ -83,5 +90,9 @@ impl EventId {
 
     pub fn to_bech32(&self) -> Result<String> {
         Ok(self.inner.to_bech32()?)
+    }
+
+    pub fn to_nostr_uri(&self) -> Result<String> {
+        Ok(self.inner.to_nostr_uri()?)
     }
 }
