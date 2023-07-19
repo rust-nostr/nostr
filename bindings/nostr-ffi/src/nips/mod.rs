@@ -2,4 +2,5 @@
 // Distributed under the MIT software license
 
 pub mod nip04;
+pub mod nip05;
 pub mod nip11;

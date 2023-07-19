@@ -13,6 +13,12 @@ pub struct Profile {
     inner: nostr::Profile,
 }
 
+impl From<nostr::Profile> for Profile {
+    fn from(inner: nostr::Profile) -> Self {
+        Self { inner }
+    }
+}
+
 impl Profile {
     /// New [`Profile`]
     pub fn new(public_key: Arc<PublicKey>, relays: Vec<String>) -> Self {

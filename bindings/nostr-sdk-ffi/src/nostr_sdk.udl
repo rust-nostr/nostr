@@ -8,6 +8,11 @@ namespace nostr_sdk {
     [Throws=NostrError]
     string nip04_decrypt(SecretKey secret_key, PublicKey public_key, string encrypted_content);
 
+    [Throws=NostrError]
+    void verify_nip05(PublicKey public_key, string nip05, string? proxy);
+    [Throws=NostrError]
+    Profile get_nip05_profile(string nip05, string? proxy);
+
     // Nostr SDK
     void init_logger(optional string? level = null);
 };

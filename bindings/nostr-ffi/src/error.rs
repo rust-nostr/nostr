@@ -61,6 +61,12 @@ impl From<nostr::nips::nip04::Error> for NostrError {
     }
 }
 
+impl From<nostr::nips::nip05::Error> for NostrError {
+    fn from(e: nostr::nips::nip05::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<nostr::nips::nip11::Error> for NostrError {
     fn from(e: nostr::nips::nip11::Error) -> NostrError {
         Self::Generic { err: e.to_string() }
