@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 use std::fmt;
+use std::net::AddrParseError;
 
 pub type Result<T, E = NostrError> = std::result::Result<T, E>;
 
@@ -60,6 +61,12 @@ impl From<nostr::nips::nip04::Error> for NostrError {
     }
 }
 
+impl From<nostr::nips::nip11::Error> for NostrError {
+    fn from(e: nostr::nips::nip11::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<nostr::nips::nip19::Error> for NostrError {
     fn from(e: nostr::nips::nip19::Error) -> NostrError {
         Self::Generic { err: e.to_string() }
@@ -98,6 +105,12 @@ impl From<nostr::event::id::Error> for NostrError {
 
 impl From<nostr::types::channel_id::Error> for NostrError {
     fn from(e: nostr::types::channel_id::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
+impl From<AddrParseError> for NostrError {
+    fn from(e: AddrParseError) -> NostrError {
         Self::Generic { err: e.to_string() }
     }
 }

@@ -13,6 +13,18 @@ interface NostrError {
     Generic(string err);
 };
 
+interface RelayInformationDocument {
+    [Throws=NostrError, Name=get]
+    constructor(string url, string? proxy);
+    string? name();
+    string? description();
+    string? pubkey();
+    string? contact();
+    sequence<u16>? supported_nips();
+    string? software();
+    string? version();
+};
+
 interface Timestamp {
     [Name=now]
     constructor();
