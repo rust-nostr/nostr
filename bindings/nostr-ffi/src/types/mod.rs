@@ -3,8 +3,10 @@
 
 mod contact;
 mod metadata;
+mod profile;
 mod time;
 
 pub use self::contact::Contact;
 pub use self::metadata::Metadata;
+pub use self::profile::Profile;
 pub use self::time::Timestamp;

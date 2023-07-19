@@ -45,6 +45,16 @@ interface Timestamp {
     string to_human_datetime();
 };
 
+interface Profile {
+    constructor(PublicKey public_key, sequence<string> relays);
+    [Throws=NostrError, Name=from_bech32]
+    constructor(string bech32);
+    [Throws=NostrError]
+    string to_bech32();
+    PublicKey public_key();
+    sequence<string> relays();
+};
+
 interface SecretKey {
     [Throws=NostrError, Name=from_hex]
     constructor(string hex);
