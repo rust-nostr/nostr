@@ -64,7 +64,11 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-fn compose_url(nip05: &str) -> Result<(String, &str), Error> {
+fn compose_url<S>(nip05: S) -> Result<(String, String), Error>
+where
+    S: Into<String>,
+{
+    let nip05: String = nip05.into();
     let data: Vec<&str> = nip05.split('@').collect();
     if data.len() != 2 {
         return Err(Error::InvalidFormat);
@@ -72,10 +76,14 @@ fn compose_url(nip05: &str) -> Result<(String, &str), Error> {
     let name: &str = data[0];
     let domain: &str = data[1];
     let url = format!("https://{domain}/.well-known/nostr.json?name={name}");
-    Ok((url, name))
+    Ok((url, name.to_string()))
 }
 
-fn get_key_from_json(json: Value, name: &str) -> Option<XOnlyPublicKey> {
+fn get_key_from_json<S>(json: Value, name: S) -> Option<XOnlyPublicKey>
+where
+    S: Into<String>,
+{
+    let name: String = name.into();
     json.get("names")
         .and_then(|names| names.get(name))
         .and_then(|value| value.as_str())
@@ -94,7 +102,10 @@ fn get_relays_from_json(json: Value, pk: XOnlyPublicKey) -> Vec<String> {
     }
 }
 
-fn verify_json(public_key: XOnlyPublicKey, json: Value, name: &str) -> Result<(), Error> {
+fn verify_json<S>(public_key: XOnlyPublicKey, json: Value, name: S) -> Result<(), Error>
+where
+    S: Into<String>,
+{
     if let Some(pubkey) = get_key_from_json(json, name) {
         if pubkey == public_key {
             return Ok(());
@@ -106,11 +117,14 @@ fn verify_json(public_key: XOnlyPublicKey, json: Value, name: &str) -> Result<()
 
 /// Verify NIP05
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn verify(
+pub async fn verify<S>(
     public_key: XOnlyPublicKey,
-    nip05: &str,
+    nip05: S,
     proxy: Option<SocketAddr>,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    S: Into<String>,
+{
     use reqwest::Client;
 
     let (url, name) = compose_url(nip05)?;
@@ -128,11 +142,14 @@ pub async fn verify(
 /// Verify NIP05
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "blocking")]
-pub fn verify_blocking(
+pub fn verify_blocking<S>(
     public_key: XOnlyPublicKey,
-    nip05: &str,
+    nip05: S,
     proxy: Option<SocketAddr>,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    S: Into<String>,
+{
     use reqwest::blocking::Client;
 
     let (url, name) = compose_url(nip05)?;
@@ -149,7 +166,10 @@ pub fn verify_blocking(
 
 /// Verify NIP05
 #[cfg(target_arch = "wasm32")]
-pub async fn verify(public_key: XOnlyPublicKey, nip05: &str) -> Result<(), Error> {
+pub async fn verify<S>(public_key: XOnlyPublicKey, nip05: S) -> Result<(), Error>
+where
+    S: Into<String>,
+{
     use reqwest::Client;
 
     let (url, name) = compose_url(nip05)?;
@@ -161,7 +181,10 @@ pub async fn verify(public_key: XOnlyPublicKey, nip05: &str) -> Result<(), Error
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn get_profile(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profile, Error> {
+pub async fn get_profile<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Profile, Error>
+where
+    S: Into<String>,
+{
     use reqwest::Client;
 
     let (url, name) = compose_url(nip05)?;
@@ -183,7 +206,10 @@ pub async fn get_profile(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profi
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "blocking")]
-pub fn get_profile_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<Profile, Error> {
+pub fn get_profile_blocking<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Profile, Error>
+where
+    S: Into<String>,
+{
     use reqwest::blocking::Client;
 
     let (url, name) = compose_url(nip05)?;
@@ -204,7 +230,10 @@ pub fn get_profile_blocking(nip05: &str, proxy: Option<SocketAddr>) -> Result<Pr
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(target_arch = "wasm32")]
-pub async fn get_profile(nip05: &str) -> Result<Profile, Error> {
+pub async fn get_profile<S>(nip05: S) -> Result<Profile, Error>
+where
+    S: Into<String>,
+{
     use reqwest::Client;
 
     let (url, name) = compose_url(nip05)?;
