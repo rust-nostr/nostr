@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, Filter};
+use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument};
 use nostr_sdk::{block_on, relay, FilterOptions, RelayStatus};
 
 use crate::error::Result;
@@ -85,7 +85,9 @@ impl Relay {
         block_on(async move { self.inner.is_connected().await })
     }
 
-    // TODO: add NIP11 document
+    pub fn document(&self) -> Arc<RelayInformationDocument> {
+        Arc::new(self.inner.document_blocking().into())
+    }
 
     pub fn subscription(&self) -> Arc<ActiveSubscription> {
         block_on(async move { Arc::new(self.inner.subscription().await.into()) })
