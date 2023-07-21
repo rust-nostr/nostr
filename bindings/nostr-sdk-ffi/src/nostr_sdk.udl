@@ -278,6 +278,21 @@ interface AccountMetadata {
     AccountMetadata nip05(string nip05);
 };
 
+interface FileMetadata {
+    [Throws=NostrError]
+    constructor(string url, string mime_type, string hash);
+    [Self=ByArc]
+    FileMetadata aes_256_gcm(string key, string iv);
+    [Self=ByArc]
+    FileMetadata size(u64 size);
+    [Self=ByArc]
+    FileMetadata dimensions(ImageDimensions dim);
+    [Self=ByArc]
+    FileMetadata magnet(string magnet);
+    [Self=ByArc]
+    FileMetadata blurhash(string blurhash);
+};
+
 // NOSTR-SDK
 
 interface RelayConnectionStats {

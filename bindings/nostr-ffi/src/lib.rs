@@ -23,6 +23,7 @@ mod ffi {
     pub use crate::nips::nip05::{get_nip05_profile, verify_nip05};
     pub use crate::nips::nip11::RelayInformationDocument;
     pub use crate::nips::nip46::NostrConnectURI;
+    pub use crate::nips::nip94::FileMetadata;
     pub use crate::types::{
         Contact, ImageDimensions, Metadata as AccountMetadata, Profile, Timestamp,
     };
