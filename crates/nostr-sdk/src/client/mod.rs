@@ -13,6 +13,7 @@ use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 #[cfg(feature = "nip46")]
 use nostr::nips::nip46::{NostrConnectMetadata, NostrConnectURI, Request, Response};
+use nostr::nips::nip94::FileMetadata;
 use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
@@ -1191,6 +1192,21 @@ impl Client {
         S: Into<String>,
     {
         let builder = EventBuilder::mute_channel_user(pubkey, reason);
+        self.send_event_builder(builder).await
+    }
+
+    /// File metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
+    pub async fn file_metadata<S>(
+        &self,
+        description: S,
+        metadata: FileMetadata,
+    ) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        let builder = EventBuilder::file_metadata(description, metadata);
         self.send_event_builder(builder).await
     }
 

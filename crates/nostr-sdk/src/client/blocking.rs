@@ -8,6 +8,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
+use nostr::nips::nip94::FileMetadata;
 use nostr::url::Url;
 use nostr::{
     ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Result, Tag,
@@ -355,6 +356,16 @@ impl Client {
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.mute_channel_user(pubkey, reason).await })
+    }
+
+    /// File metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
+    pub fn file_metadata<S>(&self, description: S, metadata: FileMetadata) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async { self.client.file_metadata(description, metadata).await })
     }
 
     pub fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
