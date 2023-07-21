@@ -93,6 +93,7 @@ bindings-swift: ios-universal darwin-universal
 	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.modulemap
 
 python-dev:
+	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt
 	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --language python --no-format -o bindings-python/src/nostr-sdk/
 	cargo build --release
