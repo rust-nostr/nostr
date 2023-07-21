@@ -131,6 +131,9 @@ The following crate feature flags are available:
 | ✅         | [26 - Delegated Event Signing](https://github.com/nostr-protocol/nips/blob/master/26.md)                                            |
 | ❌         | [27 - Text Note References](https://github.com/nostr-protocol/nips/blob/master/27.md)                                               |
 | ✅         | [28 - Public Chat](https://github.com/nostr-protocol/nips/blob/master/28.md)                                                        |
+| ❌         | [30 - Custom Emoji](https://github.com/nostr-protocol/nips/blob/master/30.md)                                                       |
+| ❌         | [31 - Dealing with Unknown Events](https://github.com/nostr-protocol/nips/blob/master/31.md)                                        |
+| ❌         | [32 - Labeling](https://github.com/nostr-protocol/nips/blob/master/32.md)                                                           |
 | ✅         | [33 - Parameterized Replaceable Events](https://github.com/nostr-protocol/nips/blob/master/33.md)                                   |
 | ✅         | [36 - Sensitive Content](https://github.com/nostr-protocol/nips/blob/master/36.md)                                                  |
 | ✅         | [39 - External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md)                                    |
@@ -141,12 +144,16 @@ The following crate feature flags are available:
 | ✅         | [47 - Wallet Connect](https://github.com/nostr-protocol/nips/blob/master/47.md)                                                     |
 | ✅         | [50 - Keywords filter](https://github.com/nostr-protocol/nips/blob/master/50.md)                                                    |
 | ✅         | [51 - Lists](https://github.com/nostr-protocol/nips/blob/master/51.md)                                                              |
+| ❌         | [53 - Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)                                                    |
 | ✅         | [56 - Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)                                                          |
 | ✅         | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                                     |
 | ✅         | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                                             |
 | ✅         | [65 - Relay List Metadata](https://github.com/nostr-protocol/nips/blob/master/65.md)                                                |
 | ✅         | [78 - Arbitrary custom app data](https://github.com/nostr-protocol/nips/blob/master/78.md)                                          |
+| ❌         | [89 - Recommended Application Handlers](https://github.com/nostr-protocol/nips/blob/master/89.md)                                   |
 | ❌         | [94 - File Metadata](https://github.com/nostr-protocol/nips/blob/master/94.md)                                                      |
+| ❌         | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                                          |
+| ❌         | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                                                |
 
 ## State
 
