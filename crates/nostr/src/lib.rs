@@ -29,7 +29,10 @@ pub mod nips;
 pub mod prelude;
 pub mod types;
 
-pub use self::event::{Event, EventBuilder, EventId, Kind, Tag, TagKind, UnsignedEvent};
+pub use self::event::tag::{
+    ExternalIdentity, Identity, ImageDimensions, Marker, Report, Tag, TagKind,
+};
+pub use self::event::{Event, EventBuilder, EventId, Kind, UnsignedEvent};
 pub use self::key::Keys;
 pub use self::message::{ClientMessage, Filter, RelayMessage, SubscriptionId};
 pub use self::types::{ChannelId, Contact, Entity, Metadata, Profile, Timestamp, UncheckedUrl};

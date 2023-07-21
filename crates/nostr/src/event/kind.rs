@@ -86,6 +86,8 @@ pub enum Kind {
     LongFormTextNote,
     /// Application-specific Data (NIP78)
     ApplicationSpecificData,
+    /// File Metadata (NIP94)
+    FileMetadata,
     /// Regular Events (must be between 1000 and <=9999)
     Regular(u16),
     /// Replacabe event (must be between 10000 and <20000)
@@ -149,6 +151,7 @@ impl From<u64> for Kind {
             30009 => Self::BadgeDefinition,
             30023 => Self::LongFormTextNote,
             30078 => Self::ApplicationSpecificData,
+            1063 => Self::FileMetadata,
             x if (1_000..10_000).contains(&x) => Self::Regular(x as u16),
             x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
             x if (20_000..30_000).contains(&x) => Self::Ephemeral(x as u16),
@@ -197,6 +200,7 @@ impl From<Kind> for u64 {
             Kind::BadgeDefinition => 30009,
             Kind::LongFormTextNote => 30023,
             Kind::ApplicationSpecificData => 30078,
+            Kind::FileMetadata => 1063,
             Kind::Regular(u) => u as u64,
             Kind::Replaceable(u) => u as u64,
             Kind::Ephemeral(u) => u as u64,

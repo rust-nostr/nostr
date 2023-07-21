@@ -7,11 +7,13 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
+use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use secp256k1::schnorr::Signature;
 use secp256k1::XOnlyPublicKey;
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use url::Url;
 
 use super::id::{self, EventId};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
@@ -46,6 +48,8 @@ pub enum Error {
     Event(crate::event::Error),
     /// NIP-39 Error
     InvalidIdentity,
+    /// Invalid Image Dimensions
+    InvalidImageDimensions,
 }
 
 impl std::error::Error for Error {}
@@ -66,6 +70,7 @@ impl fmt::Display for Error {
             Self::NIP26(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
             Self::InvalidIdentity => write!(f, "invalid identity tag"),
+            Self::InvalidImageDimensions => write!(f, "invalid image dimensions"),
         }
     }
 }
@@ -190,6 +195,41 @@ impl TryFrom<&str> for Report {
     }
 }
 
+/// Simple struct to hold `width` x `height`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ImageDimensions {
+    /// Width
+    pub width: u64,
+    /// Height
+    pub height: u64,
+}
+
+impl ImageDimensions {
+    /// Net image dimensions
+    pub fn new(width: u64, height: u64) -> Self {
+        Self { width, height }
+    }
+}
+
+impl FromStr for ImageDimensions {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let dimensions: Vec<&str> = s.split('x').collect();
+        if dimensions.len() == 2 {
+            let (width, height) = (dimensions[0], dimensions[1]);
+            Ok(Self::new(width.parse()?, height.parse()?))
+        } else {
+            Err(Error::InvalidImageDimensions)
+        }
+    }
+}
+
+impl fmt::Display for ImageDimensions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}x{}", self.width, self.height)
+    }
+}
+
 /// Tag kind
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TagKind {
@@ -209,6 +249,10 @@ pub enum TagKind {
     A,
     /// External Identities
     I,
+    /// MIME type
+    M,
+    /// SHA256
+    X,
     /// Relay
     Relay,
     /// Nonce
@@ -247,6 +291,18 @@ pub enum TagKind {
     Lnurl,
     /// Name tag
     Name,
+    /// Url
+    Url,
+    /// AES 256 GCM
+    Aes256Gcm,
+    /// Size of file in bytes
+    Size,
+    /// Size of file in pixels
+    Dim,
+    /// Magnet
+    Magnet,
+    /// Blurhash
+    Blurhash,
     /// Custom tag kind
     Custom(String),
 }
@@ -262,6 +318,8 @@ impl fmt::Display for TagKind {
             Self::D => write!(f, "d"),
             Self::A => write!(f, "a"),
             Self::I => write!(f, "i"),
+            Self::M => write!(f, "m"),
+            Self::X => write!(f, "x"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
@@ -281,6 +339,12 @@ impl fmt::Display for TagKind {
             Self::Amount => write!(f, "amount"),
             Self::Lnurl => write!(f, "lnurl"),
             Self::Name => write!(f, "name"),
+            Self::Url => write!(f, "url"),
+            Self::Aes256Gcm => write!(f, "aes-256-gcm"),
+            Self::Size => write!(f, "size"),
+            Self::Dim => write!(f, "dim"),
+            Self::Magnet => write!(f, "magnet"),
+            Self::Blurhash => write!(f, "blurhash"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -301,6 +365,8 @@ where
             "d" => Self::D,
             "a" => Self::A,
             "i" => Self::I,
+            "m" => Self::M,
+            "x" => Self::X,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,
@@ -320,6 +386,12 @@ where
             "amount" => Self::Amount,
             "lnurl" => Self::Lnurl,
             "name" => Self::Name,
+            "url" => Self::Url,
+            "aes-256-gcm" => Self::Aes256Gcm,
+            "size" => Self::Size,
+            "dim" => Self::Dim,
+            "magnet" => Self::Magnet,
+            "blurhash" => Self::Blurhash,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -367,8 +439,8 @@ pub enum Tag {
     Subject(String),
     Challenge(String),
     Title(String),
-    Image(String, Option<(u64, u64)>),
-    Thumb(String, Option<(u64, u64)>),
+    Image(String, Option<ImageDimensions>),
+    Thumb(String, Option<ImageDimensions>),
     Summary(String),
     Description(String),
     Bolt11(String),
@@ -378,6 +450,17 @@ pub enum Tag {
     Lnurl(String),
     Name(String),
     PublishedAt(Timestamp),
+    Url(Url),
+    MimeType(String),
+    Aes256Gcm {
+        key: String,
+        iv: String,
+    },
+    Sha256(Sha256Hash),
+    Size(usize),
+    Dim(ImageDimensions),
+    Magnet(String),
+    Blurhash(String),
 }
 
 impl Tag {
@@ -397,38 +480,46 @@ impl Tag {
     /// Get [`TagKind`]
     pub fn kind(&self) -> TagKind {
         match self {
-            Tag::Generic(kind, ..) => kind.clone(),
-            Tag::Event(..) => TagKind::E,
-            Tag::PubKey(..) => TagKind::P,
-            Tag::EventReport(..) => TagKind::E,
-            Tag::PubKeyReport(..) => TagKind::P,
-            Tag::Reference(..) => TagKind::R,
-            Tag::RelayMetadata(..) => TagKind::R,
-            Tag::Hashtag(..) => TagKind::T,
-            Tag::Geohash(..) => TagKind::G,
-            Tag::Identifier(..) => TagKind::D,
-            Tag::ExternalIdentity(..) => TagKind::I,
-            Tag::A { .. } => TagKind::A,
-            Tag::Relay(..) => TagKind::Relay,
-            Tag::ContactList { .. } => TagKind::P,
-            Tag::POW { .. } => TagKind::Nonce,
-            Tag::Delegation { .. } => TagKind::Delegation,
-            Tag::ContentWarning { .. } => TagKind::ContentWarning,
-            Tag::Expiration(..) => TagKind::Expiration,
-            Tag::Subject(..) => TagKind::Subject,
-            Tag::Challenge(..) => TagKind::Challenge,
-            Tag::Title(..) => TagKind::Title,
-            Tag::Image(..) => TagKind::Image,
-            Tag::Thumb(..) => TagKind::Thumb,
-            Tag::Summary(..) => TagKind::Summary,
-            Tag::PublishedAt(..) => TagKind::PublishedAt,
-            Tag::Description(..) => TagKind::Description,
-            Tag::Bolt11(..) => TagKind::Bolt11,
-            Tag::Preimage(..) => TagKind::Preimage,
-            Tag::Relays(..) => TagKind::Relays,
-            Tag::Amount(..) => TagKind::Amount,
-            Tag::Name(..) => TagKind::Name,
-            Tag::Lnurl(..) => TagKind::Lnurl,
+            Self::Generic(kind, ..) => kind.clone(),
+            Self::Event(..) => TagKind::E,
+            Self::PubKey(..) => TagKind::P,
+            Self::EventReport(..) => TagKind::E,
+            Self::PubKeyReport(..) => TagKind::P,
+            Self::Reference(..) => TagKind::R,
+            Self::RelayMetadata(..) => TagKind::R,
+            Self::Hashtag(..) => TagKind::T,
+            Self::Geohash(..) => TagKind::G,
+            Self::Identifier(..) => TagKind::D,
+            Self::ExternalIdentity(..) => TagKind::I,
+            Self::A { .. } => TagKind::A,
+            Self::Relay(..) => TagKind::Relay,
+            Self::ContactList { .. } => TagKind::P,
+            Self::POW { .. } => TagKind::Nonce,
+            Self::Delegation { .. } => TagKind::Delegation,
+            Self::ContentWarning { .. } => TagKind::ContentWarning,
+            Self::Expiration(..) => TagKind::Expiration,
+            Self::Subject(..) => TagKind::Subject,
+            Self::Challenge(..) => TagKind::Challenge,
+            Self::Title(..) => TagKind::Title,
+            Self::Image(..) => TagKind::Image,
+            Self::Thumb(..) => TagKind::Thumb,
+            Self::Summary(..) => TagKind::Summary,
+            Self::PublishedAt(..) => TagKind::PublishedAt,
+            Self::Description(..) => TagKind::Description,
+            Self::Bolt11(..) => TagKind::Bolt11,
+            Self::Preimage(..) => TagKind::Preimage,
+            Self::Relays(..) => TagKind::Relays,
+            Self::Amount(..) => TagKind::Amount,
+            Self::Name(..) => TagKind::Name,
+            Self::Lnurl(..) => TagKind::Lnurl,
+            Self::Url(..) => TagKind::Url,
+            Self::MimeType(..) => TagKind::M,
+            Self::Aes256Gcm { .. } => TagKind::Aes256Gcm,
+            Self::Sha256(..) => TagKind::X,
+            Self::Size(..) => TagKind::Size,
+            Self::Dim(..) => TagKind::Dim,
+            Self::Magnet(..) => TagKind::Magnet,
+            Self::Blurhash(..) => TagKind::Blurhash,
         }
     }
 }
@@ -501,6 +592,11 @@ where
                 TagKind::Amount => Ok(Self::Amount(content.parse()?)),
                 TagKind::Lnurl => Ok(Self::Lnurl(content.to_string())),
                 TagKind::Name => Ok(Self::Name(content.to_string())),
+                TagKind::Url => Ok(Self::Url(Url::parse(content)?)),
+                TagKind::M => Ok(Self::MimeType(content.to_string())),
+                TagKind::X => Ok(Self::Sha256(Sha256Hash::from_str(content)?)),
+                TagKind::Magnet => Ok(Self::Magnet(content.to_string())),
+                TagKind::Blurhash => Ok(Self::Blurhash(content.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -554,24 +650,22 @@ where
                 }
                 TagKind::Image => {
                     let image = tag[1].clone();
-                    let dimensions: Vec<&str> = tag[2].split('x').collect();
-                    if dimensions.len() == 2 {
-                        let (width, height) = (dimensions[0], dimensions[1]);
-                        Ok(Self::Image(image, Some((width.parse()?, height.parse()?))))
-                    } else {
-                        Err(Error::InvalidLength)
-                    }
+                    Ok(Self::Image(
+                        image,
+                        Some(ImageDimensions::from_str(&tag[2])?),
+                    ))
                 }
                 TagKind::Thumb => {
                     let thumb = tag[1].clone();
-                    let dimensions: Vec<&str> = tag[2].split('x').collect();
-                    if dimensions.len() == 2 {
-                        let (width, height) = (dimensions[0], dimensions[1]);
-                        Ok(Self::Thumb(thumb, Some((width.parse()?, height.parse()?))))
-                    } else {
-                        Err(Error::InvalidLength)
-                    }
+                    Ok(Self::Thumb(
+                        thumb,
+                        Some(ImageDimensions::from_str(&tag[2])?),
+                    ))
                 }
+                TagKind::Aes256Gcm => Ok(Self::Aes256Gcm {
+                    key: tag[1].to_string(),
+                    iv: tag[2].to_string(),
+                }),
                 _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
             }
         } else if tag_len == 4 {
@@ -697,19 +791,11 @@ impl From<Tag> for Vec<String> {
             Tag::Title(title) => vec![TagKind::Title.to_string(), title],
             Tag::Image(image, dimensions) => match dimensions {
                 None => vec![TagKind::Image.to_string(), image],
-                Some((width, height)) => vec![
-                    TagKind::Image.to_string(),
-                    image,
-                    format!("{}x{}", height, width),
-                ],
+                Some(dim) => vec![TagKind::Image.to_string(), image, dim.to_string()],
             },
             Tag::Thumb(thumb, dimensions) => match dimensions {
                 None => vec![TagKind::Thumb.to_string(), thumb],
-                Some((width, height)) => vec![
-                    TagKind::Thumb.to_string(),
-                    thumb,
-                    format!("{}x{}", height, width),
-                ],
+                Some(dim) => vec![TagKind::Thumb.to_string(), thumb, dim.to_string()],
             },
             Tag::Summary(summary) => vec![TagKind::Summary.to_string(), summary],
             Tag::PublishedAt(timestamp) => {
@@ -737,6 +823,14 @@ impl From<Tag> for Vec<String> {
             Tag::Lnurl(lnurl) => {
                 vec![TagKind::Lnurl.to_string(), lnurl]
             }
+            Tag::Url(url) => vec![TagKind::Url.to_string(), url.to_string()],
+            Tag::MimeType(mime) => vec![TagKind::M.to_string(), mime],
+            Tag::Aes256Gcm { key, iv } => vec![TagKind::Aes256Gcm.to_string(), key, iv],
+            Tag::Sha256(hash) => vec![TagKind::X.to_string(), hash.to_string()],
+            Tag::Size(bytes) => vec![TagKind::Size.to_string(), bytes.to_string()],
+            Tag::Dim(dim) => vec![TagKind::Dim.to_string(), dim.to_string()],
+            Tag::Magnet(uri) => vec![TagKind::Magnet.to_string(), uri],
+            Tag::Blurhash(data) => vec![TagKind::Blurhash.to_string(), data],
         }
     }
 }

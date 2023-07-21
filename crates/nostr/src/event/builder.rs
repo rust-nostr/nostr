@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use url::Url;
 
 pub use super::kind::Kind;
-pub use super::tag::{Marker, Tag, TagKind};
+pub use super::tag::{ImageDimensions, Marker, Tag, TagKind};
 use super::{Event, EventId, UnsignedEvent};
 use crate::key::{self, Keys};
 #[cfg(feature = "nip04")]
@@ -22,6 +22,7 @@ use crate::nips::nip04;
 #[cfg(feature = "nip46")]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip58::Error as Nip58Error;
+use crate::nips::nip94::FileMetadata;
 use crate::nips::{nip13, nip58};
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 use crate::UncheckedUrl;
@@ -525,17 +526,16 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::nips::nip58::ImageDimensions;
-    /// use nostr::EventBuilder;
+    /// use nostr::{EventBuilder, ImageDimensions};
     ///
     /// let badge_id = String::from("nostr-sdk-test-badge");
     /// let name = Some(String::from("Nostr SDK test badge"));
     /// let description = Some(String::from("This is a test badge"));
     /// let image_url = Some(String::from("https://nostr.build/someimage/1337"));
-    /// let image_size = Some(ImageDimensions(1024, 1024));
+    /// let image_size = Some(ImageDimensions::new(1024, 1024));
     /// let thumbs = Some(vec![(
     ///     String::from("https://nostr.build/somethumbnail/1337"),
-    ///     Some(ImageDimensions(256, 256)),
+    ///     Some(ImageDimensions::new(256, 256)),
     /// )]);
     ///
     /// let event_builder =
@@ -546,8 +546,8 @@ impl EventBuilder {
         name: Option<S>,
         description: Option<S>,
         image: Option<S>,
-        image_dimensions: Option<nip58::ImageDimensions>,
-        thumbnails: Option<Vec<(S, Option<nip58::ImageDimensions>)>>,
+        image_dimensions: Option<ImageDimensions>,
+        thumbnails: Option<Vec<(S, Option<ImageDimensions>)>>,
     ) -> Self
     where
         S: Into<String>,
@@ -570,8 +570,7 @@ impl EventBuilder {
         // Set image tag
         if let Some(image) = image {
             let image_tag = if let Some(dimensions) = image_dimensions {
-                let nip58::ImageDimensions(width, height) = dimensions;
-                Tag::Image(image.into(), Some((width, height)))
+                Tag::Image(image.into(), Some(dimensions))
             } else {
                 Tag::Image(image.into(), None)
             };
@@ -580,11 +579,10 @@ impl EventBuilder {
 
         // Set thumbnail tags
         if let Some(thumbs) = thumbnails {
-            for thumb in thumbs {
-                let thumb_url = thumb.0.into();
-                let thumb_tag = if let Some(width_height) = thumb.1 {
-                    let nip58::ImageDimensions(width, height) = width_height;
-                    Tag::Thumb(thumb_url, Some((width, height)))
+            for (url, dimensions) in thumbs {
+                let thumb_url = url.into();
+                let thumb_tag = if let Some(dimensions) = dimensions {
+                    Tag::Thumb(thumb_url, Some(dimensions))
                 } else {
                     Tag::Thumb(thumb_url, None)
                 };
@@ -797,6 +795,17 @@ impl EventBuilder {
 
         Ok(event_builder)
     }
+
+    /// File metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
+    pub fn file_metadata<S>(description: S, metadata: FileMetadata) -> Self
+    where
+        S: Into<String>,
+    {
+        let tags: Vec<Tag> = metadata.into();
+        Self::new(Kind::FileMetadata, description.into(), &tags)
+    }
 }
 
 #[cfg(test)]
@@ -805,9 +814,7 @@ mod tests {
 
     use secp256k1::{SecretKey, XOnlyPublicKey};
 
-    use crate::{
-        nips::nip58::ImageDimensions, Event, EventBuilder, Keys, Kind, Result, Tag, UncheckedUrl,
-    };
+    use crate::{Event, EventBuilder, ImageDimensions, Keys, Kind, Result, Tag, UncheckedUrl};
 
     #[test]
     fn round_trip() -> Result<()> {
@@ -909,10 +916,10 @@ mod tests {
         let name = Some(String::from("Bravery"));
         let description = Some(String::from("Brave pubkey"));
         let image_url = Some(String::from("https://nostr.build/someimage/1337"));
-        let image_size = Some(ImageDimensions(1024, 1024));
+        let image_size = Some(ImageDimensions::new(1024, 1024));
         let thumbs = Some(vec![(
             String::from("https://nostr.build/somethumbnail/1337"),
-            Some(ImageDimensions(256, 256)),
+            Some(ImageDimensions::new(256, 256)),
         )]);
 
         let event_builder =

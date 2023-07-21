@@ -1,3 +1,6 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Distributed under the MIT software license
+
 //! NIP65
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/65.md>

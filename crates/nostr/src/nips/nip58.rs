@@ -39,9 +39,6 @@ impl fmt::Display for Error {
     }
 }
 
-/// Simple struct to hold `width` x `height`.
-pub struct ImageDimensions(pub u64, pub u64);
-
 /// Helper function to filter events for a specific [`Kind`]
 pub fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Event> {
     events
