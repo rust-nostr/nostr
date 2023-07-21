@@ -22,6 +22,7 @@ mod ffi {
     pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
     pub use crate::nips::nip05::{get_nip05_profile, verify_nip05};
     pub use crate::nips::nip11::RelayInformationDocument;
+    pub use crate::nips::nip46::NostrConnectURI;
     pub use crate::types::{Contact, Metadata as AccountMetadata, Profile, Timestamp};
 
     // UDL

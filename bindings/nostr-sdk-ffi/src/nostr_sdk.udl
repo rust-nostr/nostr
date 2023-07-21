@@ -41,6 +41,16 @@ interface RelayInformationDocument {
     string? version();
 };
 
+interface NostrConnectURI {
+    [Throws=NostrError, Name=from_string]
+    constructor(string uri);
+    string public_key();
+    string relay_url();
+    string name();
+    string? url();
+    string? description();
+};
+
 interface Profile {
     constructor(PublicKey public_key, sequence<string> relays);
     [Throws=NostrError, Name=from_bech32]
