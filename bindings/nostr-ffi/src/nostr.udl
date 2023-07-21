@@ -54,6 +54,12 @@ interface Profile {
     sequence<string> relays();
 };
 
+interface ImageDimensions {
+    constructor(u64 width, u64 height);
+    u64 width();
+    u64 height();
+};
+
 interface Timestamp {
     [Name=now]
     constructor();
