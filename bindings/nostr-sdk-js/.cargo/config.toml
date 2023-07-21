@@ -5,3 +5,5 @@ target = "wasm32-unknown-unknown"
 opt-level = "s"
 lto = true
 codegen-units = 1
+strip = true
+panic = "abort"

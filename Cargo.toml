@@ -20,3 +20,5 @@ rust-version = "1.64.0"
 [profile.release]
 lto = true
 codegen-units = 1
+strip = true
+panic = "abort"
