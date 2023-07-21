@@ -490,7 +490,7 @@ impl Relay {
                             RelayEvent::SendMsg(msg) => {
                                 let json = msg.as_json();
                                 let size: usize = json.as_bytes().len();
-                                log::debug!("Sending message {json} (size: {size} bytes");
+                                log::debug!("Sending message {json} (size: {size} bytes)");
                                 match ws_tx.send(WsMessage::Text(json)).await {
                                     Ok(_) => {
                                         relay.stats.add_bytes_sent(size);
