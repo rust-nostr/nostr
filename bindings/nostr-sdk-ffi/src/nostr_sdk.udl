@@ -255,6 +255,9 @@ interface EventBuilder {
 
     [Throws=NostrError, Name=auth]
     constructor(string challenge, string relay_url);
+
+    [Name=file_metadata]
+    constructor(string description, FileMetadata metadata);
 };
 
 interface Contact {
@@ -409,6 +412,9 @@ interface Client {
     EventId send_event(Event event);
     [Throws=NostrSdkError]
     EventId send_event_to(string url, Event event);
+
+    [Throws=NostrSdkError]
+    EventId file_metadata(string description, FileMetadata metadata);
 
     [Self=ByArc]
     void handle_notifications(HandleNotification handler);

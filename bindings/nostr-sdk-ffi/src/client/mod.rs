@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, EventId, Filter, Keys, RelayMessage};
+use nostr_ffi::{ClientMessage, Event, EventId, FileMetadata, Filter, Keys, RelayMessage};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 use nostr_sdk::Url;
@@ -194,6 +194,18 @@ impl Client {
     }
 
     // TODO: add send_event_to_with_custom_wait
+
+    pub fn file_metadata(
+        &self,
+        description: String,
+        metadata: Arc<FileMetadata>,
+    ) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .file_metadata(description, metadata.as_ref().deref().clone())?
+                .into(),
+        ))
+    }
 
     pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
         crate::thread::spawn("client", move || {

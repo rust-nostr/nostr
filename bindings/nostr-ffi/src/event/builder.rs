@@ -11,7 +11,7 @@ use super::{Event, EventId};
 use crate::error::Result;
 use crate::key::Keys;
 use crate::types::{Contact, Metadata};
-use crate::{PublicKey, UnsignedEvent};
+use crate::{FileMetadata, PublicKey, UnsignedEvent};
 
 pub struct EventBuilder {
     builder: EventBuilderSdk,
@@ -223,5 +223,11 @@ impl EventBuilder {
         Ok(Self {
             builder: EventBuilderSdk::auth(challenge, Url::parse(&relay_url)?),
         })
+    }
+
+    pub fn file_metadata(description: String, metadata: Arc<FileMetadata>) -> Self {
+        Self {
+            builder: EventBuilderSdk::file_metadata(description, metadata.as_ref().deref().clone()),
+        }
     }
 }
