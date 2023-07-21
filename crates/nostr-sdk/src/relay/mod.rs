@@ -107,6 +107,8 @@ pub enum RelayEvent {
 pub struct RelayConnectionStats {
     attempts: Arc<AtomicUsize>,
     success: Arc<AtomicUsize>,
+    bytes_sent: Arc<AtomicUsize>,
+    bytes_received: Arc<AtomicUsize>,
     connected_at: Arc<AtomicU64>,
 }
 
@@ -122,6 +124,8 @@ impl RelayConnectionStats {
         Self {
             attempts: Arc::new(AtomicUsize::new(0)),
             success: Arc::new(AtomicUsize::new(0)),
+            bytes_sent: Arc::new(AtomicUsize::new(0)),
+            bytes_received: Arc::new(AtomicUsize::new(0)),
             connected_at: Arc::new(AtomicU64::new(0)),
         }
     }
@@ -134,6 +138,16 @@ impl RelayConnectionStats {
     /// The number of times a connection has been successfully established
     pub fn success(&self) -> usize {
         self.success.load(Ordering::SeqCst)
+    }
+
+    /// Bytes sent
+    pub fn bytes_sent(&self) -> usize {
+        self.bytes_sent.load(Ordering::SeqCst)
+    }
+
+    /// Bytes received
+    pub fn bytes_received(&self) -> usize {
+        self.bytes_received.load(Ordering::SeqCst)
     }
 
     /// Get the UNIX timestamp of the last started connection
@@ -152,6 +166,14 @@ impl RelayConnectionStats {
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
                 Some(Timestamp::now().as_u64())
             });
+    }
+
+    pub(crate) fn add_bytes_sent(&self, size: usize) {
+        self.bytes_sent.fetch_add(size, Ordering::SeqCst);
+    }
+
+    pub(crate) fn add_bytes_received(&self, size: usize) {
+        self.bytes_received.fetch_add(size, Ordering::SeqCst);
     }
 }
 
@@ -466,23 +488,36 @@ impl Relay {
                     while let Some((relay_event, oneshot_sender)) = rx.recv().await {
                         match relay_event {
                             RelayEvent::SendMsg(msg) => {
-                                log::debug!("Sending message {}", msg.as_json());
-                                if let Err(e) = ws_tx.send(WsMessage::Text(msg.as_json())).await {
-                                    log::error!(
-                                        "Impossible to send msg to {}: {}",
-                                        relay.url(),
-                                        e.to_string()
-                                    );
-                                    if let Some(sender) = oneshot_sender {
-                                        if let Err(e) = sender.send(false) {
-                                            log::error!("Impossible to send oneshot msg: {}", e);
+                                let json = msg.as_json();
+                                let size: usize = json.as_bytes().len();
+                                log::debug!("Sending message {json} (size: {size} bytes");
+                                match ws_tx.send(WsMessage::Text(json)).await {
+                                    Ok(_) => {
+                                        relay.stats.add_bytes_sent(size);
+                                        if let Some(sender) = oneshot_sender {
+                                            if let Err(e) = sender.send(true) {
+                                                log::error!(
+                                                    "Impossible to send oneshot msg: {}",
+                                                    e
+                                                );
+                                            }
                                         }
                                     }
-                                    break;
-                                };
-                                if let Some(sender) = oneshot_sender {
-                                    if let Err(e) = sender.send(true) {
-                                        log::error!("Impossible to send oneshot msg: {}", e);
+                                    Err(e) => {
+                                        log::error!(
+                                            "Impossible to send msg to {}: {}",
+                                            relay.url(),
+                                            e.to_string()
+                                        );
+                                        if let Some(sender) = oneshot_sender {
+                                            if let Err(e) = sender.send(false) {
+                                                log::error!(
+                                                    "Impossible to send oneshot msg: {}",
+                                                    e
+                                                );
+                                            }
+                                        }
+                                        break;
                                     }
                                 }
                             }
@@ -529,6 +564,7 @@ impl Relay {
                     log::debug!("Relay Message Thread Started");
 
                     async fn func(relay: &Relay, data: Vec<u8>) -> bool {
+                        relay.stats.add_bytes_received(data.len());
                         match String::from_utf8(data) {
                             Ok(data) => match RelayMessage::from_json(&data) {
                                 Ok(msg) => {
