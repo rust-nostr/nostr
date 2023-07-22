@@ -21,7 +21,7 @@ Please, explore the [`bindings/`](./bindings/) directory to learn more.
     * Python: TODO
     * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr
 * **nostr-sdk**:
-    * Kotlin: TODO
+    * Kotlin: https://central.sonatype.com/artifact/io.github.rust-nostr/nostr-sdk/
     * Swift: https://github.com/rust-nostr/nostr-sdk-swift
     * Python: https://pypi.org/project/nostr-sdk
     * JavaScript: TODO
