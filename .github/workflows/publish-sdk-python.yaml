@@ -46,6 +46,44 @@ jobs:
           name: nostr_sdk-manylinux2014-x86_64-${{ matrix.python }}
           path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
 
+  build-manylinux2014-aarch64-wheels:
+    name: "Build Manylinux 2014 aarch64 wheel"
+    runs-on: ubuntu-20.04
+    defaults:
+      run:
+        working-directory: bindings/nostr-sdk-ffi/bindings-python
+    container:
+      image: quay.io/pypa/manylinux2014_aarch64
+      env:
+        PLAT: manylinux2014_aarch64
+        PYBIN: "/opt/python/${{ matrix.python }}/bin"
+    strategy:
+      matrix:
+        python: # Update this list whenever the docker image is updated (check /opt/python/)
+          - cp38-cp38
+          - cp39-cp39
+          - cp310-cp310
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+        
+      - name: "Generate nostr_sdk.py and binaries"
+        run: bash ./scripts/generate-linux.sh
+
+      - name: "Build wheel"
+        # Specifying the plat-name argument is necessary to build a wheel with the correct name,
+        # see issue #350 for more information
+        run: ${PYBIN}/python setup.py bdist_wheel --plat-name manylinux_2_17_aarch64 --verbose
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: nostr_sdk-manylinux2014-aarch64-${{ matrix.python }}
+          path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
+
   build-macos-arm64-wheels:
     name: "Build macOS arm64 wheel"
     runs-on: macos-13
