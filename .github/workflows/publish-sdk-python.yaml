@@ -196,7 +196,7 @@ jobs:
     defaults:
       run:
         working-directory: bindings/nostr-sdk-ffi/bindings-python
-    needs: [build-manylinux2014-x86_64-wheels, build-macos-arm64-wheels, build-macos-x86_64-wheels, build-windows-wheels]
+    needs: [build-manylinux2014-x86_64-wheels, build-manylinux2014-aarch64-wheels, build-macos-arm64-wheels, build-macos-x86_64-wheels, build-windows-wheels]
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
