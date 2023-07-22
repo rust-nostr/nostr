@@ -200,7 +200,7 @@ impl FromPkStr for Keys {
             Ok(public_key) => Ok(Self::from_public_key(public_key)),
             Err(_) => match XOnlyPublicKey::from_bech32(public_key) {
                 Ok(public_key) => Ok(Self::from_public_key(public_key)),
-                Err(_) => Err(Error::InvalidSecretKey),
+                Err(_) => Err(Error::InvalidPublicKey),
             },
         }
     }
