@@ -26,6 +26,8 @@ pub enum Error {
     MarkerParseError,
     /// Unknown [`Report`]
     UnknownReportType,
+    /// Unknown [`LiveEventMarker`]
+    UnknownLiveEventMarker(String),
     /// Impossible to find tag kind
     KindNotFound,
     /// Invalid length
@@ -59,6 +61,7 @@ impl fmt::Display for Error {
         match self {
             Self::MarkerParseError => write!(f, "impossible to parse marker"),
             Self::UnknownReportType => write!(f, "unknown report type"),
+            Self::UnknownLiveEventMarker(u) => write!(f, "unknown live event marker: {u}"),
             Self::KindNotFound => write!(f, "impossible to find tag kind"),
             Self::InvalidLength => write!(f, "invalid length"),
             Self::InvalidZapRequest => write!(f, "invalid Zap request"),
@@ -148,6 +151,78 @@ where
             "root" => Self::Root,
             "reply" => Self::Reply,
             m => Self::Custom(m.to_string()),
+        }
+    }
+}
+
+/// Live Event Marker
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum LiveEventMarker {
+    /// Host
+    Host,
+    /// Speaker
+    Speaker,
+    /// Participant
+    Participant,
+}
+
+impl fmt::Display for LiveEventMarker {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Host => write!(f, "Host"),
+            Self::Speaker => write!(f, "Speaker"),
+            Self::Participant => write!(f, "Participant"),
+        }
+    }
+}
+
+impl FromStr for LiveEventMarker {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Host" => Ok(Self::Host),
+            "Speaker" => Ok(Self::Speaker),
+            "Participant" => Ok(Self::Participant),
+            s => Err(Error::UnknownLiveEventMarker(s.to_string())),
+        }
+    }
+}
+
+/// Live Event Status
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum LiveEventStatus {
+    /// Planned
+    Planned,
+    /// Live
+    Live,
+    /// Ended
+    Ended,
+    /// Custom
+    Custom(String),
+}
+
+impl fmt::Display for LiveEventStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Planned => write!(f, "planned"),
+            Self::Live => write!(f, "live"),
+            Self::Ended => write!(f, "ended"),
+            Self::Custom(s) => write!(f, "{s}"),
+        }
+    }
+}
+
+impl<S> From<S> for LiveEventStatus
+where
+    S: Into<String>,
+{
+    fn from(s: S) -> Self {
+        let s: String = s.into();
+        match s.as_str() {
+            "planned" => Self::Planned,
+            "live" => Self::Live,
+            "ended" => Self::Ended,
+            s => Self::Custom(s.to_string()),
         }
     }
 }
@@ -303,6 +378,20 @@ pub enum TagKind {
     Magnet,
     /// Blurhash
     Blurhash,
+    /// Streaming
+    Streaming,
+    /// Recording
+    Recording,
+    /// Starts
+    Starts,
+    /// Ends
+    Ends,
+    /// Status
+    Status,
+    /// Current participants
+    CurrentParticipants,
+    /// Total participants
+    TotalParticipants,
     /// Custom tag kind
     Custom(String),
 }
@@ -345,6 +434,13 @@ impl fmt::Display for TagKind {
             Self::Dim => write!(f, "dim"),
             Self::Magnet => write!(f, "magnet"),
             Self::Blurhash => write!(f, "blurhash"),
+            Self::Streaming => write!(f, "streaming"),
+            Self::Recording => write!(f, "recording"),
+            Self::Starts => write!(f, "starts"),
+            Self::Ends => write!(f, "ends"),
+            Self::Status => write!(f, "status"),
+            Self::CurrentParticipants => write!(f, "current_participants"),
+            Self::TotalParticipants => write!(f, "total_participants"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -392,6 +488,13 @@ where
             "dim" => Self::Dim,
             "magnet" => Self::Magnet,
             "blurhash" => Self::Blurhash,
+            "streaming" => Self::Streaming,
+            "recording" => Self::Recording,
+            "starts" => Self::Starts,
+            "ends" => Self::Ends,
+            "status" => Self::Status,
+            "current_participants" => Self::CurrentParticipants,
+            "total_participants" => Self::TotalParticipants,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -405,6 +508,12 @@ pub enum Tag {
     PubKey(XOnlyPublicKey, Option<UncheckedUrl>),
     EventReport(EventId, Report),
     PubKeyReport(XOnlyPublicKey, Report),
+    PubKeyLiveEvent {
+        pk: XOnlyPublicKey,
+        relay_url: Option<UncheckedUrl>,
+        marker: LiveEventMarker,
+        proof: Option<Signature>,
+    },
     Reference(String),
     RelayMetadata(UncheckedUrl, Option<String>),
     Hashtag(String),
@@ -439,8 +548,8 @@ pub enum Tag {
     Subject(String),
     Challenge(String),
     Title(String),
-    Image(String, Option<ImageDimensions>),
-    Thumb(String, Option<ImageDimensions>),
+    Image(UncheckedUrl, Option<ImageDimensions>),
+    Thumb(UncheckedUrl, Option<ImageDimensions>),
     Summary(String),
     Description(String),
     Bolt11(String),
@@ -461,6 +570,13 @@ pub enum Tag {
     Dim(ImageDimensions),
     Magnet(String),
     Blurhash(String),
+    Streaming(UncheckedUrl),
+    Recording(UncheckedUrl),
+    Starts(Timestamp),
+    Ends(Timestamp),
+    Status(LiveEventStatus),
+    CurrentParticipants(u64),
+    TotalParticipants(u64),
 }
 
 impl Tag {
@@ -485,6 +601,7 @@ impl Tag {
             Self::PubKey(..) => TagKind::P,
             Self::EventReport(..) => TagKind::E,
             Self::PubKeyReport(..) => TagKind::P,
+            Self::PubKeyLiveEvent { .. } => TagKind::P,
             Self::Reference(..) => TagKind::R,
             Self::RelayMetadata(..) => TagKind::R,
             Self::Hashtag(..) => TagKind::T,
@@ -520,6 +637,13 @@ impl Tag {
             Self::Dim(..) => TagKind::Dim,
             Self::Magnet(..) => TagKind::Magnet,
             Self::Blurhash(..) => TagKind::Blurhash,
+            Self::Streaming(..) => TagKind::Streaming,
+            Self::Recording(..) => TagKind::Recording,
+            Self::Starts(..) => TagKind::Starts,
+            Self::Ends(..) => TagKind::Ends,
+            Self::Status(..) => TagKind::Status,
+            Self::CurrentParticipants(..) => TagKind::CurrentParticipants,
+            Self::TotalParticipants(..) => TagKind::TotalParticipants,
         }
     }
 }
@@ -582,8 +706,8 @@ where
                 TagKind::Subject => Ok(Self::Subject(content.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(content.to_string())),
                 TagKind::Title => Ok(Self::Title(content.to_string())),
-                TagKind::Image => Ok(Self::Image(content.to_string(), None)),
-                TagKind::Thumb => Ok(Self::Thumb(content.to_string(), None)),
+                TagKind::Image => Ok(Self::Image(UncheckedUrl::from(content), None)),
+                TagKind::Thumb => Ok(Self::Thumb(UncheckedUrl::from(content), None)),
                 TagKind::Summary => Ok(Self::Summary(content.to_string())),
                 TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(content)?)),
                 TagKind::Description => Ok(Self::Description(content.to_string())),
@@ -597,6 +721,13 @@ where
                 TagKind::X => Ok(Self::Sha256(Sha256Hash::from_str(content)?)),
                 TagKind::Magnet => Ok(Self::Magnet(content.to_string())),
                 TagKind::Blurhash => Ok(Self::Blurhash(content.to_string())),
+                TagKind::Streaming => Ok(Self::Streaming(UncheckedUrl::from(content))),
+                TagKind::Recording => Ok(Self::Recording(UncheckedUrl::from(content))),
+                TagKind::Starts => Ok(Self::Starts(Timestamp::from_str(content)?)),
+                TagKind::Ends => Ok(Self::Ends(Timestamp::from_str(content)?)),
+                TagKind::Status => Ok(Self::Status(LiveEventStatus::from(content))),
+                TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(content.parse()?)),
+                TagKind::TotalParticipants => Ok(Self::TotalParticipants(content.parse()?)),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -648,20 +779,14 @@ where
                         Err(Error::InvalidLength)
                     }
                 }
-                TagKind::Image => {
-                    let image = tag[1].clone();
-                    Ok(Self::Image(
-                        image,
-                        Some(ImageDimensions::from_str(&tag[2])?),
-                    ))
-                }
-                TagKind::Thumb => {
-                    let thumb = tag[1].clone();
-                    Ok(Self::Thumb(
-                        thumb,
-                        Some(ImageDimensions::from_str(&tag[2])?),
-                    ))
-                }
+                TagKind::Image => Ok(Self::Image(
+                    UncheckedUrl::from(&tag[1]),
+                    Some(ImageDimensions::from_str(&tag[2])?),
+                )),
+                TagKind::Thumb => Ok(Self::Thumb(
+                    UncheckedUrl::from(&tag[1]),
+                    Some(ImageDimensions::from_str(&tag[2])?),
+                )),
                 TagKind::Aes256Gcm => Ok(Self::Aes256Gcm {
                     key: tag[1].to_string(),
                     iv: tag[2].to_string(),
@@ -670,11 +795,25 @@ where
             }
         } else if tag_len == 4 {
             match tag_kind {
-                TagKind::P => Ok(Self::ContactList {
-                    pk: XOnlyPublicKey::from_str(&tag[1])?,
-                    relay_url: Some(UncheckedUrl::from(tag[2].clone())),
-                    alias: (!tag[3].is_empty()).then_some(tag[3].clone()),
-                }),
+                TagKind::P => {
+                    let pk = XOnlyPublicKey::from_str(&tag[1])?;
+                    let relay_url =
+                        (!tag[2].is_empty()).then_some(UncheckedUrl::from(tag[2].clone()));
+
+                    match LiveEventMarker::from_str(&tag[3]) {
+                        Ok(marker) => Ok(Self::PubKeyLiveEvent {
+                            pk,
+                            relay_url,
+                            marker,
+                            proof: None,
+                        }),
+                        Err(_) => Ok(Self::ContactList {
+                            pk,
+                            relay_url,
+                            alias: (!tag[3].is_empty()).then_some(tag[3].clone()),
+                        }),
+                    }
+                }
                 TagKind::E => Ok(Self::Event(
                     EventId::from_hex(&tag[1])?,
                     (!tag[2].is_empty()).then_some(UncheckedUrl::from(tag[2].clone())),
@@ -684,6 +823,16 @@ where
                     delegator_pk: XOnlyPublicKey::from_str(&tag[1])?,
                     conditions: Conditions::from_str(&tag[2])?,
                     sig: Signature::from_str(&tag[3])?,
+                }),
+                _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
+            }
+        } else if tag_len == 5 {
+            match tag_kind {
+                TagKind::P => Ok(Self::PubKeyLiveEvent {
+                    pk: XOnlyPublicKey::from_str(&tag[1])?,
+                    relay_url: (!tag[2].is_empty()).then_some(UncheckedUrl::from(tag[2].clone())),
+                    marker: LiveEventMarker::from_str(&tag[3])?,
+                    proof: Signature::from_str(&tag[4]).ok(),
                 }),
                 _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
             }
@@ -722,6 +871,23 @@ impl From<Tag> for Vec<String> {
             }
             Tag::PubKeyReport(pk, report) => {
                 vec![TagKind::P.to_string(), pk.to_string(), report.to_string()]
+            }
+            Tag::PubKeyLiveEvent {
+                pk,
+                relay_url,
+                marker,
+                proof,
+            } => {
+                let mut tag = vec![
+                    TagKind::P.to_string(),
+                    pk.to_string(),
+                    relay_url.map(|u| u.to_string()).unwrap_or_default(),
+                    marker.to_string(),
+                ];
+                if let Some(proof) = proof {
+                    tag.push(proof.to_string());
+                }
+                tag
             }
             Tag::Reference(r) => vec![TagKind::R.to_string(), r],
             Tag::RelayMetadata(url, rw) => {
@@ -789,14 +955,20 @@ impl From<Tag> for Vec<String> {
             Tag::Subject(sub) => vec![TagKind::Subject.to_string(), sub],
             Tag::Challenge(challenge) => vec![TagKind::Challenge.to_string(), challenge],
             Tag::Title(title) => vec![TagKind::Title.to_string(), title],
-            Tag::Image(image, dimensions) => match dimensions {
-                None => vec![TagKind::Image.to_string(), image],
-                Some(dim) => vec![TagKind::Image.to_string(), image, dim.to_string()],
-            },
-            Tag::Thumb(thumb, dimensions) => match dimensions {
-                None => vec![TagKind::Thumb.to_string(), thumb],
-                Some(dim) => vec![TagKind::Thumb.to_string(), thumb, dim.to_string()],
-            },
+            Tag::Image(image, dimensions) => {
+                let mut tag = vec![TagKind::Image.to_string(), image.to_string()];
+                if let Some(dim) = dimensions {
+                    tag.push(dim.to_string());
+                }
+                tag
+            }
+            Tag::Thumb(thumb, dimensions) => {
+                let mut tag = vec![TagKind::Thumb.to_string(), thumb.to_string()];
+                if let Some(dim) = dimensions {
+                    tag.push(dim.to_string());
+                }
+                tag
+            }
             Tag::Summary(summary) => vec![TagKind::Summary.to_string(), summary],
             Tag::PublishedAt(timestamp) => {
                 vec![TagKind::PublishedAt.to_string(), timestamp.to_string()]
@@ -831,6 +1003,23 @@ impl From<Tag> for Vec<String> {
             Tag::Dim(dim) => vec![TagKind::Dim.to_string(), dim.to_string()],
             Tag::Magnet(uri) => vec![TagKind::Magnet.to_string(), uri],
             Tag::Blurhash(data) => vec![TagKind::Blurhash.to_string(), data],
+            Tag::Streaming(url) => vec![TagKind::Streaming.to_string(), url.to_string()],
+            Tag::Recording(url) => vec![TagKind::Recording.to_string(), url.to_string()],
+            Tag::Starts(timestamp) => {
+                vec![TagKind::Starts.to_string(), timestamp.to_string()]
+            }
+            Tag::Ends(timestamp) => {
+                vec![TagKind::Ends.to_string(), timestamp.to_string()]
+            }
+            Tag::Status(s) => {
+                vec![TagKind::Status.to_string(), s.to_string()]
+            }
+            Tag::CurrentParticipants(num) => {
+                vec![TagKind::CurrentParticipants.to_string(), num.to_string()]
+            }
+            Tag::TotalParticipants(num) => {
+                vec![TagKind::TotalParticipants.to_string(), num.to_string()]
+            }
         }
     }
 }
@@ -1174,6 +1363,42 @@ mod tests {
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
                 "wss://relay.damus.io",
+                "Speaker",
+            ],
+            Tag::PubKeyLiveEvent {
+                pk: XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                marker: LiveEventMarker::Speaker,
+                proof: None
+            }
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "",
+                "Participant",
+            ],
+            Tag::PubKeyLiveEvent {
+                pk: XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                relay_url: None,
+                marker: LiveEventMarker::Participant,
+                proof: None
+            }
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "wss://relay.damus.io",
                 "alias",
             ],
             Tag::ContactList {
@@ -1219,6 +1444,25 @@ mod tests {
         assert_eq!(
             vec!["lnurl", "lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"],
             Tag::Lnurl(String::from("lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp")).as_vec(),
+        );
+
+        assert_eq!(
+            vec![
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "wss://relay.damus.io",
+                "Host",
+                "a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"
+            ],
+            Tag::PubKeyLiveEvent {
+                pk: XOnlyPublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )?,
+                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                marker: LiveEventMarker::Host,
+                proof: Some(Signature::from_str("a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd")?)
+            }
+            .as_vec()
         );
 
         Ok(())

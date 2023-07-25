@@ -78,6 +78,10 @@ pub enum Kind {
     CategorizedPeopleList,
     /// Categorized Bookmark List (NIP51)
     CategorizedBookmarkList,
+    /// Live Event (NIP53)
+    LiveEvent,
+    /// Live Event Message (NIP53)
+    LiveEventMessage,
     /// Profile Badges (NIP58)
     ProfileBadges,
     /// Badge Definition (NIP58)
@@ -147,6 +151,8 @@ impl From<u64> for Kind {
             24133 => Self::NostrConnect,
             30000 => Self::CategorizedPeopleList,
             30001 => Self::CategorizedBookmarkList,
+            30311 => Self::LiveEvent,
+            1311 => Self::LiveEventMessage,
             30008 => Self::ProfileBadges,
             30009 => Self::BadgeDefinition,
             30023 => Self::LongFormTextNote,
@@ -196,6 +202,8 @@ impl From<Kind> for u64 {
             Kind::NostrConnect => 24133,
             Kind::CategorizedPeopleList => 30000,
             Kind::CategorizedBookmarkList => 30001,
+            Kind::LiveEvent => 30311,
+            Kind::LiveEventMessage => 1311,
             Kind::ProfileBadges => 30008,
             Kind::BadgeDefinition => 30009,
             Kind::LongFormTextNote => 30023,

@@ -21,6 +21,7 @@ use crate::key::{self, Keys};
 use crate::nips::nip04;
 #[cfg(feature = "nip46")]
 use crate::nips::nip46::Message as NostrConnectMessage;
+use crate::nips::nip53::LiveEvent;
 use crate::nips::nip58::Error as Nip58Error;
 use crate::nips::nip94::FileMetadata;
 use crate::nips::{nip13, nip58};
@@ -442,6 +443,37 @@ impl EventBuilder {
         ))
     }
 
+    /// Live Event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
+    pub fn live_event(live_event: LiveEvent) -> Self {
+        let tags: Vec<Tag> = live_event.into();
+        Self::new(Kind::LiveEvent, "", &tags)
+    }
+
+    /// Live Event Message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
+    pub fn live_event_msg<S>(
+        live_event_id: S,
+        live_event_host: XOnlyPublicKey,
+        content: S,
+        relay_url: Option<Url>,
+        tags: Vec<Tag>,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
+        let mut tags = tags;
+        tags.push(Tag::A {
+            kind: Kind::LiveEvent,
+            public_key: live_event_host,
+            identifier: live_event_id.into(),
+            relay_url: relay_url.map(|u| u.into()),
+        });
+        Self::new(Kind::LiveEventMessage, content, &tags)
+    }
+
     /// Create report event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
@@ -526,15 +558,15 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::{EventBuilder, ImageDimensions};
+    /// use nostr::{EventBuilder, ImageDimensions, UncheckedUrl};
     ///
     /// let badge_id = String::from("nostr-sdk-test-badge");
     /// let name = Some(String::from("Nostr SDK test badge"));
     /// let description = Some(String::from("This is a test badge"));
-    /// let image_url = Some(String::from("https://nostr.build/someimage/1337"));
+    /// let image_url = Some(UncheckedUrl::from("https://nostr.build/someimage/1337"));
     /// let image_size = Some(ImageDimensions::new(1024, 1024));
     /// let thumbs = Some(vec![(
-    ///     String::from("https://nostr.build/somethumbnail/1337"),
+    ///     UncheckedUrl::from("https://nostr.build/somethumbnail/1337"),
     ///     Some(ImageDimensions::new(256, 256)),
     /// )]);
     ///
@@ -545,9 +577,9 @@ impl EventBuilder {
         badge_id: S,
         name: Option<S>,
         description: Option<S>,
-        image: Option<S>,
+        image: Option<UncheckedUrl>,
         image_dimensions: Option<ImageDimensions>,
-        thumbnails: Option<Vec<(S, Option<ImageDimensions>)>>,
+        thumbnails: Option<Vec<(UncheckedUrl, Option<ImageDimensions>)>>,
     ) -> Self
     where
         S: Into<String>,
@@ -570,21 +602,20 @@ impl EventBuilder {
         // Set image tag
         if let Some(image) = image {
             let image_tag = if let Some(dimensions) = image_dimensions {
-                Tag::Image(image.into(), Some(dimensions))
+                Tag::Image(image, Some(dimensions))
             } else {
-                Tag::Image(image.into(), None)
+                Tag::Image(image, None)
             };
             tags.push(image_tag);
         }
 
         // Set thumbnail tags
         if let Some(thumbs) = thumbnails {
-            for (url, dimensions) in thumbs {
-                let thumb_url = url.into();
+            for (thumb, dimensions) in thumbs {
                 let thumb_tag = if let Some(dimensions) = dimensions {
-                    Tag::Thumb(thumb_url, Some(dimensions))
+                    Tag::Thumb(thumb, Some(dimensions))
                 } else {
-                    Tag::Thumb(thumb_url, None)
+                    Tag::Thumb(thumb, None)
                 };
                 tags.push(thumb_tag);
             }
@@ -915,10 +946,10 @@ mod tests {
         let badge_id = String::from("bravery");
         let name = Some(String::from("Bravery"));
         let description = Some(String::from("Brave pubkey"));
-        let image_url = Some(String::from("https://nostr.build/someimage/1337"));
+        let image_url = Some(UncheckedUrl::from("https://nostr.build/someimage/1337"));
         let image_size = Some(ImageDimensions::new(1024, 1024));
         let thumbs = Some(vec![(
-            String::from("https://nostr.build/somethumbnail/1337"),
+            UncheckedUrl::from("https://nostr.build/somethumbnail/1337"),
             Some(ImageDimensions::new(256, 256)),
         )]);
 

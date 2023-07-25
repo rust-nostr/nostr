@@ -144,7 +144,7 @@ The following crate feature flags are available:
 | ✅         | [47 - Wallet Connect](https://github.com/nostr-protocol/nips/blob/master/47.md)                                                     |
 | ✅         | [50 - Keywords filter](https://github.com/nostr-protocol/nips/blob/master/50.md)                                                    |
 | ✅         | [51 - Lists](https://github.com/nostr-protocol/nips/blob/master/51.md)                                                              |
-| ❌         | [53 - Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)                                                    |
+| ✅         | [53 - Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)                                                    |
 | ✅         | [56 - Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)                                                          |
 | ✅         | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                                     |
 | ✅         | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                                             |
