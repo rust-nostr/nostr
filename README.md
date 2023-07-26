@@ -16,12 +16,12 @@ Please, explore the [`bindings/`](./bindings/) directory to learn more.
 #### Available packages
 
 * **nostr**:
-    * Kotlin: TODO
+    * Kotlin: [`io.github.rust-nostr:nostr`](https://central.sonatype.com/artifact/io.github.rust-nostr/nostr/)
     * Swift: https://github.com/rust-nostr/nostr-swift
     * Python: TODO
     * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr
 * **nostr-sdk**:
-    * Kotlin: https://central.sonatype.com/artifact/io.github.rust-nostr/nostr-sdk/
+    * Kotlin: [`io.github.rust-nostr:nostr-sdk`](https://central.sonatype.com/artifact/io.github.rust-nostr/nostr-sdk/)
     * Swift: https://github.com/rust-nostr/nostr-sdk-swift
     * Python: https://pypi.org/project/nostr-sdk
     * JavaScript: TODO
