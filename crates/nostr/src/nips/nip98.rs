@@ -1,3 +1,11 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Distributed under the MIT software license
+
+//! NIP98
+//!
+//! This NIP defines an ephemerial event used to authorize requests to HTTP servers using nostr events.
+//! This is useful for HTTP services which are build for Nostr and deal with Nostr user accounts.
+//! <https://github.com/nostr-protocol/nips/blob/master/98.md>
 use url::Url;
 
 use crate::Tag;

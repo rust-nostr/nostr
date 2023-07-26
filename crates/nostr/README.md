@@ -103,6 +103,7 @@ The following crate feature flags are available:
 | `nip21`             |   Yes   | Enable NIP-21: `nostr` URI scheme                                                                                          |
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
 | `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                                                        |
+| `nip98`             |   Yes   | Enable NIP-98: HTTP Auth                                                                                                   |
 
 ## Supported NIPs
 
@@ -152,7 +153,7 @@ The following crate feature flags are available:
 | ✅         | [78 - Arbitrary custom app data](https://github.com/nostr-protocol/nips/blob/master/78.md)                                          |
 | ❌         | [89 - Recommended Application Handlers](https://github.com/nostr-protocol/nips/blob/master/89.md)                                   |
 | ✅         | [94 - File Metadata](https://github.com/nostr-protocol/nips/blob/master/94.md)                                                      |
-| ❌         | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                                          |
+| ✅         | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                                          |
 | ❌         | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                                                |
 
 ## State
