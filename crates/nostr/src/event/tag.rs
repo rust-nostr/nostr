@@ -253,6 +253,12 @@ pub enum TagKind {
     M,
     /// SHA256
     X,
+    /// HTTP auth URL
+    U,
+    /// HTTP method
+    Method,
+    /// HTTP payload
+    Payload,
     /// Relay
     Relay,
     /// Nonce
@@ -320,6 +326,9 @@ impl fmt::Display for TagKind {
             Self::I => write!(f, "i"),
             Self::M => write!(f, "m"),
             Self::X => write!(f, "x"),
+            Self::U => write!(f, "u"),
+            Self::Method => write!(f, "method"),
+            Self::Payload => write!(f, "payload"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
@@ -367,6 +376,9 @@ where
             "i" => Self::I,
             "m" => Self::M,
             "x" => Self::X,
+            "u" => Self::U,
+            "payload" => Self::Payload,
+            "method" => Self::Method,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,
@@ -411,6 +423,9 @@ pub enum Tag {
     Geohash(String),
     Identifier(String),
     ExternalIdentity(Identity),
+    HttpAuthUrl(Url),
+    Method(String),
+    Payload(String),
     A {
         kind: Kind,
         public_key: XOnlyPublicKey,
@@ -492,6 +507,9 @@ impl Tag {
             Self::Identifier(..) => TagKind::D,
             Self::ExternalIdentity(..) => TagKind::I,
             Self::A { .. } => TagKind::A,
+            Self::HttpAuthUrl { .. } => TagKind::U,
+            Self::Method { .. } => TagKind::Method,
+            Self::Payload { .. } => TagKind::Payload,
             Self::Relay(..) => TagKind::Relay,
             Self::ContactList { .. } => TagKind::P,
             Self::POW { .. } => TagKind::Nonce,
@@ -568,6 +586,9 @@ where
                         Err(Error::InvalidLength)
                     }
                 }
+                TagKind::U => Ok(Self::HttpAuthUrl(Url::parse(content)?)),
+                TagKind::Method => Ok(Self::Method(content.to_string())),
+                TagKind::Payload => Ok(Self::Payload(content.to_string())),
                 TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?, None)),
                 TagKind::E => Ok(Self::Event(EventId::from_hex(content)?, None, None)),
                 TagKind::R => Ok(Self::Reference(content.to_string())),
@@ -731,6 +752,9 @@ impl From<Tag> for Vec<String> {
                 }
                 tag
             }
+            Tag::Payload(payload) => vec![TagKind::Payload.to_string(), payload.to_string()],
+            Tag::Method(method) => vec![TagKind::Method.to_string(), method.to_string()],
+            Tag::HttpAuthUrl(u) => vec![TagKind::U.to_string(), u.to_string()],
             Tag::Hashtag(t) => vec![TagKind::T.to_string(), t],
             Tag::Geohash(g) => vec![TagKind::G.to_string(), g],
             Tag::Identifier(d) => vec![TagKind::D.to_string(), d],

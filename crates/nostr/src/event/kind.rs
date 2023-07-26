@@ -88,6 +88,8 @@ pub enum Kind {
     ApplicationSpecificData,
     /// File Metadata (NIP94)
     FileMetadata,
+    /// HTTP Auth (NIP98)
+    HttpAuth,
     /// Regular Events (must be between 1000 and <=9999)
     Regular(u16),
     /// Replacabe event (must be between 10000 and <20000)
@@ -145,6 +147,7 @@ impl From<u64> for Kind {
             23194 => Self::WalletConnectRequest,
             23195 => Self::WalletConnectResponse,
             24133 => Self::NostrConnect,
+            27235 => Self::HttpAuth,
             30000 => Self::CategorizedPeopleList,
             30001 => Self::CategorizedBookmarkList,
             30008 => Self::ProfileBadges,
@@ -194,6 +197,7 @@ impl From<Kind> for u64 {
             Kind::WalletConnectRequest => 23194,
             Kind::WalletConnectResponse => 23195,
             Kind::NostrConnect => 24133,
+            Kind::HttpAuth => 27235,
             Kind::CategorizedPeopleList => 30000,
             Kind::CategorizedBookmarkList => 30001,
             Kind::ProfileBadges => 30008,
