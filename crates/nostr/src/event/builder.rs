@@ -7,6 +7,7 @@ use core::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
+use bitcoin_hashes::sha256::Hash as Sha256Hash;
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
 use secp256k1::XOnlyPublicKey;
@@ -14,6 +15,7 @@ use serde_json::{json, Value};
 use url::Url;
 
 pub use super::kind::Kind;
+use super::tag::HttpMethod;
 pub use super::tag::{ImageDimensions, Marker, Tag, TagKind};
 use super::{Event, EventId, UnsignedEvent};
 use crate::key::{self, Keys};
@@ -836,6 +838,17 @@ impl EventBuilder {
     {
         let tags: Vec<Tag> = metadata.into();
         Self::new(Kind::FileMetadata, description.into(), &tags)
+    }
+
+    /// HTTP Auth
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/98.md>
+    pub fn http_auth(absolute_url: Url, method: HttpMethod, payload: Option<Sha256Hash>) -> Self {
+        let mut tags: Vec<Tag> = vec![Tag::AbsoluteURL(absolute_url.into()), Tag::Method(method)];
+        if let Some(payload) = payload {
+            tags.push(Tag::Payload(payload));
+        }
+        Self::new(Kind::HttpAuth, "", &tags)
     }
 }
 

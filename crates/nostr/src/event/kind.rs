@@ -92,6 +92,8 @@ pub enum Kind {
     ApplicationSpecificData,
     /// File Metadata (NIP94)
     FileMetadata,
+    /// HTTP Auth (NIP98)
+    HttpAuth,
     /// Regular Events (must be between 1000 and <=9999)
     Regular(u16),
     /// Replacabe event (must be between 10000 and <20000)
@@ -164,6 +166,7 @@ impl From<u64> for Kind {
             30023 => Self::LongFormTextNote,
             30078 => Self::ApplicationSpecificData,
             1063 => Self::FileMetadata,
+            27235 => Self::HttpAuth,
             x if (1_000..10_000).contains(&x) => Self::Regular(x as u16),
             x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
             x if (20_000..30_000).contains(&x) => Self::Ephemeral(x as u16),
@@ -215,6 +218,7 @@ impl From<Kind> for u64 {
             Kind::LongFormTextNote => 30023,
             Kind::ApplicationSpecificData => 30078,
             Kind::FileMetadata => 1063,
+            Kind::HttpAuth => 27235,
             Kind::Regular(u) => u as u64,
             Kind::Replaceable(u) => u as u64,
             Kind::Ephemeral(u) => u as u64,

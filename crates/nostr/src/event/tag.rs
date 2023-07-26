@@ -52,6 +52,8 @@ pub enum Error {
     InvalidIdentity,
     /// Invalid Image Dimensions
     InvalidImageDimensions,
+    /// Invalid HTTP Method
+    InvalidHttpMethod(String),
 }
 
 impl std::error::Error for Error {}
@@ -74,6 +76,7 @@ impl fmt::Display for Error {
             Self::Event(e) => write!(f, "{e}"),
             Self::InvalidIdentity => write!(f, "invalid identity tag"),
             Self::InvalidImageDimensions => write!(f, "invalid image dimensions"),
+            Self::InvalidHttpMethod(m) => write!(f, "invalid HTTP method: {m}"),
         }
     }
 }
@@ -305,6 +308,43 @@ impl fmt::Display for ImageDimensions {
     }
 }
 
+/// HTTP Method
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum HttpMethod {
+    /// GET
+    GET,
+    /// POST
+    POST,
+    /// PUT
+    PUT,
+    /// PATCH
+    PATCH,
+}
+
+impl fmt::Display for HttpMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::GET => write!(f, "GET"),
+            Self::POST => write!(f, "POST"),
+            Self::PUT => write!(f, "PUT"),
+            Self::PATCH => write!(f, "PATCH"),
+        }
+    }
+}
+
+impl FromStr for HttpMethod {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "GET" => Ok(Self::GET),
+            "POST" => Ok(Self::POST),
+            "PUT" => Ok(Self::PUT),
+            "PATCH" => Ok(Self::PATCH),
+            m => Err(Error::InvalidHttpMethod(m.to_string())),
+        }
+    }
+}
+
 /// Tag kind
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TagKind {
@@ -326,6 +366,8 @@ pub enum TagKind {
     I,
     /// MIME type
     M,
+    /// Absolute URL
+    U,
     /// SHA256
     X,
     /// Relay
@@ -392,6 +434,10 @@ pub enum TagKind {
     CurrentParticipants,
     /// Total participants
     TotalParticipants,
+    /// HTTP Method Request
+    Method,
+    /// Payload HASH
+    Payload,
     /// Custom tag kind
     Custom(String),
 }
@@ -408,6 +454,7 @@ impl fmt::Display for TagKind {
             Self::A => write!(f, "a"),
             Self::I => write!(f, "i"),
             Self::M => write!(f, "m"),
+            Self::U => write!(f, "u"),
             Self::X => write!(f, "x"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
@@ -441,6 +488,8 @@ impl fmt::Display for TagKind {
             Self::Status => write!(f, "status"),
             Self::CurrentParticipants => write!(f, "current_participants"),
             Self::TotalParticipants => write!(f, "total_participants"),
+            Self::Method => write!(f, "method"),
+            Self::Payload => write!(f, "payload"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -462,6 +511,7 @@ where
             "a" => Self::A,
             "i" => Self::I,
             "m" => Self::M,
+            "u" => Self::U,
             "x" => Self::X,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
@@ -495,6 +545,8 @@ where
             "status" => Self::Status,
             "current_participants" => Self::CurrentParticipants,
             "total_participants" => Self::TotalParticipants,
+            "method" => Self::Method,
+            "payload" => Self::Payload,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -577,6 +629,9 @@ pub enum Tag {
     Status(LiveEventStatus),
     CurrentParticipants(u64),
     TotalParticipants(u64),
+    AbsoluteURL(UncheckedUrl),
+    Method(HttpMethod),
+    Payload(Sha256Hash),
 }
 
 impl Tag {
@@ -644,6 +699,9 @@ impl Tag {
             Self::Status(..) => TagKind::Status,
             Self::CurrentParticipants(..) => TagKind::CurrentParticipants,
             Self::TotalParticipants(..) => TagKind::TotalParticipants,
+            Self::AbsoluteURL(..) => TagKind::U,
+            Self::Method(..) => TagKind::Method,
+            Self::Payload(..) => TagKind::Payload,
         }
     }
 }
@@ -728,6 +786,9 @@ where
                 TagKind::Status => Ok(Self::Status(LiveEventStatus::from(content))),
                 TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(content.parse()?)),
                 TagKind::TotalParticipants => Ok(Self::TotalParticipants(content.parse()?)),
+                TagKind::U => Ok(Self::AbsoluteURL(UncheckedUrl::from(content))),
+                TagKind::Method => Ok(Self::Method(HttpMethod::from_str(content)?)),
+                TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(content)?)),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -1020,6 +1081,13 @@ impl From<Tag> for Vec<String> {
             Tag::TotalParticipants(num) => {
                 vec![TagKind::TotalParticipants.to_string(), num.to_string()]
             }
+            Tag::AbsoluteURL(url) => {
+                vec![TagKind::U.to_string(), url.to_string()]
+            }
+            Tag::Method(method) => {
+                vec![TagKind::Method.to_string(), method.to_string()]
+            }
+            Tag::Payload(p) => vec![TagKind::Payload.to_string(), p.to_string()],
         }
     }
 }
