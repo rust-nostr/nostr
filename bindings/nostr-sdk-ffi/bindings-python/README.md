@@ -36,7 +36,10 @@ for event in events:
     print(event.as_json())
 ```
 
-More examples can be found in the [examples/](https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-ffi/bindings-python/examples) directory.
+More examples can be found at:
+
+* https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-ffi/bindings-python/examples
+* https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-ffi/bindings-python/examples
 
 ## Supported NIPs
 
