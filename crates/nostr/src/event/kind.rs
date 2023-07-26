@@ -116,6 +116,12 @@ impl Kind {
     }
 }
 
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_u64())
+    }
+}
+
 impl From<u64> for Kind {
     fn from(u: u64) -> Self {
         match u {
