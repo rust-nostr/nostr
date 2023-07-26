@@ -88,3 +88,21 @@ bindings-swift: ios-universal darwin-universal
 	cp ../../target/darwin-universal/release/libnostr_ffi.a bindings-swift/nostrFFI.xcframework/macos-arm64_x86_64/nostrFFI.framework/nostrFFI
 	rm bindings-swift/Sources/Nostr/nostrFFI.h
 	rm bindings-swift/Sources/Nostr/nostrFFI.modulemap
+
+python-dev:
+	rm -rf bindings-python/dist
+	pip install -r bindings-python/requirements.txt
+	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr.udl --language python --no-format -o bindings-python/src/nostr/
+	cargo build --release
+	cp ../../target/release/libnostr_ffi.so bindings-python/src/nostr/ | true
+	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/ | true
+	cd bindings-python && python setup.py --verbose bdist_wheel
+	pip install ./bindings-python/dist/nostr-*.whl --force-reinstall
+
+python-dev-win:
+	pip install -r bindings-python\requirements.txt
+	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src\nostr.udl --language python --no-format -o bindings-python\src\nostr
+	cargo build --release
+	copy ..\..\target\release\nostr_ffi.dll bindings-python\src\nostr
+	cd bindings-python && python setup.py --verbose bdist_wheel
+	pip install .\bindings-python\dist\*.whl --force-reinstall

@@ -1,0 +1,16 @@
+.tox/
+dist/
+nostr.egg-info/
+__pycache__/
+libnostr_ffi.dylib
+.idea/
+.DS_Store
+
+*.swp
+
+src/nostr/nostr.py
+src/nostr/*.so
+*.whl
+build/
+
+testing-setup-py-simple-example.py
