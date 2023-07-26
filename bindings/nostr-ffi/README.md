@@ -13,9 +13,25 @@ On first usage you will need to run:
 make init
 ```
 
+### Python
+
+For most users, we recommend using our official Python package: TODO.
+
+If you want to compile from source or need more options, read on.
+
+### Wheel
+
+```
+make python-dev
+```
+
 ### Kotlin
 
-### Libraries and Bindings
+For most users, we recommend using our official Kotlin package: [io.github.rust-nostr:nostr](https://central.sonatype.com/artifact/io.github.rust-nostr/nostr/).
+
+If you want to compile from source or need more options, read on.
+
+#### Libraries and Bindings
 
 This command will build libraries for different platforms in `target/` folder and copy them to `ffi/kotlin/jniLibs`.
 In addition it will generate Kotlin bindings in `ffi/kotlin/nostr`.
@@ -24,7 +40,7 @@ In addition it will generate Kotlin bindings in `ffi/kotlin/nostr`.
 make kotlin
 ```
 
-### Android Archive (AAR)
+#### Android Archive (AAR)
 
 This command will build an AAR file in `ffi/android/lib-release.aar`:
 
