@@ -80,7 +80,7 @@ impl From<LiveEvent> for Vec<Tag> {
             participants,
         } = live_event;
 
-        tags.push(Tag::Identifier(id.clone()));
+        tags.push(Tag::Identifier(id));
 
         if let Some(title) = title {
             tags.push(Tag::Title(title));
