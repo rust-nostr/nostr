@@ -284,3 +284,57 @@ interface FileMetadata {
     [Self=ByArc]
     FileMetadata blurhash(string blurhash);
 };
+
+[Enum]
+interface TagKind {
+  Known(TagKindKnown known);
+  Unknown(string unknown);
+};
+
+enum TagKindKnown {
+    "P",
+    "E",
+    "R",
+    "T",
+    "G",
+    "D",
+    "A",
+    "I",
+    "M",
+    "U",
+    "X",
+    "RelayUrl",
+    "Nonce",
+    "Delegation",
+    "ContentWarning",
+    "Expiration",
+    "Subject",
+    "Challenge",
+    "Title",
+    "Image",
+    "Thumb",
+    "Summary",
+    "PublishedAt",
+    "Description",
+    "Bolt11",
+    "Preimage",
+    "Relays",
+    "Amount",
+    "Lnurl",
+    "Name",
+    "Url",
+    "Aes256Gcm",
+    "Size",
+    "Dim",
+    "Magnet",
+    "Blurhash",
+    "Streaming",
+    "Recording",
+    "Starts",
+    "Ends",
+    "Status",
+    "CurrentParticipants",
+    "TotalParticipants",
+    "Method",
+    "Payload",
+};

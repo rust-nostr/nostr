@@ -8,10 +8,12 @@ use nostr::Event as EventSdk;
 
 mod builder;
 mod id;
+mod tag;
 mod unsigned;
 
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
+pub use self::tag::{TagKind, TagKindKnown};
 pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
 use crate::{PublicKey, Timestamp};
