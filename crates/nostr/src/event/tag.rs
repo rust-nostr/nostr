@@ -259,9 +259,9 @@ impl fmt::Display for Report {
     }
 }
 
-impl TryFrom<&str> for Report {
-    type Error = Error;
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
+impl FromStr for Report {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "nudity" => Ok(Self::Nudity),
             "profanity" => Ok(Self::Profanity),
@@ -798,7 +798,7 @@ where
                     if tag[2].is_empty() {
                         Ok(Self::PubKey(pubkey, Some(UncheckedUrl::empty())))
                     } else {
-                        match Report::try_from(tag[2].as_str()) {
+                        match Report::from_str(tag[2].as_str()) {
                             Ok(report) => Ok(Self::PubKeyReport(pubkey, report)),
                             Err(_) => Ok(Self::PubKey(
                                 pubkey,
@@ -812,7 +812,7 @@ where
                     if tag[2].is_empty() {
                         Ok(Self::Event(event_id, Some(UncheckedUrl::empty()), None))
                     } else {
-                        match Report::try_from(tag[2].as_str()) {
+                        match Report::from_str(tag[2].as_str()) {
                             Ok(report) => Ok(Self::EventReport(event_id, report)),
                             Err(_) => Ok(Self::Event(
                                 event_id,
