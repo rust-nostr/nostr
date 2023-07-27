@@ -179,6 +179,7 @@ interface UnsignedEvent {
     PublicKey pubkey();
     Timestamp created_at();
     u64 kind();
+    sequence<Tag> tags();
     string content();
     [Throws=NostrError]
     Event sign(Keys keys);
@@ -194,7 +195,7 @@ interface Event {
     PublicKey pubkey();
     Timestamp created_at();
     u64 kind();
-    sequence<sequence<string>> tags();
+    sequence<Tag> tags();
     string content();
     string signature();
     boolean verify();

@@ -52,12 +52,12 @@ impl Event {
         self.inner.kind.into()
     }
 
-    pub fn tags(&self) -> Vec<Vec<String>> {
+    pub fn tags(&self) -> Vec<Tag> {
         self.inner
             .tags
             .clone()
             .into_iter()
-            .map(|t| t.as_vec())
+            .map(|t| t.into())
             .collect()
     }
 

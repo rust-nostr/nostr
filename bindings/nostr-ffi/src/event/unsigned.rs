@@ -9,7 +9,7 @@ use nostr::secp256k1::schnorr::Signature;
 
 use super::EventId;
 use crate::error::Result;
-use crate::{Event, Keys, PublicKey, Timestamp};
+use crate::{Event, Keys, PublicKey, Tag, Timestamp};
 
 pub struct UnsignedEvent {
     inner: nostr::UnsignedEvent,
@@ -38,7 +38,14 @@ impl UnsignedEvent {
         self.inner.kind.into()
     }
 
-    // TODO: add tags
+    pub fn tags(&self) -> Vec<Tag> {
+        self.inner
+            .tags
+            .clone()
+            .into_iter()
+            .map(|t| t.into())
+            .collect()
+    }
 
     pub fn content(&self) -> String {
         self.inner.content.clone()
