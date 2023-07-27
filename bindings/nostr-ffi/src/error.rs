@@ -19,6 +19,12 @@ impl fmt::Display for NostrError {
     }
 }
 
+impl From<std::num::ParseIntError> for NostrError {
+    fn from(e: std::num::ParseIntError) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<nostr::key::Error> for NostrError {
     fn from(e: nostr::key::Error) -> NostrError {
         Self::Generic { err: e.to_string() }
@@ -81,6 +87,12 @@ impl From<nostr::nips::nip19::Error> for NostrError {
 
 impl From<nostr::nips::nip21::Error> for NostrError {
     fn from(e: nostr::nips::nip21::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
+impl From<nostr::nips::nip26::Error> for NostrError {
+    fn from(e: nostr::nips::nip26::Error) -> NostrError {
         Self::Generic { err: e.to_string() }
     }
 }

@@ -2,10 +2,18 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::str::FromStr;
 
-use nostr::event::tag;
+use nostr::event::tag::{
+    self, HttpMethod, Identity, ImageDimensions, LiveEventMarker, LiveEventStatus, Marker, Report,
+};
+use nostr::hashes::sha256::Hash as Sha256Hash;
+use nostr::nips::nip26::Conditions;
+use nostr::secp256k1::schnorr::Signature;
+use nostr::secp256k1::XOnlyPublicKey;
+use nostr::{EventId, Kind, Timestamp, UncheckedUrl, Url};
 
-use crate::error::Result;
+use crate::error::{NostrError, Result};
 
 pub enum TagKind {
     Known { known: TagKindKnown },
@@ -636,6 +644,145 @@ impl From<tag::Tag> for TagEnum {
     }
 }
 
+impl TryFrom<TagEnum> for tag::Tag {
+    type Error = NostrError;
+    fn try_from(value: TagEnum) -> Result<Self, Self::Error> {
+        match value {
+            TagEnum::Unknown { kind, data } => Ok(Self::Generic(kind.into(), data)),
+            TagEnum::E {
+                event_id,
+                relay_url,
+                marker,
+            } => Ok(Self::Event(
+                EventId::from_str(&event_id)?,
+                relay_url.map(UncheckedUrl::from),
+                marker.map(Marker::from),
+            )),
+            TagEnum::PubKey {
+                public_key,
+                relay_url,
+            } => Ok(Self::PubKey(
+                XOnlyPublicKey::from_str(&public_key)?,
+                relay_url.map(UncheckedUrl::from),
+            )),
+            TagEnum::EventReport { event_id, report } => Ok(Self::EventReport(
+                EventId::from_str(&event_id)?,
+                Report::from_str(&report)?,
+            )),
+            TagEnum::PubKeyReport { public_key, report } => Ok(Self::PubKeyReport(
+                XOnlyPublicKey::from_str(&public_key)?,
+                Report::from_str(&report)?,
+            )),
+            TagEnum::PubKeyLiveEvent {
+                pk,
+                relay_url,
+                marker,
+                proof,
+            } => Ok(Self::PubKeyLiveEvent {
+                pk: XOnlyPublicKey::from_str(&pk)?,
+                relay_url: relay_url.map(UncheckedUrl::from),
+                marker: LiveEventMarker::from_str(&marker)?,
+                proof: match proof {
+                    Some(proof) => Some(Signature::from_str(&proof)?),
+                    None => None,
+                },
+            }),
+            TagEnum::Reference { reference } => Ok(Self::Reference(reference)),
+            TagEnum::RelayMetadata { relay_url, rw } => {
+                Ok(Self::RelayMetadata(UncheckedUrl::from(relay_url), rw))
+            }
+            TagEnum::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
+            TagEnum::Geohash { geohash } => Ok(Self::Geohash(geohash)),
+            TagEnum::Identifier { identifier } => Ok(Self::Identifier(identifier)),
+            TagEnum::ExternalIdentity { identity, proof } => {
+                Ok(Self::ExternalIdentity(Identity::new(identity, proof)?))
+            }
+            TagEnum::A {
+                kind,
+                public_key,
+                identifier,
+                relay_url,
+            } => Ok(Self::A {
+                kind: Kind::from(kind),
+                public_key: XOnlyPublicKey::from_str(&public_key)?,
+                identifier,
+                relay_url: relay_url.map(UncheckedUrl::from),
+            }),
+            TagEnum::RelayUrl { relay_url } => Ok(Self::Relay(UncheckedUrl::from(relay_url))),
+            TagEnum::ContactList {
+                pk,
+                relay_url,
+                alias,
+            } => Ok(Self::ContactList {
+                pk: XOnlyPublicKey::from_str(&pk)?,
+                relay_url: relay_url.map(UncheckedUrl::from),
+                alias,
+            }),
+            TagEnum::POW { nonce, difficulty } => Ok(Self::POW {
+                nonce: nonce.parse()?,
+                difficulty,
+            }),
+            TagEnum::Delegation {
+                delegator_pk,
+                conditions,
+                sig,
+            } => Ok(Self::Delegation {
+                delegator_pk: XOnlyPublicKey::from_str(&delegator_pk)?,
+                conditions: Conditions::from_str(&conditions)?,
+                sig: Signature::from_str(&sig)?,
+            }),
+            TagEnum::ContentWarning { reason } => Ok(Self::ContentWarning { reason }),
+            TagEnum::Expiration { timestamp } => Ok(Self::Expiration(Timestamp::from(timestamp))),
+            TagEnum::Subject { subject } => Ok(Self::Subject(subject)),
+            TagEnum::Challenge { challenge } => Ok(Self::Challenge(challenge)),
+            TagEnum::Title { title } => Ok(Self::Title(title)),
+            TagEnum::Image { url, dimensions } => Ok(Self::Image(
+                UncheckedUrl::from(url),
+                match dimensions {
+                    Some(dim) => Some(ImageDimensions::from_str(&dim)?),
+                    None => None,
+                },
+            )),
+            TagEnum::Thumb { url, dimensions } => Ok(Self::Thumb(
+                UncheckedUrl::from(url),
+                match dimensions {
+                    Some(dim) => Some(ImageDimensions::from_str(&dim)?),
+                    None => None,
+                },
+            )),
+            TagEnum::Summary { summary } => Ok(Self::Summary(summary)),
+            TagEnum::Description { desc } => Ok(Self::Description(desc)),
+            TagEnum::Bolt11 { bolt11 } => Ok(Self::Bolt11(bolt11)),
+            TagEnum::Preimage { preimage } => Ok(Self::Preimage(preimage)),
+            TagEnum::Relays { urls } => Ok(Self::Relays(
+                urls.into_iter().map(UncheckedUrl::from).collect(),
+            )),
+            TagEnum::Amount { amount } => Ok(Self::Amount(amount)),
+            TagEnum::Lnurl { lnurl } => Ok(Self::Lnurl(lnurl)),
+            TagEnum::Name { name } => Ok(Self::Name(name)),
+            TagEnum::PublishedAt { timestamp } => Ok(Self::PublishedAt(Timestamp::from(timestamp))),
+            TagEnum::Url { url } => Ok(Self::Url(Url::parse(&url)?)),
+            TagEnum::MimeType { mime } => Ok(Self::MimeType(mime)),
+            TagEnum::Aes256Gcm { key, iv } => Ok(Self::Aes256Gcm { key, iv }),
+            TagEnum::Sha256 { hash } => Ok(Self::Sha256(Sha256Hash::from_str(&hash)?)),
+            TagEnum::Size { size } => Ok(Self::Size(size as usize)),
+            TagEnum::Dim { dimensions } => Ok(Self::Dim(ImageDimensions::from_str(&dimensions)?)),
+            TagEnum::Magnet { uri } => Ok(Self::Magnet(uri)),
+            TagEnum::Blurhash { blurhash } => Ok(Self::Blurhash(blurhash)),
+            TagEnum::Streaming { url } => Ok(Self::Streaming(UncheckedUrl::from(url))),
+            TagEnum::Recording { url } => Ok(Self::Recording(UncheckedUrl::from(url))),
+            TagEnum::Starts { timestamp } => Ok(Self::Starts(Timestamp::from(timestamp))),
+            TagEnum::Ends { timestamp } => Ok(Self::Ends(Timestamp::from(timestamp))),
+            TagEnum::Status { status } => Ok(Self::Status(LiveEventStatus::from(status))),
+            TagEnum::CurrentParticipants { num } => Ok(Self::CurrentParticipants(num)),
+            TagEnum::TotalParticipants { num } => Ok(Self::CurrentParticipants(num)),
+            TagEnum::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
+            TagEnum::Method { method } => Ok(Self::Method(HttpMethod::from_str(&method)?)),
+            TagEnum::Payload { hash } => Ok(Self::Payload(Sha256Hash::from_str(&hash)?)),
+        }
+    }
+}
+
 pub struct Tag {
     inner: tag::Tag,
 }
@@ -657,6 +804,12 @@ impl Tag {
     pub fn parse(data: Vec<String>) -> Result<Self> {
         Ok(Self {
             inner: tag::Tag::try_from(data)?,
+        })
+    }
+
+    pub fn from_enum(e: TagEnum) -> Result<Self> {
+        Ok(Self {
+            inner: tag::Tag::try_from(e)?,
         })
     }
 
