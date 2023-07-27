@@ -399,6 +399,8 @@ interface TagEnum {
 interface Tag {
     [Throws=NostrError, Name=parse]
     constructor(sequence<string> data);
+    [Throws=NostrError, Name=from_enum]
+    constructor(TagEnum e);
     TagEnum as_enum();
     sequence<string> as_vec();
     TagKind kind();
