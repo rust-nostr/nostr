@@ -1167,16 +1167,19 @@ pub struct Identity {
 }
 
 impl Identity {
-    fn new(platform_iden: &str, proof: &str) -> Result<Self, Error> {
-        let (platform, ident) = platform_iden
-            .rsplit_once(':')
-            .ok_or(Error::InvalidIdentity)?;
+    /// New [`Identity`]
+    pub fn new<S>(platform_iden: S, proof: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        let i: String = platform_iden.into();
+        let (platform, ident) = i.rsplit_once(':').ok_or(Error::InvalidIdentity)?;
         let platform: ExternalIdentity = platform.to_string().try_into()?;
 
         Ok(Self {
             platform,
             ident: ident.to_string(),
-            proof: proof.to_string(),
+            proof: proof.into(),
         })
     }
 }
