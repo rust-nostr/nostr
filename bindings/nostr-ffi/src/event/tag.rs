@@ -492,7 +492,7 @@ impl From<tag::Tag> for Tag {
             } => Self::ContactList {
                 pk: pk.into(),
                 relay_url: relay_url.map(|u| u.to_string()),
-                alias: alias.map(|a| a.to_string()),
+                alias,
             },
             tag::Tag::POW { nonce, difficulty } => Self::POW {
                 nonce: nonce.to_string(),
@@ -507,9 +507,7 @@ impl From<tag::Tag> for Tag {
                 conditions: conditions.to_string(),
                 sig: sig.to_string(),
             },
-            tag::Tag::ContentWarning { reason } => Self::ContentWarning {
-                reason: reason.map(|r| r.to_string()),
-            },
+            tag::Tag::ContentWarning { reason } => Self::ContentWarning { reason },
             tag::Tag::Expiration(timestamp) => Self::Expiration {
                 timestamp: timestamp.into(),
             },
