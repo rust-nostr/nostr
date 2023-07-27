@@ -1,7 +1,11 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use nostr::event::tag;
+
+use crate::error::Result;
 
 pub enum TagKind {
     Known { known: TagKindKnown },
@@ -293,13 +297,13 @@ impl From<TagKind> for tag::TagKind {
                 TagKindKnown::TotalParticipants => Self::TotalParticipants,
                 TagKindKnown::Method => Self::Method,
                 TagKindKnown::Payload => Self::Payload,
-            }
+            },
             TagKind::Unknown { unknown } => Self::Custom(unknown),
         }
     }
 }
 
-pub enum Tag {
+pub enum TagEnum {
     Unknown {
         kind: TagKind,
         data: Vec<String>,
@@ -477,24 +481,7 @@ pub enum Tag {
     },
 }
 
-impl Tag {
-    /* pub fn parse<S>(data: Vec<S>) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        Tag::try_from(data)
-    } */
-
-    /* pub fn as_vec(&self) -> Vec<String> {
-        self.clone().into()
-    } */
-
-    /* pub fn kind(&self) -> TagKind {
-
-    } */
-}
-
-impl From<tag::Tag> for Tag {
+impl From<tag::Tag> for TagEnum {
     fn from(value: tag::Tag) -> Self {
         match value {
             tag::Tag::Generic(kind, data) => Self::Unknown {
@@ -646,5 +633,42 @@ impl From<tag::Tag> for Tag {
                 hash: p.to_string(),
             },
         }
+    }
+}
+
+pub struct Tag {
+    inner: tag::Tag,
+}
+
+impl From<tag::Tag> for Tag {
+    fn from(inner: tag::Tag) -> Self {
+        Self { inner }
+    }
+}
+
+impl Deref for Tag {
+    type Target = tag::Tag;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl Tag {
+    pub fn parse(data: Vec<String>) -> Result<Self> {
+        Ok(Self {
+            inner: tag::Tag::try_from(data)?,
+        })
+    }
+
+    pub fn as_enum(&self) -> TagEnum {
+        self.inner.clone().into()
+    }
+
+    pub fn as_vec(&self) -> Vec<String> {
+        self.inner.as_vec()
+    }
+
+    pub fn kind(&self) -> TagKind {
+        self.inner.kind().into()
     }
 }

@@ -217,7 +217,7 @@ interface Event {
 
 interface EventBuilder {
     [Throws=NostrError]
-    constructor(u64 kind, string content, sequence<sequence<string>> tags);
+    constructor(u64 kind, string content, sequence<Tag> tags);
     [Throws=NostrError]
     Event to_event(Keys keys);
     [Throws=NostrError]
@@ -230,9 +230,9 @@ interface EventBuilder {
     [Throws=NostrError, Name=add_recommended_relay]
     constructor(string url);
     [Throws=NostrError, Name=new_text_note]
-    constructor(string content, sequence<sequence<string>> tags);
+    constructor(string content, sequence<Tag> tags);
     [Throws=NostrError, Name=long_form_text_note]
-    constructor(string content, sequence<sequence<string>> tags);
+    constructor(string content, sequence<Tag> tags);
     [Name=repost]
     constructor(EventId event_id, PublicKey public_key);
     [Name=set_contact_list]
@@ -353,7 +353,7 @@ enum TagKindKnown {
 };
 
 [Enum]
-interface Tag {
+interface TagEnum {
     Unknown(TagKind kind, sequence<string> data);
     E(string event_id, string? relay_url, string? marker);
     PubKey(string public_key, string? relay_url);
@@ -406,6 +406,14 @@ interface Tag {
     Method(string method);
     Payload(string hash);
 }; 
+
+interface Tag {
+    [Throws=NostrError, Name=parse]
+    constructor(sequence<string> data);
+    TagEnum as_enum();
+    sequence<string> as_vec();
+    TagKind kind();
+};
 
 // NOSTR-SDK
 

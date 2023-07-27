@@ -17,7 +17,7 @@ mod ffi {
 
     // Nostr
     pub use crate::event::{
-        Event, EventBuilder, EventId, Tag, TagKind, TagKindKnown, UnsignedEvent,
+        Event, EventBuilder, EventId, Tag, TagEnum, TagKind, TagKindKnown, UnsignedEvent,
     };
     pub use crate::key::{Keys, PublicKey, SecretKey};
     pub use crate::message::{ClientMessage, Filter, RelayMessage};

@@ -5,13 +5,13 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::url::Url;
-use nostr::{ChannelId, Contact as ContactSdk, EventBuilder as EventBuilderSdk, Tag};
+use nostr::{ChannelId, Contact as ContactSdk, EventBuilder as EventBuilderSdk};
 
 use super::{Event, EventId};
 use crate::error::Result;
 use crate::key::Keys;
 use crate::types::{Contact, Metadata};
-use crate::{FileMetadata, PublicKey, UnsignedEvent};
+use crate::{FileMetadata, PublicKey, Tag, UnsignedEvent};
 
 pub struct EventBuilder {
     builder: EventBuilderSdk,
@@ -31,14 +31,13 @@ impl Deref for EventBuilder {
 }
 
 impl EventBuilder {
-    pub fn new(kind: u64, content: String, tags: Vec<Vec<String>>) -> Result<Self> {
-        let mut new_tags: Vec<Tag> = Vec::new();
-        for tag in tags.into_iter() {
-            new_tags.push(Tag::try_from(tag)?);
-        }
-
+    pub fn new(kind: u64, content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
+        let tags = tags
+            .into_iter()
+            .map(|t| t.as_ref().deref().clone())
+            .collect::<Vec<_>>();
         Ok(Self {
-            builder: EventBuilderSdk::new(kind.into(), content, &new_tags),
+            builder: EventBuilderSdk::new(kind.into(), content, &tags),
         })
     }
 
@@ -94,25 +93,23 @@ impl EventBuilder {
         })
     }
 
-    pub fn new_text_note(content: String, tags: Vec<Vec<String>>) -> Result<Self> {
-        let mut new_tags: Vec<Tag> = Vec::new();
-        for tag in tags.into_iter() {
-            new_tags.push(Tag::try_from(tag)?);
-        }
-
+    pub fn new_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
+        let tags = tags
+            .into_iter()
+            .map(|t| t.as_ref().deref().clone())
+            .collect::<Vec<_>>();
         Ok(Self {
-            builder: EventBuilderSdk::new_text_note(content, &new_tags),
+            builder: EventBuilderSdk::new_text_note(content, &tags),
         })
     }
 
-    pub fn long_form_text_note(content: String, tags: Vec<Vec<String>>) -> Result<Self> {
-        let mut new_tags: Vec<Tag> = Vec::new();
-        for tag in tags.into_iter() {
-            new_tags.push(Tag::try_from(tag)?);
-        }
-
+    pub fn long_form_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
+        let tags = tags
+            .into_iter()
+            .map(|t| t.as_ref().deref().clone())
+            .collect::<Vec<_>>();
         Ok(Self {
-            builder: EventBuilderSdk::long_form_text_note(content, &new_tags),
+            builder: EventBuilderSdk::long_form_text_note(content, &tags),
         })
     }
 

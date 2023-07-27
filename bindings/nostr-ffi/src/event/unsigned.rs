@@ -38,12 +38,12 @@ impl UnsignedEvent {
         self.inner.kind.into()
     }
 
-    pub fn tags(&self) -> Vec<Tag> {
+    pub fn tags(&self) -> Vec<Arc<Tag>> {
         self.inner
             .tags
             .clone()
             .into_iter()
-            .map(|t| t.into())
+            .map(|t| Arc::new(t.into()))
             .collect()
     }
 
