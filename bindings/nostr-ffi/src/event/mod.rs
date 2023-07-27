@@ -13,7 +13,7 @@ mod unsigned;
 
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
-pub use self::tag::{TagKind, TagKindKnown};
+pub use self::tag::{Tag, TagKind, TagKindKnown};
 pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
 use crate::{PublicKey, Timestamp};
@@ -52,7 +52,14 @@ impl Event {
         self.inner.kind.into()
     }
 
-    // TODO: add tags
+    pub fn tags(&self) -> Vec<Vec<String>> {
+        self.inner
+            .tags
+            .clone()
+            .into_iter()
+            .map(|t| t.as_vec())
+            .collect()
+    }
 
     pub fn content(&self) -> String {
         self.inner.content.clone()

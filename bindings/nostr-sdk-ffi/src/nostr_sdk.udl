@@ -205,6 +205,7 @@ interface Event {
     PublicKey pubkey();
     Timestamp created_at();
     u64 kind();
+    sequence<sequence<string>> tags();
     string content();
     string signature();
     boolean verify();

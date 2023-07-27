@@ -16,7 +16,9 @@ mod ffi {
     pub use crate::error::NostrError;
 
     // Nostr
-    pub use crate::event::{Event, EventBuilder, EventId, TagKind, TagKindKnown, UnsignedEvent};
+    pub use crate::event::{
+        Event, EventBuilder, EventId, Tag, TagKind, TagKindKnown, UnsignedEvent,
+    };
     pub use crate::key::{Keys, PublicKey, SecretKey};
     pub use crate::message::{ClientMessage, Filter, RelayMessage};
     pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};

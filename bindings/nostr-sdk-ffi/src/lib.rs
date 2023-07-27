@@ -21,7 +21,7 @@ mod ffi {
         get_nip05_profile, nip04_decrypt, nip04_encrypt, verify_nip05, AccountMetadata,
         ClientMessage, Contact, Event, EventBuilder, EventId, FileMetadata, Filter,
         ImageDimensions, Keys, NostrConnectURI, NostrError, Profile, PublicKey,
-        RelayInformationDocument, RelayMessage, SecretKey, TagKind, TagKindKnown, Timestamp,
+        RelayInformationDocument, RelayMessage, SecretKey, Tag, TagKind, TagKindKnown, Timestamp,
         UnsignedEvent,
     };
     pub use nostr_sdk::RelayStatus;
