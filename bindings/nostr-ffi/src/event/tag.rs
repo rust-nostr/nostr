@@ -244,6 +244,61 @@ impl From<tag::TagKind> for TagKind {
     }
 }
 
+impl From<TagKind> for tag::TagKind {
+    fn from(value: TagKind) -> Self {
+        match value {
+            TagKind::Known { known } => match known {
+                TagKindKnown::P => Self::P,
+                TagKindKnown::E => Self::E,
+                TagKindKnown::R => Self::R,
+                TagKindKnown::T => Self::T,
+                TagKindKnown::G => Self::G,
+                TagKindKnown::D => Self::D,
+                TagKindKnown::A => Self::A,
+                TagKindKnown::I => Self::I,
+                TagKindKnown::M => Self::M,
+                TagKindKnown::U => Self::U,
+                TagKindKnown::X => Self::X,
+                TagKindKnown::RelayUrl => Self::Relay,
+                TagKindKnown::Nonce => Self::Nonce,
+                TagKindKnown::Delegation => Self::Delegation,
+                TagKindKnown::ContentWarning => Self::ContentWarning,
+                TagKindKnown::Expiration => Self::Expiration,
+                TagKindKnown::Subject => Self::Subject,
+                TagKindKnown::Challenge => Self::Challenge,
+                TagKindKnown::Title => Self::Title,
+                TagKindKnown::Image => Self::Image,
+                TagKindKnown::Thumb => Self::Thumb,
+                TagKindKnown::Summary => Self::Summary,
+                TagKindKnown::PublishedAt => Self::PublishedAt,
+                TagKindKnown::Description => Self::Description,
+                TagKindKnown::Bolt11 => Self::Bolt11,
+                TagKindKnown::Preimage => Self::Preimage,
+                TagKindKnown::Relays => Self::Relays,
+                TagKindKnown::Amount => Self::Amount,
+                TagKindKnown::Lnurl => Self::Lnurl,
+                TagKindKnown::Name => Self::Name,
+                TagKindKnown::Url => Self::Url,
+                TagKindKnown::Aes256Gcm => Self::Aes256Gcm,
+                TagKindKnown::Size => Self::Size,
+                TagKindKnown::Dim => Self::Dim,
+                TagKindKnown::Magnet => Self::Magnet,
+                TagKindKnown::Blurhash => Self::Blurhash,
+                TagKindKnown::Streaming => Self::Streaming,
+                TagKindKnown::Recording => Self::Recording,
+                TagKindKnown::Starts => Self::Starts,
+                TagKindKnown::Ends => Self::Ends,
+                TagKindKnown::Status => Self::Status,
+                TagKindKnown::CurrentParticipants => Self::CurrentParticipants,
+                TagKindKnown::TotalParticipants => Self::TotalParticipants,
+                TagKindKnown::Method => Self::Method,
+                TagKindKnown::Payload => Self::Payload,
+            }
+            TagKind::Unknown { unknown } => Self::Custom(unknown),
+        }
+    }
+}
+
 pub enum Tag {
     Unknown {
         kind: TagKind,
@@ -422,6 +477,23 @@ pub enum Tag {
     },
 }
 
+impl Tag {
+    /* pub fn parse<S>(data: Vec<S>) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        Tag::try_from(data)
+    } */
+
+    /* pub fn as_vec(&self) -> Vec<String> {
+        self.clone().into()
+    } */
+
+    /* pub fn kind(&self) -> TagKind {
+
+    } */
+}
+
 impl From<tag::Tag> for Tag {
     fn from(value: tag::Tag) -> Self {
         match value {
@@ -575,21 +647,4 @@ impl From<tag::Tag> for Tag {
             },
         }
     }
-}
-
-impl Tag {
-    /* pub fn parse<S>(data: Vec<S>) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        Tag::try_from(data)
-    } */
-
-    /* pub fn as_vec(&self) -> Vec<String> {
-        self.clone().into()
-    } */
-
-    /* pub fn kind(&self) -> TagKind {
-
-    } */
 }
