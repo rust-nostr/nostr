@@ -3,8 +3,6 @@
 
 use nostr::event::tag;
 
-use crate::{EventId, PublicKey, Timestamp};
-
 pub enum TagKind {
     Known { known: TagKindKnown },
     Unknown { unknown: String },
@@ -251,25 +249,25 @@ pub enum Tag {
         kind: TagKind,
         data: Vec<String>,
     },
-    Event {
-        event_id: EventId,
+    E {
+        event_id: String,
         relay_url: Option<String>,
         marker: Option<String>,
     },
     PubKey {
-        public_key: PublicKey,
+        public_key: String,
         relay_url: Option<String>,
     },
     EventReport {
-        event_id: EventId,
+        event_id: String,
         report: String,
     },
     PubKeyReport {
-        public_key: PublicKey,
+        public_key: String,
         report: String,
     },
     PubKeyLiveEvent {
-        pk: PublicKey,
+        pk: String,
         relay_url: Option<String>,
         marker: String,
         proof: Option<String>,
@@ -296,7 +294,7 @@ pub enum Tag {
     },
     A {
         kind: u64,
-        public_key: PublicKey,
+        public_key: String,
         identifier: String,
         relay_url: Option<String>,
     },
@@ -304,7 +302,7 @@ pub enum Tag {
         relay_url: String,
     },
     ContactList {
-        pk: PublicKey,
+        pk: String,
         relay_url: Option<String>,
         alias: Option<String>,
     },
@@ -313,7 +311,7 @@ pub enum Tag {
         difficulty: u8,
     },
     Delegation {
-        delegator_pk: PublicKey,
+        delegator_pk: String,
         conditions: String,
         sig: String,
     },
@@ -321,7 +319,7 @@ pub enum Tag {
         reason: Option<String>,
     },
     Expiration {
-        timestamp: Timestamp,
+        timestamp: u64,
     },
     Subject {
         subject: String,
@@ -365,7 +363,7 @@ pub enum Tag {
         name: String,
     },
     PublishedAt {
-        timestamp: Timestamp,
+        timestamp: u64,
     },
     Url {
         url: String,
@@ -399,10 +397,10 @@ pub enum Tag {
         url: String,
     },
     Starts {
-        timestamp: Timestamp,
+        timestamp: u64,
     },
     Ends {
-        timestamp: Timestamp,
+        timestamp: u64,
     },
     Status {
         status: String,
@@ -431,13 +429,13 @@ impl From<tag::Tag> for Tag {
                 kind: kind.into(),
                 data,
             },
-            tag::Tag::Event(id, relay_url, marker) => Self::Event {
-                event_id: id.into(),
+            tag::Tag::Event(id, relay_url, marker) => Self::E {
+                event_id: id.to_hex(),
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.map(|m| m.to_string()),
             },
             tag::Tag::PubKey(pk, relay_url) => Self::PubKey {
-                public_key: pk.into(),
+                public_key: pk.to_string(),
                 relay_url: relay_url.map(|u| u.to_string()),
             },
             tag::Tag::EventReport(id, report) => Self::EventReport {
@@ -445,7 +443,7 @@ impl From<tag::Tag> for Tag {
                 report: report.to_string(),
             },
             tag::Tag::PubKeyReport(pk, report) => Self::PubKeyReport {
-                public_key: pk.into(),
+                public_key: pk.to_string(),
                 report: report.to_string(),
             },
             tag::Tag::PubKeyLiveEvent {
@@ -454,7 +452,7 @@ impl From<tag::Tag> for Tag {
                 marker,
                 proof,
             } => Self::PubKeyLiveEvent {
-                pk: pk.into(),
+                pk: pk.to_string(),
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.to_string(),
                 proof: proof.map(|p| p.to_string()),
@@ -474,7 +472,7 @@ impl From<tag::Tag> for Tag {
                 relay_url,
             } => Self::A {
                 kind: kind.as_u64(),
-                public_key: public_key.into(),
+                public_key: public_key.to_string(),
                 identifier,
                 relay_url: relay_url.map(|u| u.to_string()),
             },
@@ -490,7 +488,7 @@ impl From<tag::Tag> for Tag {
                 relay_url,
                 alias,
             } => Self::ContactList {
-                pk: pk.into(),
+                pk: pk.to_string(),
                 relay_url: relay_url.map(|u| u.to_string()),
                 alias,
             },
@@ -503,13 +501,13 @@ impl From<tag::Tag> for Tag {
                 conditions,
                 sig,
             } => Self::Delegation {
-                delegator_pk: delegator_pk.into(),
+                delegator_pk: delegator_pk.to_string(),
                 conditions: conditions.to_string(),
                 sig: sig.to_string(),
             },
             tag::Tag::ContentWarning { reason } => Self::ContentWarning { reason },
             tag::Tag::Expiration(timestamp) => Self::Expiration {
-                timestamp: timestamp.into(),
+                timestamp: timestamp.as_u64(),
             },
             tag::Tag::Subject(sub) => Self::Subject { subject: sub },
             tag::Tag::Challenge(challenge) => Self::Challenge { challenge },
@@ -524,7 +522,7 @@ impl From<tag::Tag> for Tag {
             },
             tag::Tag::Summary(summary) => Self::Summary { summary },
             tag::Tag::PublishedAt(timestamp) => Self::PublishedAt {
-                timestamp: timestamp.into(),
+                timestamp: timestamp.as_u64(),
             },
             tag::Tag::Description(description) => Self::Description { desc: description },
             tag::Tag::Bolt11(bolt11) => Self::Bolt11 { bolt11 },
@@ -556,10 +554,10 @@ impl From<tag::Tag> for Tag {
                 url: url.to_string(),
             },
             tag::Tag::Starts(timestamp) => Self::Starts {
-                timestamp: timestamp.into(),
+                timestamp: timestamp.as_u64(),
             },
             tag::Tag::Ends(timestamp) => Self::Ends {
-                timestamp: timestamp.into(),
+                timestamp: timestamp.as_u64(),
             },
             tag::Tag::Status(s) => Self::Status {
                 status: s.to_string(),
@@ -595,60 +593,3 @@ impl Tag {
 
     } */
 }
-
-// UDL
-
-/* [Enum]
-interface Tag {
-    Unknown(TagKind kind, sequence<string> data);
-    Event(EventId event_id, string? relay_url, string? marker);
-    PubKey(PublicKey public_key, string? relay_url);
-    EventReport(EventId event_id, string report);
-    PubKeyReport(PublicKey public_key, string report);
-    PubKeyLiveEvent(PublicKey pk, string? relay_url, string marker, string? proof);
-    Reference(string reference);
-    RelayMetadata(string relay_url, string? rw);
-    Hashtag(string hashtag);
-    Geohash(string geohash);
-    Identifier(string identifier);
-    ExternalIdentity(string identity, string proof);
-    A(u64 kind, PublicKey public_key, string identifier, string? relay_url);
-    RelayUrl(string relay_url);
-    ContactList(PublicKey pk, string? relay_url, string? alias);
-    POW(string nonce, u8 difficulty);
-    Delegation(PublicKey delegator_pk, string conditions, string sig);
-    ContentWarning(string? reason);
-    Expiration(Timestamp timestamp);
-    Subject(string subject);
-    Challenge(string challenge);
-    Title(string title);
-    Image(string url, string? dimensions);
-    Thumb(string url, string? dimensions);
-    Summary(string summary);
-    Description(string desc);
-    Bolt11(string bolt11);
-    Preimage(string preimage);
-    Relays(sequence<string> urls);
-    Amount(u64 amount);
-    Lnurl(string lnurl);
-    Name(string name);
-    PublishedAt(Timestamp timestamp);
-    Url(string url);
-    MimeType(string mime);
-    Aes256Gcm(string key, string iv);
-    Sha256(string hash);
-    Size(u64 size);
-    Dim(string dimensions);
-    Magnet(string uri);
-    Blurhash(string blurhash);
-    Streaming(string url);
-    Recording(string url);
-    Starts(Timestamp timestamp);
-    Ends(Timestamp timestamp);
-    Status(string status);
-    CurrentParticipants(u64 num);
-    TotalParticipants(u64 num);
-    AbsoluteURL(string url);
-    Method(string method);
-    Payload(string hash);
-}; */

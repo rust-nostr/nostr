@@ -339,3 +339,58 @@ enum TagKindKnown {
     "Method",
     "Payload",
 };
+
+[Enum]
+interface Tag {
+    Unknown(TagKind kind, sequence<string> data);
+    E(string event_id, string? relay_url, string? marker);
+    PubKey(string public_key, string? relay_url);
+    EventReport(string event_id, string report);
+    PubKeyReport(string public_key, string report);
+    PubKeyLiveEvent(string pk, string? relay_url, string marker, string? proof);
+    Reference(string reference);
+    RelayMetadata(string relay_url, string? rw);
+    Hashtag(string hashtag);
+    Geohash(string geohash);
+    Identifier(string identifier);
+    ExternalIdentity(string identity, string proof);
+    A(u64 kind, string public_key, string identifier, string? relay_url);
+    RelayUrl(string relay_url);
+    ContactList(string pk, string? relay_url, string? alias);
+    POW(string nonce, u8 difficulty);
+    Delegation(string delegator_pk, string conditions, string sig);
+    ContentWarning(string? reason);
+    Expiration(u64 timestamp);
+    Subject(string subject);
+    Challenge(string challenge);
+    Title(string title);
+    Image(string url, string? dimensions);
+    Thumb(string url, string? dimensions);
+    Summary(string summary);
+    Description(string desc);
+    Bolt11(string bolt11);
+    Preimage(string preimage);
+    Relays(sequence<string> urls);
+    Amount(u64 amount);
+    Lnurl(string lnurl);
+    Name(string name);
+    PublishedAt(u64 timestamp);
+    Url(string url);
+    MimeType(string mime);
+    Aes256Gcm(string key, string iv);
+    Sha256(string hash);
+    Size(u64 size);
+    Dim(string dimensions);
+    Magnet(string uri);
+    Blurhash(string blurhash);
+    Streaming(string url);
+    Recording(string url);
+    Starts(u64 timestamp);
+    Ends(u64 timestamp);
+    Status(string status);
+    CurrentParticipants(u64 num);
+    TotalParticipants(u64 num);
+    AbsoluteURL(string url);
+    Method(string method);
+    Payload(string hash);
+}; 
