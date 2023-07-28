@@ -1195,6 +1195,17 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
+    /// Create an auth event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    pub async fn auth<S>(&self, challenge: S, relay: Url) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        let builder = EventBuilder::auth(challenge, relay);
+        self.send_event_builder(builder).await
+    }
+
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>

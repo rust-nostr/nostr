@@ -358,6 +358,16 @@ impl Client {
         RUNTIME.block_on(async { self.client.mute_channel_user(pubkey, reason).await })
     }
 
+    /// Create an auth event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    pub fn auth<S>(&self, challenge: S, relay: Url) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async { self.client.auth(challenge, relay).await })
+    }
+
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
