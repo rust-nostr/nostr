@@ -222,6 +222,32 @@ impl EventBuilder {
         })
     }
 
+    pub fn new_zap_request(
+        pubkey: Arc<PublicKey>,
+        event_id: Option<Arc<EventId>>,
+        amount: Option<u64>,
+        lnurl: Option<String>,
+    ) -> Self {
+        Self {
+            builder: EventBuilderSdk::new_zap_request(
+                *pubkey.as_ref().deref(),
+                event_id.map(|id| id.as_ref().into()),
+                amount,
+                lnurl,
+            ),
+        }
+    }
+
+    pub fn new_zap(bolt11: String, preimage: Option<String>, zap_request: Arc<Event>) -> Self {
+        Self {
+            builder: EventBuilderSdk::new_zap(
+                bolt11,
+                preimage,
+                zap_request.as_ref().deref().clone(),
+            ),
+        }
+    }
+
     pub fn file_metadata(description: String, metadata: Arc<FileMetadata>) -> Self {
         Self {
             builder: EventBuilderSdk::file_metadata(description, metadata.as_ref().deref().clone()),
