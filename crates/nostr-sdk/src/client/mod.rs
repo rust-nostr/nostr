@@ -1206,6 +1206,39 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
+    /// Create zap request event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    pub async fn new_zap_request<S>(
+        &self,
+        pubkey: XOnlyPublicKey,
+        event_id: Option<EventId>,
+        amount: Option<u64>,
+        lnurl: Option<S>,
+    ) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        let builder = EventBuilder::new_zap_request(pubkey, event_id, amount, lnurl);
+        self.send_event_builder(builder).await
+    }
+
+    /// Create zap event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    pub async fn new_zap<S>(
+        &self,
+        bolt11: S,
+        preimage: Option<S>,
+        zap_request: Event,
+    ) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        let builder = EventBuilder::new_zap(bolt11, preimage, zap_request);
+        self.send_event_builder(builder).await
+    }
+
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>

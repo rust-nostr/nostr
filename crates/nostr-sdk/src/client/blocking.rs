@@ -368,6 +368,41 @@ impl Client {
         RUNTIME.block_on(async { self.client.auth(challenge, relay).await })
     }
 
+    /// Create zap request event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    pub fn new_zap_request<S>(
+        &self,
+        pubkey: XOnlyPublicKey,
+        event_id: Option<EventId>,
+        amount: Option<u64>,
+        lnurl: Option<S>,
+    ) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async {
+            self.client
+                .new_zap_request(pubkey, event_id, amount, lnurl)
+                .await
+        })
+    }
+
+    /// Create zap event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    pub fn new_zap<S>(
+        &self,
+        bolt11: S,
+        preimage: Option<S>,
+        zap_request: Event,
+    ) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async { self.client.new_zap(bolt11, preimage, zap_request).await })
+    }
+
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
