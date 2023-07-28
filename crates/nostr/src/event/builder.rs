@@ -7,7 +7,6 @@ use core::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
 use secp256k1::XOnlyPublicKey;
@@ -15,7 +14,6 @@ use serde_json::{json, Value};
 use url::Url;
 
 pub use super::kind::Kind;
-use super::tag::HttpMethod;
 pub use super::tag::{ImageDimensions, Marker, Tag, TagKind};
 use super::{Event, EventId, UnsignedEvent};
 use crate::key::{self, Keys};
@@ -26,6 +24,7 @@ use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip58::Error as Nip58Error;
 use crate::nips::nip94::FileMetadata;
+use crate::nips::nip98::HttpData;
 use crate::nips::{nip13, nip58};
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 use crate::UncheckedUrl;
@@ -843,11 +842,8 @@ impl EventBuilder {
     /// HTTP Auth
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/98.md>
-    pub fn http_auth(absolute_url: Url, method: HttpMethod, payload: Option<Sha256Hash>) -> Self {
-        let mut tags: Vec<Tag> = vec![Tag::AbsoluteURL(absolute_url.into()), Tag::Method(method)];
-        if let Some(payload) = payload {
-            tags.push(Tag::Payload(payload));
-        }
+    pub fn http_auth(data: HttpData) -> Self {
+        let tags: Vec<Tag> = data.into();
         Self::new(Kind::HttpAuth, "", &tags)
     }
 }

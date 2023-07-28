@@ -5,7 +5,9 @@
 //!
 //! This NIP defines an ephemerial event used to authorize requests to HTTP servers using nostr events.
 //! This is useful for HTTP services which are build for Nostr and deal with Nostr user accounts.
+//!
 //! <https://github.com/nostr-protocol/nips/blob/master/98.md>
+
 use core::fmt;
 
 use crate::{HttpMethod, Tag, UncheckedUrl};
@@ -85,18 +87,14 @@ impl HttpData {
 }
 
 impl From<HttpData> for Vec<Tag> {
-    fn from(value: HttpData) -> Self {
-        let mut tags = Vec::new();
-
+    fn from(data: HttpData) -> Self {
         let HttpData {
             url,
             method,
             payload,
-        } = value;
+        } = data;
 
-        tags.push(Tag::AbsoluteURL(url));
-        tags.push(Tag::Method(method));
-
+        let mut tags: Vec<Tag> = vec![Tag::AbsoluteURL(url), Tag::Method(method)];
         if let Some(payload) = payload {
             tags.push(Tag::Payload(payload));
         }
