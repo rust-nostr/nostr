@@ -415,7 +415,15 @@ impl Relay {
 
                     // Schedule relay for termination
                     // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
-                    if relay.is_scheduled_for_termination() {
+                    if relay.is_scheduled_for_stop() {
+                        relay.set_status(RelayStatus::Stopped).await;
+                        relay.schedule_for_stop(false);
+                        log::debug!(
+                            "Auto connect loop terminated for {} [stop - schedule]",
+                            relay.url
+                        );
+                        break;
+                    } else if relay.is_scheduled_for_termination() {
                         relay.set_status(RelayStatus::Terminated).await;
                         relay.schedule_for_termination(false);
                         log::debug!("Auto connect loop terminated for {} [schedule]", relay.url);
@@ -425,7 +433,7 @@ impl Relay {
                     // Check status
                     match relay.status().await {
                         RelayStatus::Disconnected => relay.try_connect().await,
-                        RelayStatus::Terminated => {
+                        RelayStatus::Stopped | RelayStatus::Terminated => {
                             log::debug!("Auto connect loop terminated for {}", relay.url);
                             break;
                         }
