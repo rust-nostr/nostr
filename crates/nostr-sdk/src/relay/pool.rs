@@ -31,6 +31,9 @@ pub enum Error {
     /// Msg not sent
     #[error("msg not sent")]
     MsgNotSent,
+    /// Event not published
+    #[error("event not published")]
+    EventNotPublished,
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
@@ -463,7 +466,7 @@ impl RelayPool {
         }
 
         if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
-            return Err(Error::MsgNotSent);
+            return Err(Error::EventNotPublished);
         }
 
         Ok(())

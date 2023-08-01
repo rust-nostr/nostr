@@ -45,6 +45,9 @@ pub enum Error {
     /// Message not sent
     #[error("message not sent")]
     MessageNotSent,
+    /// Event not published
+    #[error("event not published: {0}")]
+    EventNotPublished(String),
     /// Impossible to receive oneshot message
     #[error("impossible to recv msg")]
     OneShotRecvError,
@@ -57,9 +60,6 @@ pub enum Error {
     /// Filters empty
     #[error("filters empty")]
     FiltersEmpty,
-    /// Send message error
-    #[error("{0}")]
-    SendEvent(String),
 }
 
 /// Relay connection status
@@ -765,12 +765,12 @@ impl Relay {
                         if status {
                             return Ok(event_id);
                         } else {
-                            return Err(Error::SendEvent(message));
+                            return Err(Error::EventNotPublished(message));
                         }
                     }
                 }
             }
-            Err(Error::Timeout)
+            Err(Error::EventNotPublished(String::from("loop terminated")))
         })
         .await
         .ok_or(Error::Timeout)?
