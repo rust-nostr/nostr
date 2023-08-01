@@ -13,7 +13,7 @@ use std::time::Duration;
 use async_utility::{thread, time};
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
-use nostr::{ClientMessage, Event, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
+use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -56,6 +56,9 @@ pub enum Error {
     /// Filters empty
     #[error("filters empty")]
     FiltersEmpty,
+    /// Send message error
+    #[error("{0}")]
+    SendEvent(String),
 }
 
 /// Relay connection status
@@ -732,6 +735,41 @@ impl Relay {
             }
             None => self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)), None),
         }
+    }
+
+    /// Send event and wait for `OK` relay msg
+    pub async fn send_event(
+        &self,
+        event: Event,
+        timeout: Option<Duration>,
+    ) -> Result<EventId, Error> {
+        time::timeout(timeout, async {
+            let id: EventId = event.id;
+            self.send_msg(ClientMessage::new_event(event), None).await?;
+            let mut notifications = self.notification_sender.subscribe();
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(
+                    _,
+                    RelayMessage::Ok {
+                        event_id,
+                        status,
+                        message,
+                    },
+                ) = notification
+                {
+                    if id == event_id {
+                        if status {
+                            return Ok(event_id);
+                        } else {
+                            return Err(Error::SendEvent(message));
+                        }
+                    }
+                }
+            }
+            Err(Error::Timeout)
+        })
+        .await
+        .ok_or(Error::Timeout)?
     }
 
     /// Subscribes relay with existing filter

@@ -591,61 +591,34 @@ impl Client {
         Ok(())
     }
 
-    /// Send client message with custom wait
-    pub async fn send_msg_with_custom_wait(
-        &self,
-        msg: ClientMessage,
-        wait: Option<Duration>,
-    ) -> Result<(), Error> {
-        self.pool.send_msg(msg, wait).await?;
-        Ok(())
-    }
-
     /// Send client message to a specific relay
     pub async fn send_msg_to<S>(&self, url: S, msg: ClientMessage) -> Result<(), Error>
     where
         S: Into<String>,
     {
+        let url = Url::parse(&url.into())?;
         let wait: Option<Duration> = if self.opts.get_wait_for_send() {
             self.opts.get_send_timeout()
         } else {
             None
         };
-        self.send_msg_to_with_custom_wait(url, msg, wait).await
-    }
-
-    /// Send client message to a specific relay with custom wait
-    pub async fn send_msg_to_with_custom_wait<S>(
-        &self,
-        url: S,
-        msg: ClientMessage,
-        wait: Option<Duration>,
-    ) -> Result<(), Error>
-    where
-        S: Into<String>,
-    {
-        let url = Url::parse(&url.into())?;
-        self.pool.send_msg_to(url, msg, wait).await?;
-        Ok(())
+        Ok(self.pool.send_msg_to(url, msg, wait).await?)
     }
 
     /// Send event
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
         let event_id = event.id;
-        self.send_msg(ClientMessage::new_event(event)).await?;
+        if self.opts.get_wait_for_ok() {
+            let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
+                self.opts.get_send_timeout()
+            } else {
+                None
+            };
+            self.pool.send_event(event, timeout).await?;
+        } else {
+            self.send_msg(ClientMessage::new_event(event)).await?;
+        }
         Ok(event_id)
-    }
-
-    /// Send event with custom wait
-    pub async fn send_event_with_custom_wait(
-        &self,
-        event: Event,
-        wait: Option<Duration>,
-    ) -> Result<(), Error> {
-        self.pool
-            .send_msg(ClientMessage::new_event(event), wait)
-            .await?;
-        Ok(())
     }
 
     /// Send event to specific relay
@@ -654,23 +627,19 @@ impl Client {
         S: Into<String>,
     {
         let event_id = event.id;
-        self.send_msg_to(url, ClientMessage::new_event(event))
-            .await?;
+        if self.opts.get_wait_for_ok() {
+            let url = Url::parse(&url.into())?;
+            let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
+                self.opts.get_send_timeout()
+            } else {
+                None
+            };
+            self.pool.send_event_to(url, event, timeout).await?;
+        } else {
+            self.send_msg_to(url, ClientMessage::new_event(event))
+                .await?;
+        }
         Ok(event_id)
-    }
-
-    /// Send event to a specific relay with custom wait
-    pub async fn send_event_to_with_custom_wait<S>(
-        &self,
-        url: S,
-        event: Event,
-        wait: Option<Duration>,
-    ) -> Result<(), Error>
-    where
-        S: Into<String>,
-    {
-        self.send_msg_to_with_custom_wait(url, ClientMessage::new_event(event), wait)
-            .await
     }
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {

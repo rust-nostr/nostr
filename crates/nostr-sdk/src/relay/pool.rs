@@ -408,7 +408,7 @@ impl RelayPool {
         Ok(())
     }
 
-    /// Send client message
+    /// Send client message to a single relay
     pub async fn send_msg_to(
         &self,
         url: Url,
@@ -418,6 +418,67 @@ impl RelayPool {
         let relays = self.relays().await;
         if let Some(relay) = relays.get(&url) {
             relay.send_msg(msg, wait).await?;
+            Ok(())
+        } else {
+            Err(Error::RelayNotFound)
+        }
+    }
+
+    /// Send event and wait for `OK` relay msg
+    pub async fn send_event(&self, event: Event, timeout: Option<Duration>) -> Result<(), Error> {
+        let relays = self.relays().await;
+
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
+        if let Err(e) = self
+            .pool_task_sender
+            .send(RelayPoolMessage::EventSent(Box::new(event.clone())))
+            .await
+        {
+            log::error!("{e}");
+        };
+
+        let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+        let mut handles = Vec::new();
+
+        for (url, relay) in relays.into_iter() {
+            let event = event.clone();
+            let sent = sent_to_at_least_one_relay.clone();
+            let handle = thread::spawn(async move {
+                match relay.send_event(event, timeout).await {
+                    Ok(_) => {
+                        let _ =
+                            sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                    }
+                    Err(e) => log::error!("Impossible to send event to {url}: {e}"),
+                }
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles.into_iter().flatten() {
+            handle.join().await?;
+        }
+
+        if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
+            return Err(Error::MsgNotSent);
+        }
+
+        Ok(())
+    }
+
+    /// Send event to a single relay
+    pub async fn send_event_to(
+        &self,
+        url: Url,
+        event: Event,
+        timeout: Option<Duration>,
+    ) -> Result<(), Error> {
+        let relays = self.relays().await;
+        if let Some(relay) = relays.get(&url) {
+            relay.send_event(event, timeout).await?;
             Ok(())
         } else {
             Err(Error::RelayNotFound)
