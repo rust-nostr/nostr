@@ -69,3 +69,7 @@ required-features = ["all-nips"]
 
 [[example]]
 name = "shutdown-on-drop"
+
+[[example]]
+name = "wait-for-ok"
+required-features = ["nip19"]
