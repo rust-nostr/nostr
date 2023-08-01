@@ -44,6 +44,12 @@ impl Options {
         Arc::new(builder)
     }
 
+    pub fn wait_for_ok(self: Arc<Self>, wait: bool) -> Arc<Self> {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.wait_for_ok(wait);
+        Arc::new(builder)
+    }
+
     pub fn wait_for_subscription(self: Arc<Self>, wait: bool) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.wait_for_subscription(wait);
