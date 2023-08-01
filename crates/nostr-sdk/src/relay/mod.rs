@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::{thread, time};
+use nostr::message::MessageHandleError;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
@@ -595,8 +596,11 @@ impl Relay {
                                         return true; // Exit
                                     };
                                 }
-                                Err(err) => {
-                                    log::error!("{}: {}", err, data);
+                                Err(e) => {
+                                    match e {
+                                        MessageHandleError::EmptyMsg => (),
+                                        _ => log::error!("{e}: {data}"),
+                                    };
                                 }
                             },
                             Err(err) => log::error!("{}", err),
