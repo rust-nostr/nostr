@@ -7,8 +7,11 @@ use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
+use async_utility::thread;
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 #[cfg(feature = "nip46")]
@@ -112,8 +115,30 @@ pub struct Client {
     pool: RelayPool,
     keys: Keys,
     opts: Options,
+    dropped: Arc<AtomicBool>,
     #[cfg(feature = "nip46")]
     remote_signer: Option<RemoteSigner>,
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        if self.opts.shutdown_on_drop {
+            if self.dropped.load(Ordering::SeqCst) {
+                log::warn!("Client already dropped");
+            } else {
+                log::debug!("Dropping the Client...");
+                let _ = self
+                    .dropped
+                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                let pool = self.clone();
+                thread::spawn(async move {
+                    pool.shutdown()
+                        .await
+                        .expect("Impossible to drop the client")
+                });
+            }
+        }
+    }
 }
 
 impl Client {
@@ -145,6 +170,7 @@ impl Client {
             pool: RelayPool::new(opts.get_pool()),
             keys: keys.clone(),
             opts,
+            dropped: Arc::new(AtomicBool::new(false)),
             #[cfg(feature = "nip46")]
             remote_signer: None,
         }
@@ -167,6 +193,7 @@ impl Client {
             pool: RelayPool::new(opts.get_pool()),
             keys: app_keys.clone(),
             opts,
+            dropped: Arc::new(AtomicBool::new(false)),
             remote_signer: Some(remote_signer),
         }
     }
@@ -179,6 +206,11 @@ impl Client {
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
         self.keys.clone()
+    }
+
+    /// Get [`RelayPool`]
+    pub fn pool(&self) -> RelayPool {
+        self.pool.clone()
     }
 
     /// Get NIP46 uri
@@ -222,7 +254,7 @@ impl Client {
 
     /// Completely shutdown [`Client`]
     pub async fn shutdown(self) -> Result<(), Error> {
-        Ok(self.pool.shutdown().await?)
+        Ok(self.pool.clone().shutdown().await?)
     }
 
     /// Clear already seen events

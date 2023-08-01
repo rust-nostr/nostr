@@ -31,6 +31,8 @@ pub struct Options {
     /// NIP46 timeout (default: 180 secs)
     #[cfg(feature = "nip46")]
     nip46_timeout: Option<Duration>,
+    /// Shutdown on [Client] drop
+    pub shutdown_on_drop: bool,
     /// Pool Options
     pool: RelayPoolOptions,
 }
@@ -48,6 +50,7 @@ impl Default for Options {
             send_timeout: Some(Duration::from_secs(60)),
             #[cfg(feature = "nip46")]
             nip46_timeout: Some(Duration::from_secs(180)),
+            shutdown_on_drop: false,
             pool: RelayPoolOptions::default(),
         }
     }
@@ -172,6 +175,14 @@ impl Options {
         self.nip46_timeout
     }
 
+    /// Shutdown client on drop
+    pub fn shutdown_on_drop(self, value: bool) -> Self {
+        Self {
+            shutdown_on_drop: value,
+            ..self
+        }
+    }
+
     /// Set pool options
     pub fn pool(self, opts: RelayPoolOptions) -> Self {
         Self { pool: opts, ..self }
@@ -179,16 +190,5 @@ impl Options {
 
     pub(crate) fn get_pool(&self) -> RelayPoolOptions {
         self.pool
-    }
-
-    /// Shutdown client on drop
-    pub fn shutdown_on_drop(self, value: bool) -> Self {
-        Self {
-            pool: RelayPoolOptions {
-                shutdown_on_drop: value,
-                ..self.pool
-            },
-            ..self
-        }
     }
 }
