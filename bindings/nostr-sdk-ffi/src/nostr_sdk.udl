@@ -453,6 +453,7 @@ interface Relay {
     ActiveSubscription subscription();
     void update_subscription_filters(sequence<Filter> filters);
     RelayConnectionStats stats();
+    u64 queue();
 
     void connect(boolean wait_for_connection);
     [Throws=NostrSdkError]

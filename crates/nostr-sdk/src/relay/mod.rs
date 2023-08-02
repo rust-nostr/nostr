@@ -373,6 +373,11 @@ impl Relay {
         self.stats.clone()
     }
 
+    /// Get queue len
+    pub fn queue(&self) -> usize {
+        self.relay_sender.max_capacity() - self.relay_sender.capacity()
+    }
+
     fn is_scheduled_for_stop(&self) -> bool {
         self.scheduled_for_stop.load(Ordering::SeqCst)
     }
@@ -411,6 +416,11 @@ impl Relay {
             let relay = self.clone();
             thread::spawn(async move {
                 loop {
+                    let queue = relay.queue();
+                    if queue > 0 {
+                        log::info!("{} messages queued for {}", queue, relay.url());
+                    }
+
                     log::debug!(
                         "{} channel capacity: {}",
                         relay.url(),

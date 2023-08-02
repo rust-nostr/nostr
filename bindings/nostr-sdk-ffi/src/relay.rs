@@ -110,6 +110,10 @@ impl Relay {
         Arc::new(self.inner.stats().into())
     }
 
+    pub fn queue(&self) -> u64 {
+        self.inner.queue() as u64
+    }
+
     pub fn connect(&self, wait_for_connection: bool) {
         block_on(self.inner.connect(wait_for_connection))
     }
