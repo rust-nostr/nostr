@@ -28,7 +28,7 @@ fn main() -> Result<()> {
     let msg_text = msg.to_text().expect("Failed to convert message to text");
     if let Ok(RelayMessage::Event { event, .. }) = RelayMessage::from_json(msg_text) {
         if event.kind == Kind::RelayList {
-            let list = nip65::get_relay_list(*event);
+            let list = nip65::extract_relay_list(&*event);
             println!("Found relay list metadata: {list:?}");
         }
     }
