@@ -30,7 +30,8 @@ pub mod prelude;
 pub mod types;
 
 pub use self::event::tag::{
-    ExternalIdentity, HttpMethod, Identity, ImageDimensions, Marker, Report, Tag, TagKind,
+    ExternalIdentity, HttpMethod, Identity, ImageDimensions, Marker, RelayMetadata, Report, Tag,
+    TagKind,
 };
 pub use self::event::{Event, EventBuilder, EventId, Kind, UnsignedEvent};
 pub use self::key::Keys;

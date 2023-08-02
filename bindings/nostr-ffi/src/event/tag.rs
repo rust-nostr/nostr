@@ -11,7 +11,7 @@ use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip26::Conditions;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{EventId, Kind, Timestamp, UncheckedUrl, Url};
+use nostr::{EventId, Kind, RelayMetadata, Timestamp, UncheckedUrl, Url};
 
 use crate::error::{NostrError, Result};
 
@@ -527,7 +527,7 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::Reference(r) => Self::Reference { reference: r },
             tag::Tag::RelayMetadata(url, rw) => Self::RelayMetadata {
                 relay_url: url.to_string(),
-                rw,
+                rw: rw.map(|rw| rw.to_string()),
             },
             tag::Tag::Hashtag(t) => Self::Hashtag { hashtag: t },
             tag::Tag::Geohash(g) => Self::Geohash { geohash: g },
@@ -689,6 +689,10 @@ impl TryFrom<TagEnum> for tag::Tag {
             }),
             TagEnum::Reference { reference } => Ok(Self::Reference(reference)),
             TagEnum::RelayMetadata { relay_url, rw } => {
+                let rw: Option<RelayMetadata> = match rw {
+                    Some(rw) => Some(RelayMetadata::from_str(&rw)?),
+                    None => None,
+                };
                 Ok(Self::RelayMetadata(UncheckedUrl::from(relay_url), rw))
             }
             TagEnum::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),

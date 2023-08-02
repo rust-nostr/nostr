@@ -784,7 +784,13 @@ where
                 }
                 TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?, None)),
                 TagKind::E => Ok(Self::Event(EventId::from_hex(content)?, None, None)),
-                TagKind::R => Ok(Self::Reference(content.to_string())),
+                TagKind::R => {
+                    if content.starts_with("ws://") || content.starts_with("wss://") {
+                        Ok(Self::RelayMetadata(UncheckedUrl::from(content), None))
+                    } else {
+                        Ok(Self::Reference(content.to_string()))
+                    }
+                }
                 TagKind::T => Ok(Self::Hashtag(content.to_string())),
                 TagKind::G => Ok(Self::Geohash(content.to_string())),
                 TagKind::D => Ok(Self::Identifier(content.to_string())),
@@ -884,6 +890,10 @@ where
                     key: tag[1].to_string(),
                     iv: tag[2].to_string(),
                 }),
+                TagKind::R => Ok(Self::RelayMetadata(
+                    UncheckedUrl::from(&tag[1]),
+                    Some(RelayMetadata::from_str(&tag[2])?),
+                )),
                 _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
             }
         } else if tag_len == 4 {
@@ -1641,6 +1651,16 @@ mod tests {
         );
 
         assert_eq!(
+            Tag::parse(vec!["r", "https://example.com",])?,
+            Tag::Reference(String::from("https://example.com"),)
+        );
+
+        assert_eq!(
+            Tag::parse(vec!["r", "wss://alicerelay.example.com",])?,
+            Tag::RelayMetadata(UncheckedUrl::from("wss://alicerelay.example.com"), None)
+        );
+
+        assert_eq!(
             Tag::parse(vec!["i", "github:12345678", "abcdefghijklmnop"])?,
             Tag::ExternalIdentity(Identity {
                 platform: ExternalIdentity::GitHub,
@@ -1743,6 +1763,14 @@ mod tests {
                 identifier: String::from("ipsum"),
                 relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org")?)
             }
+        );
+
+        assert_eq!(
+            Tag::parse(vec!["r", "wss://alicerelay.example.com", "read"])?,
+            Tag::RelayMetadata(
+                UncheckedUrl::from("wss://alicerelay.example.com"),
+                Some(RelayMetadata::Read)
+            )
         );
 
         assert_eq!(
