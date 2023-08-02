@@ -44,7 +44,7 @@ interface RelayInformationDocument {
 interface NostrConnectURI {
     [Throws=NostrError, Name=from_string]
     constructor(string uri);
-    string public_key();
+    PublicKey public_key();
     string relay_url();
     string name();
     string? url();
