@@ -258,6 +258,9 @@ interface EventBuilder {
     [Throws=NostrError, Name=auth]
     constructor(string challenge, string relay_url);
 
+    [Name=report]
+    constructor(sequence<Tag> tags, string content);
+
     [Name=new_zap_request]
     constructor(PublicKey pubkey, EventId? event_id, u64? amount, string? lnurl);
     [Name=new_zap]

@@ -222,6 +222,18 @@ impl EventBuilder {
         })
     }
 
+    // TODO: add nostr_connect method
+
+    pub fn report(tags: Vec<Arc<Tag>>, content: String) -> Self {
+        let tags = tags
+            .into_iter()
+            .map(|t| t.as_ref().deref().clone())
+            .collect::<Vec<_>>();
+        Self {
+            builder: EventBuilderSdk::report(&tags, content),
+        }
+    }
+
     pub fn new_zap_request(
         pubkey: Arc<PublicKey>,
         event_id: Option<Arc<EventId>>,
