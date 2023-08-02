@@ -20,6 +20,12 @@ impl From<XOnlyPublicKey> for PublicKey {
     }
 }
 
+impl From<&PublicKey> for XOnlyPublicKey {
+    fn from(pk: &PublicKey) -> Self {
+        pk.inner
+    }
+}
+
 impl Deref for PublicKey {
     type Target = XOnlyPublicKey;
     fn deref(&self) -> &Self::Target {
