@@ -21,8 +21,16 @@ If you want to compile from source or need more options, read on.
 
 ### Wheel
 
+#### Unix
+
 ```
-make python-dev
+make python
+```
+
+#### Windows
+
+```
+make python-win
 ```
 
 ### Kotlin

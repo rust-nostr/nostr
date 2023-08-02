@@ -92,7 +92,7 @@ bindings-swift: ios-universal darwin-universal
 	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h
 	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.modulemap
 
-python-dev:
+python:
 	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt
 	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --language python --no-format -o bindings-python/src/nostr-sdk/
@@ -102,10 +102,11 @@ python-dev:
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr_sdk-*.whl --force-reinstall
 
-python-dev-win:
+python-win:
 	pip install -r bindings-python\requirements.txt
 	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src\nostr_sdk.udl --language python --no-format -o bindings-python\src\nostr-sdk
 	cargo build --release
 	copy ..\..\target\release\nostr_sdk_ffi.dll bindings-python\src\nostr-sdk
+	del /F /Q bindings-python\dist\*
 	cd bindings-python && python setup.py --verbose bdist_wheel
-	pip install .\bindings-python\dist\*.whl --force-reinstall
+	FOR %%i in (.\bindings-python\dist\*.whl) DO pip install %i --force-reinstall
