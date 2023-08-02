@@ -54,6 +54,8 @@ pub enum Error {
     InvalidImageDimensions,
     /// Invalid HTTP Method
     InvalidHttpMethod(String),
+    /// Invalid Relay Metadata
+    InvalidRelayMetadata(String),
 }
 
 impl std::error::Error for Error {}
@@ -77,6 +79,7 @@ impl fmt::Display for Error {
             Self::InvalidIdentity => write!(f, "invalid identity tag"),
             Self::InvalidImageDimensions => write!(f, "invalid image dimensions"),
             Self::InvalidHttpMethod(m) => write!(f, "invalid HTTP method: {m}"),
+            Self::InvalidRelayMetadata(s) => write!(f, "invalid relay metadata: {s}"),
         }
     }
 }
@@ -345,6 +348,35 @@ impl FromStr for HttpMethod {
     }
 }
 
+/// Relay Metadata
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RelayMetadata {
+    /// Read
+    Read,
+    /// Write
+    Write,
+}
+
+impl fmt::Display for RelayMetadata {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Read => write!(f, "read"),
+            Self::Write => write!(f, "write"),
+        }
+    }
+}
+
+impl FromStr for RelayMetadata {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "read" => Ok(Self::Read),
+            "write" => Ok(Self::Write),
+            s => Err(Error::InvalidRelayMetadata(s.to_string())),
+        }
+    }
+}
+
 /// Tag kind
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TagKind {
@@ -567,7 +599,7 @@ pub enum Tag {
         proof: Option<Signature>,
     },
     Reference(String),
-    RelayMetadata(UncheckedUrl, Option<String>),
+    RelayMetadata(UncheckedUrl, Option<RelayMetadata>),
     Hashtag(String),
     Geohash(String),
     Identifier(String),
@@ -954,7 +986,7 @@ impl From<Tag> for Vec<String> {
             Tag::RelayMetadata(url, rw) => {
                 let mut tag = vec![TagKind::R.to_string(), url.to_string()];
                 if let Some(rw) = rw {
-                    tag.push(rw);
+                    tag.push(rw.to_string());
                 }
                 tag
             }
