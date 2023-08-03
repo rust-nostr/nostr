@@ -7,7 +7,7 @@ const BECH32_SK: &str = "nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mw
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let secret_key = SecretKey::from_bech32(BECH32_SK)?;
     let keys = Keys::new(secret_key);

@@ -16,7 +16,7 @@ const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b2
 const WS_ENDPOINT: &str = "wss://nostr-relay-dev.wlvs.space";
 
 fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let (mut socket, response) = connect(WS_ENDPOINT).expect("Can't connect");
 

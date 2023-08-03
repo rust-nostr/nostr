@@ -5,7 +5,7 @@ use nostr::{ClientMessage, Filter, Kind, RelayMessage, Result, SubscriptionId};
 use tungstenite::{connect, Message as WsMessage};
 
 fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let public_key = XOnlyPublicKey::from_bech32(
         "npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c",

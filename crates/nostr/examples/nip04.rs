@@ -18,7 +18,7 @@ const WS_ENDPOINT: &str = "wss://relay.damus.io";
 // const WS_ENDPOINT: &str = "ws://localhost:3333/ws";
 
 fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let (mut socket, _response) =
         connect(Url::parse(WS_ENDPOINT)?).expect("Can't connect to relay");

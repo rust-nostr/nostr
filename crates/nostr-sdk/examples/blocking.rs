@@ -7,7 +7,7 @@ use nostr_sdk::prelude::*;
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
 fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let secret_key = SecretKey::from_bech32(BECH32_SK)?;
     let my_keys = Keys::new(secret_key);

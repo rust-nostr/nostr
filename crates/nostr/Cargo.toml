@@ -48,8 +48,8 @@ instant = { version = "0.1", features = [ "wasm-bindgen", "inaccurate" ] }
 
 [dev-dependencies]
 csv = "1.1.5"
-env_logger = "0.10.0"
 num_cpus = "1.15.0"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tungstenite = { version = "0.19", features = ["rustls-tls-webpki-roots"] }
 
 [[example]]

@@ -11,7 +11,7 @@ const MY_BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzy
 const WS_ENDPOINT: &str = "wss://relay.damus.io";
 
 fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let (mut socket, _response) = connect(WS_ENDPOINT).expect("Can't connect to relay");
 

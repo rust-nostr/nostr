@@ -6,7 +6,7 @@ use std::str::FromStr;
 use nostr::prelude::*;
 
 fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let pubkey = XOnlyPublicKey::from_str(
         "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",

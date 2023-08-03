@@ -4,7 +4,7 @@
 use nostr::prelude::*;
 
 fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let relay_url = Url::parse("wss://relay.damus.io")?;
 

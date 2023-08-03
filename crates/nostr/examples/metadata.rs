@@ -8,7 +8,7 @@ use tungstenite::{connect, Message as WsMessage};
 const WS_ENDPOINT: &str = "wss://relay.damus.io";
 
 fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let (mut socket, _response) = connect(WS_ENDPOINT).expect("Can't connect to relay");
 
