@@ -18,16 +18,14 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [dependencies]
-log = "0.4"
 nostr-ffi  = { path = "../nostr-ffi" }
 nostr-sdk  = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "blocking"] }
 parking_lot = "0.12"
+tracing = "0.1"
+tracing-subscriber = "0.3"
 uniffi = { version = "0.24", features = ["cli"] }
 uniffi_bindgen = "0.24"
 uniffi_macros = "0.24"
-
-[target.'cfg(target_os = "android")'.dependencies]
-android_logger = "0.13"
 
 [build-dependencies]
 uniffi = { version = "0.24", features = ["build"] }

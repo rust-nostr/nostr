@@ -1,5 +1,7 @@
-from nostr_sdk import Keys, Client, Event, EventBuilder, Filter, HandleNotification, Timestamp, nip04_decrypt, SecretKey
+from nostr_sdk import Keys, Client, Event, EventBuilder, Filter, HandleNotification, Timestamp, nip04_decrypt, SecretKey, init_logger, LogLevel
 import time
+
+init_logger(LogLevel.DEBUG)
 
 # sk = SecretKey.from_bech32("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
 # keys = Keys(sk)

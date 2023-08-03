@@ -4,6 +4,8 @@
 use std::fmt;
 use std::net::AddrParseError;
 
+use tracing::subscriber::SetGlobalDefaultError;
+
 pub type Result<T, E = NostrSdkError> = std::result::Result<T, E>;
 
 #[derive(Debug)]
@@ -21,6 +23,12 @@ impl fmt::Display for NostrSdkError {
 
 impl From<nostr_ffi::NostrError> for NostrSdkError {
     fn from(e: nostr_ffi::NostrError) -> NostrSdkError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
+impl From<SetGlobalDefaultError> for NostrSdkError {
+    fn from(e: SetGlobalDefaultError) -> NostrSdkError {
         Self::Generic { err: e.to_string() }
     }
 }

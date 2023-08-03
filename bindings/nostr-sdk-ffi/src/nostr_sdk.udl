@@ -14,12 +14,21 @@ namespace nostr_sdk {
     Profile get_nip05_profile(string nip05, string? proxy);
 
     // Nostr SDK
-    void init_logger(optional string? level = null);
+    [Throws=NostrSdkError]
+    void init_logger(LogLevel level);
 };
 
 [Error]
 interface NostrSdkError {
     Generic(string err);
+};
+
+enum LogLevel {
+    "Error",
+    "Warn",
+    "Info",
+    "Debug",
+    "Trace",
 };
 
 // NOSTR

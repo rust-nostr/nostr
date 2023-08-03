@@ -13,7 +13,7 @@ where
         .name(name.to_owned())
         .spawn(move || {
             if let Err(e) = f() {
-                log::warn!("{} thread failed: {}", name, e);
+                tracing::warn!("{} thread failed: {}", name, e);
             }
         })
         .expect("failed to spawn a thread")

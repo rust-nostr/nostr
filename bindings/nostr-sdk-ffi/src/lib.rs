@@ -27,7 +27,7 @@ mod ffi {
     pub use nostr_sdk::RelayStatus;
 
     // Namespace
-    pub use crate::logger::init_logger;
+    pub use crate::logger::{init_logger, LogLevel};
 
     // Nostr SDK
     pub use crate::client::{Client, HandleNotification, Options};

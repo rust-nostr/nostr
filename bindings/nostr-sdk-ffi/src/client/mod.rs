@@ -209,7 +209,7 @@ impl Client {
 
     pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
         crate::thread::spawn("client", move || {
-            log::debug!("Client Thread Started");
+            tracing::debug!("Client Thread Started");
             Ok(self.inner.handle_notifications(|notification| {
                 match notification {
                     RelayPoolNotificationSdk::Message(url, msg) => {
