@@ -410,7 +410,7 @@ impl Relay {
         let mut s = self.subscriptions.lock().await;
         s.entry(internal_id)
             .and_modify(|sub| sub.filters = filters.clone())
-            .or_insert(ActiveSubscription::with_filters(filters));
+            .or_insert_with(|| ActiveSubscription::with_filters(filters));
     }
 
     /// Get [`RelayOptions`]
@@ -692,7 +692,7 @@ impl Relay {
 
                 // Subscribe to relay
                 if self.opts.read() {
-                    if let Err(e) = self.resubscribe(None).await {
+                    if let Err(e) = self.resubscribe_all(None).await {
                         tracing::error!(
                             "Impossible to subscribe to {}: {}",
                             self.url(),
@@ -828,10 +828,11 @@ impl Relay {
     }
 
     /// Subscribes relay with existing filter
-    async fn resubscribe(&self, wait: Option<Duration>) -> Result<(), Error> {
+    async fn resubscribe_all(&self, wait: Option<Duration>) -> Result<(), Error> {
         if !self.opts.read() {
             return Err(Error::ReadDisabled);
         }
+
         let subscriptions = self.subscriptions().await;
 
         for sub in subscriptions.into_values() {
@@ -840,6 +841,28 @@ impl Relay {
                     .await?;
             }
         }
+
+        Ok(())
+    }
+
+    async fn resubscribe(
+        &self,
+        internal_id: InternalSubscriptionId,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
+        if !self.opts.read() {
+            return Err(Error::ReadDisabled);
+        }
+
+        let subscriptions = self.subscriptions().await;
+        let sub = subscriptions
+            .get(&internal_id)
+            .ok_or(Error::InternalIdNotFound)?;
+        self.send_msg(
+            ClientMessage::new_req(sub.id.clone(), sub.filters.clone()),
+            wait,
+        )
+        .await?;
 
         Ok(())
     }
@@ -865,8 +888,9 @@ impl Relay {
             return Err(Error::ReadDisabled);
         }
 
-        self.update_subscription_filters(internal_id, filters).await;
-        self.resubscribe(wait).await
+        self.update_subscription_filters(internal_id.clone(), filters)
+            .await;
+        self.resubscribe(internal_id, wait).await
     }
 
     /// Unsubscribe
