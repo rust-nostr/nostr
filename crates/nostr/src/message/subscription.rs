@@ -123,8 +123,14 @@ impl Filter {
     where
         S: Into<String>,
     {
+        let id: String = id.into();
         Self {
-            ids: Some(vec![id.into()]),
+            ids: Some(self.ids.map_or(vec![id.clone()], |mut ids| {
+                if !ids.contains(&id) {
+                    ids.push(id);
+                }
+                ids
+            })),
             ..self
         }
     }
@@ -145,8 +151,14 @@ impl Filter {
     where
         S: Into<String>,
     {
+        let author: String = author.into();
         Self {
-            authors: Some(vec![author.into()]),
+            authors: Some(self.authors.map_or(vec![author.clone()], |mut authors| {
+                if !authors.contains(&author) {
+                    authors.push(author);
+                }
+                authors
+            })),
             ..self
         }
     }
@@ -165,7 +177,12 @@ impl Filter {
     /// Set kind
     pub fn kind(self, kind: Kind) -> Self {
         Self {
-            kinds: Some(vec![kind]),
+            kinds: Some(self.kinds.map_or(vec![kind], |mut kinds| {
+                if !kinds.contains(&kind) {
+                    kinds.push(kind);
+                }
+                kinds
+            })),
             ..self
         }
     }
@@ -181,7 +198,12 @@ impl Filter {
     /// Set event
     pub fn event(self, id: EventId) -> Self {
         Self {
-            events: Some(vec![id]),
+            events: Some(self.events.map_or(vec![id], |mut events| {
+                if !events.contains(&id) {
+                    events.push(id);
+                }
+                events
+            })),
             ..self
         }
     }
@@ -197,7 +219,12 @@ impl Filter {
     /// Set pubkey
     pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
         Self {
-            pubkeys: Some(vec![pubkey]),
+            pubkeys: Some(self.pubkeys.map_or(vec![pubkey], |mut pubkeys| {
+                if !pubkeys.contains(&pubkey) {
+                    pubkeys.push(pubkey);
+                }
+                pubkeys
+            })),
             ..self
         }
     }
@@ -217,8 +244,14 @@ impl Filter {
     where
         S: Into<String>,
     {
+        let hashtag: String = hashtag.into();
         Self {
-            hashtags: Some(vec![hashtag.into()]),
+            hashtags: Some(self.hashtags.map_or(vec![hashtag.clone()], |mut hashtags| {
+                if !hashtags.contains(&hashtag) {
+                    hashtags.push(hashtag);
+                }
+                hashtags
+            })),
             ..self
         }
     }
@@ -482,6 +515,18 @@ impl<'de> Visitor<'de> for FilterVisitor {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_kind_concatenation() {
+        let filter = Filter::new()
+            .kind(Kind::Metadata)
+            .kind(Kind::TextNote)
+            .kind(Kind::ContactList);
+        assert_eq!(
+            filter,
+            Filter::new().kinds(vec![Kind::Metadata, Kind::TextNote, Kind::ContactList])
+        );
+    }
 
     #[test]
     fn test_filter_serialization() {

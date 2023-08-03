@@ -44,7 +44,7 @@ fn main() -> Result<()> {
                     println!("New DM: {}", msg);
                     // return Ok(true);
                 } else {
-                    log::error!("Impossible to decrypt direct message");
+                    tracing::error!("Impossible to decrypt direct message");
                 }
             } else {
                 println!("{:#?}", event);

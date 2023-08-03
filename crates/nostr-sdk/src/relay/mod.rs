@@ -418,10 +418,10 @@ impl Relay {
                 loop {
                     let queue = relay.queue();
                     if queue > 0 {
-                        log::info!("{} messages queued for {}", queue, relay.url());
+                        tracing::info!("{} messages queued for {}", queue, relay.url());
                     }
 
-                    log::debug!(
+                    tracing::debug!(
                         "{} channel capacity: {}",
                         relay.url(),
                         relay.relay_sender.capacity()
@@ -432,7 +432,7 @@ impl Relay {
                     if relay.is_scheduled_for_stop() {
                         relay.set_status(RelayStatus::Stopped).await;
                         relay.schedule_for_stop(false);
-                        log::debug!(
+                        tracing::debug!(
                             "Auto connect loop terminated for {} [stop - schedule]",
                             relay.url
                         );
@@ -440,7 +440,10 @@ impl Relay {
                     } else if relay.is_scheduled_for_termination() {
                         relay.set_status(RelayStatus::Terminated).await;
                         relay.schedule_for_termination(false);
-                        log::debug!("Auto connect loop terminated for {} [schedule]", relay.url);
+                        tracing::debug!(
+                            "Auto connect loop terminated for {} [schedule]",
+                            relay.url
+                        );
                         break;
                     }
 
@@ -448,7 +451,7 @@ impl Relay {
                     match relay.status().await {
                         RelayStatus::Disconnected => relay.try_connect().await,
                         RelayStatus::Stopped | RelayStatus::Terminated => {
-                            log::debug!("Auto connect loop terminated for {}", relay.url);
+                            tracing::debug!("Auto connect loop terminated for {}", relay.url);
                             break;
                         }
                         _ => (),
@@ -467,7 +470,7 @@ impl Relay {
 
         // Set RelayStatus to `Connecting`
         self.set_status(RelayStatus::Connecting).await;
-        log::debug!("Connecting to {}", url);
+        tracing::debug!("Connecting to {}", url);
 
         // Request `RelayInformationDocument`
         #[cfg(feature = "nip11")]
@@ -481,7 +484,7 @@ impl Relay {
 
                 match document {
                     Ok(document) => relay.set_document(document).await,
-                    Err(e) => log::error!(
+                    Err(e) => tracing::error!(
                         "Impossible to get information document from {}: {}",
                         relay.url,
                         e
@@ -499,26 +502,26 @@ impl Relay {
         match connection {
             Ok((mut ws_tx, mut ws_rx)) => {
                 self.set_status(RelayStatus::Connected).await;
-                log::info!("Connected to {}", url);
+                tracing::info!("Connected to {}", url);
 
                 self.stats.new_success();
 
                 let relay = self.clone();
                 thread::spawn(async move {
-                    log::debug!("Relay Event Thread Started");
+                    tracing::debug!("Relay Event Thread Started");
                     let mut rx = relay.relay_receiver.lock().await;
                     while let Some((relay_event, oneshot_sender)) = rx.recv().await {
                         match relay_event {
                             RelayEvent::SendMsg(msg) => {
                                 let json = msg.as_json();
                                 let size: usize = json.as_bytes().len();
-                                log::debug!("Sending message {json} (size: {size} bytes)");
+                                tracing::debug!("Sending message {json} (size: {size} bytes)");
                                 match ws_tx.send(WsMessage::Text(json)).await {
                                     Ok(_) => {
                                         relay.stats.add_bytes_sent(size);
                                         if let Some(sender) = oneshot_sender {
                                             if let Err(e) = sender.send(true) {
-                                                log::error!(
+                                                tracing::error!(
                                                     "Impossible to send oneshot msg: {}",
                                                     e
                                                 );
@@ -526,14 +529,14 @@ impl Relay {
                                         }
                                     }
                                     Err(e) => {
-                                        log::error!(
+                                        tracing::error!(
                                             "Impossible to send msg to {}: {}",
                                             relay.url(),
                                             e.to_string()
                                         );
                                         if let Some(sender) = oneshot_sender {
                                             if let Err(e) = sender.send(false) {
-                                                log::error!(
+                                                tracing::error!(
                                                     "Impossible to send oneshot msg: {}",
                                                     e
                                                 );
@@ -546,7 +549,7 @@ impl Relay {
                             RelayEvent::Close => {
                                 let _ = ws_tx.close().await;
                                 relay.set_status(RelayStatus::Disconnected).await;
-                                log::info!("Disconnected from {}", url);
+                                tracing::info!("Disconnected from {}", url);
                                 break;
                             }
                             RelayEvent::Stop => {
@@ -554,7 +557,7 @@ impl Relay {
                                     let _ = ws_tx.close().await;
                                     relay.set_status(RelayStatus::Stopped).await;
                                     relay.schedule_for_stop(false);
-                                    log::info!("Stopped {}", url);
+                                    tracing::info!("Stopped {}", url);
                                     break;
                                 }
                             }
@@ -562,7 +565,7 @@ impl Relay {
                                 if relay.is_scheduled_for_termination() {
                                     // Unsubscribe from relay
                                     if let Err(e) = relay.unsubscribe(None).await {
-                                        log::error!(
+                                        tracing::error!(
                                             "Impossible to unsubscribe from {}: {}",
                                             relay.url(),
                                             e.to_string()
@@ -572,25 +575,25 @@ impl Relay {
                                     let _ = ws_tx.close().await;
                                     relay.set_status(RelayStatus::Terminated).await;
                                     relay.schedule_for_termination(false);
-                                    log::info!("Completely disconnected from {}", url);
+                                    tracing::info!("Completely disconnected from {}", url);
                                     break;
                                 }
                             }
                         }
                     }
-                    log::debug!("Exited from Relay Event Thread");
+                    tracing::debug!("Exited from Relay Event Thread");
                 });
 
                 let relay = self.clone();
                 thread::spawn(async move {
-                    log::debug!("Relay Message Thread Started");
+                    tracing::debug!("Relay Message Thread Started");
 
                     async fn func(relay: &Relay, data: Vec<u8>) -> bool {
                         relay.stats.add_bytes_received(data.len());
                         match String::from_utf8(data) {
                             Ok(data) => match RelayMessage::from_json(&data) {
                                 Ok(msg) => {
-                                    log::trace!("Received message to {}: {:?}", relay.url, msg);
+                                    tracing::trace!("Received message to {}: {:?}", relay.url, msg);
                                     if let Err(err) = relay
                                         .pool_sender
                                         .send(RelayPoolMessage::ReceivedMsg {
@@ -599,7 +602,7 @@ impl Relay {
                                         })
                                         .await
                                     {
-                                        log::error!(
+                                        tracing::error!(
                                             "Impossible to send ReceivedMsg to pool: {}",
                                             &err
                                         );
@@ -609,11 +612,11 @@ impl Relay {
                                 Err(e) => {
                                     match e {
                                         MessageHandleError::EmptyMsg => (),
-                                        _ => log::error!("{e}: {data}"),
+                                        _ => tracing::error!("{e}: {data}"),
                                     };
                                 }
                             },
-                            Err(err) => log::error!("{}", err),
+                            Err(err) => tracing::error!("{}", err),
                         }
 
                         false
@@ -639,10 +642,10 @@ impl Relay {
                         }
                     }
 
-                    log::debug!("Exited from Message Thread of {}", relay.url);
+                    tracing::debug!("Exited from Message Thread of {}", relay.url);
 
                     if let Err(err) = relay.disconnect().await {
-                        log::error!("Impossible to disconnect {}: {}", relay.url, err);
+                        tracing::error!("Impossible to disconnect {}: {}", relay.url, err);
                     }
                 });
 
@@ -650,8 +653,10 @@ impl Relay {
                 if self.opts.read() {
                     if let Err(e) = self.resubscribe(None).await {
                         match e {
-                            Error::FiltersEmpty => log::debug!("Filters empty for {}", self.url()),
-                            _ => log::error!(
+                            Error::FiltersEmpty => {
+                                tracing::debug!("Filters empty for {}", self.url())
+                            }
+                            _ => tracing::error!(
                                 "Impossible to subscribe to {}: {}",
                                 self.url(),
                                 e.to_string()
@@ -662,7 +667,7 @@ impl Relay {
             }
             Err(err) => {
                 self.set_status(RelayStatus::Disconnected).await;
-                log::error!("Impossible to connect to {}: {}", url, err);
+                tracing::error!("Impossible to connect to {}: {}", url, err);
             }
         };
     }
@@ -867,7 +872,7 @@ impl Relay {
                         }
                         RelayMessage::EndOfStoredEvents(subscription_id) => {
                             if subscription_id.eq(&id) {
-                                log::debug!(
+                                tracing::debug!(
                                     "Received EOSE for subscription {id} in 'handle_events_of'"
                                 );
                                 received_eose = true;
@@ -878,7 +883,9 @@ impl Relay {
                                 }
                             }
                         }
-                        _ => log::debug!("Receive unhandled message {msg:?} on handle_events_of"),
+                        _ => {
+                            tracing::debug!("Receive unhandled message {msg:?} on handle_events_of")
+                        }
                     };
                 }
             }
@@ -963,7 +970,7 @@ impl Relay {
         opts: FilterOptions,
     ) {
         if !self.opts.read() {
-            log::error!("{}", Error::ReadDisabled);
+            tracing::error!("{}", Error::ReadDisabled);
         }
 
         let relay = self.clone();
@@ -975,7 +982,7 @@ impl Relay {
                 .send_msg(ClientMessage::new_req(id.clone(), filters), None)
                 .await
             {
-                log::error!(
+                tracing::error!(
                     "Impossible to send REQ to {}: {}",
                     relay.url(),
                     e.to_string()
@@ -986,12 +993,12 @@ impl Relay {
                 .handle_events_of(id.clone(), timeout, opts, |_| async {})
                 .await
             {
-                log::error!("{e}");
+                tracing::error!("{e}");
             }
 
             // Unsubscribe
             if let Err(e) = relay.send_msg(ClientMessage::close(id), None).await {
-                log::error!(
+                tracing::error!(
                     "Impossible to close subscription with {}: {}",
                     relay.url(),
                     e.to_string()

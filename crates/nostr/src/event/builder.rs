@@ -163,7 +163,7 @@ impl EventBuilder {
             let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
-                log::debug!(
+                tracing::debug!(
                     "{} iterations in {} ms. Avg rate {} hashes/second",
                     nonce,
                     now.elapsed().as_millis(),

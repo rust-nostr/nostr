@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
                         println!("New DM: {msg}");
                         client.send_direct_msg(event.pubkey, msg).await?;
                     } else {
-                        log::error!("Impossible to decrypt direct message");
+                        tracing::error!("Impossible to decrypt direct message");
                     }
                 } else {
                     println!("{:?}", event);
@@ -68,7 +68,7 @@ async fn main() -> Result<()> {
                     println!("New DM: {msg}");
                     client.send_direct_msg(event.pubkey, msg).await?;
                 } else {
-                    log::error!("Impossible to decrypt direct message");
+                    tracing::error!("Impossible to decrypt direct message");
                 }
             } else {
                 println!("{:?}", event);

@@ -202,7 +202,7 @@ impl Client {
                         )?;
                         let msg = Message::from_json(msg)?;
 
-                        log::debug!("New message received: {msg:?}");
+                        tracing::debug!("New message received: {msg:?}");
 
                         if let Message::Response { id, result, error } = &msg {
                             if &req_id == id {

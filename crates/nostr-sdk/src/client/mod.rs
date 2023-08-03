@@ -124,9 +124,9 @@ impl Drop for Client {
     fn drop(&mut self) {
         if self.opts.shutdown_on_drop {
             if self.dropped.load(Ordering::SeqCst) {
-                log::warn!("Client already dropped");
+                tracing::warn!("Client already dropped");
             } else {
-                log::debug!("Dropping the Client...");
+                tracing::debug!("Dropping the Client...");
                 let _ = self
                     .dropped
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));

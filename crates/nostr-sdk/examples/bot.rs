@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
 
                             client.send_direct_msg(event.pubkey, content).await?;
                         }
-                        Err(e) => log::error!("Impossible to decrypt direct message: {e}"),
+                        Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
                     }
                 }
             }

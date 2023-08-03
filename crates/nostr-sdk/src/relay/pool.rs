@@ -114,9 +114,9 @@ impl RelayPoolTask {
 
     pub fn run(&self) {
         if self.is_running() {
-            log::warn!("Relay Pool Task is already running!")
+            tracing::warn!("Relay Pool Task is already running!")
         } else {
-            log::debug!("RelayPoolTask Thread Started");
+            tracing::debug!("RelayPoolTask Thread Started");
             self.set_running_to(true);
             let this = self.clone();
             thread::spawn(async move {
@@ -149,22 +149,22 @@ impl RelayPoolTask {
                             this.add_event(event.id).await;
                         }
                         RelayPoolMessage::Stop => {
-                            log::debug!("Received stop msg");
+                            tracing::debug!("Received stop msg");
                             if let Err(e) =
                                 this.notification_sender.send(RelayPoolNotification::Stop)
                             {
-                                log::error!("Impossible to send STOP notification: {}", e);
+                                tracing::error!("Impossible to send STOP notification: {}", e);
                             }
                             this.set_running_to(false);
                             break;
                         }
                         RelayPoolMessage::Shutdown => {
-                            log::debug!("Received shutdown msg");
+                            tracing::debug!("Received shutdown msg");
                             if let Err(e) = this
                                 .notification_sender
                                 .send(RelayPoolNotification::Shutdown)
                             {
-                                log::error!("Impossible to send SHUTDOWN notification: {}", e);
+                                tracing::error!("Impossible to send SHUTDOWN notification: {}", e);
                             }
                             this.set_running_to(false);
                             receiver.close();
@@ -173,7 +173,7 @@ impl RelayPoolTask {
                     }
                 }
 
-                log::debug!("Exited from RelayPoolTask thread");
+                tracing::debug!("Exited from RelayPoolTask thread");
             });
         }
     }
@@ -208,9 +208,9 @@ impl Drop for RelayPool {
     fn drop(&mut self) {
         if self.opts.shutdown_on_drop {
             if self.dropped.load(Ordering::SeqCst) {
-                log::warn!("Relay Pool already dropped");
+                tracing::warn!("Relay Pool already dropped");
             } else {
-                log::debug!("Dropping the Relay Pool...");
+                tracing::debug!("Dropping the Relay Pool...");
                 let _ = self
                     .dropped
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
@@ -264,7 +264,7 @@ impl RelayPool {
             relay.stop().await?;
         }
         if let Err(e) = self.pool_task_sender.send(RelayPoolMessage::Stop).await {
-            log::error!("Impossible to send STOP message: {e}");
+            tracing::error!("Impossible to send STOP message: {e}");
         }
         Ok(())
     }
@@ -378,7 +378,7 @@ impl RelayPool {
                 .send(RelayPoolMessage::EventSent(event.clone()))
                 .await
             {
-                log::error!("{e}");
+                tracing::error!("{e}");
             };
         }
 
@@ -394,7 +394,7 @@ impl RelayPool {
                         let _ =
                             sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
                     }
-                    Err(e) => log::error!("Impossible to send msg to {url}: {e}"),
+                    Err(e) => tracing::error!("Impossible to send msg to {url}: {e}"),
                 }
             });
             handles.push(handle);
@@ -440,7 +440,7 @@ impl RelayPool {
             .send(RelayPoolMessage::EventSent(Box::new(event.clone())))
             .await
         {
-            log::error!("{e}");
+            tracing::error!("{e}");
         };
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
@@ -455,7 +455,7 @@ impl RelayPool {
                         let _ =
                             sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
                     }
-                    Err(e) => log::error!("Impossible to send event to {url}: {e}"),
+                    Err(e) => tracing::error!("Impossible to send event to {url}: {e}"),
                 }
             });
             handles.push(handle);
@@ -494,7 +494,7 @@ impl RelayPool {
         self.update_subscription_filters(filters.clone()).await;
         for relay in relays.values() {
             if let Err(e) = relay.subscribe(filters.clone(), wait).await {
-                log::error!("{e}");
+                tracing::error!("{e}");
             }
         }
     }
@@ -504,7 +504,7 @@ impl RelayPool {
         let relays = self.relays().await;
         for relay in relays.values() {
             if let Err(e) = relay.unsubscribe(wait).await {
-                log::error!("{e}");
+                tracing::error!("{e}");
             }
         }
     }
@@ -529,7 +529,7 @@ impl RelayPool {
                     })
                     .await
                 {
-                    log::error!("Failed to get events from {url}: {e}");
+                    tracing::error!("Failed to get events from {url}: {e}");
                 }
             });
             handles.push(handle);

@@ -241,7 +241,7 @@ impl RelayMessage {
         S: Into<String>,
     {
         let msg: &str = &msg.into();
-        log::trace!("{}", msg);
+        tracing::trace!("{}", msg);
 
         if msg.is_empty() {
             return Err(MessageHandleError::EmptyMsg);
