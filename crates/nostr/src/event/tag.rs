@@ -860,7 +860,10 @@ where
                         }
                     }
                 }
-                TagKind::I => Ok(Self::ExternalIdentity(Identity::new(&tag[1], &tag[2])?)),
+                TagKind::I => match Identity::new(&tag[1], &tag[2]) {
+                    Ok(identity) => Ok(Self::ExternalIdentity(identity)),
+                    Err(_) => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
+                },
                 TagKind::Nonce => Ok(Self::POW {
                     nonce: tag[1].parse()?,
                     difficulty: tag[2].parse()?,
