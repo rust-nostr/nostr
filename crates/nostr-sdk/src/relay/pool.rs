@@ -17,7 +17,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 
 use super::options::RelayPoolOptions;
-use super::{Error as RelayError, FilterOptions, Relay, RelayOptions};
+use super::{Error as RelayError, FilterOptions, InternalSubscriptionId, Relay, RelayOptions};
 
 /// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]
@@ -493,7 +493,10 @@ impl RelayPool {
         let relays = self.relays().await;
         self.update_subscription_filters(filters.clone()).await;
         for relay in relays.values() {
-            if let Err(e) = relay.subscribe(filters.clone(), wait).await {
+            if let Err(e) = relay
+                .subscribe_with_internal_id(InternalSubscriptionId::Pool, filters.clone(), wait)
+                .await
+            {
                 tracing::error!("{e}");
             }
         }
@@ -503,7 +506,10 @@ impl RelayPool {
     pub async fn unsubscribe(&self, wait: Option<Duration>) {
         let relays = self.relays().await;
         for relay in relays.values() {
-            if let Err(e) = relay.unsubscribe(wait).await {
+            if let Err(e) = relay
+                .unsubscribe_with_internal_id(InternalSubscriptionId::Pool, wait)
+                .await
+            {
                 tracing::error!("{e}");
             }
         }
@@ -576,7 +582,9 @@ impl RelayPool {
     /// Connect to relay
     pub async fn connect_relay(&self, relay: &Relay, wait_for_connection: bool) {
         let filters: Vec<Filter> = self.subscription_filters().await;
-        relay.update_subscription_filters(filters).await;
+        relay
+            .update_subscription_filters(InternalSubscriptionId::Pool, filters)
+            .await;
         relay.connect(wait_for_connection).await;
     }
 

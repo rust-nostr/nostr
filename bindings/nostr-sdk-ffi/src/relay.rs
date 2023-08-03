@@ -1,11 +1,12 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
+use std::{collections::HashMap, ops::Deref};
 
 use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument};
+use nostr_sdk::relay::InternalSubscriptionId;
 use nostr_sdk::{block_on, relay, FilterOptions, RelayStatus};
 
 use crate::error::Result;
@@ -89,13 +90,21 @@ impl Relay {
         Arc::new(self.inner.document_blocking().into())
     }
 
-    pub fn subscription(&self) -> Arc<ActiveSubscription> {
-        block_on(async move { Arc::new(self.inner.subscription().await.into()) })
+    pub fn subscriptions(&self) -> HashMap<String, Arc<ActiveSubscription>> {
+        block_on(async move {
+            self.inner
+                .subscriptions()
+                .await
+                .into_iter()
+                .map(|(id, sub)| (id.to_string(), Arc::new(sub.into())))
+                .collect()
+        })
     }
 
-    pub fn update_subscription_filters(&self, filters: Vec<Arc<Filter>>) {
+    pub fn update_subscription_filters(&self, internal_id: String, filters: Vec<Arc<Filter>>) {
         block_on(
             self.inner.update_subscription_filters(
+                InternalSubscriptionId::Custom(internal_id),
                 filters
                     .into_iter()
                     .map(|f| f.as_ref().deref().clone())
@@ -130,7 +139,7 @@ impl Relay {
         block_on(async move { Ok(self.inner.send_msg(msg.try_into()?, wait).await?) })
     }
 
-    pub fn subscribe(&self, filters: Vec<Arc<Filter>>, wait: Option<Duration>) -> Result<String> {
+    pub fn subscribe(&self, filters: Vec<Arc<Filter>>, wait: Option<Duration>) -> Result<()> {
         block_on(async move {
             Ok(self
                 .inner
@@ -141,8 +150,7 @@ impl Relay {
                         .collect(),
                     wait,
                 )
-                .await?
-                .to_string())
+                .await?)
         })
     }
 

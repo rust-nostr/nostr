@@ -3,6 +3,7 @@
 
 //! Relay
 
+use std::collections::HashMap;
 use std::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
@@ -57,9 +58,9 @@ pub enum Error {
     /// Write actions disabled
     #[error("write actions are disabled for this relay")]
     WriteDisabled,
-    /// Filters empty
-    #[error("filters empty")]
-    FiltersEmpty,
+    /// Subscription internal ID not found
+    #[error("internal ID not found")]
+    InternalIdNotFound,
 }
 
 /// Relay connection status
@@ -181,6 +182,41 @@ impl RelayConnectionStats {
     }
 }
 
+/// Internal Subscription ID
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum InternalSubscriptionId {
+    /// Default
+    Default,
+    /// Pool
+    Pool,
+    /// Custom
+    Custom(String),
+}
+
+impl fmt::Display for InternalSubscriptionId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Default => write!(f, "default"),
+            Self::Pool => write!(f, "pool"),
+            Self::Custom(c) => write!(f, "{c}"),
+        }
+    }
+}
+
+impl<S> From<S> for InternalSubscriptionId
+where
+    S: Into<String>,
+{
+    fn from(s: S) -> Self {
+        let s: String = s.into();
+        match s.as_str() {
+            "default" => Self::Default,
+            "pool" => Self::Pool,
+            c => Self::Custom(c.to_string()),
+        }
+    }
+}
+
 /// Relay instance's actual subscription with its unique id
 #[derive(Debug, Clone)]
 pub struct ActiveSubscription {
@@ -197,11 +233,19 @@ impl Default for ActiveSubscription {
 }
 
 impl ActiveSubscription {
-    /// Create new [`ActiveSubscription`]
+    /// Create new empty [`ActiveSubscription`]
     pub fn new() -> Self {
         Self {
             id: SubscriptionId::generate(),
             filters: Vec::new(),
+        }
+    }
+
+    /// Create new empty [`ActiveSubscription`]
+    pub fn with_filters(filters: Vec<Filter>) -> Self {
+        Self {
+            id: SubscriptionId::generate(),
+            filters,
         }
     }
 
@@ -233,7 +277,7 @@ pub struct Relay {
     relay_sender: Sender<Message>,
     relay_receiver: Arc<Mutex<Receiver<Message>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
-    subscription: Arc<Mutex<ActiveSubscription>>,
+    subscriptions: Arc<Mutex<HashMap<InternalSubscriptionId, ActiveSubscription>>>,
 }
 
 impl PartialEq for Relay {
@@ -268,7 +312,7 @@ impl Relay {
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
             notification_sender,
-            subscription: Arc::new(Mutex::new(ActiveSubscription::new())),
+            subscriptions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -295,7 +339,7 @@ impl Relay {
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
             notification_sender,
-            subscription: Arc::new(Mutex::new(ActiveSubscription::new())),
+            subscriptions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -352,15 +396,21 @@ impl Relay {
     }
 
     /// Get [`ActiveSubscription`]
-    pub async fn subscription(&self) -> ActiveSubscription {
-        let subscription = self.subscription.lock().await;
+    pub async fn subscriptions(&self) -> HashMap<InternalSubscriptionId, ActiveSubscription> {
+        let subscription = self.subscriptions.lock().await;
         subscription.clone()
     }
 
     /// Update [`ActiveSubscription`]
-    pub async fn update_subscription_filters(&self, filters: Vec<Filter>) {
-        let mut s = self.subscription.lock().await;
-        s.filters = filters;
+    pub async fn update_subscription_filters(
+        &self,
+        internal_id: InternalSubscriptionId,
+        filters: Vec<Filter>,
+    ) {
+        let mut s = self.subscriptions.lock().await;
+        s.entry(internal_id)
+            .and_modify(|sub| sub.filters = filters.clone())
+            .or_insert(ActiveSubscription::with_filters(filters));
     }
 
     /// Get [`RelayOptions`]
@@ -563,15 +613,6 @@ impl Relay {
                             }
                             RelayEvent::Terminate => {
                                 if relay.is_scheduled_for_termination() {
-                                    // Unsubscribe from relay
-                                    if let Err(e) = relay.unsubscribe(None).await {
-                                        tracing::error!(
-                                            "Impossible to unsubscribe from {}: {}",
-                                            relay.url(),
-                                            e.to_string()
-                                        )
-                                    }
-                                    // Close stream
                                     let _ = ws_tx.close().await;
                                     relay.set_status(RelayStatus::Terminated).await;
                                     relay.schedule_for_termination(false);
@@ -652,16 +693,11 @@ impl Relay {
                 // Subscribe to relay
                 if self.opts.read() {
                     if let Err(e) = self.resubscribe(None).await {
-                        match e {
-                            Error::FiltersEmpty => {
-                                tracing::debug!("Filters empty for {}", self.url())
-                            }
-                            _ => tracing::error!(
-                                "Impossible to subscribe to {}: {}",
-                                self.url(),
-                                e.to_string()
-                            ),
-                        }
+                        tracing::error!(
+                            "Impossible to subscribe to {}: {}",
+                            self.url(),
+                            e.to_string()
+                        )
                     }
                 }
             }
@@ -792,22 +828,20 @@ impl Relay {
     }
 
     /// Subscribes relay with existing filter
-    async fn resubscribe(&self, wait: Option<Duration>) -> Result<SubscriptionId, Error> {
+    async fn resubscribe(&self, wait: Option<Duration>) -> Result<(), Error> {
         if !self.opts.read() {
             return Err(Error::ReadDisabled);
         }
-        let subscription = self.subscription().await;
+        let subscriptions = self.subscriptions().await;
 
-        if subscription.filters.is_empty() {
-            return Err(Error::FiltersEmpty);
+        for sub in subscriptions.into_values() {
+            if !sub.filters.is_empty() {
+                self.send_msg(ClientMessage::new_req(sub.id.clone(), sub.filters), wait)
+                    .await?;
+            }
         }
 
-        self.send_msg(
-            ClientMessage::new_req(subscription.id.clone(), subscription.filters),
-            wait,
-        )
-        .await?;
-        Ok(subscription.id)
+        Ok(())
     }
 
     /// Subscribe
@@ -815,24 +849,64 @@ impl Relay {
         &self,
         filters: Vec<Filter>,
         wait: Option<Duration>,
-    ) -> Result<SubscriptionId, Error> {
+    ) -> Result<(), Error> {
+        self.subscribe_with_internal_id(InternalSubscriptionId::Default, filters, wait)
+            .await
+    }
+
+    /// Subscribe with custom internal id
+    pub async fn subscribe_with_internal_id(
+        &self,
+        internal_id: InternalSubscriptionId,
+        filters: Vec<Filter>,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
         if !self.opts.read() {
             return Err(Error::ReadDisabled);
         }
 
-        self.update_subscription_filters(filters).await;
+        self.update_subscription_filters(internal_id, filters).await;
         self.resubscribe(wait).await
     }
 
     /// Unsubscribe
     pub async fn unsubscribe(&self, wait: Option<Duration>) -> Result<(), Error> {
+        self.unsubscribe_with_internal_id(InternalSubscriptionId::Default, wait)
+            .await
+    }
+
+    /// Unsubscribe with custom internal id
+    pub async fn unsubscribe_with_internal_id(
+        &self,
+        internal_id: InternalSubscriptionId,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
         if !self.opts.read() {
             return Err(Error::ReadDisabled);
         }
 
-        let subscription = self.subscription().await;
+        let mut subscriptions = self.subscriptions().await;
+        let subscription = subscriptions
+            .remove(&internal_id)
+            .ok_or(Error::InternalIdNotFound)?;
         self.send_msg(ClientMessage::close(subscription.id), wait)
             .await?;
+        Ok(())
+    }
+
+    /// Unsubscribe from all subscriptions
+    pub async fn unsubscribe_all(&self, wait: Option<Duration>) -> Result<(), Error> {
+        if !self.opts.read() {
+            return Err(Error::ReadDisabled);
+        }
+
+        let subscriptions = self.subscriptions().await;
+
+        for sub in subscriptions.into_values() {
+            self.send_msg(ClientMessage::close(sub.id.clone()), wait)
+                .await?;
+        }
+
         Ok(())
     }
 

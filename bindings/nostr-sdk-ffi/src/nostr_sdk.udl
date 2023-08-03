@@ -462,8 +462,8 @@ interface Relay {
     RelayStatus status();
     boolean is_connected();
     RelayInformationDocument document();
-    ActiveSubscription subscription();
-    void update_subscription_filters(sequence<Filter> filters);
+    record<DOMString, ActiveSubscription> subscriptions();
+    void update_subscription_filters(string internal_id, sequence<Filter> filters);
     RelayConnectionStats stats();
     u64 queue();
 
@@ -476,7 +476,7 @@ interface Relay {
     [Throws=NostrSdkError]
     void send_msg(ClientMessage msg, duration? wait);
     [Throws=NostrSdkError]
-    string subscribe(sequence<Filter> filters, duration? wait);
+    void subscribe(sequence<Filter> filters, duration? wait);
     [Throws=NostrSdkError]
     void unsubscribe(duration? wait);
 
