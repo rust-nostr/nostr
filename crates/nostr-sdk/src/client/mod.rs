@@ -273,8 +273,12 @@ impl Client {
     }
 
     /// Get [`Relay`]
-    pub async fn relay(&self, url: &Url) -> Result<Relay, Error> {
-        Ok(self.pool.relay(url).await?)
+    pub async fn relay<S>(&self, url: S) -> Result<Relay, Error>
+    where
+        S: Into<String>,
+    {
+        let url = Url::parse(&url.into())?;
+        Ok(self.pool.relay(&url).await?)
     }
 
     /// Add new relay

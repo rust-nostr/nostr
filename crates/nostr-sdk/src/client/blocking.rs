@@ -109,7 +109,10 @@ impl Client {
     }
 
     /// Get [`Relay`]
-    pub fn relay(&self, url: &Url) -> Result<Relay, Error> {
+    pub fn relay<S>(&self, url: S) -> Result<Relay, Error>
+    where
+        S: Into<String>,
+    {
         RUNTIME.block_on(async { self.client.relay(url).await })
     }
 

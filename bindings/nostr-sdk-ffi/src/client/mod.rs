@@ -11,7 +11,6 @@ use std::time::Duration;
 use nostr_ffi::{ClientMessage, Event, EventId, FileMetadata, Filter, Keys, RelayMessage};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
-use nostr_sdk::Url;
 
 mod options;
 
@@ -81,8 +80,7 @@ impl Client {
     }
 
     pub fn relay(&self, url: String) -> Result<Arc<Relay>> {
-        let url = Url::parse(&url)?;
-        Ok(Arc::new(self.inner.relay(&url)?.into()))
+        Ok(Arc::new(self.inner.relay(url)?.into()))
     }
 
     pub fn add_relay(&self, url: String, proxy: Option<String>) -> Result<()> {
