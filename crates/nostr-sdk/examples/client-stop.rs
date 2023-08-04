@@ -48,6 +48,7 @@ async fn main() -> Result<()> {
                                                     .send_direct_msg(
                                                         event.pubkey,
                                                         "Client restarted",
+                                                        None,
                                                     )
                                                     .await
                                                     .unwrap();
@@ -59,7 +60,7 @@ async fn main() -> Result<()> {
                                     _ => String::from("Invalid command."),
                                 };
 
-                                client.send_direct_msg(event.pubkey, content).await?;
+                                client.send_direct_msg(event.pubkey, content, None).await?;
                             }
                             Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
                         }

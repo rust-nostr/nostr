@@ -956,7 +956,7 @@ impl Client {
     /// .unwrap();
     ///
     /// client
-    ///     .send_direct_msg(alice_pubkey, "My first DM fro Nostr SDK!")
+    ///     .send_direct_msg(alice_pubkey, "My first DM fro Nostr SDK!", None)
     ///     .await
     ///     .unwrap();
     /// # }
@@ -966,6 +966,7 @@ impl Client {
         &self,
         receiver: XOnlyPublicKey,
         msg: S,
+        reply: Option<EventId>,
     ) -> Result<EventId, Error>
     where
         S: Into<String>,
@@ -989,11 +990,11 @@ impl Client {
                 return Err(Error::ResponseNotMatchRequest);
             }
         } else {
-            EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg)?
+            EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg, reply)?
         };
 
         #[cfg(not(feature = "nip46"))]
-        let builder = EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg)?;
+        let builder = EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg, reply)?;
 
         self.send_event_builder(builder).await
     }

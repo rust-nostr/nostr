@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
         "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
     )?;
     client
-        .send_direct_msg(receiver, "Hello from nostr-sdk")
+        .send_direct_msg(receiver, "Hello from nostr-sdk", None)
         .await?;
     println!("Sent DM: {id}");
 

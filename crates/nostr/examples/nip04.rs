@@ -29,9 +29,13 @@ fn main() -> Result<()> {
     let alice_to_bob = "Hey bob this is alice (ping)";
     let bob_to_alice = "Hey alice this is bob (pong)";
 
-    let alice_encrypted_msg =
-        EventBuilder::new_encrypted_direct_msg(&alice_keys, bob_keys.public_key(), alice_to_bob)?
-            .to_event(&alice_keys)?;
+    let alice_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
+        &alice_keys,
+        bob_keys.public_key(),
+        alice_to_bob,
+        None,
+    )?
+    .to_event(&alice_keys)?;
 
     let subscribe_to_alice = ClientMessage::new_req(
         SubscriptionId::new("abcdefg"),
@@ -96,6 +100,7 @@ fn main() -> Result<()> {
                                     &alice_keys,
                                     bob_keys.public_key(),
                                     alice_to_bob,
+                                    None,
                                 )?
                                 .to_event(&alice_keys)?;
                                 socket.write_message(WsMessage::Text(
@@ -117,6 +122,7 @@ fn main() -> Result<()> {
                                     &bob_keys,
                                     alice_keys.public_key(),
                                     bob_to_alice,
+                                    None,
                                 )?
                                 .to_event(&bob_keys)?;
                                 socket.write_message(WsMessage::Text(

@@ -47,7 +47,9 @@ async fn main() -> Result<()> {
                     if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
                     {
                         println!("New DM: {msg}");
-                        client.send_direct_msg(event.pubkey, msg).await?;
+                        client
+                            .send_direct_msg(event.pubkey, msg, Some(event.id))
+                            .await?;
                     } else {
                         tracing::error!("Impossible to decrypt direct message");
                     }

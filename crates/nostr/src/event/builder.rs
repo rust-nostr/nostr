@@ -279,14 +279,19 @@ impl EventBuilder {
         sender_keys: &Keys,
         receiver_pubkey: XOnlyPublicKey,
         content: S,
+        reply: Option<EventId>,
     ) -> Result<Self, Error>
     where
         S: Into<String>,
     {
+        let mut tags: Vec<Tag> = vec![Tag::PubKey(receiver_pubkey, None)];
+        if let Some(reply) = reply {
+            tags.push(Tag::Event(reply, None, None));
+        }
         Ok(Self::new(
             Kind::EncryptedDirectMessage,
             nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, content.into())?,
-            &[Tag::PubKey(receiver_pubkey, None)],
+            &tags,
         ))
     }
 
@@ -887,6 +892,7 @@ mod tests {
             &sender_keys,
             receiver_keys.public_key(),
             content,
+            None,
         )?
         .to_event(&sender_keys)?;
 

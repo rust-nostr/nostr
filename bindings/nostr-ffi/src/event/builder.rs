@@ -129,12 +129,14 @@ impl EventBuilder {
         sender_keys: Arc<Keys>,
         receiver_pubkey: Arc<PublicKey>,
         content: String,
+        reply: Option<Arc<EventId>>,
     ) -> Result<Self> {
         Ok(Self {
             builder: EventBuilderSdk::new_encrypted_direct_msg(
                 sender_keys.deref(),
                 *receiver_pubkey.as_ref().deref(),
                 content,
+                reply.map(|id| id.as_ref().into()),
             )?,
         })
     }

@@ -261,11 +261,16 @@ impl Client {
     }
 
     #[cfg(feature = "nip04")]
-    pub fn send_direct_msg<S>(&self, receiver: XOnlyPublicKey, msg: S) -> Result<EventId, Error>
+    pub fn send_direct_msg<S>(
+        &self,
+        receiver: XOnlyPublicKey,
+        msg: S,
+        reply: Option<EventId>,
+    ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
-        RUNTIME.block_on(async { self.client.send_direct_msg(receiver, msg).await })
+        RUNTIME.block_on(async { self.client.send_direct_msg(receiver, msg, reply).await })
     }
 
     pub fn repost_event(
