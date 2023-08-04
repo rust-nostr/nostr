@@ -1,4 +1,5 @@
 from nostr_sdk import Keys, Client, EventBuilder, Filter
+from datetime import timedelta
 import time
 
 keys = Keys.generate()
@@ -20,6 +21,6 @@ time.sleep(2.0)
 
 print("Getting events from relays...")
 filter = Filter().authors([keys.public_key().to_hex()])
-events = client.get_events_of([filter], None)
+events = client.get_events_of([filter], timedelta(seconds=10))
 for event in events:
     print(event.as_json())
