@@ -268,9 +268,14 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
     #[wasm_bindgen(js_name = sendDirectMsg)]
-    pub async fn send_direct_msg(&self, receiver: &JsPublicKey, msg: String) -> Result<JsEventId> {
+    pub async fn send_direct_msg(
+        &self,
+        receiver: &JsPublicKey,
+        msg: String,
+        reply: Option<JsEventId>,
+    ) -> Result<JsEventId> {
         self.inner
-            .send_direct_msg(receiver.into(), msg)
+            .send_direct_msg(receiver.into(), msg, reply.map(|id| id.into()))
             .await
             .map_err(into_err)
             .map(|id| id.into())
