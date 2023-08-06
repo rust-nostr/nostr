@@ -13,14 +13,9 @@ keywords = ["nostr", "ffi"]
 name = "nostr_ffi"
 crate-type = ["lib", "cdylib", "staticlib"]
 
-[[bin]]
-name = "uniffi-bindgen"
-path = "uniffi-bindgen.rs"
-
 [dependencies]
 nostr  = { path = "../../crates/nostr", features = ["blocking", "vanity"] }
-uniffi = { version = "0.24", features = ["cli"] }
-uniffi_bindgen = "0.24"
+uniffi = "0.24"
 uniffi_macros = "0.24"
 
 [build-dependencies]

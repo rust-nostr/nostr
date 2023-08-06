@@ -6,7 +6,7 @@ ${PYBIN}/pip install -r requirements.txt
 
 echo "Generating nostr.py..."
 cd ../
-cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr.udl --language python --no-format -o bindings-python/src/nostr/
+cargo run -p uniffi-bindgen generate src/nostr.udl --language python --no-format -o bindings-python/src/nostr/
 
 echo "Generating native binaries..."
 cargo build --release

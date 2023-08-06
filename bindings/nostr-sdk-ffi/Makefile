@@ -25,7 +25,7 @@ sdk-root:
 	fi
 
 kotlin: android
-	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --language kotlin --no-format -o ffi/kotlin
+	cargo run -p uniffi-bindgen generate src/nostr_sdk.udl --language kotlin --no-format -o ffi/kotlin
 
 android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
@@ -70,18 +70,18 @@ darwin-universal: $(SOURCES)
 	lipo -create -output ../../target/darwin-universal/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-darwin/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-darwin/release/libnostr_sdk_ffi.a
 
 swift-ios: ios-universal
-	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl -l swift -o ffi/swift-ios
+	cargo run -p uniffi-bindgen generate src/nostr_sdk.udl -l swift -o ffi/swift-ios
 	cp ../../target/ios-universal/release/libnostr_sdk_ffi.a ffi/swift-ios
 	cd ffi/swift-ios && "swiftc" "-emit-module" "-module-name" "nostr_sdk_ffi"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-ios/nostr_sdkFFI.modulemap" "-I" "."  "-L" "." "-lnostr_sdk_ffi" nostr_sdk.swift
 
 swift-darwin: darwin-universal
-	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl -l swift -o ffi/swift-darwin
+	cargo run -p uniffi-bindgen generate src/nostr_sdk.udl -l swift -o ffi/swift-darwin
 	cp ../../target/darwin-universal/release/libnostr_sdk_ffi.dylib ffi/swift-darwin
 	cd ffi/swift-darwin && "swiftc" "-emit-module" "-module-name" "nostr_sdk_ffi"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-darwin/nostr_sdkFFI.modulemap" "-I" "."  "-L" "." "-lnostr_sdk_ffi" nostr_sdk.swift
 
 bindings-swift: ios-universal darwin-universal
 	mkdir -p bindings-swift/Sources/NostrSDK
-	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --no-format --language swift --out-dir bindings-swift/Sources/NostrSDK
+	cargo run -p uniffi-bindgen generate src/nostr_sdk.udl --no-format --language swift --out-dir bindings-swift/Sources/NostrSDK
 	mv bindings-swift/Sources/NostrSDK/nostr_sdk.swift bindings-swift/Sources/NostrSDK/NostrSDK.swift
 	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64/nostr_sdkFFI.framework/Headers
 	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/nostr_sdkFFI.framework/Headers
@@ -95,8 +95,8 @@ bindings-swift: ios-universal darwin-universal
 python:
 	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt
-	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --language python --no-format -o bindings-python/src/nostr-sdk/
 	cargo build --release
+	cargo run -p uniffi-bindgen generate src/nostr_sdk.udl --language python --no-format -o bindings-python/src/nostr-sdk/
 	cp ../../target/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/ | true
 	cp ../../target/release/libnostr_sdk_ffi.dylib bindings-python/src/nostr-sdk/ | true
 	cd bindings-python && python setup.py --verbose bdist_wheel
@@ -104,8 +104,8 @@ python:
 
 python-win:
 	pip install -r bindings-python\requirements.txt
-	cargo run --features=uniffi/cli --bin uniffi-bindgen generate src\nostr_sdk.udl --language python --no-format -o bindings-python\src\nostr-sdk
 	cargo build --release
+	cargo run -p uniffi-bindgen generate src\nostr_sdk.udl --language python --no-format -o bindings-python\src\nostr-sdk
 	copy ..\..\target\release\nostr_sdk_ffi.dll bindings-python\src\nostr-sdk
 	del /F /Q bindings-python\dist\*
 	cd bindings-python && python setup.py --verbose bdist_wheel

@@ -4,6 +4,7 @@ members = [
     "bindings/nostr-js",
     "bindings/nostr-sdk-ffi",
     "bindings/nostr-sdk-js",
+    "bindings/uniffi-bindgen",
     "crates/nostr",
     "crates/nostr-sdk",
     "crates/nostr-sdk-net",

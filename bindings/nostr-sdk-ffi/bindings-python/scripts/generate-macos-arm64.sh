@@ -6,7 +6,7 @@ pip install --user -r requirements.txt
 
 echo "Generating nostr_sdk.py..."
 cd ../
-cargo run --features=uniffi/cli --bin uniffi-bindgen generate src/nostr_sdk.udl --language python --no-format -o bindings-python/src/nostr-sdk/
+cargo run -p uniffi-bindgen generate src/nostr_sdk.udl --language python --no-format -o bindings-python/src/nostr-sdk/
 
 echo "Generating native binaries..."
 rustup target add aarch64-apple-darwin
