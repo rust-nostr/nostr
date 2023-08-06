@@ -118,7 +118,7 @@ impl Filter {
         json!(self).to_string()
     }
 
-    /// Set event id or prefix
+    /// Add event id or prefix
     pub fn id<S>(self, id: S) -> Self
     where
         S: Into<String>,
@@ -135,18 +135,24 @@ impl Filter {
         }
     }
 
-    /// Set event ids or prefixes
+    /// Add event ids or prefixes
     pub fn ids<S>(self, ids: Vec<S>) -> Self
     where
         S: Into<String>,
     {
+        let mut current_ids: Vec<String> = self.ids.unwrap_or_default();
+        for value in ids.into_iter().map(|value| value.into()) {
+            if !current_ids.contains(&value) {
+                current_ids.push(value);
+            }
+        }
         Self {
-            ids: Some(ids.into_iter().map(|id| id.into()).collect()),
+            ids: Some(current_ids),
             ..self
         }
     }
 
-    /// Set author
+    /// Add author
     pub fn author<S>(self, author: S) -> Self
     where
         S: Into<String>,
@@ -163,18 +169,24 @@ impl Filter {
         }
     }
 
-    /// Set authors
+    /// Add authors
     pub fn authors<S>(self, authors: Vec<S>) -> Self
     where
         S: Into<String>,
     {
+        let mut current_authors: Vec<String> = self.authors.unwrap_or_default();
+        for value in authors.into_iter().map(|value| value.into()) {
+            if !current_authors.contains(&value) {
+                current_authors.push(value);
+            }
+        }
         Self {
-            authors: Some(authors.into_iter().map(|a| a.into()).collect()),
+            authors: Some(current_authors),
             ..self
         }
     }
 
-    /// Set kind
+    /// Add kind
     pub fn kind(self, kind: Kind) -> Self {
         Self {
             kinds: Some(self.kinds.map_or(vec![kind], |mut kinds| {
@@ -187,15 +199,21 @@ impl Filter {
         }
     }
 
-    /// Set kinds
+    /// Add kinds
     pub fn kinds(self, kinds: Vec<Kind>) -> Self {
+        let mut current_kinds: Vec<Kind> = self.kinds.unwrap_or_default();
+        for value in kinds.into_iter() {
+            if !current_kinds.contains(&value) {
+                current_kinds.push(value);
+            }
+        }
         Self {
-            kinds: Some(kinds),
+            kinds: Some(current_kinds),
             ..self
         }
     }
 
-    /// Set event
+    /// Add event
     pub fn event(self, id: EventId) -> Self {
         Self {
             events: Some(self.events.map_or(vec![id], |mut events| {
@@ -208,15 +226,21 @@ impl Filter {
         }
     }
 
-    /// Set events
-    pub fn events(self, ids: Vec<EventId>) -> Self {
+    /// Add events
+    pub fn events(self, events: Vec<EventId>) -> Self {
+        let mut current_events: Vec<EventId> = self.events.unwrap_or_default();
+        for value in events.into_iter() {
+            if !current_events.contains(&value) {
+                current_events.push(value);
+            }
+        }
         Self {
-            events: Some(ids),
+            events: Some(current_events),
             ..self
         }
     }
 
-    /// Set pubkey
+    /// Add pubkey
     pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
         Self {
             pubkeys: Some(self.pubkeys.map_or(vec![pubkey], |mut pubkeys| {
@@ -229,15 +253,21 @@ impl Filter {
         }
     }
 
-    /// Set pubkeys
+    /// Add pubkeys
     pub fn pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
+        let mut current_pubkeys: Vec<XOnlyPublicKey> = self.pubkeys.unwrap_or_default();
+        for value in pubkeys.into_iter() {
+            if !current_pubkeys.contains(&value) {
+                current_pubkeys.push(value);
+            }
+        }
         Self {
-            pubkeys: Some(pubkeys),
+            pubkeys: Some(current_pubkeys),
             ..self
         }
     }
 
-    /// Set hashtag
+    /// Add hashtag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     pub fn hashtag<S>(self, hashtag: S) -> Self
@@ -256,72 +286,108 @@ impl Filter {
         }
     }
 
-    /// Set hashtags
+    /// Add hashtags
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     pub fn hashtags<S>(self, hashtags: Vec<S>) -> Self
     where
         S: Into<String>,
     {
+        let mut current_hashtags: Vec<String> = self.hashtags.unwrap_or_default();
+        for value in hashtags.into_iter().map(|value| value.into()) {
+            if !current_hashtags.contains(&value) {
+                current_hashtags.push(value);
+            }
+        }
         Self {
-            hashtags: Some(hashtags.into_iter().map(|a| a.into()).collect()),
+            hashtags: Some(current_hashtags),
             ..self
         }
     }
 
-    /// Set reference
+    /// Add reference
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    pub fn reference<S>(self, v: S) -> Self
+    pub fn reference<S>(self, reference: S) -> Self
     where
         S: Into<String>,
     {
+        let reference: String = reference.into();
         Self {
-            references: Some(vec![v.into()]),
+            references: Some(
+                self.references
+                    .map_or(vec![reference.clone()], |mut references| {
+                        if !references.contains(&reference) {
+                            references.push(reference);
+                        }
+                        references
+                    }),
+            ),
             ..self
         }
     }
 
-    /// Set references
+    /// Add references
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    pub fn references<S>(self, v: Vec<S>) -> Self
+    pub fn references<S>(self, references: Vec<S>) -> Self
     where
         S: Into<String>,
     {
+        let mut current_references: Vec<String> = self.references.unwrap_or_default();
+        for value in references.into_iter().map(|value| value.into()) {
+            if !current_references.contains(&value) {
+                current_references.push(value);
+            }
+        }
         Self {
-            references: Some(v.into_iter().map(|a| a.into()).collect()),
+            references: Some(current_references),
             ..self
         }
     }
 
-    /// Set identifier
+    /// Add identifier
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/33.md>
     pub fn identifier<S>(self, identifier: S) -> Self
     where
         S: Into<String>,
     {
+        let identifier: String = identifier.into();
         Self {
-            identifiers: Some(vec![identifier.into()]),
+            identifiers: Some(self.identifiers.map_or(
+                vec![identifier.clone()],
+                |mut identifiers| {
+                    if !identifiers.contains(&identifier) {
+                        identifiers.push(identifier);
+                    }
+                    identifiers
+                },
+            )),
             ..self
         }
     }
 
-    /// Set identifiers
+    /// Add identifiers
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/33.md>
     pub fn identifiers<S>(self, identifiers: Vec<S>) -> Self
     where
         S: Into<String>,
     {
+        let mut current_identifiers: Vec<String> = self.identifiers.unwrap_or_default();
+        for value in identifiers.into_iter().map(|value| value.into()) {
+            if !current_identifiers.contains(&value) {
+                current_identifiers.push(value);
+            }
+        }
         Self {
-            identifiers: Some(identifiers.into_iter().map(|a| a.into()).collect()),
+            identifiers: Some(current_identifiers),
             ..self
         }
     }
 
-    /// Set search field
+    /// Add search field
     pub fn search<S>(self, value: S) -> Self
     where
         S: Into<String>,
@@ -332,7 +398,7 @@ impl Filter {
         }
     }
 
-    /// Set since unix timestamp
+    /// Add since unix timestamp
     pub fn since(self, since: Timestamp) -> Self {
         Self {
             since: Some(since),
@@ -340,7 +406,7 @@ impl Filter {
         }
     }
 
-    /// Set until unix timestamp
+    /// Add until unix timestamp
     pub fn until(self, until: Timestamp) -> Self {
         Self {
             until: Some(until),
@@ -348,7 +414,7 @@ impl Filter {
         }
     }
 
-    /// Set limit
+    /// Add limit
     pub fn limit(self, limit: usize) -> Self {
         Self {
             limit: Some(limit),
@@ -356,7 +422,7 @@ impl Filter {
         }
     }
 
-    /// Set custom filters
+    /// Add custom filters
     pub fn custom(self, map: Map<String, Value>) -> Self {
         Self {
             custom: map,
@@ -521,10 +587,21 @@ mod test {
         let filter = Filter::new()
             .kind(Kind::Metadata)
             .kind(Kind::TextNote)
-            .kind(Kind::ContactList);
+            .kind(Kind::ContactList)
+            .kinds(vec![
+                Kind::EncryptedDirectMessage,
+                Kind::Metadata,
+                Kind::LongFormTextNote,
+            ]);
         assert_eq!(
             filter,
-            Filter::new().kinds(vec![Kind::Metadata, Kind::TextNote, Kind::ContactList])
+            Filter::new().kinds(vec![
+                Kind::Metadata,
+                Kind::TextNote,
+                Kind::ContactList,
+                Kind::EncryptedDirectMessage,
+                Kind::LongFormTextNote
+            ])
         );
     }
 
