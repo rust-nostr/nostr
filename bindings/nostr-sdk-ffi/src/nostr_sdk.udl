@@ -158,7 +158,13 @@ interface Filter {
     [Self=ByArc]
     Filter ids(sequence<string> ids);
     [Self=ByArc]
+    Filter author(string author);
+    [Self=ByArc]
+    Filter authors(sequence<string> authors);
+    [Self=ByArc]
     Filter kind(u64 kind);
+    [Self=ByArc]
+    Filter kinds(sequence<u64> kinds);
     [Self=ByArc]
     Filter event(EventId event_id);
     [Self=ByArc]
@@ -168,11 +174,15 @@ interface Filter {
     [Self=ByArc]
     Filter pubkeys(sequence<PublicKey> pubkeys);
     [Self=ByArc]
+    Filter search(string text);
+    [Self=ByArc]
     Filter since(Timestamp timestamp);
     [Self=ByArc]
     Filter until(Timestamp timestamp);
     [Self=ByArc]
-    Filter authors(sequence<string> authors);
+    Filter limit(u64 limit);
+    [Throws=NostrError, Self=ByArc]
+    Filter custom_tag(string tag, sequence<string> content);
 };
 
 interface EventId {

@@ -25,8 +25,20 @@ impl From<std::num::ParseIntError> for NostrError {
     }
 }
 
+impl From<std::char::ParseCharError> for NostrError {
+    fn from(e: std::char::ParseCharError) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<nostr::key::Error> for NostrError {
     fn from(e: nostr::key::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
+impl From<nostr::message::subscription::Error> for NostrError {
+    fn from(e: nostr::message::subscription::Error) -> NostrError {
         Self::Generic { err: e.to_string() }
     }
 }
