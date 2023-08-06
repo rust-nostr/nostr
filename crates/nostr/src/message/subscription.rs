@@ -5,6 +5,7 @@
 //! Subscription filters
 
 use core::fmt;
+use std::collections::HashMap;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
@@ -17,6 +18,23 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 use crate::{EventId, Kind, Timestamp};
+
+/// Filter error
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+    /// Invalid Tag
+    InvalidTag(char),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidTag(c) => write!(f, "Invalid tag: {c}"),
+        }
+    }
+}
 
 /// Subscription ID
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -65,6 +83,8 @@ pub struct Filter {
     pub references: Vec<String>,
     /// #d tag
     pub identifiers: Vec<String>,
+    /// Generic tag queries (NIP12)
+    pub generic_tags: HashMap<char, Vec<String>>,
     /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
@@ -75,8 +95,6 @@ pub struct Filter {
     pub until: Option<Timestamp>,
     /// Maximum number of events to be returned in the initial query
     pub limit: Option<usize>,
-    /// Custom fields
-    pub custom: Map<String, Value>,
 }
 
 impl Filter {
@@ -367,11 +385,30 @@ impl Filter {
         }
     }
 
-    /// Set custom filters
-    pub fn custom(self, map: Map<String, Value>) -> Self {
-        Self {
-            custom: map,
-            ..self
+    /// Add custom tag
+    pub fn custom_tag<S>(self, tag: char, values: Vec<S>) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        if tag.is_alphabetic() {
+            let values: Vec<String> = values.into_iter().map(|value| value.into()).collect();
+            let mut generic_tags: HashMap<char, Vec<String>> = self.generic_tags;
+            generic_tags
+                .entry(tag)
+                .and_modify(|list| {
+                    for value in values.clone().into_iter() {
+                        if !list.contains(&value) {
+                            list.push(value);
+                        }
+                    }
+                })
+                .or_insert(values);
+            Ok(Self {
+                generic_tags,
+                ..self
+            })
+        } else {
+            Err(Error::InvalidTag(tag))
         }
     }
 }
@@ -381,7 +418,7 @@ impl Serialize for Filter {
     where
         S: Serializer,
     {
-        let len: usize = 11 + self.custom.len();
+        let len: usize = 12 + self.generic_tags.len();
         let mut map = serializer.serialize_map(Some(len))?;
         if !self.ids.is_empty() {
             map.serialize_entry("ids", &json!(self.ids))?;
@@ -419,8 +456,8 @@ impl Serialize for Filter {
         if let Some(value) = &self.limit {
             map.serialize_entry("limit", &json!(value))?;
         }
-        for (k, v) in &self.custom {
-            map.serialize_entry(&k, &v)?;
+        for (k, v) in &self.generic_tags {
+            map.serialize_entry(&format!("#{k}"), &v)?;
         }
         map.end()
     }
@@ -506,7 +543,19 @@ impl<'de> Visitor<'de> for FilterVisitor {
             f.limit = Some(limit);
         }
 
-        f.custom = map;
+        f.generic_tags = map
+            .into_iter()
+            .filter_map(|(key, value)| {
+                let key: String = key.replace('#', "");
+                let mut val: Option<(char, Vec<String>)> = None;
+                if let Ok(tag) = key.parse() {
+                    if let Ok(list) = serde_json::from_value(value) {
+                        val = Some((tag, list));
+                    }
+                }
+                val
+            })
+            .collect();
 
         Ok(f)
     }
@@ -541,34 +590,39 @@ mod test {
 
     #[test]
     fn test_filter_serialization() {
-        let mut custom = Map::new();
-        custom.insert(
-            "#a".to_string(),
-            Value::Array(vec![Value::String("...".to_string())]),
-        );
         let filter = Filter::new()
             .identifier("identifier")
             .search("test")
-            .custom(custom);
-        let json = r##"{"#a":["..."],"#d":["identifier"],"search":"test"}"##;
+            .custom_tag('j', vec!["test", "test1"])
+            .unwrap();
+        let json = r##"{"#d":["identifier"],"#j":["test","test1"],"search":"test"}"##;
         assert_eq!(filter.as_json(), json.to_string());
+
+        assert_eq!(
+            Filter::new().custom_tag('\n', vec!["test"]).unwrap_err(),
+            Error::InvalidTag('\n')
+        );
     }
 
     #[test]
     fn test_filter_deserialization() {
-        let json = r##"{"#a":["..."],"search":"test","ids":["myid", "mysecondid"]}"##;
+        let json = r##"{"#a":["...", "test"],"search":"test","ids":["myid", "mysecondid"]}"##;
         let filter = Filter::from_json(json).unwrap();
-        let mut custom = Map::new();
-        custom.insert(
-            "#a".to_string(),
-            Value::Array(vec![Value::String("...".to_string())]),
-        );
         assert_eq!(
             filter,
             Filter::new()
                 .ids(vec!["myid".to_string(), "mysecondid".to_string()])
                 .search("test")
-                .custom(custom)
+                .custom_tag('a', vec!["...".to_string(), "test".to_string()])
+                .unwrap()
         );
+
+        let json = r##"{"#":["..."],"search":"test"}"##;
+        let filter = Filter::from_json(json).unwrap();
+        assert_eq!(filter, Filter::new().search("test"));
+
+        let json = r##"{"aa":["..."],"search":"test"}"##;
+        let filter = Filter::from_json(json).unwrap();
+        assert_eq!(filter, Filter::new().search("test"));
     }
 }
