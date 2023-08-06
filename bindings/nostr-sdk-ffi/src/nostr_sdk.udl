@@ -183,6 +183,9 @@ interface Filter {
     Filter limit(u64 limit);
     [Throws=NostrError, Self=ByArc]
     Filter custom_tag(string tag, sequence<string> content);
+    [Throws=NostrError, Name=from_json]
+    constructor(string json);
+    string as_json();
 };
 
 interface EventId {

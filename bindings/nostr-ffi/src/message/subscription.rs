@@ -134,4 +134,14 @@ impl Filter {
         builder.inner = builder.inner.custom_tag(tag.parse::<char>()?, content)?;
         Ok(Arc::new(builder))
     }
+
+    pub fn from_json(json: String) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::Filter::from_json(json)?,
+        })
+    }
+
+    pub fn as_json(&self) -> String {
+        self.inner.as_json()
+    }
 }
