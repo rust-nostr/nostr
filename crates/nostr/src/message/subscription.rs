@@ -47,24 +47,24 @@ impl fmt::Display for SubscriptionId {
 }
 
 /// Subscription filters
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Filter {
     /// List of event ids or prefixes
-    pub ids: Option<Vec<String>>,
+    pub ids: Vec<String>,
     /// List of pubkeys or prefixes
-    pub authors: Option<Vec<String>>,
+    pub authors: Vec<String>,
     /// List of a kind numbers
-    pub kinds: Option<Vec<Kind>>,
+    pub kinds: Vec<Kind>,
     /// #e tag
-    pub events: Option<Vec<EventId>>,
+    pub events: Vec<EventId>,
     /// #p tag
-    pub pubkeys: Option<Vec<XOnlyPublicKey>>,
+    pub pubkeys: Vec<XOnlyPublicKey>,
     /// #t tag
-    pub hashtags: Option<Vec<String>>,
+    pub hashtags: Vec<String>,
     /// #r tag
-    pub references: Option<Vec<String>>,
+    pub references: Vec<String>,
     /// #d tag
-    pub identifiers: Option<Vec<String>>,
+    pub identifiers: Vec<String>,
     /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
@@ -79,30 +79,10 @@ pub struct Filter {
     pub custom: Map<String, Value>,
 }
 
-impl Default for Filter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Filter {
     /// Create new empty [`Filter`]
     pub fn new() -> Self {
-        Self {
-            ids: None,
-            authors: None,
-            kinds: None,
-            events: None,
-            pubkeys: None,
-            hashtags: None,
-            references: None,
-            identifiers: None,
-            search: None,
-            since: None,
-            until: None,
-            limit: None,
-            custom: Map::new(),
-        }
+        Self::default()
     }
 
     /// Deserialize from `JSON` string
@@ -124,15 +104,11 @@ impl Filter {
         S: Into<String>,
     {
         let id: String = id.into();
-        Self {
-            ids: Some(self.ids.map_or(vec![id.clone()], |mut ids| {
-                if !ids.contains(&id) {
-                    ids.push(id);
-                }
-                ids
-            })),
-            ..self
+        let mut ids: Vec<String> = self.ids;
+        if !ids.contains(&id) {
+            ids.push(id);
         }
+        Self { ids, ..self }
     }
 
     /// Add event ids or prefixes
@@ -140,14 +116,14 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let mut current_ids: Vec<String> = self.ids.unwrap_or_default();
+        let mut current_ids: Vec<String> = self.ids;
         for value in ids.into_iter().map(|value| value.into()) {
             if !current_ids.contains(&value) {
                 current_ids.push(value);
             }
         }
         Self {
-            ids: Some(current_ids),
+            ids: current_ids,
             ..self
         }
     }
@@ -158,15 +134,11 @@ impl Filter {
         S: Into<String>,
     {
         let author: String = author.into();
-        Self {
-            authors: Some(self.authors.map_or(vec![author.clone()], |mut authors| {
-                if !authors.contains(&author) {
-                    authors.push(author);
-                }
-                authors
-            })),
-            ..self
+        let mut authors: Vec<String> = self.authors;
+        if !authors.contains(&author) {
+            authors.push(author);
         }
+        Self { authors, ..self }
     }
 
     /// Add authors
@@ -174,95 +146,83 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let mut current_authors: Vec<String> = self.authors.unwrap_or_default();
+        let mut current_authors: Vec<String> = self.authors;
         for value in authors.into_iter().map(|value| value.into()) {
             if !current_authors.contains(&value) {
                 current_authors.push(value);
             }
         }
         Self {
-            authors: Some(current_authors),
+            authors: current_authors,
             ..self
         }
     }
 
     /// Add kind
     pub fn kind(self, kind: Kind) -> Self {
-        Self {
-            kinds: Some(self.kinds.map_or(vec![kind], |mut kinds| {
-                if !kinds.contains(&kind) {
-                    kinds.push(kind);
-                }
-                kinds
-            })),
-            ..self
+        let mut kinds: Vec<Kind> = self.kinds;
+        if !kinds.contains(&kind) {
+            kinds.push(kind);
         }
+        Self { kinds, ..self }
     }
 
     /// Add kinds
     pub fn kinds(self, kinds: Vec<Kind>) -> Self {
-        let mut current_kinds: Vec<Kind> = self.kinds.unwrap_or_default();
+        let mut current_kinds: Vec<Kind> = self.kinds;
         for value in kinds.into_iter() {
             if !current_kinds.contains(&value) {
                 current_kinds.push(value);
             }
         }
         Self {
-            kinds: Some(current_kinds),
+            kinds: current_kinds,
             ..self
         }
     }
 
     /// Add event
     pub fn event(self, id: EventId) -> Self {
-        Self {
-            events: Some(self.events.map_or(vec![id], |mut events| {
-                if !events.contains(&id) {
-                    events.push(id);
-                }
-                events
-            })),
-            ..self
+        let mut events: Vec<EventId> = self.events;
+        if !events.contains(&id) {
+            events.push(id);
         }
+        Self { events, ..self }
     }
 
     /// Add events
     pub fn events(self, events: Vec<EventId>) -> Self {
-        let mut current_events: Vec<EventId> = self.events.unwrap_or_default();
+        let mut current_events: Vec<EventId> = self.events;
         for value in events.into_iter() {
             if !current_events.contains(&value) {
                 current_events.push(value);
             }
         }
         Self {
-            events: Some(current_events),
+            events: current_events,
             ..self
         }
     }
 
     /// Add pubkey
     pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
-        Self {
-            pubkeys: Some(self.pubkeys.map_or(vec![pubkey], |mut pubkeys| {
-                if !pubkeys.contains(&pubkey) {
-                    pubkeys.push(pubkey);
-                }
-                pubkeys
-            })),
-            ..self
+        let mut pubkeys: Vec<XOnlyPublicKey> = self.pubkeys;
+        if !pubkeys.contains(&pubkey) {
+            pubkeys.push(pubkey);
         }
+        Self { pubkeys, ..self }
     }
 
     /// Add pubkeys
     pub fn pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
-        let mut current_pubkeys: Vec<XOnlyPublicKey> = self.pubkeys.unwrap_or_default();
+        let mut current_pubkeys: Vec<XOnlyPublicKey> = self.pubkeys;
         for value in pubkeys.into_iter() {
             if !current_pubkeys.contains(&value) {
                 current_pubkeys.push(value);
             }
         }
         Self {
-            pubkeys: Some(current_pubkeys),
+            pubkeys: current_pubkeys,
             ..self
         }
     }
@@ -275,15 +235,11 @@ impl Filter {
         S: Into<String>,
     {
         let hashtag: String = hashtag.into();
-        Self {
-            hashtags: Some(self.hashtags.map_or(vec![hashtag.clone()], |mut hashtags| {
-                if !hashtags.contains(&hashtag) {
-                    hashtags.push(hashtag);
-                }
-                hashtags
-            })),
-            ..self
+        let mut hashtags: Vec<String> = self.hashtags;
+        if !hashtags.contains(&hashtag) {
+            hashtags.push(hashtag);
         }
+        Self { hashtags, ..self }
     }
 
     /// Add hashtags
@@ -293,14 +249,14 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let mut current_hashtags: Vec<String> = self.hashtags.unwrap_or_default();
+        let mut current_hashtags: Vec<String> = self.hashtags;
         for value in hashtags.into_iter().map(|value| value.into()) {
             if !current_hashtags.contains(&value) {
                 current_hashtags.push(value);
             }
         }
         Self {
-            hashtags: Some(current_hashtags),
+            hashtags: current_hashtags,
             ..self
         }
     }
@@ -313,18 +269,11 @@ impl Filter {
         S: Into<String>,
     {
         let reference: String = reference.into();
-        Self {
-            references: Some(
-                self.references
-                    .map_or(vec![reference.clone()], |mut references| {
-                        if !references.contains(&reference) {
-                            references.push(reference);
-                        }
-                        references
-                    }),
-            ),
-            ..self
+        let mut references: Vec<String> = self.references;
+        if !references.contains(&reference) {
+            references.push(reference);
         }
+        Self { references, ..self }
     }
 
     /// Add references
@@ -334,14 +283,14 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let mut current_references: Vec<String> = self.references.unwrap_or_default();
+        let mut current_references: Vec<String> = self.references;
         for value in references.into_iter().map(|value| value.into()) {
             if !current_references.contains(&value) {
                 current_references.push(value);
             }
         }
         Self {
-            references: Some(current_references),
+            references: current_references,
             ..self
         }
     }
@@ -354,16 +303,12 @@ impl Filter {
         S: Into<String>,
     {
         let identifier: String = identifier.into();
+        let mut identifiers: Vec<String> = self.identifiers;
+        if !identifiers.contains(&identifier) {
+            identifiers.push(identifier);
+        }
         Self {
-            identifiers: Some(self.identifiers.map_or(
-                vec![identifier.clone()],
-                |mut identifiers| {
-                    if !identifiers.contains(&identifier) {
-                        identifiers.push(identifier);
-                    }
-                    identifiers
-                },
-            )),
+            identifiers,
             ..self
         }
     }
@@ -375,14 +320,14 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let mut current_identifiers: Vec<String> = self.identifiers.unwrap_or_default();
+        let mut current_identifiers: Vec<String> = self.identifiers;
         for value in identifiers.into_iter().map(|value| value.into()) {
             if !current_identifiers.contains(&value) {
                 current_identifiers.push(value);
             }
         }
         Self {
-            identifiers: Some(current_identifiers),
+            identifiers: current_identifiers,
             ..self
         }
     }
@@ -422,7 +367,7 @@ impl Filter {
         }
     }
 
-    /// Add custom filters
+    /// Set custom filters
     pub fn custom(self, map: Map<String, Value>) -> Self {
         Self {
             custom: map,
@@ -438,29 +383,29 @@ impl Serialize for Filter {
     {
         let len: usize = 11 + self.custom.len();
         let mut map = serializer.serialize_map(Some(len))?;
-        if let Some(value) = &self.ids {
-            map.serialize_entry("ids", &json!(value))?;
+        if !self.ids.is_empty() {
+            map.serialize_entry("ids", &json!(self.ids))?;
         }
-        if let Some(value) = &self.kinds {
-            map.serialize_entry("kinds", &json!(value))?;
+        if !self.kinds.is_empty() {
+            map.serialize_entry("kinds", &json!(self.kinds))?;
         }
-        if let Some(value) = &self.authors {
-            map.serialize_entry("authors", &json!(value))?;
+        if !self.authors.is_empty() {
+            map.serialize_entry("authors", &json!(self.authors))?;
         }
-        if let Some(value) = &self.events {
-            map.serialize_entry("#e", &json!(value))?;
+        if !self.events.is_empty() {
+            map.serialize_entry("#e", &json!(self.events))?;
         }
-        if let Some(value) = &self.pubkeys {
-            map.serialize_entry("#p", &json!(value))?;
+        if !self.pubkeys.is_empty() {
+            map.serialize_entry("#p", &json!(self.pubkeys))?;
         }
-        if let Some(value) = &self.hashtags {
-            map.serialize_entry("#t", &json!(value))?;
+        if !self.hashtags.is_empty() {
+            map.serialize_entry("#t", &json!(self.hashtags))?;
         }
-        if let Some(value) = &self.references {
-            map.serialize_entry("#r", &json!(value))?;
+        if !self.references.is_empty() {
+            map.serialize_entry("#r", &json!(self.references))?;
         }
-        if let Some(value) = &self.identifiers {
-            map.serialize_entry("#d", &json!(value))?;
+        if !self.identifiers.is_empty() {
+            map.serialize_entry("#d", &json!(self.identifiers))?;
         }
         if let Some(value) = &self.search {
             map.serialize_entry("search", &json!(value))?;
@@ -511,46 +456,35 @@ impl<'de> Visitor<'de> for FilterVisitor {
         let mut f: Filter = Filter::new();
 
         if let Some(value) = map.remove("ids") {
-            let ids: Vec<String> = serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.ids = Some(ids);
+            f.ids = serde_json::from_value(value).map_err(de::Error::custom)?;
         }
 
         if let Some(value) = map.remove("authors") {
-            let authors: Vec<String> = serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.authors = Some(authors);
+            f.authors = serde_json::from_value(value).map_err(de::Error::custom)?;
         }
 
         if let Some(value) = map.remove("kinds") {
-            let kinds: Vec<Kind> = serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.kinds = Some(kinds);
+            f.kinds = serde_json::from_value(value).map_err(de::Error::custom)?;
         }
 
         if let Some(value) = map.remove("#e") {
-            let events: Vec<EventId> = serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.events = Some(events);
+            f.events = serde_json::from_value(value).map_err(de::Error::custom)?;
         }
 
         if let Some(value) = map.remove("#p") {
-            let pubkeys: Vec<XOnlyPublicKey> =
-                serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.pubkeys = Some(pubkeys);
+            f.pubkeys = serde_json::from_value(value).map_err(de::Error::custom)?;
         }
 
         if let Some(value) = map.remove("#t") {
-            let hashtags: Vec<String> = serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.hashtags = Some(hashtags);
+            f.hashtags = serde_json::from_value(value).map_err(de::Error::custom)?;
         }
 
         if let Some(value) = map.remove("#r") {
-            let references: Vec<String> =
-                serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.references = Some(references);
+            f.references = serde_json::from_value(value).map_err(de::Error::custom)?;
         }
 
         if let Some(value) = map.remove("#d") {
-            let identifiers: Vec<String> =
-                serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.identifiers = Some(identifiers);
+            f.identifiers = serde_json::from_value(value).map_err(de::Error::custom)?;
         }
 
         if let Some(Value::String(search)) = map.remove("search") {
