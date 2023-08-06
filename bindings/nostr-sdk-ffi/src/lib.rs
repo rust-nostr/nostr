@@ -35,6 +35,6 @@ mod ffi {
     pub use crate::relay::{ActiveSubscription, Relay, RelayConnectionStats};
 
     // UDL
-    uniffi_macros::include_scaffolding!("nostr_sdk");
+    uniffi::include_scaffolding!("nostr_sdk");
 }
 pub use ffi::*;

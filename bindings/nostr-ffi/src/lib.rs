@@ -31,6 +31,6 @@ mod ffi {
     };
 
     // UDL
-    uniffi_macros::include_scaffolding!("nostr");
+    uniffi::include_scaffolding!("nostr");
 }
 pub use ffi::*;
