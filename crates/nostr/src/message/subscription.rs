@@ -12,10 +12,9 @@ use bitcoin_hashes::Hash;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::RngCore;
 use secp256k1::XOnlyPublicKey;
-use serde::de::{self, Deserializer, MapAccess, Visitor};
+use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
 
 use crate::{EventId, Kind, Timestamp};
 
@@ -65,36 +64,71 @@ impl fmt::Display for SubscriptionId {
 }
 
 /// Subscription filters
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Filter {
     /// List of event ids or prefixes
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub ids: Vec<String>,
     /// List of pubkeys or prefixes
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub authors: Vec<String>,
     /// List of a kind numbers
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub kinds: Vec<Kind>,
     /// #e tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#e")]
+    #[serde(default)]
     pub events: Vec<EventId>,
     /// #p tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#p")]
+    #[serde(default)]
     pub pubkeys: Vec<XOnlyPublicKey>,
     /// #t tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#t")]
+    #[serde(default)]
     pub hashtags: Vec<String>,
     /// #r tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#r")]
+    #[serde(default)]
     pub references: Vec<String>,
     /// #d tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#d")]
+    #[serde(default)]
     pub identifiers: Vec<String>,
-    /// Generic tag queries (NIP12)
-    pub generic_tags: HashMap<char, Vec<String>>,
     /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub search: Option<String>,
     /// An integer unix timestamp, events must be newer than this to pass
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub since: Option<Timestamp>,
     /// An integer unix timestamp, events must be older than this to pass
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub until: Option<Timestamp>,
     /// Maximum number of events to be returned in the initial query
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub limit: Option<usize>,
+    /// Generic tag queries (NIP12)
+    #[serde(
+        flatten,
+        serialize_with = "serialize_generic_tags",
+        deserialize_with = "deserialize_generic_tags"
+    )]
+    #[serde(default)]
+    pub generic_tags: HashMap<char, Vec<String>>,
 }
 
 impl Filter {
@@ -113,7 +147,7 @@ impl Filter {
 
     /// Serialize to `JSON` string
     pub fn as_json(&self) -> String {
-        json!(self).to_string()
+        serde_json::json!(self).to_string()
     }
 
     /// Add event id or prefix
@@ -413,152 +447,52 @@ impl Filter {
     }
 }
 
-impl Serialize for Filter {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let len: usize = 12 + self.generic_tags.len();
-        let mut map = serializer.serialize_map(Some(len))?;
-        if !self.ids.is_empty() {
-            map.serialize_entry("ids", &json!(self.ids))?;
-        }
-        if !self.kinds.is_empty() {
-            map.serialize_entry("kinds", &json!(self.kinds))?;
-        }
-        if !self.authors.is_empty() {
-            map.serialize_entry("authors", &json!(self.authors))?;
-        }
-        if !self.events.is_empty() {
-            map.serialize_entry("#e", &json!(self.events))?;
-        }
-        if !self.pubkeys.is_empty() {
-            map.serialize_entry("#p", &json!(self.pubkeys))?;
-        }
-        if !self.hashtags.is_empty() {
-            map.serialize_entry("#t", &json!(self.hashtags))?;
-        }
-        if !self.references.is_empty() {
-            map.serialize_entry("#r", &json!(self.references))?;
-        }
-        if !self.identifiers.is_empty() {
-            map.serialize_entry("#d", &json!(self.identifiers))?;
-        }
-        if let Some(value) = &self.search {
-            map.serialize_entry("search", &json!(value))?;
-        }
-        if let Some(value) = &self.since {
-            map.serialize_entry("since", &json!(value))?;
-        }
-        if let Some(value) = &self.until {
-            map.serialize_entry("until", &json!(value))?;
-        }
-        if let Some(value) = &self.limit {
-            map.serialize_entry("limit", &json!(value))?;
-        }
-        for (k, v) in &self.generic_tags {
-            map.serialize_entry(&format!("#{k}"), &v)?;
-        }
-        map.end()
+fn serialize_generic_tags<S>(
+    generic_tags: &HashMap<char, Vec<String>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut map = serializer.serialize_map(Some(generic_tags.len()))?;
+    for (ch, values) in generic_tags {
+        map.serialize_entry(&format!("#{}", ch), values)?;
     }
+    map.end()
 }
 
-impl<'de> Deserialize<'de> for Filter {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_map(FilterVisitor)
-    }
-}
+fn deserialize_generic_tags<'de, D>(deserializer: D) -> Result<HashMap<char, Vec<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct GenericTagsVisitor;
 
-struct FilterVisitor;
+    impl<'de> Visitor<'de> for GenericTagsVisitor {
+        type Value = HashMap<char, Vec<String>>;
 
-impl<'de> Visitor<'de> for FilterVisitor {
-    type Value = Filter;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "A JSON object")
-    }
-
-    fn visit_map<M>(self, mut access: M) -> Result<Filter, M::Error>
-    where
-        M: MapAccess<'de>,
-    {
-        let mut map: Map<String, Value> = Map::new();
-        while let Some((key, value)) = access.next_entry::<String, Value>()? {
-            let _ = map.insert(key, value);
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("map in which the keys are \"#X\" for some character X")
         }
 
-        let mut f: Filter = Filter::new();
-
-        if let Some(value) = map.remove("ids") {
-            f.ids = serde_json::from_value(value).map_err(de::Error::custom)?;
-        }
-
-        if let Some(value) = map.remove("authors") {
-            f.authors = serde_json::from_value(value).map_err(de::Error::custom)?;
-        }
-
-        if let Some(value) = map.remove("kinds") {
-            f.kinds = serde_json::from_value(value).map_err(de::Error::custom)?;
-        }
-
-        if let Some(value) = map.remove("#e") {
-            f.events = serde_json::from_value(value).map_err(de::Error::custom)?;
-        }
-
-        if let Some(value) = map.remove("#p") {
-            f.pubkeys = serde_json::from_value(value).map_err(de::Error::custom)?;
-        }
-
-        if let Some(value) = map.remove("#t") {
-            f.hashtags = serde_json::from_value(value).map_err(de::Error::custom)?;
-        }
-
-        if let Some(value) = map.remove("#r") {
-            f.references = serde_json::from_value(value).map_err(de::Error::custom)?;
-        }
-
-        if let Some(value) = map.remove("#d") {
-            f.identifiers = serde_json::from_value(value).map_err(de::Error::custom)?;
-        }
-
-        if let Some(Value::String(search)) = map.remove("search") {
-            f.search = Some(search);
-        }
-
-        if let Some(value) = map.remove("since") {
-            let since: Timestamp = serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.since = Some(since);
-        }
-
-        if let Some(value) = map.remove("until") {
-            let until: Timestamp = serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.until = Some(until);
-        }
-
-        if let Some(value) = map.remove("limit") {
-            let limit: usize = serde_json::from_value(value).map_err(de::Error::custom)?;
-            f.limit = Some(limit);
-        }
-
-        f.generic_tags = map
-            .into_iter()
-            .filter_map(|(key, value)| {
-                let key: String = key.replace('#', "");
-                let mut val: Option<(char, Vec<String>)> = None;
-                if let Ok(tag) = key.parse() {
-                    if let Ok(list) = serde_json::from_value(value) {
-                        val = Some((tag, list));
-                    }
+        fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+        where
+            M: MapAccess<'de>,
+        {
+            let mut generic_tags = HashMap::new();
+            while let Some(key) = map.next_key::<String>()? {
+                let mut chars = key.chars();
+                if let (Some('#'), Some(ch), None) = (chars.next(), chars.next(), chars.next()) {
+                    let values = map.next_value()?;
+                    generic_tags.insert(ch, values);
+                } else {
+                    map.next_value::<serde::de::IgnoredAny>()?;
                 }
-                val
-            })
-            .collect();
-
-        Ok(f)
+            }
+            Ok(generic_tags)
+        }
     }
+
+    deserializer.deserialize_map(GenericTagsVisitor)
 }
 
 #[cfg(test)]
