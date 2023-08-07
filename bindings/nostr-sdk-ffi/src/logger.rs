@@ -2,9 +2,11 @@
 // Distributed under the MIT software license
 
 use tracing::Level;
+use uniffi_macros::Enum;
 
 use crate::error::Result;
 
+#[derive(Debug, Enum)]
 pub enum LogLevel {
     Error,
     Warn,
@@ -25,6 +27,7 @@ impl From<LogLevel> for Level {
     }
 }
 
+#[uniffi::export]
 pub fn init_logger(level: LogLevel) -> Result<()> {
     let level: Level = level.into();
     let subscriber = tracing_subscriber::FmtSubscriber::builder()

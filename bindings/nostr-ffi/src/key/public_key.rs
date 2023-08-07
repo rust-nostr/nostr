@@ -3,13 +3,16 @@
 
 use std::ops::Deref;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use nostr::nips::nip19::{FromBech32, ToBech32};
 use nostr::nips::nip21::NostrURI;
 use nostr::secp256k1::XOnlyPublicKey;
+use uniffi::Object;
 
 use crate::error::Result;
 
+#[derive(Debug, Object)]
 pub struct PublicKey {
     inner: XOnlyPublicKey,
 }
@@ -33,23 +36,27 @@ impl Deref for PublicKey {
     }
 }
 
+#[uniffi::export]
 impl PublicKey {
-    pub fn from_hex(hex: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_hex(hex: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: XOnlyPublicKey::from_str(&hex)?,
-        })
+        }))
     }
 
-    pub fn from_bech32(pk: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_bech32(pk: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: XOnlyPublicKey::from_bech32(pk)?,
-        })
+        }))
     }
 
-    pub fn from_nostr_uri(uri: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_nostr_uri(uri: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: XOnlyPublicKey::from_nostr_uri(uri)?,
-        })
+        }))
     }
 
     pub fn to_hex(&self) -> String {

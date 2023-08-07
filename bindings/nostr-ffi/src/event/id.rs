@@ -7,10 +7,12 @@ use std::sync::Arc;
 use nostr::nips::nip21::NostrURI;
 use nostr::prelude::{FromBech32, ToBech32};
 use nostr::{Kind, Tag};
+use uniffi::Object;
 
 use crate::error::Result;
 use crate::{PublicKey, Timestamp};
 
+#[derive(Debug, Object)]
 pub struct EventId {
     inner: nostr::EventId,
 }
@@ -33,19 +35,21 @@ impl From<&EventId> for nostr::EventId {
     }
 }
 
+#[uniffi::export]
 impl EventId {
+    #[uniffi::constructor]
     pub fn new(
         pubkey: Arc<PublicKey>,
         created_at: Arc<Timestamp>,
         kind: u64,
         tags: Vec<Vec<String>>,
         content: String,
-    ) -> Result<Self> {
+    ) -> Result<Arc<Self>> {
         let mut new_tags: Vec<Tag> = Vec::new();
         for tag in tags.into_iter() {
             new_tags.push(Tag::try_from(tag)?);
         }
-        Ok(Self {
+        Ok(Arc::new(Self {
             inner: nostr::EventId::new(
                 pubkey.as_ref().deref(),
                 *created_at.as_ref().deref(),
@@ -53,31 +57,35 @@ impl EventId {
                 &new_tags,
                 &content,
             ),
-        })
+        }))
     }
 
-    pub fn from_slice(bytes: Vec<u8>) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_slice(bytes: Vec<u8>) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: nostr::EventId::from_slice(&bytes)?,
-        })
+        }))
     }
 
-    pub fn from_hex(hex: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_hex(hex: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: nostr::EventId::from_hex(hex)?,
-        })
+        }))
     }
 
-    pub fn from_bech32(id: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_bech32(id: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: nostr::EventId::from_bech32(id)?,
-        })
+        }))
     }
 
-    pub fn from_nostr_uri(uri: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_nostr_uri(uri: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: nostr::EventId::from_nostr_uri(uri)?,
-        })
+        }))
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {

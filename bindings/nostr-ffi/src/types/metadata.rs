@@ -6,19 +6,14 @@ use std::sync::Arc;
 
 use nostr::url::Url;
 use nostr::Metadata as MetadataSdk;
+use uniffi::Object;
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 
-#[derive(Clone)]
+#[derive(Clone, Object)]
 pub struct Metadata {
     metadata: MetadataSdk,
-}
-
-impl Default for Metadata {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Deref for Metadata {
@@ -34,11 +29,13 @@ impl From<MetadataSdk> for Metadata {
     }
 }
 
+#[uniffi::export]
 impl Metadata {
-    pub fn new() -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
             metadata: MetadataSdk::new(),
-        }
+        })
     }
 
     pub fn name(self: Arc<Self>, name: String) -> Arc<Self> {

@@ -6,11 +6,13 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::secp256k1::schnorr::Signature;
+use uniffi::Object;
 
 use super::EventId;
 use crate::error::Result;
 use crate::{Event, Keys, PublicKey, Tag, Timestamp};
 
+#[derive(Debug, Object)]
 pub struct UnsignedEvent {
     inner: nostr::UnsignedEvent,
 }
@@ -21,6 +23,7 @@ impl From<nostr::UnsignedEvent> for UnsignedEvent {
     }
 }
 
+#[uniffi::export]
 impl UnsignedEvent {
     pub fn id(&self) -> Arc<EventId> {
         Arc::new(self.inner.id.into())
@@ -65,10 +68,11 @@ impl UnsignedEvent {
         )))
     }
 
-    pub fn from_json(json: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_json(json: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: nostr::UnsignedEvent::from_json(json)?,
-        })
+        }))
     }
 
     pub fn as_json(&self) -> String {

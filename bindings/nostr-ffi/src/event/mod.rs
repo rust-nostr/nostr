@@ -5,6 +5,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::Event as EventSdk;
+use uniffi::Object;
 
 mod builder;
 mod id;
@@ -18,6 +19,7 @@ pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
 use crate::{PublicKey, Timestamp};
 
+#[derive(Debug, Object)]
 pub struct Event {
     inner: EventSdk,
 }
@@ -35,6 +37,7 @@ impl Deref for Event {
     }
 }
 
+#[uniffi::export]
 impl Event {
     pub fn id(&self) -> Arc<EventId> {
         Arc::new(self.inner.id.into())
@@ -73,10 +76,11 @@ impl Event {
         self.inner.verify().is_ok()
     }
 
-    pub fn from_json(json: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_json(json: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: EventSdk::from_json(json)?,
-        })
+        }))
     }
 
     pub fn as_json(&self) -> String {

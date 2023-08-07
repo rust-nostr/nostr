@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use nostr::url::Url;
 use nostr::{ChannelId, Contact as ContactSdk, EventBuilder as EventBuilderSdk};
+use uniffi::Object;
 
 use super::{Event, EventId};
 use crate::error::Result;
@@ -13,6 +14,7 @@ use crate::key::Keys;
 use crate::types::{Contact, Metadata};
 use crate::{FileMetadata, PublicKey, Tag, UnsignedEvent};
 
+#[derive(Debug, Object)]
 pub struct EventBuilder {
     builder: EventBuilderSdk,
 }
@@ -30,15 +32,17 @@ impl Deref for EventBuilder {
     }
 }
 
+#[uniffi::export]
 impl EventBuilder {
-    pub fn new(kind: u64, content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
+    #[uniffi::constructor]
+    pub fn new(kind: u64, content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
         let tags = tags
             .into_iter()
             .map(|t| t.as_ref().deref().clone())
             .collect::<Vec<_>>();
-        Ok(Self {
+        Ok(Arc::new(Self {
             builder: EventBuilderSdk::new(kind.into(), content, &tags),
-        })
+        }))
     }
 
     pub fn to_event(&self, keys: Arc<Keys>) -> Result<Arc<Event>> {
@@ -78,193 +82,215 @@ impl EventBuilder {
     }
 }
 
+#[uniffi::export]
 impl EventBuilder {
-    pub fn set_metadata(metadata: Arc<Metadata>) -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn set_metadata(metadata: Arc<Metadata>) -> Arc<Self> {
+        Arc::new(Self {
             builder: EventBuilderSdk::set_metadata(metadata.as_ref().deref().clone()),
-        }
+        })
     }
 
-    pub fn add_recommended_relay(url: String) -> Result<Self> {
+    #[uniffi::constructor]
+    pub fn add_recommended_relay(url: String) -> Result<Arc<Self>> {
         let url = Url::parse(&url)?;
 
-        Ok(Self {
+        Ok(Arc::new(Self {
             builder: EventBuilderSdk::add_recommended_relay(&url),
-        })
+        }))
     }
 
-    pub fn new_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
+    #[uniffi::constructor]
+    pub fn new_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
         let tags = tags
             .into_iter()
             .map(|t| t.as_ref().deref().clone())
             .collect::<Vec<_>>();
-        Ok(Self {
+        Ok(Arc::new(Self {
             builder: EventBuilderSdk::new_text_note(content, &tags),
-        })
+        }))
     }
 
-    pub fn long_form_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
+    #[uniffi::constructor]
+    pub fn long_form_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
         let tags = tags
             .into_iter()
             .map(|t| t.as_ref().deref().clone())
             .collect::<Vec<_>>();
-        Ok(Self {
+        Ok(Arc::new(Self {
             builder: EventBuilderSdk::long_form_text_note(content, &tags),
-        })
+        }))
     }
 
-    pub fn set_contact_list(list: Vec<Arc<Contact>>) -> Self {
+    #[uniffi::constructor]
+    pub fn set_contact_list(list: Vec<Arc<Contact>>) -> Arc<Self> {
         let list: Vec<ContactSdk> = list
             .into_iter()
             .map(|c| c.as_ref().deref().clone())
             .collect();
 
-        Self {
+        Arc::new(Self {
             builder: EventBuilderSdk::set_contact_list(list),
-        }
+        })
     }
 
-    /// Create encrypted direct msg event
+    #[uniffi::constructor]
     pub fn new_encrypted_direct_msg(
         sender_keys: Arc<Keys>,
         receiver_pubkey: Arc<PublicKey>,
         content: String,
         reply: Option<Arc<EventId>>,
-    ) -> Result<Self> {
-        Ok(Self {
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             builder: EventBuilderSdk::new_encrypted_direct_msg(
                 sender_keys.deref(),
                 *receiver_pubkey.as_ref().deref(),
                 content,
                 reply.map(|id| id.as_ref().into()),
             )?,
-        })
+        }))
     }
 
-    pub fn repost(event_id: Arc<EventId>, public_key: Arc<PublicKey>) -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn repost(event_id: Arc<EventId>, public_key: Arc<PublicKey>) -> Arc<Self> {
+        Arc::new(Self {
             builder: EventBuilderSdk::repost(
                 event_id.as_ref().into(),
                 *public_key.as_ref().deref(),
             ),
-        }
+        })
     }
 
-    /// Create delete event
-    pub fn delete(ids: Vec<Arc<EventId>>, reason: Option<String>) -> Self {
+    #[uniffi::constructor]
+    pub fn delete(ids: Vec<Arc<EventId>>, reason: Option<String>) -> Arc<Self> {
         let ids: Vec<nostr::EventId> = ids.into_iter().map(|e| e.as_ref().into()).collect();
-        Self {
+        Arc::new(Self {
             builder: EventBuilderSdk::delete(ids, reason.as_deref()),
-        }
+        })
     }
 
+    #[uniffi::constructor]
     pub fn new_reaction(
         event_id: Arc<EventId>,
         public_key: Arc<PublicKey>,
         content: String,
-    ) -> Self {
-        Self {
+    ) -> Arc<Self> {
+        Arc::new(Self {
             builder: EventBuilderSdk::new_reaction(
                 event_id.as_ref().into(),
                 *public_key.as_ref().deref(),
                 content,
             ),
-        }
+        })
     }
 
-    pub fn new_channel(metadata: Arc<Metadata>) -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn new_channel(metadata: Arc<Metadata>) -> Arc<Self> {
+        Arc::new(Self {
             builder: EventBuilderSdk::new_channel(metadata.as_ref().deref().clone()),
-        }
+        })
     }
 
+    #[uniffi::constructor]
     pub fn set_channel_metadata(
         channel_id: String,
         relay_url: Option<String>,
         metadata: Arc<Metadata>,
-    ) -> Result<Self> {
+    ) -> Result<Arc<Self>> {
         let relay_url = match relay_url {
             Some(url) => Some(Url::parse(&url)?),
             None => None,
         };
-        Ok(Self {
+        Ok(Arc::new(Self {
             builder: EventBuilderSdk::set_channel_metadata(
                 ChannelId::from_hex(channel_id)?,
                 relay_url,
                 metadata.as_ref().deref().clone(),
             ),
-        })
+        }))
     }
 
-    pub fn new_channel_msg(channel_id: String, relay_url: String, content: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn new_channel_msg(
+        channel_id: String,
+        relay_url: String,
+        content: String,
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             builder: EventBuilderSdk::new_channel_msg(
                 ChannelId::from_hex(channel_id)?,
                 Url::parse(&relay_url)?,
                 content,
             ),
-        })
+        }))
     }
 
-    pub fn hide_channel_msg(message_id: Arc<EventId>, reason: Option<String>) -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn hide_channel_msg(message_id: Arc<EventId>, reason: Option<String>) -> Arc<Self> {
+        Arc::new(Self {
             builder: EventBuilderSdk::hide_channel_msg(message_id.as_ref().into(), reason),
-        }
-    }
-
-    pub fn mute_channel_user(public_key: Arc<PublicKey>, reason: Option<String>) -> Self {
-        Self {
-            builder: EventBuilderSdk::mute_channel_user(*public_key.as_ref().deref(), reason),
-        }
-    }
-
-    pub fn auth(challenge: String, relay_url: String) -> Result<Self> {
-        Ok(Self {
-            builder: EventBuilderSdk::auth(challenge, Url::parse(&relay_url)?),
         })
+    }
+
+    #[uniffi::constructor]
+    pub fn mute_channel_user(public_key: Arc<PublicKey>, reason: Option<String>) -> Arc<Self> {
+        Arc::new(Self {
+            builder: EventBuilderSdk::mute_channel_user(*public_key.as_ref().deref(), reason),
+        })
+    }
+
+    #[uniffi::constructor]
+    pub fn auth(challenge: String, relay_url: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            builder: EventBuilderSdk::auth(challenge, Url::parse(&relay_url)?),
+        }))
     }
 
     // TODO: add nostr_connect method
 
-    pub fn report(tags: Vec<Arc<Tag>>, content: String) -> Self {
+    #[uniffi::constructor]
+    pub fn report(tags: Vec<Arc<Tag>>, content: String) -> Arc<Self> {
         let tags = tags
             .into_iter()
             .map(|t| t.as_ref().deref().clone())
             .collect::<Vec<_>>();
-        Self {
+        Arc::new(Self {
             builder: EventBuilderSdk::report(&tags, content),
-        }
+        })
     }
 
+    #[uniffi::constructor]
     pub fn new_zap_request(
         pubkey: Arc<PublicKey>,
         event_id: Option<Arc<EventId>>,
         amount: Option<u64>,
         lnurl: Option<String>,
-    ) -> Self {
-        Self {
+    ) -> Arc<Self> {
+        Arc::new(Self {
             builder: EventBuilderSdk::new_zap_request(
                 *pubkey.as_ref().deref(),
                 event_id.map(|id| id.as_ref().into()),
                 amount,
                 lnurl,
             ),
-        }
+        })
     }
 
-    pub fn new_zap(bolt11: String, preimage: Option<String>, zap_request: Arc<Event>) -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn new_zap(bolt11: String, preimage: Option<String>, zap_request: Arc<Event>) -> Arc<Self> {
+        Arc::new(Self {
             builder: EventBuilderSdk::new_zap(
                 bolt11,
                 preimage,
                 zap_request.as_ref().deref().clone(),
             ),
-        }
+        })
     }
 
-    pub fn file_metadata(description: String, metadata: Arc<FileMetadata>) -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn file_metadata(description: String, metadata: Arc<FileMetadata>) -> Arc<Self> {
+        Arc::new(Self {
             builder: EventBuilderSdk::file_metadata(description, metadata.as_ref().deref().clone()),
-        }
+        })
     }
 }

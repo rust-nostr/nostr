@@ -2,7 +2,9 @@
 // Distributed under the MIT software license
 
 use nostr::RelayMessage as NRelayMessage;
+use uniffi::Enum;
 
+#[derive(Debug, Enum)]
 pub enum RelayMessage {
     Ev {
         subscription_id: String,

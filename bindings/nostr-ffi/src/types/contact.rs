@@ -5,9 +5,11 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::{Contact as ContactSdk, UncheckedUrl};
+use uniffi::Object;
 
 use crate::PublicKey;
 
+#[derive(Debug, Object)]
 pub struct Contact {
     contact: ContactSdk,
 }
@@ -19,12 +21,14 @@ impl Deref for Contact {
     }
 }
 
+#[uniffi::export]
 impl Contact {
-    pub fn new(pk: Arc<PublicKey>, relay_url: Option<String>, alias: Option<String>) -> Self {
+    #[uniffi::constructor]
+    pub fn new(pk: Arc<PublicKey>, relay_url: Option<String>, alias: Option<String>) -> Arc<Self> {
         let relay_url = relay_url.map(|relay_url| UncheckedUrl::from(&relay_url));
-        Self {
+        Arc::new(Self {
             contact: ContactSdk::new(*pk.as_ref().deref(), relay_url, alias),
-        }
+        })
     }
 
     pub fn alias(&self) -> Option<String> {

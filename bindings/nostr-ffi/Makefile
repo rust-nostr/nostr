@@ -96,7 +96,7 @@ python:
 	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate src/nostr.udl --language python --no-format -o bindings-python/src/nostr/
+	cargo run -p uniffi-bindgen generate --lib-file ../../target/release/libnostr_ffi.a src/nostr.udl --language python --no-format --out-dir bindings-python/src/nostr/
 	cp ../../target/release/libnostr_ffi.so bindings-python/src/nostr/ | true
 	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/ | true
 	cd bindings-python && python setup.py --verbose bdist_wheel
