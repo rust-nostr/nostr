@@ -24,8 +24,11 @@ sdk-root:
 		exit 1 ; \
 	fi
 
-kotlin: android
-	cargo run -p uniffi-bindgen generate src/nostr.udl --language kotlin --no-format -o ffi/kotlin
+build:
+	cargo build --release
+
+kotlin: build android
+	cargo run -p uniffi-bindgen generate --lib-file ../../target/release/libnostr_ffi.a src/nostr.udl --language kotlin --no-format --out-dir ffi/kotlin
 
 android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
@@ -69,20 +72,24 @@ darwin-universal: $(SOURCES)
 	lipo -create -output ../../target/darwin-universal/release/libnostr_ffi.dylib ../../target/aarch64-apple-darwin/release/libnostr_ffi.dylib ../../target/x86_64-apple-darwin/release/libnostr_ffi.dylib
 	lipo -create -output ../../target/darwin-universal/release/libnostr_ffi.a ../../target/aarch64-apple-darwin/release/libnostr_ffi.a ../../target/x86_64-apple-darwin/release/libnostr_ffi.a
 
-swift-ios: ios-universal
-	cargo run -p uniffi-bindgen generate src/nostr.udl -l swift -o ffi/swift-ios
+swift: build
+	cargo run -p uniffi-bindgen generate --lib-file ../../target/release/libnostr_ffi.a src/nostr.udl --language swift --no-format --out-dir ffi/swift
+
+swift-ios: swift ios-universal
+	mkdir -p ffi/swift-ios
+	cp ffi/swift/nostr.swift ffi/swift-ios
 	cp ../../target/ios-universal/release/libnostr_ffi.a ffi/swift-ios
 	cd ffi/swift-ios && "swiftc" "-emit-module" "-module-name" "nostr_ffi"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-ios/nostrFFI.modulemap" "-I" "."  "-L" "." "-lnostr_ffi" nostr.swift
 
-swift-darwin: darwin-universal
-	cargo run -p uniffi-bindgen generate src/nostr.udl -l swift -o ffi/swift-darwin
+swift-darwin: swift darwin-universal
+	mkdir -p ffi/swift-darwin
+	cp ffi/swift/nostr.swift ffi/swift-darwin
 	cp ../../target/darwin-universal/release/libnostr_ffi.dylib ffi/swift-darwin
 	cd ffi/swift-darwin && "swiftc" "-emit-module" "-module-name" "nostr_ffi"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-darwin/nostrFFI.modulemap" "-I" "."  "-L" "." "-lnostr_ffi" nostr.swift
 
-bindings-swift: ios-universal darwin-universal
+bindings-swift: swift ios-universal darwin-universal
 	mkdir -p bindings-swift/Sources/Nostr
-	cargo run -p uniffi-bindgen generate src/nostr.udl --no-format --language swift --out-dir bindings-swift/Sources/Nostr
-	mv bindings-swift/Sources/Nostr/nostr.swift bindings-swift/Sources/Nostr/Nostr.swift
+	cp ffi/swift/nostr.swift bindings-swift/Sources/Nostr/Nostr.swift
 	cp bindings-swift/Sources/Nostr/nostrFFI.h bindings-swift/nostrFFI.xcframework/ios-arm64/nostrFFI.framework/Headers
 	cp bindings-swift/Sources/Nostr/nostrFFI.h bindings-swift/nostrFFI.xcframework/ios-arm64_x86_64-simulator/nostrFFI.framework/Headers
 	cp bindings-swift/Sources/Nostr/nostrFFI.h bindings-swift/nostrFFI.xcframework/macos-arm64_x86_64/nostrFFI.framework/Headers
@@ -92,20 +99,18 @@ bindings-swift: ios-universal darwin-universal
 	rm bindings-swift/Sources/Nostr/nostrFFI.h
 	rm bindings-swift/Sources/Nostr/nostrFFI.modulemap
 
-python:
+python: build
 	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt
-	cargo build --release
 	cargo run -p uniffi-bindgen generate --lib-file ../../target/release/libnostr_ffi.a src/nostr.udl --language python --no-format --out-dir bindings-python/src/nostr/
 	cp ../../target/release/libnostr_ffi.so bindings-python/src/nostr/ | true
 	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/ | true
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr-*.whl --force-reinstall
 
-python-win:
+python-win: build
 	pip install -r bindings-python\requirements.txt
-	cargo build --release
-	cargo run -p uniffi-bindgen generate src/nostr.udl --language python --no-format -o bindings-python/src/nostr/
+	cargo run -p uniffi-bindgen generate --lib-file ../../target/release/libnostr_ffi.a src/nostr.udl --language python --no-format --out-dir bindings-python/src/nostr/
 	copy ..\..\target\release\nostr_ffi.dll bindings-python\src\nostr
 	del /F /Q bindings-python\dist\*
 	cd bindings-python && python setup.py --verbose bdist_wheel
