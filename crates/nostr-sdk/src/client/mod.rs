@@ -124,6 +124,14 @@ impl TryIntoUrl for Url {
     }
 }
 
+impl TryIntoUrl for &Url {
+    type Err = Error;
+    fn try_into_url(&self) -> Result<Url, Self::Err> {
+        #[allow(suspicious_double_ref_op)]
+        Ok(self.clone().clone())
+    }
+}
+
 impl TryIntoUrl for String {
     type Err = Error;
     fn try_into_url(&self) -> Result<Url, Self::Err> {
