@@ -11,7 +11,7 @@ pub mod subscription;
 
 pub use self::client::ClientMessage;
 pub use self::relay::RelayMessage;
-pub use self::subscription::{Filter, SubscriptionId};
+pub use self::subscription::{Alphabet, Filter, SubscriptionId};
 
 /// Messages error
 #[derive(Debug)]

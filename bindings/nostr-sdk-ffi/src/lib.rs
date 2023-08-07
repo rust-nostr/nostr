@@ -24,7 +24,7 @@ mod ffi {
         RelayInformationDocument, RelayMessage, SecretKey, Tag, TagEnum, TagKind, TagKindKnown,
         Timestamp, UnsignedEvent,
     };
-    pub use nostr_sdk::RelayStatus;
+    pub use nostr_sdk::{Alphabet, RelayStatus};
 
     // Namespace
     pub use crate::logger::{init_logger, LogLevel};

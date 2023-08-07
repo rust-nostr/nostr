@@ -6,6 +6,7 @@
 
 use core::fmt;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
 use bitcoin_hashes::Hash;
@@ -15,23 +16,144 @@ use secp256k1::XOnlyPublicKey;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{EventId, Kind, Timestamp};
 
-/// Filter error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Invalid Tag
-    InvalidTag(char),
+/// Alphabet Error
+#[derive(Debug)]
+pub enum AlphabetError {
+    /// Invalid char
+    InvalidChar,
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for AlphabetError {}
 
-impl fmt::Display for Error {
+impl fmt::Display for AlphabetError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidTag(c) => write!(f, "Invalid tag: {c}"),
+            Self::InvalidChar => write!(f, "invalid alphabet char"),
         }
+    }
+}
+
+/// Alphabet
+#[allow(missing_docs)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Alphabet {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+}
+
+impl fmt::Display for Alphabet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::A => write!(f, "a"),
+            Self::B => write!(f, "b"),
+            Self::C => write!(f, "c"),
+            Self::D => write!(f, "d"),
+            Self::E => write!(f, "e"),
+            Self::F => write!(f, "f"),
+            Self::G => write!(f, "g"),
+            Self::H => write!(f, "h"),
+            Self::I => write!(f, "i"),
+            Self::J => write!(f, "j"),
+            Self::K => write!(f, "k"),
+            Self::L => write!(f, "l"),
+            Self::M => write!(f, "m"),
+            Self::N => write!(f, "n"),
+            Self::O => write!(f, "o"),
+            Self::P => write!(f, "p"),
+            Self::Q => write!(f, "q"),
+            Self::R => write!(f, "r"),
+            Self::S => write!(f, "s"),
+            Self::T => write!(f, "t"),
+            Self::U => write!(f, "u"),
+            Self::V => write!(f, "v"),
+            Self::W => write!(f, "w"),
+            Self::X => write!(f, "x"),
+            Self::Y => write!(f, "y"),
+            Self::Z => write!(f, "z"),
+        }
+    }
+}
+
+impl FromStr for Alphabet {
+    type Err = AlphabetError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "a" => Ok(Self::A),
+            "b" => Ok(Self::B),
+            "c" => Ok(Self::C),
+            "d" => Ok(Self::D),
+            "e" => Ok(Self::E),
+            "f" => Ok(Self::F),
+            "g" => Ok(Self::G),
+            "h" => Ok(Self::H),
+            "i" => Ok(Self::I),
+            "j" => Ok(Self::J),
+            "k" => Ok(Self::K),
+            "l" => Ok(Self::L),
+            "m" => Ok(Self::M),
+            "n" => Ok(Self::N),
+            "o" => Ok(Self::O),
+            "p" => Ok(Self::P),
+            "q" => Ok(Self::Q),
+            "r" => Ok(Self::R),
+            "s" => Ok(Self::S),
+            "t" => Ok(Self::T),
+            "u" => Ok(Self::U),
+            "v" => Ok(Self::V),
+            "w" => Ok(Self::W),
+            "x" => Ok(Self::X),
+            "y" => Ok(Self::Y),
+            "z" => Ok(Self::Z),
+            _ => Err(AlphabetError::InvalidChar),
+        }
+    }
+}
+
+impl Serialize for Alphabet {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Alphabet {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+        let alphaber: String = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        Self::from_str(&alphaber).map_err(serde::de::Error::custom)
     }
 }
 
@@ -128,7 +250,7 @@ pub struct Filter {
         deserialize_with = "deserialize_generic_tags"
     )]
     #[serde(default)]
-    pub generic_tags: HashMap<char, Vec<String>>,
+    pub generic_tags: HashMap<Alphabet, Vec<String>>,
 }
 
 impl Filter {
@@ -420,55 +542,53 @@ impl Filter {
     }
 
     /// Add custom tag
-    pub fn custom_tag<S>(self, tag: char, values: Vec<S>) -> Result<Self, Error>
+    pub fn custom_tag<S>(self, tag: Alphabet, values: Vec<S>) -> Self
     where
         S: Into<String>,
     {
-        if tag.is_alphabetic() {
-            let values: Vec<String> = values.into_iter().map(|value| value.into()).collect();
-            let mut generic_tags: HashMap<char, Vec<String>> = self.generic_tags;
-            generic_tags
-                .entry(tag)
-                .and_modify(|list| {
-                    for value in values.clone().into_iter() {
-                        if !list.contains(&value) {
-                            list.push(value);
-                        }
+        let values: Vec<String> = values.into_iter().map(|value| value.into()).collect();
+        let mut generic_tags: HashMap<Alphabet, Vec<String>> = self.generic_tags;
+        generic_tags
+            .entry(tag)
+            .and_modify(|list| {
+                for value in values.clone().into_iter() {
+                    if !list.contains(&value) {
+                        list.push(value);
                     }
-                })
-                .or_insert(values);
-            Ok(Self {
-                generic_tags,
-                ..self
+                }
             })
-        } else {
-            Err(Error::InvalidTag(tag))
+            .or_insert(values);
+        Self {
+            generic_tags,
+            ..self
         }
     }
 }
 
 fn serialize_generic_tags<S>(
-    generic_tags: &HashMap<char, Vec<String>>,
+    generic_tags: &HashMap<Alphabet, Vec<String>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let mut map = serializer.serialize_map(Some(generic_tags.len()))?;
-    for (ch, values) in generic_tags {
-        map.serialize_entry(&format!("#{}", ch), values)?;
+    for (tag, values) in generic_tags {
+        map.serialize_entry(&format!("#{tag}"), values)?;
     }
     map.end()
 }
 
-fn deserialize_generic_tags<'de, D>(deserializer: D) -> Result<HashMap<char, Vec<String>>, D::Error>
+fn deserialize_generic_tags<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<Alphabet, Vec<String>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = HashMap<char, Vec<String>>;
+        type Value = HashMap<Alphabet, Vec<String>>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("map in which the keys are \"#X\" for some character X")
@@ -482,8 +602,10 @@ where
             while let Some(key) = map.next_key::<String>()? {
                 let mut chars = key.chars();
                 if let (Some('#'), Some(ch), None) = (chars.next(), chars.next(), chars.next()) {
+                    let tag: Alphabet = Alphabet::from_str(ch.to_string().as_str())
+                        .map_err(serde::de::Error::custom)?;
                     let values = map.next_value()?;
-                    generic_tags.insert(ch, values);
+                    generic_tags.insert(tag, values);
                 } else {
                     map.next_value::<serde::de::IgnoredAny>()?;
                 }
@@ -527,15 +649,9 @@ mod test {
         let filter = Filter::new()
             .identifier("identifier")
             .search("test")
-            .custom_tag('j', vec!["test", "test1"])
-            .unwrap();
+            .custom_tag(Alphabet::J, vec!["test", "test1"]);
         let json = r##"{"#d":["identifier"],"#j":["test","test1"],"search":"test"}"##;
         assert_eq!(filter.as_json(), json.to_string());
-
-        assert_eq!(
-            Filter::new().custom_tag('\n', vec!["test"]).unwrap_err(),
-            Error::InvalidTag('\n')
-        );
     }
 
     #[test]
@@ -547,8 +663,7 @@ mod test {
             Filter::new()
                 .ids(vec!["myid".to_string(), "mysecondid".to_string()])
                 .search("test")
-                .custom_tag('a', vec!["...".to_string(), "test".to_string()])
-                .unwrap()
+                .custom_tag(Alphabet::A, vec!["...".to_string(), "test".to_string()])
         );
 
         let json = r##"{"#":["..."],"search":"test"}"##;

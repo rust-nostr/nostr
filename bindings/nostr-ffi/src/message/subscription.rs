@@ -4,6 +4,8 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
+use nostr::message::subscription::Alphabet;
+
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::{EventId, PublicKey, Timestamp};
@@ -129,10 +131,10 @@ impl Filter {
         Arc::new(builder)
     }
 
-    pub fn custom_tag(self: Arc<Self>, tag: String, content: Vec<String>) -> Result<Arc<Self>> {
+    pub fn custom_tag(self: Arc<Self>, tag: Alphabet, content: Vec<String>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.custom_tag(tag.parse::<char>()?, content)?;
-        Ok(Arc::new(builder))
+        builder.inner = builder.inner.custom_tag(tag, content);
+        Arc::new(builder)
     }
 
     pub fn from_json(json: String) -> Result<Self> {

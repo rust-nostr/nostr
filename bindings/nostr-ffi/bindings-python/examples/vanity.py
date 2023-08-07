@@ -1,4 +1,4 @@
-from nostr_sdk import Keys
+from nostr import Keys
 
 print("Mining keys...")
 keys = Keys.vanity(["yuk0"], True, 8)

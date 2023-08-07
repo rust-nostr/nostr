@@ -37,12 +37,6 @@ impl From<nostr::key::Error> for NostrError {
     }
 }
 
-impl From<nostr::message::subscription::Error> for NostrError {
-    fn from(e: nostr::message::subscription::Error) -> NostrError {
-        Self::Generic { err: e.to_string() }
-    }
-}
-
 impl From<nostr::key::vanity::Error> for NostrError {
     fn from(e: nostr::key::vanity::Error) -> NostrError {
         Self::Generic { err: e.to_string() }

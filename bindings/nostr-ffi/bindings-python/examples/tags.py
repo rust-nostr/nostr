@@ -1,4 +1,4 @@
-from nostr_sdk import Keys, EventBuilder, PublicKey, Tag, TagEnum
+from nostr import Keys, EventBuilder, PublicKey, Tag, TagEnum
 
 keys = Keys.generate()
 

@@ -12,6 +12,9 @@ mod types;
 #[allow(missing_docs)]
 #[allow(unused_imports)]
 mod ffi {
+    // External
+    pub use nostr::Alphabet;
+
     // Error
     pub use crate::error::NostrError;
 
