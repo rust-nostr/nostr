@@ -309,10 +309,13 @@ impl Message {
     }
 
     /// Compose `Response` message
-    pub fn response(req_id: String, res: Response) -> Self {
+    pub fn response<S>(req_id: S, res: Option<Response>, error: Option<S>) -> Self
+    where
+        S: Into<String>,
+    {
         Self::Response {
-            id: req_id,
-            result: Some(match res {
+            id: req_id.into(),
+            result: res.map(|res| match res {
                 Response::Describe(v) => json!(v),
                 Response::GetPublicKey(pubkey) => json!(pubkey),
                 Response::SignEvent(sig) => json!(sig),
@@ -321,7 +324,7 @@ impl Message {
                 Response::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
                 Response::SignSchnorr(sig) => json!(sig),
             }),
-            error: None,
+            error: error.map(|e| e.into()),
         }
     }
 
@@ -430,11 +433,22 @@ impl Message {
     /// Generate [`Response`] message for [`Request`]
     pub fn generate_response(&self, keys: &Keys) -> Result<Option<Self>, Error> {
         let req = self.to_request()?;
+        // TODO: remove if let SOme(res) = ...
         if let Some(res) = req.generate_response(keys)? {
-            Ok(Some(Self::response(self.id(), res)))
+            Ok(Some(Self::response(self.id(), Some(res), None)))
         } else {
             Ok(None)
         }
+    }
+
+    /// Generate error [`Response`] message for [`Request`]
+    pub fn generate_error_response<S>(&self, error: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        // Check if Message is a Request
+        let _req: Request = self.to_request()?;
+        Ok(Self::response(self.id(), None, Some(error.into())))
     }
 }
 
