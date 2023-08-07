@@ -109,6 +109,35 @@ pub enum Error {
     ResponseNotMatchRequest,
 }
 
+/// Try into [`Url`]
+pub trait TryIntoUrl {
+    /// Error
+    type Err;
+    /// Try into [`Url`]
+    fn try_into_url(&self) -> Result<Url, Self::Err>;
+}
+
+impl TryIntoUrl for Url {
+    type Err = Error;
+    fn try_into_url(&self) -> Result<Url, Self::Err> {
+        Ok(self.clone())
+    }
+}
+
+impl TryIntoUrl for String {
+    type Err = Error;
+    fn try_into_url(&self) -> Result<Url, Self::Err> {
+        Ok(Url::parse(self)?)
+    }
+}
+
+impl TryIntoUrl for &str {
+    type Err = Error;
+    fn try_into_url(&self) -> Result<Url, Self::Err> {
+        Ok(Url::parse(self)?)
+    }
+}
+
 /// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -273,11 +302,12 @@ impl Client {
     }
 
     /// Get [`Relay`]
-    pub async fn relay<S>(&self, url: S) -> Result<Relay, Error>
+    pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url = Url::parse(&url.into())?;
+        let url: Url = url.try_into_url()?;
         Ok(self.pool.relay(&url).await?)
     }
 
@@ -302,9 +332,10 @@ impl Client {
     /// # }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn add_relay<S>(&self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
+    pub async fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         self.add_relay_with_opts(url, proxy, RelayOptions::default())
             .await
@@ -312,9 +343,10 @@ impl Client {
 
     /// Add new relay
     #[cfg(target_arch = "wasm32")]
-    pub async fn add_relay<S>(&self, url: S) -> Result<(), Error>
+    pub async fn add_relay<U>(&self, url: U) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         self.add_relay_with_opts(url, RelayOptions::default()).await
     }
@@ -339,27 +371,29 @@ impl Client {
     /// # }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn add_relay_with_opts<S>(
+    pub async fn add_relay_with_opts<U>(
         &self,
-        url: S,
+        url: U,
         proxy: Option<SocketAddr>,
         opts: RelayOptions,
     ) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url = Url::parse(&url.into())?;
+        let url: Url = url.try_into_url()?;
         self.pool.add_relay(url, proxy, opts).await?;
         Ok(())
     }
 
     /// Add new relay with [`Options`]
     #[cfg(target_arch = "wasm32")]
-    pub async fn add_relay_with_opts<S>(&self, url: S, opts: RelayOptions) -> Result<(), Error>
+    pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url = Url::parse(&url.into())?;
+        let url: Url = url.try_into_url()?;
         self.pool.add_relay(url, opts).await?;
         Ok(())
     }
@@ -377,20 +411,22 @@ impl Client {
     /// client.remove_relay("wss://relay.nostr.info").await.unwrap();
     /// # }
     /// ```
-    pub async fn remove_relay<S>(&self, url: S) -> Result<(), Error>
+    pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url = Url::parse(&url.into())?;
+        let url: Url = url.try_into_url()?;
         self.pool.remove_relay(url).await?;
         Ok(())
     }
 
     /// Add multiple relays
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn add_relays<S>(&self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
+    pub async fn add_relays<U>(&self, relays: Vec<(U, Option<SocketAddr>)>) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         for (url, proxy) in relays.into_iter() {
             self.add_relay(url, proxy).await?;
@@ -400,9 +436,10 @@ impl Client {
 
     /// Add multiple relays
     #[cfg(target_arch = "wasm32")]
-    pub async fn add_relays<S>(&self, relays: Vec<S>) -> Result<(), Error>
+    pub async fn add_relays<U>(&self, relays: Vec<U>) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         for url in relays.into_iter() {
             self.add_relay(url).await?;
@@ -426,11 +463,12 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn connect_relay<S>(&self, url: S) -> Result<(), Error>
+    pub async fn connect_relay<U>(&self, url: U) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url = Url::parse(&url.into())?;
+        let url: Url = url.try_into_url()?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
             self.pool
                 .connect_relay(relay, self.opts.get_wait_for_connection())
@@ -456,11 +494,12 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn disconnect_relay<S>(&self, url: S) -> Result<(), Error>
+    pub async fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url = Url::parse(&url.into())?;
+        let url: Url = url.try_into_url()?;
         if let Some(relay) = self.pool.relays().await.get(&url) {
             self.pool.disconnect_relay(relay).await?;
             return Ok(());
@@ -628,11 +667,12 @@ impl Client {
     }
 
     /// Send client message to a specific relay
-    pub async fn send_msg_to<S>(&self, url: S, msg: ClientMessage) -> Result<(), Error>
+    pub async fn send_msg_to<U>(&self, url: U, msg: ClientMessage) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url = Url::parse(&url.into())?;
+        let url: Url = url.try_into_url()?;
         let wait: Option<Duration> = if self.opts.get_wait_for_send() {
             self.opts.get_send_timeout()
         } else {
@@ -658,13 +698,14 @@ impl Client {
     }
 
     /// Send event to specific relay
-    pub async fn send_event_to<S>(&self, url: S, event: Event) -> Result<EventId, Error>
+    pub async fn send_event_to<U>(&self, url: U, event: Event) -> Result<EventId, Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         let event_id = event.id;
         if self.opts.get_wait_for_ok() {
-            let url = Url::parse(&url.into())?;
+            let url: Url = url.try_into_url()?;
             let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
                 self.opts.get_send_timeout()
             } else {
@@ -797,11 +838,12 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn add_recommended_relay<S>(&self, url: S) -> Result<EventId, Error>
+    pub async fn add_recommended_relay<U>(&self, url: U) -> Result<EventId, Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url = Url::parse(&url.into())?;
+        let url: Url = url.try_into_url()?;
         let builder = EventBuilder::add_recommended_relay(&url);
         self.send_event_builder(builder).await
     }

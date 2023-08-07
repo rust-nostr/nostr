@@ -17,7 +17,7 @@ use tokio::sync::broadcast;
 
 #[cfg(feature = "nip46")]
 use super::signer::remote::RemoteSigner;
-use super::{Entity, Error, Options};
+use super::{Entity, Error, Options, TryIntoUrl};
 use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
 use crate::RUNTIME;
 
@@ -109,57 +109,64 @@ impl Client {
     }
 
     /// Get [`Relay`]
-    pub fn relay<S>(&self, url: S) -> Result<Relay, Error>
+    pub fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.relay(url).await })
     }
 
     /// Add multiple relays
-    pub fn add_relays<S>(&self, relays: Vec<(S, Option<SocketAddr>)>) -> Result<(), Error>
+    pub fn add_relays<U>(&self, relays: Vec<(U, Option<SocketAddr>)>) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.add_relays(relays).await })
     }
 
-    pub fn add_relay<S>(&self, url: S, proxy: Option<SocketAddr>) -> Result<(), Error>
+    pub fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.add_relay(url, proxy).await })
     }
 
-    pub fn add_relay_with_opts<S>(
+    pub fn add_relay_with_opts<U>(
         &self,
-        url: S,
+        url: U,
         proxy: Option<SocketAddr>,
         opts: RelayOptions,
     ) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.add_relay_with_opts(url, proxy, opts).await })
     }
 
-    pub fn remove_relay<S>(&self, url: S) -> Result<(), Error>
+    pub fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.remove_relay(url).await })
     }
 
-    pub fn connect_relay<S>(&self, url: S) -> Result<(), Error>
+    pub fn connect_relay<U>(&self, url: U) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.connect_relay(url).await })
     }
 
-    pub fn disconnect_relay<S>(&self, url: S) -> Result<(), Error>
+    pub fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.disconnect_relay(url).await })
     }
@@ -204,9 +211,10 @@ impl Client {
         RUNTIME.block_on(async { self.client.send_msg(msg).await })
     }
 
-    pub fn send_msg_to<S>(&self, url: S, msg: ClientMessage) -> Result<(), Error>
+    pub fn send_msg_to<U>(&self, url: U, msg: ClientMessage) -> Result<(), Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.send_msg_to(url, msg).await })
     }
@@ -216,9 +224,10 @@ impl Client {
         RUNTIME.block_on(async { self.client.send_event(event).await })
     }
 
-    pub fn send_event_to<S>(&self, url: S, event: Event) -> Result<EventId, Error>
+    pub fn send_event_to<U>(&self, url: U, event: Event) -> Result<EventId, Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.send_event_to(url, event).await })
     }
@@ -234,9 +243,10 @@ impl Client {
         RUNTIME.block_on(async { self.client.publish_text_note(content, tags).await })
     }
 
-    pub fn add_recommended_relay<S>(&self, url: S) -> Result<EventId, Error>
+    pub fn add_recommended_relay<U>(&self, url: U) -> Result<EventId, Error>
     where
-        S: Into<String>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.add_recommended_relay(url).await })
     }
