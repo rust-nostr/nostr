@@ -1,15 +1,19 @@
 # Nostr - Python Package
 
-The Python language bindings for [nostr](https://github.com/rust-nostr/nostr).
+## Description
+
+Python bindings of [nostr](https://github.com/rust-nostr/nostr) library.
+
+If you're writing a typical Nostr client or bot, you may be interested in [nostr-sdk](https://pypi.org/project/nostr-sdk/).
 
 ## Getting started
 
 ```shell
-pip install nostr
+pip install nostr-protocol
 ```
 
 ```python
-from nostr import Keys, EventBuilder
+from nostr_protocol import Keys, EventBuilder
 
 keys = Keys.generate()
 print(keys.secret_key().to_bech32())
