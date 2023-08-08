@@ -25,6 +25,7 @@ sdk-root:
 	fi
 
 kotlin: android
+	find ./ffi/kotlin/jniLibs -name libnostr_ffi.so -type f -delete
 	cargo run -p uniffi-bindgen generate src/nostr_sdk.udl --language kotlin --no-format -o ffi/kotlin
 
 android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
