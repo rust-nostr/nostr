@@ -18,7 +18,7 @@ Please, explore the [`bindings/`](./bindings/) directory to learn more.
 * **nostr**:
     * Kotlin: [`io.github.rust-nostr:nostr`](https://central.sonatype.com/artifact/io.github.rust-nostr/nostr/)
     * Swift: https://github.com/rust-nostr/nostr-swift
-    * Python: TODO
+    * Python: https://pypi.org/project/nostr-protocol
     * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr
 * **nostr-sdk**:
     * Kotlin: [`io.github.rust-nostr:nostr-sdk`](https://central.sonatype.com/artifact/io.github.rust-nostr/nostr-sdk/)
