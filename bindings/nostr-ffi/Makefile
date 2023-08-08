@@ -100,7 +100,7 @@ python:
 	cp ../../target/release/libnostr_ffi.so bindings-python/src/nostr/ | true
 	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/ | true
 	cd bindings-python && python setup.py --verbose bdist_wheel
-	pip install ./bindings-python/dist/nostr-*.whl --force-reinstall
+	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall
 
 python-win:
 	pip install -r bindings-python\requirements.txt

@@ -1,4 +1,4 @@
-from nostr import Keys, EventBuilder, PublicKey, Tag, TagEnum
+from nostr_protocol import Keys, EventBuilder, PublicKey, Tag, TagEnum
 
 keys = Keys.generate()
 

@@ -1,1 +1,1 @@
-from nostr.nostr import *
+from nostr_protocol.nostr import *

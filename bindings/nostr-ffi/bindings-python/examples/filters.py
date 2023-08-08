@@ -1,4 +1,4 @@
-from nostr import Filter, Alphabet, Keys
+from nostr_protocol import Filter, Alphabet, Keys
 
 keys = Keys.generate()
 

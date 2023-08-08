@@ -1,6 +1,6 @@
 .tox/
 dist/
-nostr.egg-info/
+nostr_protocol.egg-info/
 __pycache__/
 libnostr_ffi.dylib
 .idea/

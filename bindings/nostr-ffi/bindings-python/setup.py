@@ -7,15 +7,15 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(
-    name='nostr',
+    name='nostr-protocol',
     version='0.0.1',
     description="Rust implementation of Nostr protocol.",
     long_description=long_description,
     long_description_content_type='text/markdown',
     include_package_data = True,
     zip_safe=False,
-    packages=['nostr'],
-    package_dir={'nostr': './src/nostr'},
+    packages=['nostr_protocol'],
+    package_dir={'nostr_protocol': './src/nostr'},
     url="https://github.com/rust-nostr/nostr",
     author="Yuki Kishimoto <yukikishimoto@protonmail.com>",
     license="MIT",
