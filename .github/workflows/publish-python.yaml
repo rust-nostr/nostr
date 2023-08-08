@@ -64,12 +64,13 @@ jobs:
           - cp39-cp39
           - cp310-cp310
     steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: all
+
       - name: "Checkout"
         uses: actions/checkout@v3
-
-      - uses: uraimo/run-on-arch-action@v2
-        with:
-          arch: aarch64
 
       - uses: actions-rs/toolchain@v1
         with:
