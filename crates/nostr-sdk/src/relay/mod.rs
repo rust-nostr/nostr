@@ -61,6 +61,9 @@ pub enum Error {
     /// Subscription internal ID not found
     #[error("internal ID not found")]
     InternalIdNotFound,
+    /// Filters empty
+    #[error("filters empty")]
+    FiltersEmpty,
 }
 
 /// Relay connection status
@@ -835,10 +838,12 @@ impl Relay {
 
         let subscriptions = self.subscriptions().await;
 
-        for sub in subscriptions.into_values() {
+        for (internal_id, sub) in subscriptions.into_iter() {
             if !sub.filters.is_empty() {
                 self.send_msg(ClientMessage::new_req(sub.id.clone(), sub.filters), wait)
                     .await?;
+            } else {
+                tracing::warn!("Subscription '{internal_id}' has empty filters");
             }
         }
 
@@ -858,6 +863,7 @@ impl Relay {
         let sub = subscriptions
             .get(&internal_id)
             .ok_or(Error::InternalIdNotFound)?;
+
         self.send_msg(
             ClientMessage::new_req(sub.id.clone(), sub.filters.clone()),
             wait,
@@ -867,7 +873,7 @@ impl Relay {
         Ok(())
     }
 
-    /// Subscribe
+    /// Subscribe to filter with internal ID set to `InternalSubscriptionId::Default`
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
@@ -877,7 +883,7 @@ impl Relay {
             .await
     }
 
-    /// Subscribe with custom internal id
+    /// Subscribe with custom internal ID
     pub async fn subscribe_with_internal_id(
         &self,
         internal_id: InternalSubscriptionId,
@@ -886,6 +892,10 @@ impl Relay {
     ) -> Result<(), Error> {
         if !self.opts.read() {
             return Err(Error::ReadDisabled);
+        }
+
+        if filters.is_empty() {
+            return Err(Error::FiltersEmpty);
         }
 
         self.update_subscription_filters(internal_id.clone(), filters)
