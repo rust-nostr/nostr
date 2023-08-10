@@ -5,7 +5,7 @@
 //! Subscription filters
 
 use core::fmt;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use bitcoin_hashes::sha256::Hash as Sha256Hash;
@@ -302,6 +302,22 @@ impl Filter {
         }
     }
 
+    /// Remove event ids or prefixes
+    pub fn remove_ids<S>(self, ids: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        let ids: HashSet<String> = ids.into_iter().map(|id| id.into()).collect();
+        Self {
+            ids: self
+                .ids
+                .into_iter()
+                .filter(|id| !ids.contains(id))
+                .collect(),
+            ..self
+        }
+    }
+
     /// Add author
     pub fn author<S>(self, author: S) -> Self
     where
@@ -332,6 +348,22 @@ impl Filter {
         }
     }
 
+    /// Remove authors
+    pub fn remove_authors<S>(self, authors: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        let authors: HashSet<String> = authors.into_iter().map(|id| id.into()).collect();
+        Self {
+            authors: self
+                .authors
+                .into_iter()
+                .filter(|value| !authors.contains(value))
+                .collect(),
+            ..self
+        }
+    }
+
     /// Add kind
     pub fn kind(self, kind: Kind) -> Self {
         let mut kinds: Vec<Kind> = self.kinds;
@@ -351,6 +383,19 @@ impl Filter {
         }
         Self {
             kinds: current_kinds,
+            ..self
+        }
+    }
+
+    /// Remove kinds
+    pub fn remove_kinds(self, kinds: Vec<Kind>) -> Self {
+        let kinds: HashSet<Kind> = kinds.into_iter().collect();
+        Self {
+            kinds: self
+                .kinds
+                .into_iter()
+                .filter(|value| !kinds.contains(value))
+                .collect(),
             ..self
         }
     }
@@ -378,6 +423,19 @@ impl Filter {
         }
     }
 
+    /// Remove events
+    pub fn remove_events<S>(self, events: Vec<EventId>) -> Self {
+        let events: HashSet<EventId> = events.into_iter().collect();
+        Self {
+            events: self
+                .events
+                .into_iter()
+                .filter(|value| !events.contains(value))
+                .collect(),
+            ..self
+        }
+    }
+
     /// Add pubkey
     pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
         let mut pubkeys: Vec<XOnlyPublicKey> = self.pubkeys;
@@ -397,6 +455,19 @@ impl Filter {
         }
         Self {
             pubkeys: current_pubkeys,
+            ..self
+        }
+    }
+
+    /// Remove pubkeys
+    pub fn remove_pubkeys<S>(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
+        let pubkeys: HashSet<XOnlyPublicKey> = pubkeys.into_iter().collect();
+        Self {
+            pubkeys: self
+                .pubkeys
+                .into_iter()
+                .filter(|value| !pubkeys.contains(value))
+                .collect(),
             ..self
         }
     }
@@ -435,6 +506,22 @@ impl Filter {
         }
     }
 
+    /// Remove hashtags
+    pub fn remove_hashtags<S>(self, hashtags: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        let hashtags: HashSet<String> = hashtags.into_iter().map(|id| id.into()).collect();
+        Self {
+            hashtags: self
+                .hashtags
+                .into_iter()
+                .filter(|value| !hashtags.contains(value))
+                .collect(),
+            ..self
+        }
+    }
+
     /// Add reference
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
@@ -465,6 +552,22 @@ impl Filter {
         }
         Self {
             references: current_references,
+            ..self
+        }
+    }
+
+    /// Remove references
+    pub fn remove_references<S>(self, references: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        let references: HashSet<String> = references.into_iter().map(|id| id.into()).collect();
+        Self {
+            references: self
+                .references
+                .into_iter()
+                .filter(|value| !references.contains(value))
+                .collect(),
             ..self
         }
     }
@@ -506,6 +609,22 @@ impl Filter {
         }
     }
 
+    /// Remove identifiers
+    pub fn remove_identifiers<S>(self, identifiers: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        let identifiers: HashSet<String> = identifiers.into_iter().map(|id| id.into()).collect();
+        Self {
+            identifiers: self
+                .identifiers
+                .into_iter()
+                .filter(|value| !identifiers.contains(value))
+                .collect(),
+            ..self
+        }
+    }
+
     /// Add search field
     pub fn search<S>(self, value: S) -> Self
     where
@@ -513,6 +632,14 @@ impl Filter {
     {
         Self {
             search: Some(value.into()),
+            ..self
+        }
+    }
+
+    /// Remove search
+    pub fn remove_search(self) -> Self {
+        Self {
+            search: None,
             ..self
         }
     }
@@ -525,6 +652,14 @@ impl Filter {
         }
     }
 
+    /// Remove since
+    pub fn remove_since(self) -> Self {
+        Self {
+            since: None,
+            ..self
+        }
+    }
+
     /// Add until unix timestamp
     pub fn until(self, until: Timestamp) -> Self {
         Self {
@@ -533,10 +668,26 @@ impl Filter {
         }
     }
 
+    /// Remove until
+    pub fn remove_until(self) -> Self {
+        Self {
+            until: None,
+            ..self
+        }
+    }
+
     /// Add limit
     pub fn limit(self, limit: usize) -> Self {
         Self {
             limit: Some(limit),
+            ..self
+        }
+    }
+
+    /// Remove limit
+    pub fn remove_limit(self) -> Self {
+        Self {
+            limit: None,
             ..self
         }
     }
@@ -558,6 +709,22 @@ impl Filter {
                 }
             })
             .or_insert(values);
+        Self {
+            generic_tags,
+            ..self
+        }
+    }
+
+    /// Remove identifiers
+    pub fn remove_custom_tag<S>(self, tag: Alphabet, values: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        let values: HashSet<String> = values.into_iter().map(|id| id.into()).collect();
+        let mut generic_tags: HashMap<Alphabet, Vec<String>> = self.generic_tags;
+        generic_tags.entry(tag).and_modify(|list| {
+            list.retain(|value| !values.contains(value));
+        });
         Self {
             generic_tags,
             ..self
@@ -642,6 +809,20 @@ mod test {
                 Kind::LongFormTextNote
             ])
         );
+    }
+
+    #[test]
+    fn test_remove_ids() {
+        let filter = Filter::new().id("abcdefg").id("12345678").id("xyz");
+        let filter = filter.remove_ids(vec!["12345678", "xyz"]);
+        assert_eq!(filter, Filter::new().id("abcdefg"));
+    }
+
+    #[test]
+    fn test_remove_custom_tag() {
+        let filter = Filter::new().custom_tag(Alphabet::C, vec!["test", "test2"]);
+        let filter = filter.remove_custom_tag(Alphabet::C, vec!["test2"]);
+        assert_eq!(filter, Filter::new().custom_tag(Alphabet::C, vec!["test"]));
     }
 
     #[test]
