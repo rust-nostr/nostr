@@ -17,7 +17,10 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 
 use super::options::RelayPoolOptions;
-use super::{Error as RelayError, FilterOptions, InternalSubscriptionId, Relay, RelayOptions};
+use super::{
+    Error as RelayError, FilterOptions, InternalSubscriptionId, Relay, RelayOptions,
+    RelaySendOptions,
+};
 
 /// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]
@@ -428,7 +431,7 @@ impl RelayPool {
     }
 
     /// Send event and wait for `OK` relay msg
-    pub async fn send_event(&self, event: Event, timeout: Option<Duration>) -> Result<(), Error> {
+    pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         let relays = self.relays().await;
 
         if relays.is_empty() {
@@ -446,11 +449,13 @@ impl RelayPool {
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
 
+        let event_id = event.id;
+
         for (url, relay) in relays.into_iter() {
             let event = event.clone();
             let sent = sent_to_at_least_one_relay.clone();
             let handle = thread::spawn(async move {
-                match relay.send_event(event, timeout).await {
+                match relay.send_event(event, opts).await {
                     Ok(_) => {
                         let _ =
                             sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
@@ -469,7 +474,7 @@ impl RelayPool {
             return Err(Error::EventNotPublished);
         }
 
-        Ok(())
+        Ok(event_id)
     }
 
     /// Send event to a single relay
@@ -477,12 +482,11 @@ impl RelayPool {
         &self,
         url: Url,
         event: Event,
-        timeout: Option<Duration>,
-    ) -> Result<(), Error> {
+        opts: RelaySendOptions,
+    ) -> Result<EventId, Error> {
         let relays = self.relays().await;
         if let Some(relay) = relays.get(&url) {
-            relay.send_event(event, timeout).await?;
-            Ok(())
+            Ok(relay.send_event(event, opts).await?)
         } else {
             Err(Error::RelayNotFound)
         }

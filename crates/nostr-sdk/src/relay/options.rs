@@ -54,6 +54,38 @@ impl RelayOptions {
     }
 }
 
+/// [`Relay`] send options
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RelaySendOptions {
+    /// When sendng event, wait for `OK` relay msg response
+    pub wait_for_ok: bool,
+    /// Set send timeout
+    pub timeout: Option<Duration>,
+}
+
+impl RelaySendOptions {
+    /// New default [`RelaySendOptions`]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set `wait_for_ok`
+    pub fn wait_for_ok(self, value: bool) -> Self {
+        Self {
+            wait_for_ok: value,
+            ..self
+        }
+    }
+
+    /// Set timeout
+    pub fn timeout(self, value: Option<Duration>) -> Self {
+        Self {
+            timeout: value,
+            ..self
+        }
+    }
+}
+
 /// Filter options
 #[derive(Debug, Clone, Copy, Default)]
 pub enum FilterOptions {

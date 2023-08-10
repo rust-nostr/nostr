@@ -24,7 +24,7 @@ use tokio::sync::{broadcast, oneshot, Mutex};
 mod options;
 pub mod pool;
 
-pub use self::options::{FilterOptions, RelayOptions, RelayPoolOptions};
+pub use self::options::{FilterOptions, RelayOptions, RelayPoolOptions, RelaySendOptions};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
@@ -796,38 +796,40 @@ impl Relay {
     }
 
     /// Send event and wait for `OK` relay msg
-    pub async fn send_event(
-        &self,
-        event: Event,
-        timeout: Option<Duration>,
-    ) -> Result<EventId, Error> {
-        time::timeout(timeout, async {
-            let id: EventId = event.id;
-            self.send_msg(ClientMessage::new_event(event), None).await?;
-            let mut notifications = self.notification_sender.subscribe();
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message(
-                    _,
-                    RelayMessage::Ok {
-                        event_id,
-                        status,
-                        message,
-                    },
-                ) = notification
-                {
-                    if id == event_id {
-                        if status {
-                            return Ok(event_id);
-                        } else {
-                            return Err(Error::EventNotPublished(message));
+    pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
+        let id: EventId = event.id;
+        if opts.wait_for_ok {
+            time::timeout(opts.timeout, async {
+                self.send_msg(ClientMessage::new_event(event), None).await?;
+                let mut notifications = self.notification_sender.subscribe();
+                while let Ok(notification) = notifications.recv().await {
+                    if let RelayPoolNotification::Message(
+                        _,
+                        RelayMessage::Ok {
+                            event_id,
+                            status,
+                            message,
+                        },
+                    ) = notification
+                    {
+                        if id == event_id {
+                            if status {
+                                return Ok(event_id);
+                            } else {
+                                return Err(Error::EventNotPublished(message));
+                            }
                         }
                     }
                 }
-            }
-            Err(Error::EventNotPublished(String::from("loop terminated")))
-        })
-        .await
-        .ok_or(Error::Timeout)?
+                Err(Error::EventNotPublished(String::from("loop terminated")))
+            })
+            .await
+            .ok_or(Error::Timeout)?
+        } else {
+            self.send_msg(ClientMessage::new_event(event), opts.timeout)
+                .await?;
+            Ok(id)
+        }
     }
 
     /// Subscribes relay with existing filter

@@ -36,7 +36,7 @@ pub use self::options::Options;
 #[cfg(feature = "nip46")]
 pub use self::signer::remote::RemoteSigner;
 use crate::relay::pool::{Error as RelayPoolError, RelayPool};
-use crate::relay::{FilterOptions, Relay, RelayOptions, RelayPoolNotification};
+use crate::relay::{FilterOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions};
 
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
@@ -690,18 +690,15 @@ impl Client {
 
     /// Send event
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
-        let event_id = event.id;
-        if self.opts.get_wait_for_ok() {
-            let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
-                self.opts.get_send_timeout()
-            } else {
-                None
-            };
-            self.pool.send_event(event, timeout).await?;
+        let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
+            self.opts.get_send_timeout()
         } else {
-            self.send_msg(ClientMessage::new_event(event)).await?;
-        }
-        Ok(event_id)
+            None
+        };
+        let opts = RelaySendOptions::new()
+            .wait_for_ok(self.opts.get_wait_for_ok())
+            .timeout(timeout);
+        Ok(self.pool.send_event(event, opts).await?)
     }
 
     /// Send event to specific relay
@@ -710,20 +707,16 @@ impl Client {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let event_id = event.id;
-        if self.opts.get_wait_for_ok() {
-            let url: Url = url.try_into_url()?;
-            let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
-                self.opts.get_send_timeout()
-            } else {
-                None
-            };
-            self.pool.send_event_to(url, event, timeout).await?;
+        let url: Url = url.try_into_url()?;
+        let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
+            self.opts.get_send_timeout()
         } else {
-            self.send_msg_to(url, ClientMessage::new_event(event))
-                .await?;
-        }
-        Ok(event_id)
+            None
+        };
+        let opts = RelaySendOptions::new()
+            .wait_for_ok(self.opts.get_wait_for_ok())
+            .timeout(timeout);
+        Ok(self.pool.send_event_to(url, event, opts).await?)
     }
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
