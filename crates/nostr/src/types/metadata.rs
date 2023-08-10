@@ -4,11 +4,12 @@
 //! Metadata
 
 use core::fmt;
+use std::collections::HashMap;
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+use serde_json::Value;
 use url::Url;
 
 /// [`Metadata`] error
@@ -35,51 +36,58 @@ impl From<serde_json::Error> for Error {
 }
 
 /// Metadata
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metadata {
     /// Name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub name: Option<String>,
     /// Display name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub display_name: Option<String>,
     /// Description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub about: Option<String>,
     /// Website url
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub website: Option<String>,
     /// Picture url
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub picture: Option<String>,
     /// Banner url
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub banner: Option<String>,
     /// NIP05 (ex. name@example.com)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub nip05: Option<String>,
     /// LNURL
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub lud06: Option<String>,
     /// Lightning Address
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub lud16: Option<String>,
     /// Custom fields
-    pub custom: Map<String, Value>,
-}
-
-impl Default for Metadata {
-    fn default() -> Self {
-        Self::new()
-    }
+    #[serde(
+        flatten,
+        serialize_with = "serialize_custom_fields",
+        deserialize_with = "deserialize_custom_fields"
+    )]
+    #[serde(default)]
+    pub custom: HashMap<String, Value>,
 }
 
 impl Metadata {
     /// New empty [`Metadata`]
     pub fn new() -> Self {
-        Self {
-            name: None,
-            display_name: None,
-            about: None,
-            website: None,
-            picture: None,
-            banner: None,
-            nip05: None,
-            lud06: None,
-            lud16: None,
-            custom: Map::new(),
-        }
+        Self::default()
     }
 
     /// Deserialize [`Metadata`] from `JSON` string
@@ -185,125 +193,58 @@ impl Metadata {
         }
     }
 
-    /// Set custom metadata
-    pub fn custom(self, map: Map<String, Value>) -> Self {
-        Self {
-            custom: map,
-            ..self
-        }
+    /// Set custom metadata field
+    pub fn custom_field<S>(self, field_name: S, value: Value) -> Self
+    where
+        S: Into<String>,
+    {
+        let mut custom: HashMap<String, Value> = self.custom;
+        custom.insert(field_name.into(), value);
+        Self { custom, ..self }
     }
 }
 
-impl Serialize for Metadata {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let len: usize = 9 + self.custom.len();
-        let mut map = serializer.serialize_map(Some(len))?;
-        if let Some(value) = &self.name {
-            map.serialize_entry("name", &json!(value))?;
-        }
-        if let Some(value) = &self.display_name {
-            map.serialize_entry("display_name", &json!(value))?;
-        }
-        if let Some(value) = &self.about {
-            map.serialize_entry("about", &json!(value))?;
-        }
-        if let Some(value) = &self.website {
-            map.serialize_entry("website", &json!(value))?;
-        }
-        if let Some(value) = &self.picture {
-            map.serialize_entry("picture", &json!(value))?;
-        }
-        if let Some(value) = &self.banner {
-            map.serialize_entry("banner", &json!(value))?;
-        }
-        if let Some(value) = &self.nip05 {
-            map.serialize_entry("nip05", &json!(value))?;
-        }
-        if let Some(value) = &self.lud06 {
-            map.serialize_entry("lud06", &json!(value))?;
-        }
-        if let Some(value) = &self.lud16 {
-            map.serialize_entry("lud16", &json!(value))?;
-        }
-        for (k, v) in &self.custom {
-            map.serialize_entry(&k, &v)?;
-        }
-        map.end()
+fn serialize_custom_fields<S>(
+    custom_fields: &HashMap<String, Value>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut map = serializer.serialize_map(Some(custom_fields.len()))?;
+    for (field_name, value) in custom_fields {
+        map.serialize_entry(field_name, value)?;
     }
+    map.end()
 }
 
-impl<'de> Deserialize<'de> for Metadata {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_map(MetadataVisitor)
+fn deserialize_custom_fields<'de, D>(deserializer: D) -> Result<HashMap<String, Value>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct GenericTagsVisitor;
+
+    impl<'de> Visitor<'de> for GenericTagsVisitor {
+        type Value = HashMap<String, Value>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("TODO")
+        }
+
+        fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+        where
+            M: MapAccess<'de>,
+        {
+            let mut custom_fields = HashMap::new();
+            while let Some(field_name) = map.next_key::<String>()? {
+                let value: Value = map.next_value()?;
+                custom_fields.insert(field_name, value);
+            }
+            Ok(custom_fields)
+        }
     }
-}
 
-struct MetadataVisitor;
-
-impl<'de> Visitor<'de> for MetadataVisitor {
-    type Value = Metadata;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "A JSON object")
-    }
-
-    fn visit_map<M>(self, mut access: M) -> Result<Metadata, M::Error>
-    where
-        M: MapAccess<'de>,
-    {
-        let mut map: Map<String, Value> = Map::new();
-        while let Some((key, value)) = access.next_entry::<String, Value>()? {
-            let _ = map.insert(key, value);
-        }
-
-        let mut f: Metadata = Metadata::new();
-
-        if let Some(Value::String(name)) = map.remove("name") {
-            f.name = Some(name);
-        }
-
-        if let Some(Value::String(display_name)) = map.remove("display_name") {
-            f.display_name = Some(display_name);
-        }
-
-        if let Some(Value::String(about)) = map.remove("about") {
-            f.about = Some(about);
-        }
-
-        if let Some(Value::String(website)) = map.remove("website") {
-            f.website = Some(website);
-        }
-
-        if let Some(Value::String(picture)) = map.remove("picture") {
-            f.picture = Some(picture);
-        }
-
-        if let Some(Value::String(banner)) = map.remove("banner") {
-            f.banner = Some(banner);
-        }
-
-        if let Some(Value::String(nip05)) = map.remove("nip05") {
-            f.nip05 = Some(nip05);
-        }
-
-        if let Some(Value::String(lud06)) = map.remove("lud06") {
-            f.lud06 = Some(lud06);
-        }
-
-        if let Some(Value::String(lud16)) = map.remove("lud16") {
-            f.lud16 = Some(lud16);
-        }
-
-        f.custom = map;
-
-        Ok(f)
-    }
+    deserializer.deserialize_map(GenericTagsVisitor)
 }
 
 #[cfg(test)]
@@ -324,21 +265,16 @@ mod tests {
 
         let content = r#"{"name":"myname","about":"Description","displayName":"Jack"}"#;
         let metadata = Metadata::from_json(content).unwrap();
-        let mut custom = Map::new();
-        custom.insert("displayName".into(), Value::String("Jack".into()));
         assert_eq!(
             metadata,
             Metadata::new()
                 .name("myname")
                 .about("Description")
-                .custom(custom)
+                .custom_field("displayName", Value::String("Jack".into()))
         );
 
         let content = r#"{"lud16":"thesimplekid@cln.thesimplekid.com","nip05":"_@thesimplekid.com","display_name":"thesimplekid","about":"Wannabe open source dev","name":"thesimplekid","username":"thesimplekid","displayName":"thesimplekid","lud06":""}"#;
         let metadata = Metadata::from_json(content).unwrap();
-        let mut custom = Map::new();
-        custom.insert("username".into(), Value::String("thesimplekid".into()));
-        custom.insert("displayName".into(), Value::String("thesimplekid".into()));
         assert_eq!(
             metadata,
             Metadata::new()
@@ -348,7 +284,8 @@ mod tests {
                 .nip05("_@thesimplekid.com")
                 .lud06("")
                 .lud16("thesimplekid@cln.thesimplekid.com")
-                .custom(custom)
+                .custom_field("username", Value::String("thesimplekid".into()))
+                .custom_field("displayName", Value::String("thesimplekid".into()))
         )
     }
 }
