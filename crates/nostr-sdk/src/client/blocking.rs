@@ -386,26 +386,6 @@ impl Client {
         RUNTIME.block_on(async { self.client.auth(challenge, relay).await })
     }
 
-    /// Create zap request event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    pub fn new_zap_request<S>(
-        &self,
-        pubkey: XOnlyPublicKey,
-        event_id: Option<EventId>,
-        amount: Option<u64>,
-        lnurl: Option<S>,
-    ) -> Result<EventId, Error>
-    where
-        S: Into<String>,
-    {
-        RUNTIME.block_on(async {
-            self.client
-                .new_zap_request(pubkey, event_id, amount, lnurl)
-                .await
-        })
-    }
-
     #[allow(missing_docs)]
     #[deprecated(since = "0.23.0", note = "use `new_zap_receipt` instead")]
     pub async fn new_zap<S>(
