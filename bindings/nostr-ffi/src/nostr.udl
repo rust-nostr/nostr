@@ -6,6 +6,8 @@ namespace nostr {
     string nip04_encrypt(SecretKey secret_key, PublicKey public_key, string content);
     [Throws=NostrError]
     string nip04_decrypt(SecretKey secret_key, PublicKey public_key, string encrypted_content);
+    [Throws=NostrError]
+    sequence<u8> generate_shared_key(SecretKey secret_key, PublicKey public_key);
 
     [Throws=NostrError]
     void verify_nip05(PublicKey public_key, string nip05, string? proxy);

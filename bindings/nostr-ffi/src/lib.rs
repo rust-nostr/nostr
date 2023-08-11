@@ -24,7 +24,7 @@ mod ffi {
     };
     pub use crate::key::{Keys, PublicKey, SecretKey};
     pub use crate::message::{ClientMessage, Filter, RelayMessage};
-    pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
+    pub use crate::nips::nip04::{generate_shared_key, nip04_decrypt, nip04_encrypt};
     pub use crate::nips::nip05::{get_nip05_profile, verify_nip05};
     pub use crate::nips::nip11::RelayInformationDocument;
     pub use crate::nips::nip46::NostrConnectURI;
