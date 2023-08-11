@@ -42,7 +42,17 @@ pub use crate::nips::nip11::*;
 pub use crate::nips::nip13::*;
 #[cfg(feature = "nip19")]
 pub use crate::nips::nip19::*;
+#[cfg(feature = "nip21")]
+pub use crate::nips::nip21::*;
 pub use crate::nips::nip26::*;
+pub use crate::nips::nip33::*;
 #[cfg(feature = "nip46")]
 pub use crate::nips::nip46::*;
+#[cfg(feature = "nip47")]
+pub use crate::nips::nip47::*;
+pub use crate::nips::nip53::*;
+pub use crate::nips::nip57::*;
+pub use crate::nips::nip58::*;
 pub use crate::nips::nip65::*;
+pub use crate::nips::nip94::*;
+pub use crate::nips::nip98::*;
