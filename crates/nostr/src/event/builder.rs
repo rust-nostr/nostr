@@ -22,6 +22,7 @@ use crate::nips::nip04;
 #[cfg(feature = "nip46")]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip53::LiveEvent;
+use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip58::Error as Nip58Error;
 use crate::nips::nip94::FileMetadata;
 use crate::nips::nip98::HttpData;
@@ -493,19 +494,27 @@ impl EventBuilder {
     /// Create zap request event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    pub fn new_zap_request<S>(
-        pubkey: XOnlyPublicKey,
-        event_id: Option<EventId>,
-        amount: Option<u64>,
-        lnurl: Option<S>,
-    ) -> Self
-    where
-        S: Into<String>,
-    {
-        let mut tags = vec![Tag::PubKey(pubkey, None)];
+    pub fn new_zap_request(data: ZapRequestData) -> Self {
+        let ZapRequestData {
+            public_key,
+            relays,
+            amount,
+            lnurl,
+            event_id,
+            event_coordinate,
+        } = data;
+        let mut tags = vec![Tag::PubKey(public_key, None)];
+
+        if !relays.is_empty() {
+            tags.push(Tag::Relays(relays));
+        }
 
         if let Some(event_id) = event_id {
             tags.push(Tag::Event(event_id, None, None));
+        }
+
+        if let Some(event_coordinate) = event_coordinate {
+            tags.push(event_coordinate.into());
         }
 
         if let Some(amount) = amount {
@@ -513,7 +522,7 @@ impl EventBuilder {
         }
 
         if let Some(lnurl) = lnurl {
-            tags.push(Tag::Lnurl(lnurl.into()));
+            tags.push(Tag::Lnurl(lnurl));
         }
 
         Self::new(Kind::ZapRequest, "", &tags)

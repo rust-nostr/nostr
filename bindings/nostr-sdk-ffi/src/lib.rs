@@ -22,7 +22,7 @@ mod ffi {
         ClientMessage, Contact, Event, EventBuilder, EventId, FileMetadata, Filter,
         ImageDimensions, Keys, NostrConnectURI, NostrError, Profile, PublicKey,
         RelayInformationDocument, RelayMessage, SecretKey, Tag, TagEnum, TagKind, TagKindKnown,
-        Timestamp, UnsignedEvent,
+        Timestamp, UnsignedEvent, ZapRequestData,
     };
     pub use nostr_sdk::{Alphabet, RelayStatus};
 

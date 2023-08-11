@@ -10,6 +10,7 @@ use nostr::{ChannelId, Contact as ContactSdk, EventBuilder as EventBuilderSdk};
 use super::{Event, EventId};
 use crate::error::Result;
 use crate::key::Keys;
+use crate::nips::nip57::ZapRequestData;
 use crate::types::{Contact, Metadata};
 use crate::{FileMetadata, PublicKey, Tag, UnsignedEvent};
 
@@ -236,19 +237,9 @@ impl EventBuilder {
         }
     }
 
-    pub fn new_zap_request(
-        pubkey: Arc<PublicKey>,
-        event_id: Option<Arc<EventId>>,
-        amount: Option<u64>,
-        lnurl: Option<String>,
-    ) -> Self {
+    pub fn new_zap_request(data: Arc<ZapRequestData>) -> Self {
         Self {
-            builder: EventBuilderSdk::new_zap_request(
-                *pubkey.as_ref().deref(),
-                event_id.map(|id| id.as_ref().into()),
-                amount,
-                lnurl,
-            ),
+            builder: EventBuilderSdk::new_zap_request(data.as_ref().deref().clone()),
         }
     }
 

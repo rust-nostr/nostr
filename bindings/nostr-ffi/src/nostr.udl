@@ -131,6 +131,16 @@ interface RelayMessage {
   Count(string subscription_id, u64 count);
 };
 
+interface ZapRequestData {
+    constructor(PublicKey public_key, sequence<string> relays);
+    [Self=ByArc]
+    ZapRequestData amount(u64 amount);
+    [Self=ByArc]
+    ZapRequestData lnurl(string lnurl);
+    [Self=ByArc]
+    ZapRequestData event_id(EventId event_id);
+};
+
 enum Alphabet {
     "A",
     "B",
@@ -293,7 +303,7 @@ interface EventBuilder {
     constructor(sequence<Tag> tags, string content);
 
     [Name=new_zap_request]
-    constructor(PublicKey pubkey, EventId? event_id, u64? amount, string? lnurl);
+    constructor(ZapRequestData data);
     [Name=new_zap_receipt]
     constructor(string bolt11, string? preimage, Event zap_request);
 
