@@ -470,6 +470,8 @@ pub enum TagKind {
     Method,
     /// Payload HASH
     Payload,
+    /// Anon
+    Anon,
     /// Custom tag kind
     Custom(String),
 }
@@ -522,6 +524,7 @@ impl fmt::Display for TagKind {
             Self::TotalParticipants => write!(f, "total_participants"),
             Self::Method => write!(f, "method"),
             Self::Payload => write!(f, "payload"),
+            Self::Anon => write!(f, "anon"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -579,6 +582,7 @@ where
             "total_participants" => Self::TotalParticipants,
             "method" => Self::Method,
             "payload" => Self::Payload,
+            "anon" => Self::Anon,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -664,6 +668,9 @@ pub enum Tag {
     AbsoluteURL(UncheckedUrl),
     Method(HttpMethod),
     Payload(Sha256Hash),
+    Anon {
+        msg: Option<String>,
+    },
 }
 
 impl Tag {
@@ -734,6 +741,7 @@ impl Tag {
             Self::AbsoluteURL(..) => TagKind::U,
             Self::Method(..) => TagKind::Method,
             Self::Payload(..) => TagKind::Payload,
+            Self::Anon { .. } => TagKind::Anon,
         }
     }
 }
@@ -763,6 +771,7 @@ where
         } else if tag_len == 1 {
             match tag_kind {
                 TagKind::ContentWarning => Ok(Self::ContentWarning { reason: None }),
+                TagKind::Anon => Ok(Self::Anon { msg: None }),
                 _ => Ok(Self::Generic(tag_kind, Vec::new())),
             }
         } else if tag_len == 2 {
@@ -827,6 +836,9 @@ where
                 TagKind::U => Ok(Self::AbsoluteURL(UncheckedUrl::from(content))),
                 TagKind::Method => Ok(Self::Method(HttpMethod::from_str(content)?)),
                 TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(content)?)),
+                TagKind::Anon => Ok(Self::Anon {
+                    msg: (!content.is_empty()).then_some(content.to_string()),
+                }),
                 _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
             }
         } else if tag_len == 3 {
@@ -1133,6 +1145,13 @@ impl From<Tag> for Vec<String> {
                 vec![TagKind::Method.to_string(), method.to_string()]
             }
             Tag::Payload(p) => vec![TagKind::Payload.to_string(), p.to_string()],
+            Tag::Anon { msg } => {
+                let mut tag = vec![TagKind::Anon.to_string()];
+                if let Some(msg) = msg {
+                    tag.push(msg);
+                }
+                tag
+            }
         }
     }
 }

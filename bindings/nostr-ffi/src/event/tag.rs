@@ -111,6 +111,7 @@ pub enum TagKindKnown {
     Method,
     /// Payload HASH
     Payload,
+    Anon,
 }
 
 impl From<tag::TagKind> for TagKind {
@@ -251,6 +252,9 @@ impl From<tag::TagKind> for TagKind {
             tag::TagKind::Payload => Self::Known {
                 known: TagKindKnown::Payload,
             },
+            tag::TagKind::Anon => Self::Known {
+                known: TagKindKnown::Anon,
+            },
             tag::TagKind::Custom(unknown) => Self::Unknown { unknown },
         }
     }
@@ -305,6 +309,7 @@ impl From<TagKind> for tag::TagKind {
                 TagKindKnown::TotalParticipants => Self::TotalParticipants,
                 TagKindKnown::Method => Self::Method,
                 TagKindKnown::Payload => Self::Payload,
+                TagKindKnown::Anon => Self::Anon,
             },
             TagKind::Unknown { unknown } => Self::Custom(unknown),
         }
@@ -487,6 +492,9 @@ pub enum TagEnum {
     Payload {
         hash: String,
     },
+    Anon {
+        msg: Option<String>,
+    },
 }
 
 impl From<tag::Tag> for TagEnum {
@@ -640,6 +648,7 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::Payload(p) => Self::Payload {
                 hash: p.to_string(),
             },
+            tag::Tag::Anon { msg } => Self::Anon { msg },
         }
     }
 }
@@ -783,6 +792,7 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
             TagEnum::Method { method } => Ok(Self::Method(HttpMethod::from_str(&method)?)),
             TagEnum::Payload { hash } => Ok(Self::Payload(Sha256Hash::from_str(&hash)?)),
+            TagEnum::Anon { msg } => Ok(Self::Anon { msg }),
         }
     }
 }

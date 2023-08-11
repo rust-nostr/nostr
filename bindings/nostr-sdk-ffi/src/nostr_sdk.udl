@@ -419,6 +419,7 @@ enum TagKindKnown {
     "TotalParticipants",
     "Method",
     "Payload",
+    "Anon",
 };
 
 [Enum]
@@ -474,6 +475,7 @@ interface TagEnum {
     AbsoluteURL(string url);
     Method(string method);
     Payload(string hash);
+    Anon(string? msg);
 }; 
 
 interface Tag {
