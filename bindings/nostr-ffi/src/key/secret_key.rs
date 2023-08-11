@@ -33,9 +33,15 @@ impl SecretKey {
         })
     }
 
-    pub fn from_bech32(pk: String) -> Result<Self> {
+    pub fn from_bech32(sk: String) -> Result<Self> {
         Ok(Self {
-            inner: Sk::from_bech32(pk)?,
+            inner: Sk::from_bech32(sk)?,
+        })
+    }
+
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+        Ok(Self {
+            inner: Sk::from_slice(&bytes)?,
         })
     }
 

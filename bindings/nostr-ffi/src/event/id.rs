@@ -56,7 +56,7 @@ impl EventId {
         })
     }
 
-    pub fn from_slice(bytes: Vec<u8>) -> Result<Self> {
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventId::from_slice(&bytes)?,
         })

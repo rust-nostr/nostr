@@ -46,6 +46,12 @@ impl PublicKey {
         })
     }
 
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+        Ok(Self {
+            inner: XOnlyPublicKey::from_slice(&bytes)?,
+        })
+    }
+
     pub fn from_nostr_uri(uri: String) -> Result<Self> {
         Ok(Self {
             inner: XOnlyPublicKey::from_nostr_uri(uri)?,

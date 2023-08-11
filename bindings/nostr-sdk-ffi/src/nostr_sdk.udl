@@ -95,7 +95,9 @@ interface SecretKey {
     [Throws=NostrError, Name=from_hex]
     constructor(string hex);
     [Throws=NostrError, Name=from_bech32]
-    constructor(string pk);
+    constructor(string sk);
+    [Throws=NostrError, Name=from_bytes]
+    constructor(sequence<u8> sk);
     string to_hex();
     [Throws=NostrError]
     string to_bech32();
@@ -106,6 +108,8 @@ interface PublicKey {
     constructor(string hex);
     [Throws=NostrError, Name=from_bech32]
     constructor(string pk);
+    [Throws=NostrError, Name=from_bytes]
+    constructor(sequence<u8> pk);
     [Throws=NostrError, Name=from_nostr_uri]
     constructor(string uri);
     string to_hex();
@@ -232,7 +236,7 @@ interface Filter {
 interface EventId {
     [Throws=NostrError]
     constructor(PublicKey pubkey, Timestamp created_at, u64 kind, sequence<sequence<string>> tags, string content);
-    [Throws=NostrError, Name=from_slice]
+    [Throws=NostrError, Name=from_bytes]
     constructor(sequence<u8> bytes);
     [Throws=NostrError, Name=from_hex]
     constructor(string hex);
