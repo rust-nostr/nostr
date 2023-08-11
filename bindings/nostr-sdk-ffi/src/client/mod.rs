@@ -11,6 +11,7 @@ use std::time::Duration;
 use nostr_ffi::{ClientMessage, Event, EventId, FileMetadata, Filter, Keys, RelayMessage};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
+use nostr_sdk::Options as OptionsSdk;
 
 mod options;
 
@@ -24,14 +25,16 @@ pub struct Client {
 
 impl Client {
     pub fn new(keys: Arc<Keys>) -> Self {
+        let opts: OptionsSdk = OptionsSdk::new().shutdown_on_drop(true);
         Self {
-            inner: ClientSdk::new(keys.as_ref().deref()),
+            inner: ClientSdk::with_opts(keys.as_ref().deref(), opts),
         }
     }
 
     pub fn with_opts(keys: Arc<Keys>, opts: Arc<Options>) -> Self {
+        let opts: OptionsSdk = opts.as_ref().deref().clone().shutdown_on_drop(true);
         Self {
-            inner: ClientSdk::with_opts(keys.as_ref().deref(), opts.as_ref().deref().clone()),
+            inner: ClientSdk::with_opts(keys.as_ref().deref(), opts),
         }
     }
 
