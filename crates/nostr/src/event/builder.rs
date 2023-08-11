@@ -564,7 +564,7 @@ impl EventBuilder {
             tags.push(tag);
         }
 
-        Self::new(Kind::Zap, "", &tags)
+        Self::new(Kind::ZapReceipt, "", &tags)
     }
 
     /// Create a badge definition event
