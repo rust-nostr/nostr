@@ -6,10 +6,31 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip57;
-use uniffi::Object;
+use uniffi::{Enum, Object};
 
 use crate::helper::unwrap_or_clone_arc;
 use crate::{EventId, PublicKey};
+
+/// Zap Type
+#[derive(Enum)]
+pub enum ZapType {
+    /// Public
+    Public,
+    /// Private
+    Private,
+    /// Anonymous
+    Anonymous,
+}
+
+impl From<ZapType> for nip57::ZapType {
+    fn from(zap_type: ZapType) -> Self {
+        match zap_type {
+            ZapType::Public => Self::Public,
+            ZapType::Private => Self::Private,
+            ZapType::Anonymous => Self::Anonymous,
+        }
+    }
+}
 
 #[derive(Clone, Object)]
 pub struct ZapRequestData {
@@ -32,13 +53,14 @@ impl From<nip57::ZapRequestData> for ZapRequestData {
 #[uniffi::export]
 impl ZapRequestData {
     #[uniffi::constructor]
-    pub fn new(public_key: Arc<PublicKey>, relays: Vec<String>) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new(public_key: Arc<PublicKey>, relays: Vec<String>, zap_type: ZapType) -> Self {
+        Self {
             inner: nip57::ZapRequestData::new(
                 public_key.as_ref().into(),
                 relays.into_iter().map(|r| r.into()).collect(),
+                zap_type.into(),
             ),
-        })
+        }
     }
 
     pub fn amount(self: Arc<Self>, amount: u64) -> Arc<Self> {
