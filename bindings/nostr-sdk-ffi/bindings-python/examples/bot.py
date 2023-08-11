@@ -15,7 +15,7 @@ print(f"Bot public key: {pk.to_bech32()}")
 client = Client(keys)
 
 client.add_relay("wss://relay.damus.io")
-client.add_relay("wss://offchain.pub")
+client.add_relay("wss://nostr.mom")
 client.add_relay("wss://nostr.oxtr.dev")
 client.connect()
 
@@ -30,7 +30,7 @@ class NotificationHandler(HandleNotification):
             try:
                 msg = nip04_decrypt(sk, event.pubkey(), event.content())
                 print(f"Received new msg: {msg}")
-                event = EventBuilder.new_encrypted_direct_msg(keys, event.pubkey(), f"Echo: {msg}").to_event(keys)
+                event = EventBuilder.new_encrypted_direct_msg(keys, event.pubkey(), f"Echo: {msg}", event.id()).to_event(keys)
                 client.send_event(event)
             except Exception as e:
                 print(f"Error during content decryption: {e}")
