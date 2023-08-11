@@ -252,9 +252,13 @@ impl EventBuilder {
         }
     }
 
-    pub fn new_zap(bolt11: String, preimage: Option<String>, zap_request: Arc<Event>) -> Self {
+    pub fn new_zap_receipt(
+        bolt11: String,
+        preimage: Option<String>,
+        zap_request: Arc<Event>,
+    ) -> Self {
         Self {
-            builder: EventBuilderSdk::new_zap(
+            builder: EventBuilderSdk::new_zap_receipt(
                 bolt11,
                 preimage,
                 zap_request.as_ref().deref().clone(),

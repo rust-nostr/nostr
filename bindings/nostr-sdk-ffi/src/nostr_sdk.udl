@@ -314,7 +314,7 @@ interface EventBuilder {
 
     [Name=new_zap_request]
     constructor(PublicKey pubkey, EventId? event_id, u64? amount, string? lnurl);
-    [Name=new_zap]
+    [Name=new_zap_receipt]
     constructor(string bolt11, string? preimage, Event zap_request);
 
     [Name=file_metadata]

@@ -519,10 +519,19 @@ impl EventBuilder {
         Self::new(Kind::ZapRequest, "", &tags)
     }
 
-    /// Create zap event
+    #[allow(missing_docs)]
+    #[deprecated(since = "0.23.0", note = "use `new_zap_receipt` instead")]
+    pub fn new_zap<S>(bolt11: S, preimage: Option<S>, zap_request: Event) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new_zap_receipt(bolt11, preimage, zap_request)
+    }
+
+    /// Create zap receipt event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    pub fn new_zap<S>(bolt11: S, preimage: Option<S>, zap_request: Event) -> Self
+    pub fn new_zap_receipt<S>(bolt11: S, preimage: Option<S>, zap_request: Event) -> Self
     where
         S: Into<String>,
     {
@@ -907,7 +916,7 @@ mod tests {
         ));
         let zap_request_json = String::from("{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}");
         let zap_request_event: Event = Event::from_json(zap_request_json).unwrap();
-        let event_builder = EventBuilder::new_zap(bolt11, preimage, zap_request_event);
+        let event_builder = EventBuilder::new_zap_receipt(bolt11, preimage, zap_request_event);
 
         assert_eq!(5, event_builder.tags.len());
 
@@ -927,7 +936,7 @@ mod tests {
         let preimage = None;
         let zap_request_json = String::from("{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}");
         let zap_request_event = Event::from_json(zap_request_json).unwrap();
-        let event_builder = EventBuilder::new_zap(bolt11, preimage, zap_request_event);
+        let event_builder = EventBuilder::new_zap_receipt(bolt11, preimage, zap_request_event);
 
         assert_eq!(4, event_builder.tags.len());
         let has_preimage_tag = event_builder
