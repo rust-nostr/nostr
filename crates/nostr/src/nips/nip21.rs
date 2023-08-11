@@ -9,9 +9,8 @@ use core::fmt;
 
 use secp256k1::XOnlyPublicKey;
 
-use super::nip19::{
-    Error as NIP19Error, FromBech32, Nip19Event, ParameterizedReplaceableEvent, ToBech32,
-};
+use super::nip19::{Error as NIP19Error, FromBech32, Nip19Event, ToBech32};
+use super::nip33::ParameterizedReplaceableEvent;
 use crate::event::id::EventId;
 use crate::types::profile::Profile;
 
