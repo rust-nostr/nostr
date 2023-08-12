@@ -8,4 +8,4 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-uniffi = { version = "0.24", features = ["cli"] }
+uniffi = { workspace = true, features = ["cli"] }

@@ -15,7 +15,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 nostr  = { path = "../../crates/nostr", features = ["blocking", "vanity"] }
-uniffi = "0.24"
+uniffi = { workspace = true }
 
 [build-dependencies]
-uniffi = { version = "0.24", features = ["build"] }
+uniffi = { workspace = true, features = ["build"] }
