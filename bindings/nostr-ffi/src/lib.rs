@@ -30,9 +30,7 @@ mod ffi {
     pub use crate::nips::nip46::NostrConnectURI;
     pub use crate::nips::nip57::ZapRequestData;
     pub use crate::nips::nip94::FileMetadata;
-    pub use crate::types::{
-        Contact, ImageDimensions, Metadata as AccountMetadata, Profile, Timestamp,
-    };
+    pub use crate::types::{Contact, ImageDimensions, Metadata, Profile, Timestamp};
 
     // UDL
     uniffi::include_scaffolding!("nostr");

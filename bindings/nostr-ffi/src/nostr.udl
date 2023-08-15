@@ -273,7 +273,7 @@ interface EventBuilder {
     UnsignedEvent to_unsigned_pow_event(PublicKey public_key, u8 difficulty);
 
     [Name=set_metadata]
-    constructor(AccountMetadata metadata);
+    constructor(Metadata metadata);
     [Throws=NostrError, Name=add_recommended_relay]
     constructor(string url);
     [Throws=NostrError, Name=new_text_note]
@@ -292,9 +292,9 @@ interface EventBuilder {
     constructor(EventId event_id, PublicKey public_key, string content);
 
     [Name=new_channel]
-    constructor(AccountMetadata metadata);
+    constructor(Metadata metadata);
     [Throws=NostrError, Name=set_channel_metadata]
-    constructor(string channel_id, string? relay_url, AccountMetadata metadata);
+    constructor(string channel_id, string? relay_url, Metadata metadata);
     [Throws=NostrError, Name=new_channel_msg]
     constructor(string channel_id, string relay_url, string content);
     [Name=hide_channel_msg]
@@ -324,18 +324,36 @@ interface Contact {
     string? relay_url();
 };
 
-interface AccountMetadata {
+interface Metadata {
     constructor();
     [Self=ByArc]
-    AccountMetadata name(string name);
+    Metadata set_name(string name);
     [Self=ByArc]
-    AccountMetadata display_name(string display_name);
+    Metadata set_display_name(string display_name);
     [Self=ByArc]
-    AccountMetadata about(string about);
+    Metadata set_about(string about);
     [Throws=NostrError, Self=ByArc]
-    AccountMetadata picture(string picture);
+    Metadata set_website(string website);
+    [Throws=NostrError, Self=ByArc]
+    Metadata set_picture(string picture);
+    [Throws=NostrError, Self=ByArc]
+    Metadata set_banner(string banner);
     [Self=ByArc]
-    AccountMetadata nip05(string nip05);
+    Metadata set_nip05(string nip05);
+    [Self=ByArc]
+    Metadata set_lud06(string lud06);
+    [Self=ByArc]
+    Metadata set_lud16(string lud16);
+
+    string? get_name();
+    string? get_display_name();
+    string? get_about();
+    string? get_website();
+    string? get_picture();
+    string? get_banner();
+    string? get_nip05();
+    string? get_lud06();
+    string? get_lud16();
 };
 
 interface FileMetadata {
