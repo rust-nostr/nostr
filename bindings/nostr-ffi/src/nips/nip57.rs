@@ -8,8 +8,9 @@ use std::sync::Arc;
 use nostr::nips::nip57;
 use uniffi::Object;
 
+use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::{EventId, PublicKey};
+use crate::{Event, EventId, Keys, PublicKey};
 
 #[derive(Clone, Object)]
 pub struct ZapRequestData {
@@ -58,4 +59,16 @@ impl ZapRequestData {
         builder.inner = builder.inner.event_id(event_id.as_ref().into());
         Arc::new(builder)
     }
+}
+
+pub fn anonymous_zap_request(data: Arc<ZapRequestData>) -> Result<Arc<Event>> {
+    Ok(Arc::new(
+        nip57::anonymous_zap_request(data.as_ref().deref().clone())?.into(),
+    ))
+}
+
+pub fn private_zap_request(data: Arc<ZapRequestData>, keys: Arc<Keys>) -> Result<Arc<Event>> {
+    Ok(Arc::new(
+        nip57::private_zap_request(data.as_ref().deref().clone(), keys.deref())?.into(),
+    ))
 }
