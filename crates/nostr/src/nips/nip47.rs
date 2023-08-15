@@ -10,8 +10,8 @@ use std::fmt;
 use std::str::FromStr;
 
 use secp256k1::{SecretKey, XOnlyPublicKey};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::{json, Value};
 use url::form_urlencoded::byte_serialize;
 use url::Url;
 
@@ -133,22 +133,88 @@ pub enum Method {
     /// Pay Invoice
     #[serde(rename = "pay_invoice")]
     PayInvoice,
+    /// Make Invoice
+    #[serde(rename = "make_invoice")]
+    MakeInvoice,
+    /// Lookup Invoice
+    #[serde(rename = "lookup_invoice")]
+    LookupInvoice,
+    /// Get Balance
+    #[serde(rename = "get_balance")]
+    GetBalance,
 }
 
-/// Request Params
+/// Nostr Wallet Connect Request Params
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RequestParams {
+    /// Pay Invoice
+    PayInvoice(PayInvoiceRequestParams),
+    /// Make Invoice
+    MakeInvoice(MakeInvoiceRequestParams),
+    /// Lookup Invoice
+    LookupInvoice(LookupInvoiceRequestParams),
+    /// Get Balance
+    GetBalance,
+}
+
+impl Serialize for RequestParams {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            RequestParams::PayInvoice(p) => p.serialize(serializer),
+            RequestParams::MakeInvoice(p) => p.serialize(serializer),
+            RequestParams::LookupInvoice(p) => p.serialize(serializer),
+            RequestParams::GetBalance => serializer.serialize_none(),
+        }
+    }
+}
+
+/// Pay Invoice Request Params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct RequestParams {
+pub struct PayInvoiceRequestParams {
     /// Request invoice
     pub invoice: String,
 }
 
-/// NIP47 Request
+/// Make Invoice Request Params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MakeInvoiceRequestParams {
+    /// Amount in millisatoshis
+    pub amount: i64,
+    /// Invoice description
+    pub description: Option<String>,
+    /// Invoice description hash
+    pub description_hash: Option<String>,
+    /// Invoice expiry in seconds
+    pub expiry: Option<i64>,
+}
+
+/// Lookup Invoice Request Params
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LookupInvoiceRequestParams {
+    /// Payment hash of invoice
+    pub payment_hash: Option<String>,
+    /// Bolt11 invoice
+    pub bolt11: Option<String>,
+}
+
+/// NIP47 Request
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Request {
     /// Request method
     pub method: Method,
     /// Params
     pub params: RequestParams,
+}
+
+#[derive(Serialize, Deserialize)]
+struct RequestTemplate {
+    /// Request method
+    method: Method,
+    /// Params
+    params: Value,
 }
 
 impl Request {
@@ -162,25 +228,133 @@ impl Request {
     where
         S: AsRef<str>,
     {
-        match serde_json::from_str(json.as_ref()) {
-            Ok(response) => Ok(response),
+        let template: RequestTemplate = match serde_json::from_str(json.as_ref()) {
+            Ok(response) => response,
             Err(_err) => {
                 let json = json.as_ref().replace('\\', "");
-                Ok(serde_json::from_str(&json)?)
+                serde_json::from_str(&json)?
             }
-        }
+        };
+
+        let params = match template.method {
+            Method::PayInvoice => {
+                let params: PayInvoiceRequestParams = serde_json::from_value(template.params)?;
+                RequestParams::PayInvoice(params)
+            }
+            Method::MakeInvoice => {
+                let params: MakeInvoiceRequestParams = serde_json::from_value(template.params)?;
+                RequestParams::MakeInvoice(params)
+            }
+            Method::LookupInvoice => {
+                let params: LookupInvoiceRequestParams = serde_json::from_value(template.params)?;
+                RequestParams::LookupInvoice(params)
+            }
+            Method::GetBalance => RequestParams::GetBalance,
+        };
+
+        Ok(Self {
+            method: template.method,
+            params,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for Request {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::from_json(
+            Value::deserialize(deserializer)
+                .map_err(serde::de::Error::custom)?
+                .to_string()
+                .as_str(),
+        )
+        .map_err(serde::de::Error::custom)
     }
 }
 
 /// NIP47 Response Result
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResponseResult {
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PayInvoiceResponseResult {
     /// Response preimage
     pub preimage: String,
 }
 
+/// NIP47 Response Result
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct MakeInvoiceResponseResult {
+    /// Bolt 11 invoice
+    pub invoice: String,
+    /// Invoice's payment hash
+    pub payment_hash: String,
+}
+
+/// NIP47 Response Result
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct LookupInvoiceResponseResult {
+    /// Bolt11 invoice
+    pub invoice: String,
+    /// If the invoice has been paid
+    pub paid: bool,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+/// Budget renewal type
+pub enum BudgetType {
+    /// Daily
+    Daily,
+    /// Weekly
+    Weekly,
+    /// Monthly
+    Monthly,
+    /// Yearly
+    Yearly,
+}
+
+/// NIP47 Response Result
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct GetBalanceResponseResult {
+    /// Balance amount in sats
+    pub balance: u64,
+    /// Max amount payable within current budget
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_amount: Option<u64>,
+    /// Budget renewal type
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub budget_renewal: Option<BudgetType>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// NIP47 Response Result
+pub enum ResponseResult {
+    /// Pay Invoice
+    PayInvoice(PayInvoiceResponseResult),
+    /// Make Invoice
+    MakeInvoice(MakeInvoiceResponseResult),
+    /// Lookup Invoice
+    LookupInvoice(LookupInvoiceResponseResult),
+    /// Get Balance
+    GetBalance(GetBalanceResponseResult),
+}
+
+impl Serialize for ResponseResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            ResponseResult::PayInvoice(p) => p.serialize(serializer),
+            ResponseResult::MakeInvoice(p) => p.serialize(serializer),
+            ResponseResult::LookupInvoice(p) => p.serialize(serializer),
+            ResponseResult::GetBalance(p) => p.serialize(serializer),
+        }
+    }
+}
+
 /// NIP47 Response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Response {
     /// Request Method
     pub result_type: Method,
@@ -188,6 +362,17 @@ pub struct Response {
     pub error: Option<NIP47Error>,
     /// NIP47 Result
     pub result: Option<ResponseResult>,
+}
+
+/// NIP47 Response
+#[derive(Debug, Clone, Deserialize)]
+struct ResponseTemplate {
+    /// Request Method
+    pub result_type: Method,
+    /// NIP47 Error
+    pub error: Option<NIP47Error>,
+    /// NIP47 Result
+    pub result: Option<Value>,
 }
 
 impl Response {
@@ -201,13 +386,55 @@ impl Response {
     where
         S: AsRef<str>,
     {
-        match serde_json::from_str(json.as_ref()) {
-            Ok(response) => Ok(response),
-            Err(_err) => {
-                let json = json.as_ref().replace('\\', "");
-                Ok(serde_json::from_str(&json)?)
-            }
+        let template: ResponseTemplate = serde_json::from_str(json.as_ref())?;
+
+        if let Some(result) = template.result {
+            let result = match template.result_type {
+                Method::PayInvoice => {
+                    let result: PayInvoiceResponseResult = serde_json::from_value(result)?;
+                    ResponseResult::PayInvoice(result)
+                }
+                Method::MakeInvoice => {
+                    let result: MakeInvoiceResponseResult = serde_json::from_value(result)?;
+                    ResponseResult::MakeInvoice(result)
+                }
+                Method::LookupInvoice => {
+                    let result: LookupInvoiceResponseResult = serde_json::from_value(result)?;
+                    ResponseResult::LookupInvoice(result)
+                }
+                Method::GetBalance => {
+                    let result: GetBalanceResponseResult = serde_json::from_value(result)?;
+                    ResponseResult::GetBalance(result)
+                }
+            };
+
+            Ok(Self {
+                result_type: template.result_type,
+                error: template.error,
+                result: Some(result),
+            })
+        } else {
+            Ok(Self {
+                result_type: template.result_type,
+                error: template.error,
+                result: None,
+            })
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for Response {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::from_json(
+            Value::deserialize(deserializer)
+                .map_err(serde::de::Error::custom)?
+                .to_string()
+                .as_str(),
+        )
+        .map_err(serde::de::Error::custom)
     }
 }
 
@@ -403,7 +630,7 @@ mod test {
     fn seralize_request() -> Result<()> {
         let request = Request {
             method: Method::PayInvoice,
-            params: RequestParams { invoice: "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp".to_string() }            
+            params: RequestParams::PayInvoice(PayInvoiceRequestParams { invoice: "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp".to_string() }),
         };
 
         assert_eq!(Request::from_json(request.as_json()).unwrap(), request);
@@ -419,7 +646,13 @@ mod test {
         let request = Request::from_json(request).unwrap();
 
         assert_eq!(request.method, Method::PayInvoice);
-        assert_eq!(request.params.invoice, "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp5rdjyt9jr2avv2runy330766avkweqp30ndnyt9x6dp5juzn7q0nq9qyyssq2mykpgu04q0hlga228kx9v95meaqzk8a9cnvya305l4c353u3h04azuh9hsmd503x6jlzjrsqzark5dxx30s46vuatwzjhzmkt3j4tgqu35rms".to_string());
+
+        if let RequestParams::PayInvoice(pay) = request.params {
+            assert_eq!(pay.invoice, "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp5rdjyt9jr2avv2runy330766avkweqp30ndnyt9x6dp5juzn7q0nq9qyyssq2mykpgu04q0hlga228kx9v95meaqzk8a9cnvya305l4c353u3h04azuh9hsmd503x6jlzjrsqzark5dxx30s46vuatwzjhzmkt3j4tgqu35rms".to_string());
+        } else {
+            panic!("Invalid request params");
+        }
+
         Ok(())
     }
 }
