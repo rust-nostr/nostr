@@ -48,7 +48,7 @@ impl fmt::Display for Error {
             Self::InvalidPublicKey => write!(f, "Invalid public key"),
             Self::SkMissing => write!(f, "Secret key missing"),
             Self::InvalidChar(c) => write!(f, "Unsupported char: {c}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
         }
     }
 }

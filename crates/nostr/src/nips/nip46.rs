@@ -58,18 +58,18 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::Json(e) => write!(f, "{e}"),
-            Self::Url(e) => write!(f, "{e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::NIP04(e) => write!(f, "{e}"),
-            Self::NIP26(e) => write!(f, "{e}"),
+            Self::Key(e) => write!(f, "Key: {e}"),
+            Self::Json(e) => write!(f, "Json: {e}"),
+            Self::Url(e) => write!(f, "Url: {e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::NIP04(e) => write!(f, "NIP04: {e}"),
+            Self::NIP26(e) => write!(f, "NIP26: {e}"),
             Self::UnsignedEvent(e) => write!(f, "{e}"),
-            Self::InvalidRequest => write!(f, "invalid request"),
-            Self::InvalidParamsLength => write!(f, "too many/few params"),
-            Self::UnsupportedMethod(name) => write!(f, "unsupported method: {name}"),
-            Self::InvalidURI => write!(f, "invalid uri"),
-            Self::InvalidURIScheme => write!(f, "invalid uri scheme"),
+            Self::InvalidRequest => write!(f, "Invalid request"),
+            Self::InvalidParamsLength => write!(f, "Too many/few params"),
+            Self::UnsupportedMethod(name) => write!(f, "Unsupported method: {name}"),
+            Self::InvalidURI => write!(f, "Invalid uri"),
+            Self::InvalidURIScheme => write!(f, "Invalid uri scheme"),
         }
     }
 }

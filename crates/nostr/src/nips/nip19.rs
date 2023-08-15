@@ -58,15 +58,15 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Bech32(e) => write!(f, "{e}"),
-            Self::UTF8(e) => write!(f, "{e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::Hash(e) => write!(f, "{e}"),
-            Self::EventId(e) => write!(f, "{e}"),
-            Self::WrongPrefixOrVariant => write!(f, "wrong prefix or variant"),
-            Self::FieldMissing(name) => write!(f, "field missing: {name}"),
-            Self::TLV => write!(f, "type-length-value error"),
-            Self::TryFromSlice => write!(f, "impossible to perform conversion from slice"),
+            Self::Bech32(e) => write!(f, "Bech32: {e}"),
+            Self::UTF8(e) => write!(f, "UTF8: {e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Hash(e) => write!(f, "Hash: {e}"),
+            Self::EventId(e) => write!(f, "Event ID: {e}"),
+            Self::WrongPrefixOrVariant => write!(f, "Wrong prefix or variant"),
+            Self::FieldMissing(name) => write!(f, "Field missing: {name}"),
+            Self::TLV => write!(f, "TLV (type-length-value) error"),
+            Self::TryFromSlice => write!(f, "Impossible to perform conversion from slice"),
         }
     }
 }

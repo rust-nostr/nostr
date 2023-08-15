@@ -53,13 +53,13 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::Json(e) => write!(f, "{e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::Unsigned(e) => write!(f, "{e}"),
+            Self::Key(e) => write!(f, "Key: {e}"),
+            Self::Json(e) => write!(f, "Json: {e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
             #[cfg(feature = "nip04")]
-            Self::NIP04(e) => write!(f, "{e}"),
-            Self::NIP58(e) => write!(f, "{e}"),
+            Self::NIP04(e) => write!(f, "NIP04: {e}"),
+            Self::NIP58(e) => write!(f, "NIP58: {e}"),
         }
     }
 }

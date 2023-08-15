@@ -50,15 +50,15 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::JSON(e) => write!(f, "{e}"),
-            Self::Url(e) => write!(f, "{e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::NIP04(e) => write!(f, "{e}"),
-            Self::UnsignedEvent(e) => write!(f, "{e}"),
+            Self::Key(e) => write!(f, "Key: {e}"),
+            Self::JSON(e) => write!(f, "Json: {e}"),
+            Self::Url(e) => write!(f, "Url: {e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::NIP04(e) => write!(f, "NIP04: {e}"),
+            Self::UnsignedEvent(e) => write!(f, "Unsigned event: {e}"),
             Self::InvalidRequest => write!(f, "Invalid NIP47 Request"),
             Self::InvalidParamsLength => write!(f, "Invalid NIP47 Params length"),
-            Self::UnsupportedMethod(e) => write!(f, "{e}"),
+            Self::UnsupportedMethod(e) => write!(f, "Unsupported method: {e}"),
             Self::InvalidURI => write!(f, "Invalid NIP47 URI"),
             Self::InvalidURIScheme => write!(f, "Invalid NIP47 URI Scheme"),
         }

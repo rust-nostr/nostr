@@ -47,7 +47,7 @@ impl fmt::Display for Error {
                 f,
                 "Wrong encryption block mode. The content must be encrypted using CBC mode!"
             ),
-            Self::Secp256k1(e) => write!(f, "secp256k1 error: {e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
         }
     }
 }

@@ -29,10 +29,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::Json(e) => write!(f, "{e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
+            Self::Key(e) => write!(f, "Key: {e}"),
+            Self::Json(e) => write!(f, "Json: {e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Event(e) => write!(f, "Event: {e}"),
         }
     }
 }

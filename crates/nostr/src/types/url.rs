@@ -21,7 +21,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Url(e) => write!(f, "{e}"),
+            Self::Url(e) => write!(f, "Url: {e}"),
         }
     }
 }

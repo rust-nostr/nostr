@@ -29,8 +29,8 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Hex(e) => write!(f, "{e}"),
-            Self::Hash(e) => write!(f, "{e}"),
+            Self::Hex(e) => write!(f, "Hex: {e}"),
+            Self::Hash(e) => write!(f, "Hash: {e}"),
         }
     }
 }

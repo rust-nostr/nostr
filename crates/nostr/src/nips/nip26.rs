@@ -45,8 +45,8 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Key(e) => write!(f, "Key: {e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::ConditionsParseNumeric(_) => {
                 write!(f, "Invalid condition, cannot parse expected number")
             }

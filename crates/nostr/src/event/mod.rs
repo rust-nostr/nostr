@@ -47,11 +47,11 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidSignature => write!(f, "Invalid signature"),
-            Self::Json(e) => write!(f, "{e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::Hex(e) => write!(f, "{e}"),
+            Self::Json(e) => write!(f, "Json: {e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Hex(e) => write!(f, "Hex: {e}"),
             #[cfg(feature = "nip03")]
-            Self::OpenTimestamps(e) => write!(f, "{e}"),
+            Self::OpenTimestamps(e) => write!(f, "NIP03: {e}"),
         }
     }
 }

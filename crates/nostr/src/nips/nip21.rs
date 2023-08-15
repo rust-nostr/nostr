@@ -31,7 +31,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NIP19(e) => write!(f, "{e}"),
+            Self::NIP19(e) => write!(f, "NIP19: {e}"),
             Self::InvalidURI => write!(f, "Invalid nostr URI"),
         }
     }

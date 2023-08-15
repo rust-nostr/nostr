@@ -33,8 +33,8 @@ impl fmt::Display for MessageHandleError {
         match self {
             Self::InvalidMessageFormat => write!(f, "Message has an invalid format"),
             Self::Json(e) => write!(f, "Json deserialization failed: {e}"),
-            Self::Event(e) => write!(f, "{e}"),
-            Self::EmptyMsg => write!(f, "received empty message"),
+            Self::Event(e) => write!(f, "Event: {e}"),
+            Self::EmptyMsg => write!(f, "Received empty message"),
         }
     }
 }
