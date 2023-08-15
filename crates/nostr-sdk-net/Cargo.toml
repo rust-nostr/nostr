@@ -13,11 +13,11 @@ keywords = ["nostr", "sdk", "net"]
 
 [dependencies]
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
-url = "2"
+url = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-thiserror = "1.0"
-tokio = { version = "1", default-features = false, features = ["net", "time"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["net", "time"] }
 tokio-rustls = "0.24"
 tokio-socks = "0.5"
 tokio-tungstenite = { version = "0.19", features = ["rustls-tls-webpki-roots"] }

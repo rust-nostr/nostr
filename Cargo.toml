@@ -19,7 +19,12 @@ license = "MIT"
 rust-version = "1.64.0"
 
 [workspace.dependencies]
+thiserror = "1.0"
+tokio = { version = "1", default-features = false }
+tracing = "0.1"
+tracing-subscriber = "0.3"
 uniffi = "0.24"
+url = "2"
 
 [profile.release]
 lto = true

@@ -38,9 +38,9 @@ nostr-ots = { version = "0.2", optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
 secp256k1 = { version = "0.27", features = ["bitcoin_hashes", "global-context", "rand-std", "serde"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
-tracing = "0.1"
-url = { version = "2", features = ["serde"] }
+serde_json = "1.0"
+tracing = { workspace = true }
+url = { workspace = true, features = ["serde"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
@@ -49,7 +49,7 @@ instant = { version = "0.1", features = [ "wasm-bindgen", "inaccurate" ] }
 [dev-dependencies]
 csv = "1.1.5"
 num_cpus = "1.15.0"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tungstenite = { version = "0.19", features = ["rustls-tls-webpki-roots"] }
 
 [[example]]
