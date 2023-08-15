@@ -42,6 +42,12 @@ impl ZapRequestData {
         }
     }
 
+    pub fn message(self: Arc<Self>, message: String) -> Arc<Self> {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.message(message);
+        Arc::new(builder)
+    }
+
     pub fn amount(self: Arc<Self>, amount: u64) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.amount(amount);
