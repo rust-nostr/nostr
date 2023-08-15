@@ -26,7 +26,7 @@ use crate::nips::nip15::{ProductData, StallData};
 #[cfg(all(feature = "std", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip53::LiveEvent;
-use crate::nips::nip57::{ZapRequestData, ZapType};
+use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip58::Error as Nip58Error;
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::nips::nip94::FileMetadata;
@@ -156,10 +156,9 @@ impl From<nip58::Error> for Error {
 /// [`Event`] builder
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct EventBuilder {
-    kind: Kind,
-    tags: Vec<Tag>,
-    content: String,
-    custom_keys: Option<&'static Keys>,
+    pub(crate) kind: Kind,
+    pub(crate) tags: Vec<Tag>,
+    pub(crate) content: String,
 }
 
 impl EventBuilder {
@@ -173,7 +172,6 @@ impl EventBuilder {
             kind,
             tags: tags.into_iter().collect(),
             content: content.into(),
-            custom_keys: None,
         }
     }
 
@@ -190,7 +188,6 @@ impl EventBuilder {
         R: Rng + CryptoRng,
         T: TimeSupplier,
     {
-        let keys: &Keys = self.custom_keys.unwrap_or(keys);
         let pubkey: XOnlyPublicKey = keys.public_key();
         Ok(self
             .to_unsigned_event_with_supplier(supplier, pubkey)
@@ -232,7 +229,6 @@ impl EventBuilder {
         R: Rng + CryptoRng,
         T: TimeSupplier,
     {
-        let keys: &Keys = self.custom_keys.unwrap_or(keys);
         let pubkey: XOnlyPublicKey = keys.public_key();
         Ok(self
             .to_unsigned_pow_event_with_supplier(supplier, pubkey, difficulty)
@@ -657,30 +653,15 @@ impl EventBuilder {
         Self::new(Kind::Reporting, content, tags)
     }
 
-    /// Create zap request event
+    /// Create public zap request event
     ///
     /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     pub fn new_zap_request(data: ZapRequestData) -> Self {
-        let zap_type: ZapType = data.zap_type;
         let message: String = data.message.clone();
         let tags: Vec<Tag> = data.into();
-        match zap_type {
-            ZapType::Public => Self::new(Kind::ZapRequest, message, tags),
-            ZapType::Private => Self {
-                kind: Kind::ZapRequest,
-                tags,
-                content: message,
-                custom_keys: Some(&Keys::generate()),
-            },
-            ZapType::Anonymous => Self {
-                kind: Kind::ZapRequest,
-                tags,
-                content: message,
-                custom_keys: Some(&Keys::generate()),
-            },
-        }
+        Self::new(Kind::ZapRequest, message, tags)
     }
 
     /// Create zap receipt event
