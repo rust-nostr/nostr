@@ -326,6 +326,11 @@ interface Contact {
 
 interface Metadata {
     constructor();
+
+    [Throws=NostrError, Name=from_json]
+    constructor(string json);
+    string as_json();
+
     [Self=ByArc]
     Metadata set_name(string name);
     [Self=ByArc]

@@ -43,6 +43,12 @@ impl From<nostr::key::vanity::Error> for NostrError {
     }
 }
 
+impl From<nostr::types::metadata::Error> for NostrError {
+    fn from(e: nostr::types::metadata::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
 impl From<nostr::event::Error> for NostrError {
     fn from(e: nostr::event::Error) -> NostrError {
         Self::Generic { err: e.to_string() }

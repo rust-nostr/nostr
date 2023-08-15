@@ -41,6 +41,16 @@ impl Metadata {
         }
     }
 
+    pub fn from_json(json: String) -> Result<Self> {
+        Ok(Self {
+            metadata: MetadataSdk::from_json(json)?,
+        })
+    }
+
+    pub fn as_json(&self) -> String {
+        self.metadata.as_json()
+    }
+
     pub fn set_name(self: Arc<Self>, name: String) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.metadata = builder.metadata.name(name);
