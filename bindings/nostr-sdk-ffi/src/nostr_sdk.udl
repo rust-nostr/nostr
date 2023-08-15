@@ -638,6 +638,8 @@ interface Client {
     EventId send_event_to(string url, Event event);
 
     [Throws=NostrSdkError]
+    EventId set_metadata(Metadata metadata);
+    [Throws=NostrSdkError]
     EventId file_metadata(string description, FileMetadata metadata);
 
     [Self=ByArc]

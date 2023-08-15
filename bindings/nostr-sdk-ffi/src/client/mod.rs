@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, EventId, FileMetadata, Filter, Keys, RelayMessage};
+use nostr_ffi::{ClientMessage, Event, EventId, FileMetadata, Filter, Keys, RelayMessage, Metadata};
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 use nostr_sdk::Options as OptionsSdk;
@@ -195,6 +195,10 @@ impl Client {
     }
 
     // TODO: add send_event_to_with_custom_wait
+
+    pub fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<Arc<EventId>> {
+        Ok(Arc::new(self.inner.set_metadata(metadata.as_ref().deref().clone())?.into()))
+    }
 
     pub fn file_metadata(
         &self,
