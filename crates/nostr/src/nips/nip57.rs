@@ -26,7 +26,7 @@ use super::nip04::{self, Aes256CbcEnc};
 use crate::event::builder::Error as BuilderError;
 use crate::key::Error as KeyError;
 #[cfg(feature = "std")]
-use crate::{util, Event, EventBuilder, Keys, Kind};
+use crate::{util, Event, EventBuilder, JsonUtil, Keys, Kind};
 use crate::{EventId, Tag, Timestamp, UncheckedUrl};
 
 #[allow(missing_docs)]
@@ -236,14 +236,28 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
 #[cfg(feature = "std")]
 pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
     let created_at: Timestamp = Timestamp::now();
+
+    // Create encryption key
     let secret_key: SecretKey =
         create_encryption_key(keys.secret_key()?, data.public_key, created_at)?;
-    let keys: Keys = Keys::new(secret_key);
 
-    let msg: String = encrypt_private_zap_message(secret_key, data.public_key, &data.message)?;
+    // Compose encrypted message
+    let mut tags: Vec<Tag> = vec![Tag::public_key(data.public_key)];
+    if let Some(event_id) = data.event_id {
+        tags.push(Tag::event(event_id));
+    }
+    let json: String = EventBuilder::new(Kind::Custom(9733), &data.message, tags)
+        .to_event(keys)?
+        .as_json();
+    let msg: String = encrypt_private_zap_message(secret_key, data.public_key, json)?;
+
+    // Compose event
     let mut tags: Vec<Tag> = data.into();
     tags.push(Tag::Anon { msg: Some(msg) });
-    Ok(EventBuilder::new(Kind::ZapRequest, "", tags).to_event(&keys)?)
+    let private_zap_keys: Keys = Keys::new(secret_key);
+    Ok(EventBuilder::new(Kind::ZapRequest, "", tags)
+        .custom_created_at(created_at)
+        .to_event(&private_zap_keys)?)
 }
 
 /// Create NIP57 encryption key for **private** zap

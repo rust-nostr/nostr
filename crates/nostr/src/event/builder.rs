@@ -160,6 +160,7 @@ pub struct EventBuilder {
     kind: Kind,
     tags: Vec<Tag>,
     content: String,
+    custom_created_at: Option<Timestamp>,
 }
 
 impl EventBuilder {
@@ -173,7 +174,14 @@ impl EventBuilder {
             kind,
             tags: tags.into_iter().collect(),
             content: content.into(),
+            custom_created_at: None,
         }
+    }
+
+    /// Set a custom `created_at` UNIX timestamp
+    pub fn custom_created_at(mut self, created_at: Timestamp) -> Self {
+        self.custom_created_at = Some(created_at);
+        self
     }
 
     /// Build [`Event`]
@@ -204,7 +212,9 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        let created_at: Timestamp = Timestamp::now_with_supplier(supplier);
+        let created_at: Timestamp = self
+            .custom_created_at
+            .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
         UnsignedEvent {
             id,
@@ -257,7 +267,9 @@ impl EventBuilder {
 
             tags.push(Tag::POW { nonce, difficulty });
 
-            let created_at: Timestamp = Timestamp::now_with_supplier(supplier);
+            let created_at: Timestamp = self
+                .custom_created_at
+                .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
             let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
