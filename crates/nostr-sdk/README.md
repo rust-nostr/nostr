@@ -139,6 +139,7 @@ The following crate feature flags are available:
 | `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                            |
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                             |
 | `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                      |
+| `nip57`             |   Yes   | Enable NIP-57: Zaps                                                                      |
 
 ## Supported NIPs
 

@@ -39,7 +39,7 @@ alloc = [
     "serde_json/alloc",
 ]
 blocking = ["reqwest?/blocking"]
-all-nips = ["nip04", "nip05", "nip06", "nip11", "nip44", "nip46", "nip47"]
+all-nips = ["nip04", "nip05", "nip06", "nip11", "nip44", "nip46", "nip47", "nip57"]
 nip03 = ["dep:nostr-ots"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip05 = ["dep:reqwest"]
@@ -48,6 +48,7 @@ nip11 = ["dep:reqwest"]
 nip44 = ["dep:base64", "dep:chacha20"]
 nip46 = ["nip04"]
 nip47 = ["nip04"]
+nip57 = ["nip04"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
@@ -109,6 +110,10 @@ required-features = ["std"]
 [[example]]
 name = "nip19"
 required-features = ["std"]
+
+[[example]]
+name = "nip57"
+required-features = ["std", "nip57"]
 
 [[example]]
 name = "vanity"

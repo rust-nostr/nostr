@@ -1222,6 +1222,7 @@ impl Client {
     /// Create zap receipt event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    #[cfg(feature = "nip57")]
     pub async fn new_zap_receipt<S>(
         &self,
         bolt11: S,
