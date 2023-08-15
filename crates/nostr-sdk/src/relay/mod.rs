@@ -568,7 +568,10 @@ impl Relay {
                             RelayEvent::SendMsg(msg) => {
                                 let json = msg.as_json();
                                 let size: usize = json.as_bytes().len();
-                                tracing::debug!("Sending message {json} (size: {size} bytes)");
+                                tracing::debug!(
+                                    "Sending {json} to {} (size: {size} bytes)",
+                                    relay.url
+                                );
                                 match ws_tx.send(WsMessage::Text(json)).await {
                                     Ok(_) => {
                                         relay.stats.add_bytes_sent(size);
@@ -983,7 +986,8 @@ impl Relay {
                         RelayMessage::EndOfStoredEvents(subscription_id) => {
                             if subscription_id.eq(&id) {
                                 tracing::debug!(
-                                    "Received EOSE for subscription {id} in 'handle_events_of'"
+                                    "Received EOSE for subscription {id} from {}",
+                                    self.url
                                 );
                                 received_eose = true;
                                 if let FilterOptions::ExitOnEOSE
@@ -994,7 +998,7 @@ impl Relay {
                             }
                         }
                         _ => {
-                            tracing::debug!("Receive unhandled message {msg:?} on handle_events_of")
+                            tracing::debug!("Receive unhandled message {msg:?} from {}", self.url)
                         }
                     };
                 }
