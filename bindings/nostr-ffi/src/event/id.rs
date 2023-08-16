@@ -15,6 +15,13 @@ pub struct EventId {
     inner: nostr::EventId,
 }
 
+impl Deref for EventId {
+    type Target = nostr::EventId;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 impl From<nostr::EventId> for EventId {
     fn from(inner: nostr::EventId) -> Self {
         Self { inner }
