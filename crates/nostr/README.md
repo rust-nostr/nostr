@@ -19,14 +19,12 @@ If you're writing a typical Nostr client or bot, you may be interested in [nostr
 ```toml
 [dependencies]
 nostr = "0.22"
-tungstenite = { version = "0.19", features = ["rustls-tls-webpki-roots"]}
 ```
 
-NOTE: if you are using `bitcoin` v0.29, use version `nostr = "=0.22.0-bitcoin-v0.29"` insead.
+NOTE: if you are using `bitcoin` v0.29, use `nostr = "=0.22.0-bitcoin-v0.29"` insead.
 
 ```rust,no_run
 use nostr::prelude::*;
-use tungstenite::{Message as WsMessage};
 
 fn main() -> Result<()> {
     // Generate new random keys
@@ -59,12 +57,9 @@ fn main() -> Result<()> {
     // New POW text note
     let event: Event = EventBuilder::new_text_note("My first POW text note from Nostr SDK", &[]).to_pow_event(&my_keys, 20)?;
 
-    // Connect to relay
-    let (mut socket, _) = tungstenite::connect("wss://relay.damus.io").expect("Can't connect to relay");
-
-    // Send msg
-    let msg = ClientMessage::new_event(event).as_json();
-    socket.write_message(WsMessage::Text(msg)).expect("Impossible to send message");
+    // Convert client nessage to JSON
+    let json = ClientMessage::new_event(event).as_json();
+    println!("{json}");
 
     Ok(())
 }
