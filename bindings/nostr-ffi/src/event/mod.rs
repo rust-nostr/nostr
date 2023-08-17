@@ -14,7 +14,7 @@ mod unsigned;
 
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
-pub use self::kind::Kind;
+pub use self::kind::{Kind, KindEnum};
 pub use self::tag::{Tag, TagEnum, TagKind, TagKindKnown};
 pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
@@ -50,8 +50,8 @@ impl Event {
         Arc::new(self.inner.created_at.into())
     }
 
-    pub fn kind(&self) -> Kind {
-        self.inner.kind.into()
+    pub fn kind(&self) -> Arc<Kind> {
+        Arc::new(self.inner.kind.into())
     }
 
     pub fn tags(&self) -> Vec<Arc<Tag>> {

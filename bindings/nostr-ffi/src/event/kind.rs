@@ -1,7 +1,54 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-pub enum Kind {
+use std::ops::Deref;
+
+pub struct Kind {
+    inner: nostr::Kind
+}
+
+impl Deref for Kind {
+    type Target = nostr::Kind;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl From<nostr::Kind> for Kind {
+    fn from(inner: nostr::Kind) -> Self {
+        Self { inner }
+    }
+}
+
+impl From<Kind> for nostr::Kind {
+    fn from(kind: Kind) -> Self {
+        kind.inner
+    }
+}
+
+impl Kind {
+    pub fn new(kind: u64) -> Self {
+        Self {
+            inner: nostr::Kind::from(kind)
+        }
+    }
+
+    pub fn from_enum(e: KindEnum) -> Self {
+        Self {
+            inner: e.into()
+        }
+    }
+
+    pub fn as_u64(&self) -> u64 {
+        self.inner.as_u64()
+    }
+
+    pub fn as_enum(&self) -> KindEnum {
+        self.inner.into()
+    }
+}
+
+pub enum KindEnum {
     MetadataK,
     TextNote,
     RecommendRelay,
@@ -49,7 +96,7 @@ pub enum Kind {
     Custom { kind: u64 },
 }
 
-impl From<nostr::Kind> for Kind {
+impl From<nostr::Kind> for KindEnum {
     fn from(value: nostr::Kind) -> Self {
         match value {
             nostr::Kind::Metadata => Self::MetadataK,
@@ -102,54 +149,54 @@ impl From<nostr::Kind> for Kind {
     }
 }
 
-impl From<Kind> for nostr::Kind {
-    fn from(value: Kind) -> Self {
+impl From<KindEnum> for nostr::Kind {
+    fn from(value: KindEnum) -> Self {
         match value {
-            Kind::MetadataK => Self::Metadata,
-            Kind::TextNote => Self::TextNote,
-            Kind::RecommendRelay => Self::RecommendRelay,
-            Kind::ContactList => Self::ContactList,
-            Kind::EncryptedDirectMessage => Self::EncryptedDirectMessage,
-            Kind::EventDeletion => Self::EventDeletion,
-            Kind::Repost => Self::Repost,
-            Kind::Reaction => Self::Reaction,
-            Kind::BadgeAward => Self::BadgeAward,
-            Kind::ChannelCreation => Self::ChannelCreation,
-            Kind::ChannelMetadata => Self::ChannelMetadata,
-            Kind::ChannelMessage => Self::ChannelMessage,
-            Kind::ChannelHideMessage => Self::ChannelHideMessage,
-            Kind::ChannelMuteUser => Self::ChannelMuteUser,
-            Kind::PublicChatReserved45 => Self::PublicChatReserved45,
-            Kind::PublicChatReserved46 => Self::PublicChatReserved46,
-            Kind::PublicChatReserved47 => Self::PublicChatReserved47,
-            Kind::PublicChatReserved48 => Self::PublicChatReserved48,
-            Kind::PublicChatReserved49 => Self::PublicChatReserved49,
-            Kind::WalletConnectInfo => Self::WalletConnectInfo,
-            Kind::Reporting => Self::Reporting,
-            Kind::ZapRequest => Self::ZapRequest,
-            Kind::ZapReceipt => Self::ZapReceipt,
-            Kind::MuteList => Self::MuteList,
-            Kind::PinList => Self::PinList,
-            Kind::RelayList => Self::RelayList,
-            Kind::Authentication => Self::Authentication,
-            Kind::WalletConnectRequest => Self::WalletConnectRequest,
-            Kind::WalletConnectResponse => Self::WalletConnectResponse,
-            Kind::NostrConnect => Self::NostrConnect,
-            Kind::CategorizedPeopleList => Self::CategorizedPeopleList,
-            Kind::CategorizedBookmarkList => Self::CategorizedBookmarkList,
-            Kind::LiveEvent => Self::LiveEvent,
-            Kind::LiveEventMessage => Self::LiveEventMessage,
-            Kind::ProfileBadges => Self::ProfileBadges,
-            Kind::BadgeDefinition => Self::BadgeDefinition,
-            Kind::LongFormTextNote => Self::LongFormTextNote,
-            Kind::ApplicationSpecificData => Self::ApplicationSpecificData,
-            Kind::FileMetadataK => Self::FileMetadata,
-            Kind::HttpAuth => Self::HttpAuth,
-            Kind::Regular { kind } => Self::Regular(kind),
-            Kind::Replaceable { kind } => Self::Replaceable(kind),
-            Kind::Ephemeral { kind } => Self::Ephemeral(kind),
-            Kind::ParameterizedReplaceable { kind } => Self::ParameterizedReplaceable(kind),
-            Kind::Custom { kind } => Self::Custom(kind),
+            KindEnum::MetadataK => Self::Metadata,
+            KindEnum::TextNote => Self::TextNote,
+            KindEnum::RecommendRelay => Self::RecommendRelay,
+            KindEnum::ContactList => Self::ContactList,
+            KindEnum::EncryptedDirectMessage => Self::EncryptedDirectMessage,
+            KindEnum::EventDeletion => Self::EventDeletion,
+            KindEnum::Repost => Self::Repost,
+            KindEnum::Reaction => Self::Reaction,
+            KindEnum::BadgeAward => Self::BadgeAward,
+            KindEnum::ChannelCreation => Self::ChannelCreation,
+            KindEnum::ChannelMetadata => Self::ChannelMetadata,
+            KindEnum::ChannelMessage => Self::ChannelMessage,
+            KindEnum::ChannelHideMessage => Self::ChannelHideMessage,
+            KindEnum::ChannelMuteUser => Self::ChannelMuteUser,
+            KindEnum::PublicChatReserved45 => Self::PublicChatReserved45,
+            KindEnum::PublicChatReserved46 => Self::PublicChatReserved46,
+            KindEnum::PublicChatReserved47 => Self::PublicChatReserved47,
+            KindEnum::PublicChatReserved48 => Self::PublicChatReserved48,
+            KindEnum::PublicChatReserved49 => Self::PublicChatReserved49,
+            KindEnum::WalletConnectInfo => Self::WalletConnectInfo,
+            KindEnum::Reporting => Self::Reporting,
+            KindEnum::ZapRequest => Self::ZapRequest,
+            KindEnum::ZapReceipt => Self::ZapReceipt,
+            KindEnum::MuteList => Self::MuteList,
+            KindEnum::PinList => Self::PinList,
+            KindEnum::RelayList => Self::RelayList,
+            KindEnum::Authentication => Self::Authentication,
+            KindEnum::WalletConnectRequest => Self::WalletConnectRequest,
+            KindEnum::WalletConnectResponse => Self::WalletConnectResponse,
+            KindEnum::NostrConnect => Self::NostrConnect,
+            KindEnum::CategorizedPeopleList => Self::CategorizedPeopleList,
+            KindEnum::CategorizedBookmarkList => Self::CategorizedBookmarkList,
+            KindEnum::LiveEvent => Self::LiveEvent,
+            KindEnum::LiveEventMessage => Self::LiveEventMessage,
+            KindEnum::ProfileBadges => Self::ProfileBadges,
+            KindEnum::BadgeDefinition => Self::BadgeDefinition,
+            KindEnum::LongFormTextNote => Self::LongFormTextNote,
+            KindEnum::ApplicationSpecificData => Self::ApplicationSpecificData,
+            KindEnum::FileMetadataK => Self::FileMetadata,
+            KindEnum::HttpAuth => Self::HttpAuth,
+            KindEnum::Regular { kind } => Self::Regular(kind),
+            KindEnum::Replaceable { kind } => Self::Replaceable(kind),
+            KindEnum::Ephemeral { kind } => Self::Ephemeral(kind),
+            KindEnum::ParameterizedReplaceable { kind } => Self::ParameterizedReplaceable(kind),
+            KindEnum::Custom { kind } => Self::Custom(kind),
         }
     }
 }

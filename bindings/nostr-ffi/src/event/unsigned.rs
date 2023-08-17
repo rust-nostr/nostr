@@ -34,8 +34,8 @@ impl UnsignedEvent {
         Arc::new(self.inner.created_at.into())
     }
 
-    pub fn kind(&self) -> Kind {
-        self.inner.kind.into()
+    pub fn kind(&self) -> Arc<Kind> {
+        Arc::new(self.inner.kind.into())
     }
 
     pub fn tags(&self) -> Vec<Arc<Tag>> {

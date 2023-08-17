@@ -497,8 +497,16 @@ interface Tag {
     TagKind kind();
 };
 
-[Enum]
 interface Kind {
+    constructor(u64 kind);
+    [Name=from_enum]
+    constructor(KindEnum e);
+    u64 as_u64();
+    KindEnum as_enum();
+};
+
+[Enum]
+interface KindEnum {
     MetadataK();
     TextNote();
     RecommendRelay();

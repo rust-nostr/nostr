@@ -32,13 +32,13 @@ impl Deref for EventBuilder {
 }
 
 impl EventBuilder {
-    pub fn new(kind: Kind, content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
+    pub fn new(kind: Arc<Kind>, content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
         let tags = tags
             .into_iter()
             .map(|t| t.as_ref().deref().clone())
             .collect::<Vec<_>>();
         Ok(Self {
-            builder: EventBuilderSdk::new(kind.into(), content, &tags),
+            builder: EventBuilderSdk::new(**kind, content, &tags),
         })
     }
 

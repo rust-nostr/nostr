@@ -44,7 +44,7 @@ impl EventId {
     pub fn new(
         pubkey: Arc<PublicKey>,
         created_at: Arc<Timestamp>,
-        kind: Kind,
+        kind: Arc<Kind>,
         tags: Vec<Vec<String>>,
         content: String,
     ) -> Result<Self> {
@@ -56,7 +56,7 @@ impl EventId {
             inner: nostr::EventId::new(
                 pubkey.as_ref().deref(),
                 *created_at.as_ref().deref(),
-                &kind.into(),
+                &*kind,
                 &new_tags,
                 &content,
             ),

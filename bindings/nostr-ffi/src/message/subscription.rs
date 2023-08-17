@@ -65,17 +65,17 @@ impl Filter {
         Arc::new(builder)
     }
 
-    pub fn kind(self: Arc<Self>, kind: Kind) -> Arc<Self> {
+    pub fn kind(self: Arc<Self>, kind: Arc<Kind>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.kind(kind.into());
+        builder.inner = builder.inner.kind(**kind);
         Arc::new(builder)
     }
 
-    pub fn kinds(self: Arc<Self>, kinds: Vec<Kind>) -> Arc<Self> {
+    pub fn kinds(self: Arc<Self>, kinds: Vec<Arc<Kind>>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder
             .inner
-            .kinds(kinds.into_iter().map(|k| k.into()).collect());
+            .kinds(kinds.into_iter().map(|k| **k).collect());
         Arc::new(builder)
     }
 
