@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk"
-version = "0.22.0"
+version = "0.23.0"
 edition = "2021"
 description = "High level Nostr client library."
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
@@ -9,7 +9,7 @@ repository.workspace = true
 license.workspace = true
 readme = "README.md"
 rust-version.workspace = true
-keywords = ["nostr", "sdk", "rust"]
+keywords = ["nostr", "sdk"]
 
 [features]
 default = ["all-nips"]
@@ -27,8 +27,8 @@ nip47 = ["nostr/nip47"]
 
 [dependencies]
 async-utility = "0.1"
-nostr = { version = "0.22", path = "../nostr", default-features = false }
-nostr-sdk-net = { version = "0.22", path = "../nostr-sdk-net" }
+nostr = { version = "0.23", path = "../nostr", default-features = false }
+nostr-sdk-net = { version = "0.23", path = "../nostr-sdk-net" }
 once_cell = { version = "1.17", optional = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
