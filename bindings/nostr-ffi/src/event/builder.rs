@@ -12,7 +12,7 @@ use crate::error::Result;
 use crate::key::Keys;
 use crate::nips::nip57::ZapRequestData;
 use crate::types::{Contact, Metadata};
-use crate::{FileMetadata, PublicKey, Tag, UnsignedEvent};
+use crate::{FileMetadata, Kind, PublicKey, Tag, UnsignedEvent};
 
 pub struct EventBuilder {
     builder: EventBuilderSdk,
@@ -32,7 +32,7 @@ impl Deref for EventBuilder {
 }
 
 impl EventBuilder {
-    pub fn new(kind: u64, content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
+    pub fn new(kind: Kind, content: String, tags: Vec<Arc<Tag>>) -> Result<Self> {
         let tags = tags
             .into_iter()
             .map(|t| t.as_ref().deref().clone())

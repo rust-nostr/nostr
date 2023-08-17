@@ -207,9 +207,9 @@ interface Filter {
     [Self=ByArc]
     Filter authors(sequence<string> authors);
     [Self=ByArc]
-    Filter kind(u64 kind);
+    Filter kind(Kind kind);
     [Self=ByArc]
-    Filter kinds(sequence<u64> kinds);
+    Filter kinds(sequence<Kind> kinds);
     [Self=ByArc]
     Filter event(EventId event_id);
     [Self=ByArc]
@@ -235,7 +235,7 @@ interface Filter {
 
 interface EventId {
     [Throws=NostrError]
-    constructor(PublicKey pubkey, Timestamp created_at, u64 kind, sequence<sequence<string>> tags, string content);
+    constructor(PublicKey pubkey, Timestamp created_at, Kind kind, sequence<sequence<string>> tags, string content);
     [Throws=NostrError, Name=from_bytes]
     constructor(sequence<u8> bytes);
     [Throws=NostrError, Name=from_hex]
@@ -256,7 +256,7 @@ interface UnsignedEvent {
     EventId id();
     PublicKey pubkey();
     Timestamp created_at();
-    u64 kind();
+    Kind kind();
     sequence<Tag> tags();
     string content();
     [Throws=NostrError]
@@ -272,7 +272,7 @@ interface Event {
     EventId id();
     PublicKey pubkey();
     Timestamp created_at();
-    u64 kind();
+    Kind kind();
     sequence<Tag> tags();
     string content();
     string signature();
@@ -284,7 +284,7 @@ interface Event {
 
 interface EventBuilder {
     [Throws=NostrError]
-    constructor(u64 kind, string content, sequence<Tag> tags);
+    constructor(Kind kind, string content, sequence<Tag> tags);
     [Throws=NostrError]
     Event to_event(Keys keys);
     [Throws=NostrError]
@@ -515,6 +515,55 @@ interface Tag {
     TagEnum as_enum();
     sequence<string> as_vec();
     TagKind kind();
+};
+
+[Enum]
+interface Kind {
+    MetadataK();
+    TextNote();
+    RecommendRelay();
+    ContactList();
+    EncryptedDirectMessage();
+    EventDeletion();
+    Repost();
+    Reaction();
+    BadgeAward();
+    ChannelCreation();
+    ChannelMetadata();
+    ChannelMessage();
+    ChannelHideMessage();
+    ChannelMuteUser();
+    PublicChatReserved45();
+    PublicChatReserved46();
+    PublicChatReserved47();
+    PublicChatReserved48();
+    PublicChatReserved49();
+    WalletConnectInfo();
+    Reporting();
+    ZapRequest();
+    ZapReceipt();
+    MuteList();
+    PinList();
+    RelayList();
+    Authentication();
+    WalletConnectRequest();
+    WalletConnectResponse();
+    NostrConnect();
+    CategorizedPeopleList();
+    CategorizedBookmarkList();
+    LiveEvent();
+    LiveEventMessage();
+    ProfileBadges();
+    BadgeDefinition();
+    LongFormTextNote();
+    ApplicationSpecificData();
+    FileMetadataK();
+    HttpAuth();
+    Regular(u16 kind);
+    Replaceable(u16 kind);
+    Ephemeral(u16 kind);
+    ParameterizedReplaceable(u16 kind);
+    Custom(u64 kind);
 };
 
 // NOSTR-SDK

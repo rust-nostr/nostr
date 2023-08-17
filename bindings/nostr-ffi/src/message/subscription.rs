@@ -8,7 +8,7 @@ use nostr::message::subscription::Alphabet;
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::{EventId, PublicKey, Timestamp};
+use crate::{EventId, Kind, PublicKey, Timestamp};
 
 #[derive(Clone)]
 pub struct Filter {
@@ -65,13 +65,13 @@ impl Filter {
         Arc::new(builder)
     }
 
-    pub fn kind(self: Arc<Self>, kind: u64) -> Arc<Self> {
+    pub fn kind(self: Arc<Self>, kind: Kind) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.kind(kind.into());
         Arc::new(builder)
     }
 
-    pub fn kinds(self: Arc<Self>, kinds: Vec<u64>) -> Arc<Self> {
+    pub fn kinds(self: Arc<Self>, kinds: Vec<Kind>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder
             .inner

@@ -20,7 +20,7 @@ mod ffi {
     pub use nostr_ffi::{
         generate_shared_key, get_nip05_profile, nip04_decrypt, nip04_encrypt, verify_nip05,
         ClientMessage, Contact, Event, EventBuilder, EventId, FileMetadata, Filter,
-        ImageDimensions, Keys, Metadata, NostrConnectURI, NostrError, Profile, PublicKey,
+        ImageDimensions, Keys, Kind, Metadata, NostrConnectURI, NostrError, Profile, PublicKey,
         RelayInformationDocument, RelayMessage, SecretKey, Tag, TagEnum, TagKind, TagKindKnown,
         Timestamp, UnsignedEvent, ZapRequestData,
     };

@@ -6,10 +6,10 @@ use std::sync::Arc;
 
 use nostr::nips::nip21::NostrURI;
 use nostr::prelude::{FromBech32, ToBech32};
-use nostr::{Kind, Tag};
+use nostr::Tag;
 
 use crate::error::Result;
-use crate::{PublicKey, Timestamp};
+use crate::{Kind, PublicKey, Timestamp};
 
 pub struct EventId {
     inner: nostr::EventId,
@@ -44,7 +44,7 @@ impl EventId {
     pub fn new(
         pubkey: Arc<PublicKey>,
         created_at: Arc<Timestamp>,
-        kind: u64,
+        kind: Kind,
         tags: Vec<Vec<String>>,
         content: String,
     ) -> Result<Self> {
@@ -56,7 +56,7 @@ impl EventId {
             inner: nostr::EventId::new(
                 pubkey.as_ref().deref(),
                 *created_at.as_ref().deref(),
-                &Kind::from(kind),
+                &kind.into(),
                 &new_tags,
                 &content,
             ),

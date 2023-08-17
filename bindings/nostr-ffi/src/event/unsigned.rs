@@ -9,7 +9,7 @@ use nostr::secp256k1::schnorr::Signature;
 
 use super::EventId;
 use crate::error::Result;
-use crate::{Event, Keys, PublicKey, Tag, Timestamp};
+use crate::{Event, Keys, Kind, PublicKey, Tag, Timestamp};
 
 pub struct UnsignedEvent {
     inner: nostr::UnsignedEvent,
@@ -34,7 +34,7 @@ impl UnsignedEvent {
         Arc::new(self.inner.created_at.into())
     }
 
-    pub fn kind(&self) -> u64 {
+    pub fn kind(&self) -> Kind {
         self.inner.kind.into()
     }
 

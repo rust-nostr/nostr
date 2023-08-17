@@ -8,11 +8,13 @@ use nostr::Event as EventSdk;
 
 mod builder;
 mod id;
+mod kind;
 mod tag;
 mod unsigned;
 
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
+pub use self::kind::Kind;
 pub use self::tag::{Tag, TagEnum, TagKind, TagKindKnown};
 pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
@@ -48,7 +50,7 @@ impl Event {
         Arc::new(self.inner.created_at.into())
     }
 
-    pub fn kind(&self) -> u64 {
+    pub fn kind(&self) -> Kind {
         self.inner.kind.into()
     }
 
