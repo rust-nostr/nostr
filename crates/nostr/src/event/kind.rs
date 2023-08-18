@@ -58,9 +58,6 @@ pub enum Kind {
     Reporting,
     /// Zap Request (NIP57)
     ZapRequest,
-    #[allow(missing_docs)]
-    #[deprecated(since = "0.23.0", note = "use `ZapReceipt` instead")]
-    Zap,
     /// Zap Receipt (NIP57)
     ZapReceipt,
     /// Mute List (NIP51)
@@ -204,8 +201,7 @@ impl From<Kind> for u64 {
             Kind::WalletConnectInfo => 13194,
             Kind::Reporting => 1984,
             Kind::ZapRequest => 9734,
-            #[allow(deprecated)]
-            Kind::ZapReceipt | Kind::Zap => 9735,
+            Kind::ZapReceipt => 9735,
             Kind::MuteList => 10000,
             Kind::PinList => 10001,
             Kind::RelayList => 10002,

@@ -1204,20 +1204,6 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    #[allow(missing_docs)]
-    #[deprecated(since = "0.23.0", note = "use `new_zap_receipt` instead")]
-    pub async fn new_zap<S>(
-        &self,
-        bolt11: S,
-        preimage: Option<S>,
-        zap_request: Event,
-    ) -> Result<EventId, Error>
-    where
-        S: Into<String>,
-    {
-        self.new_zap_receipt(bolt11, preimage, zap_request).await
-    }
-
     /// Create zap receipt event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
