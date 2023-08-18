@@ -35,8 +35,9 @@ pub mod signer;
 pub use self::options::Options;
 #[cfg(feature = "nip46")]
 pub use self::signer::remote::RemoteSigner;
-use crate::relay::pool::{Error as RelayPoolError, RelayPool};
+use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
 use crate::relay::{FilterOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions};
+use crate::util::TryIntoUrl;
 
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
@@ -50,9 +51,6 @@ pub enum Error {
     /// [`RelayPool`] error
     #[error("relay pool error: {0}")]
     RelayPool(#[from] RelayPoolError),
-    /// Relay not found
-    #[error("relay not found")]
-    RelayNotFound,
     /// [`EventBuilder`] error
     #[error("event builder error: {0}")]
     EventBuilder(#[from] EventBuilderError),
@@ -107,42 +105,6 @@ pub enum Error {
     #[cfg(feature = "nip46")]
     #[error("response not match to the request")]
     ResponseNotMatchRequest,
-}
-
-/// Try into [`Url`]
-pub trait TryIntoUrl {
-    /// Error
-    type Err;
-    /// Try into [`Url`]
-    fn try_into_url(&self) -> Result<Url, Self::Err>;
-}
-
-impl TryIntoUrl for Url {
-    type Err = Error;
-    fn try_into_url(&self) -> Result<Url, Self::Err> {
-        Ok(self.clone())
-    }
-}
-
-impl TryIntoUrl for &Url {
-    type Err = Error;
-    fn try_into_url(&self) -> Result<Url, Self::Err> {
-        Ok(<&Url>::clone(self).clone())
-    }
-}
-
-impl TryIntoUrl for String {
-    type Err = Error;
-    fn try_into_url(&self) -> Result<Url, Self::Err> {
-        Ok(Url::parse(self)?)
-    }
-}
-
-impl TryIntoUrl for &str {
-    type Err = Error;
-    fn try_into_url(&self) -> Result<Url, Self::Err> {
-        Ok(Url::parse(self)?)
-    }
 }
 
 /// Nostr client
@@ -312,10 +274,9 @@ impl Client {
     pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
-        Ok(self.pool.relay(&url).await?)
+        Ok(self.pool.relay(url).await?)
     }
 
     /// Add new relay
@@ -342,7 +303,7 @@ impl Client {
     pub async fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         self.add_relay_with_opts(url, proxy, RelayOptions::default())
             .await
@@ -353,7 +314,7 @@ impl Client {
     pub async fn add_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         self.add_relay_with_opts(url, RelayOptions::default()).await
     }
@@ -386,9 +347,8 @@ impl Client {
     ) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
         self.pool.add_relay(url, proxy, opts).await?;
         Ok(())
     }
@@ -398,9 +358,8 @@ impl Client {
     pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
         self.pool.add_relay(url, opts).await?;
         Ok(())
     }
@@ -421,9 +380,8 @@ impl Client {
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
         self.pool.remove_relay(url).await?;
         Ok(())
     }
@@ -433,7 +391,7 @@ impl Client {
     pub async fn add_relays<U>(&self, relays: Vec<(U, Option<SocketAddr>)>) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         for (url, proxy) in relays.into_iter() {
             self.add_relay(url, proxy).await?;
@@ -446,7 +404,7 @@ impl Client {
     pub async fn add_relays<U>(&self, relays: Vec<U>) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         for url in relays.into_iter() {
             self.add_relay(url).await?;
@@ -473,16 +431,13 @@ impl Client {
     pub async fn connect_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
-        if let Some(relay) = self.pool.relays().await.get(&url) {
-            self.pool
-                .connect_relay(relay, self.opts.get_wait_for_connection())
-                .await;
-            return Ok(());
-        }
-        Err(Error::RelayNotFound)
+        let relay: Relay = self.relay(url).await?;
+        self.pool
+            .connect_relay(&relay, self.opts.get_wait_for_connection())
+            .await;
+        Ok(())
     }
 
     /// Disconnect relay
@@ -504,14 +459,11 @@ impl Client {
     pub async fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
-        if let Some(relay) = self.pool.relays().await.get(&url) {
-            self.pool.disconnect_relay(relay).await?;
-            return Ok(());
-        }
-        Err(Error::RelayNotFound)
+        let relay = self.relay(url).await?;
+        self.pool.disconnect_relay(&relay).await?;
+        Ok(())
     }
 
     /// Connect to all added relays
@@ -677,9 +629,8 @@ impl Client {
     pub async fn send_msg_to<U>(&self, url: U, msg: ClientMessage) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
         let wait: Option<Duration> = if self.opts.get_wait_for_send() {
             self.opts.get_send_timeout()
         } else {
@@ -705,9 +656,8 @@ impl Client {
     pub async fn send_event_to<U>(&self, url: U, event: Event) -> Result<EventId, Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
         let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
             self.opts.get_send_timeout()
         } else {

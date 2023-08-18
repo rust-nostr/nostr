@@ -25,6 +25,7 @@ use tokio::runtime::Runtime;
 pub mod client;
 pub mod prelude;
 pub mod relay;
+pub mod util;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;

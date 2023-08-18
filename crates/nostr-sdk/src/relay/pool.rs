@@ -16,6 +16,8 @@ use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 
+use crate::util::TryIntoUrl;
+
 use super::options::RelayPoolOptions;
 use super::{
     Error as RelayError, FilterOptions, InternalSubscriptionId, Relay, RelayOptions,
@@ -25,6 +27,9 @@ use super::{
 /// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Url parse error
+    #[error("impossible to parse URL: {0}")]
+    Url(#[from] nostr::url::ParseError),
     /// Relay error
     #[error(transparent)]
     Relay(#[from] RelayError),
@@ -304,9 +309,14 @@ impl RelayPool {
     }
 
     /// Get [`Relay`]
-    pub async fn relay(&self, url: &Url) -> Result<Relay, Error> {
+    pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let url: Url = url.try_into_url()?;
         let relays = self.relays.lock().await;
-        relays.get(url).cloned().ok_or(Error::RelayNotFound)
+        relays.get(&url).cloned().ok_or(Error::RelayNotFound)
     }
 
     /// Get subscription filters
@@ -322,12 +332,17 @@ impl RelayPool {
 
     /// Add new relay
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn add_relay(
+    pub async fn add_relay<U>(
         &self,
-        url: Url,
+        url: U,
         proxy: Option<SocketAddr>,
         opts: RelayOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let url: Url = url.try_into_url()?;
         let mut relays = self.relays.lock().await;
         if !relays.contains_key(&url) {
             let relay = Relay::new(
@@ -344,7 +359,12 @@ impl RelayPool {
 
     /// Add new relay
     #[cfg(target_arch = "wasm32")]
-    pub async fn add_relay(&self, url: Url, opts: RelayOptions) -> Result<(), Error> {
+    pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let url: Url = url.try_into_url()?;
         let mut relays = self.relays.lock().await;
         if !relays.contains_key(&url) {
             let relay = Relay::new(
@@ -359,7 +379,12 @@ impl RelayPool {
     }
 
     /// Disconnect and remove relay
-    pub async fn remove_relay(&self, url: Url) -> Result<(), Error> {
+    pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let url: Url = url.try_into_url()?;
         let mut relays = self.relays.lock().await;
         if let Some(relay) = relays.remove(&url) {
             self.disconnect_relay(&relay).await?;
@@ -415,12 +440,17 @@ impl RelayPool {
     }
 
     /// Send client message to a single relay
-    pub async fn send_msg_to(
+    pub async fn send_msg_to<U>(
         &self,
-        url: Url,
+        url: U,
         msg: ClientMessage,
         wait: Option<Duration>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let url: Url = url.try_into_url()?;
         let relays = self.relays().await;
         if let Some(relay) = relays.get(&url) {
             relay.send_msg(msg, wait).await?;
@@ -478,12 +508,17 @@ impl RelayPool {
     }
 
     /// Send event to a single relay
-    pub async fn send_event_to(
+    pub async fn send_event_to<U>(
         &self,
-        url: Url,
+        url: U,
         event: Event,
         opts: RelaySendOptions,
-    ) -> Result<EventId, Error> {
+    ) -> Result<EventId, Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let url: Url = url.try_into_url()?;
         let relays = self.relays().await;
         if let Some(relay) = relays.get(&url) {
             Ok(relay.send_event(event, opts).await?)

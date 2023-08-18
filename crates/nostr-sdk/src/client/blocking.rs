@@ -18,7 +18,7 @@ use tokio::sync::broadcast;
 #[cfg(feature = "nip46")]
 use super::signer::remote::RemoteSigner;
 use super::{Entity, Error, Options, TryIntoUrl};
-use crate::relay::{Relay, RelayOptions, RelayPoolNotification};
+use crate::relay::{pool, Relay, RelayOptions, RelayPoolNotification};
 use crate::RUNTIME;
 
 #[derive(Debug, Clone)]
@@ -112,7 +112,7 @@ impl Client {
     pub fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.relay(url).await })
     }
@@ -121,7 +121,7 @@ impl Client {
     pub fn add_relays<U>(&self, relays: Vec<(U, Option<SocketAddr>)>) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.add_relays(relays).await })
     }
@@ -129,7 +129,7 @@ impl Client {
     pub fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.add_relay(url, proxy).await })
     }
@@ -142,7 +142,7 @@ impl Client {
     ) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.add_relay_with_opts(url, proxy, opts).await })
     }
@@ -150,7 +150,7 @@ impl Client {
     pub fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.remove_relay(url).await })
     }
@@ -158,7 +158,7 @@ impl Client {
     pub fn connect_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.connect_relay(url).await })
     }
@@ -166,7 +166,7 @@ impl Client {
     pub fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.disconnect_relay(url).await })
     }
@@ -214,7 +214,7 @@ impl Client {
     pub fn send_msg_to<U>(&self, url: U, msg: ClientMessage) -> Result<(), Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.send_msg_to(url, msg).await })
     }
@@ -227,7 +227,7 @@ impl Client {
     pub fn send_event_to<U>(&self, url: U, event: Event) -> Result<EventId, Error>
     where
         U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.send_event_to(url, event).await })
     }
