@@ -9,6 +9,7 @@ use nostr::event::tag::{
 };
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip26::Conditions;
+use nostr::nips::nip48::Protocol;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{EventId, Kind, RelayMetadata, Timestamp, UncheckedUrl, Url};
@@ -112,6 +113,7 @@ pub enum TagKindKnown {
     /// Payload HASH
     Payload,
     Anon,
+    Proxy,
 }
 
 impl From<tag::TagKind> for TagKind {
@@ -255,6 +257,9 @@ impl From<tag::TagKind> for TagKind {
             tag::TagKind::Anon => Self::Known {
                 known: TagKindKnown::Anon,
             },
+            tag::TagKind::Proxy => Self::Known {
+                known: TagKindKnown::Proxy,
+            },
             tag::TagKind::Custom(unknown) => Self::Unknown { unknown },
         }
     }
@@ -310,6 +315,7 @@ impl From<TagKind> for tag::TagKind {
                 TagKindKnown::Method => Self::Method,
                 TagKindKnown::Payload => Self::Payload,
                 TagKindKnown::Anon => Self::Anon,
+                TagKindKnown::Proxy => Self::Proxy,
             },
             TagKind::Unknown { unknown } => Self::Custom(unknown),
         }
@@ -495,6 +501,10 @@ pub enum TagEnum {
     Anon {
         msg: Option<String>,
     },
+    Proxy {
+        id: String,
+        protocol: String,
+    },
 }
 
 impl From<tag::Tag> for TagEnum {
@@ -649,6 +659,10 @@ impl From<tag::Tag> for TagEnum {
                 hash: p.to_string(),
             },
             tag::Tag::Anon { msg } => Self::Anon { msg },
+            tag::Tag::Proxy { id, protocol } => Self::Proxy {
+                id,
+                protocol: protocol.to_string(),
+            },
         }
     }
 }
@@ -793,6 +807,10 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::Method { method } => Ok(Self::Method(HttpMethod::from_str(&method)?)),
             TagEnum::Payload { hash } => Ok(Self::Payload(Sha256Hash::from_str(&hash)?)),
             TagEnum::Anon { msg } => Ok(Self::Anon { msg }),
+            TagEnum::Proxy { id, protocol } => Ok(Self::Proxy {
+                id,
+                protocol: Protocol::from(protocol),
+            }),
         }
     }
 }

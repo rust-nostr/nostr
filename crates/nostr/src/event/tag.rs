@@ -17,6 +17,7 @@ use url::Url;
 
 use super::id::{self, EventId};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
+use crate::nips::nip48::Protocol;
 use crate::{Kind, Timestamp, UncheckedUrl};
 
 /// [`Tag`] error
@@ -472,6 +473,8 @@ pub enum TagKind {
     Payload,
     /// Anon
     Anon,
+    /// Proxy
+    Proxy,
     /// Custom tag kind
     Custom(String),
 }
@@ -525,6 +528,7 @@ impl fmt::Display for TagKind {
             Self::Method => write!(f, "method"),
             Self::Payload => write!(f, "payload"),
             Self::Anon => write!(f, "anon"),
+            Self::Proxy => write!(f, "proxy"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -583,6 +587,7 @@ where
             "method" => Self::Method,
             "payload" => Self::Payload,
             "anon" => Self::Anon,
+            "proxy" => Self::Proxy,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -671,6 +676,10 @@ pub enum Tag {
     Anon {
         msg: Option<String>,
     },
+    Proxy {
+        id: String,
+        protocol: Protocol,
+    },
 }
 
 impl Tag {
@@ -742,6 +751,7 @@ impl Tag {
             Self::Method(..) => TagKind::Method,
             Self::Payload(..) => TagKind::Payload,
             Self::Anon { .. } => TagKind::Anon,
+            Self::Proxy { .. } => TagKind::Proxy,
         }
     }
 }
@@ -909,6 +919,10 @@ where
                     UncheckedUrl::from(&tag[1]),
                     Some(RelayMetadata::from_str(&tag[2])?),
                 )),
+                TagKind::Proxy => Ok(Self::Proxy {
+                    id: tag[1].to_string(),
+                    protocol: Protocol::from(&tag[2]),
+                }),
                 _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
             }
         } else if tag_len == 4 {
@@ -1151,6 +1165,9 @@ impl From<Tag> for Vec<String> {
                     tag.push(msg);
                 }
                 tag
+            }
+            Tag::Proxy { id, protocol } => {
+                vec![TagKind::Proxy.to_string(), id, protocol.to_string()]
             }
         }
     }

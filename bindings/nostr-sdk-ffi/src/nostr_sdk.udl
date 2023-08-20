@@ -449,6 +449,7 @@ enum TagKindKnown {
     "Method",
     "Payload",
     "Anon",
+    "Proxy",
 };
 
 [Enum]
@@ -505,6 +506,7 @@ interface TagEnum {
     Method(string method);
     Payload(string hash);
     Anon(string? msg);
+    Proxy(string id, string protocol);
 }; 
 
 interface Tag {

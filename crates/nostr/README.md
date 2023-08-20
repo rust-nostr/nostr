@@ -138,6 +138,7 @@ The following crate feature flags are available:
 | ✅         | [45 - Event Counts](https://github.com/nostr-protocol/nips/blob/master/45.md)                                                       |
 | ✅         | [46 - Nostr Connect](https://github.com/nostr-protocol/nips/blob/master/46.md)                                                      |
 | ✅         | [47 - Wallet Connect](https://github.com/nostr-protocol/nips/blob/master/47.md)                                                     |
+| ✅         | [48 - Proxy Tags](https://github.com/nostr-protocol/nips/blob/master/48.md)                                   |
 | ✅         | [50 - Keywords filter](https://github.com/nostr-protocol/nips/blob/master/50.md)                                                    |
 | ✅         | [51 - Lists](https://github.com/nostr-protocol/nips/blob/master/51.md)                                                              |
 | ✅         | [53 - Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)                                                    |
