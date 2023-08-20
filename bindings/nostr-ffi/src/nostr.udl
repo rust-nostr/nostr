@@ -199,6 +199,8 @@ interface Filter {
     [Self=ByArc]
     Filter pubkeys(sequence<PublicKey> pubkeys);
     [Self=ByArc]
+    Filter identifier(string identifier);
+    [Self=ByArc]
     Filter search(string text);
     [Self=ByArc]
     Filter since(Timestamp timestamp);

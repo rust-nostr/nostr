@@ -107,6 +107,12 @@ impl Filter {
         Arc::new(builder)
     }
 
+    pub fn identifier(self: Arc<Self>, identifier: String) -> Arc<Self> {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.identifier(identifier);
+        Arc::new(builder)
+    }
+
     pub fn search(self: Arc<Self>, text: String) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.search(text);
