@@ -3,11 +3,7 @@ name = "nostr-sdk-ffi"
 version = "0.1.0"
 edition = "2021"
 authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
-homepage.workspace = true
-repository.workspace = true
-license.workspace = true
-rust-version.workspace = true
-keywords = ["nostr", "sdk", "ffi"]
+publish = false
 
 [lib]
 name = "nostr_sdk_ffi"

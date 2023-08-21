@@ -28,7 +28,7 @@ Please, explore the [`bindings/`](./bindings/) directory to learn more.
 
 ## Minimum Supported Rust Version (MSRV)
 
-These crates are built with the Rust language version 2021 and require a minimum compiler version of `1.64`
+These crates are built with the Rust language version 2021 and require a minimum compiler version of `1.64.0`
 
 ## State
 

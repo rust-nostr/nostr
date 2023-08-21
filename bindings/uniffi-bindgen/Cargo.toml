@@ -2,10 +2,7 @@
 name = "uniffi-bindgen"
 version = "0.1.0"
 edition = "2021"
-homepage.workspace = true
-repository.workspace = true
-license.workspace = true
-rust-version.workspace = true
+publish = false
 
 [dependencies]
 uniffi = { workspace = true, features = ["cli"] }

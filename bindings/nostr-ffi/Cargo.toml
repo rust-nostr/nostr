@@ -3,11 +3,7 @@ name = "nostr-ffi"
 version = "0.1.0"
 edition = "2021"
 authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
-homepage.workspace = true
-repository.workspace = true
-license.workspace = true
-rust-version.workspace = true
-keywords = ["nostr", "ffi"]
+publish = false
 
 [lib]
 name = "nostr_ffi"
