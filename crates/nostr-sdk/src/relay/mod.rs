@@ -903,7 +903,7 @@ impl Relay {
             let mut notifications = self.notification_sender.subscribe();
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Message(
-                    _,
+                    url,
                     RelayMessage::Ok {
                         event_id,
                         status,
@@ -911,7 +911,7 @@ impl Relay {
                     },
                 ) = notification
                 {
-                    if id == event_id {
+                    if id == event_id && url == self.url {
                         if status {
                             return Ok(event_id);
                         } else {
