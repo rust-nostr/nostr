@@ -72,7 +72,3 @@ name = "shutdown-on-drop"
 [[example]]
 name = "subscriptions"
 required-features = ["all-nips"]
-
-[[example]]
-name = "wait-for-ok"
-required-features = ["nip19"]

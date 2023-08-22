@@ -16,8 +16,6 @@ pub struct Options {
     wait_for_connection: Arc<AtomicBool>,
     /// Wait for the msg to be sent (default: true)
     wait_for_send: Arc<AtomicBool>,
-    /// Wait for `OK` relay msg (default: false)
-    wait_for_ok: Arc<AtomicBool>,
     /// Wait for the subscription msg to be sent (default: false)
     wait_for_subscription: Arc<AtomicBool>,
     /// POW difficulty for all events (default: 0)
@@ -25,6 +23,8 @@ pub struct Options {
     /// REQ filters chunk size (default: 10)
     req_filters_chunk_size: Arc<AtomicU8>,
     /// Timeout (default: none)
+    ///
+    /// Used in `get_events_of`, `req_events_of` and similar as default timeout.
     timeout: Option<Duration>,
     /// Send timeout (default: 60 secs)
     send_timeout: Option<Duration>,
@@ -42,7 +42,6 @@ impl Default for Options {
         Self {
             wait_for_connection: Arc::new(AtomicBool::new(false)),
             wait_for_send: Arc::new(AtomicBool::new(true)),
-            wait_for_ok: Arc::new(AtomicBool::new(false)),
             wait_for_subscription: Arc::new(AtomicBool::new(false)),
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
@@ -84,18 +83,6 @@ impl Options {
 
     pub(crate) fn get_wait_for_send(&self) -> bool {
         self.wait_for_send.load(Ordering::SeqCst)
-    }
-
-    /// Wait for `OK` relay msg
-    pub fn wait_for_ok(self, wait: bool) -> Self {
-        Self {
-            wait_for_ok: Arc::new(AtomicBool::new(wait)),
-            ..self
-        }
-    }
-
-    pub(crate) fn get_wait_for_ok(&self) -> bool {
-        self.wait_for_ok.load(Ordering::SeqCst)
     }
 
     /// If set to `true`, `Client` wait that a subscription msg is sent before continue (`subscribe` and `unsubscribe` methods)

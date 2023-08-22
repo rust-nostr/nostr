@@ -801,38 +801,32 @@ impl Relay {
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         let id: EventId = event.id;
-        if opts.wait_for_ok {
-            time::timeout(opts.timeout, async {
-                self.send_msg(ClientMessage::new_event(event), None).await?;
-                let mut notifications = self.notification_sender.subscribe();
-                while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotification::Message(
-                        _,
-                        RelayMessage::Ok {
-                            event_id,
-                            status,
-                            message,
-                        },
-                    ) = notification
-                    {
-                        if id == event_id {
-                            if status {
-                                return Ok(event_id);
-                            } else {
-                                return Err(Error::EventNotPublished(message));
-                            }
+        time::timeout(opts.timeout, async {
+            self.send_msg(ClientMessage::new_event(event), None).await?;
+            let mut notifications = self.notification_sender.subscribe();
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(
+                    _,
+                    RelayMessage::Ok {
+                        event_id,
+                        status,
+                        message,
+                    },
+                ) = notification
+                {
+                    if id == event_id {
+                        if status {
+                            return Ok(event_id);
+                        } else {
+                            return Err(Error::EventNotPublished(message));
                         }
                     }
                 }
-                Err(Error::EventNotPublished(String::from("loop terminated")))
-            })
-            .await
-            .ok_or(Error::Timeout)?
-        } else {
-            self.send_msg(ClientMessage::new_event(event), opts.timeout)
-                .await?;
-            Ok(id)
-        }
+            }
+            Err(Error::EventNotPublished(String::from("loop terminated")))
+        })
+        .await
+        .ok_or(Error::Timeout)?
     }
 
     /// Subscribes relay with existing filter

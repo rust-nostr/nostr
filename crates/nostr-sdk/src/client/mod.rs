@@ -646,9 +646,7 @@ impl Client {
         } else {
             None
         };
-        let opts = RelaySendOptions::new()
-            .wait_for_ok(self.opts.get_wait_for_ok())
-            .timeout(timeout);
+        let opts = RelaySendOptions::new().timeout(timeout);
         Ok(self.pool.send_event(event, opts).await?)
     }
 
@@ -663,9 +661,7 @@ impl Client {
         } else {
             None
         };
-        let opts = RelaySendOptions::new()
-            .wait_for_ok(self.opts.get_wait_for_ok())
-            .timeout(timeout);
+        let opts = RelaySendOptions::new().timeout(timeout);
         Ok(self.pool.send_event_to(url, event, opts).await?)
     }
 
