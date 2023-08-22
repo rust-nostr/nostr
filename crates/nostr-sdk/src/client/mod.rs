@@ -625,6 +625,17 @@ impl Client {
         Ok(())
     }
 
+    /// Send client message
+    pub async fn batch_msg(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
+        let wait: Option<Duration> = if self.opts.get_wait_for_send() {
+            self.opts.get_send_timeout()
+        } else {
+            None
+        };
+        self.pool.batch_msg(msgs, wait).await?;
+        Ok(())
+    }
+
     /// Send client message to a specific relay
     pub async fn send_msg_to<U>(&self, url: U, msg: ClientMessage) -> Result<(), Error>
     where

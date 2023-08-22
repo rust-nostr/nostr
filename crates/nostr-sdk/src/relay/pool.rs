@@ -37,11 +37,14 @@ pub enum Error {
     #[error("no relays")]
     NoRelays,
     /// Msg not sent
-    #[error("msg not sent")]
+    #[error("message not sent")]
     MsgNotSent,
+    /// Msgs not sent
+    #[error("messages not sent")]
+    MsgsNotSent,
     /// Event not published
     #[error("event not published")]
-    EventNotPublished,
+    EventNotPublished(EventId),
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
@@ -60,8 +63,8 @@ pub enum RelayPoolMessage {
         /// Relay message
         msg: RelayMessage,
     },
-    /// Event sent
-    EventSent(Box<Event>),
+    /// Events sent
+    BatchEvent(Vec<EventId>),
     /// Stop
     Stop,
     /// Shutdown
@@ -153,8 +156,8 @@ impl RelayPoolTask {
                                 }
                             }
                         }
-                        RelayPoolMessage::EventSent(event) => {
-                            this.add_event(event.id).await;
+                        RelayPoolMessage::BatchEvent(ids) => {
+                            this.add_events(ids).await;
                         }
                         RelayPoolMessage::Stop => {
                             tracing::debug!("Received stop msg");
@@ -196,6 +199,20 @@ impl RelayPoolTask {
             }
             events.push_back(event_id);
             true
+        }
+    }
+
+    async fn add_events(&self, ids: Vec<EventId>) {
+        if !ids.is_empty() {
+            let mut events = self.events.lock().await;
+            for event_id in ids.into_iter() {
+                if !events.contains(&event_id) {
+                    while events.len() >= self.max_seen_events {
+                        events.pop_front();
+                    }
+                    events.push_back(event_id);
+                }
+            }
         }
     }
 }
@@ -403,7 +420,7 @@ impl RelayPool {
         if let ClientMessage::Event(event) = &msg {
             if let Err(e) = self
                 .pool_task_sender
-                .send(RelayPoolMessage::EventSent(event.clone()))
+                .send(RelayPoolMessage::BatchEvent(vec![event.id]))
                 .await
             {
                 tracing::error!("{e}");
@@ -423,6 +440,66 @@ impl RelayPool {
                             sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
                     }
                     Err(e) => tracing::error!("Impossible to send msg to {url}: {e}"),
+                }
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles.into_iter().flatten() {
+            handle.join().await?;
+        }
+
+        if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
+            return Err(Error::MsgNotSent);
+        }
+
+        Ok(())
+    }
+
+    /// Send multiple client messages at once
+    pub async fn batch_msg(
+        &self,
+        msgs: Vec<ClientMessage>,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
+        let relays = self.relays().await;
+
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
+        let ids: Vec<EventId> = msgs
+            .iter()
+            .filter_map(|msg| {
+                if let ClientMessage::Event(event) = msg {
+                    Some(event.id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if let Err(e) = self
+            .pool_task_sender
+            .send(RelayPoolMessage::BatchEvent(ids))
+            .await
+        {
+            tracing::error!("{e}");
+        };
+
+        let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+        let mut handles = Vec::new();
+
+        for (url, relay) in relays.into_iter() {
+            let len = msgs.len();
+            let msgs = msgs.clone();
+            let sent = sent_to_at_least_one_relay.clone();
+            let handle = thread::spawn(async move {
+                match relay.batch_msg(msgs, wait).await {
+                    Ok(_) => {
+                        let _ =
+                            sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                    }
+                    Err(e) => tracing::error!("Impossible to send {len} messages to {url}: {e}"),
                 }
             });
             handles.push(handle);
@@ -470,7 +547,7 @@ impl RelayPool {
 
         if let Err(e) = self
             .pool_task_sender
-            .send(RelayPoolMessage::EventSent(Box::new(event.clone())))
+            .send(RelayPoolMessage::BatchEvent(vec![event.id]))
             .await
         {
             tracing::error!("{e}");
@@ -501,7 +578,7 @@ impl RelayPool {
         }
 
         if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
-            return Err(Error::EventNotPublished);
+            return Err(Error::EventNotPublished(event_id));
         }
 
         Ok(event_id)

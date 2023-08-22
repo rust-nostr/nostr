@@ -26,5 +26,14 @@ async fn main() -> Result<()> {
         .to_pow_event(&my_keys, 20)?;
     client.send_event(event).await?;
 
+    // Send multiple events at once
+    let mut msgs: Vec<ClientMessage> = Vec::new();
+    for i in 0..10 {
+        let event: Event =
+            EventBuilder::new_text_note(format!("Event #{i}"), &[]).to_event(&my_keys)?;
+        msgs.push(ClientMessage::new_event(event));
+    }
+    client.batch_msg(msgs).await?;
+
     Ok(())
 }

@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::{thread, time};
+use async_utility::{futures_util, thread, time};
 use nostr::message::MessageHandleError;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
@@ -101,6 +101,8 @@ impl fmt::Display for RelayStatus {
 pub enum RelayEvent {
     /// Send [`ClientMessage`]
     SendMsg(Box<ClientMessage>),
+    /// Send multiple messages at once
+    Batch(Vec<ClientMessage>),
     // Ping,
     /// Close
     Close,
@@ -602,6 +604,48 @@ impl Relay {
                                     }
                                 }
                             }
+                            RelayEvent::Batch(msgs) => {
+                                let len = msgs.len();
+                                let size: usize =
+                                    msgs.iter().map(|msg| msg.as_json().as_bytes().len()).sum();
+                                tracing::debug!(
+                                    "Sending {len} messages to {} (size: {size} bytes)",
+                                    relay.url
+                                );
+                                let msgs = msgs
+                                    .into_iter()
+                                    .map(|msg| Ok(WsMessage::Text(msg.as_json())));
+                                let mut stream = futures_util::stream::iter(msgs);
+                                match ws_tx.send_all(&mut stream).await {
+                                    Ok(_) => {
+                                        relay.stats.add_bytes_sent(size);
+                                        if let Some(sender) = oneshot_sender {
+                                            if let Err(e) = sender.send(true) {
+                                                tracing::error!(
+                                                    "Impossible to send oneshot msg: {}",
+                                                    e
+                                                );
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::error!(
+                                            "Impossible to send {len} messages to {}: {}",
+                                            relay.url(),
+                                            e.to_string()
+                                        );
+                                        if let Some(sender) = oneshot_sender {
+                                            if let Err(e) = sender.send(false) {
+                                                tracing::error!(
+                                                    "Impossible to send oneshot msg: {}",
+                                                    e
+                                                );
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
                             RelayEvent::Close => {
                                 let _ = ws_tx.close().await;
                                 relay.set_status(RelayStatus::Disconnected).await;
@@ -798,6 +842,42 @@ impl Relay {
         }
     }
 
+    /// Send multiple [`ClientMessage`] at once
+    pub async fn batch_msg(
+        &self,
+        msgs: Vec<ClientMessage>,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
+        if !self.opts.write() && msgs.iter().any(|msg| msg.is_event()) {
+            return Err(Error::WriteDisabled);
+        }
+
+        if !self.opts.read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
+            return Err(Error::ReadDisabled);
+        }
+
+        match wait {
+            Some(timeout) => {
+                let (tx, rx) = oneshot::channel::<bool>();
+                self.send_relay_event(RelayEvent::Batch(msgs), Some(tx))?;
+                match time::timeout(Some(timeout), rx).await {
+                    Some(result) => match result {
+                        Ok(val) => {
+                            if val {
+                                Ok(())
+                            } else {
+                                Err(Error::MessageNotSent)
+                            }
+                        }
+                        Err(_) => Err(Error::OneShotRecvError),
+                    },
+                    _ => Err(Error::RecvTimeout),
+                }
+            }
+            None => self.send_relay_event(RelayEvent::Batch(msgs), None),
+        }
+    }
+
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         let id: EventId = event.id;
@@ -991,6 +1071,7 @@ impl Relay {
                                 }
                             }
                         }
+                        RelayMessage::Ok { .. } => (),
                         _ => {
                             tracing::debug!("Receive unhandled message {msg:?} from {}", self.url)
                         }
