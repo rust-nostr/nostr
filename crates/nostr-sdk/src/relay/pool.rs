@@ -409,6 +409,16 @@ impl RelayPool {
         Ok(())
     }
 
+    async fn set_events_as_sent(&self, ids: Vec<EventId>) {
+        if let Err(e) = self
+            .pool_task_sender
+            .send(RelayPoolMessage::BatchEvent(ids))
+            .await
+        {
+            tracing::error!("{e}");
+        };
+    }
+
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
         let relays = self.relays().await;
@@ -418,13 +428,7 @@ impl RelayPool {
         }
 
         if let ClientMessage::Event(event) = &msg {
-            if let Err(e) = self
-                .pool_task_sender
-                .send(RelayPoolMessage::BatchEvent(vec![event.id]))
-                .await
-            {
-                tracing::error!("{e}");
-            };
+            self.set_events_as_sent(vec![event.id]).await;
         }
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
@@ -478,13 +482,7 @@ impl RelayPool {
                 }
             })
             .collect();
-        if let Err(e) = self
-            .pool_task_sender
-            .send(RelayPoolMessage::BatchEvent(ids))
-            .await
-        {
-            tracing::error!("{e}");
-        };
+        self.set_events_as_sent(ids).await;
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -528,6 +526,11 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
+
+        if let ClientMessage::Event(event) = &msg {
+            self.set_events_as_sent(vec![event.id]).await;
+        }
+
         let relays = self.relays().await;
         if let Some(relay) = relays.get(&url) {
             relay.send_msg(msg, wait).await?;
@@ -545,13 +548,7 @@ impl RelayPool {
             return Err(Error::NoRelays);
         }
 
-        if let Err(e) = self
-            .pool_task_sender
-            .send(RelayPoolMessage::BatchEvent(vec![event.id]))
-            .await
-        {
-            tracing::error!("{e}");
-        };
+        self.set_events_as_sent(vec![event.id]).await;
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -596,6 +593,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
+        self.set_events_as_sent(vec![event.id]).await;
         let relays = self.relays().await;
         if let Some(relay) = relays.get(&url) {
             Ok(relay.send_event(event, opts).await?)
