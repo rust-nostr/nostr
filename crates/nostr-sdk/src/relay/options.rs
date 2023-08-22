@@ -100,7 +100,7 @@ pub struct RelayPoolOptions {
     pub notification_channel_size: usize,
     /// Task channel size (default: 1024)
     pub task_channel_size: usize,
-    /// Max seen events by Task thread (default: 100000)
+    /// Max seen events by Task thread (default: 1_000_000)
     ///
     /// A lower number can cause receiving in notification channel
     /// the same event multiple times
@@ -114,7 +114,7 @@ impl Default for RelayPoolOptions {
         Self {
             notification_channel_size: 1024,
             task_channel_size: 1024,
-            task_max_seen_events: 100_000,
+            task_max_seen_events: 1_000_000,
             shutdown_on_drop: false,
         }
     }
