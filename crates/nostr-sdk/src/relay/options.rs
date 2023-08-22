@@ -55,10 +55,18 @@ impl RelayOptions {
 }
 
 /// [`Relay`] send options
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct RelaySendOptions {
-    /// Timeout for sending event
+    /// Timeout for sending event (default: 30 secs)
     pub timeout: Option<Duration>,
+}
+
+impl Default for RelaySendOptions {
+    fn default() -> Self {
+        Self {
+            timeout: Some(Duration::from_secs(30)),
+        }
+    }
 }
 
 impl RelaySendOptions {
