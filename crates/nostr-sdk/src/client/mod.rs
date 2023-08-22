@@ -626,12 +626,11 @@ impl Client {
     }
 
     /// Send client message
-    pub async fn batch_msg(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
-        let wait: Option<Duration> = if self.opts.get_wait_for_send() {
-            self.opts.get_send_timeout()
-        } else {
-            None
-        };
+    pub async fn batch_msg(
+        &self,
+        msgs: Vec<ClientMessage>,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
         self.pool.batch_msg(msgs, wait).await?;
         Ok(())
     }
@@ -662,12 +661,11 @@ impl Client {
     }
 
     /// Send multiple [`Event`] at once
-    pub async fn batch_event(&self, events: Vec<Event>) -> Result<(), Error> {
-        let wait: Option<Duration> = if self.opts.get_wait_for_send() {
-            self.opts.get_send_timeout()
-        } else {
-            None
-        };
+    pub async fn batch_event(
+        &self,
+        events: Vec<Event>,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
         self.pool.batch_event(events, wait).await?;
         Ok(())
     }

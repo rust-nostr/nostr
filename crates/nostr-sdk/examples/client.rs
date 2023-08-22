@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::time::Duration;
+
 use nostr_sdk::prelude::*;
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
@@ -13,7 +15,6 @@ async fn main() -> Result<()> {
     let my_keys = Keys::new(secret_key);
 
     let client = Client::new(&my_keys);
-    client.add_relay("wss://relay.nostr.info", None).await?;
     client.add_relay("wss://relay.damus.io", None).await?;
 
     client.connect().await;
@@ -27,13 +28,13 @@ async fn main() -> Result<()> {
     client.send_event(event).await?;
 
     // Send multiple events at once
-    let mut msgs: Vec<ClientMessage> = Vec::new();
+    let mut events: Vec<Event> = Vec::new();
     for i in 0..10 {
-        let event: Event =
-            EventBuilder::new_text_note(format!("Event #{i}"), &[]).to_event(&my_keys)?;
-        msgs.push(ClientMessage::new_event(event));
+        events.push(EventBuilder::new_text_note(format!("Event #{i}"), &[]).to_event(&my_keys)?);
     }
-    client.batch_msg(msgs).await?;
+    client
+        .batch_event(events, Some(Duration::from_secs(10)))
+        .await?;
 
     Ok(())
 }

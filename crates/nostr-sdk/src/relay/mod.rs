@@ -618,6 +618,10 @@ impl Relay {
                                 let mut stream = futures_util::stream::iter(msgs);
                                 match ws_tx.send_all(&mut stream).await {
                                     Ok(_) => {
+                                        tracing::info!(
+                                            "Sent {len} messages to {} (size: {size} bytes)",
+                                            relay.url
+                                        );
                                         relay.stats.add_bytes_sent(size);
                                         if let Some(sender) = oneshot_sender {
                                             if let Err(e) = sender.send(true) {
