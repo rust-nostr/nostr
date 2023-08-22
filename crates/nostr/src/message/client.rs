@@ -90,6 +90,21 @@ impl ClientMessage {
         Self::Auth(Box::new(event))
     }
 
+    /// Check if is an `EVENT` message
+    pub fn is_event(&self) -> bool {
+        matches!(self, ClientMessage::Event(_))
+    }
+
+    /// Check if is an `REQ` message
+    pub fn is_req(&self) -> bool {
+        matches!(self, ClientMessage::Req { .. })
+    }
+
+    /// Check if is an `CLOSE` message
+    pub fn is_close(&self) -> bool {
+        matches!(self, ClientMessage::Close(_))
+    }
+
     /// Serialize as [`Value`]
     pub fn as_value(&self) -> Value {
         match self {
