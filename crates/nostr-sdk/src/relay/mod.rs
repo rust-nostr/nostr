@@ -909,6 +909,17 @@ impl Relay {
         .ok_or(Error::Timeout)?
     }
 
+    /// Send multiple [`Event`] at once
+    pub async fn batch_event(
+        &self,
+        events: Vec<Event>,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
+        let msgs = events.into_iter().map(ClientMessage::new_event).collect();
+        self.batch_msg(msgs, wait).await?;
+        Ok(())
+    }
+
     /// Subscribes relay with existing filter
     async fn resubscribe_all(&self, wait: Option<Duration>) -> Result<(), Error> {
         if !self.opts.read() {

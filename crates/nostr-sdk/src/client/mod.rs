@@ -661,6 +661,17 @@ impl Client {
         Ok(self.pool.send_event(event, opts).await?)
     }
 
+    /// Send multiple [`Event`] at once
+    pub async fn batch_event(&self, events: Vec<Event>) -> Result<(), Error> {
+        let wait: Option<Duration> = if self.opts.get_wait_for_send() {
+            self.opts.get_send_timeout()
+        } else {
+            None
+        };
+        self.pool.batch_event(events, wait).await?;
+        Ok(())
+    }
+
     /// Send event to specific relay
     pub async fn send_event_to<U>(&self, url: U, event: Event) -> Result<EventId, Error>
     where

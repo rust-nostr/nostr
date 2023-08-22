@@ -45,6 +45,9 @@ pub enum Error {
     /// Event not published
     #[error("event not published")]
     EventNotPublished(EventId),
+    /// Events not published
+    #[error("events not published")]
+    EventsNotPublished,
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
@@ -579,6 +582,51 @@ impl RelayPool {
         }
 
         Ok(event_id)
+    }
+
+    /// Send multiple [`Event`] at once
+    pub async fn batch_event(
+        &self,
+        events: Vec<Event>,
+        wait: Option<Duration>,
+    ) -> Result<(), Error> {
+        let relays = self.relays().await;
+
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
+        let ids: Vec<EventId> = events.iter().map(|e| e.id).collect();
+        self.set_events_as_sent(ids).await;
+
+        let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+        let mut handles = Vec::new();
+
+        for (url, relay) in relays.into_iter() {
+            let len = events.len();
+            let events = events.clone();
+            let sent = sent_to_at_least_one_relay.clone();
+            let handle = thread::spawn(async move {
+                match relay.batch_event(events, wait).await {
+                    Ok(_) => {
+                        let _ =
+                            sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                    }
+                    Err(e) => tracing::error!("Impossible to send {len} events to {url}: {e}"),
+                }
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles.into_iter().flatten() {
+            handle.join().await?;
+        }
+
+        if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
+            return Err(Error::EventsNotPublished);
+        }
+
+        Ok(())
     }
 
     /// Send event to a single relay
