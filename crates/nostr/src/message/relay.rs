@@ -12,27 +12,41 @@ use super::MessageHandleError;
 use crate::{Event, EventId, SubscriptionId};
 
 /// Messages sent by relays, received by clients
-#[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RelayMessage {
+    /// `["EVENT", <subscription_id>, <event JSON>]` (NIP01)
     Event {
+        /// Subscription ID
         subscription_id: SubscriptionId,
+        /// Event
         event: Box<Event>,
     },
-    Notice {
-        message: String,
-    },
-    EndOfStoredEvents(SubscriptionId),
+    /// `["OK", <event_id>, <true|false>, <message>]` (NIP01)
     Ok {
+        /// Event ID
         event_id: EventId,
+        /// Status
         status: bool,
+        /// Message
         message: String,
     },
+    /// `["EOSE", <subscription_id>]` (NIP01)
+    EndOfStoredEvents(SubscriptionId),
+    /// ["NOTICE", <message>] (NIP01)
+    Notice {
+        /// Message
+        message: String,
+    },
+    /// `["AUTH", <challenge-string>]` (NIP42)
     Auth {
+        /// Challenge
         challenge: String,
     },
+    /// `["COUNT", <subscription_id>, {"count": <integer>}]` (NIP45)
     Count {
+        /// Subscription ID
         subscription_id: SubscriptionId,
+        /// Events count
         count: usize,
     },
 }
