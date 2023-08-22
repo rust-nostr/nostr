@@ -664,9 +664,9 @@ impl Client {
     pub async fn batch_event(
         &self,
         events: Vec<Event>,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.pool.batch_event(events, wait).await?;
+        self.pool.batch_event(events, opts).await?;
         Ok(())
     }
 

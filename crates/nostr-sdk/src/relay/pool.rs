@@ -588,7 +588,7 @@ impl RelayPool {
     pub async fn batch_event(
         &self,
         events: Vec<Event>,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
         let relays = self.relays().await;
 
@@ -607,7 +607,7 @@ impl RelayPool {
             let events = events.clone();
             let sent = sent_to_at_least_one_relay.clone();
             let handle = thread::spawn(async move {
-                match relay.batch_event(events, wait).await {
+                match relay.batch_event(events, opts).await {
                     Ok(_) => {
                         let _ =
                             sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));

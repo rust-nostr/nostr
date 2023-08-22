@@ -3,7 +3,7 @@
 
 //! Relay
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
@@ -49,6 +49,23 @@ pub enum Error {
     /// Event not published
     #[error("event not published: {0}")]
     EventNotPublished(String),
+    /// No event is published
+    #[error("events not published: {0:?}")]
+    EventsNotPublished(HashMap<EventId, String>),
+    /// Only some events
+    #[error("partial publish: published={}, others={}", published.len(), not_published.len())]
+    PartialPublish {
+        /// Published events
+        published: Vec<EventId>,
+        /// Not published events
+        not_published: HashMap<EventId, String>,
+    },
+    /// Loop terminated
+    #[error("loop terminated")]
+    LoopTerminated,
+    /// Batch event empty
+    #[error("batch event cannot be empty")]
+    BatchEventEmpty,
     /// Impossible to receive oneshot message
     #[error("impossible to recv msg")]
     OneShotRecvError,
@@ -618,10 +635,6 @@ impl Relay {
                                 let mut stream = futures_util::stream::iter(msgs);
                                 match ws_tx.send_all(&mut stream).await {
                                     Ok(_) => {
-                                        tracing::info!(
-                                            "Sent {len} messages to {} (size: {size} bytes)",
-                                            relay.url
-                                        );
                                         relay.stats.add_bytes_sent(size);
                                         if let Some(sender) = oneshot_sender {
                                             if let Err(e) = sender.send(true) {
@@ -907,7 +920,7 @@ impl Relay {
                     }
                 }
             }
-            Err(Error::EventNotPublished(String::from("loop terminated")))
+            Err(Error::LoopTerminated)
         })
         .await
         .ok_or(Error::Timeout)?
@@ -917,11 +930,60 @@ impl Relay {
     pub async fn batch_event(
         &self,
         events: Vec<Event>,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        let msgs = events.into_iter().map(ClientMessage::new_event).collect();
-        self.batch_msg(msgs, wait).await?;
-        Ok(())
+        if events.is_empty() {
+            return Err(Error::BatchEventEmpty);
+        }
+
+        let msgs: Vec<ClientMessage> = events
+            .iter()
+            .cloned()
+            .map(ClientMessage::new_event)
+            .collect();
+        time::timeout(opts.timeout, async {
+            self.batch_msg(msgs, None).await?;
+            let mut missing: HashSet<EventId> = events.into_iter().map(|e| e.id).collect();
+            let mut published: HashSet<EventId> = HashSet::new();
+            let mut not_published: HashMap<EventId, String> = HashMap::new();
+            let mut notifications = self.notification_sender.subscribe();
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(
+                    _,
+                    RelayMessage::Ok {
+                        event_id,
+                        status,
+                        message,
+                    },
+                ) = notification
+                {
+                    if missing.remove(&event_id) {
+                        if status {
+                            published.insert(event_id);
+                        } else {
+                            not_published.insert(event_id, message);
+                        }
+                    }
+                }
+
+                if missing.is_empty() {
+                    break;
+                }
+            }
+
+            if !published.is_empty() && not_published.is_empty() {
+                Ok(())
+            } else if !published.is_empty() && !not_published.is_empty() {
+                Err(Error::PartialPublish {
+                    published: published.into_iter().collect(),
+                    not_published,
+                })
+            } else {
+                Err(Error::EventsNotPublished(not_published))
+            }
+        })
+        .await
+        .ok_or(Error::Timeout)?
     }
 
     /// Subscribes relay with existing filter
