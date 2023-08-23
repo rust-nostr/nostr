@@ -146,10 +146,10 @@ where
             // Get data from payload
             let nonce: &[u8] = payload
                 .get(1..25)
-                .ok_or(Error::NotFound(String::from("nonce")))?;
+                .ok_or_else(|| Error::NotFound(String::from("nonce")))?;
             let ciphertext: &[u8] = payload
                 .get(25..)
-                .ok_or(Error::NotFound(String::from("ciphertext")))?;
+                .ok_or_else(|| Error::NotFound(String::from("ciphertext")))?;
 
             // Compose key
             let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
