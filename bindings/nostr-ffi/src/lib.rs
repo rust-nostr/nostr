@@ -8,6 +8,7 @@ mod key;
 mod message;
 mod nips;
 mod types;
+mod util;
 
 #[allow(missing_docs)]
 #[allow(unused_imports)]
@@ -24,13 +25,14 @@ mod ffi {
     };
     pub use crate::key::{Keys, PublicKey, SecretKey};
     pub use crate::message::{ClientMessage, Filter, RelayMessage};
-    pub use crate::nips::nip04::{generate_shared_key, nip04_decrypt, nip04_encrypt};
+    pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
     pub use crate::nips::nip05::{get_nip05_profile, verify_nip05};
     pub use crate::nips::nip11::RelayInformationDocument;
     pub use crate::nips::nip46::NostrConnectURI;
     pub use crate::nips::nip57::ZapRequestData;
     pub use crate::nips::nip94::FileMetadata;
     pub use crate::types::{Contact, ImageDimensions, Metadata, Profile, Timestamp};
+    pub use crate::util::generate_shared_key;
 
     // UDL
     uniffi::include_scaffolding!("nostr");

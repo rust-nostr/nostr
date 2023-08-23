@@ -32,12 +32,3 @@ pub fn nip04_decrypt(
         encrypted_content,
     )?)
 }
-
-pub fn generate_shared_key(
-    secret_key: Arc<SecretKey>,
-    public_key: Arc<PublicKey>,
-) -> Result<Vec<u8>> {
-    let shared_key: [u8; 32] =
-        nip04::generate_shared_key(secret_key.as_ref().deref(), public_key.as_ref().deref())?;
-    Ok(shared_key.to_vec())
-}

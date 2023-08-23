@@ -28,6 +28,7 @@ pub mod message;
 pub mod nips;
 pub mod prelude;
 pub mod types;
+pub mod util;
 
 pub use self::event::tag::{
     ExternalIdentity, HttpMethod, Identity, ImageDimensions, Marker, RelayMetadata, Report, Tag,

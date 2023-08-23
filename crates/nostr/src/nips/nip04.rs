@@ -8,14 +8,15 @@
 
 use core::convert::From;
 use core::fmt;
-use core::str::FromStr;
 
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::engine::{general_purpose, Engine};
 use cbc::{Decryptor, Encryptor};
-use secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
+use secp256k1::{SecretKey, XOnlyPublicKey};
+
+use crate::util;
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
@@ -63,7 +64,7 @@ pub fn encrypt<T>(sk: &SecretKey, pk: &XOnlyPublicKey, text: T) -> Result<String
 where
     T: AsRef<[u8]>,
 {
-    let key: [u8; 32] = generate_shared_key(sk, pk)?;
+    let key: [u8; 32] = util::generate_shared_key(sk, pk)?;
     let iv: [u8; 16] = secp256k1::rand::random();
 
     let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
@@ -97,7 +98,7 @@ where
     let iv: Vec<u8> = general_purpose::STANDARD
         .decode(parsed_content[1])
         .map_err(|_| Error::Base64Decode)?;
-    let key: [u8; 32] = generate_shared_key(sk, pk)?;
+    let key: [u8; 32] = util::generate_shared_key(sk, pk)?;
 
     let cipher = Aes256CbcDec::new(&key.into(), iv.as_slice().into());
     let result = cipher
@@ -107,28 +108,13 @@ where
     String::from_utf8(result).map_err(|_| Error::Utf8Encode)
 }
 
-/// Generate shared key
-pub fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<[u8; 32], Error> {
-    let pk_normalized: PublicKey = normalize_schnorr_pk(pk)?;
-    let ssp = ecdh::shared_secret_point(&pk_normalized, sk);
-    let mut shared_key: [u8; 32] = [0u8; 32];
-    shared_key.copy_from_slice(&ssp[..32]);
-    Ok(shared_key)
-}
-
-/// Normalize Schnorr public key
-fn normalize_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
-    let mut pk = String::from("02");
-    pk.push_str(&schnorr_pk.to_string());
-    Ok(PublicKey::from_str(&pk)?)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use core::str::FromStr;
 
     use secp256k1::KeyPair;
 
+    use super::*;
     use crate::{Result, SECP256K1};
 
     #[test]
