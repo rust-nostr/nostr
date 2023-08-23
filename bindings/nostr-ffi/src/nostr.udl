@@ -3,21 +3,31 @@
 
 namespace nostr {
     [Throws=NostrError]
+    sequence<u8> generate_shared_key(SecretKey secret_key, PublicKey public_key);
+
+    [Throws=NostrError]
     string nip04_encrypt(SecretKey secret_key, PublicKey public_key, string content);
     [Throws=NostrError]
     string nip04_decrypt(SecretKey secret_key, PublicKey public_key, string encrypted_content);
-    [Throws=NostrError]
-    sequence<u8> generate_shared_key(SecretKey secret_key, PublicKey public_key);
 
     [Throws=NostrError]
     void verify_nip05(PublicKey public_key, string nip05, string? proxy);
     [Throws=NostrError]
     Profile get_nip05_profile(string nip05, string? proxy);
+
+    [Throws=NostrError]
+    string nip44_encrypt(SecretKey secret_key, PublicKey public_key, string content, NIP44Version version);
+    [Throws=NostrError]
+    string nip44_decrypt(SecretKey secret_key, PublicKey public_key, string payload);
 };
 
 [Error]
 interface NostrError {
     Generic(string err);
+};
+
+enum NIP44Version {
+    "XChaCha20",
 };
 
 interface RelayInformationDocument {
