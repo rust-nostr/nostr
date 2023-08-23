@@ -209,4 +209,44 @@ mod tests {
             content
         );
     }
+
+    #[test]
+    fn test_nip44_decryption() {
+        let secret_key =
+            SecretKey::from_str("0000000000000000000000000000000000000000000000000000000000000002")
+                .unwrap();
+        let public_key = XOnlyPublicKey::from_str(
+            "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdeb",
+        )
+        .unwrap();
+        let payload =
+            "AUXEhLosA5eFMYOtumkiFW4Joq1OPmkU8k/25+3+VDFvOU39qkUDl1aiy8Q+0ozTwbhD57VJoIYayYS++hE=";
+        assert_eq!(
+            decrypt(&secret_key, &public_key, payload).unwrap(),
+            String::from("A Peer-to-Peer Electronic Cash System")
+        );
+
+        let secret_key =
+            SecretKey::from_str("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap();
+        let public_key = XOnlyPublicKey::from_str(
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        )
+        .unwrap();
+        let payload = "AdYN4IQFz5veUIFH6CIkrGr0CcErnlSS4VdvoQaP2DCB1dIFL72HSriG1aFABcTlu86hrsG0MdOO9rPdVXc3jptMMzqvIN6tJlHPC8GdwFD5Y8BT76xIIOTJR2W0IdrM7++WC/9harEJAdeWHDAC9zNJX81CpCz4fnV1FZ8GxGLC0nUF7NLeUiNYu5WFXQuO9uWMK0pC7tk3XVogk90X6rwq0MQG9ihT7e1elatDy2YGat+VgQlDrz8ZLRw/lvU+QqeXMQgjqn42sMTrimG6NdKfHJSVWkT6SKZYVsuTyU1Iu5Nk0twEV8d11/MPfsMx4i36arzTC9qxE6jftpOoG8f/jwPTSCEpHdZzrb/CHJcpc+zyOW9BZE2ZOmSxYHAE0ustC9zRNbMT3m6LqxIoHq8j+8Ysu+Cwqr4nUNLYq/Q31UMdDg1oamYS17mWIAS7uf2yF5uT5IlG";
+        assert_eq!(decrypt(&secret_key, &public_key, payload).unwrap(), String::from("A purely peer-to-peer version of electronic cash would allow online payments to be sent directly from one party to another without going through a financial institution. Digital signatures provide part of the solution, but the main benefits are lost if a trusted third party is still required to prevent double-spending."));
+
+        let secret_key =
+            SecretKey::from_str("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364139")
+                .unwrap();
+        let public_key = XOnlyPublicKey::from_str(
+            "0000000000000000000000000000000000000000000000000000000000000002",
+        )
+        .unwrap();
+        let payload = "AfSBdQ4T36kLcit8zg2znYCw2y6JXMMAGjM=";
+        assert_eq!(
+            decrypt(&secret_key, &public_key, payload).unwrap(),
+            String::from("a")
+        );
+    }
 }
