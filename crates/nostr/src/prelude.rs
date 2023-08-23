@@ -32,28 +32,30 @@ pub use crate::{Result, SECP256K1};
 
 // NIPs
 #[cfg(feature = "nip04")]
-pub use crate::nips::nip04::*;
+pub use crate::nips::nip04::{self, *};
 #[cfg(feature = "nip05")]
-pub use crate::nips::nip05::*;
+pub use crate::nips::nip05::{self, *};
 #[cfg(feature = "nip06")]
-pub use crate::nips::nip06::*;
+pub use crate::nips::nip06::{self, *};
 #[cfg(feature = "nip11")]
-pub use crate::nips::nip11::*;
-pub use crate::nips::nip13::*;
+pub use crate::nips::nip11::{self, *};
+pub use crate::nips::nip13::{self, *};
 #[cfg(feature = "nip19")]
-pub use crate::nips::nip19::*;
+pub use crate::nips::nip19::{self, *};
 #[cfg(feature = "nip21")]
-pub use crate::nips::nip21::*;
-pub use crate::nips::nip26::*;
-pub use crate::nips::nip33::*;
+pub use crate::nips::nip21::{self, *};
+pub use crate::nips::nip26::{self, *};
+pub use crate::nips::nip33::{self, *};
+#[cfg(feature = "nip44")]
+pub use crate::nips::nip44::{self, *};
 #[cfg(feature = "nip46")]
-pub use crate::nips::nip46::*;
+pub use crate::nips::nip46::{self, *};
 #[cfg(feature = "nip47")]
-pub use crate::nips::nip47::*;
-pub use crate::nips::nip48::*;
-pub use crate::nips::nip53::*;
-pub use crate::nips::nip57::*;
-pub use crate::nips::nip58::*;
-pub use crate::nips::nip65::*;
-pub use crate::nips::nip94::*;
-pub use crate::nips::nip98::*;
+pub use crate::nips::nip47::{self, *};
+pub use crate::nips::nip48::{self, *};
+pub use crate::nips::nip53::{self, *};
+pub use crate::nips::nip57::{self, *};
+pub use crate::nips::nip58::{self, *};
+pub use crate::nips::nip65::{self, *};
+pub use crate::nips::nip94::{self, *};
+pub use crate::nips::nip98::{self, *};

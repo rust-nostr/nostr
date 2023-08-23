@@ -36,7 +36,7 @@ fn main() -> Result<()> {
     client.handle_notifications(|notification| {
         if let RelayPoolNotification::Event(_url, event) = notification {
             if event.kind == Kind::EncryptedDirectMessage {
-                if let Ok(msg) = decrypt(
+                if let Ok(msg) = nip04::decrypt(
                     &my_keys.secret_key().unwrap(),
                     &event.pubkey,
                     &event.content,

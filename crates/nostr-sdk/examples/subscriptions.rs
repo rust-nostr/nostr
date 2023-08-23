@@ -48,7 +48,8 @@ async fn main() -> Result<()> {
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event(_url, event) = notification {
                 if event.kind == Kind::EncryptedDirectMessage {
-                    if decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content).is_ok() {
+                    if nip04::decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content).is_ok()
+                    {
                         // Overwrite subscrption with `other-id` internal ID
                         let relay = client.relay("wss://relay.damus.io").await?;
                         let other_filters = Filter::new()

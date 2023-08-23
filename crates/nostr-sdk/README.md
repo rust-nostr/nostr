@@ -133,6 +133,7 @@ The following crate feature flags are available:
 | `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
 | `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                                                  |
 | `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
+| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                                                                        |
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
 | `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                                                               |
 

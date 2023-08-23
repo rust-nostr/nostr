@@ -97,6 +97,7 @@ The following crate feature flags are available:
 | `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                                                  |
 | `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
 | `nip21`             |   Yes   | Enable NIP-21: `nostr` URI scheme                                                                                          |
+| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                                                                        |
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
 | `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                                                        |
 
@@ -135,6 +136,7 @@ The following crate feature flags are available:
 | ✅         | [39 - External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md)                                    |
 | ✅         | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                                               |
 | ✅         | [42 - Authentication of clients to relays](https://github.com/nostr-protocol/nips/blob/master/42.md)                                |
+| ✅         | [44 - Encrypted Payloads (Versioned)](https://github.com/nostr-protocol/nips/blob/master/44.md)                                                       |
 | ✅         | [45 - Event Counts](https://github.com/nostr-protocol/nips/blob/master/45.md)                                                       |
 | ✅         | [46 - Nostr Connect](https://github.com/nostr-protocol/nips/blob/master/46.md)                                                      |
 | ✅         | [47 - Wallet Connect](https://github.com/nostr-protocol/nips/blob/master/47.md)                                                     |
