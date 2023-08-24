@@ -39,7 +39,7 @@ More examples can be found in the [examples](https://github.com/rust-nostr/nostr
 
 ## Supported NIPs
 
-Look at <https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips>
+Look at <https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips> (the Js library could be out of sync with the supported NIPs in the `nostr` rust crate)
 
 ## State
 
