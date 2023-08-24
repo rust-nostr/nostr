@@ -11,12 +11,16 @@ use crate::key::{JsPublicKey, JsSecretKey};
 
 /// Encrypt (NIP04)
 #[wasm_bindgen]
-pub fn encrypt(sk: &JsSecretKey, pk: &JsPublicKey, text: String) -> Result<String> {
+pub fn nip04_encrypt(sk: &JsSecretKey, pk: &JsPublicKey, text: String) -> Result<String> {
     nip04::encrypt(sk.deref(), pk.deref(), text).map_err(into_err)
 }
 
 /// Decrypt (NIP04)
 #[wasm_bindgen]
-pub fn decrypt(sk: &JsSecretKey, pk: &JsPublicKey, encrypted_content: String) -> Result<String> {
+pub fn nip04_decrypt(
+    sk: &JsSecretKey,
+    pk: &JsPublicKey,
+    encrypted_content: String,
+) -> Result<String> {
     nip04::decrypt(sk.deref(), pk.deref(), encrypted_content).map_err(into_err)
 }
