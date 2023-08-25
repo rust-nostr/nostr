@@ -20,7 +20,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["net", "time"] }
 tokio-rustls = "0.24"
 tokio-socks = "0.5"
-tokio-tungstenite = { version = "0.19", features = ["rustls-tls-webpki-roots"] }
+tokio-tungstenite = { version = "0.20", features = ["rustls-tls-webpki-roots"] }
 webpki-roots = "0.25"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
