@@ -895,7 +895,6 @@ impl Client {
     /// Get contact list public keys
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    /// ```
     pub async fn get_contact_list_public_keys(
         &self,
         timeout: Option<Duration>,
@@ -918,7 +917,6 @@ impl Client {
     }
 
     /// Get contact list [`Metadata`]
-    /// ```
     pub async fn get_contact_list_metadata(
         &self,
         timeout: Option<Duration>,
