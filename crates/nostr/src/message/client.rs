@@ -44,6 +44,17 @@ pub enum ClientMessage {
     Close(SubscriptionId),
     /// Auth
     Auth(Box<Event>),
+    /// Negentropy Open
+    NegOpen {
+        /// Subscription ID
+        subscription_id: SubscriptionId,
+        /// Filter
+        filter: Box<Filter>,
+        /// ID size (MUST be between 8 and 32, inclusive)
+        id_size: u8,
+        /// Initial message
+        initial_message: String,
+    },
 }
 
 impl Serialize for ClientMessage {
@@ -150,6 +161,20 @@ impl ClientMessage {
             }
             Self::Close(subscription_id) => json!(["CLOSE", subscription_id]),
             Self::Auth(event) => json!(["AUTH", event]),
+            Self::NegOpen {
+                subscription_id,
+                filter,
+                id_size,
+                initial_message,
+            } => {
+                json!([
+                    "NEG-OPEN",
+                    subscription_id,
+                    filter,
+                    id_size,
+                    initial_message
+                ])
+            }
         }
     }
 
@@ -241,6 +266,26 @@ impl ClientMessage {
             }
             let event = Event::from_json_with_ctx(secp, v[1].to_string())?;
             return Ok(Self::new_auth(event));
+        }
+
+        // Negentropy Open
+        // ["NEG-OPEN", <subscription ID string>, <filter>, <idSize>, <initialMessage, lowercase hex-encoded>]
+        if v[0] == "NEG-OPEN" {
+            if v_len != 5 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+            let subscription_id = SubscriptionId::new(v[1].to_string());
+            let filter = Filter::from_json(v[2].to_string())?;
+            let id_size = v[3]
+                .as_u64()
+                .ok_or(MessageHandleError::InvalidMessageFormat)? as u8;
+            let initial_message = v[4].to_string();
+            return Ok(Self::NegOpen {
+                subscription_id,
+                filter: Box::new(filter),
+                id_size,
+                initial_message,
+            });
         }
 
         Err(MessageHandleError::InvalidMessageFormat)
