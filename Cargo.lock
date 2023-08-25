@@ -1115,7 +1115,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sdk-net"
-version = "0.23.0"
+version = "0.23.1"
 dependencies = [
  "futures-util",
  "thiserror",
