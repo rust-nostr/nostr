@@ -3,18 +3,11 @@
 
 use nostr::nips::nip19::FromBech32;
 use nostr::secp256k1::SecretKey;
-use nostr::{ClientMessage, Event, EventBuilder, EventId, Keys, Result};
-use tungstenite::{connect, Message as WsMessage};
+use nostr::{Event, EventBuilder, EventId, Keys, Result};
 
 const MY_BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 
-const WS_ENDPOINT: &str = "wss://relay.damus.io";
-
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
-    let (mut socket, _response) = connect(WS_ENDPOINT).expect("Can't connect to relay");
-
     let secret_key = SecretKey::from_bech32(MY_BECH32_SK)?;
     let my_keys = Keys::new(secret_key);
 
@@ -27,7 +20,7 @@ fn main() -> Result<()> {
     )
     .to_event(&my_keys)?;
 
-    socket.write_message(WsMessage::Text(ClientMessage::new_event(event).as_json()))?;
+    println!("{}", event.as_json());
 
     Ok(())
 }

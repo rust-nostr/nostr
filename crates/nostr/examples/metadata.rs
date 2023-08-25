@@ -1,19 +1,9 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr::key::Keys;
-use nostr::{ClientMessage, Event, EventBuilder, Metadata, Result, Url};
-use tungstenite::{connect, Message as WsMessage};
-
-const WS_ENDPOINT: &str = "wss://relay.damus.io";
+use nostr::{Metadata, Result, Url};
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
-    let (mut socket, _response) = connect(WS_ENDPOINT).expect("Can't connect to relay");
-
-    let my_keys = Keys::generate();
-
     let metadata = Metadata::new()
         .name("username")
         .display_name("My Username")
@@ -23,11 +13,7 @@ fn main() -> Result<()> {
         .nip05("username@example.com")
         .lud16("yuki@getalby.com");
 
-    let event: Event = EventBuilder::set_metadata(metadata).to_event(&my_keys)?;
-
-    socket
-        .write_message(WsMessage::Text(ClientMessage::new_event(event).as_json()))
-        .unwrap();
+    println!("{}", metadata.as_json());
 
     Ok(())
 }

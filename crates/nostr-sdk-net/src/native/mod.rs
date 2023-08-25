@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::StreamExt;
+use thiserror::Error;
 use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 use tokio_rustls::rustls::{ClientConfig, OwnedTrustAnchor, RootCertStore, ServerName};
@@ -26,7 +27,7 @@ mod socks;
 
 use self::socks::TpcSocks5Stream;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
 pub enum Error {
     /// I/O error
     #[error("io error: {0}")]

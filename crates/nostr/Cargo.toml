@@ -52,7 +52,6 @@ instant = { version = "0.1", features = [ "wasm-bindgen", "inaccurate" ] }
 csv = "1.1.5"
 num_cpus = "1.15.0"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-tungstenite = { version = "0.19", features = ["rustls-tls-webpki-roots"] }
 
 [[example]]
 name = "keys"
@@ -60,9 +59,6 @@ required-features = ["nip19"]
 
 [[example]]
 name = "metadata"
-
-[[example]]
-name = "tweet"
 
 [[example]]
 name = "nip04"
@@ -89,10 +85,6 @@ name = "nip13"
 
 [[example]]
 name = "nip19"
-required-features = ["nip19"]
-
-[[example]]
-name = "nip65"
 required-features = ["nip19"]
 
 [[example]]
