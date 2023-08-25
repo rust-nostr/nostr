@@ -536,6 +536,9 @@ interface Tag {
 interface RelayConnectionStats {
     u64 attempts();
     u64 success();
+    u64 bytes_sent();
+    u64 bytes_received();
+    duration? latency();
     u64 connected_at();
 };
 

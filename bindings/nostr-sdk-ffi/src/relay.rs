@@ -33,6 +33,18 @@ impl RelayConnectionStats {
     pub fn connected_at(&self) -> u64 {
         self.inner.connected_at().as_u64()
     }
+
+    pub fn bytes_sent(&self) -> u64 {
+        self.inner.bytes_sent() as u64
+    }
+
+    pub fn bytes_received(&self) -> u64 {
+        self.inner.bytes_received() as u64
+    }
+
+    pub fn latency(&self) -> Option<Duration> {
+        self.inner.latency_blocking()
+    }
 }
 
 pub struct ActiveSubscription {
