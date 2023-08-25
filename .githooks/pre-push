@@ -8,6 +8,7 @@ buildargs=(
     "-p nostr --no-default-features --features all-nips"
     "-p nostr --no-default-features --features vanity"
     "-p nostr --features blocking"
+    "-p nostr-sdk-net"
     "-p nostr-sdk"
     "-p nostr-sdk --no-default-features"
     "-p nostr-sdk --features blocking"

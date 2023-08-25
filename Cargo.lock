@@ -1125,7 +1125,6 @@ dependencies = [
  "tokio-socks",
  "tokio-tungstenite",
  "url",
- "webpki",
  "webpki-roots 0.25.2",
  "ws_stream_wasm",
 ]
