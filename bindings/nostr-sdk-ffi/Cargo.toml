@@ -7,7 +7,7 @@ publish = false
 
 [lib]
 name = "nostr_sdk_ffi"
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 nostr-ffi  = { path = "../nostr-ffi" }
