@@ -592,6 +592,8 @@ interface Options {
     [Self=ByArc]
     Options wait_for_send(boolean wait);
     [Self=ByArc]
+    Options wait_for_ok(boolean wait);
+    [Self=ByArc]
     Options wait_for_subscription(boolean wait);
     [Self=ByArc]
     Options difficulty(u8 difficulty);
