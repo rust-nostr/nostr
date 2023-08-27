@@ -539,7 +539,7 @@ interface RelayConnectionStats {
     u64 bytes_sent();
     u64 bytes_received();
     duration? latency();
-    u64 connected_at();
+    Timestamp connected_at();
 };
 
 enum RelayStatus {

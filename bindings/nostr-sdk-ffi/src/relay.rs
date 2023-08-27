@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::{collections::HashMap, ops::Deref};
 
-use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument};
+use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument, Timestamp};
 use nostr_sdk::relay::InternalSubscriptionId;
 use nostr_sdk::{block_on, relay, FilterOptions, RelayStatus};
 
@@ -30,8 +30,9 @@ impl RelayConnectionStats {
         self.inner.success() as u64
     }
 
-    pub fn connected_at(&self) -> u64 {
-        self.inner.connected_at().as_u64()
+    pub fn connected_at(&self) -> Arc<Timestamp> {
+        let secs = self.inner.connected_at().as_u64();
+        Arc::new(Timestamp::from_secs(secs))
     }
 
     pub fn bytes_sent(&self) -> u64 {
