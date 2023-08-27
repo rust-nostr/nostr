@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
     let my_keys = Keys::new(secret_key);
 
     let client = Client::new(&my_keys);
-    client.add_relay("wss://nostr.wine", None).await?;
+    client.add_relay("wss://relay.damus.io", None).await?;
 
     client.connect().await;
 

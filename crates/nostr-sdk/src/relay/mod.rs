@@ -1083,32 +1083,38 @@ impl Relay {
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         let id: EventId = event.id;
-        time::timeout(opts.timeout, async {
-            self.send_msg(ClientMessage::new_event(event), None).await?;
-            let mut notifications = self.notification_sender.subscribe();
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message(
-                    url,
-                    RelayMessage::Ok {
-                        event_id,
-                        status,
-                        message,
-                    },
-                ) = notification
-                {
-                    if self.url == url && id == event_id {
-                        if status {
-                            return Ok(event_id);
-                        } else {
-                            return Err(Error::EventNotPublished(message));
+        if opts.wait_for_ok {
+            time::timeout(opts.timeout, async {
+                self.send_msg(ClientMessage::new_event(event), None).await?;
+                let mut notifications = self.notification_sender.subscribe();
+                while let Ok(notification) = notifications.recv().await {
+                    if let RelayPoolNotification::Message(
+                        url,
+                        RelayMessage::Ok {
+                            event_id,
+                            status,
+                            message,
+                        },
+                    ) = notification
+                    {
+                        if self.url == url && id == event_id {
+                            if status {
+                                return Ok(event_id);
+                            } else {
+                                return Err(Error::EventNotPublished(message));
+                            }
                         }
                     }
                 }
-            }
-            Err(Error::LoopTerminated)
-        })
-        .await
-        .ok_or(Error::Timeout)?
+                Err(Error::LoopTerminated)
+            })
+            .await
+            .ok_or(Error::Timeout)?
+        } else {
+            self.send_msg(ClientMessage::new_event(event), opts.timeout)
+                .await?;
+            Ok(id)
+        }
     }
 
     /// Send multiple [`Event`] at once
@@ -1126,49 +1132,54 @@ impl Relay {
             .cloned()
             .map(ClientMessage::new_event)
             .collect();
-        time::timeout(opts.timeout, async {
-            self.batch_msg(msgs, None).await?;
-            let mut missing: HashSet<EventId> = events.into_iter().map(|e| e.id).collect();
-            let mut published: HashSet<EventId> = HashSet::new();
-            let mut not_published: HashMap<EventId, String> = HashMap::new();
-            let mut notifications = self.notification_sender.subscribe();
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message(
-                    url,
-                    RelayMessage::Ok {
-                        event_id,
-                        status,
-                        message,
-                    },
-                ) = notification
-                {
-                    if self.url == url && missing.remove(&event_id) {
-                        if status {
-                            published.insert(event_id);
-                        } else {
-                            not_published.insert(event_id, message);
+
+        if opts.wait_for_ok {
+            time::timeout(opts.timeout, async {
+                self.batch_msg(msgs, None).await?;
+                let mut missing: HashSet<EventId> = events.into_iter().map(|e| e.id).collect();
+                let mut published: HashSet<EventId> = HashSet::new();
+                let mut not_published: HashMap<EventId, String> = HashMap::new();
+                let mut notifications = self.notification_sender.subscribe();
+                while let Ok(notification) = notifications.recv().await {
+                    if let RelayPoolNotification::Message(
+                        url,
+                        RelayMessage::Ok {
+                            event_id,
+                            status,
+                            message,
+                        },
+                    ) = notification
+                    {
+                        if self.url == url && missing.remove(&event_id) {
+                            if status {
+                                published.insert(event_id);
+                            } else {
+                                not_published.insert(event_id, message);
+                            }
                         }
+                    }
+
+                    if missing.is_empty() {
+                        break;
                     }
                 }
 
-                if missing.is_empty() {
-                    break;
+                if !published.is_empty() && not_published.is_empty() {
+                    Ok(())
+                } else if !published.is_empty() && !not_published.is_empty() {
+                    Err(Error::PartialPublish {
+                        published: published.into_iter().collect(),
+                        not_published,
+                    })
+                } else {
+                    Err(Error::EventsNotPublished(not_published))
                 }
-            }
-
-            if !published.is_empty() && not_published.is_empty() {
-                Ok(())
-            } else if !published.is_empty() && !not_published.is_empty() {
-                Err(Error::PartialPublish {
-                    published: published.into_iter().collect(),
-                    not_published,
-                })
-            } else {
-                Err(Error::EventsNotPublished(not_published))
-            }
-        })
-        .await
-        .ok_or(Error::Timeout)?
+            })
+            .await
+            .ok_or(Error::Timeout)?
+        } else {
+            self.batch_msg(msgs, opts.timeout).await
+        }
     }
 
     /// Subscribes relay with existing filter
