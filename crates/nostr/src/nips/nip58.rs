@@ -8,7 +8,7 @@ use crate::{Event, Kind, Tag, UncheckedUrl};
 use secp256k1::XOnlyPublicKey;
 
 #[derive(Debug)]
-/// [`BadgeAward`] error
+/// [`BadgeAward`](crate::event::kind::Kind#variant.BadgeAward) error
 pub enum Error {
     /// Invalid length
     InvalidLength,

@@ -218,7 +218,7 @@ struct RequestTemplate {
 }
 
 impl Request {
-    /// Serialize [`Message`] as JSON string
+    /// Serialize [`Request`] as JSON string
     pub fn as_json(&self) -> String {
         json!(self).to_string()
     }

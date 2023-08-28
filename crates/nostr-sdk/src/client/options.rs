@@ -33,7 +33,7 @@ pub struct Options {
     /// NIP46 timeout (default: 180 secs)
     #[cfg(feature = "nip46")]
     nip46_timeout: Option<Duration>,
-    /// Shutdown on [Client] drop
+    /// Shutdown on [Client](super::Client) drop
     pub shutdown_on_drop: bool,
     /// Pool Options
     pool: RelayPoolOptions,

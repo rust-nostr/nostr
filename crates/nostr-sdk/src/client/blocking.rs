@@ -84,7 +84,7 @@ impl Client {
         RUNTIME.block_on(async { self.client.stop().await })
     }
 
-    /// Check if [`RelayPool`] is running
+    /// Check if [`RelayPool`](super::RelayPool) is running
     pub fn is_running(&self) -> bool {
         self.client.is_running()
     }

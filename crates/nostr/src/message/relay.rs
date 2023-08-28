@@ -32,7 +32,7 @@ pub enum RelayMessage {
     },
     /// `["EOSE", <subscription_id>]` (NIP01)
     EndOfStoredEvents(SubscriptionId),
-    /// ["NOTICE", <message>] (NIP01)
+    /// ["NOTICE", \<message\>] (NIP01)
     Notice {
         /// Message
         message: String,

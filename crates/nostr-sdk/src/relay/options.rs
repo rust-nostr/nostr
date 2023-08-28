@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-/// [`Relay`] options
+/// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
     /// Allow/disallow read actions
@@ -54,7 +54,7 @@ impl RelayOptions {
     }
 }
 
-/// [`Relay`] send options
+/// [`Relay`](super::Relay) send options
 #[derive(Debug, Clone, Copy)]
 pub struct RelaySendOptions {
     /// When sendng event, wait for `OK` relay msg response (default: true)
@@ -119,7 +119,7 @@ pub struct RelayPoolOptions {
     /// A lower number can cause receiving in notification channel
     /// the same event multiple times
     pub task_max_seen_events: usize,
-    /// Shutdown on [RelayPool] drop
+    /// Shutdown on [RelayPool](super::pool::RelayPool) drop
     pub shutdown_on_drop: bool,
 }
 
@@ -140,7 +140,7 @@ impl RelayPoolOptions {
         Self::default()
     }
 
-    /// Shutdown on [`RelayPool`] drop
+    /// Shutdown on [`RelayPool`](super::pool::RelayPool) drop
     pub fn shutdown_on_drop(self, value: bool) -> Self {
         Self {
             shutdown_on_drop: value,
