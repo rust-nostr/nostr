@@ -14,7 +14,8 @@ async fn main() -> Result<()> {
 
     let secret_key = SecretKey::from_bech32(BECH32_SK)?;
     let my_keys = Keys::new(secret_key);
-    let opts = Options::new().wait_for_send(false);
+
+    let opts = Options::new().send_timeout(Some(Duration::from_secs(10)));
     let client = Client::with_opts(&my_keys, opts);
 
     client.add_relay("wss://nostr.oxtr.dev", None).await?;
@@ -23,54 +24,17 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    let subscription = Filter::new()
-        .pubkey(my_keys.public_key())
-        .since(Timestamp::now());
+    thread::sleep(Duration::from_secs(10)).await;
 
-    client.subscribe(vec![subscription]).await;
+    client.stop().await?;
 
-    // Handle subscription notifications with `handle_notifications` method
-    loop {
-        client
-            .handle_notifications(|notification| async {
-                if let RelayPoolNotification::Event(_url, event) = notification {
-                    if event.kind == Kind::EncryptedDirectMessage {
-                        match nip04::decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
-                        {
-                            Ok(msg) => {
-                                let content: String = match msg.as_str() {
-                                    "/stop" => match client.stop().await {
-                                        Ok(_) => {
-                                            let client = client.clone();
-                                            thread::spawn(async move {
-                                                thread::sleep(Duration::from_secs(30)).await;
-                                                client.start().await;
-                                                client
-                                                    .send_direct_msg(
-                                                        event.pubkey,
-                                                        "Client restarted",
-                                                        None,
-                                                    )
-                                                    .await
-                                                    .unwrap();
-                                            });
-                                            String::from("Client stopped. Restaring it in 10 secs")
-                                        }
-                                        Err(e) => e.to_string(),
-                                    },
-                                    _ => String::from("Invalid command."),
-                                };
+    thread::sleep(Duration::from_secs(15)).await;
 
-                                client.send_direct_msg(event.pubkey, content, None).await?;
-                            }
-                            Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
-                        }
-                    } else {
-                        println!("{:?}", event);
-                    }
-                }
-                Ok(false) // Set to true to exit from the loop
-            })
-            .await?;
-    }
+    client.start().await;
+
+    thread::sleep(Duration::from_secs(10)).await;
+
+    client.publish_text_note("Test", &[]).await?;
+
+    Ok(())
 }

@@ -95,10 +95,10 @@ pub enum Error {
 pub enum RelayStatus {
     /// Relay initialized
     Initialized,
-    /// Relay connected
-    Connected,
     /// Connecting
     Connecting,
+    /// Relay connected
+    Connected,
     /// Relay disconnected, will retry to connect again
     Disconnected,
     /// Stop
@@ -111,8 +111,8 @@ impl fmt::Display for RelayStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Initialized => write!(f, "Initialized"),
-            Self::Connected => write!(f, "Connected"),
             Self::Connecting => write!(f, "Connecting"),
+            Self::Connected => write!(f, "Connected"),
             Self::Disconnected => write!(f, "Disconnected"),
             Self::Stopped => write!(f, "Stopped"),
             Self::Terminated => write!(f, "Terminated"),
@@ -396,6 +396,7 @@ pub struct Relay {
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
     stats: RelayConnectionStats,
+    auto_connect_loop_running: Arc<AtomicBool>,
     scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
     pool_sender: Sender<RelayPoolMessage>,
@@ -431,6 +432,7 @@ impl Relay {
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
+            auto_connect_loop_running: Arc::new(AtomicBool::new(false)),
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,
@@ -458,6 +460,7 @@ impl Relay {
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
+            auto_connect_loop_running: Arc::new(AtomicBool::new(false)),
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,
@@ -497,14 +500,10 @@ impl Relay {
         *s = status;
 
         // Send notification
-        if let Err(e) = self
-            .pool_sender
-            .send(RelayPoolMessage::RelayStatus {
-                url: self.url(),
-                status,
-            })
-            .await
-        {
+        if let Err(e) = self.pool_sender.try_send(RelayPoolMessage::RelayStatus {
+            url: self.url(),
+            status,
+        }) {
             tracing::error!("Impossible to send RelayPoolMessage::RelayStatus message: {e}");
         }
     }
@@ -566,6 +565,16 @@ impl Relay {
         self.relay_sender.max_capacity() - self.relay_sender.capacity()
     }
 
+    fn is_auto_connect_loop_running(&self) -> bool {
+        self.auto_connect_loop_running.load(Ordering::SeqCst)
+    }
+
+    fn set_auto_connect_loop_running(&self, value: bool) {
+        let _ =
+            self.auto_connect_loop_running
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
+    }
+
     fn is_scheduled_for_stop(&self) -> bool {
         self.scheduled_for_stop.load(Ordering::SeqCst)
     }
@@ -591,11 +600,21 @@ impl Relay {
         self.schedule_for_stop(false);
         self.schedule_for_termination(false);
 
-        if let RelayStatus::Initialized | RelayStatus::Stopped | RelayStatus::Terminated =
-            self.status().await
-        {
-            if wait_for_connection {
+        if wait_for_connection {
+            if let RelayStatus::Initialized | RelayStatus::Stopped | RelayStatus::Terminated =
+                self.status().await
+            {
                 self.try_connect().await
+            }
+        }
+
+        if !self.is_auto_connect_loop_running() {
+            self.set_auto_connect_loop_running(true);
+
+            tracing::debug!("Auto connect loop started for {}", self.url);
+
+            if !wait_for_connection {
+                self.set_status(RelayStatus::Initialized).await;
             }
 
             let relay = self.clone();
@@ -609,11 +628,6 @@ impl Relay {
                             relay.url(),
                             relay.relay_sender.capacity()
                         );
-                    }
-
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if let Some(latency) = relay.stats.latency().await {
-                        tracing::info!("{} latency: {} ms", relay.url, latency.as_millis());
                     }
 
                     // Schedule relay for termination
@@ -650,7 +664,11 @@ impl Relay {
 
                     thread::sleep(Duration::from_secs(10)).await;
                 }
+
+                relay.set_auto_connect_loop_running(false);
             });
+        } else {
+            tracing::warn!("Auto connect loop for {} is already running!", self.url)
         }
     }
 

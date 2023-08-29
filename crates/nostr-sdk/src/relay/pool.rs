@@ -183,24 +183,24 @@ impl RelayPoolTask {
                         }
                         RelayPoolMessage::Stop => {
                             tracing::debug!("Received stop msg");
+                            this.set_running_to(false);
                             if let Err(e) =
                                 this.notification_sender.send(RelayPoolNotification::Stop)
                             {
                                 tracing::error!("Impossible to send STOP notification: {e}");
                             }
-                            this.set_running_to(false);
                             break;
                         }
                         RelayPoolMessage::Shutdown => {
                             tracing::debug!("Received shutdown msg");
+                            this.set_running_to(false);
+                            receiver.close();
                             if let Err(e) = this
                                 .notification_sender
                                 .send(RelayPoolNotification::Shutdown)
                             {
                                 tracing::error!("Impossible to send SHUTDOWN notification: {}", e);
                             }
-                            this.set_running_to(false);
-                            receiver.close();
                             break;
                         }
                     }
@@ -310,7 +310,7 @@ impl RelayPool {
         for relay in relays.values() {
             relay.stop().await?;
         }
-        if let Err(e) = self.pool_task_sender.send(RelayPoolMessage::Stop).await {
+        if let Err(e) = self.pool_task_sender.try_send(RelayPoolMessage::Stop) {
             tracing::error!("Impossible to send STOP message: {e}");
         }
         Ok(())
