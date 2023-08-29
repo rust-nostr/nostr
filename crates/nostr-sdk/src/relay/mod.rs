@@ -90,7 +90,7 @@ pub enum Error {
 }
 
 /// Relay connection status
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RelayStatus {
     /// Relay initialized
     Initialized,
@@ -481,7 +481,7 @@ impl Relay {
     /// Get [`RelayStatus`]
     pub async fn status(&self) -> RelayStatus {
         let status = self.status.lock().await;
-        status.clone()
+        *status
     }
 
     /// Get [`RelayStatus`]
@@ -491,8 +491,21 @@ impl Relay {
     }
 
     async fn set_status(&self, status: RelayStatus) {
+        // Change status
         let mut s = self.status.lock().await;
         *s = status;
+
+        // Send notification
+        if let Err(e) = self
+            .pool_sender
+            .send(RelayPoolMessage::RelayStatus {
+                url: self.url(),
+                status,
+            })
+            .await
+        {
+            tracing::error!("Impossible to send RelayPoolMessage::RelayStatus message: {e}");
+        }
     }
 
     /// Check if [`Relay`] is connected
@@ -582,9 +595,6 @@ impl Relay {
         {
             if wait_for_connection {
                 self.try_connect().await
-            } else {
-                // Update relay status
-                self.set_status(RelayStatus::Disconnected).await;
             }
 
             let relay = self.clone();
@@ -592,14 +602,13 @@ impl Relay {
                 loop {
                     let queue = relay.queue();
                     if queue > 0 {
-                        tracing::info!("{} messages queued for {}", queue, relay.url());
+                        tracing::info!(
+                            "{} messages queued for {} (capacity: {})",
+                            queue,
+                            relay.url(),
+                            relay.relay_sender.capacity()
+                        );
                     }
-
-                    tracing::debug!(
-                        "{} channel capacity: {}",
-                        relay.url(),
-                        relay.relay_sender.capacity()
-                    );
 
                     #[cfg(not(target_arch = "wasm32"))]
                     if let Some(latency) = relay.stats.latency().await {
@@ -628,7 +637,9 @@ impl Relay {
 
                     // Check status
                     match relay.status().await {
-                        RelayStatus::Disconnected => relay.try_connect().await,
+                        RelayStatus::Initialized | RelayStatus::Disconnected => {
+                            relay.try_connect().await
+                        }
                         RelayStatus::Stopped | RelayStatus::Terminated => {
                             tracing::debug!("Auto connect loop terminated for {}", relay.url);
                             break;
@@ -636,7 +647,7 @@ impl Relay {
                         _ => (),
                     };
 
-                    thread::sleep(Duration::from_secs(20)).await;
+                    thread::sleep(Duration::from_secs(10)).await;
                 }
             });
         }
@@ -1083,27 +1094,48 @@ impl Relay {
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         let id: EventId = event.id;
+
+        if opts.skip_disconnected && !self.is_connected().await && self.stats.attempts() > 1 {
+            return Err(Error::EventNotPublished(String::from(
+                "relay not connected",
+            )));
+        }
+
         if opts.wait_for_ok {
             time::timeout(opts.timeout, async {
                 self.send_msg(ClientMessage::new_event(event), None).await?;
                 let mut notifications = self.notification_sender.subscribe();
                 while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotification::Message(
-                        url,
-                        RelayMessage::Ok {
-                            event_id,
-                            status,
-                            message,
-                        },
-                    ) = notification
-                    {
-                        if self.url == url && id == event_id {
-                            if status {
-                                return Ok(event_id);
-                            } else {
-                                return Err(Error::EventNotPublished(message));
+                    match notification {
+                        RelayPoolNotification::Message(
+                            url,
+                            RelayMessage::Ok {
+                                event_id,
+                                status,
+                                message,
+                            },
+                        ) => {
+                            if self.url == url && id == event_id {
+                                if status {
+                                    return Ok(event_id);
+                                } else {
+                                    return Err(Error::EventNotPublished(message));
+                                }
                             }
                         }
+                        RelayPoolNotification::RelayStatus { url, status } => {
+                            if opts.skip_disconnected && url == self.url {
+                                if let RelayStatus::Disconnected
+                                | RelayStatus::Stopped
+                                | RelayStatus::Terminated = status
+                                {
+                                    return Err(Error::EventNotPublished(String::from(
+                                        "relay not connected (status changed)",
+                                    )));
+                                }
+                            }
+                        }
+                        _ => (),
                     }
                 }
                 Err(Error::LoopTerminated)
@@ -1127,6 +1159,12 @@ impl Relay {
             return Err(Error::BatchEventEmpty);
         }
 
+        if opts.skip_disconnected && !self.is_connected().await && self.stats.attempts() > 1 {
+            return Err(Error::EventNotPublished(String::from(
+                "relay not connected",
+            )));
+        }
+
         let msgs: Vec<ClientMessage> = events
             .iter()
             .cloned()
@@ -1141,22 +1179,36 @@ impl Relay {
                 let mut not_published: HashMap<EventId, String> = HashMap::new();
                 let mut notifications = self.notification_sender.subscribe();
                 while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotification::Message(
-                        url,
-                        RelayMessage::Ok {
-                            event_id,
-                            status,
-                            message,
-                        },
-                    ) = notification
-                    {
-                        if self.url == url && missing.remove(&event_id) {
-                            if status {
-                                published.insert(event_id);
-                            } else {
-                                not_published.insert(event_id, message);
+                    match notification {
+                        RelayPoolNotification::Message(
+                            url,
+                            RelayMessage::Ok {
+                                event_id,
+                                status,
+                                message,
+                            },
+                        ) => {
+                            if self.url == url && missing.remove(&event_id) {
+                                if status {
+                                    published.insert(event_id);
+                                } else {
+                                    not_published.insert(event_id, message);
+                                }
                             }
                         }
+                        RelayPoolNotification::RelayStatus { url, status } => {
+                            if opts.skip_disconnected && url == self.url {
+                                if let RelayStatus::Disconnected
+                                | RelayStatus::Stopped
+                                | RelayStatus::Terminated = status
+                                {
+                                    return Err(Error::EventNotPublished(String::from(
+                                        "relay not connected (status changed)",
+                                    )));
+                                }
+                            }
+                        }
+                        _ => (),
                     }
 
                     if missing.is_empty() {

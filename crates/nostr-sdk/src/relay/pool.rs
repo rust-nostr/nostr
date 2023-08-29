@@ -16,13 +16,12 @@ use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex};
 
-use crate::util::TryIntoUrl;
-
 use super::options::RelayPoolOptions;
 use super::{
     Error as RelayError, FilterOptions, InternalSubscriptionId, Relay, RelayOptions,
-    RelaySendOptions,
+    RelaySendOptions, RelayStatus,
 };
+use crate::util::TryIntoUrl;
 
 /// [`RelayPool`] error
 #[derive(Debug, thiserror::Error)]
@@ -68,6 +67,13 @@ pub enum RelayPoolMessage {
     },
     /// Events sent
     BatchEvent(Vec<EventId>),
+    /// Relay status changed
+    RelayStatus {
+        /// Relay url
+        url: Url,
+        /// Relay Status
+        status: RelayStatus,
+    },
     /// Stop
     Stop,
     /// Shutdown
@@ -81,6 +87,13 @@ pub enum RelayPoolNotification {
     Event(Url, Event),
     /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
     Message(Url, RelayMessage),
+    /// Relay status changed
+    RelayStatus {
+        /// Relay url
+        url: Url,
+        /// Relay Status
+        status: RelayStatus,
+    },
     /// Stop
     Stop,
     /// Shutdown
@@ -162,12 +175,17 @@ impl RelayPoolTask {
                         RelayPoolMessage::BatchEvent(ids) => {
                             this.add_events(ids).await;
                         }
+                        RelayPoolMessage::RelayStatus { url, status } => {
+                            let _ = this
+                                .notification_sender
+                                .send(RelayPoolNotification::RelayStatus { url, status });
+                        }
                         RelayPoolMessage::Stop => {
                             tracing::debug!("Received stop msg");
                             if let Err(e) =
                                 this.notification_sender.send(RelayPoolNotification::Stop)
                             {
-                                tracing::error!("Impossible to send STOP notification: {}", e);
+                                tracing::error!("Impossible to send STOP notification: {e}");
                             }
                             this.set_running_to(false);
                             break;

@@ -658,6 +658,7 @@ impl Client {
         };
         let opts = RelaySendOptions::new()
             .wait_for_ok(self.opts.get_wait_for_ok())
+            .skip_disconnected(self.opts.get_skip_disconnected_relays())
             .timeout(timeout);
         Ok(self.pool.send_event(event, opts).await?)
     }
@@ -685,6 +686,7 @@ impl Client {
         };
         let opts = RelaySendOptions::new()
             .wait_for_ok(self.opts.get_wait_for_ok())
+            .skip_disconnected(self.opts.get_skip_disconnected_relays())
             .timeout(timeout);
         Ok(self.pool.send_event_to(url, event, opts).await?)
     }

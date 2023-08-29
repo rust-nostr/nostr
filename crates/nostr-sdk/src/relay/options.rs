@@ -59,6 +59,8 @@ impl RelayOptions {
 pub struct RelaySendOptions {
     /// When sendng event, wait for `OK` relay msg response (default: true)
     pub wait_for_ok: bool,
+    /// Skip wait for disconnected relay (default: true)
+    pub skip_disconnected: bool,
     /// Timeout for sending event (default: 30 secs)
     pub timeout: Option<Duration>,
 }
@@ -67,6 +69,7 @@ impl Default for RelaySendOptions {
     fn default() -> Self {
         Self {
             wait_for_ok: true,
+            skip_disconnected: true,
             timeout: Some(Duration::from_secs(30)),
         }
     }
@@ -82,6 +85,14 @@ impl RelaySendOptions {
     pub fn wait_for_ok(self, value: bool) -> Self {
         Self {
             wait_for_ok: value,
+            ..self
+        }
+    }
+
+    /// Skip wait for disconnected relay (default: true)
+    pub fn skip_disconnected(self, value: bool) -> Self {
+        Self {
+            skip_disconnected: value,
             ..self
         }
     }

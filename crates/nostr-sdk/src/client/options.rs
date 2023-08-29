@@ -24,6 +24,10 @@ pub struct Options {
     difficulty: Arc<AtomicU8>,
     /// REQ filters chunk size (default: 10)
     req_filters_chunk_size: Arc<AtomicU8>,
+    /// Skip disconnected relays during send methods (default: false)
+    ///
+    /// If the relay made just 1 attempt, the relay will not be skipped
+    skip_disconnected_relays: Arc<AtomicBool>,
     /// Timeout (default: none)
     ///
     /// Used in `get_events_of`, `req_events_of` and similar as default timeout.
@@ -48,6 +52,7 @@ impl Default for Options {
             wait_for_subscription: Arc::new(AtomicBool::new(false)),
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
+            skip_disconnected_relays: Arc::new(AtomicBool::new(false)),
             timeout: None,
             send_timeout: Some(Duration::from_secs(60)),
             #[cfg(feature = "nip46")]
@@ -140,6 +145,20 @@ impl Options {
 
     pub(crate) fn get_req_filters_chunk_size(&self) -> usize {
         self.req_filters_chunk_size.load(Ordering::SeqCst) as usize
+    }
+
+    /// Skip disconnected relays during send methods (default: false)
+    ///
+    /// If the relay made just 1 attempt, the relay will not be skipped
+    pub fn skip_disconnected_relays(self, wait: bool) -> Self {
+        Self {
+            skip_disconnected_relays: Arc::new(AtomicBool::new(wait)),
+            ..self
+        }
+    }
+
+    pub(crate) fn get_skip_disconnected_relays(&self) -> bool {
+        self.skip_disconnected_relays.load(Ordering::SeqCst)
     }
 
     /// Set default timeout
