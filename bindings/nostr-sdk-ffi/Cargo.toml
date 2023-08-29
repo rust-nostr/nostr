@@ -12,7 +12,6 @@ crate-type = ["lib", "cdylib", "staticlib"]
 [dependencies]
 nostr-ffi  = { path = "../nostr-ffi" }
 nostr-sdk  = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "blocking"] }
-parking_lot = "0.12"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uniffi = { workspace = true }
