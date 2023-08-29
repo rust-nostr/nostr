@@ -24,8 +24,9 @@ use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
+use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, oneshot, Mutex};
+use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
 mod options;
 pub mod pool;
@@ -38,7 +39,7 @@ use crate::RUNTIME;
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 
 /// [`Relay`] error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
 pub enum Error {
     /// Channel timeout
     #[error("channel timeout")]
@@ -144,7 +145,7 @@ pub enum RelayEvent {
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Clone)]
 pub struct PingStats {
-    sent_at: Arc<Mutex<Instant>>,
+    sent_at: Arc<RwLock<Instant>>,
     last_nonce: Arc<AtomicU64>,
     replied: Arc<AtomicBool>,
 }
@@ -161,7 +162,7 @@ impl PingStats {
     /// New default ping stats
     pub fn new() -> Self {
         Self {
-            sent_at: Arc::new(Mutex::new(Instant::now())),
+            sent_at: Arc::new(RwLock::new(Instant::now())),
             last_nonce: Arc::new(AtomicU64::new(0)),
             replied: Arc::new(AtomicBool::new(false)),
         }
@@ -169,7 +170,7 @@ impl PingStats {
 
     /// Get sent at
     pub async fn sent_at(&self) -> Instant {
-        *self.sent_at.lock().await
+        *self.sent_at.read().await
     }
 
     /// Last nonce
@@ -183,7 +184,7 @@ impl PingStats {
     }
 
     pub(crate) async fn just_sent(&self) {
-        let mut sent_at = self.sent_at.lock().await;
+        let mut sent_at = self.sent_at.write().await;
         *sent_at = Instant::now();
     }
 
@@ -209,7 +210,7 @@ pub struct RelayConnectionStats {
     bytes_received: Arc<AtomicUsize>,
     connected_at: Arc<AtomicU64>,
     #[cfg(not(target_arch = "wasm32"))]
-    latencies: Arc<Mutex<VecDeque<Duration>>>,
+    latencies: Arc<RwLock<VecDeque<Duration>>>,
     #[cfg(not(target_arch = "wasm32"))]
     ping: PingStats,
 }
@@ -230,7 +231,7 @@ impl RelayConnectionStats {
             bytes_received: Arc::new(AtomicUsize::new(0)),
             connected_at: Arc::new(AtomicU64::new(0)),
             #[cfg(not(target_arch = "wasm32"))]
-            latencies: Arc::new(Mutex::new(VecDeque::new())),
+            latencies: Arc::new(RwLock::new(VecDeque::new())),
             #[cfg(not(target_arch = "wasm32"))]
             ping: PingStats::default(),
         }
@@ -264,7 +265,7 @@ impl RelayConnectionStats {
     /// Calculate latency
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn latency(&self) -> Option<Duration> {
-        let latencies = self.latencies.lock().await;
+        let latencies = self.latencies.read().await;
         let sum: Duration = latencies.iter().sum();
         sum.checked_div(latencies.len() as u32)
     }
@@ -298,7 +299,7 @@ impl RelayConnectionStats {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) async fn save_latency(&self, latency: Duration) {
-        let mut latencies = self.latencies.lock().await;
+        let mut latencies = self.latencies.write().await;
         if latencies.len() >= 5 {
             latencies.pop_back();
         }
@@ -390,9 +391,9 @@ pub struct Relay {
     url: Url,
     #[cfg(not(target_arch = "wasm32"))]
     proxy: Option<SocketAddr>,
-    status: Arc<Mutex<RelayStatus>>,
+    status: Arc<RwLock<RelayStatus>>,
     #[cfg(feature = "nip11")]
-    document: Arc<Mutex<RelayInformationDocument>>,
+    document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
     stats: RelayConnectionStats,
     scheduled_for_stop: Arc<AtomicBool>,
@@ -401,7 +402,7 @@ pub struct Relay {
     relay_sender: Sender<Message>,
     relay_receiver: Arc<Mutex<Receiver<Message>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
-    subscriptions: Arc<Mutex<HashMap<InternalSubscriptionId, ActiveSubscription>>>,
+    subscriptions: Arc<RwLock<HashMap<InternalSubscriptionId, ActiveSubscription>>>,
 }
 
 impl PartialEq for Relay {
@@ -425,9 +426,9 @@ impl Relay {
         Self {
             url,
             proxy,
-            status: Arc::new(Mutex::new(RelayStatus::Initialized)),
+            status: Arc::new(RwLock::new(RelayStatus::Initialized)),
             #[cfg(feature = "nip11")]
-            document: Arc::new(Mutex::new(RelayInformationDocument::new())),
+            document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
@@ -436,7 +437,7 @@ impl Relay {
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
             notification_sender,
-            subscriptions: Arc::new(Mutex::new(HashMap::new())),
+            subscriptions: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -452,9 +453,9 @@ impl Relay {
 
         Self {
             url,
-            status: Arc::new(Mutex::new(RelayStatus::Initialized)),
+            status: Arc::new(RwLock::new(RelayStatus::Initialized)),
             #[cfg(feature = "nip11")]
-            document: Arc::new(Mutex::new(RelayInformationDocument::new())),
+            document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
@@ -463,7 +464,7 @@ impl Relay {
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
             notification_sender,
-            subscriptions: Arc::new(Mutex::new(HashMap::new())),
+            subscriptions: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -480,7 +481,7 @@ impl Relay {
 
     /// Get [`RelayStatus`]
     pub async fn status(&self) -> RelayStatus {
-        let status = self.status.lock().await;
+        let status = self.status.read().await;
         *status
     }
 
@@ -492,7 +493,7 @@ impl Relay {
 
     async fn set_status(&self, status: RelayStatus) {
         // Change status
-        let mut s = self.status.lock().await;
+        let mut s = self.status.write().await;
         *s = status;
 
         // Send notification
@@ -516,7 +517,7 @@ impl Relay {
     /// Get [`RelayInformationDocument`]
     #[cfg(feature = "nip11")]
     pub async fn document(&self) -> RelayInformationDocument {
-        let document = self.document.lock().await;
+        let document = self.document.read().await;
         document.clone()
     }
 
@@ -528,13 +529,13 @@ impl Relay {
 
     #[cfg(feature = "nip11")]
     async fn set_document(&self, document: RelayInformationDocument) {
-        let mut d = self.document.lock().await;
+        let mut d = self.document.write().await;
         *d = document;
     }
 
     /// Get [`ActiveSubscription`]
     pub async fn subscriptions(&self) -> HashMap<InternalSubscriptionId, ActiveSubscription> {
-        let subscription = self.subscriptions.lock().await;
+        let subscription = self.subscriptions.read().await;
         subscription.clone()
     }
 
@@ -544,7 +545,7 @@ impl Relay {
         internal_id: InternalSubscriptionId,
         filters: Vec<Filter>,
     ) {
-        let mut s = self.subscriptions.lock().await;
+        let mut s = self.subscriptions.write().await;
         s.entry(internal_id)
             .and_modify(|sub| sub.filters = filters.clone())
             .or_insert_with(|| ActiveSubscription::with_filters(filters));

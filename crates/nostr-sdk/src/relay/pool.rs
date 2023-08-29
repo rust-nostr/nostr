@@ -13,8 +13,9 @@ use std::time::Duration;
 use async_utility::thread;
 use nostr::url::Url;
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage};
+use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{broadcast, Mutex, RwLock};
 
 use super::options::RelayPoolOptions;
 use super::{
@@ -24,7 +25,7 @@ use super::{
 use crate::util::TryIntoUrl;
 
 /// [`RelayPool`] error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
 pub enum Error {
     /// Url parse error
     #[error("impossible to parse URL: {0}")]
@@ -241,10 +242,10 @@ impl RelayPoolTask {
 /// Relay Pool
 #[derive(Debug, Clone)]
 pub struct RelayPool {
-    relays: Arc<Mutex<HashMap<Url, Relay>>>,
+    relays: Arc<RwLock<HashMap<Url, Relay>>>,
     pool_task_sender: Sender<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
-    filters: Arc<Mutex<Vec<Filter>>>,
+    filters: Arc<RwLock<Vec<Filter>>>,
     pool_task: RelayPoolTask,
     opts: RelayPoolOptions,
     dropped: Arc<AtomicBool>,
@@ -284,10 +285,10 @@ impl RelayPool {
         );
 
         let pool = Self {
-            relays: Arc::new(Mutex::new(HashMap::new())),
+            relays: Arc::new(RwLock::new(HashMap::new())),
             pool_task_sender,
             notification_sender,
-            filters: Arc::new(Mutex::new(Vec::new())),
+            filters: Arc::new(RwLock::new(Vec::new())),
             pool_task: relay_pool_task,
             opts,
             dropped: Arc::new(AtomicBool::new(false)),
@@ -342,7 +343,7 @@ impl RelayPool {
 
     /// Get relays
     pub async fn relays(&self) -> HashMap<Url, Relay> {
-        let relays = self.relays.lock().await;
+        let relays = self.relays.read().await;
         relays.clone()
     }
 
@@ -353,18 +354,18 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
-        let relays = self.relays.lock().await;
+        let relays = self.relays.read().await;
         relays.get(&url).cloned().ok_or(Error::RelayNotFound)
     }
 
     /// Get subscription filters
     pub async fn subscription_filters(&self) -> Vec<Filter> {
-        self.filters.lock().await.clone()
+        self.filters.read().await.clone()
     }
 
     /// Update subscription filters
     async fn update_subscription_filters(&self, filters: Vec<Filter>) {
-        let mut f = self.filters.lock().await;
+        let mut f = self.filters.write().await;
         *f = filters;
     }
 
@@ -381,7 +382,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
-        let mut relays = self.relays.lock().await;
+        let mut relays = self.relays.write().await;
         if !relays.contains_key(&url) {
             let relay = Relay::new(
                 url,
@@ -403,7 +404,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
-        let mut relays = self.relays.lock().await;
+        let mut relays = self.relays.write().await;
         if !relays.contains_key(&url) {
             let relay = Relay::new(
                 url,
@@ -423,7 +424,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
-        let mut relays = self.relays.lock().await;
+        let mut relays = self.relays.write().await;
         if let Some(relay) = relays.remove(&url) {
             self.disconnect_relay(&relay).await?;
         }
