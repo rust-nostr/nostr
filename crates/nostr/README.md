@@ -97,7 +97,7 @@ The following crate feature flags are available:
 | `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                                                  |
 | `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
 | `nip21`             |   Yes   | Enable NIP-21: `nostr` URI scheme                                                                                          |
-| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                                                                        |
+| `nip44`             |   No   | Enable NIP-44: Encrypted Payloads (Versioned)                                                                                        |
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
 | `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                                                        |
 

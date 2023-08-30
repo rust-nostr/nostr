@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-//! NIP44
+//! NIP44 - EXPERIMENTAL
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/44.md>
 
@@ -86,7 +86,7 @@ impl TryFrom<u8> for Version {
     }
 }
 
-/// Encrypt
+/// Encrypt - EXPERIMENTAL
 pub fn encrypt<T>(
     secret_key: &SecretKey,
     public_key: &XOnlyPublicKey,
@@ -124,7 +124,7 @@ where
     }
 }
 
-/// Decrypt
+/// Decrypt - EXPERIMENTAL
 pub fn decrypt<T>(
     secret_key: &SecretKey,
     public_key: &XOnlyPublicKey,
