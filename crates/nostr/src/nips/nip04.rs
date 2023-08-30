@@ -13,8 +13,8 @@ use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::engine::{general_purpose, Engine};
+use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use cbc::{Decryptor, Encryptor};
-use secp256k1::{SecretKey, XOnlyPublicKey};
 
 use crate::util;
 
@@ -112,23 +112,25 @@ where
 mod tests {
     use core::str::FromStr;
 
-    use secp256k1::KeyPair;
+    use bitcoin::secp256k1::{KeyPair, Secp256k1};
 
     use super::*;
-    use crate::{Result, SECP256K1};
+    use crate::Result;
 
     #[test]
     fn test_encryption_decryption() -> Result<()> {
+        let secp = Secp256k1::new();
+
         let sender_sk = SecretKey::from_str(
             "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let sender_key_pair = KeyPair::from_secret_key(SECP256K1, &sender_sk);
+        let sender_key_pair = KeyPair::from_secret_key(&secp, &sender_sk);
         let sender_pk = XOnlyPublicKey::from_keypair(&sender_key_pair).0;
 
         let receiver_sk = SecretKey::from_str(
             "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
         )?;
-        let receiver_key_pair = KeyPair::from_secret_key(SECP256K1, &receiver_sk);
+        let receiver_key_pair = KeyPair::from_secret_key(&secp, &receiver_sk);
         let receiver_pk = XOnlyPublicKey::from_keypair(&receiver_key_pair).0;
 
         let encrypted_content_from_outside =

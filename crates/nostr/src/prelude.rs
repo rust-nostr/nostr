@@ -8,14 +8,12 @@
 
 // External crates
 pub use ::url::*;
-#[cfg(feature = "nip19")]
-pub use bech32::*;
 #[cfg(feature = "nip06")]
 pub use bip39::*;
-#[cfg(feature = "nip06")]
+pub use bitcoin::bech32::*;
+pub use bitcoin::hashes::*;
+pub use bitcoin::secp256k1::*;
 pub use bitcoin::*;
-pub use bitcoin_hashes::*;
-pub use secp256k1::*;
 pub use serde_json::*;
 
 // Internal modules
@@ -40,9 +38,7 @@ pub use crate::nips::nip06::{self, *};
 #[cfg(feature = "nip11")]
 pub use crate::nips::nip11::{self, *};
 pub use crate::nips::nip13::{self, *};
-#[cfg(feature = "nip19")]
 pub use crate::nips::nip19::{self, *};
-#[cfg(feature = "nip21")]
 pub use crate::nips::nip21::{self, *};
 pub use crate::nips::nip26::{self, *};
 pub use crate::nips::nip33::{self, *};

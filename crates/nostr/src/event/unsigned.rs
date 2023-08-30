@@ -5,8 +5,8 @@
 
 use core::fmt;
 
-use secp256k1::schnorr::Signature;
-use secp256k1::{Message, XOnlyPublicKey};
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::{self, Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 
 use crate::{Event, EventId, Keys, Kind, Tag, Timestamp};

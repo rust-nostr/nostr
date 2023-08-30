@@ -10,9 +10,9 @@ use core::str::FromStr;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 
+use bitcoin::secp256k1::{self, XOnlyPublicKey};
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
-use secp256k1::XOnlyPublicKey;
 use serde_json::Value;
 
 use crate::Profile;

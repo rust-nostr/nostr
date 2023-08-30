@@ -8,13 +8,13 @@
 use core::fmt;
 
 use base64::engine::{general_purpose, Engine};
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
-use bitcoin_hashes::Hash;
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::rand::rngs::OsRng;
+use bitcoin::secp256k1::rand::RngCore;
+use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::XChaCha20;
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
-use secp256k1::{SecretKey, XOnlyPublicKey};
 
 use crate::util;
 
@@ -172,7 +172,7 @@ where
 mod tests {
     use core::str::FromStr;
 
-    use secp256k1::KeyPair;
+    use bitcoin::secp256k1::KeyPair;
 
     use super::*;
     use crate::SECP256K1;

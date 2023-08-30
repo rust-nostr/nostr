@@ -3,7 +3,7 @@
 
 //! Contact
 
-use secp256k1::XOnlyPublicKey;
+use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 
 use crate::UncheckedUrl;

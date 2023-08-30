@@ -88,15 +88,12 @@ The following crate feature flags are available:
 | Feature             | Default | Description                                                                                                                |
 | ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
 | `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                                                    |
-| `vanity`            |   No    | Enable vanity public key mining module                                                                                     |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
 | `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                                                      |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                                                    |
 | `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                                                        |
 | `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
 | `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                                                  |
-| `nip19`             |   Yes   | Enable NIP-19: bech32-encoded entities                                                                                     |
-| `nip21`             |   Yes   | Enable NIP-21: `nostr` URI scheme                                                                                          |
 | `nip44`             |   No   | Enable NIP-44: Encrypted Payloads (Versioned)                                                                                        |
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
 | `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                                                        |

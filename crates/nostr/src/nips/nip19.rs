@@ -10,9 +10,9 @@
 use core::fmt;
 use std::string::FromUtf8Error;
 
-use bech32::{self, FromBase32, ToBase32, Variant};
-use bitcoin_hashes::Hash;
-use secp256k1::{SecretKey, XOnlyPublicKey};
+use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 
 use crate::event::id::{self, EventId};
@@ -40,7 +40,7 @@ pub enum Error {
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// Hash error
-    Hash(bitcoin_hashes::Error),
+    Hash(bitcoin::hashes::Error),
     /// EventId error
     EventId(id::Error),
     /// Wrong prefix or variant
@@ -89,8 +89,8 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-impl From<bitcoin_hashes::Error> for Error {
-    fn from(e: bitcoin_hashes::Error) -> Self {
+impl From<bitcoin::hashes::Error> for Error {
+    fn from(e: bitcoin::hashes::Error) -> Self {
         Self::Hash(e)
     }
 }

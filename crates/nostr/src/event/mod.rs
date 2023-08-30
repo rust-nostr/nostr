@@ -7,8 +7,8 @@
 use core::fmt;
 use core::str::FromStr;
 
-use secp256k1::schnorr::Signature;
-use secp256k1::{Message, XOnlyPublicKey};
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::{self, Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -35,7 +35,7 @@ pub enum Error {
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// Hex decoding error
-    Hex(bitcoin_hashes::hex::Error),
+    Hex(bitcoin::hashes::hex::Error),
     /// OpenTimestamps error
     #[cfg(feature = "nip03")]
     OpenTimestamps(nostr_ots::Error),
@@ -68,8 +68,8 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-impl From<bitcoin_hashes::hex::Error> for Error {
-    fn from(e: bitcoin_hashes::hex::Error) -> Self {
+impl From<bitcoin::hashes::hex::Error> for Error {
+    fn from(e: bitcoin::hashes::hex::Error) -> Self {
         Self::Hex(e)
     }
 }

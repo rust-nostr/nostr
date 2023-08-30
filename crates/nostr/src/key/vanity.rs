@@ -9,8 +9,8 @@ use std::sync::mpsc::{sync_channel, RecvError};
 use std::sync::Arc;
 use std::thread;
 
-use secp256k1::rand;
-use secp256k1::SecretKey;
+use bitcoin::secp256k1::rand;
+use bitcoin::secp256k1::SecretKey;
 
 use super::Keys;
 use crate::nips::nip19::{ToBech32, PREFIX_BECH32_PUBLIC_KEY};

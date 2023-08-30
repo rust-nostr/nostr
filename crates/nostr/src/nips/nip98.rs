@@ -11,7 +11,7 @@
 use core::fmt;
 
 use crate::{HttpMethod, Tag, UncheckedUrl};
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
 
 /// [`HttpData`] required tags
 #[derive(Debug)]
@@ -35,7 +35,7 @@ impl fmt::Display for RequiredTags {
 #[derive(Debug)]
 pub enum Error {
     /// Hex decoding error
-    Hex(bitcoin_hashes::hex::Error),
+    Hex(bitcoin::hashes::hex::Error),
     /// Tag missing when parsing
     MissingTag(RequiredTags),
 }
@@ -51,8 +51,8 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<bitcoin_hashes::hex::Error> for Error {
-    fn from(e: bitcoin_hashes::hex::Error) -> Self {
+impl From<bitcoin::hashes::hex::Error> for Error {
+    fn from(e: bitcoin::hashes::hex::Error) -> Self {
         Self::Hex(e)
     }
 }

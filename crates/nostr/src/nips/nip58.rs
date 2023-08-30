@@ -1,11 +1,15 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Distributed under the MIT software license
+
 //! NIP58
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/58.md>
 
 use core::fmt;
 
+use bitcoin::secp256k1::XOnlyPublicKey;
+
 use crate::{Event, Kind, Tag, UncheckedUrl};
-use secp256k1::XOnlyPublicKey;
 
 #[derive(Debug)]
 /// [`BadgeAward`](crate::event::kind::Kind#variant.BadgeAward) error

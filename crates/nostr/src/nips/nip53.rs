@@ -5,8 +5,8 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/53.md>
 
-use secp256k1::schnorr::Signature;
-use secp256k1::XOnlyPublicKey;
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::XOnlyPublicKey;
 
 use crate::event::tag::{LiveEventMarker, LiveEventStatus};
 use crate::{ImageDimensions, Tag, Timestamp, UncheckedUrl};

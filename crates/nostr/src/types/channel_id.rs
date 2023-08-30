@@ -6,13 +6,11 @@
 use core::fmt;
 use core::str::FromStr;
 
-#[cfg(feature = "nip19")]
-use bech32::{self, FromBase32, ToBase32, Variant};
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
-use bitcoin_hashes::Hash;
+use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::Hash;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "nip19")]
 use crate::nips::nip19::{
     Error as Bech32Error, FromBech32, ToBech32, PREFIX_BECH32_CHANNEL, RELAY, SPECIAL,
 };
@@ -22,9 +20,9 @@ use crate::EventId;
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Hex error
-    Hex(bitcoin_hashes::hex::Error),
+    Hex(bitcoin::hashes::hex::Error),
     /// Hash error
-    Hash(bitcoin_hashes::Error),
+    Hash(bitcoin::hashes::Error),
 }
 
 impl std::error::Error for Error {}
@@ -38,14 +36,14 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<bitcoin_hashes::hex::Error> for Error {
-    fn from(e: bitcoin_hashes::hex::Error) -> Self {
+impl From<bitcoin::hashes::hex::Error> for Error {
+    fn from(e: bitcoin::hashes::hex::Error) -> Self {
         Self::Hex(e)
     }
 }
 
-impl From<bitcoin_hashes::Error> for Error {
-    fn from(e: bitcoin_hashes::Error) -> Self {
+impl From<bitcoin::hashes::Error> for Error {
+    fn from(e: bitcoin::hashes::Error) -> Self {
         Self::Hash(e)
     }
 }
@@ -107,7 +105,6 @@ impl AsRef<[u8]> for ChannelId {
     }
 }
 
-#[cfg(feature = "nip19")]
 impl FromBech32 for ChannelId {
     type Err = Bech32Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
@@ -154,7 +151,6 @@ impl FromBech32 for ChannelId {
     }
 }
 
-#[cfg(feature = "nip19")]
 impl ToBech32 for ChannelId {
     type Err = Bech32Error;
     fn to_bech32(&self) -> Result<String, Self::Err> {
@@ -193,7 +189,6 @@ impl From<EventId> for ChannelId {
     }
 }
 
-#[cfg(feature = "nip19")]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -7,9 +7,9 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
-use secp256k1::schnorr::Signature;
-use secp256k1::XOnlyPublicKey;
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::{self, XOnlyPublicKey};
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -40,7 +40,7 @@ pub enum Error {
     /// Secp256k1
     Secp256k1(secp256k1::Error),
     /// Hex decoding error
-    Hex(bitcoin_hashes::hex::Error),
+    Hex(bitcoin::hashes::hex::Error),
     /// Url parse error
     Url(url::ParseError),
     /// EventId error
@@ -97,8 +97,8 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-impl From<bitcoin_hashes::hex::Error> for Error {
-    fn from(e: bitcoin_hashes::hex::Error) -> Self {
+impl From<bitcoin::hashes::hex::Error> for Error {
+    fn from(e: bitcoin::hashes::hex::Error) -> Self {
         Self::Hex(e)
     }
 }

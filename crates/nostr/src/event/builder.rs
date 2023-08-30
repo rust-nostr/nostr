@@ -7,9 +7,9 @@ use core::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
+use bitcoin::secp256k1::{self, XOnlyPublicKey};
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
-use secp256k1::XOnlyPublicKey;
 use serde_json::{json, Value};
 use url::Url;
 
@@ -645,12 +645,9 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::event::tag::{Tag, TagKind};
-    /// use nostr::key::Keys;
-    /// use nostr::EventBuilder;
-    /// use nostr::UncheckedUrl;
-    /// use secp256k1::XOnlyPublicKey;
     /// use std::str::FromStr;
+    ///
+    /// use nostr::prelude::*;
     ///
     /// let keys = Keys::generate();
     ///
@@ -716,12 +713,9 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::event::tag::{Tag, TagKind};
-    /// use nostr::key::Keys;
-    /// use nostr::EventBuilder;
-    /// use nostr::UncheckedUrl;
-    /// use secp256k1::XOnlyPublicKey;
     /// use std::str::FromStr;
+    ///
+    /// use nostr::prelude::*;
     ///
     /// // Keys used for defining a badge and awarding it
     /// let new_badge_keys = Keys::generate();
@@ -866,7 +860,7 @@ impl EventBuilder {
 mod tests {
     use std::str::FromStr;
 
-    use secp256k1::{SecretKey, XOnlyPublicKey};
+    use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
 
     use crate::{Event, EventBuilder, ImageDimensions, Keys, Kind, Result, Tag, UncheckedUrl};
 

@@ -8,11 +8,11 @@ use core::fmt;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
-use bitcoin_hashes::Hash;
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
-use secp256k1::XOnlyPublicKey;
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::rand::rngs::OsRng;
+use bitcoin::secp256k1::rand::RngCore;
+use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};

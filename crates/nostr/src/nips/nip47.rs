@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
-use secp256k1::{SecretKey, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 use url::form_urlencoded::byte_serialize;
@@ -579,7 +579,8 @@ mod test {
     use std::str::FromStr;
 
     use super::*;
-    use crate::{key::FromSkStr, Result};
+    use crate::key::FromSkStr;
+    use crate::Result;
 
     #[test]
     fn test_uri() -> Result<()> {

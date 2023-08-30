@@ -5,7 +5,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/57.md>
 
-use secp256k1::XOnlyPublicKey;
+use bitcoin::secp256k1::XOnlyPublicKey;
 
 use super::nip33::ParameterizedReplaceableEvent;
 use crate::{EventId, UncheckedUrl};

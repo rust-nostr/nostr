@@ -9,10 +9,10 @@ use core::fmt;
 use core::str::FromStr;
 use std::borrow::Cow;
 
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
-use bitcoin_hashes::Hash;
-use secp256k1::schnorr::Signature;
-use secp256k1::{rand, Message as Secp256k1Message, XOnlyPublicKey};
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::{self, rand, Message as Secp256k1Message, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use url::form_urlencoded::byte_serialize;

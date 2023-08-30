@@ -6,9 +6,9 @@
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
-use bitcoin_hashes::Hash;
-use secp256k1::XOnlyPublicKey;
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -19,9 +19,9 @@ use crate::Timestamp;
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Hex error
-    Hex(bitcoin_hashes::hex::Error),
+    Hex(bitcoin::hashes::hex::Error),
     /// Hash error
-    Hash(bitcoin_hashes::Error),
+    Hash(bitcoin::hashes::Error),
 }
 
 impl std::error::Error for Error {}
@@ -35,14 +35,14 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<bitcoin_hashes::hex::Error> for Error {
-    fn from(e: bitcoin_hashes::hex::Error) -> Self {
+impl From<bitcoin::hashes::hex::Error> for Error {
+    fn from(e: bitcoin::hashes::hex::Error) -> Self {
         Self::Hex(e)
     }
 }
 
-impl From<bitcoin_hashes::Error> for Error {
-    fn from(e: bitcoin_hashes::Error) -> Self {
+impl From<bitcoin::hashes::Error> for Error {
+    fn from(e: bitcoin::hashes::Error) -> Self {
         Self::Hash(e)
     }
 }

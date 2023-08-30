@@ -7,21 +7,16 @@
 //! This module defines the [`Keys`] structure.
 
 use core::fmt;
-#[cfg(feature = "nip19")]
 use core::str::FromStr;
 
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::Rng;
-use secp256k1::schnorr::Signature;
-use secp256k1::Message;
-pub use secp256k1::{KeyPair, PublicKey, SecretKey, XOnlyPublicKey};
-
 use crate::SECP256K1;
-
-#[cfg(feature = "vanity")]
+use bitcoin::secp256k1::rand::rngs::OsRng;
+use bitcoin::secp256k1::rand::Rng;
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::Message;
+pub use bitcoin::secp256k1::{self, KeyPair, PublicKey, SecretKey, XOnlyPublicKey};
 pub mod vanity;
 
-#[cfg(feature = "nip19")]
 use crate::nips::nip19::FromBech32;
 
 /// [`Keys`] error
@@ -86,7 +81,7 @@ pub struct Keys {
 impl Keys {
     /// Initialize from secret key.
     pub fn new(secret_key: SecretKey) -> Self {
-        let key_pair = KeyPair::from_secret_key(SECP256K1, &secret_key);
+        let key_pair = KeyPair::from_secret_key(&SECP256K1, &secret_key);
         let public_key = XOnlyPublicKey::from_keypair(&key_pair).0;
 
         Self {
@@ -152,7 +147,7 @@ impl Keys {
 
     /// Get [`PublicKey`]
     pub fn normalized_public_key(&self) -> Result<PublicKey, Error> {
-        Ok(self.secret_key()?.public_key(SECP256K1))
+        Ok(self.secret_key()?.public_key(&SECP256K1))
     }
 
     /// Get keypair
@@ -163,7 +158,7 @@ impl Keys {
             Ok(key_pair)
         } else {
             let sk = self.secret_key()?;
-            Ok(KeyPair::from_secret_key(SECP256K1, &sk))
+            Ok(KeyPair::from_secret_key(&SECP256K1, &sk))
         }
     }
 
@@ -174,7 +169,6 @@ impl Keys {
     }
 }
 
-#[cfg(feature = "nip19")]
 impl FromSkStr for Keys {
     type Err = Error;
 
@@ -190,7 +184,6 @@ impl FromSkStr for Keys {
     }
 }
 
-#[cfg(feature = "nip19")]
 impl FromPkStr for Keys {
     type Err = Error;
 

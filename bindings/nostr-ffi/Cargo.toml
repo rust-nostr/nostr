@@ -10,7 +10,7 @@ name = "nostr_ffi"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
-nostr  = { path = "../../crates/nostr", features = ["blocking", "vanity"] }
+nostr  = { path = "../../crates/nostr", features = ["blocking"] }
 uniffi = { workspace = true }
 
 [build-dependencies]

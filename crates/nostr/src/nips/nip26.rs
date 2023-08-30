@@ -9,10 +9,10 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
-use bitcoin_hashes::sha256::Hash as Sha256Hash;
-use bitcoin_hashes::Hash;
-use secp256k1::schnorr::Signature;
-use secp256k1::{Message, XOnlyPublicKey};
+use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::{self, Message, XOnlyPublicKey};
 use serde::de::Error as DeserializerError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
@@ -451,6 +451,8 @@ impl EventProperties {
 mod test {
     use std::str::FromStr;
 
+    use bitcoin::secp256k1::Secp256k1;
+
     use super::*;
     use crate::prelude::SecretKey;
 
@@ -599,6 +601,8 @@ mod test {
 
     #[test]
     fn test_sign_delegation_verify_lowlevel() {
+        let secp = Secp256k1::new();
+
         let delegator_secret_key =
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
                 .unwrap();
@@ -619,8 +623,7 @@ mod test {
         let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
         let message = Message::from_slice(hashed_token.as_byte_array()).unwrap();
 
-        let verify_result =
-            SECP256K1.verify_schnorr(&signature, &message, &delegator_keys.public_key());
+        let verify_result = secp.verify_schnorr(&signature, &message, &delegator_keys.public_key());
         assert!(verify_result.is_ok());
     }
 

@@ -5,16 +5,14 @@
 
 use core::str::FromStr;
 
-use secp256k1::{ecdh, PublicKey, SecretKey, XOnlyPublicKey};
+use bitcoin::secp256k1::{ecdh, rand, All, Error, PublicKey, Secp256k1, SecretKey, XOnlyPublicKey};
+use once_cell::sync::Lazy;
 
 /// Generate shared key
 ///
 /// **Important: use of a strong cryptographic hash function may be critical to security! Do NOT use
 /// unless you understand cryptographical implications.**
-pub fn generate_shared_key(
-    sk: &SecretKey,
-    pk: &XOnlyPublicKey,
-) -> Result<[u8; 32], secp256k1::Error> {
+pub fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> Result<[u8; 32], Error> {
     let pk_normalized: PublicKey = normalize_schnorr_pk(pk)?;
     let ssp: [u8; 64] = ecdh::shared_secret_point(&pk_normalized, sk);
     let mut shared_key: [u8; 32] = [0u8; 32];
@@ -23,8 +21,16 @@ pub fn generate_shared_key(
 }
 
 /// Normalize Schnorr public key
-fn normalize_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, secp256k1::Error> {
+fn normalize_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error> {
     let mut pk = String::from("02");
     pk.push_str(&schnorr_pk.to_string());
     PublicKey::from_str(&pk)
 }
+
+/// Secp256k1 global context
+pub static SECP256K1: Lazy<Secp256k1<All>> = Lazy::new(|| {
+    let mut ctx = Secp256k1::new();
+    let mut rng = rand::thread_rng();
+    ctx.randomize(&mut rng);
+    ctx
+});

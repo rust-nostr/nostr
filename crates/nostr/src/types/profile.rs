@@ -3,12 +3,10 @@
 
 //! Profile
 
-#[cfg(feature = "nip19")]
-use bech32::{self, FromBase32, ToBase32, Variant};
-use secp256k1::XOnlyPublicKey;
+use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
+use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "nip19")]
 use crate::nips::nip19::{Error, FromBech32, ToBech32, PREFIX_BECH32_PROFILE, RELAY, SPECIAL};
 
 /// Profile
@@ -33,7 +31,6 @@ impl Profile {
     }
 }
 
-#[cfg(feature = "nip19")]
 impl FromBech32 for Profile {
     type Err = Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
@@ -80,7 +77,6 @@ impl FromBech32 for Profile {
     }
 }
 
-#[cfg(feature = "nip19")]
 impl ToBech32 for Profile {
     type Err = Error;
 
@@ -102,7 +98,6 @@ impl ToBech32 for Profile {
     }
 }
 
-#[cfg(feature = "nip19")]
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;

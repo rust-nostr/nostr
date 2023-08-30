@@ -13,15 +13,13 @@ keywords = ["nostr", "sdk"]
 
 [features]
 default = ["all-nips"]
-blocking = ["dep:once_cell", "async-utility/blocking", "nostr/blocking"]
-vanity = ["nostr/vanity"]
-all-nips = ["nip04", "nip05", "nip06", "nip11", "nip19", "nip46", "nip47"]
+blocking = ["async-utility/blocking", "nostr/blocking"]
+all-nips = ["nip04", "nip05", "nip06", "nip11", "nip46", "nip47"]
 nip03 = ["nostr/nip03"]
 nip04 = ["nostr/nip04"]
 nip05 = ["nostr/nip05"]
 nip06 = ["nostr/nip06"]
 nip11 = ["nostr/nip11"]
-nip19 = ["nostr/nip19"]
 nip44 = ["nostr/nip44"]
 nip46 = ["nostr/nip46"]
 nip47 = ["nostr/nip47"]
@@ -30,7 +28,7 @@ nip47 = ["nostr/nip47"]
 async-utility = "0.1"
 nostr = { version = "0.23", path = "../nostr", default-features = false }
 nostr-sdk-net = { version = "0.23", path = "../nostr-sdk-net" }
-once_cell = { version = "1.17", optional = true }
+once_cell = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
@@ -76,4 +74,3 @@ required-features = ["all-nips"]
 
 [[example]]
 name = "nip65"
-required-features = ["nip19"]

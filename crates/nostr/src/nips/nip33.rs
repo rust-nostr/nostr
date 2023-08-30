@@ -5,12 +5,10 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/33.md>
 
-#[cfg(feature = "nip19")]
-use bech32::{self, FromBase32, ToBase32, Variant};
-use secp256k1::XOnlyPublicKey;
+use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
+use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "nip19")]
 use crate::nips::nip19::{
     Error as Bech32Error, FromBech32, ToBech32, AUTHOR, KIND,
     PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT, RELAY, SPECIAL,
@@ -41,7 +39,6 @@ impl From<ParameterizedReplaceableEvent> for Tag {
     }
 }
 
-#[cfg(feature = "nip19")]
 impl FromBech32 for ParameterizedReplaceableEvent {
     type Err = Bech32Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
@@ -106,7 +103,6 @@ impl FromBech32 for ParameterizedReplaceableEvent {
     }
 }
 
-#[cfg(feature = "nip19")]
 impl ToBech32 for ParameterizedReplaceableEvent {
     type Err = Bech32Error;
 
