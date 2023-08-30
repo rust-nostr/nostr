@@ -16,11 +16,6 @@ namespace nostr_sdk {
     [Throws=NostrError]
     Profile get_nip05_profile(string nip05, string? proxy);
 
-    [Throws=NostrError]
-    string nip44_encrypt(SecretKey secret_key, PublicKey public_key, string content, NIP44Version version);
-    [Throws=NostrError]
-    string nip44_decrypt(SecretKey secret_key, PublicKey public_key, string payload);
-
     // Nostr SDK
     [Throws=NostrSdkError]
     void init_logger(LogLevel level);
@@ -44,10 +39,6 @@ enum LogLevel {
 [Error]
 interface NostrError {
     Generic(string err);
-};
-
-enum NIP44Version {
-    "XChaCha20",
 };
 
 interface RelayInformationDocument {
