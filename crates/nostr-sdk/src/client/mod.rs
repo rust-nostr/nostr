@@ -206,6 +206,25 @@ impl Client {
         self.keys.clone()
     }
 
+    /// Replace current [`Keys`]
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let keys1 = Keys::generate();
+    /// #   let keys2 = Keys::generate();
+    /// #   let mut client = Client::new(&keys1);
+    /// #   client.set_keys(&keys2);
+    /// #   assert_eq!(keys2, client.keys());
+    /// # }
+    /// ```
+    pub fn set_keys(&mut self, keys: &Keys) {
+        self.keys = keys.clone()
+    }
+
     /// Get [`RelayPool`]
     pub fn pool(&self) -> RelayPool {
         self.pool.clone()
