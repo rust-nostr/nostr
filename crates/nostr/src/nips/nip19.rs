@@ -7,13 +7,15 @@
 
 #![allow(missing_docs)]
 
+use alloc::string::FromUtf8Error;
+use alloc::string::String;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use core::fmt;
-use std::string::FromUtf8Error;
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
-use serde::{Deserialize, Serialize};
 
 use crate::event::id::{self, EventId};
 
@@ -53,6 +55,7 @@ pub enum Error {
     TryFromSlice,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -287,43 +290,41 @@ impl ToBech32 for Nip19Event {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use super::*;
-    use crate::Result;
 
     #[test]
-    fn to_bech32_public_key() -> Result<()> {
+    fn to_bech32_public_key() {
         let public_key = XOnlyPublicKey::from_str(
             "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4",
-        )?;
+        )
+        .unwrap();
         assert_eq!(
             "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy".to_string(),
-            public_key.to_bech32()?
+            public_key.to_bech32().unwrap()
         );
-        Ok(())
     }
 
     #[test]
-    fn to_bech32_secret_key() -> Result<()> {
-        let secret_key = SecretKey::from_str(
-            "9571a568a42b9e05646a349c783159b906b498119390df9a5a02667155128028",
-        )?;
+    fn to_bech32_secret_key() {
+        let secret_key =
+            SecretKey::from_str("9571a568a42b9e05646a349c783159b906b498119390df9a5a02667155128028")
+                .unwrap();
         assert_eq!(
             "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99".to_string(),
-            secret_key.to_bech32()?
+            secret_key.to_bech32().unwrap()
         );
-        Ok(())
     }
 
     #[test]
-    fn to_bech32_note() -> Result<()> {
+    fn to_bech32_note() {
         let event_id =
-            EventId::from_hex("d94a3f4dd87b9a3b0bed183b32e916fa29c8020107845d1752d72697fe5309a5")?;
+            EventId::from_hex("d94a3f4dd87b9a3b0bed183b32e916fa29c8020107845d1752d72697fe5309a5")
+                .unwrap();
         assert_eq!(
             "note1m99r7nwc0wdrkzldrqan96gklg5usqspq7z9696j6unf0ljnpxjspqfw99".to_string(),
-            event_id.to_bech32()?
+            event_id.to_bech32().unwrap()
         );
-        Ok(())
     }
 }

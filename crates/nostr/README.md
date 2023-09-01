@@ -81,22 +81,29 @@ AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target w
 
 NOTE: Currently `nip03` feature not support WASM.
 
+## Embedded
+
+This crate support [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments.
+
+Check the example in the [embedded/](https://github.com/rust-nostr/nostr/tree/master/crates/nostr/examples/embedded) directory.
+
 ## Crate Feature Flags
 
 The following crate feature flags are available:
 
-| Feature             | Default | Description                                                                                                                |
-| ------------------- | :-----: | -------------------------------------------------------------------------------------------------------------------------- |
-| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                                                    |
-| `all-nips`          |   Yes   | Enable all NIPs                                                                                                            |
-| `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                                                      |
-| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                                                    |
-| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                                                        |
-| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                                              |
-| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                                                  |
-| `nip44`             |   No   | Enable NIP-44: Encrypted Payloads (Versioned)                                                                                        |
-| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                                               |
-| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                                                        |
+| Feature             | Default | Description                                                                              |
+| ------------------- | :-----: | ---------------------------------------------------------------------------------------- |
+| `std`               |   Yes   | Enable `std` library                                                                     |
+| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                  |
+| `all-nips`          |   Yes   | Enable all NIPs                                                                          |
+| `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                    |
+| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                  |
+| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                      |
+| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                            |
+| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                |
+| `nip44`             |   No    | Enable NIP-44: Encrypted Payloads (Versioned) - EXPERIMENTAL                             |
+| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                             |
+| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                      |
 
 ## Supported NIPs
 

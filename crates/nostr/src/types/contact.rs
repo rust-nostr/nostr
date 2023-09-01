@@ -3,8 +3,9 @@
 
 //! Contact
 
+use alloc::string::String;
+
 use bitcoin::secp256k1::XOnlyPublicKey;
-use serde::{Deserialize, Serialize};
 
 use crate::UncheckedUrl;
 

@@ -4,12 +4,15 @@
 
 //! Subscription filters
 
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
-use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
+use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
+#[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::RngCore;
 use bitcoin::secp256k1::XOnlyPublicKey;
@@ -27,6 +30,7 @@ pub enum AlphabetError {
     InvalidChar,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for AlphabetError {}
 
 impl fmt::Display for AlphabetError {
@@ -171,9 +175,19 @@ impl SubscriptionId {
     }
 
     /// Generate new random [`SubscriptionId`]
+    #[cfg(feature = "std")]
     pub fn generate() -> Self {
+        let mut rng = OsRng;
+        Self::generate_with_rng(&mut rng)
+    }
+
+    /// Generate new random [`SubscriptionId`]
+    pub fn generate_with_rng<R>(rng: &mut R) -> Self
+    where
+        R: RngCore,
+    {
         let mut os_random = [0u8; 32];
-        OsRng.fill_bytes(&mut os_random);
+        rng.fill_bytes(&mut os_random);
         let hash = Sha256Hash::hash(&os_random).to_string();
         Self::new(&hash[..32])
     }
@@ -250,7 +264,7 @@ pub struct Filter {
         deserialize_with = "deserialize_generic_tags"
     )]
     #[serde(default)]
-    pub generic_tags: HashMap<Alphabet, Vec<String>>,
+    pub generic_tags: BTreeMap<Alphabet, Vec<String>>,
 }
 
 impl Filter {
@@ -307,7 +321,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let ids: HashSet<String> = ids.into_iter().map(|id| id.into()).collect();
+        let ids: BTreeSet<String> = ids.into_iter().map(|id| id.into()).collect();
         Self {
             ids: self
                 .ids
@@ -353,7 +367,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let authors: HashSet<String> = authors.into_iter().map(|id| id.into()).collect();
+        let authors: BTreeSet<String> = authors.into_iter().map(|id| id.into()).collect();
         Self {
             authors: self
                 .authors
@@ -389,7 +403,7 @@ impl Filter {
 
     /// Remove kinds
     pub fn remove_kinds(self, kinds: Vec<Kind>) -> Self {
-        let kinds: HashSet<Kind> = kinds.into_iter().collect();
+        let kinds: BTreeSet<Kind> = kinds.into_iter().collect();
         Self {
             kinds: self
                 .kinds
@@ -425,7 +439,7 @@ impl Filter {
 
     /// Remove events
     pub fn remove_events<S>(self, events: Vec<EventId>) -> Self {
-        let events: HashSet<EventId> = events.into_iter().collect();
+        let events: BTreeSet<EventId> = events.into_iter().collect();
         Self {
             events: self
                 .events
@@ -461,7 +475,7 @@ impl Filter {
 
     /// Remove pubkeys
     pub fn remove_pubkeys<S>(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
-        let pubkeys: HashSet<XOnlyPublicKey> = pubkeys.into_iter().collect();
+        let pubkeys: BTreeSet<XOnlyPublicKey> = pubkeys.into_iter().collect();
         Self {
             pubkeys: self
                 .pubkeys
@@ -511,7 +525,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let hashtags: HashSet<String> = hashtags.into_iter().map(|id| id.into()).collect();
+        let hashtags: BTreeSet<String> = hashtags.into_iter().map(|id| id.into()).collect();
         Self {
             hashtags: self
                 .hashtags
@@ -561,7 +575,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let references: HashSet<String> = references.into_iter().map(|id| id.into()).collect();
+        let references: BTreeSet<String> = references.into_iter().map(|id| id.into()).collect();
         Self {
             references: self
                 .references
@@ -614,7 +628,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let identifiers: HashSet<String> = identifiers.into_iter().map(|id| id.into()).collect();
+        let identifiers: BTreeSet<String> = identifiers.into_iter().map(|id| id.into()).collect();
         Self {
             identifiers: self
                 .identifiers
@@ -698,7 +712,7 @@ impl Filter {
         S: Into<String>,
     {
         let values: Vec<String> = values.into_iter().map(|value| value.into()).collect();
-        let mut generic_tags: HashMap<Alphabet, Vec<String>> = self.generic_tags;
+        let mut generic_tags: BTreeMap<Alphabet, Vec<String>> = self.generic_tags;
         generic_tags
             .entry(tag)
             .and_modify(|list| {
@@ -720,8 +734,8 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let values: HashSet<String> = values.into_iter().map(|id| id.into()).collect();
-        let mut generic_tags: HashMap<Alphabet, Vec<String>> = self.generic_tags;
+        let values: BTreeSet<String> = values.into_iter().map(|id| id.into()).collect();
+        let mut generic_tags: BTreeMap<Alphabet, Vec<String>> = self.generic_tags;
         generic_tags.entry(tag).and_modify(|list| {
             list.retain(|value| !values.contains(value));
         });
@@ -733,7 +747,7 @@ impl Filter {
 }
 
 fn serialize_generic_tags<S>(
-    generic_tags: &HashMap<Alphabet, Vec<String>>,
+    generic_tags: &BTreeMap<Alphabet, Vec<String>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -748,14 +762,14 @@ where
 
 fn deserialize_generic_tags<'de, D>(
     deserializer: D,
-) -> Result<HashMap<Alphabet, Vec<String>>, D::Error>
+) -> Result<BTreeMap<Alphabet, Vec<String>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = HashMap<Alphabet, Vec<String>>;
+        type Value = BTreeMap<Alphabet, Vec<String>>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("map in which the keys are \"#X\" for some character X")
@@ -765,7 +779,7 @@ where
         where
             M: MapAccess<'de>,
         {
-            let mut generic_tags = HashMap::new();
+            let mut generic_tags = BTreeMap::new();
             while let Some(key) = map.next_key::<String>()? {
                 let mut chars = key.chars();
                 if let (Some('#'), Some(ch), None) = (chars.next(), chars.next(), chars.next()) {

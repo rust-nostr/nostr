@@ -5,7 +5,7 @@
 
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::StreamExt;
-use url::Url;
+use url_fork::Url;
 use ws_stream_wasm::{WsErr, WsMessage, WsMeta, WsStream};
 
 type Sink = SplitSink<WsStream, WsMessage>;

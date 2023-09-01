@@ -3,13 +3,14 @@
 
 //! Channel Id
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
-use serde::{Deserialize, Serialize};
 
 use crate::nips::nip19::{
     Error as Bech32Error, FromBech32, ToBech32, PREFIX_BECH32_CHANNEL, RELAY, SPECIAL,
@@ -25,6 +26,7 @@ pub enum Error {
     Hash(bitcoin::hashes::Error),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -192,50 +194,48 @@ impl From<EventId> for ChannelId {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Result;
 
     #[test]
-    fn to_bech32_channel_only_id() -> Result<()> {
-        let channel_id = ChannelId::from_hex(
-            "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
-        )?;
+    fn to_bech32_channel_only_id() {
+        let channel_id =
+            ChannelId::from_hex("3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d")
+                .unwrap();
         assert_eq!(
             "nchannel1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gg07hju".to_string(),
-            channel_id.to_bech32()?
+            channel_id.to_bech32().unwrap()
         );
-        Ok(())
     }
 
     #[test]
-    fn from_bech32_channel_only_id() -> Result<()> {
+    fn from_bech32_channel_only_id() {
         let channel_id = ChannelId::from_bech32(
             "nchannel1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gg07hju",
-        )?;
+        )
+        .unwrap();
         assert_eq!(
             "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d".to_string(),
             channel_id.to_hex()
         );
-        Ok(())
     }
 
     #[test]
-    fn to_bech32_channel_with_relays() -> Result<()> {
+    fn to_bech32_channel_with_relays() {
         let event_id =
-            EventId::from_hex("25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb")?;
+            EventId::from_hex("25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb")
+                .unwrap();
         let relays = vec!["wss://relay.damus.io".to_string()];
         let channel_id = ChannelId::new(event_id.inner(), relays);
         assert_eq!(
             "nchannel1qqsztewgyfe6yuwtr2zq6qrq8ydqhayktjh7kq5at264x595rz2nlwcpz3mhxue69uhhyetvv9ujuerpd46hxtnfducdjqp3".to_string(),
-            channel_id.to_bech32()?
+            channel_id.to_bech32().unwrap()
         );
-        Ok(())
     }
 
     #[test]
-    fn from_bech32_channel_with_relays() -> Result<()> {
+    fn from_bech32_channel_with_relays() {
         let channel_id = ChannelId::from_bech32(
             "nchannel1qqsztewgyfe6yuwtr2zq6qrq8ydqhayktjh7kq5at264x595rz2nlwcpz3mhxue69uhhyetvv9ujuerpd46hxtnfducdjqp3",
-        )?;
+        ).unwrap();
         assert_eq!(
             "25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb".to_string(),
             channel_id.to_hex()
@@ -244,6 +244,5 @@ mod tests {
             vec!["wss://relay.damus.io".to_string()],
             channel_id.relays()
         );
-        Ok(())
     }
 }

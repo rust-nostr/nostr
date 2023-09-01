@@ -3,8 +3,6 @@
 
 //! Entity
 
-use serde::{Deserialize, Serialize};
-
 /// Nostr [`Entity`]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Entity {

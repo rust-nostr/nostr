@@ -3,11 +3,11 @@
 
 //! Url
 
+use alloc::string::String;
 use core::fmt;
 use core::str::FromStr;
 
-use serde::{Deserialize, Serialize};
-use url::{ParseError, Url};
+use url_fork::{ParseError, Url};
 
 /// Url Error
 #[derive(Debug, PartialEq, Eq)]
@@ -16,6 +16,7 @@ pub enum Error {
     Url(ParseError),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -84,24 +85,24 @@ impl fmt::Display for UncheckedUrl {
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::ToString;
+
     use super::*;
-    use crate::Result;
 
     #[test]
-    fn test_unchecked_relay_url() -> Result<()> {
+    fn test_unchecked_relay_url() {
         let relay = "wss://relay.damus.io/";
-        let relay_url = Url::from_str(relay)?;
-
-        println!("{}", relay_url.to_string());
+        let relay_url = Url::from_str(relay).unwrap();
 
         let unchecked_relay_url = UncheckedUrl::from(relay_url.clone());
 
         assert_eq!(unchecked_relay_url, UncheckedUrl::from(relay));
 
-        assert_eq!(Url::try_from(unchecked_relay_url.clone())?, relay_url);
+        assert_eq!(
+            Url::try_from(unchecked_relay_url.clone()).unwrap(),
+            relay_url
+        );
 
         assert_eq!(relay, unchecked_relay_url.to_string());
-
-        Ok(())
     }
 }

@@ -3,22 +3,18 @@
 
 //! Time
 
-use std::fmt;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::fmt;
+use core::ops::{Add, Sub};
+use core::str::FromStr;
+use core::time::Duration;
 
-use std::time::Duration;
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{
-    ops::{Add, Sub},
-    str::FromStr,
-};
+mod supplier;
 
-#[cfg(target_arch = "wasm32")]
-use instant::SystemTime;
-use serde::{Deserialize, Serialize};
-
-#[cfg(target_arch = "wasm32")]
-const UNIX_EPOCH: SystemTime = SystemTime::UNIX_EPOCH;
+pub use self::supplier::TimeSupplier;
+#[cfg(feature = "std")]
+pub use self::supplier::{Instant, SystemTime, UNIX_EPOCH};
 
 /// Unix timestamp in seconds
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -26,12 +22,24 @@ pub struct Timestamp(i64);
 
 impl Timestamp {
     /// Get UNIX timestamp
+    #[cfg(feature = "std")]
     pub fn now() -> Self {
         let ts: u64 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
         Self(ts as i64)
+    }
+
+    /// Get UNIX timestamp from a specified [`TimeSupplier`]
+    pub fn now_with_supplier<T>(supplier: &T) -> Self
+    where
+        T: TimeSupplier,
+    {
+        let now = supplier.now();
+        let starting_point = supplier.starting_point();
+        let duration = supplier.elapsed_since(now, starting_point);
+        supplier.to_timestamp(duration)
     }
 
     /// Get timestamp as [`u64`]
@@ -139,7 +147,7 @@ impl From<u64> for Timestamp {
 }
 
 impl FromStr for Timestamp {
-    type Err = std::num::ParseIntError;
+    type Err = core::num::ParseIntError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(s.parse::<i64>()?))
     }

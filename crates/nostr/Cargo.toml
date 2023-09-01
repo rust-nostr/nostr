@@ -9,10 +9,26 @@ repository.workspace = true
 license.workspace = true
 readme = "README.md"
 rust-version.workspace = true
-keywords = ["nostr", "protocol"]
+keywords = ["nostr", "protocol", "no_std"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["all-nips"]
+default = ["std", "all-nips"]
+std = [
+    "dep:once_cell", 
+    "base64?/std", 
+    "bitcoin/std", 
+    "bitcoin/rand-std", 
+    "bip39?/std", 
+    "chacha20?/std", 
+    "serde/std", 
+    "serde_json/std", 
+    "tracing/std", 
+    "url-fork/std",
+]
 blocking = ["reqwest?/blocking"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip46", "nip47"]
 nip03 = ["dep:nostr-ots"]
@@ -26,18 +42,18 @@ nip47 = ["nip04"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
-base64 = { version = "0.21", optional = true }
-bip39 = { version = "2.0", optional = true }
-bitcoin = { version = "0.30", default-features = false, features = ["std", "rand-std", "serde"] }
+base64 = { version = "0.21", default-features = false, features = ["alloc"], optional = true }
+bip39 = { version = "2.0", default-features = false, optional = true }
+bitcoin = { version = "0.30", default-features = false, features = ["no-std", "rand", "serde"] }
 cbc = { version = "0.1", features = ["alloc"], optional = true }
 chacha20 = { version = "0.9", optional = true }
 nostr-ots = { version = "0.2", optional = true }
-once_cell = { workspace = true }
+once_cell = { workspace = true, optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 tracing = { workspace = true }
-url = { workspace = true, features = ["serde"] }
+url-fork = { workspace = true, features = ["serde"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
@@ -50,34 +66,40 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
 name = "keys"
+required-features = ["std"]
 
 [[example]]
 name = "metadata"
+required-features = ["std"]
 
 [[example]]
 name = "nip04"
-required-features = ["nip04"]
+required-features = ["std", "nip04"]
 
 [[example]]
 name = "nip05"
-required-features = ["nip05", "blocking"]
+required-features = ["std", "nip05", "blocking"]
 
 [[example]]
 name = "nip06"
-required-features = ["nip06"]
+required-features = ["std", "nip06"]
 
 [[example]]
 name = "nip09"
+required-features = ["std"]
 
 [[example]]
 name = "nip11"
-required-features = ["nip11", "blocking"]
+required-features = ["std", "nip11", "blocking"]
 
 [[example]]
 name = "nip13"
+required-features = ["std"]
 
 [[example]]
 name = "nip19"
+required-features = ["std"]
 
 [[example]]
 name = "vanity"
+required-features = ["std"]

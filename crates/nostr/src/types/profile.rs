@@ -3,9 +3,11 @@
 
 //! Profile
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::secp256k1::XOnlyPublicKey;
-use serde::{Deserialize, Serialize};
 
 use crate::nips::nip19::{Error, FromBech32, ToBech32, PREFIX_BECH32_PROFILE, RELAY, SPECIAL};
 
@@ -100,30 +102,29 @@ impl ToBech32 for Profile {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use super::*;
-    use crate::Result;
 
     #[test]
-    fn to_bech32_profile() -> Result<()> {
+    fn to_bech32_profile() {
         let profile = Profile::new(
             XOnlyPublicKey::from_str(
                 "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
-            )?,
+            )
+            .unwrap(),
             vec![
                 String::from("wss://r.x.com"),
                 String::from("wss://djbas.sadkb.com"),
             ],
         );
-        assert_eq!("nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p".to_string(), profile.to_bech32()?);
-        Ok(())
+        assert_eq!("nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p".to_string(), profile.to_bech32().unwrap());
     }
 
     #[test]
-    fn from_bech32_profile() -> Result<()> {
+    fn from_bech32_profile() {
         let bech32_profile = "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p";
-        let profile = Profile::from_bech32(bech32_profile)?;
+        let profile = Profile::from_bech32(bech32_profile).unwrap();
         assert_eq!(
             "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d".to_string(),
             profile.public_key.to_string()
@@ -135,6 +136,5 @@ mod tests {
             ],
             profile.relays
         );
-        Ok(())
     }
 }

@@ -1,0 +1,26 @@
+[package]
+name = "embedded"
+version = "0.1.0"
+edition = "2021"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "embedded"
+test = false
+bench = false
+
+[dependencies]
+alloc-cortex-m = "0.4.1"
+cortex-m = "0.6.0"
+cortex-m-rt = "0.6.10"
+cortex-m-semihosting = "0.3.3"
+nostr = { path = "../../../nostr", default-features = false, features = ["nip06"] }
+
+[profile.release]
+opt-level = "z"
+codegen-units = 1 # better optimizations
+lto = true # better optimizations
+debug = true # symbols are nice and they don't increase the size on Flash

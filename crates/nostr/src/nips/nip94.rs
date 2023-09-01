@@ -5,8 +5,11 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/94.md>
 
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use url::Url;
+use url_fork::Url;
 
 use crate::{ImageDimensions, Tag};
 

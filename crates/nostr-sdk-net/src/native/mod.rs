@@ -17,7 +17,7 @@ use tokio_rustls::TlsConnector;
 use tokio_tungstenite::tungstenite::Error as WsError;
 pub use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-use url::{ParseError, Url};
+use url_fork::{ParseError, Url};
 
 type WebSocket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 type Sink = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
@@ -45,7 +45,7 @@ pub enum Error {
     InvalidDNSName,
     /// Url parse error
     #[error("impossible to parse URL: {0}")]
-    Url(#[from] url::ParseError),
+    Url(#[from] ParseError),
 }
 
 pub async fn connect(
@@ -62,9 +62,10 @@ pub async fn connect(
 
 async fn connect_direct(url: &Url, timeout: Option<Duration>) -> Result<WebSocket, Error> {
     let timeout = timeout.unwrap_or(Duration::from_secs(60));
-    let (stream, _) = tokio::time::timeout(timeout, tokio_tungstenite::connect_async(url))
-        .await
-        .map_err(|_| Error::Timeout)??;
+    let (stream, _) =
+        tokio::time::timeout(timeout, tokio_tungstenite::connect_async(url.to_string()))
+            .await
+            .map_err(|_| Error::Timeout)??;
     Ok(stream)
 }
 
@@ -91,9 +92,12 @@ async fn connect_proxy(
         }
     };
 
-    let (stream, _) = tokio::time::timeout(timeout, tokio_tungstenite::client_async(url, conn))
-        .await
-        .map_err(|_| Error::Timeout)??;
+    let (stream, _) = tokio::time::timeout(
+        timeout,
+        tokio_tungstenite::client_async(url.to_string(), conn),
+    )
+    .await
+    .map_err(|_| Error::Timeout)??;
     Ok(stream)
 }
 

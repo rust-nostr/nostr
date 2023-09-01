@@ -3,14 +3,15 @@
 
 //! Metadata
 
+use alloc::collections::BTreeMap;
+use alloc::string::{String, ToString};
 use core::fmt;
-use std::collections::HashMap;
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use url::Url;
+use url_fork::Url;
 
 /// [`Metadata`] error
 #[derive(Debug)]
@@ -19,6 +20,7 @@ pub enum Error {
     Json(serde_json::Error),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -81,7 +83,7 @@ pub struct Metadata {
         deserialize_with = "deserialize_custom_fields"
     )]
     #[serde(default)]
-    pub custom: HashMap<String, Value>,
+    pub custom: BTreeMap<String, Value>,
 }
 
 impl Metadata {
@@ -198,14 +200,14 @@ impl Metadata {
     where
         S: Into<String>,
     {
-        let mut custom: HashMap<String, Value> = self.custom;
+        let mut custom: BTreeMap<String, Value> = self.custom;
         custom.insert(field_name.into(), value);
         Self { custom, ..self }
     }
 }
 
 fn serialize_custom_fields<S>(
-    custom_fields: &HashMap<String, Value>,
+    custom_fields: &BTreeMap<String, Value>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -218,14 +220,14 @@ where
     map.end()
 }
 
-fn deserialize_custom_fields<'de, D>(deserializer: D) -> Result<HashMap<String, Value>, D::Error>
+fn deserialize_custom_fields<'de, D>(deserializer: D) -> Result<BTreeMap<String, Value>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = HashMap<String, Value>;
+        type Value = BTreeMap<String, Value>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("TODO")
@@ -235,7 +237,7 @@ where
         where
             M: MapAccess<'de>,
         {
-            let mut custom_fields = HashMap::new();
+            let mut custom_fields = BTreeMap::new();
             while let Some(field_name) = map.next_key::<String>()? {
                 let value: Value = map.next_value()?;
                 custom_fields.insert(field_name, value);

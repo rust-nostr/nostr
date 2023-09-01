@@ -26,6 +26,7 @@ pub enum MessageHandleError {
     EmptyMsg,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for MessageHandleError {}
 
 impl fmt::Display for MessageHandleError {

@@ -94,4 +94,26 @@ jobs:
       run: cargo build ${{ matrix.build-args }} --target wasm32-unknown-unknown
     - name: Clippy
       run: cargo clippy ${{ matrix.build-args }} --target wasm32-unknown-unknown -- -D warnings
+
+  build-no-std:
+    name: Build no_std
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./crates/nostr/examples/embedded
+    strategy:
+      matrix:
+        rust:
+          - version: nightly
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Set default toolchain
+      run: rustup default ${{ matrix.rust.version }}
+    - name: Set profile
+      run: rustup set profile minimal
+    - name: Init
+      run: sudo apt update && make init
+    - name: Build
+      run: make
   

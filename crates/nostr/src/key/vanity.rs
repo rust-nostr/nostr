@@ -3,10 +3,12 @@
 
 //! Vanity
 
+use alloc::string::{String, ToString};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 use core::fmt;
 use core::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, RecvError};
-use std::sync::Arc;
 use std::thread;
 
 use bitcoin::secp256k1::rand;

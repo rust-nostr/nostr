@@ -5,6 +5,8 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/21.md>
 
+use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt;
 
 use bitcoin::secp256k1::XOnlyPublicKey;
@@ -26,6 +28,7 @@ pub enum Error {
     InvalidURI,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -74,7 +77,7 @@ impl NostrURI for ParameterizedReplaceableEvent {}
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use super::*;
 

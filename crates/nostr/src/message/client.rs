@@ -4,12 +4,20 @@
 
 //! Client messages
 
-use serde::de::Error;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use alloc::boxed::Box;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+
+use bitcoin::secp256k1::{Secp256k1, Verification};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Deserializer};
+use serde::{Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::{Filter, MessageHandleError, SubscriptionId};
 use crate::Event;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 
 /// Messages sent by clients, received by relays
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,13 +56,14 @@ impl Serialize for ClientMessage {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for ClientMessage {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let json_value = Value::deserialize(deserializer)?;
-        ClientMessage::from_value(json_value).map_err(Error::custom)
+        ClientMessage::from_value(json_value).map_err(serde::de::Error::custom)
     }
 }
 
@@ -150,7 +159,19 @@ impl ClientMessage {
     }
 
     /// Deserialize from [`Value`]
+    #[cfg(feature = "std")]
     pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
+        Self::from_value_with_ctx(&SECP256K1, msg)
+    }
+
+    /// Deserialize from [`Value`]
+    pub fn from_value_with_ctx<C>(
+        secp: &Secp256k1<C>,
+        msg: Value,
+    ) -> Result<Self, MessageHandleError>
+    where
+        C: Verification,
+    {
         let v = msg
             .as_array()
             .ok_or(MessageHandleError::InvalidMessageFormat)?;
@@ -167,7 +188,7 @@ impl ClientMessage {
             if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let event = Event::from_json(v[1].to_string())?;
+            let event = Event::from_json_with_ctx(secp, v[1].to_string())?;
             return Ok(Self::new_event(event));
         }
 
@@ -218,7 +239,7 @@ impl ClientMessage {
             if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let event = Event::from_json(v[1].to_string())?;
+            let event = Event::from_json_with_ctx(secp, v[1].to_string())?;
             return Ok(Self::new_auth(event));
         }
 
@@ -226,8 +247,18 @@ impl ClientMessage {
     }
 
     /// Deserialize [`ClientMessage`] from JSON string
+    #[cfg(feature = "std")]
     pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
     where
+        S: Into<String>,
+    {
+        Self::from_json_with_ctx(&SECP256K1, msg)
+    }
+
+    /// Deserialize [`ClientMessage`] from JSON string
+    pub fn from_json_with_ctx<C, S>(secp: &Secp256k1<C>, msg: S) -> Result<Self, MessageHandleError>
+    where
+        C: Verification,
         S: Into<String>,
     {
         let msg: &str = &msg.into();
@@ -238,18 +269,18 @@ impl ClientMessage {
         }
 
         let value: Value = serde_json::from_str(msg)?;
-        Self::from_value(value)
+        Self::from_value_with_ctx(secp, value)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use bitcoin::secp256k1::XOnlyPublicKey;
 
+    use super::*;
     use crate::Kind;
 
     #[test]
@@ -290,6 +321,8 @@ mod tests {
 
     #[test]
     fn test_negative_timestamp() {
+        let secp = Secp256k1::new();
+
         let req = json!([
             "REQ",
             "some_id",
@@ -306,7 +339,7 @@ mod tests {
             }
         ]);
 
-        let msg = ClientMessage::from_value(req.clone()).unwrap();
+        let msg = ClientMessage::from_value_with_ctx(&secp, req.clone()).unwrap();
 
         assert_eq!(msg.as_value(), req)
     }

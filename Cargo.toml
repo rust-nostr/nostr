@@ -22,10 +22,10 @@ rust-version = "1.64.0"
 once_cell = "1.18"
 thiserror = "1.0"
 tokio = { version = "1", default-features = false }
-tracing = "0.1"
+tracing = { version = "0.1", default-features = false }
 tracing-subscriber = "0.3"
 uniffi = { git = "https://github.com/mozilla/uniffi-rs", rev = "cae8edc45ba5b56bfcbf35b60c1ab6a97d1bf9da" }
-url = "2"
+url-fork = { version = "3.0", default-features = false }
 
 [profile.release]
 lto = true

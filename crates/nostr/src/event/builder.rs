@@ -3,15 +3,16 @@
 
 //! Event builder
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::Instant;
 
-use bitcoin::secp256k1::{self, XOnlyPublicKey};
-#[cfg(target_arch = "wasm32")]
-use instant::Instant;
+#[cfg(feature = "std")]
+use bitcoin::secp256k1::rand;
+use bitcoin::secp256k1::rand::{CryptoRng, Rng};
+use bitcoin::secp256k1::{self, Secp256k1, Signing, XOnlyPublicKey};
 use serde_json::{json, Value};
-use url::Url;
+use url_fork::Url;
 
 pub use super::kind::Kind;
 pub use super::tag::{ImageDimensions, Marker, Tag, TagKind};
@@ -19,7 +20,7 @@ use super::{Event, EventId, UnsignedEvent};
 use crate::key::{self, Keys};
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
-#[cfg(feature = "nip46")]
+#[cfg(all(feature = "std", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
@@ -27,8 +28,13 @@ use crate::nips::nip58::Error as Nip58Error;
 use crate::nips::nip94::FileMetadata;
 use crate::nips::nip98::HttpData;
 use crate::nips::{nip13, nip58};
+#[cfg(feature = "std")]
+use crate::types::time::Instant;
+use crate::types::time::TimeSupplier;
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 use crate::UncheckedUrl;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 
 /// [`EventBuilder`] error
 #[derive(Debug)]
@@ -48,6 +54,7 @@ pub enum Error {
     NIP58(nip58::Error),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -123,14 +130,34 @@ impl EventBuilder {
     }
 
     /// Build [`Event`]
-    pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
+    pub fn to_event_with_ctx<C, R, T>(
+        self,
+        secp: &Secp256k1<C>,
+        rng: &mut R,
+        supplier: &T,
+        keys: &Keys,
+    ) -> Result<Event, Error>
+    where
+        C: Signing,
+        R: Rng + CryptoRng,
+        T: TimeSupplier,
+    {
         let pubkey: XOnlyPublicKey = keys.public_key();
-        Ok(self.to_unsigned_event(pubkey).sign(keys)?)
+        Ok(self
+            .to_unsigned_event_with_supplier(supplier, pubkey)
+            .sign_with_ctx(secp, rng, keys)?)
     }
 
     /// Build [`UnsignedEvent`]
-    pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
-        let created_at: Timestamp = Timestamp::now();
+    pub fn to_unsigned_event_with_supplier<T>(
+        self,
+        supplier: &T,
+        pubkey: XOnlyPublicKey,
+    ) -> UnsignedEvent
+    where
+        T: TimeSupplier,
+    {
+        let created_at: Timestamp = Timestamp::now_with_supplier(supplier);
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
         UnsignedEvent {
             id,
@@ -143,16 +170,39 @@ impl EventBuilder {
     }
 
     /// Build POW [`Event`]
-    pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
+    pub fn to_pow_event_with_ctx<C, R, T>(
+        self,
+        secp: &Secp256k1<C>,
+        rng: &mut R,
+        supplier: &T,
+        keys: &Keys,
+        difficulty: u8,
+    ) -> Result<Event, Error>
+    where
+        C: Signing,
+        R: Rng + CryptoRng,
+        T: TimeSupplier,
+    {
         let pubkey: XOnlyPublicKey = keys.public_key();
-        Ok(self.to_unsigned_pow_event(pubkey, difficulty).sign(keys)?)
+        Ok(self
+            .to_unsigned_pow_event_with_supplier(supplier, pubkey, difficulty)
+            .sign_with_ctx(secp, rng, keys)?)
     }
 
     /// Build unsigned POW [`Event`]
-    pub fn to_unsigned_pow_event(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
+    pub fn to_unsigned_pow_event_with_supplier<T>(
+        self,
+        supplier: &T,
+        pubkey: XOnlyPublicKey,
+        difficulty: u8,
+    ) -> UnsignedEvent
+    where
+        T: TimeSupplier,
+    {
         let mut nonce: u128 = 0;
         let mut tags: Vec<Tag> = self.tags;
 
+        #[cfg(feature = "std")]
         let now = Instant::now();
 
         loop {
@@ -160,10 +210,11 @@ impl EventBuilder {
 
             tags.push(Tag::POW { nonce, difficulty });
 
-            let created_at: Timestamp = Timestamp::now();
+            let created_at: Timestamp = Timestamp::now_with_supplier(supplier);
             let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
+                #[cfg(feature = "std")]
                 tracing::debug!(
                     "{} iterations in {} ms. Avg rate {} hashes/second",
                     nonce,
@@ -183,6 +234,38 @@ impl EventBuilder {
 
             tags.pop();
         }
+    }
+}
+
+impl EventBuilder {
+    /// Build [`Event`]
+    #[cfg(feature = "std")]
+    pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
+        self.to_event_with_ctx(&SECP256K1, &mut rand::thread_rng(), &Instant::now(), keys)
+    }
+
+    /// Build [`UnsignedEvent`]
+    #[cfg(feature = "std")]
+    pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
+        self.to_unsigned_event_with_supplier(&Instant::now(), pubkey)
+    }
+
+    /// Build POW [`Event`]
+    #[cfg(feature = "std")]
+    pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
+        self.to_pow_event_with_ctx(
+            &SECP256K1,
+            &mut rand::thread_rng(),
+            &Instant::now(),
+            keys,
+            difficulty,
+        )
+    }
+
+    /// Build unsigned POW [`Event`]
+    #[cfg(feature = "std")]
+    pub fn to_unsigned_pow_event(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
+        self.to_unsigned_pow_event_with_supplier(&Instant::now(), pubkey, difficulty)
     }
 }
 
@@ -275,7 +358,7 @@ impl EventBuilder {
     }
 
     /// Create encrypted direct msg event
-    #[cfg(feature = "nip04")]
+    #[cfg(all(feature = "std", feature = "nip04"))]
     pub fn new_encrypted_direct_msg<S>(
         sender_keys: &Keys,
         receiver_pubkey: XOnlyPublicKey,
@@ -437,7 +520,7 @@ impl EventBuilder {
     /// Nostr Connect
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
-    #[cfg(all(feature = "nip04", feature = "nip46"))]
+    #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
     pub fn nostr_connect(
         sender_keys: &Keys,
         receiver_pubkey: XOnlyPublicKey,
@@ -642,39 +725,6 @@ impl EventBuilder {
     /// Create a badge award event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use std::str::FromStr;
-    ///
-    /// use nostr::prelude::*;
-    ///
-    /// let keys = Keys::generate();
-    ///
-    /// // Create a new badge event
-    /// let badge_id = String::from("bravery");
-    /// let badge_definition_event = EventBuilder::define_badge(badge_id, None, None, None, None, None)
-    ///     .to_event(&keys)
-    ///     .unwrap();
-    ///
-    /// let awarded_pubkeys = vec![
-    ///     Tag::PubKey(
-    ///         XOnlyPublicKey::from_str(
-    ///             "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
-    ///         )
-    ///         .unwrap(),
-    ///         None,
-    ///     ),
-    ///     Tag::PubKey(
-    ///         XOnlyPublicKey::from_str(
-    ///             "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
-    ///         )
-    ///         .unwrap(),
-    ///         None,
-    ///     ),
-    /// ];
-    /// let event_builder = EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys.clone());
-    /// ```
     pub fn award_badge(badge_definition: &Event, awarded_pubkeys: Vec<Tag>) -> Result<Self, Error> {
         let mut tags = Vec::new();
 
@@ -710,41 +760,6 @@ impl EventBuilder {
     /// Create a profile badges event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use std::str::FromStr;
-    ///
-    /// use nostr::prelude::*;
-    ///
-    /// // Keys used for defining a badge and awarding it
-    /// let new_badge_keys = Keys::generate();
-    ///
-    /// // Keys that will create the profile badges event
-    /// let profile_badges_keys = Keys::generate();
-    ///
-    /// // Create a new badge event
-    /// let badge_id = String::from("bravery");
-    /// let badge_definition_event = EventBuilder::define_badge(badge_id, None, None, None, None, None)
-    ///     .to_event(&new_badge_keys)
-    ///     .unwrap();
-    ///
-    /// let awarded_pubkeys = vec![Tag::PubKey(profile_badges_keys.public_key(), None)];
-    /// let award_badge_event =
-    ///     EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys.clone())
-    ///         .unwrap()
-    ///         .to_event(&new_badge_keys)
-    ///         .unwrap();
-    ///
-    /// let profile_badges_event = EventBuilder::profile_badges(
-    ///     vec![badge_definition_event],
-    ///     vec![award_badge_event],
-    ///     &profile_badges_keys.public_key(),
-    /// )
-    /// .unwrap()
-    /// .to_event(&profile_badges_keys)
-    /// .unwrap();
-    /// ```
     pub fn profile_badges(
         badge_definitions: Vec<Event>,
         badge_awards: Vec<Event>,
@@ -775,7 +790,7 @@ impl EventBuilder {
         }
 
         // Add identifier `d` tag
-        let id_tag = Tag::Identifier("profile_badges".to_owned());
+        let id_tag = Tag::Identifier("profile_badges".to_string());
         let mut tags: Vec<Tag> = vec![id_tag];
 
         let badge_definitions_identifiers = badge_definitions
@@ -822,8 +837,8 @@ impl EventBuilder {
                     (_, Tag::Identifier(identifier)),
                     (badge_award_event, badge_id, a_tag, relay_url),
                 ) if badge_id == identifier => {
-                    let badge_definition_event_tag = a_tag.clone().to_owned();
-                    let badge_award_event_tag =
+                    let badge_definition_event_tag: Tag = a_tag.clone();
+                    let badge_award_event_tag: Tag =
                         Tag::Event(badge_award_event.clone().id, relay_url.clone(), None);
                     tags.extend_from_slice(&[badge_definition_event_tag, badge_award_event_tag]);
                 }
@@ -858,37 +873,51 @@ impl EventBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    #[cfg(feature = "std")]
+    use core::str::FromStr;
 
-    use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
+    use bitcoin::secp256k1::Secp256k1;
+    #[cfg(feature = "std")]
+    use bitcoin::secp256k1::SecretKey;
 
-    use crate::{Event, EventBuilder, ImageDimensions, Keys, Kind, Result, Tag, UncheckedUrl};
+    use super::*;
 
     #[test]
-    fn round_trip() -> Result<()> {
-        let keys = Keys::new(SecretKey::from_str(
-            "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
-        )?);
+    #[cfg(feature = "std")]
+    fn round_trip() {
+        let secp = Secp256k1::new();
 
-        let event = EventBuilder::new_text_note("hello", &vec![]).to_event(&keys)?;
+        let keys = Keys::new_with_ctx(
+            &secp,
+            SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap(),
+        );
+
+        let event = EventBuilder::new_text_note("hello", &vec![])
+            .to_event(&keys)
+            .unwrap();
 
         let serialized = event.as_json();
-        let deserialized = Event::from_json(serialized)?;
+        let deserialized = Event::from_json(serialized).unwrap();
 
         assert_eq!(event, deserialized);
-
-        Ok(())
     }
 
     #[test]
-    #[cfg(feature = "nip04")]
-    fn test_encrypted_direct_msg() -> Result<()> {
-        let sender_keys = Keys::new(SecretKey::from_str(
-            "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
-        )?);
-        let receiver_keys = Keys::new(SecretKey::from_str(
-            "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e",
-        )?);
+    #[cfg(all(feature = "std", feature = "nip04"))]
+    fn test_encrypted_direct_msg() {
+        let secp = Secp256k1::new();
+
+        let sender_keys = Keys::new_with_ctx(
+            &secp,
+            SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap(),
+        );
+        let receiver_keys = Keys::new_with_ctx(
+            &secp,
+            SecretKey::from_str("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap(),
+        );
 
         let content = "Mercury, the Winged Messenger";
         let event = EventBuilder::new_encrypted_direct_msg(
@@ -896,20 +925,24 @@ mod tests {
             receiver_keys.public_key(),
             content,
             None,
-        )?
-        .to_event(&sender_keys)?;
+        )
+        .unwrap()
+        .to_event(&sender_keys)
+        .unwrap();
 
-        Ok(event.verify()?)
+        event.verify().unwrap();
     }
 
     #[test]
     fn test_zap_event_builder() {
+        let secp = Secp256k1::new();
+
         let bolt11 = String::from("lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0");
         let preimage = Some(String::from(
             "5d006d2cf1e73c7148e7519a4c68adc81642ce0e25a432b2434c99f97344c15f",
         ));
         let zap_request_json = String::from("{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}");
-        let zap_request_event: Event = Event::from_json(zap_request_json).unwrap();
+        let zap_request_event: Event = Event::from_json_with_ctx(&secp, zap_request_json).unwrap();
         let event_builder = EventBuilder::new_zap_receipt(bolt11, preimage, zap_request_event);
 
         assert_eq!(5, event_builder.tags.len());
@@ -926,10 +959,12 @@ mod tests {
 
     #[test]
     fn test_zap_event_builder_without_preimage() {
+        let secp = Secp256k1::new();
+
         let bolt11 = String::from("lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0");
         let preimage = None;
         let zap_request_json = String::from("{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}");
-        let zap_request_event = Event::from_json(zap_request_json).unwrap();
+        let zap_request_event = Event::from_json_with_ctx(&secp, zap_request_json).unwrap();
         let event_builder = EventBuilder::new_zap_receipt(bolt11, preimage, zap_request_event);
 
         assert_eq!(4, event_builder.tags.len());
@@ -986,7 +1021,8 @@ mod tests {
     }
 
     #[test]
-    fn test_badge_award_event_builder() -> Result<()> {
+    #[cfg(feature = "std")]
+    fn test_badge_award_event_builder() {
         let keys = Keys::generate();
         let pub_key = keys.public_key();
 
@@ -1035,30 +1071,32 @@ mod tests {
             Tag::PubKey(
                 XOnlyPublicKey::from_str(
                     "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
-                )?,
-                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev")?),
+                )
+                .unwrap(),
+                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
             ),
             Tag::PubKey(
                 XOnlyPublicKey::from_str(
                     "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
-                )?,
-                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev")?),
+                )
+                .unwrap(),
+                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
             ),
         ];
         let event_builder: Event =
-            EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)?
+            EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)
+                .unwrap()
                 .to_event(&keys)
                 .unwrap();
 
         assert_eq!(event_builder.kind, Kind::BadgeAward);
         assert_eq!(event_builder.content, "");
         assert_eq!(event_builder.tags, example_event.tags);
-
-        Ok(())
     }
 
     #[test]
-    fn test_profile_badges() -> Result<()> {
+    #[cfg(feature = "std")]
+    fn test_profile_badges() {
         // The pubkey used for profile badges event
         let keys = Keys::generate();
         let pub_key = keys.public_key();
@@ -1073,16 +1111,20 @@ mod tests {
             Tag::PubKey(
                 XOnlyPublicKey::from_str(
                     "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
-                )?,
-                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev")?),
+                )
+                .unwrap(),
+                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
             ),
         ];
         let bravery_badge_event =
             self::EventBuilder::define_badge("bravery", None, None, None, None, None)
-                .to_event(&badge_one_keys)?;
+                .to_event(&badge_one_keys)
+                .unwrap();
         let bravery_badge_award =
-            self::EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())?
-                .to_event(&badge_one_keys)?;
+            self::EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())
+                .unwrap()
+                .to_event(&badge_one_keys)
+                .unwrap();
 
         //Badge 2
         let badge_two_keys = Keys::generate();
@@ -1090,10 +1132,13 @@ mod tests {
 
         let honor_badge_event =
             self::EventBuilder::define_badge("honor", None, None, None, None, None)
-                .to_event(&badge_two_keys)?;
+                .to_event(&badge_two_keys)
+                .unwrap();
         let honor_badge_award =
-            self::EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())?
-                .to_event(&badge_two_keys)?;
+            self::EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())
+                .unwrap()
+                .to_event(&badge_two_keys)
+                .unwrap();
 
         let example_event_json = format!(
             r#"{{
@@ -1122,11 +1167,12 @@ mod tests {
         let badge_definitions = vec![bravery_badge_event, honor_badge_event];
         let badge_awards = vec![bravery_badge_award, honor_badge_award];
         let profile_badges =
-            EventBuilder::profile_badges(badge_definitions, badge_awards, &pub_key)?
-                .to_event(&keys)?;
+            EventBuilder::profile_badges(badge_definitions, badge_awards, &pub_key)
+                .unwrap()
+                .to_event(&keys)
+                .unwrap();
 
         assert_eq!(profile_badges.kind, Kind::ProfileBadges);
         assert_eq!(profile_badges.tags, example_event.tags);
-        Ok(())
     }
 }

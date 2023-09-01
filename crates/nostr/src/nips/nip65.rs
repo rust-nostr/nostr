@@ -5,6 +5,8 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/65.md>
 
+use alloc::vec::Vec;
+
 use crate::{Event, RelayMetadata, Tag, UncheckedUrl};
 
 /// Extracts the relay info (url, optional read/write flag) from the event

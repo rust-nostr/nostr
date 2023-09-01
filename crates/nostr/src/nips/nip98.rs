@@ -8,6 +8,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/98.md>
 
+use alloc::vec::Vec;
 use core::fmt;
 
 use crate::{HttpMethod, Tag, UncheckedUrl};
@@ -40,6 +41,7 @@ pub enum Error {
     MissingTag(RequiredTags),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {

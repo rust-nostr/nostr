@@ -5,6 +5,8 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/05.md>
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 #[cfg(not(target_arch = "wasm32"))]
@@ -32,6 +34,7 @@ pub enum Error {
     Secp256k1(secp256k1::Error),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {

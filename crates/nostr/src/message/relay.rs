@@ -4,11 +4,18 @@
 
 //! Relay messages
 
-use serde::de::Error;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use alloc::boxed::Box;
+use alloc::string::{String, ToString};
+
+use bitcoin::secp256k1::{Secp256k1, Verification};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Deserializer};
+use serde::{Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::MessageHandleError;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 use crate::{Event, EventId, SubscriptionId};
 
 /// Messages sent by relays, received by clients
@@ -61,13 +68,14 @@ impl Serialize for RelayMessage {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for RelayMessage {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let json_value = Value::deserialize(deserializer)?;
-        RelayMessage::from_value(json_value).map_err(Error::custom)
+        RelayMessage::from_value(json_value).map_err(serde::de::Error::custom)
     }
 }
 
@@ -154,7 +162,19 @@ impl RelayMessage {
     }
 
     /// Deserialize [`RelayMessage`] from [`Value`]
+    #[cfg(feature = "std")]
     fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
+        Self::from_value_with_ctx(&SECP256K1, msg)
+    }
+
+    /// Deserialize [`RelayMessage`] from [`Value`]
+    pub fn from_value_with_ctx<C>(
+        secp: &Secp256k1<C>,
+        msg: Value,
+    ) -> Result<Self, MessageHandleError>
+    where
+        C: Verification,
+    {
         let v = msg
             .as_array()
             .ok_or(MessageHandleError::InvalidMessageFormat)?;
@@ -183,7 +203,7 @@ impl RelayMessage {
             }
 
             let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-            let event = Event::from_json(v[2].to_string())?;
+            let event = Event::from_json_with_ctx(secp, v[2].to_string())?;
 
             return Ok(Self::new_event(subscription_id, event));
         }
@@ -250,8 +270,18 @@ impl RelayMessage {
     }
 
     /// Deserialize [`RelayMessage`] as JSON string
+    #[cfg(feature = "std")]
     pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
     where
+        S: Into<String>,
+    {
+        Self::from_json_with_ctx(&SECP256K1, msg)
+    }
+
+    /// Deserialize [`RelayMessage`] as JSON string
+    pub fn from_json_with_ctx<C, S>(secp: &Secp256k1<C>, msg: S) -> Result<Self, MessageHandleError>
+    where
+        C: Verification,
         S: Into<String>,
     {
         let msg: &str = &msg.into();
@@ -262,27 +292,28 @@ impl RelayMessage {
         }
 
         let value: Value = serde_json::from_str(msg)?;
-        Self::from_value(value)
+        Self::from_value_with_ctx(secp, value)
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
+    use bitcoin::secp256k1::Secp256k1;
+
     use super::*;
-    use crate::{Result, Timestamp};
+    use crate::Timestamp;
 
     #[test]
-    fn test_handle_valid_notice() -> Result<()> {
+    fn test_handle_valid_notice() {
         let valid_notice_msg = r#"["NOTICE","Invalid event format!"]"#;
         let handled_valid_notice_msg =
             RelayMessage::new_notice(String::from("Invalid event format!"));
 
         assert_eq!(
-            RelayMessage::from_json(valid_notice_msg)?,
+            RelayMessage::from_json(valid_notice_msg).unwrap(),
             handled_valid_notice_msg
         );
-
-        Ok(())
     }
     #[test]
     fn test_handle_invalid_notice() {
@@ -296,7 +327,9 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_valid_event() -> Result<()> {
+    fn test_handle_valid_event() {
+        let secp = Secp256k1::new();
+
         let valid_event_msg = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]"#;
 
         let id = "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5";
@@ -307,14 +340,13 @@ mod tests {
         let content = "test";
         let sig = "273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502";
 
-        let handled_event = Event::new_dummy(id, pubkey, created_at, kind, tags, content, sig);
+        let handled_event =
+            Event::new_dummy(&secp, id, pubkey, created_at, kind, tags, content, sig);
 
         assert_eq!(
-            RelayMessage::from_json(valid_event_msg)?,
-            RelayMessage::new_event(SubscriptionId::new("random_string"), handled_event?)
+            RelayMessage::from_json(valid_event_msg).unwrap(),
+            RelayMessage::new_event(SubscriptionId::new("random_string"), handled_event.unwrap())
         );
-
-        Ok(())
     }
 
     #[test]
@@ -330,17 +362,15 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_valid_eose() -> Result<()> {
+    fn test_handle_valid_eose() {
         let valid_eose_msg = r#"["EOSE","random-subscription-id"]"#;
         let handled_valid_eose_msg =
             RelayMessage::new_eose(SubscriptionId::new("random-subscription-id"));
 
         assert_eq!(
-            RelayMessage::from_json(valid_eose_msg)?,
+            RelayMessage::from_json(valid_eose_msg).unwrap(),
             handled_valid_eose_msg
         );
-
-        Ok(())
     }
     #[test]
     fn test_handle_invalid_eose() {
@@ -352,17 +382,19 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_valid_ok() -> Result<()> {
+    fn test_handle_valid_ok() {
         let valid_ok_msg = r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, "pow: difficulty 25>=24"]"#;
         let handled_valid_ok_msg = RelayMessage::new_ok(
-            EventId::from_hex("b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30")?,
+            EventId::from_hex("b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30")
+                .unwrap(),
             true,
             "pow: difficulty 25>=24",
         );
 
-        assert_eq!(RelayMessage::from_json(valid_ok_msg)?, handled_valid_ok_msg);
-
-        Ok(())
+        assert_eq!(
+            RelayMessage::from_json(valid_ok_msg).unwrap(),
+            handled_valid_ok_msg
+        );
     }
     #[test]
     fn test_handle_invalid_ok() {
@@ -390,7 +422,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_message() -> Result<()> {
+    fn parse_message() {
+        let secp = Secp256k1::new();
+
         // Got this fresh off the wire
         pub const SAMPLE_EVENT: &'static str = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]"#;
 
@@ -403,15 +437,13 @@ mod tests {
         let content = "test";
         let sig = "273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502";
 
-        let event = Event::new_dummy(id, pubkey, created_at, kind, tags, content, sig);
+        let event = Event::new_dummy(&secp, id, pubkey, created_at, kind, tags, content, sig);
 
         let parsed_event = RelayMessage::from_json(SAMPLE_EVENT);
 
         assert_eq!(
             parsed_event.expect("Failed to parse event"),
-            RelayMessage::new_event(SubscriptionId::new("random_string"), event?)
+            RelayMessage::new_event(SubscriptionId::new("random_string"), event.unwrap())
         );
-
-        Ok(())
     }
 }

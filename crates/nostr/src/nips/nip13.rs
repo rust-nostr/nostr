@@ -6,6 +6,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/13.md>
 
+use alloc::string::String;
+use alloc::vec::Vec;
+
 /// Gets the number of leading zero bits. Result is between 0 and 255.
 pub fn get_leading_zero_bits<T>(h: T) -> u8
 where
@@ -54,7 +57,7 @@ pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
 
 #[cfg(test)]
 pub mod tests {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use bitcoin::hashes::sha256::Hash as Sha256Hash;
 

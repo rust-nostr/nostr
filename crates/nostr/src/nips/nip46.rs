@@ -5,24 +5,31 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/46.md>
 
+use alloc::borrow::{Cow, ToOwned};
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
-use std::borrow::Cow;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
+#[cfg(feature = "std")]
+use bitcoin::secp256k1::rand;
+use bitcoin::secp256k1::rand::{CryptoRng, Rng, RngCore};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, rand, Message as Secp256k1Message, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, Message as Secp256k1Message, Secp256k1, Signing, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use url::form_urlencoded::byte_serialize;
-use url::Url;
+use url_fork::form_urlencoded::byte_serialize;
+use url_fork::{ParseError, Url};
 
 use super::nip04;
-use super::nip26::{self, sign_delegation, Conditions};
+use super::nip26::{self, sign_delegation_with_ctx, Conditions};
 use crate::event::unsigned::{self, UnsignedEvent};
 use crate::key::{self, Keys};
 use crate::Event;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 
 /// NIP46 error
 #[derive(Debug)]
@@ -32,7 +39,7 @@ pub enum Error {
     /// JSON error
     Json(serde_json::Error),
     /// Url parse error
-    Url(url::ParseError),
+    Url(ParseError),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// NIP04 error
@@ -53,6 +60,7 @@ pub enum Error {
     InvalidURIScheme,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -86,8 +94,8 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
+impl From<ParseError> for Error {
+    fn from(e: ParseError) -> Self {
         Self::Url(e)
     }
 }
@@ -189,7 +197,22 @@ impl Request {
     }
 
     /// Generate [`Response`] message for [`Request`]
+    #[cfg(feature = "std")]
     pub fn generate_response(self, keys: &Keys) -> Result<Option<Response>, Error> {
+        self.generate_response_with_ctx(&SECP256K1, &mut rand::thread_rng(), keys)
+    }
+
+    /// Generate [`Response`] message for [`Request`]
+    pub fn generate_response_with_ctx<C, R>(
+        self,
+        secp: &Secp256k1<C>,
+        rng: &mut R,
+        keys: &Keys,
+    ) -> Result<Option<Response>, Error>
+    where
+        C: Signing,
+        R: Rng + CryptoRng,
+    {
         let res: Option<Response> = match self {
             Self::Describe => Some(Response::Describe(vec![
                 String::from("describe"),
@@ -204,7 +227,7 @@ impl Request {
             ])),
             Self::GetPublicKey => Some(Response::GetPublicKey(keys.public_key())),
             Self::SignEvent(unsigned_event) => {
-                let signed_event = unsigned_event.sign(keys)?;
+                let signed_event = unsigned_event.sign_with_ctx(secp, rng, keys)?;
                 Some(Response::SignEvent(signed_event))
             }
             Self::Connect(_) => None,
@@ -213,7 +236,8 @@ impl Request {
                 public_key,
                 conditions,
             } => {
-                let sig = sign_delegation(keys, public_key, conditions.clone())?;
+                let sig =
+                    sign_delegation_with_ctx(secp, rng, keys, public_key, conditions.clone())?;
                 let delegation_result = DelegationResult {
                     from: keys.public_key(),
                     to: public_key,
@@ -224,7 +248,8 @@ impl Request {
                 Some(Response::Delegate(delegation_result))
             }
             Self::Nip04Encrypt { public_key, text } => {
-                let encrypted_content = nip04::encrypt(&keys.secret_key()?, &public_key, text)?;
+                let encrypted_content =
+                    nip04::encrypt_with_rng(rng, &keys.secret_key()?, &public_key, text)?;
                 Some(Response::Nip04Encrypt(encrypted_content))
             }
             Self::Nip04Decrypt { public_key, text } => {
@@ -234,7 +259,7 @@ impl Request {
             Self::SignSchnorr(value) => {
                 let hash = Sha256Hash::hash(value.as_bytes());
                 let message = Secp256k1Message::from(hash);
-                let sig: Signature = keys.sign_schnorr(&message)?;
+                let sig: Signature = keys.sign_schnorr(secp, &message, rng)?;
                 Some(Response::SignSchnorr(sig))
             }
         };
@@ -299,10 +324,19 @@ pub enum Message {
 }
 
 impl Message {
-    /// Compose `Request` message
+    /// Compose [`Request`] message
+    #[cfg(feature = "std")]
     pub fn request(req: Request) -> Self {
+        Self::request_with_rng(&mut rand::thread_rng(), req)
+    }
+
+    /// Compose [`Request`] message
+    pub fn request_with_rng<R>(rng: &mut R, req: Request) -> Self
+    where
+        R: RngCore,
+    {
         Self::Request {
-            id: Self::random_id(),
+            id: rng.next_u32().to_string(),
             method: req.method(),
             params: req.params(),
         }
@@ -334,10 +368,6 @@ impl Message {
             Message::Request { .. } => true,
             Message::Response { .. } => false,
         }
-    }
-
-    fn random_id() -> String {
-        rand::random::<u32>().to_string()
     }
 
     /// Get [`Message`] id
@@ -431,10 +461,25 @@ impl Message {
     }
 
     /// Generate [`Response`] message for [`Request`]
+    #[cfg(feature = "std")]
     pub fn generate_response(&self, keys: &Keys) -> Result<Option<Self>, Error> {
+        self.generate_response_wit_ctx(&SECP256K1, &mut rand::thread_rng(), keys)
+    }
+
+    /// Generate [`Response`] message for [`Request`]
+    pub fn generate_response_wit_ctx<C, R>(
+        &self,
+        secp: &Secp256k1<C>,
+        rng: &mut R,
+        keys: &Keys,
+    ) -> Result<Option<Self>, Error>
+    where
+        C: Signing,
+        R: Rng + CryptoRng,
+    {
         let req = self.to_request()?;
         // TODO: remove if let SOme(res) = ...
-        if let Some(res) = req.generate_response(keys)? {
+        if let Some(res) = req.generate_response_with_ctx(secp, rng, keys)? {
             Ok(Some(Self::response(self.id(), Some(res), None)))
         } else {
             Ok(None)
@@ -640,37 +685,36 @@ impl fmt::Display for NostrConnectURI {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use super::*;
-    use crate::Result;
 
     #[test]
-    fn test_uri() -> Result<()> {
+    fn test_uri() {
         let pubkey = XOnlyPublicKey::from_str(
             "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
-        )?;
-        let relay_url = Url::parse("wss://relay.damus.io")?;
+        )
+        .unwrap();
+        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
         let uri = NostrConnectURI::new(pubkey, relay_url, app_name);
         assert_eq!(
             uri.to_string(),
             "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&metadata=%7B%22name%22%3A%22Example%22%7D".to_string()
         );
-        Ok(())
     }
 
     #[test]
-    fn test_parse_uri() -> Result<()> {
+    fn test_parse_uri() {
         let uri = "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&metadata=%7B%22name%22%3A%22Example%22%7D";
-        let uri = NostrConnectURI::from_str(uri)?;
+        let uri = NostrConnectURI::from_str(uri).unwrap();
 
         let pubkey = XOnlyPublicKey::from_str(
             "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
-        )?;
-        let relay_url = Url::parse("wss://relay.damus.io")?;
+        )
+        .unwrap();
+        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
         assert_eq!(uri, NostrConnectURI::new(pubkey, relay_url, app_name));
-        Ok(())
     }
 }
