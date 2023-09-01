@@ -263,3 +263,11 @@ impl FromPkStr for Keys {
         }
     }
 }
+
+impl Drop for Keys {
+    fn drop(&mut self) {
+        if let Some(mut sk) = self.secret_key {
+            sk.non_secure_erase()
+        }
+    }
+}
