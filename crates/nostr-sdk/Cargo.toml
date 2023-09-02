@@ -11,6 +11,10 @@ readme = "README.md"
 rust-version.workspace = true
 keywords = ["nostr", "sdk"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = ["all-nips"]
 blocking = ["async-utility/blocking", "nostr/blocking"]
@@ -26,11 +30,11 @@ nip47 = ["nostr/nip47"]
 
 [dependencies]
 async-utility = "0.1"
-nostr = { version = "0.23", path = "../nostr", default-features = false }
+nostr = { version = "0.23", path = "../nostr", default-features = false, features = ["std"] }
 nostr-sdk-net = { version = "0.23", path = "../nostr-sdk-net" }
 once_cell = { workspace = true }
 thiserror = { workspace = true }
-tracing = { workspace = true }
+tracing = { workspace = true, features = ["std"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "time", "macros", "sync"] }

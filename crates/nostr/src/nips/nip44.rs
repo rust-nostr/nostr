@@ -5,14 +5,17 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/44.md>
 
+use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt;
 
 use base64::engine::{general_purpose, Engine};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
+#[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::RngCore;
-use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::XChaCha20;
 
@@ -37,6 +40,7 @@ pub enum Error {
     NotFound(String),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -87,6 +91,7 @@ impl TryFrom<u8> for Version {
 }
 
 /// Encrypt - EXPERIMENTAL
+#[cfg(feature = "std")]
 pub fn encrypt<T>(
     secret_key: &SecretKey,
     public_key: &XOnlyPublicKey,
@@ -94,6 +99,21 @@ pub fn encrypt<T>(
     version: Version,
 ) -> Result<String, Error>
 where
+    T: AsRef<[u8]>,
+{
+    encrypt_with_rng(&mut OsRng, secret_key, public_key, content, version)
+}
+
+/// Encrypt - EXPERIMENTAL
+pub fn encrypt_with_rng<R, T>(
+    rng: &mut R,
+    secret_key: &SecretKey,
+    public_key: &XOnlyPublicKey,
+    content: T,
+    version: Version,
+) -> Result<String, Error>
+where
+    R: RngCore,
     T: AsRef<[u8]>,
 {
     match version {
@@ -104,7 +124,7 @@ where
 
             // Generate 192-bit nonce
             let mut nonce: [u8; 24] = [0u8; 24];
-            OsRng.fill_bytes(&mut nonce);
+            rng.fill_bytes(&mut nonce);
 
             // Compose cipher
             let mut cipher = XChaCha20::new(key.as_byte_array().into(), &nonce.into());
@@ -169,28 +189,30 @@ where
 }
 
 #[cfg(test)]
+#[cfg(feature = "std")]
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::secp256k1::KeyPair;
+    use bitcoin::secp256k1::{KeyPair, Secp256k1};
 
     use super::*;
-    use crate::SECP256K1;
 
     #[test]
     fn test_nip44_encryption_decryption() {
+        let secp = Secp256k1::new();
+
         // Alice keys
         let alice_sk =
             SecretKey::from_str("5c0c523f52a5b6fad39ed2403092df8cebc36318b39383bca6c00808626fab3a")
                 .unwrap();
-        let alice_key_pair = KeyPair::from_secret_key(SECP256K1, &alice_sk);
+        let alice_key_pair = KeyPair::from_secret_key(&secp, &alice_sk);
         let alice_pk = XOnlyPublicKey::from_keypair(&alice_key_pair).0;
 
         // Bob keys
         let bob_sk =
             SecretKey::from_str("4b22aa260e4acb7021e32f38a6cdf4b673c6a277755bfce287e370c924dc936d")
                 .unwrap();
-        let bob_key_pair = KeyPair::from_secret_key(SECP256K1, &bob_sk);
+        let bob_key_pair = KeyPair::from_secret_key(&secp, &bob_sk);
         let bob_pk = XOnlyPublicKey::from_keypair(&bob_key_pair).0;
 
         let encrypted_content_from_outside = "Abd8jOLZT0OAEE6kZ5hI1qd1ZRrVR1W46vRyZCL5";

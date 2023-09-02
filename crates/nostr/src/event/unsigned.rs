@@ -3,12 +3,18 @@
 
 //! Unsigned Event
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 
+#[cfg(feature = "std")]
+use bitcoin::secp256k1::rand;
+use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, XOnlyPublicKey};
-use serde::{Deserialize, Serialize};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification, XOnlyPublicKey};
 
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 use crate::{Event, EventId, Keys, Kind, Tag, Timestamp};
 
 /// [`UnsignedEvent`] error
@@ -24,6 +30,7 @@ pub enum Error {
     Event(super::Error),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -80,7 +87,22 @@ pub struct UnsignedEvent {
 
 impl UnsignedEvent {
     /// Sign an [`UnsignedEvent`]
+    #[cfg(feature = "std")]
     pub fn sign(self, keys: &Keys) -> Result<Event, Error> {
+        self.sign_with_ctx(&SECP256K1, &mut rand::thread_rng(), keys)
+    }
+
+    /// Sign an [`UnsignedEvent`]
+    pub fn sign_with_ctx<C, R>(
+        self,
+        secp: &Secp256k1<C>,
+        rng: &mut R,
+        keys: &Keys,
+    ) -> Result<Event, Error>
+    where
+        C: Signing,
+        R: Rng + CryptoRng,
+    {
         let message = Message::from_slice(self.id.as_bytes())?;
         Ok(Event {
             id: self.id,
@@ -89,14 +111,27 @@ impl UnsignedEvent {
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-            sig: keys.sign_schnorr(&message)?,
+            sig: keys.sign_schnorr(secp, &message, rng)?,
             #[cfg(feature = "nip03")]
             ots: None,
         })
     }
 
     /// Add signature to [`UnsignedEvent`]
+    #[cfg(feature = "std")]
     pub fn add_signature(self, sig: Signature) -> Result<Event, Error> {
+        self.add_signature_with_ctx(&SECP256K1, sig)
+    }
+
+    /// Add signature to [`UnsignedEvent`]
+    pub fn add_signature_with_ctx<C>(
+        self,
+        secp: &Secp256k1<C>,
+        sig: Signature,
+    ) -> Result<Event, Error>
+    where
+        C: Verification,
+    {
         let event = Event {
             id: self.id,
             pubkey: self.pubkey,
@@ -108,7 +143,7 @@ impl UnsignedEvent {
             #[cfg(feature = "nip03")]
             ots: None,
         };
-        event.verify()?;
+        event.verify_with_ctx(secp)?;
         Ok(event)
     }
 

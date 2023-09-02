@@ -5,28 +5,26 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/47.md>
 
-use std::borrow::Cow;
-use std::fmt;
-use std::str::FromStr;
+use alloc::string::String;
+use alloc::{borrow::Cow, string::ToString};
+use core::fmt;
+use core::str::FromStr;
 
 use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
-use url::form_urlencoded::byte_serialize;
-use url::Url;
+use url_fork::form_urlencoded::byte_serialize;
+use url_fork::{ParseError, Url};
 
 use super::nip04;
-use crate::{key, Keys};
 
 /// NIP47 error
 #[derive(Debug)]
 pub enum Error {
-    /// Key error
-    Key(key::Error),
     /// JSON error
     JSON(serde_json::Error),
     /// Url parse error
-    Url(url::ParseError),
+    Url(ParseError),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// NIP04 error
@@ -45,12 +43,12 @@ pub enum Error {
     InvalidURIScheme,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "Key: {e}"),
             Self::JSON(e) => write!(f, "Json: {e}"),
             Self::Url(e) => write!(f, "Url: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
@@ -71,8 +69,8 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
+impl From<ParseError> for Error {
+    fn from(e: ParseError) -> Self {
         Self::Url(e)
     }
 }
@@ -80,12 +78,6 @@ impl From<url::ParseError> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Key(e)
     }
 }
 
@@ -470,21 +462,13 @@ impl NostrWalletConnectURI {
     pub fn new(
         public_key: XOnlyPublicKey,
         relay_url: Url,
-        secret: Option<SecretKey>,
+        random_secret_key: SecretKey,
         lud16: Option<String>,
     ) -> Result<Self, Error> {
-        let secret = match secret {
-            Some(secret) => secret,
-            None => {
-                let keys = Keys::generate();
-                keys.secret_key()?
-            }
-        };
-
         Ok(Self {
             public_key,
             relay_url,
-            secret,
+            secret: random_secret_key,
             lud16,
         })
     }
@@ -576,59 +560,60 @@ impl<'a> Deserialize<'a> for NostrWalletConnectURI {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use super::*;
-    use crate::key::FromSkStr;
-    use crate::Result;
 
     #[test]
-    fn test_uri() -> Result<()> {
+    fn test_uri() {
         let pubkey = XOnlyPublicKey::from_str(
             "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
-        )?;
-        let relay_url = Url::parse("wss://relay.damus.io")?;
+        )
+        .unwrap();
+        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let secret =
-            Keys::from_sk_str("71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c")?;
+            SecretKey::from_str("71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c")
+                .unwrap();
         let uri = NostrWalletConnectURI::new(
             pubkey,
             relay_url,
-            Some(secret.secret_key()?),
+            secret,
             Some("nostr@nostr.com".to_string()),
-        )?;
+        )
+        .unwrap();
         assert_eq!(
             uri.to_string(),
             "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&lud16=nostr%40nostr.com".to_string()
         );
-        Ok(())
     }
 
     #[test]
-    fn test_parse_uri() -> Result<()> {
+    fn test_parse_uri() {
         let uri = "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&lud16=nostr%40nostr.com";
-        let uri = NostrWalletConnectURI::from_str(uri)?;
+        let uri = NostrWalletConnectURI::from_str(uri).unwrap();
 
         let pubkey = XOnlyPublicKey::from_str(
             "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
-        )?;
-        let relay_url = Url::parse("wss://relay.damus.io")?;
+        )
+        .unwrap();
+        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let secret =
-            Keys::from_sk_str("71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c")?;
+            SecretKey::from_str("71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c")
+                .unwrap();
         assert_eq!(
             uri,
             NostrWalletConnectURI::new(
                 pubkey,
                 relay_url,
-                Some(secret.secret_key()?),
+                secret,
                 Some("nostr@nostr.com".to_string())
             )
             .unwrap()
         );
-        Ok(())
     }
 
     #[test]
-    fn seralize_request() -> Result<()> {
+    fn seralize_request() {
         let request = Request {
             method: Method::PayInvoice,
             params: RequestParams::PayInvoice(PayInvoiceRequestParams { invoice: "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp".to_string() }),
@@ -637,11 +622,10 @@ mod test {
         assert_eq!(Request::from_json(request.as_json()).unwrap(), request);
 
         assert_eq!(request.as_json(), "{\"method\":\"pay_invoice\",\"params\":{\"invoice\":\"lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp\"}}");
-        Ok(())
     }
 
     #[test]
-    fn test_parse_request() -> Result<()> {
+    fn test_parse_request() {
         let request = "{\\\"params\\\":{\\\"invoice\\\":\\\"lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp5rdjyt9jr2avv2runy330766avkweqp30ndnyt9x6dp5juzn7q0nq9qyyssq2mykpgu04q0hlga228kx9v95meaqzk8a9cnvya305l4c353u3h04azuh9hsmd503x6jlzjrsqzark5dxx30s46vuatwzjhzmkt3j4tgqu35rms\\\"},\\\"method\\\":\\\"pay_invoice\\\"}";
 
         let request = Request::from_json(request).unwrap();
@@ -653,7 +637,5 @@ mod test {
         } else {
             panic!("Invalid request params");
         }
-
-        Ok(())
     }
 }

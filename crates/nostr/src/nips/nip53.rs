@@ -5,6 +5,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/53.md>
 
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::XOnlyPublicKey;
 

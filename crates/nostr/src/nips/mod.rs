@@ -7,11 +7,11 @@
 
 #[cfg(feature = "nip04")]
 pub mod nip04;
-#[cfg(feature = "nip05")]
+#[cfg(all(feature = "std", feature = "nip05"))]
 pub mod nip05;
 #[cfg(feature = "nip06")]
 pub mod nip06;
-#[cfg(feature = "nip11")]
+#[cfg(all(feature = "std", feature = "nip11"))]
 pub mod nip11;
 pub mod nip13;
 pub mod nip19;
@@ -20,7 +20,7 @@ pub mod nip26;
 pub mod nip33;
 #[cfg(feature = "nip44")]
 pub mod nip44;
-#[cfg(feature = "nip46")]
+#[cfg(all(feature = "std", feature = "nip46"))]
 pub mod nip46;
 #[cfg(feature = "nip47")]
 pub mod nip47;

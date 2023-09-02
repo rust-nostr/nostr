@@ -3,13 +3,14 @@
 
 //! Event Id
 
+use alloc::string::{String, ToString};
 use core::fmt;
 use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::XOnlyPublicKey;
-use serde::{Deserialize, Serialize};
+
 use serde_json::{json, Value};
 
 use super::{Kind, Tag};
@@ -24,6 +25,7 @@ pub enum Error {
     Hash(bitcoin::hashes::Error),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {

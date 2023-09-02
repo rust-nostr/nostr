@@ -4,12 +4,13 @@
 
 //! Event
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, XOnlyPublicKey};
-use serde::{Deserialize, Serialize};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
 use serde_json::Value;
 
 pub mod builder;
@@ -23,7 +24,12 @@ pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::tag::{Marker, Tag, TagKind};
 pub use self::unsigned::UnsignedEvent;
-use crate::{Timestamp, SECP256K1};
+#[cfg(feature = "std")]
+use crate::types::time::Instant;
+use crate::types::time::TimeSupplier;
+use crate::Timestamp;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 
 /// [`Event`] error
 #[derive(Debug)]
@@ -41,6 +47,7 @@ pub enum Error {
     OpenTimestamps(nostr_ots::Error),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -106,7 +113,16 @@ pub struct Event {
 
 impl Event {
     /// Verify event
+    #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
+        self.verify_with_ctx(&SECP256K1)
+    }
+
+    /// Verify event
+    pub fn verify_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
+    where
+        C: Verification,
+    {
         let id = EventId::new(
             &self.pubkey,
             self.created_at,
@@ -115,25 +131,43 @@ impl Event {
             &self.content,
         );
         let message = Message::from_slice(id.as_bytes())?;
-        SECP256K1
-            .verify_schnorr(&self.sig, &message, &self.pubkey)
+        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }
 
     /// New event from [`Value`]
+    #[cfg(feature = "std")]
     pub fn from_value(value: Value) -> Result<Self, Error> {
+        Self::from_value_with_ctx(&SECP256K1, value)
+    }
+
+    /// New event from [`Value`]
+    pub fn from_value_with_ctx<C>(secp: &Secp256k1<C>, value: Value) -> Result<Self, Error>
+    where
+        C: Verification,
+    {
         let event: Self = serde_json::from_value(value)?;
-        event.verify()?;
+        event.verify_with_ctx(secp)?;
         Ok(event)
     }
 
     /// New event from json string
+    #[cfg(feature = "std")]
     pub fn from_json<S>(json: S) -> Result<Self, Error>
     where
         S: Into<String>,
     {
+        Self::from_json_with_ctx(&SECP256K1, json)
+    }
+
+    /// New event from json string
+    pub fn from_json_with_ctx<C, S>(secp: &Secp256k1<C>, json: S) -> Result<Self, Error>
+    where
+        C: Verification,
+        S: Into<String>,
+    {
         let event: Self = serde_json::from_str(&json.into())?;
-        event.verify()?;
+        event.verify_with_ctx(secp)?;
         Ok(event)
     }
 
@@ -144,8 +178,19 @@ impl Event {
 
     /// Returns `true` if the event has an expiration tag that is expired.
     /// If an event has no `Expiration` tag, then it will return `false`.
+    #[cfg(feature = "std")]
     pub fn is_expired(&self) -> bool {
-        let now = Timestamp::now();
+        let now: Instant = Instant::now();
+        self.is_expired_with_supplier(&now)
+    }
+
+    /// Returns `true` if the event has an expiration tag that is expired.
+    /// If an event has no `Expiration` tag, then it will return `false`.
+    pub fn is_expired_with_supplier<T>(&self, supplier: &T) -> bool
+    where
+        T: TimeSupplier,
+    {
+        let now: Timestamp = Timestamp::now_with_supplier(supplier);
         for tag in self.tags.iter() {
             if let Tag::Expiration(timestamp) = tag {
                 return timestamp < &now;
@@ -166,18 +211,23 @@ impl Event {
 impl Event {
     /// This is just for serde sanity checking
     #[allow(dead_code)]
-    pub(crate) fn new_dummy(
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn new_dummy<C>(
+        secp: &Secp256k1<C>,
         id: &str,
         pubkey: &str,
         created_at: Timestamp,
-        kind: u8,
+        kind: u64,
         tags: Vec<Tag>,
         content: &str,
         sig: &str,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, Error>
+    where
+        C: Verification,
+    {
         let id = EventId::from_hex(id).unwrap();
         let pubkey = XOnlyPublicKey::from_str(pubkey)?;
-        let kind = serde_json::from_str(&kind.to_string())?;
+        let kind = Kind::from(kind);
         let sig = Signature::from_str(sig)?;
 
         let event = Event {
@@ -192,7 +242,7 @@ impl Event {
             ots: None,
         };
 
-        event.verify()?;
+        event.verify_with_ctx(secp)?;
 
         Ok(event)
     }
@@ -201,18 +251,21 @@ impl Event {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use crate::{Keys, Result};
+    #[cfg(feature = "std")]
+    use crate::Keys;
 
     #[test]
     fn test_tags_deser_without_recommended_relay() {
+        let secp = Secp256k1::new();
+
         //The TAG array has dynamic length because the third element(Recommended relay url) is optional
         let sample_event = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
-        let ev_ser = Event::from_json(sample_event).unwrap();
+        let ev_ser = Event::from_json_with_ctx(&secp, sample_event).unwrap();
         assert_eq!(ev_ser.as_json(), sample_event);
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_custom_kind() {
         let keys = Keys::generate();
         let e: Event = EventBuilder::new(Kind::Custom(123), "my content", &[])
@@ -227,20 +280,22 @@ mod tests {
         assert_eq!(Kind::Custom(123), deserialized.kind);
     }
     #[test]
-    fn test_event_expired() -> Result<()> {
+    #[cfg(feature = "std")]
+    fn test_event_expired() {
         let my_keys = Keys::generate();
         let event = EventBuilder::new_text_note(
             "my content",
             &[Tag::Expiration(Timestamp::from(1600000000))],
         )
-        .to_event(&my_keys)?;
+        .to_event(&my_keys)
+        .unwrap();
 
         assert!(&event.is_expired());
-        Ok(())
     }
 
     #[test]
-    fn test_event_not_expired() -> Result<()> {
+    #[cfg(feature = "std")]
+    fn test_event_not_expired() {
         let now = Timestamp::now().as_i64();
 
         // To make sure it is never considered expired
@@ -251,18 +306,19 @@ mod tests {
             "my content",
             &[Tag::Expiration(Timestamp::from(expiry_date))],
         )
-        .to_event(&my_keys)?;
+        .to_event(&my_keys)
+        .unwrap();
 
         assert!(!&event.is_expired());
-        Ok(())
     }
 
     #[test]
-    fn test_event_without_expiration_tag() -> Result<()> {
+    #[cfg(feature = "std")]
+    fn test_event_without_expiration_tag() {
         let my_keys = Keys::generate();
-        let event = EventBuilder::new_text_note("my content", &[]).to_event(&my_keys)?;
-
+        let event = EventBuilder::new_text_note("my content", &[])
+            .to_event(&my_keys)
+            .unwrap();
         assert!(!&event.is_expired());
-        Ok(())
     }
 }

@@ -5,9 +5,11 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/33.md>
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::secp256k1::XOnlyPublicKey;
-use serde::{Deserialize, Serialize};
 
 use crate::nips::nip19::{
     Error as Bech32Error, FromBech32, ToBech32, AUTHOR, KIND,

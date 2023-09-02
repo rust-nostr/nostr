@@ -7,17 +7,24 @@
 //! This module defines the [`Keys`] structure.
 
 use core::fmt;
+#[cfg(feature = "std")]
 use core::str::FromStr;
 
-use crate::SECP256K1;
+#[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::Rng;
+use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::Message;
-pub use bitcoin::secp256k1::{self, KeyPair, PublicKey, SecretKey, XOnlyPublicKey};
+pub use bitcoin::secp256k1::{
+    self, KeyPair, Message, PublicKey, Secp256k1, SecretKey, Signing, XOnlyPublicKey,
+};
+
+#[cfg(feature = "std")]
 pub mod vanity;
 
+#[cfg(feature = "std")]
 use crate::nips::nip19::FromBech32;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 
 /// [`Keys`] error
 #[derive(Debug, Eq, PartialEq)]
@@ -34,6 +41,7 @@ pub enum Error {
     Secp256k1(secp256k1::Error),
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -55,6 +63,7 @@ impl From<secp256k1::Error> for Error {
 }
 
 /// Trait for [`Keys`]
+#[cfg(feature = "std")]
 pub trait FromSkStr: Sized {
     /// Error
     type Err;
@@ -63,6 +72,7 @@ pub trait FromSkStr: Sized {
 }
 
 /// Trait for [`Keys`]
+#[cfg(feature = "std")]
 pub trait FromPkStr: Sized {
     /// Error
     type Err;
@@ -78,10 +88,44 @@ pub struct Keys {
     secret_key: Option<SecretKey>,
 }
 
+#[cfg(feature = "std")]
 impl Keys {
     /// Initialize from secret key.
     pub fn new(secret_key: SecretKey) -> Self {
-        let key_pair = KeyPair::from_secret_key(&SECP256K1, &secret_key);
+        Self::new_with_ctx(&SECP256K1, secret_key)
+    }
+
+    /// Generate new random [`Keys`]
+    pub fn generate() -> Self {
+        let mut rng = OsRng;
+        Self::generate_with_ctx(&SECP256K1, &mut rng)
+    }
+
+    /// Generate random [`Keys`] with custom [`Rng`]
+    pub fn generate_with_rng<R>(rng: &mut R) -> Self
+    where
+        R: Rng + ?Sized,
+    {
+        Self::generate_with_ctx(&SECP256K1, rng)
+    }
+
+    /// Generate random [`Keys`] with custom [`Rng`] and without [`KeyPair`]
+    /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
+    pub fn generate_without_keypair<R>(rng: &mut R) -> Self
+    where
+        R: Rng + ?Sized,
+    {
+        Self::generate_without_keypair_with_ctx(&SECP256K1, rng)
+    }
+}
+
+impl Keys {
+    /// Initialize from secret key.
+    pub fn new_with_ctx<C>(secp: &Secp256k1<C>, secret_key: SecretKey) -> Self
+    where
+        C: Signing,
+    {
+        let key_pair = KeyPair::from_secret_key(secp, &secret_key);
         let public_key = XOnlyPublicKey::from_keypair(&key_pair).0;
 
         Self {
@@ -100,29 +144,24 @@ impl Keys {
         }
     }
 
-    /// Generate new random [`Keys`]
-    pub fn generate() -> Self {
-        let mut rng = OsRng;
-        let (secret_key, _) = SECP256K1.generate_keypair(&mut rng);
-        Self::new(secret_key)
-    }
-
     /// Generate random [`Keys`] with custom [`Rng`]
-    pub fn generate_with_rng<R>(rng: &mut R) -> Self
+    pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
+        C: Signing,
         R: Rng + ?Sized,
     {
-        let (secret_key, _) = SECP256K1.generate_keypair(rng);
-        Self::new(secret_key)
+        let (secret_key, _) = secp.generate_keypair(rng);
+        Self::new_with_ctx(secp, secret_key)
     }
 
     /// Generate random [`Keys`] with custom [`Rng`] and without [`KeyPair`]
     /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
-    pub fn generate_without_keypair<R>(rng: &mut R) -> Self
+    pub fn generate_without_keypair_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
+        C: Signing,
         R: Rng + ?Sized,
     {
-        let (secret_key, public_key) = SECP256K1.generate_keypair(rng);
+        let (secret_key, public_key) = secp.generate_keypair(rng);
         let (public_key, _) = public_key.x_only_public_key();
         Self {
             public_key,
@@ -146,29 +185,45 @@ impl Keys {
     }
 
     /// Get [`PublicKey`]
-    pub fn normalized_public_key(&self) -> Result<PublicKey, Error> {
-        Ok(self.secret_key()?.public_key(&SECP256K1))
+    pub fn normalized_public_key<C>(&self, secp: &Secp256k1<C>) -> Result<PublicKey, Error>
+    where
+        C: Signing,
+    {
+        Ok(self.secret_key()?.public_key(secp))
     }
 
     /// Get keypair
     ///
     /// If not exists, will be created
-    pub fn key_pair(&self) -> Result<KeyPair, Error> {
+    pub fn key_pair<C>(&self, secp: &Secp256k1<C>) -> Result<KeyPair, Error>
+    where
+        C: Signing,
+    {
         if let Some(key_pair) = self.key_pair {
             Ok(key_pair)
         } else {
             let sk = self.secret_key()?;
-            Ok(KeyPair::from_secret_key(&SECP256K1, &sk))
+            Ok(KeyPair::from_secret_key(secp, &sk))
         }
     }
 
     /// Sign schnorr [`Message`]
-    pub fn sign_schnorr(&self, message: &Message) -> Result<Signature, Error> {
-        let keypair: &KeyPair = &self.key_pair()?;
-        Ok(SECP256K1.sign_schnorr(message, keypair))
+    pub fn sign_schnorr<C, R>(
+        &self,
+        secp: &Secp256k1<C>,
+        message: &Message,
+        rng: &mut R,
+    ) -> Result<Signature, Error>
+    where
+        C: Signing,
+        R: Rng + CryptoRng,
+    {
+        let keypair: &KeyPair = &self.key_pair(secp)?;
+        Ok(secp.sign_schnorr_with_rng(message, keypair, rng))
     }
 }
 
+#[cfg(feature = "std")]
 impl FromSkStr for Keys {
     type Err = Error;
 
@@ -184,6 +239,7 @@ impl FromSkStr for Keys {
     }
 }
 
+#[cfg(feature = "std")]
 impl FromPkStr for Keys {
     type Err = Error;
 

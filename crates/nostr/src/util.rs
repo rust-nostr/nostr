@@ -3,9 +3,13 @@
 
 //! Util
 
+use alloc::string::{String, ToString};
 use core::str::FromStr;
 
-use bitcoin::secp256k1::{ecdh, rand, All, Error, PublicKey, Secp256k1, SecretKey, XOnlyPublicKey};
+use bitcoin::secp256k1::{ecdh, Error, PublicKey, SecretKey, XOnlyPublicKey};
+#[cfg(feature = "std")]
+use bitcoin::secp256k1::{rand, All, Secp256k1};
+#[cfg(feature = "std")]
 use once_cell::sync::Lazy;
 
 /// Generate shared key
@@ -28,6 +32,7 @@ fn normalize_schnorr_pk(schnorr_pk: &XOnlyPublicKey) -> Result<PublicKey, Error>
 }
 
 /// Secp256k1 global context
+#[cfg(feature = "std")]
 pub static SECP256K1: Lazy<Secp256k1<All>> = Lazy::new(|| {
     let mut ctx = Secp256k1::new();
     let mut rng = rand::thread_rng();

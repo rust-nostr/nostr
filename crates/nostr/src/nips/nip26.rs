@@ -5,20 +5,27 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/26.md>
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
+#[cfg(feature = "std")]
+use bitcoin::secp256k1::rand;
+use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification, XOnlyPublicKey};
 use serde::de::Error as DeserializerError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
+use super::nip21;
 use crate::event::Event;
 use crate::key::{self, Keys};
+#[cfg(feature = "std")]
 use crate::SECP256K1;
 
 const DELEGATION_KEYWORD: &str = "delegation";
@@ -40,6 +47,7 @@ pub enum Error {
     DelegationTagParse,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -96,6 +104,7 @@ pub enum ValidationError {
     CreatedTooLate,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for ValidationError {}
 
 impl fmt::Display for ValidationError {
@@ -111,28 +120,72 @@ impl fmt::Display for ValidationError {
 
 /// Sign delegation.
 /// See `create_delegation_tag` for more complete functionality.
+#[cfg(feature = "std")]
 pub fn sign_delegation(
     delegator_keys: &Keys,
     delegatee_pk: XOnlyPublicKey,
     conditions: Conditions,
 ) -> Result<Signature, Error> {
+    sign_delegation_with_ctx(
+        &SECP256K1,
+        &mut rand::thread_rng(),
+        delegator_keys,
+        delegatee_pk,
+        conditions,
+    )
+}
+
+/// Sign delegation.
+/// See `create_delegation_tag` for more complete functionality.
+pub fn sign_delegation_with_ctx<C, R>(
+    secp: &Secp256k1<C>,
+    rng: &mut R,
+    delegator_keys: &Keys,
+    delegatee_pk: XOnlyPublicKey,
+    conditions: Conditions,
+) -> Result<Signature, Error>
+where
+    C: Signing,
+    R: Rng + CryptoRng,
+{
     let unhashed_token = DelegationToken::new(delegatee_pk, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(hashed_token.as_byte_array())?;
-    Ok(delegator_keys.sign_schnorr(&message)?)
+    Ok(delegator_keys.sign_schnorr(secp, &message, rng)?)
 }
 
 /// Verify delegation signature
+#[cfg(feature = "std")]
 pub fn verify_delegation_signature(
     delegator_public_key: XOnlyPublicKey,
     signature: Signature,
     delegatee_public_key: XOnlyPublicKey,
     conditions: Conditions,
 ) -> Result<(), Error> {
+    verify_delegation_signature_with_ctx(
+        &SECP256K1,
+        delegator_public_key,
+        signature,
+        delegatee_public_key,
+        conditions,
+    )
+}
+
+/// Verify delegation signature
+pub fn verify_delegation_signature_with_ctx<C>(
+    secp: &Secp256k1<C>,
+    delegator_public_key: XOnlyPublicKey,
+    signature: Signature,
+    delegatee_public_key: XOnlyPublicKey,
+    conditions: Conditions,
+) -> Result<(), Error>
+where
+    C: Verification,
+{
     let unhashed_token = DelegationToken::new(delegatee_public_key, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(hashed_token.as_byte_array())?;
-    SECP256K1.verify_schnorr(&signature, &message, &delegator_public_key)?;
+    secp.verify_schnorr(&signature, &message, &delegator_public_key)?;
     Ok(())
 }
 
@@ -144,7 +197,8 @@ impl DelegationToken {
     /// Generate [`DelegationToken`]
     pub fn new(delegatee_pk: XOnlyPublicKey, conditions: Conditions) -> Self {
         Self(format!(
-            "nostr:{DELEGATION_KEYWORD}:{delegatee_pk}:{conditions}"
+            "{}:{DELEGATION_KEYWORD}:{delegatee_pk}:{conditions}",
+            nip21::SCHEME
         ))
     }
 
@@ -170,13 +224,40 @@ pub struct DelegationTag {
 
 impl DelegationTag {
     /// Create a delegation tag (including the signature).
-    /// See also validate().
+    #[cfg(feature = "std")]
     pub fn new(
         delegator_keys: &Keys,
         delegatee_pubkey: XOnlyPublicKey,
         conditions: Conditions,
     ) -> Result<Self, Error> {
-        let signature = sign_delegation(delegator_keys, delegatee_pubkey, conditions.clone())?;
+        Self::new_with_ctx(
+            &SECP256K1,
+            &mut rand::thread_rng(),
+            delegator_keys,
+            delegatee_pubkey,
+            conditions,
+        )
+    }
+
+    /// Create a delegation tag (including the signature).
+    pub fn new_with_ctx<C, R>(
+        secp: &Secp256k1<C>,
+        rng: &mut R,
+        delegator_keys: &Keys,
+        delegatee_pubkey: XOnlyPublicKey,
+        conditions: Conditions,
+    ) -> Result<Self, Error>
+    where
+        C: Signing,
+        R: Rng + CryptoRng,
+    {
+        let signature = sign_delegation_with_ctx(
+            secp,
+            rng,
+            delegator_keys,
+            delegatee_pubkey,
+            conditions.clone(),
+        )?;
         Ok(Self {
             delegator_pubkey: delegator_keys.public_key(),
             conditions,
@@ -200,13 +281,28 @@ impl DelegationTag {
     }
 
     /// Validate a delegation tag, check signature and conditions.
+    #[cfg(feature = "std")]
     pub fn validate(
         &self,
         delegatee_pubkey: XOnlyPublicKey,
         event_properties: &EventProperties,
     ) -> Result<(), Error> {
+        self.validate_with_ctx(&SECP256K1, delegatee_pubkey, event_properties)
+    }
+
+    /// Validate a delegation tag, check signature and conditions.
+    pub fn validate_with_ctx<C>(
+        &self,
+        secp: &Secp256k1<C>,
+        delegatee_pubkey: XOnlyPublicKey,
+        event_properties: &EventProperties,
+    ) -> Result<(), Error>
+    where
+        C: Verification,
+    {
         // verify signature
-        verify_delegation_signature(
+        verify_delegation_signature_with_ctx(
+            secp,
             self.delegator_pubkey,
             self.signature,
             delegatee_pubkey,
@@ -449,12 +545,11 @@ impl EventProperties {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
-    use bitcoin::secp256k1::Secp256k1;
+    use bitcoin::secp256k1::{Secp256k1, SecretKey};
 
     use super::*;
-    use crate::prelude::SecretKey;
 
     #[test]
     fn test_serialize_conditions() {
@@ -490,6 +585,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_create_delegation_tag() {
         let delegator_secret_key =
             SecretKey::from_str("b2f3673ee3a659283e6599080e0ab0e669a3c2640914375a9b0b357faae08b17")
@@ -522,6 +618,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_validate_delegation_tag() {
         let delegator_secret_key =
             SecretKey::from_str("b2f3673ee3a659283e6599080e0ab0e669a3c2640914375a9b0b357faae08b17")
@@ -543,6 +640,8 @@ mod test {
 
     #[test]
     fn test_delegation_tag_parse_and_validate() {
+        let secp = Secp256k1::new();
+
         let tag_str = "[\"delegation\",\"1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4\",\"kind=1&created_at>1676067553&created_at<1678659553\",\"369aed09c1ad52fceb77ecd6c16f2433eac4a3803fc41c58876a5b60f4f36b9493d5115e5ec5a0ce6c3668ffe5b58d47f2cbc97233833bb7e908f66dbbbd9d36\"]";
         let delegatee_pubkey = XOnlyPublicKey::from_str(
             "bea8aeb6c1657e33db5ac75a83910f77e8ec6145157e476b5b88c6e85b1fab34",
@@ -552,7 +651,11 @@ mod test {
         let tag = DelegationTag::from_str(tag_str).unwrap();
 
         assert!(tag
-            .validate(delegatee_pubkey, &EventProperties::new(1, 1677000000))
+            .validate_with_ctx(
+                &secp,
+                delegatee_pubkey,
+                &EventProperties::new(1, 1677000000)
+            )
             .is_ok());
 
         // additional test: verify a value from inside the tag
@@ -564,7 +667,11 @@ mod test {
         // additional test: try validation with invalid values, invalid event kind
 
         match tag
-            .validate(delegatee_pubkey, &EventProperties::new(5, 1677000000))
+            .validate_with_ctx(
+                &secp,
+                delegatee_pubkey,
+                &EventProperties::new(5, 1677000000),
+            )
             .err()
             .unwrap()
         {
@@ -574,6 +681,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_sign_delegation_verify_delegation_signature() {
         let delegator_secret_key =
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
@@ -600,9 +708,8 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_sign_delegation_verify_lowlevel() {
-        let secp = Secp256k1::new();
-
         let delegator_secret_key =
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
                 .unwrap();
@@ -623,16 +730,19 @@ mod test {
         let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
         let message = Message::from_slice(hashed_token.as_byte_array()).unwrap();
 
-        let verify_result = secp.verify_schnorr(&signature, &message, &delegator_keys.public_key());
+        let verify_result =
+            SECP256K1.verify_schnorr(&signature, &message, &delegator_keys.public_key());
         assert!(verify_result.is_ok());
     }
 
     #[test]
     fn test_verify_delegation_signature() {
+        let secp = Secp256k1::new();
+
         let delegator_secret_key =
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
                 .unwrap();
-        let delegator_keys = Keys::new(delegator_secret_key);
+        let delegator_keys = Keys::new_with_ctx(&secp, delegator_secret_key);
         // use one concrete signature
         let signature = Signature::from_str("f9f00fcf8480686d9da6dfde1187d4ba19c54f6ace4c73361a14db429c4b96eb30b29283d6ea1f06ba9e18e06e408244c689039ddadbacffc56060f3da5b04b8").unwrap();
         let delegatee_pk = XOnlyPublicKey::from_str(
@@ -642,7 +752,8 @@ mod test {
         let conditions =
             Conditions::from_str("kind=1&created_at>1674834236&created_at<1677426236").unwrap();
 
-        let verify_result = verify_delegation_signature(
+        let verify_result = verify_delegation_signature_with_ctx(
+            &secp,
             delegator_keys.public_key(),
             signature,
             delegatee_pk,
@@ -668,10 +779,12 @@ mod test {
 
     #[test]
     fn test_delegation_tag_to_json() {
+        let secp = Secp256k1::new();
+
         let delegator_sk =
             SecretKey::from_str("b2f3673ee3a659283e6599080e0ab0e669a3c2640914375a9b0b357faae08b17")
                 .unwrap();
-        let delegator_pubkey = Keys::new(delegator_sk).public_key();
+        let delegator_pubkey = Keys::new_with_ctx(&secp, delegator_sk).public_key();
         let conditions = Conditions::from_str("kind=1&created_at<1678659553").unwrap();
         let signature = Signature::from_str("435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976").unwrap();
         let d = DelegationTag {
@@ -701,6 +814,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_validate_delegation_tag_negative() {
         let delegator_secret_key =
             SecretKey::from_str("b2f3673ee3a659283e6599080e0ab0e669a3c2640914375a9b0b357faae08b17")
