@@ -36,6 +36,8 @@ use crate::SECP256K1;
 pub enum Error {
     /// Invalid signature
     InvalidSignature,
+    /// Invalid event id
+    InvalidId,
     /// Error serializing or deserializing JSON data
     Json(serde_json::Error),
     /// Secp256k1 error
@@ -54,6 +56,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidSignature => write!(f, "Invalid signature"),
+            Self::InvalidId => write!(f, "Invalid event id"),
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::Hex(e) => write!(f, "Hex: {e}"),
@@ -130,9 +133,13 @@ impl Event {
             &self.tags,
             &self.content,
         );
-        let message = Message::from_slice(id.as_bytes())?;
-        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
-            .map_err(|_| Error::InvalidSignature)
+        if id == self.id {
+            let message = Message::from_slice(id.as_bytes())?;
+            secp.verify_schnorr(&self.sig, &message, &self.pubkey)
+                .map_err(|_| Error::InvalidSignature)
+        } else {
+            Err(Error::InvalidId)
+        }
     }
 
     /// New event from [`Value`]
