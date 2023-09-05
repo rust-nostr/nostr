@@ -572,8 +572,8 @@ interface Relay {
     void unsubscribe(duration? wait);
 
     [Throws=NostrSdkError]
-    sequence<Event> get_events_of(sequence<Filter> filters, duration? timeout);
-    void req_events_of(sequence<Filter> filters, duration? timeout);
+    sequence<Event> get_events_of(sequence<Filter> filters, duration timeout);
+    void req_events_of(sequence<Filter> filters, duration timeout);
 };
 
 interface Options {
@@ -591,7 +591,7 @@ interface Options {
     [Self=ByArc]
     Options skip_disconnected_relays(boolean skip);
     [Self=ByArc]
-    Options timeout(duration? timeout);
+    Options timeout(duration timeout);
     [Self=ByArc]
     Options send_timeout(duration? send_timeout);
     [Self=ByArc]

@@ -700,7 +700,7 @@ impl RelayPool {
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
         let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
@@ -734,7 +734,7 @@ impl RelayPool {
     pub async fn req_events_of(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
         opts: FilterOptions,
     ) {
         let relays = self.relays().await;

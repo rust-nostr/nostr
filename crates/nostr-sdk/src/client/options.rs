@@ -28,10 +28,10 @@ pub struct Options {
     ///
     /// If the relay made just 1 attempt, the relay will not be skipped
     skip_disconnected_relays: Arc<AtomicBool>,
-    /// Timeout (default: none)
+    /// Timeout (default: 60)
     ///
     /// Used in `get_events_of`, `req_events_of` and similar as default timeout.
-    pub timeout: Option<Duration>,
+    pub timeout: Duration,
     /// Send timeout (default: 10 secs)
     pub send_timeout: Option<Duration>,
     /// NIP46 timeout (default: 180 secs)
@@ -52,7 +52,7 @@ impl Default for Options {
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
             skip_disconnected_relays: Arc::new(AtomicBool::new(false)),
-            timeout: None,
+            timeout: Duration::from_secs(60),
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             #[cfg(feature = "nip46")]
             nip46_timeout: Some(Duration::from_secs(180)),
@@ -145,7 +145,7 @@ impl Options {
     }
 
     /// Set default timeout
-    pub fn timeout(self, timeout: Option<Duration>) -> Self {
+    pub fn timeout(self, timeout: Duration) -> Self {
         Self { timeout, ..self }
     }
 

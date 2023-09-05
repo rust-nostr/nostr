@@ -548,6 +548,8 @@ impl Client {
 
     /// Get events of filters
     ///
+    /// If timeout is set to `None`, the default from [`Options`] will be used.
+    ///
     /// # Example
     /// ```rust,no_run
     /// use std::time::Duration;
@@ -579,14 +581,16 @@ impl Client {
     }
 
     /// Get events of filters with [`FilterOptions`]
+    ///
+    /// If timeout is set to `None`, the default from [`Options`] will be used.
     pub async fn get_events_of_with_opts(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        let timeout: Option<Duration> = match timeout {
-            Some(t) => Some(t),
+        let timeout: Duration = match timeout {
+            Some(t) => t,
             None => self.opts.timeout,
         };
         Ok(self.pool.get_events_of(filters, timeout, opts).await?)
@@ -595,20 +599,24 @@ impl Client {
     /// Request events of filters
     /// All events will be received on notification listener (`client.notifications()`)
     /// until the EOSE "end of stored events" message is received from the relay.
+    ///
+    /// If timeout is set to `None`, the default from [`Options`] will be used.
     pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         self.req_events_of_with_opts(filters, timeout, FilterOptions::ExitOnEOSE)
             .await
     }
 
     /// Request events of filters with [`FilterOptions`]
+    ///
+    /// If timeout is set to `None`, the default from [`Options`] will be used.
     pub async fn req_events_of_with_opts(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
         opts: FilterOptions,
     ) {
-        let timeout = match timeout {
-            Some(t) => Some(t),
+        let timeout: Duration = match timeout {
+            Some(t) => t,
             None => self.opts.timeout,
         };
         self.pool.req_events_of(filters, timeout, opts).await;

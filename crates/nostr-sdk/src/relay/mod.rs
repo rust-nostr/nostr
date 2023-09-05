@@ -1360,7 +1360,7 @@ impl Relay {
     async fn handle_events_of<F>(
         &self,
         id: SubscriptionId,
-        timeout: Option<Duration>,
+        timeout: Duration,
         opts: FilterOptions,
         callback: impl Fn(Event) -> F,
     ) -> Result<(), Error>
@@ -1371,7 +1371,7 @@ impl Relay {
         let mut received_eose: bool = false;
 
         let mut notifications = self.notification_sender.subscribe();
-        time::timeout(timeout, async {
+        time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Message(_, msg) = notification {
                     match msg {
@@ -1443,7 +1443,7 @@ impl Relay {
     pub async fn get_events_of_with_callback<F>(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
         opts: FilterOptions,
         callback: impl Fn(Event) -> F,
     ) -> Result<(), Error>
@@ -1472,7 +1472,7 @@ impl Relay {
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
         let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
@@ -1486,12 +1486,7 @@ impl Relay {
 
     /// Request events of filter. All events will be sent to notification listener,
     /// until the EOSE "end of stored events" message is received from the relay.
-    pub fn req_events_of(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Option<Duration>,
-        opts: FilterOptions,
-    ) {
+    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Duration, opts: FilterOptions) {
         if !self.opts.read() {
             tracing::error!("{}", Error::ReadDisabled);
         }

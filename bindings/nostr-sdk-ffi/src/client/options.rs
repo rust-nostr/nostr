@@ -68,7 +68,7 @@ impl Options {
         Arc::new(builder)
     }
 
-    pub fn timeout(self: Arc<Self>, timeout: Option<Duration>) -> Arc<Self> {
+    pub fn timeout(self: Arc<Self>, timeout: Duration) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.timeout(timeout);
         Arc::new(builder)

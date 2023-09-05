@@ -174,7 +174,7 @@ impl Relay {
     pub fn get_events_of(
         &self,
         filters: Vec<Arc<Filter>>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Vec<Arc<Event>>> {
         block_on(async move {
             let filters = filters
@@ -191,7 +191,7 @@ impl Relay {
         })
     }
 
-    pub fn req_events_of(&self, filters: Vec<Arc<Filter>>, timeout: Option<Duration>) {
+    pub fn req_events_of(&self, filters: Vec<Arc<Filter>>, timeout: Duration) {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
