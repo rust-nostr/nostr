@@ -9,6 +9,8 @@ use std::time::Duration;
 
 use crate::relay::RelayPoolOptions;
 
+pub(crate) const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// Options
 #[derive(Debug, Clone)]
 pub struct Options {
@@ -16,8 +18,6 @@ pub struct Options {
     wait_for_connection: Arc<AtomicBool>,
     /// Wait for the msg to be sent (default: true)
     wait_for_send: Arc<AtomicBool>,
-    /// Wait for `OK` relay msg (default: true)
-    wait_for_ok: Arc<AtomicBool>,
     /// Wait for the subscription msg to be sent (default: false)
     wait_for_subscription: Arc<AtomicBool>,
     /// POW difficulty for all events (default: 0)
@@ -32,7 +32,7 @@ pub struct Options {
     ///
     /// Used in `get_events_of`, `req_events_of` and similar as default timeout.
     timeout: Option<Duration>,
-    /// Send timeout (default: 20 secs)
+    /// Send timeout (default: 10 secs)
     send_timeout: Option<Duration>,
     /// NIP46 timeout (default: 180 secs)
     #[cfg(feature = "nip46")]
@@ -48,13 +48,12 @@ impl Default for Options {
         Self {
             wait_for_connection: Arc::new(AtomicBool::new(false)),
             wait_for_send: Arc::new(AtomicBool::new(true)),
-            wait_for_ok: Arc::new(AtomicBool::new(true)),
             wait_for_subscription: Arc::new(AtomicBool::new(false)),
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
             skip_disconnected_relays: Arc::new(AtomicBool::new(false)),
             timeout: None,
-            send_timeout: Some(Duration::from_secs(20)),
+            send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             #[cfg(feature = "nip46")]
             nip46_timeout: Some(Duration::from_secs(180)),
             shutdown_on_drop: false,
@@ -91,18 +90,6 @@ impl Options {
 
     pub(crate) fn get_wait_for_send(&self) -> bool {
         self.wait_for_send.load(Ordering::SeqCst)
-    }
-
-    /// Wait for `OK` relay msg
-    pub fn wait_for_ok(self, wait: bool) -> Self {
-        Self {
-            wait_for_ok: Arc::new(AtomicBool::new(wait)),
-            ..self
-        }
-    }
-
-    pub(crate) fn get_wait_for_ok(&self) -> bool {
-        self.wait_for_ok.load(Ordering::SeqCst)
     }
 
     /// If set to `true`, `Client` wait that a subscription msg is sent before continue (`subscribe` and `unsubscribe` methods)

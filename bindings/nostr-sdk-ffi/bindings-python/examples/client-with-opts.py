@@ -1,10 +1,11 @@
 from nostr_sdk import Keys, Client, Options, EventBuilder
+from datetime import timedelta
 
 keys = Keys.generate()
 print(keys.public_key().to_bech32())
 
-# Disable wait_for_ok option: the client will send events without waiting for `OK` confirmation from relays
-opts = Options().wait_for_ok(False)
+# Change default send timeout
+opts = Options().send_timeout(timedelta(seconds=10))
 client = Client.with_opts(keys, opts)
 
 client.add_relay("wss://relay.damus.io")

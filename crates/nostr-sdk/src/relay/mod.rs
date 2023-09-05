@@ -1120,52 +1120,46 @@ impl Relay {
             )));
         }
 
-        if opts.wait_for_ok {
-            time::timeout(opts.timeout, async {
-                self.send_msg(ClientMessage::new_event(event), None).await?;
-                let mut notifications = self.notification_sender.subscribe();
-                while let Ok(notification) = notifications.recv().await {
-                    match notification {
-                        RelayPoolNotification::Message(
-                            url,
-                            RelayMessage::Ok {
-                                event_id,
-                                status,
-                                message,
-                            },
-                        ) => {
-                            if self.url == url && id == event_id {
-                                if status {
-                                    return Ok(event_id);
-                                } else {
-                                    return Err(Error::EventNotPublished(message));
-                                }
+        time::timeout(Some(opts.timeout), async {
+            self.send_msg(ClientMessage::new_event(event), None).await?;
+            let mut notifications = self.notification_sender.subscribe();
+            while let Ok(notification) = notifications.recv().await {
+                match notification {
+                    RelayPoolNotification::Message(
+                        url,
+                        RelayMessage::Ok {
+                            event_id,
+                            status,
+                            message,
+                        },
+                    ) => {
+                        if self.url == url && id == event_id {
+                            if status {
+                                return Ok(event_id);
+                            } else {
+                                return Err(Error::EventNotPublished(message));
                             }
                         }
-                        RelayPoolNotification::RelayStatus { url, status } => {
-                            if opts.skip_disconnected && url == self.url {
-                                if let RelayStatus::Disconnected
-                                | RelayStatus::Stopped
-                                | RelayStatus::Terminated = status
-                                {
-                                    return Err(Error::EventNotPublished(String::from(
-                                        "relay not connected (status changed)",
-                                    )));
-                                }
-                            }
-                        }
-                        _ => (),
                     }
+                    RelayPoolNotification::RelayStatus { url, status } => {
+                        if opts.skip_disconnected && url == self.url {
+                            if let RelayStatus::Disconnected
+                            | RelayStatus::Stopped
+                            | RelayStatus::Terminated = status
+                            {
+                                return Err(Error::EventNotPublished(String::from(
+                                    "relay not connected (status changed)",
+                                )));
+                            }
+                        }
+                    }
+                    _ => (),
                 }
-                Err(Error::LoopTerminated)
-            })
-            .await
-            .ok_or(Error::Timeout)?
-        } else {
-            self.send_msg(ClientMessage::new_event(event), opts.timeout)
-                .await?;
-            Ok(id)
-        }
+            }
+            Err(Error::LoopTerminated)
+        })
+        .await
+        .ok_or(Error::Timeout)?
     }
 
     /// Send multiple [`Event`] at once
@@ -1190,67 +1184,63 @@ impl Relay {
             .map(ClientMessage::new_event)
             .collect();
 
-        if opts.wait_for_ok {
-            time::timeout(opts.timeout, async {
-                self.batch_msg(msgs, None).await?;
-                let mut missing: HashSet<EventId> = events.into_iter().map(|e| e.id).collect();
-                let mut published: HashSet<EventId> = HashSet::new();
-                let mut not_published: HashMap<EventId, String> = HashMap::new();
-                let mut notifications = self.notification_sender.subscribe();
-                while let Ok(notification) = notifications.recv().await {
-                    match notification {
-                        RelayPoolNotification::Message(
-                            url,
-                            RelayMessage::Ok {
-                                event_id,
-                                status,
-                                message,
-                            },
-                        ) => {
-                            if self.url == url && missing.remove(&event_id) {
-                                if status {
-                                    published.insert(event_id);
-                                } else {
-                                    not_published.insert(event_id, message);
-                                }
+        time::timeout(Some(opts.timeout), async {
+            self.batch_msg(msgs, None).await?;
+            let mut missing: HashSet<EventId> = events.into_iter().map(|e| e.id).collect();
+            let mut published: HashSet<EventId> = HashSet::new();
+            let mut not_published: HashMap<EventId, String> = HashMap::new();
+            let mut notifications = self.notification_sender.subscribe();
+            while let Ok(notification) = notifications.recv().await {
+                match notification {
+                    RelayPoolNotification::Message(
+                        url,
+                        RelayMessage::Ok {
+                            event_id,
+                            status,
+                            message,
+                        },
+                    ) => {
+                        if self.url == url && missing.remove(&event_id) {
+                            if status {
+                                published.insert(event_id);
+                            } else {
+                                not_published.insert(event_id, message);
                             }
                         }
-                        RelayPoolNotification::RelayStatus { url, status } => {
-                            if opts.skip_disconnected && url == self.url {
-                                if let RelayStatus::Disconnected
-                                | RelayStatus::Stopped
-                                | RelayStatus::Terminated = status
-                                {
-                                    return Err(Error::EventNotPublished(String::from(
-                                        "relay not connected (status changed)",
-                                    )));
-                                }
+                    }
+                    RelayPoolNotification::RelayStatus { url, status } => {
+                        if opts.skip_disconnected && url == self.url {
+                            if let RelayStatus::Disconnected
+                            | RelayStatus::Stopped
+                            | RelayStatus::Terminated = status
+                            {
+                                return Err(Error::EventNotPublished(String::from(
+                                    "relay not connected (status changed)",
+                                )));
                             }
                         }
-                        _ => (),
                     }
-
-                    if missing.is_empty() {
-                        break;
-                    }
+                    _ => (),
                 }
 
-                if !published.is_empty() && not_published.is_empty() {
-                    Ok(())
-                } else if !published.is_empty() && !not_published.is_empty() {
-                    Err(Error::PartialPublish {
-                        published: published.into_iter().collect(),
-                        not_published,
-                    })
-                } else {
-                    Err(Error::EventsNotPublished(not_published))
+                if missing.is_empty() {
+                    break;
                 }
-            })
-            .await
-            .ok_or(Error::Timeout)?
-        } else {
-            self.batch_msg(msgs, opts.timeout).await
-        }
+            }
+
+            if !published.is_empty() && not_published.is_empty() {
+                Ok(())
+            } else if !published.is_empty() && !not_published.is_empty() {
+                Err(Error::PartialPublish {
+                    published: published.into_iter().collect(),
+                    not_published,
+                })
+            } else {
+                Err(Error::EventsNotPublished(not_published))
+            }
+        })
+        .await
+        .ok_or(Error::Timeout)?
     }
 
     /// Subscribes relay with existing filter

@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::client::options::DEFAULT_SEND_TIMEOUT;
+
 /// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
@@ -57,20 +59,17 @@ impl RelayOptions {
 /// [`Relay`](super::Relay) send options
 #[derive(Debug, Clone, Copy)]
 pub struct RelaySendOptions {
-    /// When sendng event, wait for `OK` relay msg response (default: true)
-    pub wait_for_ok: bool,
     /// Skip wait for disconnected relay (default: true)
     pub skip_disconnected: bool,
-    /// Timeout for sending event (default: 30 secs)
-    pub timeout: Option<Duration>,
+    /// Timeout for sending event (default: 10 secs)
+    pub timeout: Duration,
 }
 
 impl Default for RelaySendOptions {
     fn default() -> Self {
         Self {
-            wait_for_ok: true,
             skip_disconnected: true,
-            timeout: Some(Duration::from_secs(30)),
+            timeout: DEFAULT_SEND_TIMEOUT,
         }
     }
 }
@@ -81,14 +80,6 @@ impl RelaySendOptions {
         Self::default()
     }
 
-    /// Set `wait_for_ok`
-    pub fn wait_for_ok(self, value: bool) -> Self {
-        Self {
-            wait_for_ok: value,
-            ..self
-        }
-    }
-
     /// Skip wait for disconnected relay (default: true)
     pub fn skip_disconnected(self, value: bool) -> Self {
         Self {
@@ -97,10 +88,12 @@ impl RelaySendOptions {
         }
     }
 
-    /// Timeout for sending event
+    /// Timeout for sending event (default: 10 secs)
+    ///
+    /// If `None`, the default timeout will be used
     pub fn timeout(self, value: Option<Duration>) -> Self {
         Self {
-            timeout: value,
+            timeout: value.unwrap_or(DEFAULT_SEND_TIMEOUT),
             ..self
         }
     }

@@ -650,14 +650,12 @@ impl Client {
     }
 
     /// Send event
+    ///
+    /// This method will wait for the `OK` message from the relay.
+    /// If you not want to wait for the `OK` message, use `send_msg` method instead.
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
-        let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
-            self.opts.get_send_timeout()
-        } else {
-            None
-        };
+        let timeout: Option<Duration> = self.opts.get_send_timeout();
         let opts = RelaySendOptions::new()
-            .wait_for_ok(self.opts.get_wait_for_ok())
             .skip_disconnected(self.opts.get_skip_disconnected_relays())
             .timeout(timeout);
         Ok(self.pool.send_event(event, opts).await?)
@@ -674,18 +672,16 @@ impl Client {
     }
 
     /// Send event to specific relay
+    ///
+    /// This method will wait for the `OK` message from the relay.
+    /// If you not want to wait for the `OK` message, use `send_msg` method instead.
     pub async fn send_event_to<U>(&self, url: U, event: Event) -> Result<EventId, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Option<Duration> = if self.opts.get_wait_for_send() {
-            self.opts.get_send_timeout()
-        } else {
-            None
-        };
+        let timeout: Option<Duration> = self.opts.get_send_timeout();
         let opts = RelaySendOptions::new()
-            .wait_for_ok(self.opts.get_wait_for_ok())
             .skip_disconnected(self.opts.get_skip_disconnected_relays())
             .timeout(timeout);
         Ok(self.pool.send_event_to(url, event, opts).await?)
