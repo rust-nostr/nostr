@@ -150,9 +150,9 @@ impl Options {
     /// Skip disconnected relays during send methods (default: false)
     ///
     /// If the relay made just 1 attempt, the relay will not be skipped
-    pub fn skip_disconnected_relays(self, wait: bool) -> Self {
+    pub fn skip_disconnected_relays(self, skip: bool) -> Self {
         Self {
-            skip_disconnected_relays: Arc::new(AtomicBool::new(wait)),
+            skip_disconnected_relays: Arc::new(AtomicBool::new(skip)),
             ..self
         }
     }

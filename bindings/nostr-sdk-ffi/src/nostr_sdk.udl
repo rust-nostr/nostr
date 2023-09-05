@@ -591,6 +591,8 @@ interface Options {
     [Self=ByArc]
     Options req_filters_chunk_size(u8 req_filters_chunk_size);
     [Self=ByArc]
+    Options skip_disconnected_relays(boolean skip);
+    [Self=ByArc]
     Options timeout(duration? timeout);
     [Self=ByArc]
     Options send_timeout(duration? send_timeout);

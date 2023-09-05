@@ -68,6 +68,12 @@ impl Options {
         Arc::new(builder)
     }
 
+    pub fn skip_disconnected_relays(self: Arc<Self>, skip: bool) -> Arc<Self> {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.skip_disconnected_relays(skip);
+        Arc::new(builder)
+    }
+
     pub fn timeout(self: Arc<Self>, timeout: Option<Duration>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.timeout(timeout);
