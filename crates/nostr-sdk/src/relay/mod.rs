@@ -60,7 +60,7 @@ pub enum Error {
     #[error("events not published: {0:?}")]
     EventsNotPublished(HashMap<EventId, String>),
     /// Only some events
-    #[error("partial publish: published={}, others={}", published.len(), not_published.len())]
+    #[error("partial publish: published={}, missing={}", published.len(), not_published.len())]
     PartialPublish {
         /// Published events
         published: Vec<EventId>,
