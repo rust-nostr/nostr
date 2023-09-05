@@ -32,7 +32,7 @@ pub struct Options {
     ///
     /// Used in `get_events_of`, `req_events_of` and similar as default timeout.
     timeout: Option<Duration>,
-    /// Send timeout (default: 60 secs)
+    /// Send timeout (default: 20 secs)
     send_timeout: Option<Duration>,
     /// NIP46 timeout (default: 180 secs)
     #[cfg(feature = "nip46")]
@@ -54,7 +54,7 @@ impl Default for Options {
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
             skip_disconnected_relays: Arc::new(AtomicBool::new(false)),
             timeout: None,
-            send_timeout: Some(Duration::from_secs(60)),
+            send_timeout: Some(Duration::from_secs(20)),
             #[cfg(feature = "nip46")]
             nip46_timeout: Some(Duration::from_secs(180)),
             shutdown_on_drop: false,
