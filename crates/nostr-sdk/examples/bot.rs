@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::time::Duration;
+
 use nostr_sdk::prelude::*;
 
 const BECH32_SK: &str = "nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx";
@@ -11,16 +13,21 @@ async fn main() -> Result<()> {
 
     let secret_key = SecretKey::from_bech32(BECH32_SK)?;
     let keys = Keys::new(secret_key);
-    let opts = Options::new().wait_for_send(false);
+    let opts = Options::new()
+        .wait_for_connection(true)
+        .skip_disconnected_relays(true)
+        .send_timeout(Some(Duration::from_secs(5)));
     let client = Client::with_opts(&keys, opts);
+
+    println!("Bot public key: {}", keys.public_key().to_bech32()?);
 
     client.add_relay("wss://nostr.oxtr.dev", None).await?;
     client.add_relay("wss://relay.damus.io", None).await?;
     client.add_relay("wss://nostr.mom", None).await?;
+    client.add_relay("wss://nostr.wine", None).await?;
+    client.add_relay("wss://relay.nostr.info", None).await?;
 
     client.connect().await;
-
-    println!("Bot public key: {}", keys.public_key().to_bech32()?);
 
     let metadata = Metadata::new()
         .name("nostr-sdk-bot-example")
