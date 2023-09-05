@@ -650,6 +650,8 @@ interface Client {
     [Throws=NostrSdkError]
     EventId set_metadata(Metadata metadata);
     [Throws=NostrSdkError]
+    EventId send_direct_msg(PublicKey receiver, string msg, EventId? reply);
+    [Throws=NostrSdkError]
     EventId file_metadata(string description, FileMetadata metadata);
 
     [Self=ByArc]

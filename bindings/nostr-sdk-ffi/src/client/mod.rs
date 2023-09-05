@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::{
-    ClientMessage, Event, EventId, FileMetadata, Filter, Keys, Metadata, RelayMessage,
+    ClientMessage, Event, EventId, FileMetadata, Filter, Keys, Metadata, PublicKey, RelayMessage,
 };
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
@@ -202,6 +202,19 @@ impl Client {
         Ok(Arc::new(
             self.inner
                 .set_metadata(metadata.as_ref().deref().clone())?
+                .into(),
+        ))
+    }
+
+    pub fn send_direct_msg(
+        &self,
+        receiver: Arc<PublicKey>,
+        msg: String,
+        reply: Option<Arc<EventId>>,
+    ) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .send_direct_msg(**receiver, msg, reply.map(|r| **r))?
                 .into(),
         ))
     }
