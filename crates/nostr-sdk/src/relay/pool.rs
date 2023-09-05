@@ -745,9 +745,26 @@ impl RelayPool {
 
     /// Connect to all added relays and keep connection alive
     pub async fn connect(&self, wait_for_connection: bool) {
-        let relays = self.relays().await;
-        for relay in relays.values() {
-            self.connect_relay(relay, wait_for_connection).await;
+        let relays: HashMap<Url, Relay> = self.relays().await;
+
+        if wait_for_connection {
+            let mut handles = Vec::new();
+
+            for relay in relays.into_values() {
+                let pool = self.clone();
+                let handle = thread::spawn(async move {
+                    pool.connect_relay(&relay, wait_for_connection).await;
+                });
+                handles.push(handle);
+            }
+
+            for handle in handles.into_iter().flatten() {
+                let _ = handle.join().await;
+            }
+        } else {
+            for relay in relays.values() {
+                self.connect_relay(relay, wait_for_connection).await;
+            }
         }
     }
 
