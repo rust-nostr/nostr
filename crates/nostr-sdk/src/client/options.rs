@@ -15,7 +15,7 @@ pub(crate) const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(10);
 #[derive(Debug, Clone)]
 pub struct Options {
     /// Wait for connection (default: false)
-    wait_for_connection: Arc<AtomicBool>,
+    pub wait_for_connection: bool,
     /// Wait for the msg to be sent (default: true)
     wait_for_send: Arc<AtomicBool>,
     /// Wait for the subscription msg to be sent (default: false)
@@ -31,22 +31,22 @@ pub struct Options {
     /// Timeout (default: none)
     ///
     /// Used in `get_events_of`, `req_events_of` and similar as default timeout.
-    timeout: Option<Duration>,
+    pub timeout: Option<Duration>,
     /// Send timeout (default: 10 secs)
-    send_timeout: Option<Duration>,
+    pub send_timeout: Option<Duration>,
     /// NIP46 timeout (default: 180 secs)
     #[cfg(feature = "nip46")]
-    nip46_timeout: Option<Duration>,
+    pub nip46_timeout: Option<Duration>,
     /// Shutdown on [Client](super::Client) drop
     pub shutdown_on_drop: bool,
     /// Pool Options
-    pool: RelayPoolOptions,
+    pub pool: RelayPoolOptions,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
-            wait_for_connection: Arc::new(AtomicBool::new(false)),
+            wait_for_connection: false,
             wait_for_send: Arc::new(AtomicBool::new(true)),
             wait_for_subscription: Arc::new(AtomicBool::new(false)),
             difficulty: Arc::new(AtomicU8::new(0)),
@@ -71,16 +71,12 @@ impl Options {
     /// If set to `true`, `Client` wait that `Relay` try at least one time to enstablish a connection before continue.
     pub fn wait_for_connection(self, wait: bool) -> Self {
         Self {
-            wait_for_connection: Arc::new(AtomicBool::new(wait)),
+            wait_for_connection: wait,
             ..self
         }
     }
 
-    pub(crate) fn get_wait_for_connection(&self) -> bool {
-        self.wait_for_connection.load(Ordering::SeqCst)
-    }
-
-    /// If set to `true`, `Client` wait that an event is sent before continue.
+    /// If set to `true`, `Client` wait that a message is sent before continue.
     pub fn wait_for_send(self, wait: bool) -> Self {
         Self {
             wait_for_send: Arc::new(AtomicBool::new(wait)),
@@ -153,20 +149,12 @@ impl Options {
         Self { timeout, ..self }
     }
 
-    pub(crate) fn get_timeout(&self) -> Option<Duration> {
-        self.timeout
-    }
-
     /// Set default send timeout
     pub fn send_timeout(self, timeout: Option<Duration>) -> Self {
         Self {
             send_timeout: timeout,
             ..self
         }
-    }
-
-    pub(crate) fn get_send_timeout(&self) -> Option<Duration> {
-        self.send_timeout
     }
 
     /// Set NIP46 timeout
@@ -176,11 +164,6 @@ impl Options {
             nip46_timeout: timeout,
             ..self
         }
-    }
-
-    #[cfg(feature = "nip46")]
-    pub(crate) fn get_nip46_timeout(&self) -> Option<Duration> {
-        self.nip46_timeout
     }
 
     /// Shutdown client on drop
@@ -194,9 +177,5 @@ impl Options {
     /// Set pool options
     pub fn pool(self, opts: RelayPoolOptions) -> Self {
         Self { pool: opts, ..self }
-    }
-
-    pub(crate) fn get_pool(&self) -> RelayPoolOptions {
-        self.pool
     }
 }

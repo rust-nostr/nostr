@@ -165,7 +165,7 @@ impl Client {
     /// ```
     pub fn with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
-            pool: RelayPool::new(opts.get_pool()),
+            pool: RelayPool::new(opts.pool),
             keys: keys.clone(),
             opts,
             dropped: Arc::new(AtomicBool::new(false)),
@@ -188,7 +188,7 @@ impl Client {
         opts: Options,
     ) -> Self {
         Self {
-            pool: RelayPool::new(opts.get_pool()),
+            pool: RelayPool::new(opts.pool),
             keys: app_keys.clone(),
             opts,
             dropped: Arc::new(AtomicBool::new(false)),
@@ -435,7 +435,7 @@ impl Client {
     {
         let relay: Relay = self.relay(url).await?;
         self.pool
-            .connect_relay(&relay, self.opts.get_wait_for_connection())
+            .connect_relay(&relay, self.opts.wait_for_connection)
             .await;
         Ok(())
     }
@@ -480,7 +480,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn connect(&self) {
-        self.pool.connect(self.opts.get_wait_for_connection()).await;
+        self.pool.connect(self.opts.wait_for_connection).await;
     }
 
     /// Disconnect from all relays
@@ -519,7 +519,7 @@ impl Client {
     /// ```
     pub async fn subscribe(&self, filters: Vec<Filter>) {
         let wait: Option<Duration> = if self.opts.get_wait_for_subscription() {
-            self.opts.get_send_timeout()
+            self.opts.send_timeout
         } else {
             None
         };
@@ -534,7 +534,7 @@ impl Client {
     /// Unsubscribe
     pub async fn unsubscribe(&self) {
         let wait: Option<Duration> = if self.opts.get_wait_for_subscription() {
-            self.opts.get_send_timeout()
+            self.opts.send_timeout
         } else {
             None
         };
@@ -587,7 +587,7 @@ impl Client {
     ) -> Result<Vec<Event>, Error> {
         let timeout: Option<Duration> = match timeout {
             Some(t) => Some(t),
-            None => self.opts.get_timeout(),
+            None => self.opts.timeout,
         };
         Ok(self.pool.get_events_of(filters, timeout, opts).await?)
     }
@@ -609,7 +609,7 @@ impl Client {
     ) {
         let timeout = match timeout {
             Some(t) => Some(t),
-            None => self.opts.get_timeout(),
+            None => self.opts.timeout,
         };
         self.pool.req_events_of(filters, timeout, opts).await;
     }
@@ -617,7 +617,7 @@ impl Client {
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
         let wait: Option<Duration> = if self.opts.get_wait_for_send() {
-            self.opts.get_send_timeout()
+            self.opts.send_timeout
         } else {
             None
         };
@@ -642,7 +642,7 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let wait: Option<Duration> = if self.opts.get_wait_for_send() {
-            self.opts.get_send_timeout()
+            self.opts.send_timeout
         } else {
             None
         };
@@ -654,7 +654,7 @@ impl Client {
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
-        let timeout: Option<Duration> = self.opts.get_send_timeout();
+        let timeout: Option<Duration> = self.opts.send_timeout;
         let opts = RelaySendOptions::new()
             .skip_disconnected(self.opts.get_skip_disconnected_relays())
             .timeout(timeout);
@@ -680,7 +680,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Option<Duration> = self.opts.get_send_timeout();
+        let timeout: Option<Duration> = self.opts.send_timeout;
         let opts = RelaySendOptions::new()
             .skip_disconnected(self.opts.get_skip_disconnected_relays())
             .timeout(timeout);
@@ -705,7 +705,7 @@ impl Client {
             let res: Response = self
                 .send_req_to_signer(
                     Request::SignEvent(unsigned_event.clone()),
-                    self.opts.get_nip46_timeout(),
+                    self.opts.nip46_timeout,
                 )
                 .await?;
             if let Response::SignEvent(event) = res {
@@ -990,7 +990,7 @@ impl Client {
                 text: msg.into(),
             };
             let res: Response = self
-                .send_req_to_signer(req, self.opts.get_nip46_timeout())
+                .send_req_to_signer(req, self.opts.nip46_timeout)
                 .await?;
             if let Response::Nip04Encrypt(content) = res {
                 EventBuilder::new(
