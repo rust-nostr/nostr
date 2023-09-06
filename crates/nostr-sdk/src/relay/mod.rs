@@ -183,6 +183,11 @@ impl PingStats {
         self.replied.load(Ordering::SeqCst)
     }
 
+    pub(crate) fn reset(&self) {
+        self.set_last_nonce(0);
+        self.set_replied(false);
+    }
+
     pub(crate) async fn just_sent(&self) {
         let mut sent_at = self.sent_at.write().await;
         *sent_at = Instant::now();
@@ -724,6 +729,7 @@ impl Relay {
                         loop {
                             if relay.stats.ping.last_nonce() != 0 && !relay.stats.ping.replied() {
                                 tracing::warn!("{} not replied to ping", relay.url);
+                                relay.stats.ping.reset();
                                 break;
                             }
 
