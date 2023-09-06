@@ -6,11 +6,14 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(all(not(feature = "std"), feature = "alloc"), feature(error_in_core))]
+//#![cfg_attr(all(not(feature = "std"), feature = "alloc"), feature(error_in_core))]
 #![cfg_attr(
     feature = "default",
     doc = include_str!("../README.md")
 )]
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+compile_error!("at least one of the `std` or `alloc` features must be enabled");
 
 #[cfg(feature = "std")]
 #[macro_use]

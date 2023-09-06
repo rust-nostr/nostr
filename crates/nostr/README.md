@@ -94,6 +94,7 @@ The following crate feature flags are available:
 | Feature             | Default | Description                                                                              |
 | ------------------- | :-----: | ---------------------------------------------------------------------------------------- |
 | `std`               |   Yes   | Enable `std` library                                                                     |
+| `alloc`             |   Yes   | Enable `alloc` library                                                                   |
 | `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                  |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                          |
 | `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                    |

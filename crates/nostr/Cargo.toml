@@ -18,7 +18,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["std", "all-nips"]
 std = [
-    "dep:once_cell", 
+    "dep:once_cell",
+    "cbc?/std",
     "base64?/std", 
     "bitcoin/std", 
     "bitcoin/rand-std", 
@@ -28,6 +29,14 @@ std = [
     "serde_json/std", 
     "tracing/std", 
     "url-fork/std",
+    "alloc",
+]
+alloc = [
+    "cbc?/alloc",
+    "base64?/alloc",
+    "bitcoin/no-std",
+    "serde/alloc", 
+    "serde_json/alloc",
 ]
 blocking = ["reqwest?/blocking"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip46", "nip47"]
@@ -42,16 +51,16 @@ nip47 = ["nip04"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
-base64 = { version = "0.21", default-features = false, features = ["alloc"], optional = true }
+base64 = { version = "0.21", default-features = false, optional = true }
 bip39 = { version = "2.0", default-features = false, optional = true }
-bitcoin = { version = "0.30", default-features = false, features = ["no-std", "rand", "serde"] }
-cbc = { version = "0.1", features = ["alloc"], optional = true }
+bitcoin = { version = "0.30", default-features = false, features = ["rand", "serde"] }
+cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 nostr-ots = { version = "0.2", optional = true }
 once_cell = { workspace = true, optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0", default-features = false }
 tracing = { workspace = true }
 url-fork = { workspace = true, features = ["serde"] }
 

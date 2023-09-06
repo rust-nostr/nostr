@@ -4,8 +4,8 @@ cargo fmt --all -- --config format_code_in_doc_comments=true
 
 buildargs=(
     "-p nostr"
-    "-p nostr --no-default-features"
-    "-p nostr --no-default-features --features all-nips"
+    "-p nostr --no-default-features --features alloc"
+    "-p nostr --no-default-features --features alloc,all-nips"
     "-p nostr --features blocking"
     "-p nostr-sdk-net"
     "-p nostr-sdk"
