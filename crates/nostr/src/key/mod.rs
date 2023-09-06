@@ -118,10 +118,7 @@ impl Keys {
     }
 
     /// Get [`PublicKey`]
-    pub fn normalized_public_key<C>(&self) -> Result<PublicKey, Error>
-    where
-        C: Signing,
-    {
+    pub fn normalized_public_key(&self) -> Result<PublicKey, Error> {
         self.normalized_public_key_with_ctx(&SECP256K1)
     }
 
