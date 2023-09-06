@@ -29,7 +29,6 @@ std = [
     "serde_json/std", 
     "tracing/std", 
     "url-fork/std",
-    "alloc",
 ]
 alloc = [
     "cbc?/alloc",

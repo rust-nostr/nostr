@@ -980,7 +980,7 @@ where
 impl From<Tag> for Vec<String> {
     fn from(data: Tag) -> Self {
         match data {
-            Tag::Generic(kind, data) => vec![vec![kind.to_string()], data].concat(),
+            Tag::Generic(kind, data) => [vec![kind.to_string()], data].concat(),
             Tag::Event(id, relay_url, marker) => {
                 let mut tag = vec![TagKind::E.to_string(), id.to_hex()];
                 if let Some(relay_url) = relay_url {
