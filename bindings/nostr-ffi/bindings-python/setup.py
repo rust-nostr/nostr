@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='nostr-protocol',
-    version='0.0.3',
+    version='0.0.4',
     description="Rust implementation of Nostr protocol.",
     long_description=long_description,
     long_description_content_type='text/markdown',
