@@ -151,7 +151,7 @@ where
     let unhashed_token = DelegationToken::new(delegatee_pk, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_slice(hashed_token.as_byte_array())?;
-    Ok(delegator_keys.sign_schnorr(secp, &message, rng)?)
+    Ok(delegator_keys.sign_schnorr_with_ctx(secp, &message, rng)?)
 }
 
 /// Verify delegation signature

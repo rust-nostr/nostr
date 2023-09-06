@@ -111,7 +111,7 @@ impl UnsignedEvent {
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-            sig: keys.sign_schnorr(secp, &message, rng)?,
+            sig: keys.sign_schnorr_with_ctx(secp, &message, rng)?,
             #[cfg(feature = "nip03")]
             ots: None,
         })

@@ -97,8 +97,7 @@ impl Keys {
 
     /// Generate new random [`Keys`]
     pub fn generate() -> Self {
-        let mut rng = OsRng;
-        Self::generate_with_ctx(&SECP256K1, &mut rng)
+        Self::generate_with_ctx(&SECP256K1, &mut OsRng)
     }
 
     /// Generate random [`Keys`] with custom [`Rng`]
@@ -116,6 +115,19 @@ impl Keys {
         R: Rng + ?Sized,
     {
         Self::generate_without_keypair_with_ctx(&SECP256K1, rng)
+    }
+
+    /// Get [`PublicKey`]
+    pub fn normalized_public_key<C>(&self) -> Result<PublicKey, Error>
+    where
+        C: Signing,
+    {
+        self.normalized_public_key_with_ctx(&SECP256K1)
+    }
+
+    /// Sign schnorr [`Message`]
+    pub fn sign_schnorr(&self, message: &Message) -> Result<Signature, Error> {
+        self.sign_schnorr_with_ctx(&SECP256K1, message, &mut OsRng)
     }
 }
 
@@ -185,7 +197,7 @@ impl Keys {
     }
 
     /// Get [`PublicKey`]
-    pub fn normalized_public_key<C>(&self, secp: &Secp256k1<C>) -> Result<PublicKey, Error>
+    pub fn normalized_public_key_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<PublicKey, Error>
     where
         C: Signing,
     {
@@ -208,7 +220,7 @@ impl Keys {
     }
 
     /// Sign schnorr [`Message`]
-    pub fn sign_schnorr<C, R>(
+    pub fn sign_schnorr_with_ctx<C, R>(
         &self,
         secp: &Secp256k1<C>,
         message: &Message,

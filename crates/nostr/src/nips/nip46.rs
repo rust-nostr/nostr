@@ -259,7 +259,7 @@ impl Request {
             Self::SignSchnorr(value) => {
                 let hash = Sha256Hash::hash(value.as_bytes());
                 let message = Secp256k1Message::from(hash);
-                let sig: Signature = keys.sign_schnorr(secp, &message, rng)?;
+                let sig: Signature = keys.sign_schnorr_with_ctx(secp, &message, rng)?;
                 Some(Response::SignSchnorr(sig))
             }
         };
