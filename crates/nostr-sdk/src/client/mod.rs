@@ -986,7 +986,7 @@ impl Client {
         &self,
         receiver: XOnlyPublicKey,
         msg: S,
-        reply: Option<EventId>,
+        reply_to: Option<EventId>,
     ) -> Result<EventId, Error>
     where
         S: Into<String>,
@@ -1010,11 +1010,11 @@ impl Client {
                 return Err(Error::ResponseNotMatchRequest);
             }
         } else {
-            EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg, reply)?
+            EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg, reply_to)?
         };
 
         #[cfg(not(feature = "nip46"))]
-        let builder = EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg, reply)?;
+        let builder = EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg, reply_to)?;
 
         self.send_event_builder(builder).await
     }

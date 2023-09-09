@@ -104,14 +104,14 @@ impl JsEventBuilder {
         sender_keys: &JsKeys,
         receiver_pubkey: &JsPublicKey,
         content: String,
-        reply: Option<JsEventId>,
+        reply_to: Option<JsEventId>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
             builder: EventBuilder::new_encrypted_direct_msg(
                 sender_keys.deref(),
                 receiver_pubkey.into(),
                 content,
-                reply.map(|id| id.into()),
+                reply_to.map(|id| id.into()),
             )
             .map_err(into_err)?,
         })
