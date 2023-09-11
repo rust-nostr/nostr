@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crate::relay::RelayPoolOptions;
 
-pub(crate) const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(10);
+pub(crate) const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// Options
 #[derive(Debug, Clone)]
@@ -32,7 +32,7 @@ pub struct Options {
     ///
     /// Used in `get_events_of`, `req_events_of` and similar as default timeout.
     pub timeout: Duration,
-    /// Send timeout (default: 10 secs)
+    /// Send timeout (default: 20 secs)
     pub send_timeout: Option<Duration>,
     /// NIP46 timeout (default: 180 secs)
     #[cfg(feature = "nip46")]
