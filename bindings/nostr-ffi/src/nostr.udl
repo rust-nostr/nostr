@@ -288,7 +288,7 @@ interface EventBuilder {
     [Name=set_contact_list]
     constructor(sequence<Contact> list);
     [Throws=NostrError, Name=new_encrypted_direct_msg]
-    constructor(Keys sender_keys, PublicKey receiver_pubkey, string content, EventId? reply);
+    constructor(Keys sender_keys, PublicKey receiver_pubkey, string content, EventId? reply_to);
     [Name=delete]
     constructor(sequence<EventId> ids, optional string? reason = null);
     [Name=new_reaction]
