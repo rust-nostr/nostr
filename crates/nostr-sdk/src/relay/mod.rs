@@ -1126,46 +1126,55 @@ impl Relay {
             )));
         }
 
-        time::timeout(Some(opts.timeout), async {
-            self.send_msg(ClientMessage::new_event(event), None).await?;
-            let mut notifications = self.notification_sender.subscribe();
-            while let Ok(notification) = notifications.recv().await {
-                match notification {
-                    RelayPoolNotification::Message(
-                        url,
-                        RelayMessage::Ok {
-                            event_id,
-                            status,
-                            message,
-                        },
-                    ) => {
-                        if self.url == url && id == event_id {
-                            if status {
-                                return Ok(event_id);
-                            } else {
-                                return Err(Error::EventNotPublished(message));
+        if event.is_ephemeral() {
+            tracing::warn!(
+                "Trying to send an ephemeral event: skip the wait for `OK` msg from relay."
+            );
+            self.send_msg(ClientMessage::new_event(event), Some(opts.timeout))
+                .await?;
+            Ok(id)
+        } else {
+            time::timeout(Some(opts.timeout), async {
+                self.send_msg(ClientMessage::new_event(event), None).await?;
+                let mut notifications = self.notification_sender.subscribe();
+                while let Ok(notification) = notifications.recv().await {
+                    match notification {
+                        RelayPoolNotification::Message(
+                            url,
+                            RelayMessage::Ok {
+                                event_id,
+                                status,
+                                message,
+                            },
+                        ) => {
+                            if self.url == url && id == event_id {
+                                if status {
+                                    return Ok(event_id);
+                                } else {
+                                    return Err(Error::EventNotPublished(message));
+                                }
                             }
                         }
-                    }
-                    RelayPoolNotification::RelayStatus { url, status } => {
-                        if opts.skip_disconnected && url == self.url {
-                            if let RelayStatus::Disconnected
-                            | RelayStatus::Stopped
-                            | RelayStatus::Terminated = status
-                            {
-                                return Err(Error::EventNotPublished(String::from(
-                                    "relay not connected (status changed)",
-                                )));
+                        RelayPoolNotification::RelayStatus { url, status } => {
+                            if opts.skip_disconnected && url == self.url {
+                                if let RelayStatus::Disconnected
+                                | RelayStatus::Stopped
+                                | RelayStatus::Terminated = status
+                                {
+                                    return Err(Error::EventNotPublished(String::from(
+                                        "relay not connected (status changed)",
+                                    )));
+                                }
                             }
                         }
+                        _ => (),
                     }
-                    _ => (),
                 }
-            }
-            Err(Error::LoopTerminated)
-        })
-        .await
-        .ok_or(Error::Timeout)?
+                Err(Error::LoopTerminated)
+            })
+            .await
+            .ok_or(Error::Timeout)?
+        }
     }
 
     /// Send multiple [`Event`] at once
@@ -1184,15 +1193,22 @@ impl Relay {
             )));
         }
 
-        let msgs: Vec<ClientMessage> = events
-            .iter()
-            .cloned()
-            .map(ClientMessage::new_event)
-            .collect();
+        let mut msgs: Vec<ClientMessage> = Vec::with_capacity(events.len());
+        let mut missing: HashSet<EventId> = HashSet::new();
+
+        for event in events.into_iter() {
+            if !event.is_ephemeral() {
+                missing.insert(event.id);
+            } else {
+                tracing::warn!(
+                    "Trying to batch ephemeral event: skip the wait for `OK` msg from relay."
+                );
+            }
+            msgs.push(ClientMessage::new_event(event));
+        }
 
         time::timeout(Some(opts.timeout), async {
             self.batch_msg(msgs, None).await?;
-            let mut missing: HashSet<EventId> = events.into_iter().map(|e| e.id).collect();
             let mut published: HashSet<EventId> = HashSet::new();
             let mut not_published: HashMap<EventId, String> = HashMap::new();
             let mut notifications = self.notification_sender.subscribe();
