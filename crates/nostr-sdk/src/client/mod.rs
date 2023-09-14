@@ -130,7 +130,8 @@ impl Drop for Client {
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
                 let client: Client = self.clone();
                 thread::spawn(async move {
-                    client.shutdown()
+                    client
+                        .shutdown()
                         .await
                         .expect("Impossible to drop the client")
                 });

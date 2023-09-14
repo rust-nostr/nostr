@@ -195,7 +195,7 @@ impl SubscriptionId {
 
 impl fmt::Display for SubscriptionId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.clone())
+        write!(f, "{}", self.0)
     }
 }
 
