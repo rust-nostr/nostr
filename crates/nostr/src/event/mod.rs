@@ -213,6 +213,26 @@ impl Event {
         self.ots = Some(ots);
         Ok(())
     }
+
+    /// Check if event [`Kind`] is `Regular`
+    pub fn is_regular(&self) -> bool {
+        self.kind.is_regular()
+    }
+
+    /// Check if event [`Kind`] is `Replaceable`
+    pub fn is_replaceable(&self) -> bool {
+        self.kind.is_replaceable()
+    }
+
+    /// Check if event [`Kind`] is `Ephemeral`
+    pub fn is_ephemeral(&self) -> bool {
+        self.kind.is_ephemeral()
+    }
+
+    /// Check if event [`Kind`] is `Parameterized replaceable`
+    pub fn is_parameterized_replaceable(&self) -> bool {
+        self.kind.is_parameterized_replaceable()
+    }
 }
 
 impl Event {

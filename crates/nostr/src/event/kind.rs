@@ -6,10 +6,20 @@
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::num::ParseIntError;
+use core::ops::Range;
 use core::str::FromStr;
 
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
+
+/// Regular range
+pub const REGULAR_RANGE: Range<u64> = 1_000..10_000;
+/// Replaceable range
+pub const REPLACEABLE_RANGE: Range<u64> = 10_000..20_000;
+/// Ephemeral range
+pub const EPHEMERAL_RANGE: Range<u64> = 20_000..30_000;
+/// Parameterized replaceable range
+pub const PARAMETERIZED_REPLACEABLE_RANGE: Range<u64> = 30_000..40_000;
 
 /// Event [`Kind`]
 #[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord)]
@@ -96,11 +106,11 @@ pub enum Kind {
     HttpAuth,
     /// Regular Events (must be between 1000 and <=9999)
     Regular(u16),
-    /// Replacabe event (must be between 10000 and <20000)
+    /// Replaceable event (must be between 10000 and <20000)
     Replaceable(u16),
     /// Ephemeral event (must be between 20000 and <30000)
     Ephemeral(u16),
-    /// Parameterized Replacabe event (must be between 30000 and <40000)
+    /// Parameterized replaceable event (must be between 30000 and <40000)
     ParameterizedReplaceable(u16),
     /// Custom
     Custom(u64),
@@ -115,6 +125,26 @@ impl Kind {
     /// Get [`Kind`] as `u64`
     pub fn as_u64(&self) -> u64 {
         (*self).into()
+    }
+
+    /// Check if [`Kind`] is `Regular`
+    pub fn is_regular(&self) -> bool {
+        REGULAR_RANGE.contains(&self.as_u64())
+    }
+
+    /// Check if [`Kind`] is `Replaceable`
+    pub fn is_replaceable(&self) -> bool {
+        REPLACEABLE_RANGE.contains(&self.as_u64())
+    }
+
+    /// Check if [`Kind`] is `Ephemeral`
+    pub fn is_ephemeral(&self) -> bool {
+        EPHEMERAL_RANGE.contains(&self.as_u64())
+    }
+
+    /// Check if [`Kind`] is `Parameterized replaceable`
+    pub fn is_parameterized_replaceable(&self) -> bool {
+        PARAMETERIZED_REPLACEABLE_RANGE.contains(&self.as_u64())
     }
 }
 
@@ -167,10 +197,12 @@ impl From<u64> for Kind {
             30078 => Self::ApplicationSpecificData,
             1063 => Self::FileMetadata,
             27235 => Self::HttpAuth,
-            x if (1_000..10_000).contains(&x) => Self::Regular(x as u16),
-            x if (10_000..20_000).contains(&x) => Self::Replaceable(x as u16),
-            x if (20_000..30_000).contains(&x) => Self::Ephemeral(x as u16),
-            x if (30_000..40_000).contains(&x) => Self::ParameterizedReplaceable(x as u16),
+            x if (REGULAR_RANGE).contains(&x) => Self::Regular(x as u16),
+            x if (REPLACEABLE_RANGE).contains(&x) => Self::Replaceable(x as u16),
+            x if (EPHEMERAL_RANGE).contains(&x) => Self::Ephemeral(x as u16),
+            x if (PARAMETERIZED_REPLACEABLE_RANGE).contains(&x) => {
+                Self::ParameterizedReplaceable(x as u16)
+            }
             x => Self::Custom(x),
         }
     }
