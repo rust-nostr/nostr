@@ -128,9 +128,9 @@ impl Drop for Client {
                 let _ = self
                     .dropped
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
-                let pool = self.clone();
+                let client: Client = self.clone();
                 thread::spawn(async move {
-                    pool.shutdown()
+                    client.shutdown()
                         .await
                         .expect("Impossible to drop the client")
                 });
@@ -166,7 +166,7 @@ impl Client {
     pub fn with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
             pool: RelayPool::new(opts.pool),
-            keys: keys.clone(),
+            keys: *keys,
             opts,
             dropped: Arc::new(AtomicBool::new(false)),
             #[cfg(feature = "nip46")]
@@ -189,7 +189,7 @@ impl Client {
     ) -> Self {
         Self {
             pool: RelayPool::new(opts.pool),
-            keys: app_keys.clone(),
+            keys: *app_keys,
             opts,
             dropped: Arc::new(AtomicBool::new(false)),
             remote_signer: Some(remote_signer),
@@ -203,7 +203,7 @@ impl Client {
 
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
-        self.keys.clone()
+        self.keys
     }
 
     /// Get [`RelayPool`]
