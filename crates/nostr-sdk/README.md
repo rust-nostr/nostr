@@ -24,11 +24,9 @@ other lower-level crates. If you're attempting something more custom, you might 
 
 ```toml
 [dependencies]
-nostr-sdk = "0.23"
+nostr-sdk = "0.24"
 tokio = { version = "1", features = ["full"] }
 ```
-
-NOTE: if you are using `bitcoin` v0.29, use `nostr-sdk = "=0.23.0-bitcoin-v0.29"` insead.
 
 ```rust,no_run
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};

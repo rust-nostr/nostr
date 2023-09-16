@@ -18,10 +18,8 @@ If you're writing a typical Nostr client or bot, you may be interested in [nostr
 
 ```toml
 [dependencies]
-nostr = "0.23"
+nostr = "0.24"
 ```
-
-NOTE: if you are using `bitcoin` v0.29, use `nostr = "=0.23.0-bitcoin-v0.29"` insead.
 
 ```rust,no_run
 use nostr::prelude::*;
