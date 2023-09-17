@@ -263,3 +263,14 @@ impl FromPkStr for Keys {
         }
     }
 }
+
+impl Drop for Keys {
+    fn drop(&mut self) {
+        tracing::trace!("Dropping Secret Key...");
+        if let Some(sk) = self.secret_key.as_mut() {
+            sk.non_secure_erase();
+            tracing::trace!("Secret Key dropped.");
+        }
+        self.secret_key = None;
+    }
+}
