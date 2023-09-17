@@ -93,10 +93,14 @@ impl RelayInformationDocument {
             .get(url.to_string())
             .header("Accept", "application/nostr+json");
         match req.send().await {
-            Ok(response) => match response.json().await {
-                Ok(json) => Ok(json),
-                Err(_) => Err(Error::InvalidInformationDocument),
-            },
+            Ok(response) => {
+                let json: String = response.text().await?;
+                tracing::debug!("Response: {json}");
+                match serde_json::from_slice(json.as_bytes()) {
+                    Ok(json) => Ok(json),
+                    Err(_) => Err(Error::InvalidInformationDocument),
+                }
+            }
             Err(_) => Err(Error::InaccessibleInformationDocument),
         }
     }
@@ -118,10 +122,14 @@ impl RelayInformationDocument {
             .get(url.to_string())
             .header("Accept", "application/nostr+json");
         match req.send() {
-            Ok(response) => match response.json() {
-                Ok(json) => Ok(json),
-                Err(_) => Err(Error::InvalidInformationDocument),
-            },
+            Ok(response) => {
+                let json: String = response.text()?;
+                tracing::debug!("Response: {json}");
+                match serde_json::from_slice(json.as_bytes()) {
+                    Ok(json) => Ok(json),
+                    Err(_) => Err(Error::InvalidInformationDocument),
+                }
+            }
             Err(_) => Err(Error::InaccessibleInformationDocument),
         }
     }
@@ -137,10 +145,14 @@ impl RelayInformationDocument {
             .get(url.to_string())
             .header("Accept", "application/nostr+json");
         match req.send().await {
-            Ok(response) => match response.json().await {
-                Ok(json) => Ok(json),
-                Err(_) => Err(Error::InvalidInformationDocument),
-            },
+            Ok(response) => {
+                let json: String = response.text().await?;
+                tracing::debug!("Response: {json}");
+                match serde_json::from_slice(json.as_bytes()) {
+                    Ok(json) => Ok(json),
+                    Err(_) => Err(Error::InvalidInformationDocument),
+                }
+            }
             Err(_) => Err(Error::InaccessibleInformationDocument),
         }
     }
