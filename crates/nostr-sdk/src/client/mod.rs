@@ -167,7 +167,7 @@ impl Client {
     pub fn with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
             pool: RelayPool::new(opts.pool),
-            keys: *keys,
+            keys: keys.clone(),
             opts,
             dropped: Arc::new(AtomicBool::new(false)),
             #[cfg(feature = "nip46")]
@@ -190,7 +190,7 @@ impl Client {
     ) -> Self {
         Self {
             pool: RelayPool::new(opts.pool),
-            keys: *app_keys,
+            keys: app_keys.clone(),
             opts,
             dropped: Arc::new(AtomicBool::new(false)),
             remote_signer: Some(remote_signer),
@@ -204,7 +204,7 @@ impl Client {
 
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
-        self.keys
+        self.keys.clone()
     }
 
     /// Get [`RelayPool`]
