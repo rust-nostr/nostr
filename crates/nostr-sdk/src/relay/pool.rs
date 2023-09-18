@@ -159,18 +159,24 @@ impl RelayPoolTask {
                                     msg.clone(),
                                 ));
 
-                            if let RelayMessage::Event { event, .. } = msg {
-                                // Verifies if the event is valid
-                                if event.verify().is_ok() {
-                                    // Adds only new events
-                                    if this.add_event(event.id).await {
-                                        let notification = RelayPoolNotification::Event(
-                                            relay_url,
-                                            event.as_ref().clone(),
-                                        );
-                                        let _ = this.notification_sender.send(notification);
+                            match msg {
+                                RelayMessage::Event { event, .. } => {
+                                    // Verifies if the event is valid
+                                    if event.verify().is_ok() {
+                                        // Adds only new events
+                                        if this.add_event(event.id).await {
+                                            let notification = RelayPoolNotification::Event(
+                                                relay_url,
+                                                event.as_ref().clone(),
+                                            );
+                                            let _ = this.notification_sender.send(notification);
+                                        }
                                     }
                                 }
+                                RelayMessage::Notice { message } => {
+                                    tracing::warn!("Notice from {relay_url}: {message}")
+                                }
+                                _ => (),
                             }
                         }
                         RelayPoolMessage::BatchEvent(ids) => {
