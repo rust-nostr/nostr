@@ -19,6 +19,8 @@ use std::time::Instant;
 use async_utility::futures_util::stream::AbortHandle;
 use async_utility::{futures_util, thread, time};
 use nostr::message::MessageHandleError;
+use nostr::negentropy::hex;
+use nostr::negentropy::{self, Bytes, Negentropy};
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
@@ -41,6 +43,12 @@ type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 /// [`Relay`] error
 #[derive(Debug, Error)]
 pub enum Error {
+    /// Negentropy error
+    #[error(transparent)]
+    Negentropy(#[from] negentropy::Error),
+    /// Hex error
+    #[error(transparent)]
+    Hex(#[from] hex::Error),
     /// Channel timeout
     #[error("channel timeout")]
     ChannelTimeout,
@@ -1545,5 +1553,90 @@ impl Relay {
                 );
             }
         });
+    }
+
+    /// Negentropy reconciliation
+    pub async fn reconcilie(
+        &self,
+        filter: Filter,
+        my_items: Vec<(EventId, Timestamp)>,
+    ) -> Result<(), Error> {
+        if !self.opts.read() {
+            return Err(Error::ReadDisabled);
+        }
+
+        let id_size: usize = 16;
+
+        let mut negentropy = Negentropy::new(id_size, Some(5_000))?;
+
+        for (id, timestamp) in my_items.into_iter() {
+            let cutted_id: &[u8] = &id.as_bytes()[..id_size];
+            let cutted_id = Bytes::from_slice(cutted_id);
+            negentropy.add_item(timestamp.as_u64(), cutted_id)?;
+        }
+
+        negentropy.seal()?;
+
+        let id = SubscriptionId::generate();
+        let open_msg = ClientMessage::neg_open(&mut negentropy, &id, filter)?;
+
+        self.send_msg(open_msg, Some(Duration::from_secs(10)))
+            .await?;
+
+        let mut notifications = self.notification_sender.subscribe();
+        while let Ok(notification) = notifications.recv().await {
+            if let RelayPoolNotification::Message(url, msg) = notification {
+                if url == self.url {
+                    match msg {
+                        RelayMessage::NegMsg {
+                            subscription_id,
+                            message,
+                        } => {
+                            if subscription_id == id {
+                                let query: Bytes = Bytes::from_hex(message)?;
+                                let mut need_ids: Vec<Bytes> = Vec::new();
+                                let msg: Option<Bytes> = negentropy.reconcile_with_ids(
+                                    &query,
+                                    &mut Vec::new(),
+                                    &mut need_ids,
+                                )?;
+
+                                // TODO: request ids to relay
+                                println!("IDs: {need_ids:?}");
+
+                                match msg {
+                                    Some(query) => {
+                                        self.send_msg(
+                                            ClientMessage::NegMsg {
+                                                subscription_id: id.clone(),
+                                                message: query.to_hex(),
+                                            },
+                                            None,
+                                        )
+                                        .await?;
+                                    }
+                                    None => {
+                                        tracing::info!("Reconciliation terminated");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        RelayMessage::NegErr {
+                            subscription_id,
+                            code,
+                        } => {
+                            if subscription_id == id {
+                                tracing::error!("Negentropy syncing error: {code}");
+                                break;
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }

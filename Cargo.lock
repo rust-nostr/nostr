@@ -1001,7 +1001,7 @@ dependencies = [
 [[package]]
 name = "negentropy"
 version = "0.3.0"
-source = "git+https://github.com/yukibtc/rust-negentropy?rev=62a65db938c7088d521980d3fc1e1593713a899d#62a65db938c7088d521980d3fc1e1593713a899d"
+source = "git+https://github.com/yukibtc/rust-negentropy?rev=547592168356f423dd10773384b798e7c7139893#547592168356f423dd10773384b798e7c7139893"
 
 [[package]]
 name = "nom"
