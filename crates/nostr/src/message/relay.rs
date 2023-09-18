@@ -56,6 +56,13 @@ pub enum RelayMessage {
         /// Events count
         count: usize,
     },
+    /// Negentropy Message
+    NegMsg {
+        /// Subscription ID
+        subscription_id: SubscriptionId,
+        /// Message
+        message: String,
+    },
 }
 
 impl Serialize for RelayMessage {
@@ -153,6 +160,10 @@ impl RelayMessage {
                 subscription_id,
                 count,
             } => json!(["COUNT", subscription_id, { "count": count }]),
+            Self::NegMsg {
+                subscription_id,
+                message,
+            } => json!(["NEG-MSG", subscription_id, message]),
         }
     }
 
@@ -264,6 +275,20 @@ impl RelayMessage {
             let count: usize = serde_json::from_value(count)?;
 
             return Ok(Self::new_count(subscription_id, count));
+        }
+
+        // Negentropy Message
+        // ["NEG-MSG", <subscription ID string>, <message, lowercase hex-encoded>]
+        if v[0] == "NEG-MSG" {
+            if v_len != 3 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+            let subscription_id: SubscriptionId = SubscriptionId::new(v[1].to_string());
+            let message: String = v[2].to_string();
+            return Ok(Self::NegMsg {
+                subscription_id,
+                message,
+            });
         }
 
         Err(MessageHandleError::InvalidMessageFormat)

@@ -55,6 +55,13 @@ pub enum ClientMessage {
         /// Initial message
         initial_message: String,
     },
+    /// Negentropy Message
+    NegMsg {
+        /// Subscription ID
+        subscription_id: SubscriptionId,
+        /// Message
+        message: String,
+    },
 }
 
 impl Serialize for ClientMessage {
@@ -175,6 +182,10 @@ impl ClientMessage {
                     initial_message
                 ])
             }
+            Self::NegMsg {
+                subscription_id,
+                message,
+            } => json!(["NEG-MSG", subscription_id, message]),
         }
     }
 
@@ -285,6 +296,20 @@ impl ClientMessage {
                 filter: Box::new(filter),
                 id_size,
                 initial_message,
+            });
+        }
+
+        // Negentropy Message
+        // ["NEG-MSG", <subscription ID string>, <message, lowercase hex-encoded>]
+        if v[0] == "NEG-MSG" {
+            if v_len != 3 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+            let subscription_id: SubscriptionId = SubscriptionId::new(v[1].to_string());
+            let message: String = v[2].to_string();
+            return Ok(Self::NegMsg {
+                subscription_id,
+                message,
             });
         }
 
