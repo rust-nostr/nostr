@@ -6,9 +6,9 @@
 
 use alloc::boxed::Box;
 use alloc::string::{String, ToString};
+use core::fmt;
 
 use bitcoin::secp256k1::{Secp256k1, Verification};
-#[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer};
 use serde::{Serialize, Serializer};
 use serde_json::{json, Value};
@@ -17,6 +17,70 @@ use super::MessageHandleError;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{Event, EventId, SubscriptionId};
+
+/// Negentropy error code
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NegentropyErrorCode {
+    /// Results too big
+    ResultsTooBig,
+    /// Because the NEG-OPEN queries are stateful, relays may choose to time-out inactive queries to recover memory resources
+    Closed,
+    /// If an event ID is used as the filter, this error will be returned if the relay does not have this event.
+    /// The client should retry with the full filter, or upload the event to the relay.
+    FilterNotFound,
+    /// The event's content was not valid JSON, or the filter was invalid for some other reason.
+    FilterInvalid,
+    /// Other
+    Other(String),
+}
+
+impl fmt::Display for NegentropyErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ResultsTooBig => write!(f, "RESULTS_TOO_BIG"),
+            Self::Closed => write!(f, "CLOSED"),
+            Self::FilterNotFound => write!(f, "FILTER_NOT_FOUND"),
+            Self::FilterInvalid => write!(f, "FILTER_INVALID"),
+            Self::Other(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl<S> From<S> for NegentropyErrorCode
+where
+    S: Into<String>,
+{
+    fn from(code: S) -> Self {
+        let code: String = code.into();
+        match code.as_str() {
+            "RESULTS_TOO_BIG" => Self::ResultsTooBig,
+            "CLOSED" => Self::Closed,
+            "FILTER_NOT_FOUND" => Self::FilterNotFound,
+            "FILTER_INVALID" => Self::FilterInvalid,
+            o => Self::Other(o.to_string()),
+        }
+    }
+}
+
+impl Serialize for NegentropyErrorCode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for NegentropyErrorCode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+        let alphaber: String = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        Ok(Self::from(alphaber))
+    }
+}
 
 /// Messages sent by relays, received by clients
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -62,6 +126,13 @@ pub enum RelayMessage {
         subscription_id: SubscriptionId,
         /// Message
         message: String,
+    },
+    /// Negentropy Error
+    NegErr {
+        /// Subscription ID
+        subscription_id: SubscriptionId,
+        /// Error code
+        code: NegentropyErrorCode,
     },
 }
 
@@ -164,6 +235,10 @@ impl RelayMessage {
                 subscription_id,
                 message,
             } => json!(["NEG-MSG", subscription_id, message]),
+            Self::NegErr {
+                subscription_id,
+                code,
+            } => json!(["NEG-ERR", subscription_id, code]),
         }
     }
 
@@ -288,6 +363,20 @@ impl RelayMessage {
             return Ok(Self::NegMsg {
                 subscription_id,
                 message,
+            });
+        }
+
+        // Negentropy Error
+        // ["NEG-ERR", <subscription ID string>, <reason-code>]
+        if v[0] == "NEG-ERR" {
+            if v_len != 3 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+            let subscription_id: SubscriptionId = SubscriptionId::new(v[1].to_string());
+            let code: NegentropyErrorCode = NegentropyErrorCode::from(v[2].to_string());
+            return Ok(Self::NegErr {
+                subscription_id,
+                code,
             });
         }
 
