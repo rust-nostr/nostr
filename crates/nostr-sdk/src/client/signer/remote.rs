@@ -109,9 +109,14 @@ impl Client {
             .ok_or(Error::SignerNotConfigured)?;
 
         if signer.signer_public_key().await.is_none() {
+            let keys = self.keys.read().await;
+            let public_key = keys.public_key();
+            let secret_key = keys.secret_key()?;
+            drop(keys);
+
             let id = SubscriptionId::generate();
             let filter = Filter::new()
-                .pubkey(self.keys.public_key())
+                .pubkey(public_key)
                 .kind(Kind::NostrConnect)
                 .since(Timestamp::now());
 
@@ -127,14 +132,11 @@ impl Client {
                 while let Ok(notification) = notifications.recv().await {
                     if let RelayPoolNotification::Event(_url, event) = notification {
                         if event.kind == Kind::NostrConnect {
-                            let msg: String = nip04::decrypt(
-                                &self.keys.secret_key()?,
-                                &event.pubkey,
-                                &event.content,
-                            )?;
+                            let msg: String =
+                                nip04::decrypt(&secret_key, &event.pubkey, &event.content)?;
                             let msg = Message::from_json(msg)?;
-                            if let Ok(Request::Connect(public_key)) = msg.to_request() {
-                                signer.set_signer_public_key(public_key).await;
+                            if let Ok(Request::Connect(pk)) = msg.to_request() {
+                                signer.set_signer_public_key(pk).await;
                                 break;
                             }
                         }
@@ -172,14 +174,22 @@ impl Client {
         let msg = Message::request(req.clone());
         let req_id = msg.id();
 
+        let keys = self.keys.read().await;
+        let public_key = keys.public_key();
+        let secret_key = keys.secret_key()?;
+
+        // Build request
+        let event = EventBuilder::nostr_connect(&keys, signer_pubkey, msg)?.to_event(&keys)?;
+
+        // Drop keys
+        drop(keys);
+
         // Send request to signer
-        let event =
-            EventBuilder::nostr_connect(&self.keys, signer_pubkey, msg)?.to_event(&self.keys)?;
         self.send_event_to(signer.relay_url(), event).await?;
 
         let sub_id = SubscriptionId::generate();
         let filter = Filter::new()
-            .pubkey(self.keys.public_key())
+            .pubkey(public_key)
             .kind(Kind::NostrConnect)
             .since(Timestamp::now());
 
@@ -195,11 +205,7 @@ impl Client {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Event(_url, event) = notification {
                     if event.kind == Kind::NostrConnect {
-                        let msg = nip04::decrypt(
-                            &self.keys.secret_key()?,
-                            &event.pubkey,
-                            &event.content,
-                        )?;
+                        let msg = nip04::decrypt(&secret_key, &event.pubkey, &event.content)?;
                         let msg = Message::from_json(msg)?;
 
                         tracing::debug!("New message received: {msg:?}");

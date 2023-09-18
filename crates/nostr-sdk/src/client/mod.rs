@@ -24,7 +24,7 @@ use nostr::{
     Metadata, Result, Tag,
 };
 use nostr_sdk_net::futures_util::Future;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, RwLock};
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
@@ -111,7 +111,7 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
-    keys: Keys,
+    keys: Arc<RwLock<Keys>>,
     opts: Options,
     dropped: Arc<AtomicBool>,
     #[cfg(feature = "nip46")]
@@ -167,7 +167,7 @@ impl Client {
     pub fn with_opts(keys: &Keys, opts: Options) -> Self {
         Self {
             pool: RelayPool::new(opts.pool),
-            keys: keys.clone(),
+            keys: Arc::new(RwLock::new(keys.clone())),
             opts,
             dropped: Arc::new(AtomicBool::new(false)),
             #[cfg(feature = "nip46")]
@@ -190,7 +190,7 @@ impl Client {
     ) -> Self {
         Self {
             pool: RelayPool::new(opts.pool),
-            keys: app_keys.clone(),
+            keys: Arc::new(RwLock::new(app_keys.clone())),
             opts,
             dropped: Arc::new(AtomicBool::new(false)),
             remote_signer: Some(remote_signer),
@@ -203,8 +203,9 @@ impl Client {
     }
 
     /// Get current [`Keys`]
-    pub fn keys(&self) -> Keys {
-        self.keys.clone()
+    pub async fn keys(&self) -> Keys {
+        let keys = self.keys.read().await;
+        keys.clone()
     }
 
     /// Get [`RelayPool`]
@@ -214,7 +215,7 @@ impl Client {
 
     /// Get NIP46 uri
     #[cfg(feature = "nip46")]
-    pub fn nostr_connect_uri(
+    pub async fn nostr_connect_uri(
         &self,
         metadata: NostrConnectMetadata,
     ) -> Result<NostrConnectURI, Error> {
@@ -222,8 +223,9 @@ impl Client {
             .remote_signer
             .as_ref()
             .ok_or(Error::SignerNotConfigured)?;
+        let keys = self.keys.read().await;
         Ok(NostrConnectURI::new(
-            self.keys.public_key(),
+            keys.public_key(),
             signer.relay_url(),
             metadata.name,
         ))
@@ -725,20 +727,22 @@ impl Client {
             }
         } else {
             let difficulty: u8 = self.opts.get_difficulty();
+            let keys = self.keys.read().await;
             if difficulty > 0 {
-                builder.to_pow_event(&self.keys, difficulty)?
+                builder.to_pow_event(&keys, difficulty)?
             } else {
-                builder.to_event(&self.keys)?
+                builder.to_event(&keys)?
             }
         };
 
         #[cfg(not(feature = "nip46"))]
         let event: Event = {
             let difficulty: u8 = self.opts.get_difficulty();
+            let keys = self.keys.read().await;
             if difficulty > 0 {
-                builder.to_pow_event(&self.keys, difficulty)?
+                builder.to_pow_event(&keys, difficulty)?
             } else {
-                builder.to_event(&self.keys)?
+                builder.to_event(&keys)?
             }
         };
 
@@ -847,17 +851,21 @@ impl Client {
 
                 filter = filter.author(signer_public_key.to_string());
             } else {
-                filter = filter.author(self.keys.public_key().to_string());
+                let keys = self.keys.read().await;
+                filter = filter.author(keys.public_key().to_string());
             }
 
             filter
         };
 
         #[cfg(not(feature = "nip46"))]
-        let filter = Filter::new()
-            .author(self.keys.public_key().to_string())
-            .kind(Kind::ContactList)
-            .limit(1);
+        let filter: Filter = {
+            let keys = self.keys.read().await;
+            Filter::new()
+                .author(keys.public_key().to_string())
+                .kind(Kind::ContactList)
+                .limit(1)
+        };
 
         Ok(vec![filter])
     }
@@ -1012,7 +1020,8 @@ impl Client {
                 return Err(Error::ResponseNotMatchRequest);
             }
         } else {
-            EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg, reply_to)?
+            let keys = self.keys.read().await;
+            EventBuilder::new_encrypted_direct_msg(&keys, receiver, msg, reply_to)?
         };
 
         #[cfg(not(feature = "nip46"))]

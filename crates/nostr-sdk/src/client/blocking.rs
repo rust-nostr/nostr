@@ -71,7 +71,7 @@ impl Client {
 
     /// Get current [`Keys`]
     pub fn keys(&self) -> Keys {
-        self.client.keys()
+        RUNTIME.block_on(async { self.client.keys().await })
     }
 
     /// Start a previously stopped client

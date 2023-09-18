@@ -38,8 +38,8 @@ impl JsClient {
 
     /// Get current `Keys`
     #[wasm_bindgen(getter)]
-    pub fn keys(&self) -> JsKeys {
-        self.inner.keys().into()
+    pub async fn keys(&self) -> JsKeys {
+        self.inner.keys().await.into()
     }
 
     /// Completely shutdown `Client`

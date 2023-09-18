@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
     client.add_relay(relay_url, None).await?;
 
     let metadata = NostrConnectMetadata::new("Nostr SDK").url(Url::parse("https://example.com")?);
-    let nostr_connect_uri: NostrConnectURI = client.nostr_connect_uri(metadata)?;
+    let nostr_connect_uri: NostrConnectURI = client.nostr_connect_uri(metadata).await?;
 
     println!("\n###############################################\n");
     println!("Nostr Connect URI: {nostr_connect_uri}");
