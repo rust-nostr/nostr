@@ -74,6 +74,11 @@ impl Client {
         RUNTIME.block_on(async { self.client.keys().await })
     }
 
+    /// Change [`Keys`]
+    pub fn set_keys(&self, keys: &Keys) {
+        RUNTIME.block_on(async { self.client.set_keys(keys).await })
+    }
+
     /// Start a previously stopped client
     pub fn start(&self) {
         RUNTIME.block_on(async { self.client.start().await })

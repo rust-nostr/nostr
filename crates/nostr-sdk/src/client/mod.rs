@@ -208,6 +208,12 @@ impl Client {
         keys.clone()
     }
 
+    /// Change [`Keys`]
+    pub async fn set_keys(&self, keys: &Keys) {
+        let mut current_keys = self.keys.write().await;
+        *current_keys = keys.clone();
+    }
+
     /// Get [`RelayPool`]
     pub fn pool(&self) -> RelayPool {
         self.pool.clone()
