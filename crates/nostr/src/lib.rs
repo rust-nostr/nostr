@@ -31,6 +31,7 @@ pub use bitcoin;
 pub use bitcoin::bech32;
 pub use bitcoin::hashes;
 pub use bitcoin::secp256k1;
+pub use negentropy;
 pub use serde_json;
 pub use url_fork::{self as url, Url};
 

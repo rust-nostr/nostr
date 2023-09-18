@@ -999,6 +999,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "negentropy"
+version = "0.3.0"
+source = "git+https://github.com/yukibtc/rust-negentropy?rev=62a65db938c7088d521980d3fc1e1593713a899d#62a65db938c7088d521980d3fc1e1593713a899d"
+
+[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1021,6 +1026,7 @@ dependencies = [
  "csv",
  "getrandom",
  "instant",
+ "negentropy",
  "nostr-ots",
  "num_cpus",
  "once_cell",

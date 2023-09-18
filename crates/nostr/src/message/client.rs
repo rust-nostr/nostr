@@ -9,6 +9,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use bitcoin::secp256k1::{Secp256k1, Verification};
+use negentropy::{Bytes, Negentropy};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer};
 use serde::{Serialize, Serializer};
@@ -120,6 +121,21 @@ impl ClientMessage {
     /// Create new `AUTH` message
     pub fn new_auth(event: Event) -> Self {
         Self::Auth(Box::new(event))
+    }
+
+    /// Create new `NEG-OPEN` message
+    pub fn neg_open(
+        negentropy: &mut Negentropy,
+        subscription_id: &SubscriptionId,
+        filter: Filter,
+    ) -> Result<Self, negentropy::Error> {
+        let initial_message: Bytes = negentropy.initiate()?;
+        Ok(Self::NegOpen {
+            subscription_id: subscription_id.clone(),
+            filter: Box::new(filter),
+            id_size: negentropy.id_size() as u8,
+            initial_message: initial_message.to_hex(),
+        })
     }
 
     /// Check if is an `EVENT` message
