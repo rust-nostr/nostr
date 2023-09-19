@@ -162,7 +162,7 @@ impl<'de> Deserialize<'de> for Alphabet {
 }
 
 /// Subscription ID
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SubscriptionId(String);
 
 impl SubscriptionId {
@@ -196,6 +196,26 @@ impl SubscriptionId {
 impl fmt::Display for SubscriptionId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl Serialize for SubscriptionId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for SubscriptionId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+        let id: String = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        Ok(Self::new(id))
     }
 }
 

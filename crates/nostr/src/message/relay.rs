@@ -314,11 +314,8 @@ impl RelayMessage {
             }
 
             let event_id: EventId = serde_json::from_value(v[1].clone())?;
-
             let status: bool = serde_json::from_value(v[2].clone())?;
-
             let message: String = serde_json::from_value(v[3].clone())?;
-
             return Ok(Self::new_ok(event_id, status, message));
         }
 
@@ -358,8 +355,8 @@ impl RelayMessage {
             if v_len != 3 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let subscription_id: SubscriptionId = SubscriptionId::new(v[1].to_string());
-            let message: String = v[2].to_string();
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+            let message: String = serde_json::from_value(v[2].clone())?;
             return Ok(Self::NegMsg {
                 subscription_id,
                 message,
@@ -372,8 +369,8 @@ impl RelayMessage {
             if v_len != 3 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let subscription_id: SubscriptionId = SubscriptionId::new(v[1].to_string());
-            let code: NegentropyErrorCode = NegentropyErrorCode::from(v[2].to_string());
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+            let code: NegentropyErrorCode = serde_json::from_value(v[2].clone())?;
             return Ok(Self::NegErr {
                 subscription_id,
                 code,

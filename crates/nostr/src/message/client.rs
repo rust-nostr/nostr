@@ -307,12 +307,12 @@ impl ClientMessage {
             if v_len != 5 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let subscription_id = SubscriptionId::new(v[1].to_string());
-            let filter = Filter::from_json(v[2].to_string())?;
-            let id_size = v[3]
-                .as_u64()
-                .ok_or(MessageHandleError::InvalidMessageFormat)? as u8;
-            let initial_message = v[4].to_string();
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+            let filter: Filter = Filter::from_json(v[2].to_string())?;
+            let id_size: u8 =
+                v[3].as_u64()
+                    .ok_or(MessageHandleError::InvalidMessageFormat)? as u8;
+            let initial_message: String = serde_json::from_value(v[4].clone())?;
             return Ok(Self::NegOpen {
                 subscription_id,
                 filter: Box::new(filter),
@@ -327,8 +327,8 @@ impl ClientMessage {
             if v_len != 3 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let subscription_id: SubscriptionId = SubscriptionId::new(v[1].to_string());
-            let message: String = v[2].to_string();
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+            let message: String = serde_json::from_value(v[2].clone())?;
             return Ok(Self::NegMsg {
                 subscription_id,
                 message,
@@ -341,7 +341,7 @@ impl ClientMessage {
             if v_len != 2 {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let subscription_id: SubscriptionId = SubscriptionId::new(v[1].to_string());
+            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
             return Ok(Self::NegClose { subscription_id });
         }
 
