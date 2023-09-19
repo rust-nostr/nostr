@@ -13,17 +13,15 @@ async fn main() -> Result<()> {
     let my_keys = Keys::new(secret_key);
 
     let client = Client::new(&my_keys);
-    client.add_relay("wss://relay.damus.io", None).await?;
+    client.add_relay("wss://atl.purplerelay.com", None).await?;
 
     client.connect().await;
 
     let filter = Filter::new()
         .author(my_keys.public_key().to_string())
         .limit(10);
-    let relay = client.relay("wss://relay.damus.io").await?;
-    relay
-        .reconcilie(filter, vec![(EventId::all_zeros(), Timestamp::now())])
-        .await?;
+    let relay = client.relay("wss://atl.purplerelay.com").await?;
+    relay.reconcilie(filter, Vec::new()).await?;
 
     Ok(())
 }

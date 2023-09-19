@@ -1577,8 +1577,8 @@ impl Relay {
 
         negentropy.seal()?;
 
-        let id = SubscriptionId::generate();
-        let open_msg = ClientMessage::neg_open(&mut negentropy, &id, filter)?;
+        let sub_id = SubscriptionId::generate();
+        let open_msg = ClientMessage::neg_open(&mut negentropy, &sub_id, filter)?;
 
         self.send_msg(open_msg, Some(Duration::from_secs(10)))
             .await?;
@@ -1592,7 +1592,7 @@ impl Relay {
                             subscription_id,
                             message,
                         } => {
-                            if subscription_id == id {
+                            if subscription_id == sub_id {
                                 let query: Bytes = Bytes::from_hex(message)?;
                                 let mut need_ids: Vec<Bytes> = Vec::new();
                                 let msg: Option<Bytes> = negentropy.reconcile_with_ids(
@@ -1601,14 +1601,24 @@ impl Relay {
                                     &mut need_ids,
                                 )?;
 
-                                // TODO: request ids to relay
-                                println!("IDs: {need_ids:?}");
+                                let ids: Vec<String> =
+                                    need_ids.into_iter().map(|id| id.to_hex()).collect();
+                                let filter = Filter::new().ids(ids);
+                                self.req_events_of(
+                                    vec![filter],
+                                    Duration::from_secs(120),
+                                    FilterOptions::ExitOnEOSE,
+                                );
 
                                 match msg {
                                     Some(query) => {
+                                        tracing::info!(
+                                            "Continue with reconciliation with {}",
+                                            self.url
+                                        );
                                         self.send_msg(
                                             ClientMessage::NegMsg {
-                                                subscription_id: id.clone(),
+                                                subscription_id: sub_id.clone(),
                                                 message: query.to_hex(),
                                             },
                                             None,
@@ -1626,7 +1636,7 @@ impl Relay {
                             subscription_id,
                             code,
                         } => {
-                            if subscription_id == id {
+                            if subscription_id == sub_id {
                                 tracing::error!("Negentropy syncing error: {code}");
                                 break;
                             }
