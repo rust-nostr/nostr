@@ -332,7 +332,8 @@ impl Client {
     /// #   let client = Client::new(&my_keys);
     /// let read = true;
     /// let write = false;
-    /// let opts = RelayOptions::new(read, write);
+    /// let retry_sec = 10;
+    /// let opts = RelayOptions::new(read, write, retry_sec);
     /// client
     ///     .add_relay_with_opts("wss://relay.nostr.info", None, opts)
     ///     .await
