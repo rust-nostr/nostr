@@ -679,7 +679,7 @@ impl Relay {
                         _ => (),
                     };
 
-                    thread::sleep(Duration::from_secs(10)).await;
+                    thread::sleep(Duration::from_secs(relay.opts().retry_sec())).await;
                 }
 
                 relay.set_auto_connect_loop_running(false);
