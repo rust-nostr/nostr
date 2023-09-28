@@ -6,6 +6,7 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/47.md>
 
 use alloc::string::String;
+use alloc::vec::Vec;
 use alloc::{borrow::Cow, string::ToString};
 use core::fmt;
 use core::str::FromStr;
@@ -125,12 +126,21 @@ pub enum Method {
     /// Pay Invoice
     #[serde(rename = "pay_invoice")]
     PayInvoice,
+    /// Pay Keysend
+    #[serde(rename = "pay_keysend")]
+    PayKeysend,
     /// Make Invoice
     #[serde(rename = "make_invoice")]
     MakeInvoice,
     /// Lookup Invoice
     #[serde(rename = "lookup_invoice")]
     LookupInvoice,
+    /// List Invoices
+    #[serde(rename = "list_invoices")]
+    ListInvoices,
+    /// List Payments
+    #[serde(rename = "list_payments")]
+    ListPayments,
     /// Get Balance
     #[serde(rename = "get_balance")]
     GetBalance,
@@ -141,10 +151,16 @@ pub enum Method {
 pub enum RequestParams {
     /// Pay Invoice
     PayInvoice(PayInvoiceRequestParams),
+    /// Pay Keysend
+    PayKeysend(PayKeysendRequestParams),
     /// Make Invoice
     MakeInvoice(MakeInvoiceRequestParams),
     /// Lookup Invoice
     LookupInvoice(LookupInvoiceRequestParams),
+    /// List Invoices
+    ListInvoices(ListInvoicesRequestParams),
+    /// List Payments
+    ListPayments(ListPaymentsRequestParams),
     /// Get Balance
     GetBalance,
 }
@@ -156,8 +172,11 @@ impl Serialize for RequestParams {
     {
         match self {
             RequestParams::PayInvoice(p) => p.serialize(serializer),
+            RequestParams::PayKeysend(p) => p.serialize(serializer),
             RequestParams::MakeInvoice(p) => p.serialize(serializer),
             RequestParams::LookupInvoice(p) => p.serialize(serializer),
+            RequestParams::ListInvoices(p) => p.serialize(serializer),
+            RequestParams::ListPayments(p) => p.serialize(serializer),
             RequestParams::GetBalance => serializer.serialize_none(),
         }
     }
@@ -170,6 +189,35 @@ pub struct PayInvoiceRequestParams {
     pub invoice: String,
 }
 
+/// TLVs to be added to the keysend payment
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct KeysendTLVRecord {
+    /// TLV type
+    #[serde(rename = "type")]
+    pub type_: u64,
+    /// TLV value
+    pub value: String,
+}
+
+/// Pay Invoice Request Params
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PayKeysendRequestParams {
+    /// Amount in millisatoshis
+    pub amount: i64,
+    /// Receiver's node id
+    pub pubkey: String,
+    /// Optional message
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    /// Optional preimage
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preimage: Option<String>,
+    /// Optional TLVs to be added to the keysend payment
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tlv_records: Vec<KeysendTLVRecord>,
+}
+
 /// Make Invoice Request Params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MakeInvoiceRequestParams {
@@ -179,6 +227,8 @@ pub struct MakeInvoiceRequestParams {
     pub description: Option<String>,
     /// Invoice description hash
     pub description_hash: Option<String>,
+    /// Preimage to be used for the invoice
+    pub preimage: Option<String>,
     /// Invoice expiry in seconds
     pub expiry: Option<i64>,
 }
@@ -190,6 +240,43 @@ pub struct LookupInvoiceRequestParams {
     pub payment_hash: Option<String>,
     /// Bolt11 invoice
     pub bolt11: Option<String>,
+}
+
+/// List Invoice Request Params
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ListInvoicesRequestParams {
+    /// Starting timestamp in seconds since epoch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<u64>,
+    /// Ending timestamp in seconds since epoch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub until: Option<u64>,
+    /// Number of invoices to return
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    /// Offset of the first invoice to return
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u64>,
+    /// If true, include unpaid invoices
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unpaid: Option<bool>,
+}
+
+/// List Payments Request Params
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ListPaymentsRequestParams {
+    /// Starting timestamp in seconds since epoch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<u64>,
+    /// Ending timestamp in seconds since epoch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub until: Option<u64>,
+    /// Number of invoices to return
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    /// Offset of the first invoice to return
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u64>,
 }
 
 /// NIP47 Request
@@ -233,6 +320,10 @@ impl Request {
                 let params: PayInvoiceRequestParams = serde_json::from_value(template.params)?;
                 RequestParams::PayInvoice(params)
             }
+            Method::PayKeysend => {
+                let params: PayKeysendRequestParams = serde_json::from_value(template.params)?;
+                RequestParams::PayKeysend(params)
+            }
             Method::MakeInvoice => {
                 let params: MakeInvoiceRequestParams = serde_json::from_value(template.params)?;
                 RequestParams::MakeInvoice(params)
@@ -240,6 +331,14 @@ impl Request {
             Method::LookupInvoice => {
                 let params: LookupInvoiceRequestParams = serde_json::from_value(template.params)?;
                 RequestParams::LookupInvoice(params)
+            }
+            Method::ListInvoices => {
+                let params: ListInvoicesRequestParams = serde_json::from_value(template.params)?;
+                RequestParams::ListInvoices(params)
+            }
+            Method::ListPayments => {
+                let params: ListPaymentsRequestParams = serde_json::from_value(template.params)?;
+                RequestParams::ListPayments(params)
             }
             Method::GetBalance => RequestParams::GetBalance,
         };
@@ -275,6 +374,15 @@ pub struct PayInvoiceResponseResult {
 
 /// NIP47 Response Result
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PayKeysendResponseResult {
+    /// Response preimage
+    pub preimage: String,
+    /// Payment hash
+    pub payment_hash: String,
+}
+
+/// NIP47 Response Result
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MakeInvoiceResponseResult {
     /// Bolt 11 invoice
     pub invoice: String,
@@ -289,6 +397,15 @@ pub struct LookupInvoiceResponseResult {
     pub invoice: String,
     /// If the invoice has been paid
     pub paid: bool,
+}
+
+/// NIP47 Response Result
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ListPaymentResponseResult {
+    /// Bolt11 invoice
+    pub invoice: String,
+    /// Preimage for the payment
+    pub preimage: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -323,10 +440,16 @@ pub struct GetBalanceResponseResult {
 pub enum ResponseResult {
     /// Pay Invoice
     PayInvoice(PayInvoiceResponseResult),
+    /// Pay Keysend
+    PayKeysend(PayKeysendResponseResult),
     /// Make Invoice
     MakeInvoice(MakeInvoiceResponseResult),
     /// Lookup Invoice
     LookupInvoice(LookupInvoiceResponseResult),
+    /// List Invoices
+    ListInvoices(Vec<LookupInvoiceResponseResult>),
+    /// List Payments
+    ListPayments(Vec<ListPaymentResponseResult>),
     /// Get Balance
     GetBalance(GetBalanceResponseResult),
 }
@@ -338,8 +461,11 @@ impl Serialize for ResponseResult {
     {
         match self {
             ResponseResult::PayInvoice(p) => p.serialize(serializer),
+            ResponseResult::PayKeysend(p) => p.serialize(serializer),
             ResponseResult::MakeInvoice(p) => p.serialize(serializer),
             ResponseResult::LookupInvoice(p) => p.serialize(serializer),
+            ResponseResult::ListInvoices(p) => p.serialize(serializer),
+            ResponseResult::ListPayments(p) => p.serialize(serializer),
             ResponseResult::GetBalance(p) => p.serialize(serializer),
         }
     }
@@ -386,6 +512,10 @@ impl Response {
                     let result: PayInvoiceResponseResult = serde_json::from_value(result)?;
                     ResponseResult::PayInvoice(result)
                 }
+                Method::PayKeysend => {
+                    let result: PayKeysendResponseResult = serde_json::from_value(result)?;
+                    ResponseResult::PayKeysend(result)
+                }
                 Method::MakeInvoice => {
                     let result: MakeInvoiceResponseResult = serde_json::from_value(result)?;
                     ResponseResult::MakeInvoice(result)
@@ -393,6 +523,14 @@ impl Response {
                 Method::LookupInvoice => {
                     let result: LookupInvoiceResponseResult = serde_json::from_value(result)?;
                     ResponseResult::LookupInvoice(result)
+                }
+                Method::ListInvoices => {
+                    let result: Vec<LookupInvoiceResponseResult> = serde_json::from_value(result)?;
+                    ResponseResult::ListInvoices(result)
+                }
+                Method::ListPayments => {
+                    let result: Vec<ListPaymentResponseResult> = serde_json::from_value(result)?;
+                    ResponseResult::ListPayments(result)
                 }
                 Method::GetBalance => {
                     let result: GetBalanceResponseResult = serde_json::from_value(result)?;
