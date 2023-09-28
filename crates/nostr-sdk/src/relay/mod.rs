@@ -18,6 +18,7 @@ use std::time::Instant;
 #[cfg(not(target_arch = "wasm32"))]
 use async_utility::futures_util::stream::AbortHandle;
 use async_utility::{futures_util, thread, time};
+use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
 use nostr::negentropy::hex;
 use nostr::negentropy::{self, Bytes, Negentropy};
@@ -96,6 +97,9 @@ pub enum Error {
     /// Filters empty
     #[error("filters empty")]
     FiltersEmpty,
+    /// Reconciliation error
+    #[error("negentropy reconciliation error: {0}")]
+    NegentropyReconciliation(NegentropyErrorCode),
 }
 
 /// Relay connection status
@@ -1637,8 +1641,7 @@ impl Relay {
                             code,
                         } => {
                             if subscription_id == sub_id {
-                                tracing::error!("Negentropy syncing error: {code}");
-                                break;
+                                return Err(Error::NegentropyReconciliation(code));
                             }
                         }
                         _ => (),
