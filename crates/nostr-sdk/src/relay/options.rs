@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -14,20 +14,23 @@ pub struct RelayOptions {
     read: Arc<AtomicBool>,
     /// Allow/disallow write actions
     write: Arc<AtomicBool>,
+    /// Retry connection time - avoid reconnection
+    retry_sec: Arc<AtomicU64>,
 }
 
 impl Default for RelayOptions {
     fn default() -> Self {
-        Self::new(true, true)
+        Self::new(true, true, 10)
     }
 }
 
 impl RelayOptions {
     /// New [`RelayOptions`]
-    pub fn new(read: bool, write: bool) -> Self {
+    pub fn new(read: bool, write: bool, retry_sec: u64) -> Self {
         Self {
             read: Arc::new(AtomicBool::new(read)),
             write: Arc::new(AtomicBool::new(write)),
+            retry_sec: Arc::new(AtomicU64::new(retry_sec)),
         }
     }
 
@@ -53,6 +56,18 @@ impl RelayOptions {
         let _ = self
             .write
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(write));
+    }
+
+    /// Get retry_sec option
+    pub fn retry_sec(&self) -> u64 {
+        self.retry_sec.load(Ordering::SeqCst)
+    }
+
+    /// Set retry_sec option
+    pub fn set_retry_sec(&self, retry_sec: u64) {
+        let _ = self
+            .retry_sec
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(retry_sec));
     }
 }
 
