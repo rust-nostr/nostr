@@ -1650,6 +1650,11 @@ impl Relay {
             }
         }
 
+        let close_msg = ClientMessage::NegClose {
+            subscription_id: sub_id,
+        };
+        self.send_msg(close_msg, None).await?;
+
         Ok(())
     }
 }
