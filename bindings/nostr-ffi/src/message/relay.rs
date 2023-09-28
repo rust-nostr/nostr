@@ -26,6 +26,14 @@ pub enum RelayMessage {
         subscription_id: String,
         count: u64,
     },
+    NegMsg {
+        subscription_id: String,
+        message: String,
+    },
+    NegErr {
+        subscription_id: String,
+        code: String,
+    },
 }
 
 impl From<NRelayMessage> for RelayMessage {
@@ -58,6 +66,20 @@ impl From<NRelayMessage> for RelayMessage {
             } => Self::Count {
                 subscription_id: subscription_id.to_string(),
                 count: count as u64,
+            },
+            NRelayMessage::NegMsg {
+                subscription_id,
+                message,
+            } => Self::NegMsg {
+                subscription_id: subscription_id.to_string(),
+                message,
+            },
+            NRelayMessage::NegErr {
+                subscription_id,
+                code,
+            } => Self::NegErr {
+                subscription_id: subscription_id.to_string(),
+                code: code.to_string(),
             },
         }
     }

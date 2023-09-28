@@ -136,6 +136,8 @@ interface RelayMessage {
   Ok(string event_id, boolean status, string message);
   Auth(string challenge);
   Count(string subscription_id, u64 count);
+  NegMsg(string subscription_id, string message);
+  NegErr(string subscription_id, string code);
 };
 
 interface ZapRequestData {
