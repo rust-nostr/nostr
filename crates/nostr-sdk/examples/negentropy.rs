@@ -17,11 +17,21 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
+    let my_items = Vec::new();
     let filter = Filter::new()
         .author(my_keys.public_key().to_string())
         .limit(10);
     let relay = client.relay("wss://atl.purplerelay.com").await?;
-    relay.reconcilie(filter, Vec::new()).await?;
+    relay.reconcilie(filter, my_items).await?;
+
+    client
+        .handle_notifications(|notification| async {
+            if let RelayPoolNotification::Event(_url, event) = notification {
+                println!("{:?}", event);
+            }
+            Ok(false) // Set to true to exit from the loop
+        })
+        .await?;
 
     Ok(())
 }

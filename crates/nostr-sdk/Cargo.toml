@@ -77,4 +77,7 @@ name = "subscriptions"
 required-features = ["all-nips"]
 
 [[example]]
+name = "negentropy"
+
+[[example]]
 name = "nip65"
