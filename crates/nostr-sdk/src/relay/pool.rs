@@ -161,10 +161,10 @@ impl RelayPoolTask {
 
                             match msg {
                                 RelayMessage::Event { event, .. } => {
-                                    // Verifies if the event is valid
-                                    if event.verify().is_ok() {
-                                        // Adds only new events
-                                        if this.add_event(event.id).await {
+                                    // Check if event was already seen
+                                    if this.add_event(event.id).await {
+                                        // Verifies if the event is valid
+                                        if event.verify().is_ok() {
                                             let notification = RelayPoolNotification::Event(
                                                 relay_url,
                                                 event.as_ref().clone(),
