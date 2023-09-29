@@ -1559,6 +1559,45 @@ impl Relay {
         });
     }
 
+    /// Count events of filters
+    pub async fn count_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+    ) -> Result<usize, Error> {
+        let id = SubscriptionId::generate();
+        self.send_msg(ClientMessage::new_count(id.clone(), filters), None)
+            .await?;
+
+        let mut count = 0;
+
+        let mut notifications = self.notification_sender.subscribe();
+        time::timeout(Some(timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(
+                    url,
+                    RelayMessage::Count {
+                        subscription_id,
+                        count: c,
+                    },
+                ) = notification
+                {
+                    if subscription_id == id && url == self.url {
+                        count = c;
+                        break;
+                    }
+                }
+            }
+        })
+        .await
+        .ok_or(Error::Timeout)?;
+
+        // Unsubscribe
+        self.send_msg(ClientMessage::close(id), None).await?;
+
+        Ok(count)
+    }
+
     /// Negentropy reconciliation
     pub async fn reconcilie(
         &self,
