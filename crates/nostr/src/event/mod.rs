@@ -115,18 +115,40 @@ pub struct Event {
 }
 
 impl Event {
-    /// Verify event
+    /// Deserialize [`Event`] from [`Value`]
+    ///
+    /// **This method NOT verify the signature!**
+    pub fn from_value(value: Value) -> Result<Self, Error> {
+        Ok(serde_json::from_value(value)?)
+    }
+
+    /// Deserialize [`Event`] from JSON
+    ///
+    /// **This method NOT verify the signature!**
+    pub fn from_json<S>(json: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        Ok(serde_json::from_str(&json.into())?)
+    }
+
+    /// Serialize [`Event`] as JSON
+    pub fn as_json(&self) -> String {
+        serde_json::json!(self).to_string()
+    }
+
+    /// Verify [`EventId`] and [`Signature`]
     #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
         self.verify_with_ctx(&SECP256K1)
     }
 
-    /// Verify event
+    /// Verify [`EventId`] and [`Signature`]
     pub fn verify_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
     where
         C: Verification,
     {
-        let id = EventId::new(
+        let id: EventId = EventId::new(
             &self.pubkey,
             self.created_at,
             &self.kind,
@@ -140,47 +162,6 @@ impl Event {
         } else {
             Err(Error::InvalidId)
         }
-    }
-
-    /// New event from [`Value`]
-    #[cfg(feature = "std")]
-    pub fn from_value(value: Value) -> Result<Self, Error> {
-        Self::from_value_with_ctx(&SECP256K1, value)
-    }
-
-    /// New event from [`Value`]
-    pub fn from_value_with_ctx<C>(secp: &Secp256k1<C>, value: Value) -> Result<Self, Error>
-    where
-        C: Verification,
-    {
-        let event: Self = serde_json::from_value(value)?;
-        event.verify_with_ctx(secp)?;
-        Ok(event)
-    }
-
-    /// New event from json string
-    #[cfg(feature = "std")]
-    pub fn from_json<S>(json: S) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        Self::from_json_with_ctx(&SECP256K1, json)
-    }
-
-    /// New event from json string
-    pub fn from_json_with_ctx<C, S>(secp: &Secp256k1<C>, json: S) -> Result<Self, Error>
-    where
-        C: Verification,
-        S: Into<String>,
-    {
-        let event: Self = serde_json::from_str(&json.into())?;
-        event.verify_with_ctx(secp)?;
-        Ok(event)
-    }
-
-    /// Get event as json string
-    pub fn as_json(&self) -> String {
-        serde_json::json!(self).to_string()
     }
 
     /// Returns `true` if the event has an expiration tag that is expired.
@@ -283,11 +264,9 @@ mod tests {
 
     #[test]
     fn test_tags_deser_without_recommended_relay() {
-        let secp = Secp256k1::new();
-
         //The TAG array has dynamic length because the third element(Recommended relay url) is optional
         let sample_event = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
-        let ev_ser = Event::from_json_with_ctx(&secp, sample_event).unwrap();
+        let ev_ser = Event::from_json(sample_event).unwrap();
         assert_eq!(ev_ser.as_json(), sample_event);
     }
 

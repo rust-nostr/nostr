@@ -8,14 +8,11 @@ use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use core::fmt;
 
-use bitcoin::secp256k1::{Secp256k1, Verification};
 use serde::{Deserialize, Deserializer};
 use serde::{Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::MessageHandleError;
-#[cfg(feature = "std")]
-use crate::SECP256K1;
 use crate::{Event, EventId, SubscriptionId};
 
 /// Negentropy error code
@@ -146,7 +143,6 @@ impl Serialize for RelayMessage {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for RelayMessage {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -248,19 +244,7 @@ impl RelayMessage {
     }
 
     /// Deserialize [`RelayMessage`] from [`Value`]
-    #[cfg(feature = "std")]
-    fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
-        Self::from_value_with_ctx(&SECP256K1, msg)
-    }
-
-    /// Deserialize [`RelayMessage`] from [`Value`]
-    pub fn from_value_with_ctx<C>(
-        secp: &Secp256k1<C>,
-        msg: Value,
-    ) -> Result<Self, MessageHandleError>
-    where
-        C: Verification,
-    {
+    pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
         let v = msg
             .as_array()
             .ok_or(MessageHandleError::InvalidMessageFormat)?;
@@ -289,7 +273,7 @@ impl RelayMessage {
             }
 
             let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-            let event = Event::from_json_with_ctx(secp, v[2].to_string())?;
+            let event = Event::from_value(v[2].clone())?;
 
             return Ok(Self::new_event(subscription_id, event));
         }
@@ -381,18 +365,8 @@ impl RelayMessage {
     }
 
     /// Deserialize [`RelayMessage`] as JSON string
-    #[cfg(feature = "std")]
     pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
     where
-        S: Into<String>,
-    {
-        Self::from_json_with_ctx(&SECP256K1, msg)
-    }
-
-    /// Deserialize [`RelayMessage`] as JSON string
-    pub fn from_json_with_ctx<C, S>(secp: &Secp256k1<C>, msg: S) -> Result<Self, MessageHandleError>
-    where
-        C: Verification,
         S: Into<String>,
     {
         let msg: &str = &msg.into();
@@ -403,7 +377,7 @@ impl RelayMessage {
         }
 
         let value: Value = serde_json::from_str(msg)?;
-        Self::from_value_with_ctx(secp, value)
+        Self::from_value(value)
     }
 }
 
