@@ -1,0 +1,66 @@
+site_name: Rust Nostr Book
+site_url: https://rust-nostr.github.io/book
+repo_url: https://github.com/rust-nostr/nostr
+
+docs_dir: src
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.striphtml:
+      strip_comments: true
+      strip_js_on_attributes: false
+
+theme:
+  name: material
+  custom_dir: overrides
+  palette:
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: default
+      primary: deep-purple
+      accent: deep-purple
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: slate
+      primary: deep-purple
+      accent: deep-purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.instant
+    - navigation.sections
+    - navigation.indexes
+    - content.code.annotate
+    - content.tabs.link
+    - content.code.copy
+
+nav:
+  - Home:
+    - index.md
+  - Nostr:
+    - Overview: nostr/01-index.md
+    - Installation: nostr/02-installation.md
+    - Features: nostr/03-features.md
+  - Nostr SDK:
+    - Overview: nostr-sdk/01-index.md
+    - Installation: nostr-sdk/02-installation.md
+    - Features: nostr-sdk/03-features.md

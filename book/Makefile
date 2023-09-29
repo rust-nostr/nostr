@@ -1,9 +1,9 @@
 init:
-	cargo install mdbook --version 0.4.34 --locked
-	cargo install mdbook-admonish --version 1.12.1 --locked
+	pip install -U poetry
+	poetry install
 
 build:
-	mdbook build
+	poetry run mkdocs build --strict --clean --verbose
 
 serve:
-	mdbook serve
+	mkdocs serve
