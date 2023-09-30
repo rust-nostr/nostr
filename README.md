@@ -32,7 +32,7 @@ These crates are built with the Rust language version 2021 and require a minimum
 
 ## State
 
-**This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
+**These libraries are in ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
 
 ## License
 
