@@ -1,5 +1,3 @@
-# Installing the library
-
 ## Installing the library
 
 === "Rust"

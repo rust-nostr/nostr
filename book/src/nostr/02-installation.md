@@ -19,12 +19,24 @@
     !!! note
         To use a specific commit, use `rev` instead of `tag`.
 
+    Import the library in your code:
+
+    ```rust
+    use nostr::prelude::*;
+    ```
+
 === "Python"
 
     The `nostr-protocol` package is available on the public PyPI:
 
     ```bash
     pip install nostr-protocol 
+    ```
+
+    Import the library in your code:
+
+    ```python
+    from nostr_protocol import *
     ```
 
 === "Kotlin"
@@ -39,6 +51,12 @@
     dependencies { 
         implementation("io.github.rust-nostr:nostr:<version>")
     }
+    ```
+
+    Import the library in your code:
+
+    ```kotlin
+    import nostr.*
     ```
 
     ## Known issues
@@ -80,8 +98,8 @@
     .package(url: "https://github.com/rust-nostr/nostr-swift.git", from: "0.0.4"),
     ```
 
-=== "JavaScript"
+    Import the library in your code:
 
-    ```bash
-    npm i @rust-nostr/nostr
+    ```swift
+    import Nostr
     ```
