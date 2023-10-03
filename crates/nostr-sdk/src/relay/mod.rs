@@ -222,6 +222,7 @@ pub struct RelayConnectionStats {
     bytes_sent: Arc<AtomicUsize>,
     bytes_received: Arc<AtomicUsize>,
     connected_at: Arc<AtomicU64>,
+    first_connection_timestamp: Arc<AtomicU64>,
     #[cfg(not(target_arch = "wasm32"))]
     latencies: Arc<RwLock<VecDeque<Duration>>>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -243,6 +244,7 @@ impl RelayConnectionStats {
             bytes_sent: Arc::new(AtomicUsize::new(0)),
             bytes_received: Arc::new(AtomicUsize::new(0)),
             connected_at: Arc::new(AtomicU64::new(0)),
+            first_connection_timestamp: Arc::new(AtomicU64::new(0)),
             #[cfg(not(target_arch = "wasm32"))]
             latencies: Arc::new(RwLock::new(VecDeque::new())),
             #[cfg(not(target_arch = "wasm32"))]
@@ -270,9 +272,14 @@ impl RelayConnectionStats {
         self.bytes_received.load(Ordering::SeqCst)
     }
 
-    /// Get the UNIX timestamp of the last started connection
+    /// Get UNIX timestamp of the last connection
     pub fn connected_at(&self) -> Timestamp {
         Timestamp::from(self.connected_at.load(Ordering::SeqCst))
+    }
+
+    /// Get UNIX timestamp of the first connection
+    pub fn first_connection_timestamp(&self) -> Timestamp {
+        Timestamp::from(self.first_connection_timestamp.load(Ordering::SeqCst))
     }
 
     /// Calculate latency
@@ -295,11 +302,20 @@ impl RelayConnectionStats {
 
     pub(crate) fn new_success(&self) {
         self.success.fetch_add(1, Ordering::SeqCst);
+
+        let now: u64 = Timestamp::now().as_u64();
+
         let _ = self
             .connected_at
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
-                Some(Timestamp::now().as_u64())
-            });
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(now));
+
+        if self.first_connection_timestamp() == Timestamp::from(0) {
+            let _ = self.first_connection_timestamp.fetch_update(
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+                |_| Some(now),
+            );
+        }
     }
 
     pub(crate) fn add_bytes_sent(&self, size: usize) {
