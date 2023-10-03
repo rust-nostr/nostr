@@ -20,7 +20,6 @@ use async_utility::futures_util::stream::AbortHandle;
 use async_utility::{futures_util, thread, time};
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
-use nostr::negentropy::hex;
 use nostr::negentropy::{self, Bytes, Negentropy};
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
@@ -47,9 +46,6 @@ pub enum Error {
     /// Negentropy error
     #[error(transparent)]
     Negentropy(#[from] negentropy::Error),
-    /// Hex error
-    #[error(transparent)]
-    Hex(#[from] hex::Error),
     /// Channel timeout
     #[error("channel timeout")]
     ChannelTimeout,

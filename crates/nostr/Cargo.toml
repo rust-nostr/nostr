@@ -56,7 +56,7 @@ bip39 = { version = "2.0", default-features = false, optional = true }
 bitcoin = { version = "0.30", default-features = false, features = ["rand", "serde"] }
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
-negentropy = { git = "https://github.com/yukibtc/rust-negentropy", rev = "547592168356f423dd10773384b798e7c7139893", default-features = false }
+negentropy = { version = "0.3", default-features = false }
 nostr-ots = { version = "0.2", optional = true }
 once_cell = { workspace = true, optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }

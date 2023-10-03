@@ -1000,8 +1000,9 @@ dependencies = [
 
 [[package]]
 name = "negentropy"
-version = "0.3.0"
-source = "git+https://github.com/yukibtc/rust-negentropy?rev=547592168356f423dd10773384b798e7c7139893#547592168356f423dd10773384b798e7c7139893"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e664971378a3987224f7a0e10059782035e89899ae403718ee07de85bec42afe"
 
 [[package]]
 name = "nom"
