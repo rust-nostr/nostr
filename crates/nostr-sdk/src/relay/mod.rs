@@ -6,7 +6,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 use std::collections::VecDeque;
 use std::collections::{HashMap, HashSet};
-use std::fmt;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
@@ -14,6 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
+use std::{cmp, fmt};
 
 #[cfg(not(target_arch = "wasm32"))]
 use async_utility::futures_util::stream::AbortHandle;
@@ -23,6 +23,7 @@ use nostr::message::MessageHandleError;
 use nostr::negentropy::{self, Bytes, Negentropy};
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
+use nostr::secp256k1::rand::{self, Rng};
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
@@ -34,6 +35,7 @@ mod options;
 pub mod pool;
 
 pub use self::options::{FilterOptions, RelayOptions, RelayPoolOptions, RelaySendOptions};
+use self::options::{MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
@@ -692,7 +694,23 @@ impl Relay {
                             _ => (),
                         };
 
-                        thread::sleep(Duration::from_secs(relay.opts().get_retry_sec())).await;
+                        let retry_sec: u64 = if relay.opts.get_adjust_retry_sec() {
+                            let var: u64 =
+                                relay.stats.attempts().saturating_sub(relay.stats.success()) as u64;
+                            if var >= 3 {
+                                let retry_interval: i64 =
+                                    cmp::min(MIN_RETRY_SEC * (1 + var), MAX_ADJ_RETRY_SEC) as i64;
+                                let jitter: i64 = rand::thread_rng().gen_range(-1..=1);
+                                retry_interval.saturating_add(jitter) as u64
+                            } else {
+                                relay.opts().get_retry_sec()
+                            }
+                        } else {
+                            relay.opts().get_retry_sec()
+                        };
+
+                        tracing::trace!("{} retry time set to {retry_sec} secs", relay.url);
+                        thread::sleep(Duration::from_secs(retry_sec)).await;
                     }
 
                     relay.set_auto_connect_loop_running(false);

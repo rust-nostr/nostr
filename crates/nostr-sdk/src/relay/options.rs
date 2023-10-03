@@ -7,8 +7,9 @@ use std::time::Duration;
 
 use crate::client::options::DEFAULT_SEND_TIMEOUT;
 
-const DEFAULT_RETRY_SEC: u64 = 10;
-const MIN_RETRY_SEC: u64 = 5;
+pub const DEFAULT_RETRY_SEC: u64 = 10;
+pub const MIN_RETRY_SEC: u64 = 5;
+pub const MAX_ADJ_RETRY_SEC: u64 = 60;
 
 /// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
@@ -23,6 +24,8 @@ pub struct RelayOptions {
     ///
     /// Are allowed values `>=` 5 secs
     retry_sec: Arc<AtomicU64>,
+    /// Automatically adjust retry seconds based on success/attempts (default: true)
+    adjust_retry_sec: Arc<AtomicBool>,
 }
 
 impl Default for RelayOptions {
@@ -32,6 +35,7 @@ impl Default for RelayOptions {
             write: Arc::new(AtomicBool::new(true)),
             reconnect: Arc::new(AtomicBool::new(true)),
             retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),
+            adjust_retry_sec: Arc::new(AtomicBool::new(true)),
         }
     }
 }
@@ -125,6 +129,27 @@ impl RelayOptions {
         } else {
             tracing::warn!("Relay options: retry_sec it's less then the minimum value allowed (min: {MIN_RETRY_SEC} secs)");
         }
+    }
+
+    /// Automatically adjust retry seconds based on success/attempts (default: true)
+    pub fn adjust_retry_sec(self, adjust_retry_sec: bool) -> Self {
+        Self {
+            adjust_retry_sec: Arc::new(AtomicBool::new(adjust_retry_sec)),
+            ..self
+        }
+    }
+
+    pub(crate) fn get_adjust_retry_sec(&self) -> bool {
+        self.adjust_retry_sec.load(Ordering::SeqCst)
+    }
+
+    /// Set adjust_retry_sec option
+    pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
+        let _ = self
+            .adjust_retry_sec
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
+                Some(adjust_retry_sec)
+            });
     }
 }
 
