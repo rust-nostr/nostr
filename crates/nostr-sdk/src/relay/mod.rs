@@ -613,75 +613,86 @@ impl Relay {
         self.schedule_for_stop(false);
         self.schedule_for_termination(false);
 
-        if wait_for_connection {
-            if let RelayStatus::Initialized | RelayStatus::Stopped | RelayStatus::Terminated =
-                self.status().await
-            {
-                self.try_connect().await
-            }
-        }
-
-        if !self.is_auto_connect_loop_running() {
-            self.set_auto_connect_loop_running(true);
-
-            tracing::debug!("Auto connect loop started for {}", self.url);
-
-            if !wait_for_connection {
-                self.set_status(RelayStatus::Initialized).await;
+        if self.opts.get_reconnect() {
+            if wait_for_connection {
+                if let RelayStatus::Initialized | RelayStatus::Stopped | RelayStatus::Terminated =
+                    self.status().await
+                {
+                    self.try_connect().await
+                }
             }
 
-            let relay = self.clone();
-            thread::spawn(async move {
-                loop {
-                    let queue = relay.queue();
-                    if queue > 0 {
-                        tracing::info!(
-                            "{} messages queued for {} (capacity: {})",
-                            queue,
-                            relay.url(),
-                            relay.relay_sender.capacity()
-                        );
-                    }
+            if !self.is_auto_connect_loop_running() {
+                self.set_auto_connect_loop_running(true);
 
-                    // Schedule relay for termination
-                    // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
-                    if relay.is_scheduled_for_stop() {
-                        relay.set_status(RelayStatus::Stopped).await;
-                        relay.schedule_for_stop(false);
-                        tracing::debug!(
-                            "Auto connect loop terminated for {} [stop - schedule]",
-                            relay.url
-                        );
-                        break;
-                    } else if relay.is_scheduled_for_termination() {
-                        relay.set_status(RelayStatus::Terminated).await;
-                        relay.schedule_for_termination(false);
-                        tracing::debug!(
-                            "Auto connect loop terminated for {} [schedule]",
-                            relay.url
-                        );
-                        break;
-                    }
+                tracing::debug!("Auto connect loop started for {}", self.url);
 
-                    // Check status
-                    match relay.status().await {
-                        RelayStatus::Initialized | RelayStatus::Disconnected => {
-                            relay.try_connect().await
-                        }
-                        RelayStatus::Stopped | RelayStatus::Terminated => {
-                            tracing::debug!("Auto connect loop terminated for {}", relay.url);
-                            break;
-                        }
-                        _ => (),
-                    };
-
-                    thread::sleep(Duration::from_secs(relay.opts().retry_sec())).await;
+                if !wait_for_connection {
+                    self.set_status(RelayStatus::Initialized).await;
                 }
 
-                relay.set_auto_connect_loop_running(false);
-            });
-        } else {
-            tracing::warn!("Auto connect loop for {} is already running!", self.url)
+                let relay = self.clone();
+                thread::spawn(async move {
+                    loop {
+                        let queue = relay.queue();
+                        if queue > 0 {
+                            tracing::info!(
+                                "{} messages queued for {} (capacity: {})",
+                                queue,
+                                relay.url(),
+                                relay.relay_sender.capacity()
+                            );
+                        }
+
+                        // Schedule relay for termination
+                        // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
+                        if relay.is_scheduled_for_stop() {
+                            relay.set_status(RelayStatus::Stopped).await;
+                            relay.schedule_for_stop(false);
+                            tracing::debug!(
+                                "Auto connect loop terminated for {} [stop - schedule]",
+                                relay.url
+                            );
+                            break;
+                        } else if relay.is_scheduled_for_termination() {
+                            relay.set_status(RelayStatus::Terminated).await;
+                            relay.schedule_for_termination(false);
+                            tracing::debug!(
+                                "Auto connect loop terminated for {} [schedule]",
+                                relay.url
+                            );
+                            break;
+                        }
+
+                        // Check status
+                        match relay.status().await {
+                            RelayStatus::Initialized | RelayStatus::Disconnected => {
+                                relay.try_connect().await
+                            }
+                            RelayStatus::Stopped | RelayStatus::Terminated => {
+                                tracing::debug!("Auto connect loop terminated for {}", relay.url);
+                                break;
+                            }
+                            _ => (),
+                        };
+
+                        thread::sleep(Duration::from_secs(relay.opts().get_retry_sec())).await;
+                    }
+
+                    relay.set_auto_connect_loop_running(false);
+                });
+            } else {
+                tracing::warn!("Auto connect loop for {} is already running!", self.url)
+            }
+        } else if let RelayStatus::Initialized | RelayStatus::Stopped | RelayStatus::Terminated =
+            self.status().await
+        {
+            if wait_for_connection {
+                self.try_connect().await
+            } else {
+                let relay = self.clone();
+                thread::spawn(async move { relay.try_connect().await });
+            }
         }
     }
 
@@ -987,7 +998,7 @@ impl Relay {
                 });
 
                 // Subscribe to relay
-                if self.opts.read() {
+                if self.opts.get_read() {
                     if let Err(e) = self.resubscribe_all(None).await {
                         tracing::error!(
                             "Impossible to subscribe to {}: {}",
@@ -1054,13 +1065,13 @@ impl Relay {
 
     /// Send msg to relay
     pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
-        if !self.opts.write() {
+        if !self.opts.get_write() {
             if let ClientMessage::Event(_) = msg {
                 return Err(Error::WriteDisabled);
             }
         }
 
-        if !self.opts.read() {
+        if !self.opts.get_read() {
             if let ClientMessage::Req { .. } | ClientMessage::Close(_) = msg {
                 return Err(Error::ReadDisabled);
             }
@@ -1094,11 +1105,11 @@ impl Relay {
         msgs: Vec<ClientMessage>,
         wait: Option<Duration>,
     ) -> Result<(), Error> {
-        if !self.opts.write() && msgs.iter().any(|msg| msg.is_event()) {
+        if !self.opts.get_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
         }
 
-        if !self.opts.read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
+        if !self.opts.get_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
             return Err(Error::ReadDisabled);
         }
 
@@ -1275,7 +1286,7 @@ impl Relay {
 
     /// Subscribes relay with existing filter
     async fn resubscribe_all(&self, wait: Option<Duration>) -> Result<(), Error> {
-        if !self.opts.read() {
+        if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1298,7 +1309,7 @@ impl Relay {
         internal_id: InternalSubscriptionId,
         wait: Option<Duration>,
     ) -> Result<(), Error> {
-        if !self.opts.read() {
+        if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1333,7 +1344,7 @@ impl Relay {
         filters: Vec<Filter>,
         wait: Option<Duration>,
     ) -> Result<(), Error> {
-        if !self.opts.read() {
+        if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1358,7 +1369,7 @@ impl Relay {
         internal_id: InternalSubscriptionId,
         wait: Option<Duration>,
     ) -> Result<(), Error> {
-        if !self.opts.read() {
+        if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1373,7 +1384,7 @@ impl Relay {
 
     /// Unsubscribe from all subscriptions
     pub async fn unsubscribe_all(&self, wait: Option<Duration>) -> Result<(), Error> {
-        if !self.opts.read() {
+        if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1480,7 +1491,7 @@ impl Relay {
     where
         F: Future<Output = ()>,
     {
-        if !self.opts.read() {
+        if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1517,7 +1528,7 @@ impl Relay {
     /// Request events of filter. All events will be sent to notification listener,
     /// until the EOSE "end of stored events" message is received from the relay.
     pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Duration, opts: FilterOptions) {
-        if !self.opts.read() {
+        if !self.opts.get_read() {
             tracing::error!("{}", Error::ReadDisabled);
         }
 
@@ -1600,7 +1611,7 @@ impl Relay {
         filter: Filter,
         my_items: Vec<(EventId, Timestamp)>,
     ) -> Result<(), Error> {
-        if !self.opts.read() {
+        if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 

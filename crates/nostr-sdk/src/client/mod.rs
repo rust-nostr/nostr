@@ -338,10 +338,7 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let read = true;
-    /// let write = false;
-    /// let retry_sec = 10;
-    /// let opts = RelayOptions::new(read, write, retry_sec);
+    /// let opts = RelayOptions::new().write(false).retry_sec(11);
     /// client
     ///     .add_relay_with_opts("wss://relay.nostr.info", None, opts)
     ///     .await

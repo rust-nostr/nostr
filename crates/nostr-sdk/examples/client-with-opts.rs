@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
     client.add_relay("wss://relay.damus.io", None).await?;
     client.add_relay("wss://nostr.openchain.fr", None).await?;
     client
-        .add_relay_with_opts("wss://nostr.mom", None, RelayOptions::new(true, false, 10))
+        .add_relay_with_opts("wss://nostr.mom", None, RelayOptions::new().write(false))
         .await?;
     client
         .add_relay(
