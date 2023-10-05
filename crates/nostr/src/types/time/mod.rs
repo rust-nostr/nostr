@@ -10,6 +10,10 @@ use core::ops::{Add, Sub};
 use core::str::FromStr;
 use core::time::Duration;
 
+#[cfg(feature = "std")]
+use bitcoin::secp256k1::rand::rngs::OsRng;
+use bitcoin::secp256k1::rand::Rng;
+
 mod supplier;
 
 pub use self::supplier::TimeSupplier;
@@ -40,6 +44,44 @@ impl Timestamp {
         let starting_point = supplier.starting_point();
         let duration = supplier.elapsed_since(now, starting_point);
         supplier.to_timestamp(duration)
+    }
+
+    /// Get tweaked UNIX timestamp
+    ///
+    /// Remove a random number of seconds from now (max 65535 secs)
+    #[cfg(feature = "std")]
+    pub fn tweaked() -> Self {
+        let mut now: Timestamp = Self::now();
+        now.tweak();
+        now
+    }
+
+    /// Get tweaked UNIX timestamp
+    ///
+    /// Remove a random number of seconds from now (max 65535 secs)
+    pub fn tweaked_with_supplier_and_rng<T, R>(supplier: &T, rng: &mut R) -> Self
+    where
+        T: TimeSupplier,
+        R: Rng,
+    {
+        let mut now: Timestamp = Self::now_with_supplier(supplier);
+        now.tweak_with_rng(rng);
+        now
+    }
+
+    /// Remove a random number of seconds from [`Timestamp`] (max 65535 secs)
+    #[cfg(feature = "std")]
+    pub fn tweak(&mut self) {
+        self.tweak_with_rng(&mut OsRng);
+    }
+
+    /// Remove a random number of seconds from [`Timestamp`] (max 65535 secs)
+    pub fn tweak_with_rng<R>(&mut self, rng: &mut R)
+    where
+        R: Rng,
+    {
+        let secs: u16 = rng.gen_range(0..=u16::MAX);
+        self.0 -= secs as i64;
     }
 
     /// Get timestamp as [`u64`]
