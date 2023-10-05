@@ -529,6 +529,7 @@ interface Tag {
 interface RelayConnectionStats {
     u64 attempts();
     u64 success();
+    f64 uptime();
     u64 bytes_sent();
     u64 bytes_received();
     duration? latency();

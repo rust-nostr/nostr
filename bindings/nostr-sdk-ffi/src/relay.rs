@@ -30,6 +30,10 @@ impl RelayConnectionStats {
         self.inner.success() as u64
     }
 
+    pub fn uptime(&self) -> f64 {
+        self.inner.uptime()
+    }
+
     pub fn connected_at(&self) -> Arc<Timestamp> {
         let secs = self.inner.connected_at().as_u64();
         Arc::new(Timestamp::from_secs(secs))

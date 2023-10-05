@@ -42,6 +42,8 @@ use crate::RUNTIME;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 
+const MIN_UPTIME: f64 = 0.90;
+
 /// [`Relay`] error
 #[derive(Debug, Error)]
 pub enum Error {
@@ -262,6 +264,17 @@ impl RelayConnectionStats {
     /// The number of times a connection has been successfully established
     pub fn success(&self) -> usize {
         self.success.load(Ordering::SeqCst)
+    }
+
+    /// Uptime
+    pub fn uptime(&self) -> f64 {
+        let success: f64 = self.success() as f64;
+        let attempts: f64 = self.attempts() as f64;
+        if attempts != 0.0 {
+            success / attempts
+        } else {
+            0.0
+        }
     }
 
     /// Bytes sent
@@ -1173,7 +1186,11 @@ impl Relay {
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         let id: EventId = event.id;
 
-        if opts.skip_disconnected && !self.is_connected().await && self.stats.attempts() > 1 {
+        if opts.skip_disconnected
+            && !self.is_connected().await
+            && self.stats.attempts() > 1
+            && self.stats.uptime() < MIN_UPTIME
+        {
             return Err(Error::EventNotPublished(String::from(
                 "relay not connected",
             )));
@@ -1240,7 +1257,11 @@ impl Relay {
             return Err(Error::BatchEventEmpty);
         }
 
-        if opts.skip_disconnected && !self.is_connected().await && self.stats.attempts() > 1 {
+        if opts.skip_disconnected
+            && !self.is_connected().await
+            && self.stats.attempts() > 1
+            && self.stats.uptime() < MIN_UPTIME
+        {
             return Err(Error::EventNotPublished(String::from(
                 "relay not connected",
             )));
