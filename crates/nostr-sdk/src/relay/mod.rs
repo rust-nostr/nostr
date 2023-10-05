@@ -62,6 +62,9 @@ pub enum Error {
     /// Message not sent
     #[error("message not sent")]
     MessageNotSent,
+    /// Relay not connected
+    #[error("relay not connected")]
+    NotConnected,
     /// Event not published
     #[error("event not published: {0}")]
     EventNotPublished(String),
@@ -1463,6 +1466,13 @@ impl Relay {
     where
         F: Future<Output = ()>,
     {
+        if !self.is_connected().await
+            && self.stats.attempts() > 1
+            && self.stats.uptime() < MIN_UPTIME
+        {
+            return Err(Error::NotConnected);
+        }
+
         let mut counter = 0;
         let mut received_eose: bool = false;
 
