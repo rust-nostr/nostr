@@ -46,11 +46,15 @@ tokio = { workspace = true, features = ["rt", "macros", "sync"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
+name = "client-with-opts"
+required-features = ["all-nips"]
+
+[[example]]
 name = "client"
 required-features = ["all-nips"]
 
 [[example]]
-name = "client-with-opts"
+name = "get-events-of"
 required-features = ["all-nips"]
 
 [[example]]
