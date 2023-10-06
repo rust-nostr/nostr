@@ -966,34 +966,29 @@ impl Relay {
 
                     async fn func(relay: &Relay, data: Vec<u8>) -> bool {
                         relay.stats.add_bytes_received(data.len());
-                        match String::from_utf8(data) {
-                            Ok(data) => match RelayMessage::from_json(&data) {
-                                Ok(msg) => {
-                                    tracing::trace!("Received message to {}: {:?}", relay.url, msg);
-                                    if let Err(err) = relay
-                                        .pool_sender
-                                        .send(RelayPoolMessage::ReceivedMsg {
-                                            relay_url: relay.url(),
-                                            msg,
-                                        })
-                                        .await
-                                    {
-                                        tracing::error!(
-                                            "Impossible to send ReceivedMsg to pool: {}",
-                                            &err
-                                        );
-                                        return true; // Exit
-                                    };
-                                }
-                                Err(e) => {
-                                    match e {
-                                        MessageHandleError::EmptyMsg => (),
-                                        _ => tracing::error!("{e}: {data}"),
-                                    };
-                                }
+                        match RelayMessage::from_json(&data) {
+                            Ok(msg) => {
+                                tracing::trace!("Received message to {}: {:?}", relay.url, msg);
+                                if let Err(err) = relay
+                                    .pool_sender
+                                    .send(RelayPoolMessage::ReceivedMsg {
+                                        relay_url: relay.url(),
+                                        msg,
+                                    })
+                                    .await
+                                {
+                                    tracing::error!(
+                                        "Impossible to send ReceivedMsg to pool: {}",
+                                        &err
+                                    );
+                                    return true; // Exit
+                                };
+                            }
+                            Err(e) => match e {
+                                MessageHandleError::EmptyMsg => (),
+                                _ => tracing::error!("{e}: {}", String::from_utf8_lossy(&data)),
                             },
-                            Err(err) => tracing::error!("{}", err),
-                        }
+                        };
 
                         false
                     }
