@@ -455,6 +455,7 @@ enum TagKindKnown {
     "Payload",
     "Anon",
     "Proxy",
+    "Emoji",
 };
 
 [Enum]
@@ -512,6 +513,7 @@ interface TagEnum {
     Payload(string hash);
     Anon(string? msg);
     Proxy(string id, string protocol);
+    Emoji(string shortcode, string url);
 }; 
 
 interface Tag {

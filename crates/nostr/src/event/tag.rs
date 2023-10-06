@@ -478,6 +478,8 @@ pub enum TagKind {
     Anon,
     /// Proxy
     Proxy,
+    /// Emoji
+    Emoji,
     /// Custom tag kind
     Custom(String),
 }
@@ -532,6 +534,7 @@ impl fmt::Display for TagKind {
             Self::Payload => write!(f, "payload"),
             Self::Anon => write!(f, "anon"),
             Self::Proxy => write!(f, "proxy"),
+            Self::Emoji => write!(f, "emoji"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -591,6 +594,7 @@ where
             "payload" => Self::Payload,
             "anon" => Self::Anon,
             "proxy" => Self::Proxy,
+            "emoji" => Self::Emoji,
             tag => Self::Custom(tag.to_string()),
         }
     }
@@ -683,6 +687,12 @@ pub enum Tag {
         id: String,
         protocol: Protocol,
     },
+    Emoji {
+        /// Name given for the emoji, which MUST be comprised of only alphanumeric characters and underscores
+        shortcode: String,
+        /// URL to the corresponding image file of the emoji
+        url: UncheckedUrl,
+    },
 }
 
 impl Tag {
@@ -755,6 +765,7 @@ impl Tag {
             Self::Payload(..) => TagKind::Payload,
             Self::Anon { .. } => TagKind::Anon,
             Self::Proxy { .. } => TagKind::Proxy,
+            Self::Emoji { .. } => TagKind::Emoji,
         }
     }
 }
@@ -925,6 +936,10 @@ where
                 TagKind::Proxy => Ok(Self::Proxy {
                     id: tag[1].to_string(),
                     protocol: Protocol::from(&tag[2]),
+                }),
+                TagKind::Emoji => Ok(Self::Emoji {
+                    shortcode: tag[1].to_string(),
+                    url: UncheckedUrl::from(&tag[2]),
                 }),
                 _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
             }
@@ -1171,6 +1186,9 @@ impl From<Tag> for Vec<String> {
             }
             Tag::Proxy { id, protocol } => {
                 vec![TagKind::Proxy.to_string(), id, protocol.to_string()]
+            }
+            Tag::Emoji { shortcode, url } => {
+                vec![TagKind::Emoji.to_string(), shortcode, url.to_string()]
             }
         }
     }

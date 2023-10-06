@@ -131,7 +131,7 @@ The following crate feature flags are available:
 | ✅         | [26 - Delegated Event Signing](https://github.com/nostr-protocol/nips/blob/master/26.md)                                            |
 | ❌         | [27 - Text Note References](https://github.com/nostr-protocol/nips/blob/master/27.md)                                               |
 | ✅         | [28 - Public Chat](https://github.com/nostr-protocol/nips/blob/master/28.md)                                                        |
-| ❌         | [30 - Custom Emoji](https://github.com/nostr-protocol/nips/blob/master/30.md)                                                       |
+| ✅         | [30 - Custom Emoji](https://github.com/nostr-protocol/nips/blob/master/30.md)                                                       |
 | ❌         | [31 - Dealing with Unknown Events](https://github.com/nostr-protocol/nips/blob/master/31.md)                                        |
 | ❌         | [32 - Labeling](https://github.com/nostr-protocol/nips/blob/master/32.md)                                                           |
 | ✅         | [33 - Parameterized Replaceable Events](https://github.com/nostr-protocol/nips/blob/master/33.md)                                   |

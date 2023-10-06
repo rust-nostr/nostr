@@ -114,6 +114,7 @@ pub enum TagKindKnown {
     Payload,
     Anon,
     Proxy,
+    Emoji,
 }
 
 impl From<tag::TagKind> for TagKind {
@@ -260,6 +261,9 @@ impl From<tag::TagKind> for TagKind {
             tag::TagKind::Proxy => Self::Known {
                 known: TagKindKnown::Proxy,
             },
+            tag::TagKind::Emoji => Self::Known {
+                known: TagKindKnown::Emoji,
+            },
             tag::TagKind::Custom(unknown) => Self::Unknown { unknown },
         }
     }
@@ -316,6 +320,7 @@ impl From<TagKind> for tag::TagKind {
                 TagKindKnown::Payload => Self::Payload,
                 TagKindKnown::Anon => Self::Anon,
                 TagKindKnown::Proxy => Self::Proxy,
+                TagKindKnown::Emoji => Self::Emoji,
             },
             TagKind::Unknown { unknown } => Self::Custom(unknown),
         }
@@ -505,6 +510,10 @@ pub enum TagEnum {
         id: String,
         protocol: String,
     },
+    Emoji {
+        shortcode: String,
+        url: String,
+    },
 }
 
 impl From<tag::Tag> for TagEnum {
@@ -663,6 +672,10 @@ impl From<tag::Tag> for TagEnum {
                 id,
                 protocol: protocol.to_string(),
             },
+            tag::Tag::Emoji { shortcode, url } => Self::Emoji {
+                shortcode,
+                url: url.to_string(),
+            },
         }
     }
 }
@@ -810,6 +823,10 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::Proxy { id, protocol } => Ok(Self::Proxy {
                 id,
                 protocol: Protocol::from(protocol),
+            }),
+            TagEnum::Emoji { shortcode, url } => Ok(Self::Emoji {
+                shortcode,
+                url: UncheckedUrl::from(url),
             }),
         }
     }
