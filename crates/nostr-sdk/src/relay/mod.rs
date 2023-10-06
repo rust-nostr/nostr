@@ -45,6 +45,8 @@ use crate::RUNTIME;
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 
 const MIN_UPTIME: f64 = 0.90;
+#[cfg(not(target_arch = "wasm32"))]
+const PING_INTERVAL: u64 = 55;
 
 /// [`Relay`] error
 #[derive(Debug, Error)]
@@ -343,7 +345,9 @@ impl RelayConnectionStats {
     }
 
     pub(crate) fn add_bytes_received(&self, size: usize) {
-        self.bytes_received.fetch_add(size, Ordering::SeqCst);
+        if size > 0 {
+            self.bytes_received.fetch_add(size, Ordering::SeqCst);
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -812,7 +816,7 @@ impl Relay {
                                 tracing::error!("Impossible to ping {}: {e}", relay.url);
                                 break;
                             };
-                            thread::sleep(Duration::from_secs(60)).await;
+                            thread::sleep(Duration::from_secs(PING_INTERVAL)).await;
                         }
 
                         tracing::debug!("Exited from Ping Thread of {}", relay.url);
