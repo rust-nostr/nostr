@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr::{Event, Filter, SubscriptionId};
+use nostr::{Event, Filter, JsonUtil, SubscriptionId};
 
 use crate::NostrError;
 

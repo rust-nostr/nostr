@@ -14,7 +14,7 @@ use serde::{Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::{Filter, MessageHandleError, SubscriptionId};
-use crate::Event;
+use crate::{Event, JsonUtil};
 
 /// Messages sent by clients, received by relays
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -206,11 +206,6 @@ impl ClientMessage {
         }
     }
 
-    /// Serialize [`ClientMessage`] as JSON string
-    pub fn as_json(&self) -> String {
-        self.as_value().to_string()
-    }
-
     /// Deserialize from [`Value`]
     ///
     /// **This method NOT verify the event signature!**
@@ -332,22 +327,25 @@ impl ClientMessage {
 
         Err(MessageHandleError::InvalidMessageFormat)
     }
+}
+
+impl JsonUtil for ClientMessage {
+    type Err = MessageHandleError;
 
     /// Deserialize [`ClientMessage`] from JSON string
     ///
     /// **This method NOT verify the event signature!**
-    pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
+    fn from_json<T>(json: T) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        T: AsRef<[u8]>,
     {
-        let msg: &str = &msg.into();
-        tracing::trace!("{}", msg);
+        let msg: &[u8] = json.as_ref();
 
         if msg.is_empty() {
             return Err(MessageHandleError::InvalidMessageFormat);
         }
 
-        let value: Value = serde_json::from_str(msg)?;
+        let value: Value = serde_json::from_slice(msg)?;
         Self::from_value(value)
     }
 }

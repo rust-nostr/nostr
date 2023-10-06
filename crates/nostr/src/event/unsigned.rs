@@ -3,7 +3,7 @@
 
 //! Unsigned Event
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
@@ -15,7 +15,7 @@ use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification, XOnlyP
 
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Event, EventId, Keys, Kind, Tag, Timestamp};
+use crate::{Event, EventId, JsonUtil, Keys, Kind, Tag, Timestamp};
 
 /// [`UnsignedEvent`] error
 #[derive(Debug)]
@@ -146,17 +146,8 @@ impl UnsignedEvent {
         event.verify_with_ctx(secp)?;
         Ok(event)
     }
+}
 
-    /// Deserialize from JSON string
-    pub fn from_json<S>(json: S) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        Ok(serde_json::from_str(&json.into())?)
-    }
-
-    /// Serialize as JSON string
-    pub fn as_json(&self) -> String {
-        serde_json::json!(self).to_string()
-    }
+impl JsonUtil for UnsignedEvent {
+    type Err = Error;
 }

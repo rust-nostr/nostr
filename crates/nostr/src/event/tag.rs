@@ -1318,7 +1318,7 @@ mod tests {
     use bitcoin::secp256k1::Secp256k1;
 
     use super::*;
-    use crate::{Event, Timestamp};
+    use crate::{Event, JsonUtil, Timestamp};
 
     #[test]
     fn test_deserialize_tag_from_event() {

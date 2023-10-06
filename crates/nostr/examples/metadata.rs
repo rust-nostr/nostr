@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr::{Metadata, Result, Url};
+use nostr::prelude::*;
 
 fn main() -> Result<()> {
     let metadata = Metadata::new()

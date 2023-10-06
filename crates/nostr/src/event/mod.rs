@@ -27,9 +27,9 @@ pub use self::unsigned::UnsignedEvent;
 #[cfg(feature = "std")]
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
-use crate::Timestamp;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+use crate::{JsonUtil, Timestamp};
 
 /// [`Event`] error
 #[derive(Debug)]
@@ -122,21 +122,6 @@ impl Event {
         Ok(serde_json::from_value(value)?)
     }
 
-    /// Deserialize [`Event`] from JSON
-    ///
-    /// **This method NOT verify the signature!**
-    pub fn from_json<S>(json: S) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        Ok(serde_json::from_str(&json.into())?)
-    }
-
-    /// Serialize [`Event`] as JSON
-    pub fn as_json(&self) -> String {
-        serde_json::json!(self).to_string()
-    }
-
     /// Verify [`EventId`] and [`Signature`]
     #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
@@ -213,6 +198,20 @@ impl Event {
     /// Check if event [`Kind`] is `Parameterized replaceable`
     pub fn is_parameterized_replaceable(&self) -> bool {
         self.kind.is_parameterized_replaceable()
+    }
+}
+
+impl JsonUtil for Event {
+    type Err = Error;
+
+    /// Deserialize [`Event`] from JSON
+    ///
+    /// **This method NOT verify the signature!**
+    fn from_json<T>(json: T) -> Result<Self, Self::Err>
+    where
+        T: AsRef<[u8]>,
+    {
+        Ok(serde_json::from_slice(json.as_ref())?)
     }
 }
 

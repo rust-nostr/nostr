@@ -21,7 +21,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{EventId, Kind, Timestamp};
+use crate::{EventId, JsonUtil, Kind, Timestamp};
 
 /// Alphabet Error
 #[derive(Debug)]
@@ -291,19 +291,6 @@ impl Filter {
     /// Create new empty [`Filter`]
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Deserialize from `JSON` string
-    pub fn from_json<S>(json: S) -> Result<Self, serde_json::Error>
-    where
-        S: Into<String>,
-    {
-        serde_json::from_str(&json.into())
-    }
-
-    /// Serialize to `JSON` string
-    pub fn as_json(&self) -> String {
-        serde_json::json!(self).to_string()
     }
 
     /// Add event id or prefix
@@ -764,6 +751,10 @@ impl Filter {
             ..self
         }
     }
+}
+
+impl JsonUtil for Filter {
+    type Err = serde_json::Error;
 }
 
 fn serialize_generic_tags<S>(

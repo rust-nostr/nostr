@@ -20,8 +20,8 @@ use nostr::nips::nip94::FileMetadata;
 use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
-    ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, Keys, Kind,
-    Metadata, Result, Tag,
+    ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, JsonUtil,
+    Keys, Kind, Metadata, Result, Tag,
 };
 use nostr_sdk_net::futures_util::Future;
 use tokio::sync::{broadcast, RwLock};

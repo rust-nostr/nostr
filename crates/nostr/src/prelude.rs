@@ -27,6 +27,7 @@ pub use crate::event::*;
 pub use crate::key::*;
 pub use crate::message::*;
 pub use crate::types::*;
+pub use crate::util::*;
 #[cfg(feature = "std")]
 pub use crate::{Result, SECP256K1};
 

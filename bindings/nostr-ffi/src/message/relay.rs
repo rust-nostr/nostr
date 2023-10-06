@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr::RelayMessage as NRelayMessage;
+use nostr::{JsonUtil, RelayMessage as NRelayMessage};
 
 pub enum RelayMessage {
     Ev {

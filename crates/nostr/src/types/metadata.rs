@@ -4,7 +4,7 @@
 //! Metadata
 
 use alloc::collections::BTreeMap;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::fmt;
 
 use serde::de::{Deserializer, MapAccess, Visitor};
@@ -12,6 +12,8 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url_fork::Url;
+
+use crate::JsonUtil;
 
 /// [`Metadata`] error
 #[derive(Debug)]
@@ -90,19 +92,6 @@ impl Metadata {
     /// New empty [`Metadata`]
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Deserialize [`Metadata`] from `JSON` string
-    pub fn from_json<S>(json: S) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        Ok(serde_json::from_str(&json.into())?)
-    }
-
-    /// Serialize [`Metadata`] to `JSON` string
-    pub fn as_json(&self) -> String {
-        serde_json::json!(self).to_string()
     }
 
     /// Set name
@@ -204,6 +193,10 @@ impl Metadata {
         custom.insert(field_name.into(), value);
         Self { custom, ..self }
     }
+}
+
+impl JsonUtil for Metadata {
+    type Err = Error;
 }
 
 fn serialize_custom_fields<S>(

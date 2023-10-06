@@ -5,6 +5,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::message::subscription::Alphabet;
+use nostr::JsonUtil;
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;

@@ -4,7 +4,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::Event as EventSdk;
+use nostr::{Event as EventSdk, JsonUtil};
 
 mod builder;
 mod id;

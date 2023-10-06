@@ -27,9 +27,9 @@ use super::nip04;
 use super::nip26::{self, sign_delegation_with_ctx, Conditions};
 use crate::event::unsigned::{self, UnsignedEvent};
 use crate::key::{self, Keys};
-use crate::Event;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+use crate::{Event, JsonUtil};
 
 /// NIP46 error
 #[derive(Debug)]
@@ -378,19 +378,6 @@ impl Message {
         }
     }
 
-    /// Serialize [`Message`] as JSON string
-    pub fn as_json(&self) -> String {
-        json!(self).to_string()
-    }
-
-    /// Deserialize from JSON string
-    pub fn from_json<S>(json: S) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        Ok(serde_json::from_str(&json.into())?)
-    }
-
     /// Convert [`Message`] to [`Request`]
     pub fn to_request(&self) -> Result<Request, Error> {
         if let Message::Request { method, params, .. } = self {
@@ -495,6 +482,10 @@ impl Message {
         let _req: Request = self.to_request()?;
         Ok(Self::response(self.id(), None, Some(error.into())))
     }
+}
+
+impl JsonUtil for Message {
+    type Err = Error;
 }
 
 fn url_encode<T>(data: T) -> String

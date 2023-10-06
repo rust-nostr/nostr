@@ -1,9 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use nostr::nips::nip19::FromBech32;
-use nostr::secp256k1::SecretKey;
-use nostr::{Event, EventBuilder, EventId, Keys, Result};
+use nostr::prelude::*;
 
 const MY_BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 

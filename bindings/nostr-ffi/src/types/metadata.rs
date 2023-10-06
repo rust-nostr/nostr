@@ -4,8 +4,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::url::Url;
-use nostr::Metadata as MetadataSdk;
+use nostr::{JsonUtil, Metadata as MetadataSdk, Url};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;

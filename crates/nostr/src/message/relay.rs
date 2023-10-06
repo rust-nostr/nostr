@@ -13,7 +13,7 @@ use serde::{Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::MessageHandleError;
-use crate::{Event, EventId, SubscriptionId};
+use crate::{Event, EventId, JsonUtil, SubscriptionId};
 
 /// Negentropy error code
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -363,20 +363,25 @@ impl RelayMessage {
 
         Err(MessageHandleError::InvalidMessageFormat)
     }
+}
 
-    /// Deserialize [`RelayMessage`] as JSON string
-    pub fn from_json<S>(msg: S) -> Result<Self, MessageHandleError>
+impl JsonUtil for RelayMessage {
+    type Err = MessageHandleError;
+
+    /// Deserialize [`RelayMessage`] from JSON string
+    ///
+    /// **This method NOT verify the event signature!**
+    fn from_json<T>(json: T) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        T: AsRef<[u8]>,
     {
-        let msg: &str = &msg.into();
-        tracing::trace!("{}", msg);
+        let msg: &[u8] = json.as_ref();
 
         if msg.is_empty() {
             return Err(MessageHandleError::EmptyMsg);
         }
 
-        let value: Value = serde_json::from_str(msg)?;
+        let value: Value = serde_json::from_slice(msg)?;
         Self::from_value(value)
     }
 }

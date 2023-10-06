@@ -11,6 +11,8 @@ use bitcoin::secp256k1::{ecdh, Error, PublicKey, SecretKey, XOnlyPublicKey};
 use bitcoin::secp256k1::{rand, All, Secp256k1};
 #[cfg(feature = "std")]
 use once_cell::sync::Lazy;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 /// Generate shared key
 ///
@@ -39,3 +41,25 @@ pub static SECP256K1: Lazy<Secp256k1<All>> = Lazy::new(|| {
     ctx.randomize(&mut rng);
     ctx
 });
+
+/// JSON util
+pub trait JsonUtil: Sized + Serialize + DeserializeOwned
+where
+    <Self as JsonUtil>::Err: From<serde_json::Error>,
+{
+    /// Error
+    type Err;
+
+    /// Deserialize JSON
+    fn from_json<T>(json: T) -> Result<Self, Self::Err>
+    where
+        T: AsRef<[u8]>,
+    {
+        Ok(serde_json::from_slice(json.as_ref())?)
+    }
+
+    /// Serialize to JSON string
+    fn as_json(&self) -> String {
+        serde_json::json!(self).to_string()
+    }
+}

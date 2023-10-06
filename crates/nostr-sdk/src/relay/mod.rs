@@ -24,7 +24,9 @@ use nostr::negentropy::{self, Bytes, Negentropy};
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::secp256k1::rand::{self, Rng};
-use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
+use nostr::{
+    ClientMessage, Event, EventId, Filter, JsonUtil, RelayMessage, SubscriptionId, Timestamp, Url,
+};
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use thiserror::Error;

@@ -13,9 +13,11 @@ use core::str::FromStr;
 
 use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::{json, Value};
+use serde_json::Value;
 use url_fork::form_urlencoded::byte_serialize;
 use url_fork::{ParseError, Url};
+
+use crate::JsonUtil;
 
 use super::nip04;
 
@@ -297,23 +299,9 @@ struct RequestTemplate {
 }
 
 impl Request {
-    /// Serialize [`Request`] as JSON string
-    pub fn as_json(&self) -> String {
-        json!(self).to_string()
-    }
-
-    /// Deserialize from JSON string
-    pub fn from_json<S>(json: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let template: RequestTemplate = match serde_json::from_str(json.as_ref()) {
-            Ok(response) => response,
-            Err(_err) => {
-                let json = json.as_ref().replace('\\', "");
-                serde_json::from_str(&json)?
-            }
-        };
+    /// Deserialize from [`Value`]
+    pub fn from_value(value: Value) -> Result<Self, Error> {
+        let template: RequestTemplate = serde_json::from_value(value)?;
 
         let params = match template.method {
             Method::PayInvoice => {
@@ -350,18 +338,17 @@ impl Request {
     }
 }
 
+impl JsonUtil for Request {
+    type Err = Error;
+}
+
 impl<'de> Deserialize<'de> for Request {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        Self::from_json(
-            Value::deserialize(deserializer)
-                .map_err(serde::de::Error::custom)?
-                .to_string()
-                .as_str(),
-        )
-        .map_err(serde::de::Error::custom)
+        let value: Value = Value::deserialize(deserializer).map_err(serde::de::Error::custom)?;
+        Self::from_value(value).map_err(serde::de::Error::custom)
     }
 }
 
@@ -494,17 +481,9 @@ struct ResponseTemplate {
 }
 
 impl Response {
-    /// Serialize [`Response`] as JSON string
-    pub fn as_json(&self) -> String {
-        json!(self).to_string()
-    }
-
     /// Deserialize from JSON string
-    pub fn from_json<S>(json: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let template: ResponseTemplate = serde_json::from_str(json.as_ref())?;
+    pub fn from_value(value: Value) -> Result<Self, Error> {
+        let template: ResponseTemplate = serde_json::from_value(value)?;
 
         if let Some(result) = template.result {
             let result = match template.result_type {
@@ -553,18 +532,17 @@ impl Response {
     }
 }
 
+impl JsonUtil for Response {
+    type Err = Error;
+}
+
 impl<'de> Deserialize<'de> for Response {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        Self::from_json(
-            Value::deserialize(deserializer)
-                .map_err(serde::de::Error::custom)?
-                .to_string()
-                .as_str(),
-        )
-        .map_err(serde::de::Error::custom)
+        let value: Value = Value::deserialize(deserializer).map_err(serde::de::Error::custom)?;
+        Self::from_value(value).map_err(serde::de::Error::custom)
     }
 }
 
@@ -764,7 +742,7 @@ mod test {
 
     #[test]
     fn test_parse_request() {
-        let request = "{\\\"params\\\":{\\\"invoice\\\":\\\"lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp5rdjyt9jr2avv2runy330766avkweqp30ndnyt9x6dp5juzn7q0nq9qyyssq2mykpgu04q0hlga228kx9v95meaqzk8a9cnvya305l4c353u3h04azuh9hsmd503x6jlzjrsqzark5dxx30s46vuatwzjhzmkt3j4tgqu35rms\\\"},\\\"method\\\":\\\"pay_invoice\\\"}";
+        let request = "{\"params\":{\"invoice\":\"lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp5rdjyt9jr2avv2runy330766avkweqp30ndnyt9x6dp5juzn7q0nq9qyyssq2mykpgu04q0hlga228kx9v95meaqzk8a9cnvya305l4c353u3h04azuh9hsmd503x6jlzjrsqzark5dxx30s46vuatwzjhzmkt3j4tgqu35rms\"},\"method\":\"pay_invoice\"}";
 
         let request = Request::from_json(request).unwrap();
 

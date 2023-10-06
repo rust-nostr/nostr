@@ -32,9 +32,9 @@ use crate::nips::{nip13, nip58};
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
-use crate::UncheckedUrl;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+use crate::{JsonUtil, UncheckedUrl};
 
 /// [`EventBuilder`] error
 #[derive(Debug)]

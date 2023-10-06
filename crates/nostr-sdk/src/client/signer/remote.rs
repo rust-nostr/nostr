@@ -12,7 +12,7 @@ use async_utility::time;
 use nostr::nips::nip04;
 use nostr::nips::nip46::{Message, Request, Response};
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::serde_json;
+use nostr::{serde_json, JsonUtil};
 use nostr::{ClientMessage, EventBuilder, Filter, Kind, SubscriptionId, Timestamp, Url};
 use tokio::sync::Mutex;
 
