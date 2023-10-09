@@ -104,6 +104,10 @@ pub enum Kind {
     FileMetadata,
     /// HTTP Auth (NIP98)
     HttpAuth,
+    /// Set stall (NIP15)
+    SetStall,
+    /// Set product (NIP15)
+    SetProduct,
     /// Regular Events (must be between 1000 and <=9999)
     Regular(u16),
     /// Replaceable event (must be between 10000 and <20000)
@@ -193,6 +197,8 @@ impl From<u64> for Kind {
             1311 => Self::LiveEventMessage,
             30008 => Self::ProfileBadges,
             30009 => Self::BadgeDefinition,
+            30017 => Self::SetStall,
+            30018 => Self::SetProduct,
             30023 => Self::LongFormTextNote,
             30078 => Self::ApplicationSpecificData,
             1063 => Self::FileMetadata,
@@ -247,6 +253,8 @@ impl From<Kind> for u64 {
             Kind::LiveEventMessage => 1311,
             Kind::ProfileBadges => 30008,
             Kind::BadgeDefinition => 30009,
+            Kind::SetStall => 30017,
+            Kind::SetProduct => 30018,
             Kind::LongFormTextNote => 30023,
             Kind::ApplicationSpecificData => 30078,
             Kind::FileMetadata => 1063,
@@ -327,6 +335,8 @@ mod tests {
         assert_eq!(Kind::Custom(20100), Kind::Custom(20100));
         assert_eq!(Kind::Custom(20100), Kind::Ephemeral(20100));
         assert_eq!(Kind::TextNote, Kind::Custom(1));
+        assert_eq!(Kind::ParameterizedReplaceable(30017), Kind::SetStall);
+        assert_eq!(Kind::ParameterizedReplaceable(30018), Kind::SetProduct);
     }
 
     #[test]

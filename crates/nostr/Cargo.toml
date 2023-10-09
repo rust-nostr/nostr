@@ -20,22 +20,22 @@ default = ["std", "all-nips"]
 std = [
     "dep:once_cell",
     "cbc?/std",
-    "base64?/std", 
-    "bitcoin/std", 
-    "bitcoin/rand-std", 
-    "bip39?/std", 
-    "chacha20?/std", 
+    "base64?/std",
+    "bitcoin/std",
+    "bitcoin/rand-std",
+    "bip39?/std",
+    "chacha20?/std",
     "negentropy/std",
-    "serde/std", 
-    "serde_json/std", 
-    "tracing/std", 
+    "serde/std",
+    "serde_json/std",
+    "tracing/std",
     "url-fork/std",
 ]
 alloc = [
     "cbc?/alloc",
     "base64?/alloc",
     "bitcoin/no-std",
-    "serde/alloc", 
+    "serde/alloc",
     "serde_json/alloc",
 ]
 blocking = ["reqwest?/blocking"]
@@ -112,4 +112,8 @@ required-features = ["std"]
 
 [[example]]
 name = "vanity"
+required-features = ["std"]
+
+[[example]]
+name = "nip15"
 required-features = ["std"]
