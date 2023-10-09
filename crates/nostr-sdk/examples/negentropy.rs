@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::time::Duration;
+
 use nostr_sdk::prelude::*;
 
 const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
@@ -13,7 +15,7 @@ async fn main() -> Result<()> {
     let my_keys = Keys::new(secret_key);
 
     let client = Client::new(&my_keys);
-    client.add_relay("wss://atl.purplerelay.com", None).await?;
+    client.add_relay("wss://relay.damus.io", None).await?;
 
     client.connect().await;
 
@@ -21,8 +23,10 @@ async fn main() -> Result<()> {
     let filter = Filter::new()
         .author(my_keys.public_key().to_string())
         .limit(10);
-    let relay = client.relay("wss://atl.purplerelay.com").await?;
-    relay.reconcilie(filter, my_items).await?;
+    let relay = client.relay("wss://relay.damus.io").await?;
+    relay
+        .reconcilie(filter, my_items, Duration::from_secs(30))
+        .await?;
 
     client
         .handle_notifications(|notification| async {

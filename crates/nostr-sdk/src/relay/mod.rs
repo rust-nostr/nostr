@@ -105,6 +105,9 @@ pub enum Error {
     /// Reconciliation error
     #[error("negentropy reconciliation error: {0}")]
     NegentropyReconciliation(NegentropyErrorCode),
+    /// Negentropy not supported
+    #[error("negentropy not supported")]
+    NegentropyNotSupported,
 }
 
 /// Relay connection status
@@ -1474,6 +1477,7 @@ impl Relay {
         &self,
         filter: Filter,
         my_items: Vec<(EventId, Timestamp)>,
+        timeout: Duration,
     ) -> Result<(), Error> {
         if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
@@ -1498,67 +1502,78 @@ impl Relay {
             .await?;
 
         let mut notifications = self.notification_sender.subscribe();
-        while let Ok(notification) = notifications.recv().await {
-            if let RelayPoolNotification::Message(url, msg) = notification {
-                if url == self.url {
-                    match msg {
-                        RelayMessage::NegMsg {
-                            subscription_id,
-                            message,
-                        } => {
-                            if subscription_id == sub_id {
-                                let query: Bytes = Bytes::from_hex(message)?;
-                                let mut need_ids: Vec<Bytes> = Vec::new();
-                                let msg: Option<Bytes> = negentropy.reconcile_with_ids(
-                                    &query,
-                                    &mut Vec::new(),
-                                    &mut need_ids,
-                                )?;
+        time::timeout(Some(timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Message(url, msg) = notification {
+                    if url == self.url {
+                        match msg {
+                            RelayMessage::NegMsg {
+                                subscription_id,
+                                message,
+                            } => {
+                                if subscription_id == sub_id {
+                                    let query: Bytes = Bytes::from_hex(message)?;
+                                    let mut need_ids: Vec<Bytes> = Vec::new();
+                                    let msg: Option<Bytes> = negentropy.reconcile_with_ids(
+                                        &query,
+                                        &mut Vec::new(),
+                                        &mut need_ids,
+                                    )?;
 
-                                let ids: Vec<String> =
-                                    need_ids.into_iter().map(|id| id.to_hex()).collect();
-                                let filter = Filter::new().ids(ids);
-                                self.req_events_of(
-                                    vec![filter],
-                                    Duration::from_secs(120),
-                                    FilterOptions::ExitOnEOSE,
-                                );
+                                    let ids: Vec<String> =
+                                        need_ids.into_iter().map(|id| id.to_hex()).collect();
+                                    let filter = Filter::new().ids(ids);
+                                    self.req_events_of(
+                                        vec![filter],
+                                        Duration::from_secs(120),
+                                        FilterOptions::ExitOnEOSE,
+                                    );
 
-                                match msg {
-                                    Some(query) => {
-                                        tracing::info!(
-                                            "Continue with reconciliation with {}",
-                                            self.url
-                                        );
-                                        self.send_msg(
-                                            ClientMessage::NegMsg {
-                                                subscription_id: sub_id.clone(),
-                                                message: query.to_hex(),
-                                            },
-                                            None,
-                                        )
-                                        .await?;
-                                    }
-                                    None => {
-                                        tracing::info!("Reconciliation terminated");
-                                        break;
+                                    match msg {
+                                        Some(query) => {
+                                            tracing::info!(
+                                                "Continue with reconciliation with {}",
+                                                self.url
+                                            );
+                                            self.send_msg(
+                                                ClientMessage::NegMsg {
+                                                    subscription_id: sub_id.clone(),
+                                                    message: query.to_hex(),
+                                                },
+                                                None,
+                                            )
+                                            .await?;
+                                        }
+                                        None => {
+                                            tracing::info!("Reconciliation terminated");
+                                            break;
+                                        }
                                     }
                                 }
                             }
-                        }
-                        RelayMessage::NegErr {
-                            subscription_id,
-                            code,
-                        } => {
-                            if subscription_id == sub_id {
-                                return Err(Error::NegentropyReconciliation(code));
+                            RelayMessage::NegErr {
+                                subscription_id,
+                                code,
+                            } => {
+                                if subscription_id == sub_id {
+                                    return Err(Error::NegentropyReconciliation(code));
+                                }
                             }
+                            RelayMessage::Notice { message } => {
+                                if message.contains("bad msg: unknown cmd") {
+                                    return Err(Error::NegentropyNotSupported);
+                                }
+                            }
+                            _ => (),
                         }
-                        _ => (),
                     }
                 }
             }
-        }
+
+            Ok(())
+        })
+        .await
+        .ok_or(Error::Timeout)??;
 
         let close_msg = ClientMessage::NegClose {
             subscription_id: sub_id,
