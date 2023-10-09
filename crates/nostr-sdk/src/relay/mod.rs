@@ -36,7 +36,7 @@ mod stats;
 pub use self::options::{FilterOptions, RelayOptions, RelayPoolOptions, RelaySendOptions};
 use self::options::{MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
-pub use self::stats::{PingStats, RelayConnectionStats};
+pub use self::stats::RelayConnectionStats;
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 

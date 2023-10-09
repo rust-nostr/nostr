@@ -5,13 +5,15 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
-use std::time::Instant;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::Arc;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{Duration, Instant};
 
 use nostr::Timestamp;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::sync::RwLock;
 
 #[cfg(feature = "blocking")]
@@ -20,7 +22,7 @@ use crate::RUNTIME;
 /// Ping Stats
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Clone)]
-pub struct PingStats {
+pub(crate) struct PingStats {
     sent_at: Arc<RwLock<Instant>>,
     last_nonce: Arc<AtomicU64>,
     replied: Arc<AtomicBool>,
