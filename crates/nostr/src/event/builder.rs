@@ -20,6 +20,7 @@ use super::{Event, EventId, UnsignedEvent};
 use crate::key::{self, Keys};
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
+use crate::nips::nip15::{ProductData, StallData};
 #[cfg(all(feature = "std", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip53::LiveEvent;
@@ -879,6 +880,22 @@ impl EventBuilder {
     pub fn http_auth(data: HttpData) -> Self {
         let tags: Vec<Tag> = data.into();
         Self::new(Kind::HttpAuth, "", &tags)
+    }
+
+    /// Set stall data
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
+    pub fn new_stall_data(data: StallData) -> Self {
+        let tags: Vec<Tag> = data.clone().into();
+        Self::new(Kind::SetStall, data, &tags)
+    }
+
+    /// Set product data
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
+    pub fn new_product_data(data: ProductData) -> Self {
+        let tags: Vec<Tag> = data.clone().into();
+        Self::new(Kind::SetProduct, data, &tags)
     }
 }
 
