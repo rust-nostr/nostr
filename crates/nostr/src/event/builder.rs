@@ -34,7 +34,7 @@ use crate::types::time::TimeSupplier;
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{JsonUtil, UncheckedUrl};
+use crate::{JsonUtil, RelayMetadata, UncheckedUrl};
 
 /// [`EventBuilder`] error
 #[derive(Debug)]
@@ -296,6 +296,17 @@ impl EventBuilder {
     /// Add recommended relay
     pub fn add_recommended_relay(url: &Url) -> Self {
         Self::new(Kind::RecommendRelay, url.as_ref(), &[])
+    }
+
+    /// Relay list metadata (NIP65)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    pub fn relay_list(list: Vec<(UncheckedUrl, Option<RelayMetadata>)>) -> Self {
+        let tags: Vec<Tag> = list
+            .into_iter()
+            .map(|(url, metadata)| Tag::RelayMetadata(url, metadata))
+            .collect();
+        Self::new(Kind::RelayList, "", &tags)
     }
 
     /// Text note
