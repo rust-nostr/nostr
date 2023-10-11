@@ -1,0 +1,18 @@
+[package]
+name = "nostr-sdk-db"
+version = "0.1.0"
+edition = "2021"
+description = "Nostr SDK Database"
+authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "sdk", "db"]
+
+[dependencies]
+async-trait = "0.1"
+nostr = { version = "0.24", path = "../nostr", default-features = false, features = ["std"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
