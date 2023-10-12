@@ -19,7 +19,7 @@ use tokio::sync::{broadcast, Mutex, RwLock};
 
 use super::options::RelayPoolOptions;
 use super::{
-    Error as RelayError, FilterOptions, InternalSubscriptionId, Relay, RelayOptions,
+    Error as RelayError, FilterOptions, InternalSubscriptionId, Limits, Relay, RelayOptions,
     RelaySendOptions, RelayStatus,
 };
 use crate::util::TryIntoUrl;
@@ -396,6 +396,7 @@ impl RelayPool {
                 self.notification_sender.clone(),
                 proxy,
                 opts,
+                Limits::default(),
             );
             relays.insert(relay.url(), relay);
         }
@@ -417,6 +418,7 @@ impl RelayPool {
                 self.pool_task_sender.clone(),
                 self.notification_sender.clone(),
                 opts,
+                Limits::default(),
             );
             relays.insert(relay.url(), relay);
         }

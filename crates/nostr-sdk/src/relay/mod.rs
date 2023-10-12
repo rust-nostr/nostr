@@ -29,10 +29,12 @@ use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
+pub mod limits;
 mod options;
 pub mod pool;
 mod stats;
 
+pub use self::limits::Limits;
 pub use self::options::{FilterOptions, RelayOptions, RelayPoolOptions, RelaySendOptions};
 use self::options::{MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
@@ -261,6 +263,7 @@ pub struct Relay {
     relay_receiver: Arc<Mutex<Receiver<Message>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<InternalSubscriptionId, ActiveSubscription>>>,
+    limits: Limits,
 }
 
 impl PartialEq for Relay {
@@ -278,6 +281,7 @@ impl Relay {
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         proxy: Option<SocketAddr>,
         opts: RelayOptions,
+        limits: Limits,
     ) -> Self {
         let (relay_sender, relay_receiver) = mpsc::channel::<Message>(1024);
 
@@ -297,6 +301,7 @@ impl Relay {
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
             notification_sender,
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
+            limits,
         }
     }
 
@@ -307,6 +312,7 @@ impl Relay {
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         opts: RelayOptions,
+        limits: Limits,
     ) -> Self {
         let (relay_sender, relay_receiver) = mpsc::channel::<Message>(1024);
 
@@ -325,6 +331,7 @@ impl Relay {
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
             notification_sender,
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
+            limits,
         }
     }
 
@@ -770,30 +777,36 @@ impl Relay {
                     tracing::debug!("Relay Message Thread Started");
 
                     async fn func(relay: &Relay, data: Vec<u8>) -> bool {
-                        relay.stats.add_bytes_received(data.len());
-                        match RelayMessage::from_json(&data) {
-                            Ok(msg) => {
-                                tracing::trace!("Received message to {}: {:?}", relay.url, msg);
-                                if let Err(err) = relay
-                                    .pool_sender
-                                    .send(RelayPoolMessage::ReceivedMsg {
-                                        relay_url: relay.url(),
-                                        msg,
-                                    })
-                                    .await
-                                {
-                                    tracing::error!(
-                                        "Impossible to send ReceivedMsg to pool: {}",
-                                        &err
-                                    );
-                                    return true; // Exit
-                                };
-                            }
-                            Err(e) => match e {
-                                MessageHandleError::EmptyMsg => (),
-                                _ => tracing::error!("{e}: {}", String::from_utf8_lossy(&data)),
-                            },
-                        };
+                        let size: usize = data.len();
+                        let max_size: usize = relay.limits.messages.max_size as usize;
+                        relay.stats.add_bytes_received(size);
+                        if size <= max_size {
+                            match RelayMessage::from_json(&data) {
+                                Ok(msg) => {
+                                    tracing::trace!("Received message to {}: {:?}", relay.url, msg);
+                                    if let Err(err) = relay
+                                        .pool_sender
+                                        .send(RelayPoolMessage::ReceivedMsg {
+                                            relay_url: relay.url(),
+                                            msg,
+                                        })
+                                        .await
+                                    {
+                                        tracing::error!(
+                                            "Impossible to send ReceivedMsg to pool: {}",
+                                            &err
+                                        );
+                                        return true; // Exit
+                                    };
+                                }
+                                Err(e) => match e {
+                                    MessageHandleError::EmptyMsg => (),
+                                    _ => tracing::error!("{e}: {}", String::from_utf8_lossy(&data)),
+                                },
+                            };
+                        } else {
+                            tracing::error!("Received message too large from {}: size={size}, max_size={max_size}", relay.url);
+                        }
 
                         false
                     }
