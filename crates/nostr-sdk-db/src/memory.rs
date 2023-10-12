@@ -34,6 +34,29 @@ impl MemoryDatabase {
     pub fn new() -> Self {
         Self::default()
     }
+
+    fn _event_id_seen(
+        &self,
+        seen_event_ids: &mut HashMap<EventId, HashSet<Url>>,
+        event_id: EventId,
+        relay_url: Option<Url>,
+    ) {
+        seen_event_ids
+            .entry(event_id)
+            .and_modify(|set| {
+                if let Some(relay_url) = &relay_url {
+                    set.insert(relay_url.clone());
+                }
+            })
+            .or_insert_with(|| match relay_url {
+                Some(relay_url) => {
+                    let mut set = HashSet::with_capacity(1);
+                    set.insert(relay_url);
+                    set
+                }
+                None => HashSet::with_capacity(0),
+            });
+    }
 }
 
 #[async_trait]
@@ -48,42 +71,51 @@ impl NostrDatabase for MemoryDatabase {
         Ok(())
     }
 
-    async fn event_id_already_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn save_events(&self, _events: Vec<Event>) -> Result<(), Self::Err> {
+        Ok(())
+    }
+
+    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
         let seen_event_ids = self.seen_event_ids.read().await;
         Ok(seen_event_ids.contains_key(&event_id))
     }
 
-    async fn save_event_id_seen_by_relay(
+    async fn event_id_seen(
         &self,
         event_id: EventId,
-        relay_url: Url,
+        relay_url: Option<Url>,
     ) -> Result<(), Self::Err> {
         let mut seen_event_ids = self.seen_event_ids.write().await;
-        seen_event_ids
-            .entry(event_id)
-            .and_modify(|set| {
-                set.insert(relay_url.clone());
-            })
-            .or_insert_with(|| {
-                let mut set = HashSet::with_capacity(1);
-                set.insert(relay_url);
-                set
-            });
+        self._event_id_seen(&mut seen_event_ids, event_id, relay_url);
+        Ok(())
+    }
+
+    async fn event_ids_seen(
+        &self,
+        event_ids: Vec<EventId>,
+        relay_url: Option<Url>,
+    ) -> Result<(), Self::Err> {
+        let mut seen_event_ids = self.seen_event_ids.write().await;
+        for event_id in event_ids.into_iter() {
+            self._event_id_seen(&mut seen_event_ids, event_id, relay_url.clone());
+        }
+
         Ok(())
     }
 
     async fn event_recently_seen_on_relays(
         &self,
-        _event_id: EventId,
-    ) -> Result<Vec<Url>, Self::Err> {
-        todo!()
+        event_id: EventId,
+    ) -> Result<Option<HashSet<Url>>, Self::Err> {
+        let seen_event_ids = self.seen_event_ids.read().await;
+        Ok(seen_event_ids.get(&event_id).cloned())
     }
 
     async fn query(&self, _filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        Ok(Vec::new())
+        Err(DatabaseError::NotSupported)
     }
 
     async fn event_ids_by_filters(&self, _filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
-        Ok(Vec::new())
+        Err(DatabaseError::NotSupported)
     }
 }

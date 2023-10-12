@@ -6,6 +6,8 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
+use std::collections::HashSet;
+
 use async_trait::async_trait;
 use nostr::{Event, EventId, Filter, Url};
 
@@ -45,21 +47,35 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Save [`Event`] into store
     async fn save_event(&self, event: &Event) -> Result<(), Self::Err>;
 
-    /// Check if [`EventId`] was already seen
-    async fn event_id_already_seen(&self, event_id: EventId) -> Result<bool, Self::Err>;
+    /// Save multiple [`Event`] into store
+    async fn save_events(&self, events: Vec<Event>) -> Result<(), Self::Err>;
 
-    /// Save [`EventId`] seen by relay
+    /// Check if [`EventId`] has already been seen
+    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err>;
+
+    /// Set [`EventId`] as seen
     ///
-    /// Useful for NIP65 (gossip)
-    async fn save_event_id_seen_by_relay(
+    /// Optionally, save also the relay url where the event has been seen (useful for NIP65, aka gossip)
+    async fn event_id_seen(
         &self,
         event_id: EventId,
-        relay_url: Url,
+        relay_url: Option<Url>,
+    ) -> Result<(), Self::Err>;
+
+    /// Set multiple [`EventId`] as seen
+    ///
+    /// Optionally, save also the relay url where the event has been seen (useful for NIP65, aka gossip)
+    async fn event_ids_seen(
+        &self,
+        event_ids: Vec<EventId>,
+        relay_url: Option<Url>,
     ) -> Result<(), Self::Err>;
 
     /// Get list of relays that have seen the [`EventId`]
-    async fn event_recently_seen_on_relays(&self, event_id: EventId)
-        -> Result<Vec<Url>, Self::Err>;
+    async fn event_recently_seen_on_relays(
+        &self,
+        event_id: EventId,
+    ) -> Result<Option<HashSet<Url>>, Self::Err>;
 
     /// Query store with filters
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err>;

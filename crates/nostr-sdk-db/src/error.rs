@@ -11,6 +11,9 @@ pub enum DatabaseError {
     /// An error happened in the underlying database backend.
     #[error(transparent)]
     Backend(Box<dyn std::error::Error + Send + Sync>),
+    /// Not supported
+    #[error("method not supported by current backend")]
+    NotSupported,
 }
 
 impl DatabaseError {
