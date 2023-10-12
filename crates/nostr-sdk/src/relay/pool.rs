@@ -178,9 +178,18 @@ impl RelayPoolTask {
                                             {
                                                 Ok(seen) => {
                                                     if !seen {
+                                                        if let Err(e) =
+                                                            this.database.save_event(&event).await
+                                                        {
+                                                            tracing::error!(
+                                                                "Impossible to save event {}: {e}",
+                                                                event.id
+                                                            );
+                                                        }
+
                                                         let notification = RelayPoolNotification::Event(
                                                             relay_url.clone(),
-                                                            event.as_ref().clone(),
+                                                            *event.clone(),
                                                         );
                                                         let _ =
                                                             this.notification_sender.send(notification);

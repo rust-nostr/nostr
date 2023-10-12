@@ -433,16 +433,6 @@ impl Relay {
         self.relay_sender.max_capacity() - self.relay_sender.capacity()
     }
 
-    /* fn is_auto_connect_loop_running(&self) -> bool {
-        self.auto_connect_loop_running.load(Ordering::SeqCst)
-    }
-
-    fn set_auto_connect_loop_running(&self, value: bool) {
-        let _ =
-            self.auto_connect_loop_running
-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
-    } */
-
     fn is_scheduled_for_stop(&self) -> bool {
         self.scheduled_for_stop.load(Ordering::SeqCst)
     }
@@ -787,7 +777,11 @@ impl Relay {
                         if size <= max_size {
                             match RawRelayMessage::from_json(&data) {
                                 Ok(msg) => {
-                                    tracing::trace!("Received message to {}: {:?}", relay.url, msg);
+                                    tracing::trace!(
+                                        "Received message from {}: {:?}",
+                                        relay.url,
+                                        msg
+                                    );
                                     if let Err(err) = relay
                                         .pool_sender
                                         .send(RelayPoolMessage::ReceivedMsg {

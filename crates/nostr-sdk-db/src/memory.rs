@@ -27,6 +27,7 @@ impl From<Error> for DatabaseError {
 #[derive(Debug, Default)]
 pub struct MemoryDatabase {
     seen_event_ids: Arc<RwLock<HashMap<EventId, HashSet<Url>>>>,
+    // TODO: add messages queue? (messages not sent)
 }
 
 impl MemoryDatabase {
