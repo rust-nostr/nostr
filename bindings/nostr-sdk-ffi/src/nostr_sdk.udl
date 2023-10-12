@@ -627,7 +627,6 @@ interface Client {
     boolean is_running();
     [Throws=NostrSdkError]
     void shutdown();
-    void clear_already_seen_events();
 
     record<DOMString, Relay> relays();
     [Throws=NostrSdkError]
