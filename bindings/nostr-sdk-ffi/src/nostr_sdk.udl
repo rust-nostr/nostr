@@ -540,8 +540,9 @@ interface RelayConnectionStats {
 
 enum RelayStatus {
     "Initialized",
-    "Connected",
+    "Pending",
     "Connecting",
+    "Connected",
     "Disconnected",
     "Stopped",
     "Terminated",

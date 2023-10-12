@@ -71,16 +71,16 @@ impl PingStats {
         *sent_at = Instant::now();
     }
 
-    pub(crate) fn set_last_nonce(&self, nonce: u64) {
-        let _ = self
-            .last_nonce
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(nonce));
+    pub(crate) fn set_last_nonce(&self, nonce: u64) -> bool {
+        self.last_nonce
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(nonce))
+            .is_ok()
     }
 
-    pub(crate) fn set_replied(&self, replied: bool) {
-        let _ = self
-            .replied
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(replied));
+    pub(crate) fn set_replied(&self, replied: bool) -> bool {
+        self.replied
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(replied))
+            .is_ok()
     }
 }
 
