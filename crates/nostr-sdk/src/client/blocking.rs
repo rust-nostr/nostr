@@ -99,11 +99,6 @@ impl Client {
         RUNTIME.block_on(async { self.client.shutdown().await })
     }
 
-    /// Clear already seen events
-    pub fn clear_already_seen_events(&self) {
-        RUNTIME.block_on(async { self.client.clear_already_seen_events().await })
-    }
-
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.client.notifications()
     }

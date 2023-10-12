@@ -24,6 +24,7 @@ use nostr::{
     ClientMessage, Event, EventId, Filter, JsonUtil, Keys, RawRelayMessage, RelayMessage,
     SubscriptionId, Timestamp, Url,
 };
+use nostr_sdk_db::DynNostrDatabase;
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use thiserror::Error;
@@ -256,7 +257,7 @@ pub struct Relay {
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
     stats: RelayConnectionStats,
-    // auto_connect_loop_running: Arc<AtomicBool>,
+    database: Arc<DynNostrDatabase>,
     scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
     pool_sender: Sender<RelayPoolMessage>,
@@ -278,6 +279,7 @@ impl Relay {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new(
         url: Url,
+        database: Arc<DynNostrDatabase>,
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         proxy: Option<SocketAddr>,
@@ -294,7 +296,7 @@ impl Relay {
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
-            // auto_connect_loop_running: Arc::new(AtomicBool::new(false)),
+            database,
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,
@@ -310,6 +312,7 @@ impl Relay {
     #[cfg(target_arch = "wasm32")]
     pub fn new(
         url: Url,
+        database: Arc<DynNostrDatabase>,
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         opts: RelayOptions,
@@ -324,7 +327,7 @@ impl Relay {
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
-            // auto_connect_loop_running: Arc::new(AtomicBool::new(false)),
+            database,
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,

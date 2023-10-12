@@ -124,6 +124,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "619743e34b5ba4e9703bba34deac3427c72507c7159f5fd030aea8cac0cfe341"
 
 [[package]]
+name = "async-trait"
+version = "0.1.74"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a66537f1bb974b254c98ed142ff995236e81b9d0fe4db0575f46612cb15eb0f9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "async-utility"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1105,12 +1116,23 @@ version = "0.25.0"
 dependencies = [
  "async-utility",
  "nostr",
+ "nostr-sdk-db",
  "nostr-sdk-net",
  "once_cell",
  "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "nostr-sdk-db"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "nostr",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
