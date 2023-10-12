@@ -45,6 +45,9 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Save [`Event`] into store
     async fn save_event(&self, event: &Event) -> Result<(), Self::Err>;
 
+    /// Check if [`EventId`] was already seen
+    async fn event_id_already_seen(&self, event_id: EventId) -> Result<bool, Self::Err>;
+
     /// Save [`EventId`] seen by relay
     ///
     /// Useful for NIP65 (gossip)

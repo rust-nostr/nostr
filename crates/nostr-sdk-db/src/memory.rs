@@ -48,6 +48,11 @@ impl NostrDatabase for MemoryDatabase {
         Ok(())
     }
 
+    async fn event_id_already_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        let seen_event_ids = self.seen_event_ids.read().await;
+        Ok(seen_event_ids.contains_key(&event_id))
+    }
+
     async fn save_event_id_seen_by_relay(
         &self,
         event_id: EventId,
