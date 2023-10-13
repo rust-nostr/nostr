@@ -12,6 +12,9 @@ use serde::{Deserialize, Deserializer};
 use serde::{Serialize, Serializer};
 use serde_json::{json, Value};
 
+mod raw;
+
+pub use self::raw::RawRelayMessage;
 use super::MessageHandleError;
 use crate::{Event, EventId, JsonUtil, SubscriptionId};
 
@@ -238,130 +241,10 @@ impl RelayMessage {
         }
     }
 
-    /// Serialize [`RelayMessage`] as JSON string
-    pub fn as_json(&self) -> String {
-        self.as_value().to_string()
-    }
-
     /// Deserialize [`RelayMessage`] from [`Value`]
     pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
-        let v = msg
-            .as_array()
-            .ok_or(MessageHandleError::InvalidMessageFormat)?;
-
-        if v.is_empty() {
-            return Err(MessageHandleError::InvalidMessageFormat);
-        }
-
-        let v_len: usize = v.len();
-
-        // Notice
-        // Relay response format: ["NOTICE", <message>]
-        if v[0] == "NOTICE" {
-            if v_len != 2 {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
-            let v_notice: String = serde_json::from_value(v[1].clone())?;
-            return Ok(Self::Notice { message: v_notice });
-        }
-
-        // Event
-        // Relay response format: ["EVENT", <subscription id>, <event JSON>]
-        if v[0] == "EVENT" {
-            if v_len != 3 {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
-
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-            let event = Event::from_value(v[2].clone())?;
-
-            return Ok(Self::new_event(subscription_id, event));
-        }
-
-        // EOSE (NIP-15)
-        // Relay response format: ["EOSE", <subscription_id>]
-        if v[0] == "EOSE" {
-            if v_len != 2 {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
-
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-
-            return Ok(Self::new_eose(subscription_id));
-        }
-
-        // OK (NIP-20)
-        // Relay response format: ["OK", <event_id>, <true|false>, <message>]
-        if v[0] == "OK" {
-            if v_len != 4 {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
-
-            let event_id: EventId = serde_json::from_value(v[1].clone())?;
-            let status: bool = serde_json::from_value(v[2].clone())?;
-            let message: String = serde_json::from_value(v[3].clone())?;
-            return Ok(Self::new_ok(event_id, status, message));
-        }
-
-        // OK (NIP-42)
-        // Relay response format: ["AUTH", <challenge>]
-        if v[0] == "AUTH" {
-            if v_len != 2 {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
-
-            let challenge: String = serde_json::from_value(v[1].clone())?;
-            return Ok(Self::Auth { challenge });
-        }
-
-        // Relay response format: ["EVENT", <subscription id>, <event JSON>]
-        if v[0] == "COUNT" {
-            if v_len != 3 {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
-
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-            let map = v[2]
-                .as_object()
-                .ok_or(MessageHandleError::InvalidMessageFormat)?;
-            let count: Value = map
-                .get("count")
-                .ok_or(MessageHandleError::InvalidMessageFormat)?
-                .clone();
-            let count: usize = serde_json::from_value(count)?;
-
-            return Ok(Self::new_count(subscription_id, count));
-        }
-
-        // Negentropy Message
-        // ["NEG-MSG", <subscription ID string>, <message, lowercase hex-encoded>]
-        if v[0] == "NEG-MSG" {
-            if v_len != 3 {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-            let message: String = serde_json::from_value(v[2].clone())?;
-            return Ok(Self::NegMsg {
-                subscription_id,
-                message,
-            });
-        }
-
-        // Negentropy Error
-        // ["NEG-ERR", <subscription ID string>, <reason-code>]
-        if v[0] == "NEG-ERR" {
-            if v_len != 3 {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-            let code: NegentropyErrorCode = serde_json::from_value(v[2].clone())?;
-            return Ok(Self::NegErr {
-                subscription_id,
-                code,
-            });
-        }
-
-        Err(MessageHandleError::InvalidMessageFormat)
+        let raw = RawRelayMessage::from_value(msg)?;
+        RelayMessage::try_from(raw)
     }
 }
 
@@ -383,6 +266,57 @@ impl JsonUtil for RelayMessage {
 
         let value: Value = serde_json::from_slice(msg)?;
         Self::from_value(value)
+    }
+}
+
+impl TryFrom<RawRelayMessage> for RelayMessage {
+    type Error = MessageHandleError;
+
+    fn try_from(raw: RawRelayMessage) -> Result<Self, Self::Error> {
+        match raw {
+            RawRelayMessage::Event {
+                subscription_id,
+                event,
+            } => Ok(Self::Event {
+                subscription_id: SubscriptionId::new(subscription_id),
+                event: Box::new(Event::from_value(event)?),
+            }),
+            RawRelayMessage::Ok {
+                event_id,
+                status,
+                message,
+            } => Ok(Self::Ok {
+                event_id: EventId::from_hex(event_id)?,
+                status,
+                message,
+            }),
+            RawRelayMessage::EndOfStoredEvents(subscription_id) => Ok(Self::EndOfStoredEvents(
+                SubscriptionId::new(subscription_id),
+            )),
+            RawRelayMessage::Notice { message } => Ok(Self::Notice { message }),
+            RawRelayMessage::Auth { challenge } => Ok(Self::Auth { challenge }),
+            RawRelayMessage::Count {
+                subscription_id,
+                count,
+            } => Ok(Self::Count {
+                subscription_id: SubscriptionId::new(subscription_id),
+                count,
+            }),
+            RawRelayMessage::NegMsg {
+                subscription_id,
+                message,
+            } => Ok(Self::NegMsg {
+                subscription_id: SubscriptionId::new(subscription_id),
+                message,
+            }),
+            RawRelayMessage::NegErr {
+                subscription_id,
+                code,
+            } => Ok(Self::NegErr {
+                subscription_id: SubscriptionId::new(subscription_id),
+                code: NegentropyErrorCode::from(code),
+            }),
+        }
     }
 }
 
@@ -523,17 +457,28 @@ mod tests {
         let pubkey = "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe";
         let created_at = Timestamp::from(1612809991);
         let kind = 1;
-        let tags = vec![];
+        let tags = Vec::new();
         let content = "test";
         let sig = "273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502";
 
-        let event = Event::new_dummy(&secp, id, pubkey, created_at, kind, tags, content, sig);
+        let event =
+            Event::new_dummy(&secp, id, pubkey, created_at, kind, tags, content, sig).unwrap();
 
-        let parsed_event = RelayMessage::from_json(SAMPLE_EVENT);
+        let parsed_event = RelayMessage::from_json(SAMPLE_EVENT).expect("Failed to parse event");
 
         assert_eq!(
-            parsed_event.expect("Failed to parse event"),
-            RelayMessage::new_event(SubscriptionId::new("random_string"), event.unwrap())
+            parsed_event,
+            RelayMessage::new_event(SubscriptionId::new("random_string"), event)
         );
+    }
+
+    #[test]
+    fn test_raw_relay_message() {
+        pub const SAMPLE_EVENT: &'static str = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]"#;
+
+        let raw = RawRelayMessage::from_json(SAMPLE_EVENT).unwrap();
+        let msg = RelayMessage::try_from(raw).unwrap();
+
+        assert_eq!(msg, RelayMessage::from_json(SAMPLE_EVENT).unwrap());
     }
 }

@@ -10,8 +10,9 @@ pub mod relay;
 pub mod subscription;
 
 pub use self::client::ClientMessage;
-pub use self::relay::RelayMessage;
+pub use self::relay::{RawRelayMessage, RelayMessage};
 pub use self::subscription::{Alphabet, Filter, SubscriptionId};
+use crate::event;
 
 /// Messages error
 #[derive(Debug)]
@@ -20,8 +21,10 @@ pub enum MessageHandleError {
     InvalidMessageFormat,
     /// Impossible to deserialize message
     Json(serde_json::Error),
+    /// Event ID error
+    EventId(event::id::Error),
     /// Event error
-    Event(crate::event::Error),
+    Event(event::Error),
     /// Empty message
     EmptyMsg,
 }
@@ -34,6 +37,7 @@ impl fmt::Display for MessageHandleError {
         match self {
             Self::InvalidMessageFormat => write!(f, "Message has an invalid format"),
             Self::Json(e) => write!(f, "Json deserialization failed: {e}"),
+            Self::EventId(e) => write!(f, "EventId: {e}"),
             Self::Event(e) => write!(f, "Event: {e}"),
             Self::EmptyMsg => write!(f, "Received empty message"),
         }
@@ -46,8 +50,14 @@ impl From<serde_json::Error> for MessageHandleError {
     }
 }
 
-impl From<crate::event::Error> for MessageHandleError {
-    fn from(e: crate::event::Error) -> Self {
+impl From<event::id::Error> for MessageHandleError {
+    fn from(e: event::id::Error) -> Self {
+        Self::EventId(e)
+    }
+}
+
+impl From<event::Error> for MessageHandleError {
+    fn from(e: event::Error) -> Self {
         Self::Event(e)
     }
 }

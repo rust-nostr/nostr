@@ -49,7 +49,9 @@ pub use self::event::tag::{
 };
 pub use self::event::{Event, EventBuilder, EventId, Kind, UnsignedEvent};
 pub use self::key::Keys;
-pub use self::message::{Alphabet, ClientMessage, Filter, RelayMessage, SubscriptionId};
+pub use self::message::{
+    Alphabet, ClientMessage, Filter, RawRelayMessage, RelayMessage, SubscriptionId,
+};
 pub use self::nips::nip19::{FromBech32, ToBech32};
 pub use self::types::{ChannelId, Contact, Entity, Metadata, Profile, Timestamp, UncheckedUrl};
 pub use self::util::JsonUtil;
