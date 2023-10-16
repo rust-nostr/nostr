@@ -36,6 +36,10 @@ mod ffi {
     pub use crate::types::{Contact, ImageDimensions, Metadata, Profile, Timestamp};
     pub use crate::util::generate_shared_key;
 
+    pub fn git_hash_version() -> String {
+        nostr::git_hash_version().to_string()
+    }
+
     // UDL
     uniffi::include_scaffolding!("nostr");
 }

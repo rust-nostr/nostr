@@ -2,6 +2,8 @@
 // Distributed under the MIT software license
 
 namespace nostr {
+    string git_hash_version();
+    
     [Throws=NostrError]
     sequence<u8> generate_shared_key(SecretKey secret_key, PublicKey public_key);
 
