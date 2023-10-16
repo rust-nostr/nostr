@@ -27,10 +27,12 @@ use tokio::sync::{broadcast, RwLock};
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
+pub mod builder;
 pub mod options;
 #[cfg(feature = "nip46")]
 pub mod signer;
 
+pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 #[cfg(feature = "nip46")]
 pub use self::signer::remote::RemoteSigner;
@@ -164,14 +166,7 @@ impl Client {
     /// let client = Client::with_opts(&my_keys, opts);
     /// ```
     pub fn with_opts(keys: &Keys, opts: Options) -> Self {
-        Self {
-            pool: RelayPool::new(opts.pool),
-            keys: Arc::new(RwLock::new(keys.clone())),
-            opts,
-            dropped: Arc::new(AtomicBool::new(false)),
-            #[cfg(feature = "nip46")]
-            remote_signer: None,
-        }
+        ClientBuilder::new(keys).opts(opts).build()
     }
 
     /// Create a new NIP46 Client
@@ -187,12 +182,21 @@ impl Client {
         remote_signer: RemoteSigner,
         opts: Options,
     ) -> Self {
+        ClientBuilder::new(app_keys)
+            .remote_signer(remote_signer)
+            .opts(opts)
+            .build()
+    }
+
+    /// Compose [`Client`] from [`ClientBuilder`]
+    pub fn from_builder(builder: ClientBuilder) -> Self {
         Self {
-            pool: RelayPool::new(opts.pool),
-            keys: Arc::new(RwLock::new(app_keys.clone())),
-            opts,
+            pool: RelayPool::with_database(builder.opts.pool, builder.database),
+            keys: Arc::new(RwLock::new(builder.keys)),
+            opts: builder.opts,
             dropped: Arc::new(AtomicBool::new(false)),
-            remote_signer: Some(remote_signer),
+            #[cfg(feature = "nip46")]
+            remote_signer: builder.remote_signer,
         }
     }
 
