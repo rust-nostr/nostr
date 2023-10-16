@@ -138,7 +138,10 @@ impl Kind {
 
     /// Check if [`Kind`] is `Replaceable`
     pub fn is_replaceable(&self) -> bool {
-        REPLACEABLE_RANGE.contains(&self.as_u64())
+        matches!(self, Kind::Metadata)
+            || matches!(self, Kind::ContactList)
+            || matches!(self, Kind::ChannelMetadata)
+            || REPLACEABLE_RANGE.contains(&self.as_u64())
     }
 
     /// Check if [`Kind`] is `Ephemeral`
