@@ -202,8 +202,10 @@ impl RelayPoolTask {
                                             }
 
                                             // Set event as seen by relay
-                                            if let Err(e) =
-                                                this.database.event_id_seen(event.id, Some(relay_url)).await
+                                            if let Err(e) = this
+                                                .database
+                                                .event_id_seen(event.id, Some(relay_url))
+                                                .await
                                             {
                                                 tracing::error!(
                                                     "Impossible to set event {} as seen by relay: {e}",
@@ -337,10 +339,13 @@ impl Drop for RelayPool {
 impl RelayPool {
     /// Create new `RelayPool`
     pub fn new(opts: RelayPoolOptions) -> Self {
+        Self::with_database(opts, Arc::new(MemoryDatabase::new()))
+    }
+
+    /// New with database
+    pub fn with_database(opts: RelayPoolOptions, database: Arc<DynNostrDatabase>) -> Self {
         let (notification_sender, _) = broadcast::channel(opts.notification_channel_size);
         let (pool_task_sender, pool_task_receiver) = mpsc::channel(opts.task_channel_size);
-
-        let database = Arc::new(MemoryDatabase::new());
 
         let relay_pool_task = RelayPoolTask::new(
             database.clone(),
@@ -477,6 +482,7 @@ impl RelayPool {
         if !relays.contains_key(&url) {
             let relay = Relay::new(
                 url,
+                self.database.clone(),
                 self.pool_task_sender.clone(),
                 self.notification_sender.clone(),
                 opts,

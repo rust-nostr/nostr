@@ -257,6 +257,7 @@ pub struct Relay {
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
     stats: RelayConnectionStats,
+    #[allow(dead_code)]
     database: Arc<DynNostrDatabase>,
     scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
