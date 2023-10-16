@@ -9,6 +9,7 @@ use serde_json::Value;
 use crate::message::MessageHandleError;
 
 /// Raw Relay Message
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RawRelayMessage {
     /// `["EVENT", <subscription_id>, <event JSON>]` (NIP01)
     Event {
