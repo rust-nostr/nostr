@@ -47,7 +47,9 @@ pub use self::event::tag::{
     ExternalIdentity, HttpMethod, Identity, ImageDimensions, Marker, RelayMetadata, Report, Tag,
     TagKind,
 };
-pub use self::event::{Event, EventBuilder, EventId, Kind, PartialEvent, UnsignedEvent};
+pub use self::event::{
+    Event, EventBuilder, EventId, Kind, MissingPartialEvent, PartialEvent, UnsignedEvent,
+};
 pub use self::key::Keys;
 pub use self::message::{
     Alphabet, ClientMessage, Filter, RawRelayMessage, RelayMessage, SubscriptionId,

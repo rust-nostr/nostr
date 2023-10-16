@@ -23,7 +23,7 @@ pub mod unsigned;
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::Kind;
-pub use self::partial::PartialEvent;
+pub use self::partial::{MissingPartialEvent, PartialEvent};
 pub use self::tag::{Marker, Tag, TagKind};
 pub use self::unsigned::UnsignedEvent;
 #[cfg(feature = "std")]
