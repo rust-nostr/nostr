@@ -137,12 +137,10 @@ impl Event {
         self.verify_id()?;
 
         // Verify signature
-        let message = Message::from_slice(self.id.as_bytes())?;
-        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
-            .map_err(|_| Error::InvalidSignature)
+        self.verify_signature_with_ctx(secp)
     }
 
-    /// Verify **ONLY** if the [`EventId`] it's composed correctly
+    /// Verify if the [`EventId`] it's composed correctly
     pub fn verify_id(&self) -> Result<(), Error> {
         let id: EventId = EventId::new(
             &self.pubkey,
@@ -156,6 +154,22 @@ impl Event {
         } else {
             Err(Error::InvalidId)
         }
+    }
+
+    /// Verify event [`Signature`]
+    #[cfg(feature = "std")]
+    pub fn verify_signature(&self) -> Result<(), Error> {
+        self.verify_with_ctx(&SECP256K1)
+    }
+
+    /// Verify event [`Signature`]
+    pub fn verify_signature_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
+    where
+        C: Verification,
+    {
+        let message = Message::from_slice(self.id.as_bytes())?;
+        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
+            .map_err(|_| Error::InvalidSignature)
     }
 
     /// Returns `true` if the event has an expiration tag that is expired.
