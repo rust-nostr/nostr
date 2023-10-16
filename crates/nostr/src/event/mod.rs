@@ -133,6 +133,17 @@ impl Event {
     where
         C: Verification,
     {
+        // Verify ID
+        self.verify_id()?;
+
+        // Verify signature
+        let message = Message::from_slice(self.id.as_bytes())?;
+        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
+            .map_err(|_| Error::InvalidSignature)
+    }
+
+    /// Verify **ONLY** if the [`EventId`] it's composed correctly
+    pub fn verify_id(&self) -> Result<(), Error> {
         let id: EventId = EventId::new(
             &self.pubkey,
             self.created_at,
@@ -141,9 +152,7 @@ impl Event {
             &self.content,
         );
         if id == self.id {
-            let message = Message::from_slice(id.as_bytes())?;
-            secp.verify_schnorr(&self.sig, &message, &self.pubkey)
-                .map_err(|_| Error::InvalidSignature)
+            Ok(())
         } else {
             Err(Error::InvalidId)
         }
