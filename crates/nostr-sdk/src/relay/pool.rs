@@ -11,8 +11,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::thread;
-use nostr::url::Url;
-use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, Timestamp};
+use nostr::message::MessageHandleError;
+use nostr::{
+    event, ClientMessage, Event, EventId, Filter, JsonUtil, MissingPartialEvent, PartialEvent,
+    RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
+};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, RwLock};
@@ -33,6 +36,18 @@ pub enum Error {
     /// Relay error
     #[error(transparent)]
     Relay(#[from] RelayError),
+    /// Event error
+    #[error(transparent)]
+    Event(#[from] event::Error),
+    /// Partial Event error
+    #[error(transparent)]
+    PartialEvent(#[from] event::partial::Error),
+    /// Message handler error
+    #[error(transparent)]
+    MessageHandler(#[from] MessageHandleError),
+    /// Thread error
+    #[error(transparent)]
+    Thread(#[from] thread::Error),
     /// No relays
     #[error("no relays")]
     NoRelays,
@@ -51,9 +66,6 @@ pub enum Error {
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
-    /// Thread error
-    #[error(transparent)]
-    Thread(#[from] thread::Error),
 }
 
 /// Relay Pool Message
@@ -64,7 +76,7 @@ pub enum RelayPoolMessage {
         /// Relay url
         relay_url: Url,
         /// Relay message
-        msg: RelayMessage,
+        msg: RawRelayMessage,
     },
     /// Events sent
     BatchEvent(Vec<EventId>),
@@ -152,31 +164,35 @@ impl RelayPoolTask {
                 while let Some(msg) = receiver.recv().await {
                     match msg {
                         RelayPoolMessage::ReceivedMsg { relay_url, msg } => {
-                            let _ = this
-                                .notification_sender
-                                .send(RelayPoolNotification::Message(
-                                    relay_url.clone(),
-                                    msg.clone(),
-                                ));
+                            match this.handle_relay_message(msg).await {
+                                Ok(msg) => {
+                                    let _ = this.notification_sender.send(
+                                        RelayPoolNotification::Message(
+                                            relay_url.clone(),
+                                            msg.clone(),
+                                        ),
+                                    );
 
-                            match msg {
-                                RelayMessage::Event { event, .. } => {
-                                    // Check if event was already seen
-                                    if this.add_event(event.id).await {
-                                        // Verifies if the event is valid
-                                        if event.verify().is_ok() {
-                                            let notification = RelayPoolNotification::Event(
-                                                relay_url,
-                                                event.as_ref().clone(),
-                                            );
-                                            let _ = this.notification_sender.send(notification);
+                                    match msg {
+                                        RelayMessage::Event { event, .. } => {
+                                            // Check if event was already seen
+                                            if this.add_event(event.id).await {
+                                                let notification = RelayPoolNotification::Event(
+                                                    relay_url,
+                                                    event.as_ref().clone(),
+                                                );
+                                                let _ = this.notification_sender.send(notification);
+                                            }
                                         }
+                                        RelayMessage::Notice { message } => {
+                                            tracing::warn!("Notice from {relay_url}: {message}")
+                                        }
+                                        _ => (),
                                     }
                                 }
-                                RelayMessage::Notice { message } => {
-                                    tracing::warn!("Notice from {relay_url}: {message}")
-                                }
-                                _ => (),
+                                Err(e) => tracing::error!(
+                                    "Impossible to handle relay message from {relay_url}: {e}"
+                                ),
                             }
                         }
                         RelayPoolMessage::BatchEvent(ids) => {
@@ -214,6 +230,38 @@ impl RelayPoolTask {
 
                 tracing::debug!("Exited from RelayPoolTask thread");
             });
+        }
+    }
+
+    async fn handle_relay_message(&self, msg: RawRelayMessage) -> Result<RelayMessage, Error> {
+        match msg {
+            RawRelayMessage::Event {
+                subscription_id,
+                event,
+            } => {
+                // Deserialize partial event (id, pubkey and sig)
+                let partial_event: PartialEvent = PartialEvent::from_json(event.to_string())?;
+
+                // Verify signature
+                partial_event.verify_signature()?;
+
+                // Deserialize missing event fields
+                let missing: MissingPartialEvent =
+                    MissingPartialEvent::from_json(event.to_string())?;
+
+                // Compose full event
+                let event: Event = partial_event.merge(missing);
+
+                // Verify event ID
+                event.verify_id()?;
+
+                // Compose RelayMessage
+                Ok(RelayMessage::Event {
+                    subscription_id: SubscriptionId::new(subscription_id),
+                    event: Box::new(event),
+                })
+            }
+            m => Ok(RelayMessage::try_from(m)?),
         }
     }
 

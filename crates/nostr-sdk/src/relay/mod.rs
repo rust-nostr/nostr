@@ -21,7 +21,8 @@ use nostr::negentropy::{self, Bytes, Negentropy};
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr::{
-    ClientMessage, Event, EventId, Filter, JsonUtil, RelayMessage, SubscriptionId, Timestamp, Url,
+    ClientMessage, Event, EventId, Filter, JsonUtil, RawRelayMessage, RelayMessage, SubscriptionId,
+    Timestamp, Url,
 };
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
@@ -781,7 +782,7 @@ impl Relay {
                         let max_size: usize = relay.limits.messages.max_size as usize;
                         relay.stats.add_bytes_received(size);
                         if size <= max_size {
-                            match RelayMessage::from_json(&data) {
+                            match RawRelayMessage::from_json(&data) {
                                 Ok(msg) => {
                                     tracing::trace!("Received message to {}: {:?}", relay.url, msg);
                                     if let Err(err) = relay
