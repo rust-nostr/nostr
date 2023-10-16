@@ -4,11 +4,9 @@
 //! Raw Relay messages
 
 use alloc::string::String;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::{json, Value};
+use serde_json::Value;
 
 use crate::message::MessageHandleError;
-use crate::JsonUtil;
 
 /// Raw Relay Message
 pub enum RawRelayMessage {
@@ -64,37 +62,6 @@ pub enum RawRelayMessage {
 }
 
 impl RawRelayMessage {
-    fn as_value(&self) -> Value {
-        match self {
-            Self::Event {
-                event,
-                subscription_id,
-            } => json!(["EVENT", subscription_id, event]),
-            Self::Notice { message } => json!(["NOTICE", message]),
-            Self::EndOfStoredEvents(subscription_id) => {
-                json!(["EOSE", subscription_id])
-            }
-            Self::Ok {
-                event_id,
-                status,
-                message,
-            } => json!(["OK", event_id, status, message]),
-            Self::Auth { challenge } => json!(["AUTH", challenge]),
-            Self::Count {
-                subscription_id,
-                count,
-            } => json!(["COUNT", subscription_id, { "count": count }]),
-            Self::NegMsg {
-                subscription_id,
-                message,
-            } => json!(["NEG-MSG", subscription_id, message]),
-            Self::NegErr {
-                subscription_id,
-                code,
-            } => json!(["NEG-ERR", subscription_id, code]),
-        }
-    }
-
     /// Deserialize [`RawRelayMessage`] from [`Value`]
     pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
         let v = msg
@@ -217,35 +184,9 @@ impl RawRelayMessage {
 
         Err(MessageHandleError::InvalidMessageFormat)
     }
-}
 
-impl Serialize for RawRelayMessage {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let json_value: Value = self.as_value();
-        json_value.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for RawRelayMessage {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let json_value = Value::deserialize(deserializer)?;
-        RawRelayMessage::from_value(json_value).map_err(serde::de::Error::custom)
-    }
-}
-
-impl JsonUtil for RawRelayMessage {
-    type Err = MessageHandleError;
-
-    /// Deserialize [`RelayMessage`] from JSON string
-    ///
-    /// **This method NOT verify the event signature!**
-    fn from_json<T>(json: T) -> Result<Self, Self::Err>
+    /// Deserialize [`RawRelayMessage`] from JSON string
+    pub fn from_json<T>(json: T) -> Result<Self, MessageHandleError>
     where
         T: AsRef<[u8]>,
     {
