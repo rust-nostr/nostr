@@ -9,7 +9,7 @@ use nostr::JsonUtil;
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::{EventId, PublicKey, Timestamp};
+use crate::{Event, EventId, PublicKey, Timestamp};
 
 #[derive(Clone)]
 pub struct Filter {
@@ -142,6 +142,10 @@ impl Filter {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.custom_tag(tag, content);
         Arc::new(builder)
+    }
+
+    pub fn match_event(&self, event: Arc<Event>) -> bool {
+        self.inner.match_event(event.as_ref().deref())
     }
 
     pub fn from_json(json: String) -> Result<Self> {
