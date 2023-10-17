@@ -22,6 +22,7 @@ use nostr::{
     ChannelId, ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind,
     Metadata, Result, Tag,
 };
+use nostr_sdk_db::DynNostrDatabase;
 use nostr_sdk_net::futures_util::Future;
 use tokio::sync::{broadcast, RwLock};
 
@@ -220,6 +221,11 @@ impl Client {
     /// Get [`RelayPool`]
     pub fn pool(&self) -> RelayPool {
         self.pool.clone()
+    }
+
+    /// Get database
+    pub fn database(&self) -> Arc<DynNostrDatabase> {
+        self.pool.database()
     }
 
     /// Get NIP46 uri
