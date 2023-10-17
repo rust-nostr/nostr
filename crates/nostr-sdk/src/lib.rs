@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
+#![allow(unknown_lints)]
 #![allow(clippy::arc_with_non_send_sync)]
 
 //! High level Nostr client library.
