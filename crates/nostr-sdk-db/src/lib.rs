@@ -77,6 +77,9 @@ pub trait NostrDatabase: AsyncTraitDeps {
         event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err>;
 
+    /// Get [`Event`] by [`EventId`]
+    async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err>;
+
     /// Query store with filters
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err>;
 

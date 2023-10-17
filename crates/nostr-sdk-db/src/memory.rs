@@ -119,6 +119,14 @@ impl NostrDatabase for MemoryDatabase {
         Ok(seen_event_ids.get(&event_id).cloned())
     }
 
+    async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
+        let events = self.events.read().await;
+        events
+            .get(&event_id)
+            .cloned()
+            .ok_or(DatabaseError::NotFound)
+    }
+
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
         let events = self.events.read().await;
         let mut list: Vec<Event> = Vec::new();
