@@ -679,6 +679,18 @@ impl Filter {
     }
 }
 
+/// Filters match event trait
+pub trait FiltersMatchEvent {
+    /// Determine if [`Filter`] match the provided [`Event`].
+    fn match_event(&self, event: &Event) -> bool;
+}
+
+impl FiltersMatchEvent for Vec<Filter> {
+    fn match_event(&self, event: &Event) -> bool {
+        self.iter().any(|f| f.match_event(event))
+    }
+}
+
 impl JsonUtil for Filter {
     type Err = serde_json::Error;
 }
@@ -902,5 +914,19 @@ mod test {
         )
         .unwrap()]);
         assert!(!filter.match_event(&event));
+
+        let filters: Vec<Filter> = vec![
+            // Filter that match
+            Filter::new()
+                .author("379e863e")
+                .kind(Kind::TextNote)
+                .since(Timestamp::from(1612808000)),
+            // Filter that not match
+            Filter::new().events(vec![EventId::from_hex(
+                "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
+            )
+            .unwrap()]),
+        ];
+        assert!(filters.match_event(&event));
     }
 }
