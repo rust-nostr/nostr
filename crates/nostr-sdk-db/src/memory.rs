@@ -143,14 +143,6 @@ impl NostrDatabase for MemoryDatabase {
         self._save_event(&mut events, event.clone()).await
     }
 
-    async fn save_events(&self, list: Vec<Event>) -> Result<(), Self::Err> {
-        let mut events = self.events.write().await;
-        for event in list.into_iter() {
-            self._save_event(&mut events, event).await?;
-        }
-        Ok(())
-    }
-
     async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
         let seen_event_ids = self.seen_event_ids.read().await;
         Ok(seen_event_ids.contains_key(&event_id))
