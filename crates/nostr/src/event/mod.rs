@@ -223,6 +223,16 @@ impl Event {
     pub fn is_parameterized_replaceable(&self) -> bool {
         self.kind.is_parameterized_replaceable()
     }
+
+    /// Extract identifier (`d` tag), if exists.
+    pub fn identifier(&self) -> Option<&str> {
+        for tag in self.tags.iter() {
+            if let Tag::Identifier(id) = tag {
+                return Some(id);
+            }
+        }
+        None
+    }
 }
 
 impl JsonUtil for Event {
