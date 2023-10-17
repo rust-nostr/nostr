@@ -652,7 +652,7 @@ impl Filter {
     }
 
     fn tag_match(&self, event: &Event) -> bool {
-        if event.tags.is_empty() {
+        if self.generic_tags.is_empty() || event.tags.is_empty() {
             return true;
         }
 
