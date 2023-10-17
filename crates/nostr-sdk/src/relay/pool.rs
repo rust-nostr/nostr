@@ -17,7 +17,7 @@ use nostr::{
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
 use nostr_sdk_db::memory::MemoryDatabase;
-use nostr_sdk_db::DynNostrDatabase;
+use nostr_sdk_db::{DatabaseError, DynNostrDatabase};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, RwLock};
@@ -47,6 +47,9 @@ pub enum Error {
     /// Message handler error
     #[error(transparent)]
     MessageHandler(#[from] MessageHandleError),
+    /// Database error
+    #[error(transparent)]
+    Database(#[from] DatabaseError),
     /// Thread error
     #[error(transparent)]
     Thread(#[from] thread::Error),
@@ -83,8 +86,6 @@ pub enum RelayPoolMessage {
         /// Relay message
         msg: RawRelayMessage,
     },
-    /// Events sent
-    BatchEvent(Vec<EventId>),
     /// Relay status changed
     RelayStatus {
         /// Relay url
@@ -216,17 +217,19 @@ impl RelayPoolTask {
                                         RelayMessage::Notice { message } => {
                                             tracing::warn!("Notice from {relay_url}: {message}")
                                         }
+                                        RelayMessage::Ok {
+                                            event_id,
+                                            status,
+                                            message,
+                                        } => {
+                                            tracing::debug!("Received OK from {relay_url} for event {event_id}: status={status}, message={message}");
+                                        }
                                         _ => (),
                                     }
                                 }
                                 Err(e) => tracing::error!(
                                     "Impossible to handle relay message from {relay_url}: {e}"
                                 ),
-                            }
-                        }
-                        RelayPoolMessage::BatchEvent(ids) => {
-                            if let Err(e) = this.database.event_ids_seen(ids, None).await {
-                                tracing::error!("Impossible to set events as seen: {e}");
                             }
                         }
                         RelayPoolMessage::RelayStatus { url, status } => {
@@ -509,16 +512,6 @@ impl RelayPool {
         Ok(())
     }
 
-    async fn set_events_as_sent(&self, ids: Vec<EventId>) {
-        if let Err(e) = self
-            .pool_task_sender
-            .send(RelayPoolMessage::BatchEvent(ids))
-            .await
-        {
-            tracing::error!("{e}");
-        };
-    }
-
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
         let relays = self.relays().await;
@@ -528,7 +521,7 @@ impl RelayPool {
         }
 
         if let ClientMessage::Event(event) = &msg {
-            self.set_events_as_sent(vec![event.id]).await;
+            self.database.save_event(event).await?;
         }
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
@@ -572,17 +565,12 @@ impl RelayPool {
             return Err(Error::NoRelays);
         }
 
-        let ids: Vec<EventId> = msgs
-            .iter()
-            .filter_map(|msg| {
-                if let ClientMessage::Event(event) = msg {
-                    Some(event.id)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        self.set_events_as_sent(ids).await;
+        // Save events into database
+        for msg in msgs.iter() {
+            if let ClientMessage::Event(event) = msg {
+                self.database.save_event(event).await?;
+            }
+        }
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -628,7 +616,7 @@ impl RelayPool {
         let url: Url = url.try_into_url()?;
 
         if let ClientMessage::Event(event) = &msg {
-            self.set_events_as_sent(vec![event.id]).await;
+            self.database.save_event(event).await?;
         }
 
         let relays = self.relays().await;
@@ -648,7 +636,7 @@ impl RelayPool {
             return Err(Error::NoRelays);
         }
 
-        self.set_events_as_sent(vec![event.id]).await;
+        self.database.save_event(&event).await?;
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -693,8 +681,10 @@ impl RelayPool {
             return Err(Error::NoRelays);
         }
 
-        let ids: Vec<EventId> = events.iter().map(|e| e.id).collect();
-        self.set_events_as_sent(ids).await;
+        // Save events into database
+        for event in events.iter() {
+            self.database.save_event(event).await?;
+        }
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -738,7 +728,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
-        self.set_events_as_sent(vec![event.id]).await;
+        self.database.save_event(&event).await?;
         let relays = self.relays().await;
         if let Some(relay) = relays.get(&url) {
             Ok(relay.send_event(event, opts).await?)
