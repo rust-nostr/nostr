@@ -1315,8 +1315,6 @@ impl From<Identity> for Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::secp256k1::Secp256k1;
-
     use super::*;
     use crate::{Event, JsonUtil, Timestamp};
 
@@ -1341,14 +1339,11 @@ mod tests {
 
     #[test]
     fn test_serialize_tag_to_event() {
-        let secp = Secp256k1::new();
-
         let pubkey = XOnlyPublicKey::from_str(
             "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
         )
         .unwrap();
         let event = Event::new_dummy(
-            &secp,
             "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
             "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3",
             Timestamp::from(1671739153),
@@ -1356,7 +1351,7 @@ mod tests {
             vec![Tag::PubKey(pubkey, None)],
             "8y4MRYrb4ztvXO2NmsHvUA==?iv=MplZo7oSdPfH/vdMC8Hmwg==",
             "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8"
-        ).unwrap();
+        );
 
         let event_json: &str = r#"{"content":"8y4MRYrb4ztvXO2NmsHvUA==?iv=MplZo7oSdPfH/vdMC8Hmwg==","created_at":1671739153,"id":"378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7","kind":4,"pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","sig":"fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8","tags":[["p","68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272"]]}"#;
 

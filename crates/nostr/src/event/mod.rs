@@ -4,10 +4,9 @@
 
 //! Event
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
-use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
@@ -240,43 +239,35 @@ impl JsonUtil for Event {
     }
 }
 
+#[cfg(test)]
 impl Event {
     /// This is just for serde sanity checking
-    #[allow(dead_code)]
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new_dummy<C>(
-        secp: &Secp256k1<C>,
+    pub(crate) fn new_dummy<S>(
         id: &str,
         pubkey: &str,
         created_at: Timestamp,
         kind: u64,
         tags: Vec<Tag>,
-        content: &str,
+        content: S,
         sig: &str,
-    ) -> Result<Self, Error>
+    ) -> Self
     where
-        C: Verification,
+        S: Into<String>,
     {
-        let id = EventId::from_hex(id).unwrap();
-        let pubkey = XOnlyPublicKey::from_str(pubkey)?;
-        let kind = Kind::from(kind);
-        let sig = Signature::from_str(sig)?;
+        use core::str::FromStr;
 
-        let event = Event {
-            id,
-            pubkey,
+        Self {
+            id: EventId::from_hex(id).unwrap(),
+            pubkey: XOnlyPublicKey::from_str(pubkey).unwrap(),
             created_at,
-            kind,
+            kind: Kind::from(kind),
             tags,
-            content: content.to_string(),
-            sig,
+            content: content.into(),
+            sig: Signature::from_str(sig).unwrap(),
             #[cfg(feature = "nip03")]
             ots: None,
-        };
-
-        event.verify_with_ctx(secp)?;
-
-        Ok(event)
+        }
     }
 }
 

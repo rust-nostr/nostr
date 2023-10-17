@@ -24,7 +24,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{EventId, JsonUtil, Kind, Timestamp};
+use crate::{Event, EventId, JsonUtil, Kind, Timestamp};
 
 /// Alphabet Error
 #[derive(Debug)]
@@ -262,7 +262,7 @@ pub struct Filter {
         deserialize_with = "deserialize_generic_tags"
     )]
     #[serde(default)]
-    pub generic_tags: AllocMap<Alphabet, Vec<String>>,
+    pub generic_tags: AllocMap<Alphabet, AllocSet<String>>,
 }
 
 impl Filter {
@@ -591,14 +591,12 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let values: Vec<String> = values.into_iter().map(|value| value.into()).collect();
+        let values: AllocSet<String> = values.into_iter().map(|value| value.into()).collect();
         self.generic_tags
             .entry(tag)
             .and_modify(|list| {
                 for value in values.clone().into_iter() {
-                    if !list.contains(&value) {
-                        list.push(value);
-                    }
+                    list.insert(value);
                 }
             })
             .or_insert(values);
@@ -618,19 +616,82 @@ impl Filter {
     }
 }
 
+fn prefix_match(prefixes: &[String], target: &str) -> bool {
+    prefixes.iter().any(|prefix| target.starts_with(prefix))
+}
+
+fn single_char_tagname(tagname: &str) -> Option<Alphabet> {
+    tagname
+        .chars()
+        .next()
+        .and_then(|first| Alphabet::from_str(&first.to_string()).ok())
+}
+
+fn tag_idx(event: &Event) -> AllocMap<Alphabet, AllocSet<String>> {
+    event
+        .tags
+        .iter()
+        .map(|t| t.as_vec())
+        .filter(|t| t.len() > 1)
+        .filter_map(|t| single_char_tagname(&t[0]).map(|tagnamechar| (tagnamechar, t[1].clone())))
+        .fold(AllocMap::new(), |mut idx, (tagnamechar, tagval)| {
+            idx.entry(tagnamechar)
+                .or_insert_with(AllocSet::new)
+                .insert(tagval);
+            idx
+        })
+}
+
+impl Filter {
+    fn ids_match(&self, event: &Event) -> bool {
+        self.ids.is_empty() || prefix_match(&self.ids, &event.id.to_hex())
+    }
+
+    fn authors_match(&self, event: &Event) -> bool {
+        self.authors.is_empty() || prefix_match(&self.authors, &event.pubkey.to_string())
+    }
+
+    fn tag_match(&self, event: &Event) -> bool {
+        if event.tags.is_empty() {
+            return true;
+        }
+
+        let idx: AllocMap<Alphabet, AllocSet<String>> = tag_idx(event);
+        self.generic_tags.iter().all(|(tagname, set)| {
+            idx.get(tagname)
+                .map(|valset| valset.intersection(set).count() > 0)
+                .unwrap_or(false)
+        })
+    }
+
+    fn kind_match(&self, kind: &Kind) -> bool {
+        self.kinds.is_empty() || self.kinds.contains(kind)
+    }
+
+    /// Determine if [`Filter`] match the provided [`Event`].
+    pub fn match_event(&self, event: &Event) -> bool {
+        self.ids_match(event)
+            && self.since.map_or(true, |t| event.created_at >= t)
+            && self.until.map_or(true, |t| event.created_at <= t)
+            && self.kind_match(&event.kind)
+            && self.authors_match(event)
+            && self.tag_match(event)
+    }
+}
+
 impl JsonUtil for Filter {
     type Err = serde_json::Error;
 }
 
 fn serialize_generic_tags<S>(
-    generic_tags: &AllocMap<Alphabet, Vec<String>>,
+    generic_tags: &AllocMap<Alphabet, AllocSet<String>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let mut map = serializer.serialize_map(Some(generic_tags.len()))?;
-    for (tag, values) in generic_tags {
+    for (tag, values) in generic_tags.iter() {
         map.serialize_entry(&format!("#{tag}"), values)?;
     }
     map.end()
@@ -638,14 +699,14 @@ where
 
 fn deserialize_generic_tags<'de, D>(
     deserializer: D,
-) -> Result<AllocMap<Alphabet, Vec<String>>, D::Error>
+) -> Result<AllocMap<Alphabet, AllocSet<String>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = AllocMap<Alphabet, Vec<String>>;
+        type Value = AllocMap<Alphabet, AllocSet<String>>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("map in which the keys are \"#X\" for some character X")
@@ -676,6 +737,8 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::Tag;
+
     use super::*;
 
     #[test]
@@ -733,8 +796,8 @@ mod test {
         let filter = Filter::new()
             .identifier("identifier")
             .search("test")
-            .custom_tag(Alphabet::J, vec!["test", "test1"]);
-        let json = r##"{"#d":["identifier"],"#j":["test","test1"],"search":"test"}"##;
+            .custom_tag(Alphabet::J, vec!["test1"]);
+        let json = r##"{"#d":["identifier"],"#j":["test1"],"search":"test"}"##;
         assert_eq!(filter.as_json(), json.to_string());
     }
 
@@ -757,5 +820,87 @@ mod test {
         let json = r##"{"aa":["..."],"search":"test"}"##;
         let filter = Filter::from_json(json).unwrap();
         assert_eq!(filter, Filter::new().search("test"));
+    }
+
+    #[test]
+    fn test_match_event() {
+        let event =
+            Event::new_dummy(
+                "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
+                "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
+                Timestamp::from(1612809991),
+                1,
+                vec![
+                    Tag::PubKey(XOnlyPublicKey::from_str("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap(), None),
+                    Tag::Event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap(), None, None),
+                ],
+                "test",
+                "273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"
+            );
+
+        // ID match
+        let filter = Filter::new().id("70b10f70c");
+        assert!(filter.match_event(&event));
+
+        // Not match (kind)
+        let filter = Filter::new().id("70b10f70c").kind(Kind::Metadata);
+        assert!(!filter.match_event(&event));
+
+        // Match (author, kind and since)
+        let filter = Filter::new()
+            .author("379e863e")
+            .kind(Kind::TextNote)
+            .since(Timestamp::from(1612808000));
+        assert!(filter.match_event(&event));
+
+        // Not match (since)
+        let filter = Filter::new()
+            .author("379e863e")
+            .kind(Kind::TextNote)
+            .since(Timestamp::from(1700000000));
+        assert!(!filter.match_event(&event));
+
+        // Match (#p tag and kind)
+        let filter = Filter::new()
+            .pubkey(
+                XOnlyPublicKey::from_str(
+                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
+                )
+                .unwrap(),
+            )
+            .kind(Kind::TextNote);
+        assert!(filter.match_event(&event));
+
+        // Match (tags)
+        let filter = Filter::new()
+            .pubkey(
+                XOnlyPublicKey::from_str(
+                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
+                )
+                .unwrap(),
+            )
+            .event(
+                EventId::from_hex(
+                    "7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96",
+                )
+                .unwrap(),
+            );
+        assert!(filter.match_event(&event));
+
+        // Match (tags)
+        let filter = Filter::new().events(vec![
+            EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")
+                .unwrap(),
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap(),
+        ]);
+        assert!(filter.match_event(&event));
+
+        // Not match (tags)
+        let filter = Filter::new().events(vec![EventId::from_hex(
+            "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
+        )
+        .unwrap()]);
+        assert!(!filter.match_event(&event));
     }
 }
