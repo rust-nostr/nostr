@@ -45,7 +45,9 @@ pub trait NostrDatabase: AsyncTraitDeps {
     fn backend(&self) -> Backend;
 
     /// Save [`Event`] into store
-    async fn save_event(&self, event: &Event) -> Result<(), Self::Err>;
+    ///
+    /// Return `true` if event was successfully saved into database.
+    async fn save_event(&self, event: &Event) -> Result<bool, Self::Err>;
 
     /// Save multiple [`Event`] into store
     async fn save_events(&self, events: Vec<Event>) -> Result<(), Self::Err>;
