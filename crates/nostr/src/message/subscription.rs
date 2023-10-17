@@ -4,11 +4,14 @@
 
 //! Subscription filters
 
-use alloc::collections::{BTreeMap, BTreeSet};
+#[cfg(not(feature = "std"))]
+use alloc::collections::{BTreeMap as AllocMap, BTreeSet as AllocSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
+#[cfg(feature = "std")]
+use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
@@ -234,31 +237,6 @@ pub struct Filter {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     pub kinds: Vec<Kind>,
-    /// #e tag
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(rename = "#e")]
-    #[serde(default)]
-    pub events: Vec<EventId>,
-    /// #p tag
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(rename = "#p")]
-    #[serde(default)]
-    pub pubkeys: Vec<XOnlyPublicKey>,
-    /// #t tag
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(rename = "#t")]
-    #[serde(default)]
-    pub hashtags: Vec<String>,
-    /// #r tag
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(rename = "#r")]
-    #[serde(default)]
-    pub references: Vec<String>,
-    /// #d tag
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(rename = "#d")]
-    #[serde(default)]
-    pub identifiers: Vec<String>,
     /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
@@ -284,7 +262,7 @@ pub struct Filter {
         deserialize_with = "deserialize_generic_tags"
     )]
     #[serde(default)]
-    pub generic_tags: BTreeMap<Alphabet, Vec<String>>,
+    pub generic_tags: AllocMap<Alphabet, Vec<String>>,
 }
 
 impl Filter {
@@ -328,7 +306,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let ids: BTreeSet<String> = ids.into_iter().map(|id| id.into()).collect();
+        let ids: AllocSet<String> = ids.into_iter().map(|id| id.into()).collect();
         Self {
             ids: self
                 .ids
@@ -374,7 +352,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let authors: BTreeSet<String> = authors.into_iter().map(|id| id.into()).collect();
+        let authors: AllocSet<String> = authors.into_iter().map(|id| id.into()).collect();
         Self {
             authors: self
                 .authors
@@ -410,7 +388,7 @@ impl Filter {
 
     /// Remove kinds
     pub fn remove_kinds(self, kinds: Vec<Kind>) -> Self {
-        let kinds: BTreeSet<Kind> = kinds.into_iter().collect();
+        let kinds: AllocSet<Kind> = kinds.into_iter().collect();
         Self {
             kinds: self
                 .kinds
@@ -423,74 +401,38 @@ impl Filter {
 
     /// Add event
     pub fn event(self, id: EventId) -> Self {
-        let mut events: Vec<EventId> = self.events;
-        if !events.contains(&id) {
-            events.push(id);
-        }
-        Self { events, ..self }
+        self.custom_tag(Alphabet::E, vec![id])
     }
 
     /// Add events
     pub fn events(self, events: Vec<EventId>) -> Self {
-        let mut current_events: Vec<EventId> = self.events;
-        for value in events.into_iter() {
-            if !current_events.contains(&value) {
-                current_events.push(value);
-            }
-        }
-        Self {
-            events: current_events,
-            ..self
-        }
+        self.custom_tag(Alphabet::E, events)
     }
 
     /// Remove events
     pub fn remove_events<S>(self, events: Vec<EventId>) -> Self {
-        let events: BTreeSet<EventId> = events.into_iter().collect();
-        Self {
-            events: self
-                .events
-                .into_iter()
-                .filter(|value| !events.contains(value))
-                .collect(),
-            ..self
-        }
+        self.remove_custom_tag(Alphabet::E, events)
     }
 
     /// Add pubkey
     pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
-        let mut pubkeys: Vec<XOnlyPublicKey> = self.pubkeys;
-        if !pubkeys.contains(&pubkey) {
-            pubkeys.push(pubkey);
-        }
-        Self { pubkeys, ..self }
+        self.custom_tag(Alphabet::P, vec![pubkey.to_string()])
     }
 
     /// Add pubkeys
     pub fn pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
-        let mut current_pubkeys: Vec<XOnlyPublicKey> = self.pubkeys;
-        for value in pubkeys.into_iter() {
-            if !current_pubkeys.contains(&value) {
-                current_pubkeys.push(value);
-            }
-        }
-        Self {
-            pubkeys: current_pubkeys,
-            ..self
-        }
+        self.custom_tag(
+            Alphabet::P,
+            pubkeys.into_iter().map(|p| p.to_string()).collect(),
+        )
     }
 
     /// Remove pubkeys
     pub fn remove_pubkeys<S>(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
-        let pubkeys: BTreeSet<XOnlyPublicKey> = pubkeys.into_iter().collect();
-        Self {
-            pubkeys: self
-                .pubkeys
-                .into_iter()
-                .filter(|value| !pubkeys.contains(value))
-                .collect(),
-            ..self
-        }
+        self.remove_custom_tag(
+            Alphabet::P,
+            pubkeys.into_iter().map(|p| p.to_string()).collect(),
+        )
     }
 
     /// Add hashtag
@@ -500,12 +442,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let hashtag: String = hashtag.into();
-        let mut hashtags: Vec<String> = self.hashtags;
-        if !hashtags.contains(&hashtag) {
-            hashtags.push(hashtag);
-        }
-        Self { hashtags, ..self }
+        self.custom_tag(Alphabet::T, vec![hashtag])
     }
 
     /// Add hashtags
@@ -515,16 +452,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let mut current_hashtags: Vec<String> = self.hashtags;
-        for value in hashtags.into_iter().map(|value| value.into()) {
-            if !current_hashtags.contains(&value) {
-                current_hashtags.push(value);
-            }
-        }
-        Self {
-            hashtags: current_hashtags,
-            ..self
-        }
+        self.custom_tag(Alphabet::T, hashtags)
     }
 
     /// Remove hashtags
@@ -532,15 +460,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let hashtags: BTreeSet<String> = hashtags.into_iter().map(|id| id.into()).collect();
-        Self {
-            hashtags: self
-                .hashtags
-                .into_iter()
-                .filter(|value| !hashtags.contains(value))
-                .collect(),
-            ..self
-        }
+        self.remove_custom_tag(Alphabet::T, hashtags)
     }
 
     /// Add reference
@@ -550,12 +470,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let reference: String = reference.into();
-        let mut references: Vec<String> = self.references;
-        if !references.contains(&reference) {
-            references.push(reference);
-        }
-        Self { references, ..self }
+        self.custom_tag(Alphabet::R, vec![reference])
     }
 
     /// Add references
@@ -565,16 +480,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let mut current_references: Vec<String> = self.references;
-        for value in references.into_iter().map(|value| value.into()) {
-            if !current_references.contains(&value) {
-                current_references.push(value);
-            }
-        }
-        Self {
-            references: current_references,
-            ..self
-        }
+        self.custom_tag(Alphabet::R, references)
     }
 
     /// Remove references
@@ -582,15 +488,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let references: BTreeSet<String> = references.into_iter().map(|id| id.into()).collect();
-        Self {
-            references: self
-                .references
-                .into_iter()
-                .filter(|value| !references.contains(value))
-                .collect(),
-            ..self
-        }
+        self.remove_custom_tag(Alphabet::R, references)
     }
 
     /// Add identifier
@@ -600,15 +498,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let identifier: String = identifier.into();
-        let mut identifiers: Vec<String> = self.identifiers;
-        if !identifiers.contains(&identifier) {
-            identifiers.push(identifier);
-        }
-        Self {
-            identifiers,
-            ..self
-        }
+        self.custom_tag(Alphabet::D, vec![identifier])
     }
 
     /// Add identifiers
@@ -618,16 +508,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let mut current_identifiers: Vec<String> = self.identifiers;
-        for value in identifiers.into_iter().map(|value| value.into()) {
-            if !current_identifiers.contains(&value) {
-                current_identifiers.push(value);
-            }
-        }
-        Self {
-            identifiers: current_identifiers,
-            ..self
-        }
+        self.custom_tag(Alphabet::D, identifiers)
     }
 
     /// Remove identifiers
@@ -635,15 +516,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        let identifiers: BTreeSet<String> = identifiers.into_iter().map(|id| id.into()).collect();
-        Self {
-            identifiers: self
-                .identifiers
-                .into_iter()
-                .filter(|value| !identifiers.contains(value))
-                .collect(),
-            ..self
-        }
+        self.remove_custom_tag(Alphabet::D, identifiers)
     }
 
     /// Add search field
@@ -714,13 +587,12 @@ impl Filter {
     }
 
     /// Add custom tag
-    pub fn custom_tag<S>(self, tag: Alphabet, values: Vec<S>) -> Self
+    pub fn custom_tag<S>(mut self, tag: Alphabet, values: Vec<S>) -> Self
     where
         S: Into<String>,
     {
         let values: Vec<String> = values.into_iter().map(|value| value.into()).collect();
-        let mut generic_tags: BTreeMap<Alphabet, Vec<String>> = self.generic_tags;
-        generic_tags
+        self.generic_tags
             .entry(tag)
             .and_modify(|list| {
                 for value in values.clone().into_iter() {
@@ -730,26 +602,19 @@ impl Filter {
                 }
             })
             .or_insert(values);
-        Self {
-            generic_tags,
-            ..self
-        }
+        self
     }
 
     /// Remove identifiers
-    pub fn remove_custom_tag<S>(self, tag: Alphabet, values: Vec<S>) -> Self
+    pub fn remove_custom_tag<S>(mut self, tag: Alphabet, values: Vec<S>) -> Self
     where
         S: Into<String>,
     {
-        let values: BTreeSet<String> = values.into_iter().map(|id| id.into()).collect();
-        let mut generic_tags: BTreeMap<Alphabet, Vec<String>> = self.generic_tags;
-        generic_tags.entry(tag).and_modify(|list| {
+        let values: AllocSet<String> = values.into_iter().map(|id| id.into()).collect();
+        self.generic_tags.entry(tag).and_modify(|list| {
             list.retain(|value| !values.contains(value));
         });
-        Self {
-            generic_tags,
-            ..self
-        }
+        self
     }
 }
 
@@ -758,7 +623,7 @@ impl JsonUtil for Filter {
 }
 
 fn serialize_generic_tags<S>(
-    generic_tags: &BTreeMap<Alphabet, Vec<String>>,
+    generic_tags: &AllocMap<Alphabet, Vec<String>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -773,14 +638,14 @@ where
 
 fn deserialize_generic_tags<'de, D>(
     deserializer: D,
-) -> Result<BTreeMap<Alphabet, Vec<String>>, D::Error>
+) -> Result<AllocMap<Alphabet, Vec<String>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = BTreeMap<Alphabet, Vec<String>>;
+        type Value = AllocMap<Alphabet, Vec<String>>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("map in which the keys are \"#X\" for some character X")
@@ -790,7 +655,7 @@ where
         where
             M: MapAccess<'de>,
         {
-            let mut generic_tags = BTreeMap::new();
+            let mut generic_tags = AllocMap::new();
             while let Some(key) = map.next_key::<String>()? {
                 let mut chars = key.chars();
                 if let (Some('#'), Some(ch), None) = (chars.next(), chars.next(), chars.next()) {
@@ -848,6 +713,19 @@ mod test {
         let filter = Filter::new().custom_tag(Alphabet::C, vec!["test", "test2"]);
         let filter = filter.remove_custom_tag(Alphabet::C, vec!["test2"]);
         assert_eq!(filter, Filter::new().custom_tag(Alphabet::C, vec!["test"]));
+    }
+
+    #[test]
+    fn test_add_remove_event_tag() {
+        let mut filter = Filter::new().identifier("myidentifier");
+        filter = filter.custom_tag(Alphabet::D, vec!["mysecondid"]);
+        filter = filter.identifiers(vec!["test", "test2"]);
+        filter = filter.remove_custom_tag(Alphabet::D, vec!["test2"]);
+        filter = filter.remove_identifiers(vec!["mysecondid"]);
+        assert_eq!(
+            filter,
+            Filter::new().identifiers(vec!["myidentifier", "test"])
+        );
     }
 
     #[test]
