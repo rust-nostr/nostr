@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use nostr::{Event, EventId, Filter, Url};
+use nostr::{Event, EventId, Filter, FiltersMatchEvent, Url};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -27,6 +27,7 @@ impl From<Error> for DatabaseError {
 #[derive(Debug, Default)]
 pub struct MemoryDatabase {
     seen_event_ids: Arc<RwLock<HashMap<EventId, HashSet<Url>>>>,
+    events: Arc<RwLock<HashMap<EventId, Event>>>,
     // TODO: add messages queue? (messages not sent)
 }
 
@@ -68,11 +69,17 @@ impl NostrDatabase for MemoryDatabase {
         Backend::Memory
     }
 
-    async fn save_event(&self, _event: &Event) -> Result<(), Self::Err> {
+    async fn save_event(&self, event: &Event) -> Result<(), Self::Err> {
+        let mut events = self.events.write().await;
+        events.insert(event.id, event.clone());
         Ok(())
     }
 
-    async fn save_events(&self, _events: Vec<Event>) -> Result<(), Self::Err> {
+    async fn save_events(&self, list: Vec<Event>) -> Result<(), Self::Err> {
+        let mut events = self.events.write().await;
+        for event in list.into_iter() {
+            events.insert(event.id, event);
+        }
         Ok(())
     }
 
@@ -112,11 +119,25 @@ impl NostrDatabase for MemoryDatabase {
         Ok(seen_event_ids.get(&event_id).cloned())
     }
 
-    async fn query(&self, _filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        Err(DatabaseError::NotSupported)
+    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
+        let events = self.events.read().await;
+        let mut list: Vec<Event> = Vec::new();
+        for event in events.values() {
+            if filters.match_event(event) {
+                list.push(event.clone());
+            }
+        }
+        Ok(list)
     }
 
-    async fn event_ids_by_filters(&self, _filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
-        Err(DatabaseError::NotSupported)
+    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
+        let events = self.events.read().await;
+        let mut list: Vec<EventId> = Vec::new();
+        for event in events.values() {
+            if filters.match_event(event) {
+                list.push(event.id);
+            }
+        }
+        Ok(list)
     }
 }
