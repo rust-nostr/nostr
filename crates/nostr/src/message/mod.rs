@@ -11,7 +11,7 @@ pub mod subscription;
 
 pub use self::client::ClientMessage;
 pub use self::relay::{RawRelayMessage, RelayMessage};
-pub use self::subscription::{Alphabet, Filter, SubscriptionId};
+pub use self::subscription::{Alphabet, Filter, FiltersMatchEvent, SubscriptionId};
 use crate::event;
 
 /// Messages error
