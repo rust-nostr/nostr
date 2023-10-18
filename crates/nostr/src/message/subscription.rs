@@ -635,9 +635,7 @@ fn tag_idx(event: &Event) -> AllocMap<Alphabet, AllocSet<String>> {
         .filter(|t| t.len() > 1)
         .filter_map(|t| single_char_tagname(&t[0]).map(|tagnamechar| (tagnamechar, t[1].clone())))
         .fold(AllocMap::new(), |mut idx, (tagnamechar, tagval)| {
-            idx.entry(tagnamechar)
-                .or_insert_with(AllocSet::new)
-                .insert(tagval);
+            idx.entry(tagnamechar).or_default().insert(tagval);
             idx
         })
 }
