@@ -430,7 +430,7 @@ impl RelayPool {
         url: U,
         proxy: Option<SocketAddr>,
         opts: RelayOptions,
-    ) -> Result<(), Error>
+    ) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
@@ -447,13 +447,15 @@ impl RelayPool {
                 Limits::default(),
             );
             relays.insert(relay.url(), relay);
+            Ok(true)
+        } else {
+            Ok(false)
         }
-        Ok(())
     }
 
     /// Add new relay
     #[cfg(target_arch = "wasm32")]
-    pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<(), Error>
+    pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
@@ -469,8 +471,10 @@ impl RelayPool {
                 Limits::default(),
             );
             relays.insert(relay.url(), relay);
+            Ok(true)
+        } else {
+            Ok(false)
         }
-        Ok(())
     }
 
     /// Disconnect and remove relay

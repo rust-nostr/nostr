@@ -88,7 +88,7 @@ impl Client {
         Ok(Arc::new(self.inner.relay(url)?.into()))
     }
 
-    pub fn add_relay(&self, url: String, proxy: Option<String>) -> Result<()> {
+    pub fn add_relay(&self, url: String, proxy: Option<String>) -> Result<bool> {
         let proxy: Option<SocketAddr> = match proxy {
             Some(proxy) => Some(proxy.parse()?),
             None => None,

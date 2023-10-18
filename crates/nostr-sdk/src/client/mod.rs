@@ -290,6 +290,8 @@ impl Client {
 
     /// Add new relay
     ///
+    /// Return `true` if relay it's successfully added, otherwise `false` (like, if was already added)
+    ///
     /// # Example
     /// ```rust,no_run
     /// use nostr_sdk::prelude::*;
@@ -309,7 +311,7 @@ impl Client {
     /// # }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<(), Error>
+    pub async fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
@@ -320,7 +322,7 @@ impl Client {
 
     /// Add new relay
     #[cfg(target_arch = "wasm32")]
-    pub async fn add_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn add_relay<U>(&self, url: U) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
@@ -351,24 +353,22 @@ impl Client {
         url: U,
         proxy: Option<SocketAddr>,
         opts: RelayOptions,
-    ) -> Result<(), Error>
+    ) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.pool.add_relay(url, proxy, opts).await?;
-        Ok(())
+        Ok(self.pool.add_relay(url, proxy, opts).await?)
     }
 
     /// Add new relay with [`Options`]
     #[cfg(target_arch = "wasm32")]
-    pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<(), Error>
+    pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.pool.add_relay(url, opts).await?;
-        Ok(())
+        Ok(self.pool.add_relay(url, opts).await?)
     }
 
     /// Disconnect and remove relay

@@ -627,7 +627,7 @@ interface Client {
     [Throws=NostrSdkError]
     Relay relay(string url);
     [Throws=NostrSdkError]
-    void add_relay(string url, optional string? proxy = null);
+    boolean add_relay(string url, optional string? proxy = null);
     [Throws=NostrSdkError]
     void remove_relay(string url);
     [Throws=NostrSdkError]

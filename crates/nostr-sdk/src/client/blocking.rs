@@ -131,7 +131,7 @@ impl Client {
         RUNTIME.block_on(async { self.client.add_relays(relays).await })
     }
 
-    pub fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<(), Error>
+    pub fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
@@ -144,7 +144,7 @@ impl Client {
         url: U,
         proxy: Option<SocketAddr>,
         opts: RelayOptions,
-    ) -> Result<(), Error>
+    ) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
