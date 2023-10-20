@@ -1133,6 +1133,7 @@ dependencies = [
  "nostr",
  "thiserror",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
