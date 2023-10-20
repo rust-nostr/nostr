@@ -66,6 +66,9 @@ pub enum Error {
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
+    /// Event expired
+    #[error("event expired")]
+    EventExpired,
 }
 
 /// Relay Pool Message
@@ -251,6 +254,11 @@ impl RelayPoolTask {
 
                 // Compose full event
                 let event: Event = partial_event.merge(missing);
+
+                // Check if it's expired
+                if event.is_expired() {
+                    return Err(Error::EventExpired);
+                }
 
                 // Verify event ID
                 event.verify_id()?;
