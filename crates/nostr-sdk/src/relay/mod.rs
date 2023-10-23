@@ -21,8 +21,8 @@ use nostr::negentropy::{self, Bytes, Negentropy};
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr::{
-    ClientMessage, Event, EventId, Filter, JsonUtil, RawRelayMessage, RelayMessage, SubscriptionId,
-    Timestamp, Url,
+    ClientMessage, Event, EventId, Filter, JsonUtil, Keys, RawRelayMessage, RelayMessage,
+    SubscriptionId, Timestamp, Url,
 };
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
@@ -1580,5 +1580,19 @@ impl Relay {
         self.send_msg(close_msg, None).await?;
 
         Ok(())
+    }
+
+    /// Check if relay support negentropy protocol
+    pub async fn support_negentropy(&self) -> Result<bool, Error> {
+        let pk = Keys::generate();
+        let filter = Filter::new().author(pk.public_key().to_string());
+        match self
+            .reconcilie(filter, Vec::new(), Duration::from_secs(5))
+            .await
+        {
+            Ok(_) => Ok(true),
+            Err(Error::NegentropyNotSupported) => Ok(false),
+            Err(e) => Err(e),
+        }
     }
 }
