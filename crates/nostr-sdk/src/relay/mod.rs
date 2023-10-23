@@ -1473,7 +1473,7 @@ impl Relay {
     pub async fn reconcilie(
         &self,
         filter: Filter,
-        my_items: Vec<(EventId, Timestamp)>,
+        items: Vec<(EventId, Timestamp)>,
         timeout: Duration,
     ) -> Result<(), Error> {
         if !self.opts.get_read() {
@@ -1484,7 +1484,7 @@ impl Relay {
 
         let mut negentropy = Negentropy::new(id_size, Some(2_500))?;
 
-        for (id, timestamp) in my_items.into_iter() {
+        for (id, timestamp) in items.into_iter() {
             let id = Bytes::from_slice(id.as_bytes());
             negentropy.add_item(timestamp.as_u64(), id)?;
         }

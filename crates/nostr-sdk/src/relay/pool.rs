@@ -861,17 +861,23 @@ impl RelayPool {
     }
 
     /// Negentropy reconciliation
-    pub async fn reconcilie(
+    pub async fn reconcilie(&self, filter: Filter, timeout: Duration) -> Result<(), Error> {
+        let items: Vec<(EventId, Timestamp)> = self.database.negentropy_items(&filter).await?;
+        self.reconcilie_with_items(filter, items, timeout).await
+    }
+
+    /// Negentropy reconciliation with custom items
+    pub async fn reconcilie_with_items(
         &self,
         filter: Filter,
-        my_items: Vec<(EventId, Timestamp)>,
+        items: Vec<(EventId, Timestamp)>,
         timeout: Duration,
     ) -> Result<(), Error> {
         let mut handles = Vec::new();
         let relays = self.relays().await;
         for (url, relay) in relays.into_iter() {
             let filter = filter.clone();
-            let my_items = my_items.clone();
+            let my_items = items.clone();
             let handle = thread::spawn(async move {
                 if let Err(e) = relay.reconcilie(filter, my_items, timeout).await {
                     tracing::error!("Failed to get reconcilie with {url}: {e}");

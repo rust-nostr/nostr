@@ -1314,6 +1314,11 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
+    /// Negentropy reconciliation
+    pub async fn reconcilie(&self, filter: Filter, timeout: Duration) -> Result<(), Error> {
+        Ok(self.pool.reconcilie(filter, timeout).await?)
+    }
+
     /// Get a list of channels
     pub async fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
         self.get_events_of(vec![Filter::new().kind(Kind::ChannelCreation)], timeout)
