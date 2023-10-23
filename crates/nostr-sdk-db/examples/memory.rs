@@ -10,7 +10,7 @@ use nostr_sdk_db::NostrDatabase;
 #[tokio::main]
 async fn main() {
     let keys = Keys::generate();
-    let database = MemoryDatabase::new();
+    let database = MemoryDatabase::new(true);
 
     for i in 0..50_000 {
         let event = EventBuilder::new_text_note(format!("Event #{i}"), &[])

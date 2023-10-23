@@ -14,6 +14,9 @@ pub enum DatabaseError {
     /// Not supported
     #[error("method not supported by current backend")]
     NotSupported,
+    /// Feature disabled
+    #[error("feature disabled for current backend")]
+    FeatureDisabled,
     /// Not found
     #[error("not found")]
     NotFound,

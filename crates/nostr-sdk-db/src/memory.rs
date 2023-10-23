@@ -24,17 +24,31 @@ impl From<Error> for DatabaseError {
 }
 
 /// Memory Database (RAM)
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct MemoryDatabase {
+    store_events: bool,
     seen_event_ids: Arc<RwLock<HashMap<EventId, HashSet<Url>>>>,
     events: Arc<RwLock<HashMap<EventId, Event>>>,
     // TODO: add messages queue? (messages not sent)
 }
 
+impl Default for MemoryDatabase {
+    fn default() -> Self {
+        Self::new(false)
+    }
+}
+
 impl MemoryDatabase {
     /// New Memory database
-    pub fn new() -> Self {
-        Self::default()
+    ///
+    /// If `store_events` arg is set to `true`, the seen events will be stored in memory (a lot of it could be used).
+    /// If it's set to `false`, only the [`EventId`] will be stored (instead of the full [`Event`])
+    pub fn new(store_events: bool) -> Self {
+        Self {
+            store_events,
+            seen_event_ids: Arc::new(RwLock::new(HashMap::new())),
+            events: Arc::new(RwLock::new(HashMap::new())),
+        }
     }
 
     fn _event_id_seen(
@@ -81,50 +95,54 @@ impl MemoryDatabase {
     ) -> Result<bool, DatabaseError> {
         self.event_id_seen(event.id, None).await?;
 
-        if event.is_expired() || event.is_ephemeral() {
-            tracing::warn!("Event {} not saved: expired or ephemeral", event.id);
-            return Ok(false);
-        }
-
-        let mut should_insert: bool = true;
-
-        if event.is_replaceable() {
-            let filter: Filter = Filter::new()
-                .author(event.pubkey.to_string())
-                .kind(event.kind);
-            let res: Vec<Event> = self._query(events, vec![filter]).await?;
-            if let Some(ev) = res.into_iter().next() {
-                if ev.created_at >= event.created_at {
-                    should_insert = false;
-                } else if ev.created_at < event.created_at {
-                    events.remove(&ev.id);
-                }
+        if self.store_events {
+            if event.is_expired() || event.is_ephemeral() {
+                tracing::warn!("Event {} not saved: expired or ephemeral", event.id);
+                return Ok(false);
             }
-        } else if event.is_parameterized_replaceable() {
-            match event.identifier() {
-                Some(identifier) => {
-                    let filter: Filter = Filter::new()
-                        .author(event.pubkey.to_string())
-                        .kind(event.kind)
-                        .identifier(identifier);
-                    let res: Vec<Event> = self._query(events, vec![filter]).await?;
-                    if let Some(ev) = res.into_iter().next() {
-                        if ev.created_at >= event.created_at {
-                            should_insert = false;
-                        } else if ev.created_at < event.created_at {
-                            events.remove(&ev.id);
-                        }
+
+            let mut should_insert: bool = true;
+
+            if event.is_replaceable() {
+                let filter: Filter = Filter::new()
+                    .author(event.pubkey.to_string())
+                    .kind(event.kind);
+                let res: Vec<Event> = self._query(events, vec![filter]).await?;
+                if let Some(ev) = res.into_iter().next() {
+                    if ev.created_at >= event.created_at {
+                        should_insert = false;
+                    } else if ev.created_at < event.created_at {
+                        events.remove(&ev.id);
                     }
                 }
-                None => should_insert = false,
+            } else if event.is_parameterized_replaceable() {
+                match event.identifier() {
+                    Some(identifier) => {
+                        let filter: Filter = Filter::new()
+                            .author(event.pubkey.to_string())
+                            .kind(event.kind)
+                            .identifier(identifier);
+                        let res: Vec<Event> = self._query(events, vec![filter]).await?;
+                        if let Some(ev) = res.into_iter().next() {
+                            if ev.created_at >= event.created_at {
+                                should_insert = false;
+                            } else if ev.created_at < event.created_at {
+                                events.remove(&ev.id);
+                            }
+                        }
+                    }
+                    None => should_insert = false,
+                }
             }
-        }
 
-        if should_insert {
-            events.insert(event.id, event);
-            Ok(true)
+            if should_insert {
+                events.insert(event.id, event);
+                Ok(true)
+            } else {
+                tracing::warn!("Event {} not saved: unknown", event.id);
+                Ok(false)
+            }
         } else {
-            tracing::warn!("Event {} not saved: unknown", event.id);
             Ok(false)
         }
     }
@@ -180,27 +198,39 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
-        let events = self.events.read().await;
-        events
-            .get(&event_id)
-            .cloned()
-            .ok_or(DatabaseError::NotFound)
+        if self.store_events {
+            let events = self.events.read().await;
+            events
+                .get(&event_id)
+                .cloned()
+                .ok_or(DatabaseError::NotFound)
+        } else {
+            Err(DatabaseError::FeatureDisabled)
+        }
     }
 
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        let events = self.events.read().await;
-        self._query(&events, filters).await
+        if self.store_events {
+            let events = self.events.read().await;
+            self._query(&events, filters).await
+        } else {
+            Err(DatabaseError::FeatureDisabled)
+        }
     }
 
     async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
-        let events = self.events.read().await;
-        let mut list: Vec<EventId> = Vec::new();
-        for event in events.values() {
-            if filters.match_event(event) {
-                list.push(event.id);
+        if self.store_events {
+            let events = self.events.read().await;
+            let mut list: Vec<EventId> = Vec::new();
+            for event in events.values() {
+                if filters.match_event(event) {
+                    list.push(event.id);
+                }
             }
+            Ok(list)
+        } else {
+            Err(DatabaseError::FeatureDisabled)
         }
-        Ok(list)
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {

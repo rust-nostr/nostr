@@ -27,7 +27,7 @@ impl ClientBuilder {
     pub fn new(keys: &Keys) -> Self {
         Self {
             keys: keys.clone(),
-            database: Arc::new(MemoryDatabase::new()),
+            database: Arc::new(MemoryDatabase::default()),
             opts: Options::default(),
             #[cfg(feature = "nip46")]
             remote_signer: None,

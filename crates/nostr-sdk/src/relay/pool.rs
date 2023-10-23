@@ -342,7 +342,7 @@ impl Drop for RelayPool {
 impl RelayPool {
     /// Create new `RelayPool`
     pub fn new(opts: RelayPoolOptions) -> Self {
-        Self::with_database(opts, Arc::new(MemoryDatabase::new()))
+        Self::with_database(opts, Arc::new(MemoryDatabase::default()))
     }
 
     /// New with database
