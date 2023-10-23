@@ -237,20 +237,9 @@ impl NostrDatabase for MemoryDatabase {
 
     async fn negentropy_items(
         &self,
-        filter: &Filter,
+        _filter: &Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        if self.opts.events {
-            let events = self.events.read().await;
-            let mut items: Vec<(EventId, Timestamp)> = Vec::new();
-            for event in events.values() {
-                if filter.match_event(event) {
-                    items.push((event.id, event.created_at));
-                }
-            }
-            Ok(items)
-        } else {
-            Err(DatabaseError::FeatureDisabled)
-        }
+        Err(DatabaseError::NotSupported)
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {
