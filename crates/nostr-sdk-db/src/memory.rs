@@ -202,4 +202,12 @@ impl NostrDatabase for MemoryDatabase {
         }
         Ok(list)
     }
+
+    async fn wipe(&self) -> Result<(), Self::Err> {
+        let mut seen_event_ids = self.seen_event_ids.write().await;
+        seen_event_ids.clear();
+        let mut events = self.events.write().await;
+        events.clear();
+        Ok(())
+    }
 }

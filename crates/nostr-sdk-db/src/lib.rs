@@ -86,6 +86,9 @@ pub trait NostrDatabase: AsyncTraitDeps {
     ///
     /// Uuseful for negentropy reconciliation
     async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err>;
+
+    /// Wipe all data
+    async fn wipe(&self) -> Result<(), Self::Err>;
 }
 
 /// Alias for `Send` on non-wasm, empty trait (implemented by everything) on
