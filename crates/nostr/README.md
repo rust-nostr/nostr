@@ -45,7 +45,7 @@ fn main() -> Result<()> {
         .banner(Url::parse("https://example.com/banner.png")?)
         .nip05("username@example.com")
         .lud16("yuki@getalby.com")
-        .custom_field("custom_field", Value::String("my value".into()));
+        .custom_field("custom_field", "my value");
 
     let event: Event = EventBuilder::set_metadata(metadata).to_event(&my_keys)?;
 

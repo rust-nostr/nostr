@@ -3,14 +3,16 @@
 
 //! Metadata
 
-use alloc::collections::BTreeMap;
+#[cfg(not(feature = "std"))]
+use alloc::collections::BTreeMap as AllocMap;
 use alloc::string::String;
 use core::fmt;
+#[cfg(feature = "std")]
+use std::collections::HashMap as AllocMap;
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use url_fork::Url;
 
 use crate::JsonUtil;
@@ -85,7 +87,7 @@ pub struct Metadata {
         deserialize_with = "deserialize_custom_fields"
     )]
     #[serde(default)]
-    pub custom: BTreeMap<String, Value>,
+    pub custom: AllocMap<String, String>,
 }
 
 impl Metadata {
@@ -185,13 +187,12 @@ impl Metadata {
     }
 
     /// Set custom metadata field
-    pub fn custom_field<S>(self, field_name: S, value: Value) -> Self
+    pub fn custom_field<S>(mut self, field_name: S, value: S) -> Self
     where
         S: Into<String>,
     {
-        let mut custom: BTreeMap<String, Value> = self.custom;
-        custom.insert(field_name.into(), value);
-        Self { custom, ..self }
+        self.custom.insert(field_name.into(), value.into());
+        self
     }
 }
 
@@ -200,7 +201,7 @@ impl JsonUtil for Metadata {
 }
 
 fn serialize_custom_fields<S>(
-    custom_fields: &BTreeMap<String, Value>,
+    custom_fields: &AllocMap<String, String>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -213,26 +214,30 @@ where
     map.end()
 }
 
-fn deserialize_custom_fields<'de, D>(deserializer: D) -> Result<BTreeMap<String, Value>, D::Error>
+fn deserialize_custom_fields<'de, D>(deserializer: D) -> Result<AllocMap<String, String>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = BTreeMap<String, Value>;
+        type Value = AllocMap<String, String>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("TODO")
+            formatter.write_str("map where keys and values are both strings")
         }
 
         fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
         where
             M: MapAccess<'de>,
         {
-            let mut custom_fields = BTreeMap::new();
+            #[cfg(not(feature = "std"))]
+            let mut custom_fields: AllocMap<String, String> = AllocMap::new();
+            #[cfg(feature = "std")]
+            let mut custom_fields: AllocMap<String, String> =
+                AllocMap::with_capacity(map.size_hint().unwrap_or_default());
             while let Some(field_name) = map.next_key::<String>()? {
-                let value: Value = map.next_value()?;
+                let value: String = map.next_value()?;
                 custom_fields.insert(field_name, value);
             }
             Ok(custom_fields)
@@ -265,7 +270,7 @@ mod tests {
             Metadata::new()
                 .name("myname")
                 .about("Description")
-                .custom_field("displayName", Value::String("Jack".into()))
+                .custom_field("displayName", "Jack")
         );
 
         let content = r#"{"lud16":"thesimplekid@cln.thesimplekid.com","nip05":"_@thesimplekid.com","display_name":"thesimplekid","about":"Wannabe open source dev","name":"thesimplekid","username":"thesimplekid","displayName":"thesimplekid","lud06":""}"#;
@@ -279,8 +284,8 @@ mod tests {
                 .nip05("_@thesimplekid.com")
                 .lud06("")
                 .lud16("thesimplekid@cln.thesimplekid.com")
-                .custom_field("username", Value::String("thesimplekid".into()))
-                .custom_field("displayName", Value::String("thesimplekid".into()))
+                .custom_field("username", "thesimplekid")
+                .custom_field("displayName", "thesimplekid")
         )
     }
 }
