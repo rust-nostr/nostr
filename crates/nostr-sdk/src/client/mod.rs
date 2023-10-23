@@ -20,7 +20,7 @@ use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
     ChannelId, ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind,
-    Metadata, Result, Tag,
+    Metadata, Result, Tag, Timestamp,
 };
 use nostr_sdk_db::DynNostrDatabase;
 use nostr_sdk_net::futures_util::Future;
@@ -1315,8 +1315,21 @@ impl Client {
     }
 
     /// Negentropy reconciliation
-    pub async fn reconcilie(&self, filter: Filter, timeout: Duration) -> Result<(), Error> {
-        Ok(self.pool.reconcilie(filter, timeout).await?)
+    pub async fn reconcile(&self, filter: Filter, timeout: Duration) -> Result<(), Error> {
+        Ok(self.pool.reconcile(filter, timeout).await?)
+    }
+
+    /// Negentropy reconciliation with items
+    pub async fn reconcile_with_items(
+        &self,
+        filter: Filter,
+        items: Vec<(EventId, Timestamp)>,
+        timeout: Duration,
+    ) -> Result<(), Error> {
+        Ok(self
+            .pool
+            .reconcile_with_items(filter, items, timeout)
+            .await?)
     }
 
     /// Get a list of channels

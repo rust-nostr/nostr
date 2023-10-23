@@ -1470,7 +1470,7 @@ impl Relay {
     }
 
     /// Negentropy reconciliation
-    pub async fn reconcilie(
+    pub async fn reconcile(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
@@ -1585,7 +1585,7 @@ impl Relay {
         let pk = Keys::generate();
         let filter = Filter::new().author(pk.public_key());
         match self
-            .reconcilie(filter, Vec::new(), Duration::from_secs(5))
+            .reconcile(filter, Vec::new(), Duration::from_secs(5))
             .await
         {
             Ok(_) => Ok(true),

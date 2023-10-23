@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     let filter = Filter::new().author(my_keys.public_key()).limit(10);
     let relay = client.relay("wss://relay.damus.io").await?;
     relay
-        .reconcilie(filter, my_items, Duration::from_secs(30))
+        .reconcile(filter, my_items, Duration::from_secs(30))
         .await?;
 
     client
