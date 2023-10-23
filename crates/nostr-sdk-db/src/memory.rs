@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use nostr::{Event, EventId, Filter, FiltersMatchEvent, Url};
+use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -28,9 +28,10 @@ impl From<Error> for DatabaseError {
 pub struct MemoryDatabase {
     opts: DatabaseOptions,
     seen_event_ids: Arc<RwLock<HashMap<EventId, HashSet<Url>>>>,
-    events: Arc<RwLock<HashMap<EventId, Event>>>,
-    // TODO: add messages queue? (messages not sent)
+    events: Arc<RwLock<HashMap<EventId, Event>>>, // TODO: order by timestamp (DESC)?
 }
+
+// TODO: add queue field?
 
 impl Default for MemoryDatabase {
     fn default() -> Self {
@@ -229,6 +230,24 @@ impl NostrDatabase for MemoryDatabase {
                 }
             }
             Ok(list)
+        } else {
+            Err(DatabaseError::FeatureDisabled)
+        }
+    }
+
+    async fn negentropy_items(
+        &self,
+        filter: &Filter,
+    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
+        if self.opts.events {
+            let events = self.events.read().await;
+            let mut items: Vec<(EventId, Timestamp)> = Vec::new();
+            for event in events.values() {
+                if filter.match_event(event) {
+                    items.push((event.id, event.created_at));
+                }
+            }
+            Ok(items)
         } else {
             Err(DatabaseError::FeatureDisabled)
         }

@@ -9,7 +9,7 @@
 use std::collections::HashSet;
 
 use async_trait::async_trait;
-use nostr::{Event, EventId, Filter, Url};
+use nostr::{Event, EventId, Filter, Timestamp, Url};
 
 mod error;
 pub mod memory;
@@ -88,9 +88,13 @@ pub trait NostrDatabase: AsyncTraitDeps {
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err>;
 
     /// Get event IDs by filters
-    ///
-    /// Uuseful for negentropy reconciliation
     async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err>;
+
+    /// Get `negentropy` items
+    async fn negentropy_items(
+        &self,
+        filter: &Filter,
+    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err>;
 
     /// Wipe all data
     async fn wipe(&self) -> Result<(), Self::Err>;
