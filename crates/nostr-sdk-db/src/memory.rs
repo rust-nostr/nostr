@@ -11,7 +11,7 @@ use nostr::{Event, EventId, Filter, FiltersMatchEvent, Url};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-use crate::{Backend, DatabaseError, NostrDatabase};
+use crate::{Backend, DatabaseError, DatabaseOptions, NostrDatabase};
 
 /// Memory Database Error
 #[derive(Debug, Error)]
@@ -26,7 +26,7 @@ impl From<Error> for DatabaseError {
 /// Memory Database (RAM)
 #[derive(Debug)]
 pub struct MemoryDatabase {
-    store_events: bool,
+    opts: DatabaseOptions,
     seen_event_ids: Arc<RwLock<HashMap<EventId, HashSet<Url>>>>,
     events: Arc<RwLock<HashMap<EventId, Event>>>,
     // TODO: add messages queue? (messages not sent)
@@ -34,18 +34,15 @@ pub struct MemoryDatabase {
 
 impl Default for MemoryDatabase {
     fn default() -> Self {
-        Self::new(false)
+        Self::new(DatabaseOptions { events: false })
     }
 }
 
 impl MemoryDatabase {
     /// New Memory database
-    ///
-    /// If `store_events` arg is set to `true`, the seen events will be stored in memory (a lot of it could be used).
-    /// If it's set to `false`, only the [`EventId`] will be stored (instead of the full [`Event`])
-    pub fn new(store_events: bool) -> Self {
+    pub fn new(opts: DatabaseOptions) -> Self {
         Self {
-            store_events,
+            opts,
             seen_event_ids: Arc::new(RwLock::new(HashMap::new())),
             events: Arc::new(RwLock::new(HashMap::new())),
         }
@@ -95,7 +92,7 @@ impl MemoryDatabase {
     ) -> Result<bool, DatabaseError> {
         self.event_id_seen(event.id, None).await?;
 
-        if self.store_events {
+        if self.opts.events {
             if event.is_expired() || event.is_ephemeral() {
                 tracing::warn!("Event {} not saved: expired or ephemeral", event.id);
                 return Ok(false);
@@ -156,6 +153,10 @@ impl NostrDatabase for MemoryDatabase {
         Backend::Memory
     }
 
+    fn opts(&self) -> DatabaseOptions {
+        self.opts
+    }
+
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         let mut events = self.events.write().await;
         self._save_event(&mut events, event.clone()).await
@@ -198,7 +199,7 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
-        if self.store_events {
+        if self.opts.events {
             let events = self.events.read().await;
             events
                 .get(&event_id)
@@ -210,7 +211,7 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        if self.store_events {
+        if self.opts.events {
             let events = self.events.read().await;
             self._query(&events, filters).await
         } else {
@@ -219,7 +220,7 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
-        if self.store_events {
+        if self.opts.events {
             let events = self.events.read().await;
             let mut list: Vec<EventId> = Vec::new();
             for event in events.values() {

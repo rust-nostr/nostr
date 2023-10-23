@@ -5,12 +5,13 @@ use std::time::{Duration, Instant};
 
 use nostr::{EventBuilder, Filter, Keys, Kind, Metadata, Tag};
 use nostr_sdk_db::memory::MemoryDatabase;
-use nostr_sdk_db::NostrDatabase;
+use nostr_sdk_db::{DatabaseOptions, NostrDatabase};
 
 #[tokio::main]
 async fn main() {
     let keys = Keys::generate();
-    let database = MemoryDatabase::new(true);
+    let opts = DatabaseOptions::default();
+    let database = MemoryDatabase::new(opts);
 
     for i in 0..50_000 {
         let event = EventBuilder::new_text_note(format!("Event #{i}"), &[])

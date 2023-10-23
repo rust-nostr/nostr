@@ -13,8 +13,10 @@ use nostr::{Event, EventId, Filter, Url};
 
 mod error;
 pub mod memory;
+mod options;
 
 pub use self::error::DatabaseError;
+pub use self::options::DatabaseOptions;
 
 /// Backend
 pub enum Backend {
@@ -43,6 +45,9 @@ pub trait NostrDatabase: AsyncTraitDeps {
 
     /// Name of the backend database used (ex. rocksdb, lmdb, sqlite, indexeddb, ...)
     fn backend(&self) -> Backend;
+
+    /// Database options
+    fn opts(&self) -> DatabaseOptions;
 
     /// Save [`Event`] into store
     ///
