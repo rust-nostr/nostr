@@ -377,6 +377,8 @@ interface Metadata {
     Metadata set_lud06(string lud06);
     [Self=ByArc]
     Metadata set_lud16(string lud16);
+    [Self=ByArc]
+    Metadata set_custom_field(string key, string value);
 
     string? get_name();
     string? get_display_name();
@@ -387,6 +389,7 @@ interface Metadata {
     string? get_nip05();
     string? get_lud06();
     string? get_lud16();
+    string? get_custom_field(string key);
 };
 
 interface FileMetadata {

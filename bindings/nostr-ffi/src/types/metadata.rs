@@ -142,4 +142,14 @@ impl Metadata {
     pub fn get_lud16(&self) -> Option<String> {
         self.metadata.lud16.clone()
     }
+
+    pub fn set_custom_field(self: Arc<Self>, key: String, value: String) -> Arc<Self> {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.metadata = builder.metadata.custom_field(key, value);
+        Arc::new(builder)
+    }
+
+    pub fn get_custom_field(&self, key: String) -> Option<String> {
+        self.metadata.custom.get(&key).cloned()
+    }
 }
