@@ -57,7 +57,7 @@ where
             "CLOSED" => Self::Closed,
             "FILTER_NOT_FOUND" => Self::FilterNotFound,
             "FILTER_INVALID" => Self::FilterInvalid,
-            o => Self::Other(o.to_string()),
+            _ => Self::Other(code),
         }
     }
 }

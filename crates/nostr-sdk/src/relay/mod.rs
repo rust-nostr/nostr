@@ -197,7 +197,7 @@ where
         match s.as_str() {
             "default" => Self::Default,
             "pool" => Self::Pool,
-            c => Self::Custom(c.to_string()),
+            _ => Self::Custom(s),
         }
     }
 }

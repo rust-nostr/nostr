@@ -5,7 +5,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/48.md>
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::fmt;
 
 /// NIP48 Proxy Protocol
@@ -46,7 +46,7 @@ where
             "atproto" => Self::ATProto,
             "rss" => Self::Rss,
             "web" => Self::Web,
-            s => Self::Custom(s.to_string()),
+            _ => Self::Custom(s),
         }
     }
 }

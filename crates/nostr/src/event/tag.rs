@@ -160,7 +160,7 @@ where
         match s.as_str() {
             "root" => Self::Root,
             "reply" => Self::Reply,
-            m => Self::Custom(m.to_string()),
+            _ => Self::Custom(s),
         }
     }
 }
@@ -232,7 +232,7 @@ where
             "planned" => Self::Planned,
             "live" => Self::Live,
             "ended" => Self::Ended,
-            s => Self::Custom(s.to_string()),
+            _ => Self::Custom(s),
         }
     }
 }
@@ -545,8 +545,8 @@ where
     S: Into<String>,
 {
     fn from(s: S) -> Self {
-        let s: String = s.into();
-        match s.as_str() {
+        let tag: String = s.into();
+        match tag.as_str() {
             "p" => Self::P,
             "e" => Self::E,
             "r" => Self::R,
@@ -595,7 +595,7 @@ where
             "anon" => Self::Anon,
             "proxy" => Self::Proxy,
             "emoji" => Self::Emoji,
-            tag => Self::Custom(tag.to_string()),
+            _ => Self::Custom(tag),
         }
     }
 }
