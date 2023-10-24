@@ -3,6 +3,7 @@
 
 //! Rust implementation of the Nostr protocol.
 
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![cfg_attr(not(feature = "std"), no_std)]

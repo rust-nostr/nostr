@@ -3,6 +3,8 @@
 
 //! Nostr SDK Network
 
+#![forbid(unsafe_code)]
+
 pub extern crate futures_util;
 
 #[cfg(not(target_arch = "wasm32"))]
