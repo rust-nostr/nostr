@@ -12,5 +12,8 @@ clean:
 book:
 	cd book && make build
 
+flatbuffers:
+	cd crates/nostr-sdk-fbs && make
+
 loc:
 	@echo "--- Counting lines of .rs files (LOC):" && find crates/ bindings/ -type f -name "*.rs" -exec cat {} \; | wc -l

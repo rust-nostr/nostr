@@ -1,0 +1,11 @@
+[package]
+name = "nostr-sdk-fbs"
+version = "0.1.0"
+edition = "2021"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+flatbuffers = "23.5"
+nostr = { version = "0.24", path = "../nostr", default-features = false, features = ["std"] }
