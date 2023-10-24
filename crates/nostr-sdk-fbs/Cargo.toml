@@ -9,3 +9,4 @@ license.workspace = true
 [dependencies]
 flatbuffers = "23.5"
 nostr = { version = "0.24", path = "../nostr", default-features = false, features = ["std"] }
+thiserror = { workspace = true }
