@@ -35,7 +35,9 @@ pub use self::options::Options;
 #[cfg(feature = "nip46")]
 pub use self::signer::remote::RemoteSigner;
 use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
-use crate::relay::{FilterOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions};
+use crate::relay::{
+    FilterOptions, Relay, RelayOptions, RelayPoolNotification, RelayRole, RelaySendOptions,
+};
 use crate::util::TryIntoUrl;
 
 /// [`Client`] error
@@ -321,7 +323,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.add_relay_with_opts(url, proxy, RelayOptions::default())
+        self.add_relay_with_opts(url, proxy, RelayRole::default(), RelayOptions::default())
             .await
     }
 
@@ -351,7 +353,8 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.add_relay_with_opts(url, RelayOptions::default()).await
+        self.add_relay_with_opts(url, RelayRole::default(), RelayOptions::default())
+            .await
     }
 
     /// Add new relay with [`RelayOptions`]
@@ -370,7 +373,7 @@ impl Client {
     /// #   let client = Client::new(&my_keys);
     /// let opts = RelayOptions::new().write(false).retry_sec(11);
     /// client
-    ///     .add_relay_with_opts("wss://relay.nostr.info", None, opts)
+    ///     .add_relay_with_opts("wss://relay.nostr.info", None, RelayRole::default(), opts)
     ///     .await
     ///     .unwrap();
     ///
@@ -382,13 +385,14 @@ impl Client {
         &self,
         url: U,
         proxy: Option<SocketAddr>,
+        role: RelayRole,
         opts: RelayOptions,
     ) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self.pool.add_relay(url, proxy, opts).await?)
+        Ok(self.pool.add_relay(url, proxy, role, opts).await?)
     }
 
     /// Add new relay with [`RelayOptions`]
@@ -397,12 +401,17 @@ impl Client {
     ///
     /// Return `false` if the relay already exists.
     #[cfg(target_arch = "wasm32")]
-    pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
+    pub async fn add_relay_with_opts<U>(
+        &self,
+        url: U,
+        role: RelayRole,
+        opts: RelayOptions,
+    ) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self.pool.add_relay(url, opts).await?)
+        Ok(self.pool.add_relay(url, role, opts).await?)
     }
 
     /// Disconnect and remove relay
@@ -674,7 +683,9 @@ impl Client {
         } else {
             None
         };
-        self.pool.send_msg(msg, wait).await?;
+        self.pool
+            .send_msg(msg, &[RelayRole::default()], wait)
+            .await?;
         Ok(())
     }
 
@@ -684,7 +695,9 @@ impl Client {
         msgs: Vec<ClientMessage>,
         wait: Option<Duration>,
     ) -> Result<(), Error> {
-        self.pool.batch_msg(msgs, wait).await?;
+        self.pool
+            .batch_msg(msgs, &[RelayRole::default()], wait)
+            .await?;
         Ok(())
     }
 
@@ -711,7 +724,10 @@ impl Client {
         let opts = RelaySendOptions::new()
             .skip_disconnected(self.opts.get_skip_disconnected_relays())
             .timeout(timeout);
-        Ok(self.pool.send_event(event, opts).await?)
+        Ok(self
+            .pool
+            .send_event(event, &[RelayRole::default()], opts)
+            .await?)
     }
 
     /// Send multiple [`Event`] at once
@@ -720,7 +736,9 @@ impl Client {
         events: Vec<Event>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.pool.batch_event(events, opts).await?;
+        self.pool
+            .batch_event(events, &[RelayRole::default()], opts)
+            .await?;
         Ok(())
     }
 

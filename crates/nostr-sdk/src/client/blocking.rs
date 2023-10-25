@@ -18,7 +18,7 @@ use tokio::sync::broadcast;
 #[cfg(feature = "nip46")]
 use super::signer::remote::RemoteSigner;
 use super::{Error, Options, TryIntoUrl};
-use crate::relay::{pool, Relay, RelayOptions, RelayPoolNotification};
+use crate::relay::{pool, Relay, RelayOptions, RelayPoolNotification, RelayRole};
 use crate::RUNTIME;
 
 #[derive(Debug, Clone)]
@@ -143,13 +143,18 @@ impl Client {
         &self,
         url: U,
         proxy: Option<SocketAddr>,
+        role: RelayRole,
         opts: RelayOptions,
     ) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        RUNTIME.block_on(async { self.client.add_relay_with_opts(url, proxy, opts).await })
+        RUNTIME.block_on(async {
+            self.client
+                .add_relay_with_opts(url, proxy, role, opts)
+                .await
+        })
     }
 
     pub fn remove_relay<U>(&self, url: U) -> Result<(), Error>

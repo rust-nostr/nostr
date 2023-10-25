@@ -33,7 +33,8 @@ pub use self::client::blocking;
 pub use self::client::{Client, Options};
 pub use self::relay::{
     ActiveSubscription, FilterOptions, InternalSubscriptionId, Relay, RelayConnectionStats,
-    RelayOptions, RelayPoolNotification, RelayPoolOptions, RelaySendOptions, RelayStatus,
+    RelayOptions, RelayPoolNotification, RelayPoolOptions, RelayRole, RelaySendOptions,
+    RelayStatus,
 };
 
 #[cfg(feature = "blocking")]

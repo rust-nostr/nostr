@@ -33,12 +33,14 @@ use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 pub mod limits;
 mod options;
 pub mod pool;
+mod role;
 mod stats;
 
 pub use self::limits::Limits;
 pub use self::options::{FilterOptions, RelayOptions, RelayPoolOptions, RelaySendOptions};
 use self::options::{MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
+pub use self::role::RelayRole;
 pub use self::stats::RelayConnectionStats;
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
@@ -252,6 +254,7 @@ pub struct Relay {
     #[cfg(not(target_arch = "wasm32"))]
     proxy: Option<SocketAddr>,
     status: Arc<RwLock<RelayStatus>>,
+    role: Arc<RwLock<RelayRole>>,
     #[cfg(feature = "nip11")]
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
@@ -278,6 +281,7 @@ impl Relay {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new(
         url: Url,
+        role: RelayRole,
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         proxy: Option<SocketAddr>,
@@ -290,6 +294,7 @@ impl Relay {
             url,
             proxy,
             status: Arc::new(RwLock::new(RelayStatus::Initialized)),
+            role: Arc::new(RwLock::new(role)),
             #[cfg(feature = "nip11")]
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
@@ -310,6 +315,7 @@ impl Relay {
     #[cfg(target_arch = "wasm32")]
     pub fn new(
         url: Url,
+        role: RelayRole,
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         opts: RelayOptions,
@@ -320,6 +326,7 @@ impl Relay {
         Self {
             url,
             status: Arc::new(RwLock::new(RelayStatus::Initialized)),
+            role: Arc::new(RwLock::new(role)),
             #[cfg(feature = "nip11")]
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
@@ -371,6 +378,18 @@ impl Relay {
         }) {
             tracing::error!("Impossible to send RelayPoolMessage::RelayStatus message: {e}");
         }
+    }
+
+    /// Get [`RelayRole`]
+    pub async fn role(&self) -> RelayRole {
+        let role = self.role.read().await;
+        role.clone()
+    }
+
+    /// Change [`RelayRole`]
+    pub async fn change_role(&self, role: RelayRole) {
+        let mut r = self.role.write().await;
+        *r = role;
     }
 
     /// Check if [`Relay`] is connected
