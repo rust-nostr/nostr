@@ -30,7 +30,7 @@ nip47 = ["nostr/nip47"]
 
 [dependencies]
 async-utility = "0.1"
-nostr = { version = "0.25", path = "../nostr", default-features = false, features = ["std"] }
+nostr = { workspace = true, features = ["std"] }
 nostr-sdk-db = { version = "0.1", path = "../nostr-sdk-db" }
 nostr-sdk-net = { version = "0.25", path = "../nostr-sdk-net" }
 once_cell = { workspace = true }

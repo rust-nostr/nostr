@@ -1159,6 +1159,7 @@ dependencies = [
  "flatbuffers",
  "nostr",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

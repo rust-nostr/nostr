@@ -13,7 +13,7 @@ keywords = ["nostr", "sdk", "db"]
 
 [dependencies]
 async-trait = "0.1"
-nostr = { version = "0.24", path = "../nostr", default-features = false, features = ["std"] }
+nostr = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std"] }
