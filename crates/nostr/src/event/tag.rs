@@ -804,7 +804,7 @@ where
                 TagKind::A => {
                     let mut kpi = tag_1.split(':');
                     if let (Some(kind_str), Some(pubkey_str), Some(identifier)) =
-                        (kpi.nth(0), kpi.nth(0), kpi.nth(0))
+                        (kpi.next(), kpi.next(), kpi.next())
                     {
                         Ok(Self::A {
                             kind: Kind::from_str(kind_str)?,
@@ -909,7 +909,7 @@ where
                 TagKind::A => {
                     let mut kpi = tag_1.split(':');
                     if let (Some(kind_str), Some(pubkey_str), Some(identifier)) =
-                        (kpi.nth(0), kpi.nth(0), kpi.nth(0))
+                        (kpi.next(), kpi.next(), kpi.next())
                     {
                         Ok(Self::A {
                             kind: Kind::from_str(kind_str)?,
