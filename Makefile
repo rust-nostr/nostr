@@ -3,6 +3,9 @@
 precommit:
 	@bash .githooks/pre-push
 
+bench:
+	RUSTFLAGS='--cfg=bench' cargo +nightly bench -p nostr
+
 clean:
 	cargo clean
 
