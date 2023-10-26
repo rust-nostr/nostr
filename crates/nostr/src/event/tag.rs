@@ -3,6 +3,7 @@
 
 //! Tag
 
+use alloc::borrow::ToOwned;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
@@ -542,11 +543,10 @@ impl fmt::Display for TagKind {
 
 impl<S> From<S> for TagKind
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
-    fn from(s: S) -> Self {
-        let tag: String = s.into();
-        match tag.as_str() {
+    fn from(tag: S) -> Self {
+        match tag.as_ref() {
             "p" => Self::P,
             "e" => Self::E,
             "r" => Self::R,
@@ -595,7 +595,7 @@ where
             "anon" => Self::Anon,
             "proxy" => Self::Proxy,
             "emoji" => Self::Emoji,
-            _ => Self::Custom(tag),
+            t => Self::Custom(t.to_owned()),
         }
     }
 }
@@ -699,7 +699,7 @@ impl Tag {
     /// Parse [`Tag`] from string vector
     pub fn parse<S>(data: Vec<S>) -> Result<Self, Error>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
         Tag::try_from(data)
     }
@@ -772,12 +772,11 @@ impl Tag {
 
 impl<S> TryFrom<Vec<S>> for Tag
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
     type Error = Error;
 
     fn try_from(tag: Vec<S>) -> Result<Self, Self::Error> {
-        let tag: Vec<String> = tag.into_iter().map(|v| v.into()).collect();
         let tag_len: usize = tag.len();
         let tag_kind: TagKind = match tag.first() {
             Some(kind) => TagKind::from(kind),
@@ -789,7 +788,7 @@ where
             let urls = tag
                 .iter()
                 .skip(1)
-                .map(UncheckedUrl::from)
+                .map(|u| UncheckedUrl::from(u.as_ref()))
                 .collect::<Vec<UncheckedUrl>>();
             Ok(Self::Relays(urls))
         } else if tag_len == 1 {
@@ -799,158 +798,169 @@ where
                 _ => Ok(Self::Generic(tag_kind, Vec::new())),
             }
         } else if tag_len == 2 {
-            let content: &str = &tag[1];
+            let tag_1: &str = tag[1].as_ref();
 
             match tag_kind {
                 TagKind::A => {
-                    let kpi: Vec<&str> = tag[1].split(':').collect();
-                    if kpi.len() == 3 {
+                    let mut kpi = tag_1.split(':');
+                    if let (Some(kind_str), Some(pubkey_str), Some(identifier)) =
+                        (kpi.nth(0), kpi.nth(0), kpi.nth(0))
+                    {
                         Ok(Self::A {
-                            kind: Kind::from_str(kpi[0])?,
-                            public_key: XOnlyPublicKey::from_str(kpi[1])?,
-                            identifier: kpi[2].to_string(),
+                            kind: Kind::from_str(kind_str)?,
+                            public_key: XOnlyPublicKey::from_str(pubkey_str)?,
+                            identifier: identifier.to_owned(),
                             relay_url: None,
                         })
                     } else {
                         Err(Error::InvalidLength)
                     }
                 }
-                TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(content)?, None)),
-                TagKind::E => Ok(Self::Event(EventId::from_hex(content)?, None, None)),
+                TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(tag_1)?, None)),
+                TagKind::E => Ok(Self::Event(EventId::from_hex(tag_1)?, None, None)),
                 TagKind::R => {
-                    if content.starts_with("ws://") || content.starts_with("wss://") {
-                        Ok(Self::RelayMetadata(UncheckedUrl::from(content), None))
+                    if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
+                        Ok(Self::RelayMetadata(UncheckedUrl::from(tag_1), None))
                     } else {
-                        Ok(Self::Reference(content.to_string()))
+                        Ok(Self::Reference(tag_1.to_owned()))
                     }
                 }
-                TagKind::T => Ok(Self::Hashtag(content.to_string())),
-                TagKind::G => Ok(Self::Geohash(content.to_string())),
-                TagKind::D => Ok(Self::Identifier(content.to_string())),
-                TagKind::Relay => Ok(Self::Relay(UncheckedUrl::from(content))),
+                TagKind::T => Ok(Self::Hashtag(tag_1.to_owned())),
+                TagKind::G => Ok(Self::Geohash(tag_1.to_owned())),
+                TagKind::D => Ok(Self::Identifier(tag_1.to_owned())),
+                TagKind::Relay => Ok(Self::Relay(UncheckedUrl::from(tag_1))),
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
-                    reason: Some(content.to_string()),
+                    reason: Some(tag_1.to_owned()),
                 }),
-                TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(content)?)),
-                TagKind::Subject => Ok(Self::Subject(content.to_string())),
-                TagKind::Challenge => Ok(Self::Challenge(content.to_string())),
-                TagKind::Title => Ok(Self::Title(content.to_string())),
-                TagKind::Image => Ok(Self::Image(UncheckedUrl::from(content), None)),
-                TagKind::Thumb => Ok(Self::Thumb(UncheckedUrl::from(content), None)),
-                TagKind::Summary => Ok(Self::Summary(content.to_string())),
-                TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(content)?)),
-                TagKind::Description => Ok(Self::Description(content.to_string())),
-                TagKind::Bolt11 => Ok(Self::Bolt11(content.to_string())),
-                TagKind::Preimage => Ok(Self::Preimage(content.to_string())),
-                TagKind::Amount => Ok(Self::Amount(content.parse()?)),
-                TagKind::Lnurl => Ok(Self::Lnurl(content.to_string())),
-                TagKind::Name => Ok(Self::Name(content.to_string())),
-                TagKind::Url => Ok(Self::Url(Url::parse(content)?)),
-                TagKind::M => Ok(Self::MimeType(content.to_string())),
-                TagKind::X => Ok(Self::Sha256(Sha256Hash::from_str(content)?)),
-                TagKind::Magnet => Ok(Self::Magnet(content.to_string())),
-                TagKind::Blurhash => Ok(Self::Blurhash(content.to_string())),
-                TagKind::Streaming => Ok(Self::Streaming(UncheckedUrl::from(content))),
-                TagKind::Recording => Ok(Self::Recording(UncheckedUrl::from(content))),
-                TagKind::Starts => Ok(Self::Starts(Timestamp::from_str(content)?)),
-                TagKind::Ends => Ok(Self::Ends(Timestamp::from_str(content)?)),
-                TagKind::Status => Ok(Self::Status(LiveEventStatus::from(content))),
-                TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(content.parse()?)),
-                TagKind::TotalParticipants => Ok(Self::TotalParticipants(content.parse()?)),
-                TagKind::U => Ok(Self::AbsoluteURL(UncheckedUrl::from(content))),
-                TagKind::Method => Ok(Self::Method(HttpMethod::from_str(content)?)),
-                TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(content)?)),
+                TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
+                TagKind::Subject => Ok(Self::Subject(tag_1.to_owned())),
+                TagKind::Challenge => Ok(Self::Challenge(tag_1.to_owned())),
+                TagKind::Title => Ok(Self::Title(tag_1.to_owned())),
+                TagKind::Image => Ok(Self::Image(UncheckedUrl::from(tag_1), None)),
+                TagKind::Thumb => Ok(Self::Thumb(UncheckedUrl::from(tag_1), None)),
+                TagKind::Summary => Ok(Self::Summary(tag_1.to_owned())),
+                TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(tag_1)?)),
+                TagKind::Description => Ok(Self::Description(tag_1.to_owned())),
+                TagKind::Bolt11 => Ok(Self::Bolt11(tag_1.to_owned())),
+                TagKind::Preimage => Ok(Self::Preimage(tag_1.to_owned())),
+                TagKind::Amount => Ok(Self::Amount(tag_1.parse()?)),
+                TagKind::Lnurl => Ok(Self::Lnurl(tag_1.to_owned())),
+                TagKind::Name => Ok(Self::Name(tag_1.to_owned())),
+                TagKind::Url => Ok(Self::Url(Url::parse(tag_1)?)),
+                TagKind::M => Ok(Self::MimeType(tag_1.to_owned())),
+                TagKind::X => Ok(Self::Sha256(Sha256Hash::from_str(tag_1)?)),
+                TagKind::Magnet => Ok(Self::Magnet(tag_1.to_owned())),
+                TagKind::Blurhash => Ok(Self::Blurhash(tag_1.to_owned())),
+                TagKind::Streaming => Ok(Self::Streaming(UncheckedUrl::from(tag_1))),
+                TagKind::Recording => Ok(Self::Recording(UncheckedUrl::from(tag_1))),
+                TagKind::Starts => Ok(Self::Starts(Timestamp::from_str(tag_1)?)),
+                TagKind::Ends => Ok(Self::Ends(Timestamp::from_str(tag_1)?)),
+                TagKind::Status => Ok(Self::Status(LiveEventStatus::from(tag_1))),
+                TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(tag_1.parse()?)),
+                TagKind::TotalParticipants => Ok(Self::TotalParticipants(tag_1.parse()?)),
+                TagKind::U => Ok(Self::AbsoluteURL(UncheckedUrl::from(tag_1))),
+                TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
+                TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
                 TagKind::Anon => Ok(Self::Anon {
-                    msg: (!content.is_empty()).then_some(content.to_string()),
+                    msg: (!tag_1.is_empty()).then_some(tag_1.to_owned()),
                 }),
-                _ => Ok(Self::Generic(tag_kind, vec![content.to_string()])),
+                _ => Ok(Self::Generic(tag_kind, vec![tag_1.to_owned()])),
             }
         } else if tag_len == 3 {
+            let tag_1: &str = tag[1].as_ref();
+            let tag_2: &str = tag[2].as_ref();
+
             match tag_kind {
                 TagKind::P => {
-                    let pubkey = XOnlyPublicKey::from_str(&tag[1])?;
-                    if tag[2].is_empty() {
+                    let pubkey = XOnlyPublicKey::from_str(tag_1)?;
+                    if tag_2.is_empty() {
                         Ok(Self::PubKey(pubkey, Some(UncheckedUrl::empty())))
                     } else {
-                        match Report::from_str(tag[2].as_str()) {
+                        match Report::from_str(tag_2) {
                             Ok(report) => Ok(Self::PubKeyReport(pubkey, report)),
-                            Err(_) => Ok(Self::PubKey(
-                                pubkey,
-                                Some(UncheckedUrl::from(tag[2].clone())),
-                            )),
+                            Err(_) => Ok(Self::PubKey(pubkey, Some(UncheckedUrl::from(tag_2)))),
                         }
                     }
                 }
                 TagKind::E => {
-                    let event_id = EventId::from_hex(&tag[1])?;
-                    if tag[2].is_empty() {
+                    let event_id = EventId::from_hex(tag_1)?;
+                    if tag_2.is_empty() {
                         Ok(Self::Event(event_id, Some(UncheckedUrl::empty()), None))
                     } else {
-                        match Report::from_str(tag[2].as_str()) {
+                        match Report::from_str(tag_2) {
                             Ok(report) => Ok(Self::EventReport(event_id, report)),
-                            Err(_) => Ok(Self::Event(
-                                event_id,
-                                Some(UncheckedUrl::from(tag[2].clone())),
-                                None,
-                            )),
+                            Err(_) => {
+                                Ok(Self::Event(event_id, Some(UncheckedUrl::from(tag_2)), None))
+                            }
                         }
                     }
                 }
-                TagKind::I => match Identity::new(&tag[1], &tag[2]) {
+                TagKind::I => match Identity::new(tag_1, tag_2) {
                     Ok(identity) => Ok(Self::ExternalIdentity(identity)),
-                    Err(_) => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
+                    Err(_) => Ok(Self::Generic(
+                        tag_kind,
+                        tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
+                    )),
                 },
                 TagKind::Nonce => Ok(Self::POW {
-                    nonce: tag[1].parse()?,
-                    difficulty: tag[2].parse()?,
+                    nonce: tag_1.parse()?,
+                    difficulty: tag_2.parse()?,
                 }),
                 TagKind::A => {
-                    let kpi: Vec<&str> = tag[1].split(':').collect();
-                    if kpi.len() == 3 {
+                    let mut kpi = tag_1.split(':');
+                    if let (Some(kind_str), Some(pubkey_str), Some(identifier)) =
+                        (kpi.nth(0), kpi.nth(0), kpi.nth(0))
+                    {
                         Ok(Self::A {
-                            kind: Kind::from_str(kpi[0])?,
-                            public_key: XOnlyPublicKey::from_str(kpi[1])?,
-                            identifier: kpi[2].to_string(),
-                            relay_url: Some(UncheckedUrl::from(tag[2].clone())),
+                            kind: Kind::from_str(kind_str)?,
+                            public_key: XOnlyPublicKey::from_str(pubkey_str)?,
+                            identifier: identifier.to_owned(),
+                            relay_url: Some(UncheckedUrl::from(tag_2)),
                         })
                     } else {
                         Err(Error::InvalidLength)
                     }
                 }
                 TagKind::Image => Ok(Self::Image(
-                    UncheckedUrl::from(&tag[1]),
-                    Some(ImageDimensions::from_str(&tag[2])?),
+                    UncheckedUrl::from(tag_1),
+                    Some(ImageDimensions::from_str(tag_2)?),
                 )),
                 TagKind::Thumb => Ok(Self::Thumb(
-                    UncheckedUrl::from(&tag[1]),
-                    Some(ImageDimensions::from_str(&tag[2])?),
+                    UncheckedUrl::from(tag_1),
+                    Some(ImageDimensions::from_str(tag_2)?),
                 )),
                 TagKind::Aes256Gcm => Ok(Self::Aes256Gcm {
-                    key: tag[1].to_string(),
-                    iv: tag[2].to_string(),
+                    key: tag_1.to_owned(),
+                    iv: tag_2.to_owned(),
                 }),
                 TagKind::R => Ok(Self::RelayMetadata(
-                    UncheckedUrl::from(&tag[1]),
-                    Some(RelayMetadata::from_str(&tag[2])?),
+                    UncheckedUrl::from(tag_1),
+                    Some(RelayMetadata::from_str(tag_2)?),
                 )),
                 TagKind::Proxy => Ok(Self::Proxy {
-                    id: tag[1].to_string(),
-                    protocol: Protocol::from(&tag[2]),
+                    id: tag_1.to_owned(),
+                    protocol: Protocol::from(tag_2),
                 }),
                 TagKind::Emoji => Ok(Self::Emoji {
-                    shortcode: tag[1].to_string(),
-                    url: UncheckedUrl::from(&tag[2]),
+                    shortcode: tag_1.to_owned(),
+                    url: UncheckedUrl::from(tag_2),
                 }),
-                _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
+                _ => Ok(Self::Generic(
+                    tag_kind,
+                    tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
+                )),
             }
         } else if tag_len == 4 {
+            let tag_1: &str = tag[1].as_ref();
+            let tag_2: &str = tag[2].as_ref();
+            let tag_3: &str = tag[3].as_ref();
+
             match tag_kind {
                 TagKind::P => {
-                    let pk = XOnlyPublicKey::from_str(&tag[1])?;
-                    let relay_url =
-                        (!tag[2].is_empty()).then_some(UncheckedUrl::from(tag[2].clone()));
+                    let pk = XOnlyPublicKey::from_str(tag_1)?;
+                    let relay_url = (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2));
 
-                    match LiveEventMarker::from_str(&tag[3]) {
+                    match LiveEventMarker::from_str(tag_3) {
                         Ok(marker) => Ok(Self::PubKeyLiveEvent {
                             pk,
                             relay_url,
@@ -960,34 +970,48 @@ where
                         Err(_) => Ok(Self::ContactList {
                             pk,
                             relay_url,
-                            alias: (!tag[3].is_empty()).then_some(tag[3].clone()),
+                            alias: (!tag_3.is_empty()).then_some(tag_3.to_owned()),
                         }),
                     }
                 }
                 TagKind::E => Ok(Self::Event(
-                    EventId::from_hex(&tag[1])?,
-                    (!tag[2].is_empty()).then_some(UncheckedUrl::from(tag[2].clone())),
-                    (!tag[3].is_empty()).then_some(Marker::from(&tag[3])),
+                    EventId::from_hex(tag_1)?,
+                    (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
+                    (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
                 )),
                 TagKind::Delegation => Ok(Self::Delegation {
-                    delegator_pk: XOnlyPublicKey::from_str(&tag[1])?,
-                    conditions: Conditions::from_str(&tag[2])?,
-                    sig: Signature::from_str(&tag[3])?,
+                    delegator_pk: XOnlyPublicKey::from_str(tag_1)?,
+                    conditions: Conditions::from_str(tag_2)?,
+                    sig: Signature::from_str(tag_3)?,
                 }),
-                _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
+                _ => Ok(Self::Generic(
+                    tag_kind,
+                    tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
+                )),
             }
         } else if tag_len == 5 {
+            let tag_1: &str = tag[1].as_ref();
+            let tag_2: &str = tag[2].as_ref();
+            let tag_3: &str = tag[3].as_ref();
+            let tag_4: &str = tag[4].as_ref();
+
             match tag_kind {
                 TagKind::P => Ok(Self::PubKeyLiveEvent {
-                    pk: XOnlyPublicKey::from_str(&tag[1])?,
-                    relay_url: (!tag[2].is_empty()).then_some(UncheckedUrl::from(tag[2].clone())),
-                    marker: LiveEventMarker::from_str(&tag[3])?,
-                    proof: Signature::from_str(&tag[4]).ok(),
+                    pk: XOnlyPublicKey::from_str(tag_1)?,
+                    relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
+                    marker: LiveEventMarker::from_str(tag_3)?,
+                    proof: Signature::from_str(tag_4).ok(),
                 }),
-                _ => Ok(Self::Generic(tag_kind, tag[1..].to_vec())),
+                _ => Ok(Self::Generic(
+                    tag_kind,
+                    tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
+                )),
             }
         } else {
-            Ok(Self::Generic(tag_kind, tag[1..].to_vec()))
+            Ok(Self::Generic(
+                tag_kind,
+                tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
+            ))
         }
     }
 }
@@ -1952,5 +1976,47 @@ mod tests {
             Tag::parse(vec!["amount", "10000"]).unwrap(),
             Tag::Amount(10000)
         );
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+
+    #[bench]
+    pub fn parse_p_tag(bh: &mut Bencher) {
+        let tag = vec![
+            "p",
+            "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+        ];
+        bh.iter(|| {
+            black_box(Tag::parse(tag.clone())).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn parse_e_tag(bh: &mut Bencher) {
+        let tag = vec![
+            "e",
+            "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+            "wss://relay.damus.io",
+        ];
+        bh.iter(|| {
+            black_box(Tag::parse(tag.clone())).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn parse_a_tag(bh: &mut Bencher) {
+        let tag = vec![
+            "a",
+            "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
+            "wss://relay.nostr.org",
+        ];
+        bh.iter(|| {
+            black_box(Tag::parse(tag.clone())).unwrap();
+        });
     }
 }

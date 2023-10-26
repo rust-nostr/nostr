@@ -74,9 +74,9 @@ impl EventId {
     /// [`EventId`] hex string
     pub fn from_hex<S>(hex: S) -> Result<Self, Error>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        Ok(Self(Sha256Hash::from_str(&hex.into())?))
+        Ok(Self(Sha256Hash::from_str(hex.as_ref())?))
     }
 
     /// [`EventId`] from bytes
