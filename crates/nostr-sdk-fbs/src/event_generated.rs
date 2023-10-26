@@ -173,6 +173,123 @@ pub mod event_fbs {
         }
     }
 
+    pub enum StringVectorOffset {}
+    #[derive(Copy, Clone, PartialEq)]
+
+    pub struct StringVector<'a> {
+        pub _tab: flatbuffers::Table<'a>,
+    }
+
+    impl<'a> flatbuffers::Follow<'a> for StringVector<'a> {
+        type Inner = StringVector<'a>;
+        #[inline]
+        unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+            Self {
+                _tab: flatbuffers::Table::new(buf, loc),
+            }
+        }
+    }
+
+    impl<'a> StringVector<'a> {
+        pub const VT_DATA: flatbuffers::VOffsetT = 4;
+
+        #[inline]
+        pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+            StringVector { _tab: table }
+        }
+        #[allow(unused_mut)]
+        pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+            _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+            args: &'args StringVectorArgs<'args>,
+        ) -> flatbuffers::WIPOffset<StringVector<'bldr>> {
+            let mut builder = StringVectorBuilder::new(_fbb);
+            if let Some(x) = args.data {
+                builder.add_data(x);
+            }
+            builder.finish()
+        }
+
+        #[inline]
+        pub fn data(
+            &self,
+        ) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>> {
+            // Safety:
+            // Created from valid Table for this object
+            // which contains a valid value in this slot
+            unsafe {
+                self._tab.get::<flatbuffers::ForwardsUOffset<
+                    flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>,
+                >>(StringVector::VT_DATA, None)
+            }
+        }
+    }
+
+    impl flatbuffers::Verifiable for StringVector<'_> {
+        #[inline]
+        fn run_verifier(
+            v: &mut flatbuffers::Verifier,
+            pos: usize,
+        ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+            use self::flatbuffers::Verifiable;
+            v.visit_table(pos)?
+                .visit_field::<flatbuffers::ForwardsUOffset<
+                    flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>,
+                >>("data", Self::VT_DATA, false)?
+                .finish();
+            Ok(())
+        }
+    }
+    pub struct StringVectorArgs<'a> {
+        pub data: Option<
+            flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>>,
+        >,
+    }
+    impl<'a> Default for StringVectorArgs<'a> {
+        #[inline]
+        fn default() -> Self {
+            StringVectorArgs { data: None }
+        }
+    }
+
+    pub struct StringVectorBuilder<'a: 'b, 'b> {
+        fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+        start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    }
+    impl<'a: 'b, 'b> StringVectorBuilder<'a, 'b> {
+        #[inline]
+        pub fn add_data(
+            &mut self,
+            data: flatbuffers::WIPOffset<
+                flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<&'b str>>,
+            >,
+        ) {
+            self.fbb_
+                .push_slot_always::<flatbuffers::WIPOffset<_>>(StringVector::VT_DATA, data);
+        }
+        #[inline]
+        pub fn new(
+            _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+        ) -> StringVectorBuilder<'a, 'b> {
+            let start = _fbb.start_table();
+            StringVectorBuilder {
+                fbb_: _fbb,
+                start_: start,
+            }
+        }
+        #[inline]
+        pub fn finish(self) -> flatbuffers::WIPOffset<StringVector<'a>> {
+            let o = self.fbb_.end_table(self.start_);
+            flatbuffers::WIPOffset::new(o.value())
+        }
+    }
+
+    impl core::fmt::Debug for StringVector<'_> {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            let mut ds = f.debug_struct("StringVector");
+            ds.field("data", &self.data());
+            ds.finish()
+        }
+    }
     pub enum EventOffset {}
     #[derive(Copy, Clone, PartialEq)]
 
@@ -260,13 +377,14 @@ pub mod event_fbs {
         #[inline]
         pub fn tags(
             &self,
-        ) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>> {
+        ) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<StringVector<'a>>>>
+        {
             // Safety:
             // Created from valid Table for this object
             // which contains a valid value in this slot
             unsafe {
                 self._tab.get::<flatbuffers::ForwardsUOffset<
-                    flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>,
+                    flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<StringVector>>,
                 >>(Event::VT_TAGS, None)
             }
         }
@@ -302,7 +420,7 @@ pub mod event_fbs {
                 .visit_field::<u64>("created_at", Self::VT_CREATED_AT, false)?
                 .visit_field::<u64>("kind", Self::VT_KIND, false)?
                 .visit_field::<flatbuffers::ForwardsUOffset<
-                    flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>,
+                    flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<StringVector>>,
                 >>("tags", Self::VT_TAGS, false)?
                 .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
                     "content",
@@ -320,7 +438,9 @@ pub mod event_fbs {
         pub created_at: u64,
         pub kind: u64,
         pub tags: Option<
-            flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>>,
+            flatbuffers::WIPOffset<
+                flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<StringVector<'a>>>,
+            >,
         >,
         pub content: Option<flatbuffers::WIPOffset<&'a str>>,
         pub sig: Option<&'a Fixed64Bytes>,
@@ -368,7 +488,7 @@ pub mod event_fbs {
         pub fn add_tags(
             &mut self,
             tags: flatbuffers::WIPOffset<
-                flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<&'b str>>,
+                flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<StringVector<'b>>>,
             >,
         ) {
             self.fbb_
