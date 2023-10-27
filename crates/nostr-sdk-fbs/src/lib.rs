@@ -3,7 +3,8 @@
 
 //! Nostr SDK Flatbuffers
 
-use event_generated::event_fbs::{Fixed32Bytes, Fixed64Bytes, StringVectorArgs};
+use std::collections::HashSet;
+
 pub use flatbuffers::FlatBufferBuilder;
 use flatbuffers::InvalidFlatbuffer;
 use nostr::secp256k1::schnorr::Signature;
@@ -13,8 +14,11 @@ use thiserror::Error;
 
 #[allow(unused_imports, dead_code, clippy::all)]
 mod event_generated;
+#[allow(unused_imports, dead_code, clippy::all)]
+mod index_generated;
 
-pub use self::event_generated::event_fbs;
+use self::event_generated::event_fbs;
+use self::index_generated::index_fbs;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -36,13 +40,13 @@ pub trait FlatBufferUtils: Sized {
 }
 
 impl FlatBufferUtils for Event {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
         fbb.reset();
 
-        let id = Fixed32Bytes::new(&self.id.to_bytes());
-        let pubkey = Fixed32Bytes::new(&self.pubkey.serialize());
-        let sig = Fixed64Bytes::new(self.sig.as_ref());
+        let id = event_fbs::Fixed32Bytes::new(&self.id.to_bytes());
+        let pubkey = event_fbs::Fixed32Bytes::new(&self.pubkey.serialize());
+        let sig = event_fbs::Fixed64Bytes::new(self.sig.as_ref());
         let tags = self
             .tags
             .iter()
@@ -52,7 +56,7 @@ impl FlatBufferUtils for Event {
                     .iter()
                     .map(|t| fbb.create_string(t))
                     .collect::<Vec<_>>();
-                let args = StringVectorArgs {
+                let args = event_fbs::StringVectorArgs {
                     data: Some(fbb.create_vector(&tags)),
                 };
                 event_fbs::StringVector::create(fbb, &args)
@@ -75,7 +79,7 @@ impl FlatBufferUtils for Event {
         fbb.finished_data()
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     fn decode(buf: &[u8]) -> Result<Self, Error> {
         let ev = event_fbs::root_as_event(buf)?;
         let tags = ev
@@ -97,5 +101,34 @@ impl FlatBufferUtils for Event {
             content: ev.content().ok_or(Error::NotFound)?.to_owned(),
             sig: Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
         })
+    }
+}
+
+impl FlatBufferUtils for HashSet<[u8; 32]> {
+    #[tracing::instrument(skip_all, level = "trace")]
+    fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
+        fbb.reset();
+
+        let list: Vec<index_fbs::Fixed32Bytes> =
+            self.iter().map(index_fbs::Fixed32Bytes::new).collect();
+        let args = index_fbs::IndexSetArgs {
+            data: Some(fbb.create_vector(&list)),
+        };
+
+        let offset = index_fbs::IndexSet::create(fbb, &args);
+
+        index_fbs::finish_index_set_buffer(fbb, offset);
+
+        fbb.finished_data()
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    fn decode(buf: &[u8]) -> Result<Self, Error> {
+        Ok(index_fbs::root_as_index_set(buf)?
+            .data()
+            .ok_or(Error::NotFound)?
+            .into_iter()
+            .map(|bytes| bytes.0)
+            .collect())
     }
 }

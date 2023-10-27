@@ -1,0 +1,11 @@
+namespace IndexFbs;
+
+struct Fixed32Bytes {
+    val: [ubyte:32];
+}
+
+table IndexSet {
+  data: [Fixed32Bytes];
+}
+
+root_type IndexSet;
