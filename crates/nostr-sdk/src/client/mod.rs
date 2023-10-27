@@ -927,13 +927,7 @@ impl Client {
         let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
-            for tag in event.tags.into_iter() {
-                match tag {
-                    Tag::PubKey(pk, _) => pubkeys.push(pk),
-                    Tag::ContactList { pk, .. } => pubkeys.push(pk),
-                    _ => (),
-                }
-            }
+            pubkeys.extend(event.public_keys());
         }
 
         Ok(pubkeys)
