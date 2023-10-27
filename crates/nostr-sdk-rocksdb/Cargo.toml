@@ -1,0 +1,24 @@
+[package]
+name = "nostr-sdk-rocksdb"
+version = "0.1.0"
+edition = "2021"
+description = "TODO"
+authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "sdk", "db", "redb"]
+
+[dependencies]
+nostr = { workspace = true, features = ["std"] }
+nostr-sdk-db = { version = "0.1", path = "../nostr-sdk-db" }
+nostr-sdk-fbs = { version = "0.1", path = "../nostr-sdk-fbs" }
+rocksdb = { version = "0.21", default-features = false, features = ["multi-threaded-cf", "snappy"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
+tracing = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
