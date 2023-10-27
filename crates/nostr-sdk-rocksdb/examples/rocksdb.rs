@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::time::{Duration, Instant};
+// use std::time::{Duration, Instant};
 
 use nostr::prelude::*;
 use nostr_sdk_db::NostrDatabase;

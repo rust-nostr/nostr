@@ -1308,6 +1308,7 @@ dependencies = [
 name = "nostr-sdk-rocksdb"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "nostr",
  "nostr-sdk-db",
  "nostr-sdk-fbs",
@@ -1448,9 +1449,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.69"
+version = "1.0.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "134c189feb4956b20f6f547d2cf727d4c0fe06722b20a0eec87ed445a97f92da"
+checksum = "3d433d9f1a3e8c1263d9456598b16fec66f4acc9a74dacffd35c7bb09b3a1328"
 dependencies = [
  "unicode-ident",
 ]

@@ -5,9 +5,9 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
 
-use nostr::FiltersMatchEvent;
-use nostr_sdk_db::nostr::{Event, EventId, Filter, Timestamp, Url};
-use nostr_sdk_db::{async_trait, Backend, DatabaseError, DatabaseOptions, NostrDatabase};
+use async_trait::async_trait;
+use nostr::{Event, EventId, Filter, Timestamp, Url};
+use nostr_sdk_db::{Backend, DatabaseError, DatabaseOptions, NostrDatabase};
 use nostr_sdk_fbs::{FlatBufferBuilder, FlatBufferUtils};
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType,

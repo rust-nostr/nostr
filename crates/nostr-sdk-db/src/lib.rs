@@ -9,7 +9,7 @@
 
 use std::collections::HashSet;
 
-use async_trait::async_trait;
+pub use async_trait::async_trait;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 
 mod error;

@@ -12,7 +12,7 @@ rust-version.workspace = true
 keywords = ["nostr", "sdk", "db"]
 
 [dependencies]
-async-trait = "0.1"
+async-trait = { workspace = true }
 nostr = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
