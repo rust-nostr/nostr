@@ -233,6 +233,17 @@ impl Event {
         }
         None
     }
+
+    /// Extract public keys from tags (`p` tag)
+    pub fn public_keys(&self) -> Vec<&XOnlyPublicKey> {
+        let mut public_keys: Vec<&XOnlyPublicKey> = Vec::new();
+        for tag in self.tags.iter() {
+            if let Tag::PubKey(public_key, ..) = tag {
+                public_keys.push(public_key);
+            }
+        }
+        public_keys
+    }
 }
 
 impl JsonUtil for Event {
