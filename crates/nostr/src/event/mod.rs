@@ -235,14 +235,24 @@ impl Event {
     }
 
     /// Extract public keys from tags (`p` tag)
-    pub fn public_keys(&self) -> Vec<&XOnlyPublicKey> {
-        let mut public_keys: Vec<&XOnlyPublicKey> = Vec::new();
-        for tag in self.tags.iter() {
-            if let Tag::PubKey(public_key, ..) = tag {
-                public_keys.push(public_key);
-            }
-        }
-        public_keys
+    ///
+    /// **This method extract ONLY `Tag::PubKey` and `Tag::ContactList`**
+    pub fn public_keys(&self) -> impl Iterator<Item = &XOnlyPublicKey> {
+        self.tags.iter().filter_map(|t| match t {
+            Tag::PubKey(pk, ..) => Some(pk),
+            Tag::ContactList { pk, .. } => Some(pk),
+            _ => None,
+        })
+    }
+
+    /// Extract event IDs from tags (`e` tag)
+    ///
+    /// **This method extract ONLY `Tag::Event`**
+    pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
+        self.tags.iter().filter_map(|t| match t {
+            Tag::Event(id, ..) => Some(id),
+            _ => None,
+        })
     }
 }
 
