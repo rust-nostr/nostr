@@ -203,14 +203,14 @@ enum Alphabet {
 
 interface Filter {
     constructor();
+   [Self=ByArc]
+    Filter id(EventId id);
     [Self=ByArc]
-    Filter id(string id);
+    Filter ids(sequence<EventId> ids);
     [Self=ByArc]
-    Filter ids(sequence<string> ids);
+    Filter author(PublicKey author);
     [Self=ByArc]
-    Filter author(string author);
-    [Self=ByArc]
-    Filter authors(sequence<string> authors);
+    Filter authors(sequence<PublicKey> authors);
     [Self=ByArc]
     Filter kind(u64 kind);
     [Self=ByArc]

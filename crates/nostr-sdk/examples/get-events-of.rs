@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let filter = Filter::new()
-        .author(my_keys.public_key().to_string())
+        .author(my_keys.public_key())
         .kind(Kind::Metadata);
     let events = client
         .get_events_of(vec![filter], Some(Duration::from_secs(10)))

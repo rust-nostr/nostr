@@ -1482,14 +1482,13 @@ impl Relay {
             return Err(Error::ReadDisabled);
         }
 
-        let id_size: usize = 16;
+        let id_size: usize = 32;
 
-        let mut negentropy = Negentropy::new(id_size, Some(5_000))?;
+        let mut negentropy = Negentropy::new(id_size, Some(2_500))?;
 
         for (id, timestamp) in my_items.into_iter() {
-            let cutted_id: &[u8] = &id.as_bytes()[..id_size];
-            let cutted_id = Bytes::from_slice(cutted_id);
-            negentropy.add_item(timestamp.as_u64(), cutted_id)?;
+            let id = Bytes::from_slice(id.as_bytes());
+            negentropy.add_item(timestamp.as_u64(), id)?;
         }
 
         negentropy.seal()?;
@@ -1519,8 +1518,9 @@ impl Relay {
                                         &mut need_ids,
                                     )?;
 
-                                    let ids: Vec<String> =
-                                        need_ids.into_iter().map(|id| id.to_hex()).collect();
+                                    let ids = need_ids
+                                        .into_iter()
+                                        .filter_map(|id| EventId::from_slice(&id).ok());
                                     let filter = Filter::new().ids(ids);
                                     self.req_events_of(
                                         vec![filter],
@@ -1585,7 +1585,7 @@ impl Relay {
     /// Check if relay support negentropy protocol
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
         let pk = Keys::generate();
-        let filter = Filter::new().author(pk.public_key().to_string());
+        let filter = Filter::new().author(pk.public_key());
         match self
             .reconcilie(filter, Vec::new(), Duration::from_secs(5))
             .await

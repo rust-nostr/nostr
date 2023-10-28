@@ -20,9 +20,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let my_items = Vec::new();
-    let filter = Filter::new()
-        .author(my_keys.public_key().to_string())
-        .limit(10);
+    let filter = Filter::new().author(my_keys.public_key()).limit(10);
     let relay = client.relay("wss://relay.damus.io").await?;
     relay
         .reconcilie(filter, my_items, Duration::from_secs(30))

@@ -42,27 +42,27 @@ impl Filter {
         }
     }
 
-    pub fn id(self: Arc<Self>, id: String) -> Arc<Self> {
+    pub fn id(self: Arc<Self>, id: Arc<EventId>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.id(id);
+        builder.inner = builder.inner.id(**id);
         Arc::new(builder)
     }
 
-    pub fn ids(self: Arc<Self>, ids: Vec<String>) -> Arc<Self> {
+    pub fn ids(self: Arc<Self>, ids: Vec<Arc<EventId>>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.ids(ids);
+        builder.inner = builder.inner.ids(ids.into_iter().map(|id| **id));
         Arc::new(builder)
     }
 
-    pub fn author(self: Arc<Self>, author: String) -> Arc<Self> {
+    pub fn author(self: Arc<Self>, author: Arc<PublicKey>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.author(author);
+        builder.inner = builder.inner.author(**author);
         Arc::new(builder)
     }
 
-    pub fn authors(self: Arc<Self>, authors: Vec<String>) -> Arc<Self> {
+    pub fn authors(self: Arc<Self>, authors: Vec<Arc<PublicKey>>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.authors(authors);
+        builder.inner = builder.inner.authors(authors.into_iter().map(|pk| **pk));
         Arc::new(builder)
     }
 
@@ -74,9 +74,7 @@ impl Filter {
 
     pub fn kinds(self: Arc<Self>, kinds: Vec<u64>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder
-            .inner
-            .kinds(kinds.into_iter().map(|k| k.into()).collect());
+        builder.inner = builder.inner.kinds(kinds.into_iter().map(|k| k.into()));
         Arc::new(builder)
     }
 

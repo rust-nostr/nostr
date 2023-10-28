@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -20,8 +19,8 @@ use nostr::nips::nip94::FileMetadata;
 use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
-    ChannelId, ClientMessage, Contact, Entity, Event, EventBuilder, EventId, Filter, JsonUtil,
-    Keys, Kind, Metadata, Result, Tag,
+    ChannelId, ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind,
+    Metadata, Result, Tag,
 };
 use nostr_sdk_net::futures_util::Future;
 use tokio::sync::{broadcast, RwLock};
@@ -852,10 +851,10 @@ impl Client {
                     .await
                     .ok_or(Error::SignerPublicKeyNotFound)?;
 
-                filter = filter.author(signer_public_key.to_string());
+                filter = filter.author(signer_public_key);
             } else {
                 let keys = self.keys.read().await;
-                filter = filter.author(keys.public_key().to_string());
+                filter = filter.author(keys.public_key());
             }
 
             filter
@@ -865,7 +864,7 @@ impl Client {
         let filter: Filter = {
             let keys = self.keys.read().await;
             Filter::new()
-                .author(keys.public_key().to_string())
+                .author(keys.public_key())
                 .kind(Kind::ContactList)
                 .limit(1)
         };
@@ -948,7 +947,7 @@ impl Client {
             for public_key in chunk.iter() {
                 filters.push(
                     Filter::new()
-                        .author(public_key.to_string())
+                        .author(*public_key)
                         .kind(Kind::Metadata)
                         .limit(1),
                 );
@@ -1271,43 +1270,6 @@ impl Client {
     pub async fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
         self.get_events_of(vec![Filter::new().kind(Kind::ChannelCreation)], timeout)
             .await
-    }
-
-    /// Get entity of hex string
-    pub async fn get_entity_of<S>(
-        &self,
-        entity: S,
-        timeout: Option<Duration>,
-    ) -> Result<Entity, Error>
-    where
-        S: Into<String>,
-    {
-        let entity: String = entity.into();
-        let events: Vec<Event> = self
-            .get_events_of(
-                vec![Filter::new()
-                    .id(&entity)
-                    .kind(Kind::ChannelCreation)
-                    .limit(1)],
-                timeout,
-            )
-            .await?;
-        if events.is_empty() {
-            let pubkey = XOnlyPublicKey::from_str(&entity)?;
-            let events: Vec<Event> = self
-                .get_events_of(
-                    vec![Filter::new().author(pubkey.to_string()).limit(1)],
-                    timeout,
-                )
-                .await?;
-            if events.is_empty() {
-                Ok(Entity::Unknown)
-            } else {
-                Ok(Entity::Account)
-            }
-        } else {
-            Ok(Entity::Channel)
-        }
     }
 
     /// Handle notifications

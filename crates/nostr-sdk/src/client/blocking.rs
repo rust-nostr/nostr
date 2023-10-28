@@ -17,7 +17,7 @@ use tokio::sync::broadcast;
 
 #[cfg(feature = "nip46")]
 use super::signer::remote::RemoteSigner;
-use super::{Entity, Error, Options, TryIntoUrl};
+use super::{Error, Options, TryIntoUrl};
 use crate::relay::{pool, Relay, RelayOptions, RelayPoolNotification};
 use crate::RUNTIME;
 
@@ -422,13 +422,6 @@ impl Client {
 
     pub fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
         RUNTIME.block_on(async { self.client.get_channels(timeout).await })
-    }
-
-    pub fn get_entity_of<S>(&self, entity: S, timeout: Option<Duration>) -> Result<Entity, Error>
-    where
-        S: Into<String>,
-    {
-        RUNTIME.block_on(async { self.client.get_entity_of(entity, timeout).await })
     }
 
     pub fn handle_notifications<F>(&self, func: F) -> Result<(), Error>

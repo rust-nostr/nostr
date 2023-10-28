@@ -225,18 +225,18 @@ impl<'de> Deserialize<'de> for SubscriptionId {
 /// Subscription filters
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Filter {
-    /// List of event ids or prefixes
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    /// List of [`EventId`]
+    #[serde(skip_serializing_if = "AllocSet::is_empty")]
     #[serde(default)]
-    pub ids: Vec<String>,
-    /// List of pubkeys or prefixes
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub ids: AllocSet<EventId>,
+    /// List of [`XOnlyPublicKey`]
+    #[serde(skip_serializing_if = "AllocSet::is_empty")]
     #[serde(default)]
-    pub authors: Vec<String>,
+    pub authors: AllocSet<XOnlyPublicKey>,
     /// List of a kind numbers
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "AllocSet::is_empty")]
     #[serde(default)]
-    pub kinds: Vec<Kind>,
+    pub kinds: AllocSet<Kind>,
     /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
@@ -271,132 +271,82 @@ impl Filter {
         Self::default()
     }
 
-    /// Add event id or prefix
-    pub fn id<S>(self, id: S) -> Self
-    where
-        S: Into<String>,
-    {
-        let id: String = id.into();
-        let mut ids: Vec<String> = self.ids;
-        if !ids.contains(&id) {
-            ids.push(id);
-        }
-        Self { ids, ..self }
+    /// Add [`EventId`]
+    pub fn id(mut self, id: EventId) -> Self {
+        self.ids.insert(id);
+        self
     }
 
     /// Add event ids or prefixes
-    pub fn ids<S>(self, ids: Vec<S>) -> Self
+    pub fn ids<I>(mut self, ids: I) -> Self
     where
-        S: Into<String>,
+        I: IntoIterator<Item = EventId>,
     {
-        let mut current_ids: Vec<String> = self.ids;
-        for value in ids.into_iter().map(|value| value.into()) {
-            if !current_ids.contains(&value) {
-                current_ids.push(value);
-            }
-        }
-        Self {
-            ids: current_ids,
-            ..self
-        }
+        self.ids.extend(ids);
+        self
     }
 
-    /// Remove event ids or prefixes
-    pub fn remove_ids<S>(self, ids: Vec<S>) -> Self
+    /// Remove event ids
+    pub fn remove_ids<I>(mut self, ids: I) -> Self
     where
-        S: Into<String>,
+        I: IntoIterator<Item = EventId>,
     {
-        let ids: AllocSet<String> = ids.into_iter().map(|id| id.into()).collect();
-        Self {
-            ids: self
-                .ids
-                .into_iter()
-                .filter(|id| !ids.contains(id))
-                .collect(),
-            ..self
+        for id in ids {
+            self.ids.remove(&id);
         }
+        self
     }
 
     /// Add author
-    pub fn author<S>(self, author: S) -> Self
-    where
-        S: Into<String>,
-    {
-        let author: String = author.into();
-        let mut authors: Vec<String> = self.authors;
-        if !authors.contains(&author) {
-            authors.push(author);
-        }
-        Self { authors, ..self }
+    pub fn author(mut self, author: XOnlyPublicKey) -> Self {
+        self.authors.insert(author);
+        self
     }
 
     /// Add authors
-    pub fn authors<S>(self, authors: Vec<S>) -> Self
+    pub fn authors<I>(mut self, authors: I) -> Self
     where
-        S: Into<String>,
+        I: IntoIterator<Item = XOnlyPublicKey>,
     {
-        let mut current_authors: Vec<String> = self.authors;
-        for value in authors.into_iter().map(|value| value.into()) {
-            if !current_authors.contains(&value) {
-                current_authors.push(value);
-            }
-        }
-        Self {
-            authors: current_authors,
-            ..self
-        }
+        self.authors.extend(authors);
+        self
     }
 
     /// Remove authors
-    pub fn remove_authors<S>(self, authors: Vec<S>) -> Self
+    pub fn remove_authors<I>(mut self, authors: I) -> Self
     where
-        S: Into<String>,
+        I: IntoIterator<Item = XOnlyPublicKey>,
     {
-        let authors: AllocSet<String> = authors.into_iter().map(|id| id.into()).collect();
-        Self {
-            authors: self
-                .authors
-                .into_iter()
-                .filter(|value| !authors.contains(value))
-                .collect(),
-            ..self
+        for author in authors {
+            self.authors.remove(&author);
         }
+        self
     }
 
     /// Add kind
-    pub fn kind(self, kind: Kind) -> Self {
-        let mut kinds: Vec<Kind> = self.kinds;
-        if !kinds.contains(&kind) {
-            kinds.push(kind);
-        }
-        Self { kinds, ..self }
+    pub fn kind(mut self, kind: Kind) -> Self {
+        self.kinds.insert(kind);
+        self
     }
 
     /// Add kinds
-    pub fn kinds(self, kinds: Vec<Kind>) -> Self {
-        let mut current_kinds: Vec<Kind> = self.kinds;
-        for value in kinds.into_iter() {
-            if !current_kinds.contains(&value) {
-                current_kinds.push(value);
-            }
-        }
-        Self {
-            kinds: current_kinds,
-            ..self
-        }
+    pub fn kinds<I>(mut self, kinds: I) -> Self
+    where
+        I: IntoIterator<Item = Kind>,
+    {
+        self.kinds.extend(kinds);
+        self
     }
 
     /// Remove kinds
-    pub fn remove_kinds(self, kinds: Vec<Kind>) -> Self {
-        let kinds: AllocSet<Kind> = kinds.into_iter().collect();
-        Self {
-            kinds: self
-                .kinds
-                .into_iter()
-                .filter(|value| !kinds.contains(value))
-                .collect(),
-            ..self
+    pub fn remove_kinds<I>(mut self, kinds: I) -> Self
+    where
+        I: IntoIterator<Item = Kind>,
+    {
+        for kind in kinds {
+            self.kinds.remove(&kind);
         }
+        self
     }
 
     /// Add event
@@ -410,7 +360,7 @@ impl Filter {
     }
 
     /// Remove events
-    pub fn remove_events<S>(self, events: Vec<EventId>) -> Self {
+    pub fn remove_events(self, events: Vec<EventId>) -> Self {
         self.remove_custom_tag(Alphabet::E, events)
     }
 
@@ -428,7 +378,7 @@ impl Filter {
     }
 
     /// Remove pubkeys
-    pub fn remove_pubkeys<S>(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
+    pub fn remove_pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
         self.remove_custom_tag(
             Alphabet::P,
             pubkeys.into_iter().map(|p| p.to_string()).collect(),
@@ -616,10 +566,6 @@ impl Filter {
     }
 }
 
-fn prefix_match(prefixes: &[String], target: &str) -> bool {
-    prefixes.iter().any(|prefix| target.starts_with(prefix))
-}
-
 fn single_char_tagname(tagname: &str) -> Option<Alphabet> {
     tagname
         .chars()
@@ -642,11 +588,11 @@ fn tag_idx(event: &Event) -> AllocMap<Alphabet, AllocSet<String>> {
 
 impl Filter {
     fn ids_match(&self, event: &Event) -> bool {
-        self.ids.is_empty() || prefix_match(&self.ids, &event.id.to_hex())
+        self.ids.is_empty() || self.ids.contains(&event.id)
     }
 
     fn authors_match(&self, event: &Event) -> bool {
-        self.authors.is_empty() || prefix_match(&self.authors, &event.pubkey.to_string())
+        self.authors.is_empty() || self.authors.contains(&event.pubkey)
     }
 
     fn tag_match(&self, event: &Event) -> bool {
@@ -776,9 +722,12 @@ mod test {
 
     #[test]
     fn test_remove_ids() {
-        let filter = Filter::new().id("abcdefg").id("12345678").id("xyz");
-        let filter = filter.remove_ids(vec!["12345678", "xyz"]);
-        assert_eq!(filter, Filter::new().id("abcdefg"));
+        let event_id =
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap();
+        let filter = Filter::new().id(EventId::all_zeros()).id(event_id);
+        let filter = filter.remove_ids(vec![EventId::all_zeros()]);
+        assert_eq!(filter, Filter::new().id(event_id));
     }
 
     #[test]
@@ -813,12 +762,15 @@ mod test {
 
     #[test]
     fn test_filter_deserialization() {
-        let json = r##"{"#a":["...", "test"],"search":"test","ids":["myid", "mysecondid"]}"##;
+        let json = r##"{"#a":["...", "test"],"search":"test","ids":["70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5"]}"##;
         let filter = Filter::from_json(json).unwrap();
+        let event_id =
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap();
         assert_eq!(
             filter,
             Filter::new()
-                .ids(vec!["myid".to_string(), "mysecondid".to_string()])
+                .ids(vec![event_id])
                 .search("test")
                 .custom_tag(Alphabet::A, vec!["...".to_string(), "test".to_string()])
         );
@@ -834,6 +786,13 @@ mod test {
 
     #[test]
     fn test_match_event() {
+        let event_id =
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap();
+        let pubkey = XOnlyPublicKey::from_str(
+            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
+        )
+        .unwrap();
         let event =
             Event::new_dummy(
                 "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
@@ -849,23 +808,23 @@ mod test {
             );
 
         // ID match
-        let filter = Filter::new().id("70b10f70c");
+        let filter = Filter::new().id(event_id);
         assert!(filter.match_event(&event));
 
         // Not match (kind)
-        let filter = Filter::new().id("70b10f70c").kind(Kind::Metadata);
+        let filter = Filter::new().id(event_id).kind(Kind::Metadata);
         assert!(!filter.match_event(&event));
 
         // Match (author, kind and since)
         let filter = Filter::new()
-            .author("379e863e")
+            .author(pubkey)
             .kind(Kind::TextNote)
             .since(Timestamp::from(1612808000));
         assert!(filter.match_event(&event));
 
         // Not match (since)
         let filter = Filter::new()
-            .author("379e863e")
+            .author(pubkey)
             .kind(Kind::TextNote)
             .since(Timestamp::from(1700000000));
         assert!(!filter.match_event(&event));
@@ -916,7 +875,7 @@ mod test {
         let filters: Vec<Filter> = vec![
             // Filter that match
             Filter::new()
-                .author("379e863e")
+                .author(pubkey)
                 .kind(Kind::TextNote)
                 .since(Timestamp::from(1612808000)),
             // Filter that not match

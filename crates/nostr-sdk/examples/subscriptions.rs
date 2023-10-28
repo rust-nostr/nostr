@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let subscription = Filter::new()
-        .author(my_keys.public_key().to_string())
+        .author(my_keys.public_key())
         .kind(Kind::Metadata)
         .since(Timestamp::now());
 
@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
                         let relay = client.relay("wss://relay.damus.io").await?;
                         let other_filters = Filter::new()
                             .kind(Kind::TextNote)
-                            .author(my_keys.public_key().to_string())
+                            .author(my_keys.public_key())
                             .since(Timestamp::now());
                         relay
                             .subscribe_with_internal_id(
