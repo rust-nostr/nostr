@@ -13,17 +13,24 @@ The project is split up into several crates in the `crates/` directory:
 **nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift, Kotlin, Python and JavaScript. 
 Please, explore the [`bindings/`](./bindings/) directory to learn more.
 
-#### Available packages
+### Embedded
+
+**nostr** crate can be used in [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments. 
+Check the example in the [`embedded/`](./crates/nostr/examples/embedded/) directory.
+
+### Available packages
 
 * **nostr**:
+    * Rust: https://crates.io/crates/nostr
+    * Python: https://pypi.org/project/nostr-protocol
     * Kotlin: [`io.github.rust-nostr:nostr`](https://central.sonatype.com/artifact/io.github.rust-nostr/nostr/)
     * Swift: https://github.com/rust-nostr/nostr-swift
-    * Python: https://pypi.org/project/nostr-protocol
     * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr
 * **nostr-sdk**:
+    * Rust: https://crates.io/crates/nostr-sdk
+    * Python: https://pypi.org/project/nostr-sdk
     * Kotlin: [`io.github.rust-nostr:nostr-sdk`](https://central.sonatype.com/artifact/io.github.rust-nostr/nostr-sdk/)
     * Swift: https://github.com/rust-nostr/nostr-sdk-swift
-    * Python: https://pypi.org/project/nostr-sdk
     * JavaScript: TODO
 
 ## Minimum Supported Rust Version (MSRV)
