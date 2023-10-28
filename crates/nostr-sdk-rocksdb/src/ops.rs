@@ -13,23 +13,22 @@ pub(crate) fn indexes_merge_operator(
     existing: Option<&[u8]>,
     operands: &MergeOperands,
 ) -> Option<Vec<u8>> {
-    // Create a HashSet to store the event IDs for the author.
     let mut existing: HashSet<[u8; 32]> = match existing {
         Some(val) => HashSet::decode(val).ok()?,
         None => HashSet::with_capacity(operands.len()),
     };
 
-    // Merge in the new event IDs.
     for operand in operands.into_iter() {
+        // Check size of operand
         if operand.len() == 32 {
-            let mut event_id = [0u8; 32];
+            let mut event_id: [u8; 32] = [0u8; 32];
             event_id.copy_from_slice(operand);
             existing.insert(event_id);
         } else {
-            tracing::warn!("Wrong operand slice len: {}", operand.len());
+            existing.extend(HashSet::decode(operand).ok()?);
         }
     }
 
-    let mut fbb = FlatBufferBuilder::with_capacity(existing.len() * 32 * 2);
+    let mut fbb = FlatBufferBuilder::with_capacity(existing.len() * 32 * 2); // Check capacity size if correct
     Some(existing.encode(&mut fbb).to_vec())
 }
