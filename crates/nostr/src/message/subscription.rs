@@ -109,38 +109,46 @@ impl fmt::Display for Alphabet {
     }
 }
 
+impl TryFrom<char> for Alphabet {
+    type Error = AlphabetError;
+    fn try_from(c: char) -> Result<Self, Self::Error> {
+        match c {
+            'a' => Ok(Self::A),
+            'b' => Ok(Self::B),
+            'c' => Ok(Self::C),
+            'd' => Ok(Self::D),
+            'e' => Ok(Self::E),
+            'f' => Ok(Self::F),
+            'g' => Ok(Self::G),
+            'h' => Ok(Self::H),
+            'i' => Ok(Self::I),
+            'j' => Ok(Self::J),
+            'k' => Ok(Self::K),
+            'l' => Ok(Self::L),
+            'm' => Ok(Self::M),
+            'n' => Ok(Self::N),
+            'o' => Ok(Self::O),
+            'p' => Ok(Self::P),
+            'q' => Ok(Self::Q),
+            'r' => Ok(Self::R),
+            's' => Ok(Self::S),
+            't' => Ok(Self::T),
+            'u' => Ok(Self::U),
+            'v' => Ok(Self::V),
+            'w' => Ok(Self::W),
+            'x' => Ok(Self::X),
+            'y' => Ok(Self::Y),
+            'z' => Ok(Self::Z),
+            _ => Err(AlphabetError::InvalidChar),
+        }
+    }
+}
+
 impl FromStr for Alphabet {
     type Err = AlphabetError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "a" => Ok(Self::A),
-            "b" => Ok(Self::B),
-            "c" => Ok(Self::C),
-            "d" => Ok(Self::D),
-            "e" => Ok(Self::E),
-            "f" => Ok(Self::F),
-            "g" => Ok(Self::G),
-            "h" => Ok(Self::H),
-            "i" => Ok(Self::I),
-            "j" => Ok(Self::J),
-            "k" => Ok(Self::K),
-            "l" => Ok(Self::L),
-            "m" => Ok(Self::M),
-            "n" => Ok(Self::N),
-            "o" => Ok(Self::O),
-            "p" => Ok(Self::P),
-            "q" => Ok(Self::Q),
-            "r" => Ok(Self::R),
-            "s" => Ok(Self::S),
-            "t" => Ok(Self::T),
-            "u" => Ok(Self::U),
-            "v" => Ok(Self::V),
-            "w" => Ok(Self::W),
-            "x" => Ok(Self::X),
-            "y" => Ok(Self::Y),
-            "z" => Ok(Self::Z),
-            _ => Err(AlphabetError::InvalidChar),
-        }
+        let c: char = s.chars().next().ok_or(AlphabetError::InvalidChar)?;
+        Self::try_from(c)
     }
 }
 
@@ -566,26 +574,6 @@ impl Filter {
     }
 }
 
-fn single_char_tagname(tagname: &str) -> Option<Alphabet> {
-    tagname
-        .chars()
-        .next()
-        .and_then(|first| Alphabet::from_str(&first.to_string()).ok())
-}
-
-fn tag_idx(event: &Event) -> AllocMap<Alphabet, AllocSet<String>> {
-    event
-        .tags
-        .iter()
-        .map(|t| t.as_vec())
-        .filter(|t| t.len() > 1)
-        .filter_map(|t| single_char_tagname(&t[0]).map(|tagnamechar| (tagnamechar, t[1].clone())))
-        .fold(AllocMap::new(), |mut idx, (tagnamechar, tagval)| {
-            idx.entry(tagnamechar).or_default().insert(tagval);
-            idx
-        })
-}
-
 impl Filter {
     fn ids_match(&self, event: &Event) -> bool {
         self.ids.is_empty() || self.ids.contains(&event.id)
@@ -600,7 +588,7 @@ impl Filter {
             return true;
         }
 
-        let idx: AllocMap<Alphabet, AllocSet<String>> = tag_idx(event);
+        let idx: AllocMap<Alphabet, AllocSet<String>> = event.build_tags_index();
         self.generic_tags.iter().all(|(tagname, set)| {
             idx.get(tagname)
                 .map(|valset| valset.intersection(set).count() > 0)

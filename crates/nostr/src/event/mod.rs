@@ -4,9 +4,13 @@
 
 //! Event
 
+#[cfg(not(feature = "std"))]
+use alloc::collections::{BTreeMap as AllocMap, BTreeSet as AllocSet};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
+#[cfg(feature = "std")]
+use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
@@ -30,7 +34,7 @@ use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{JsonUtil, Timestamp};
+use crate::{Alphabet, JsonUtil, Timestamp};
 
 /// [`Event`] error
 #[derive(Debug)]
@@ -281,6 +285,28 @@ impl Event {
             Tag::Event(id, ..) => Some(id),
             _ => None,
         })
+    }
+
+    /// Build tags index
+    pub fn build_tags_index(&self) -> AllocMap<Alphabet, AllocSet<String>> {
+        fn single_char_tagname(tagname: &str) -> Option<Alphabet> {
+            tagname
+                .chars()
+                .next()
+                .and_then(|first| Alphabet::try_from(first).ok())
+        }
+
+        self.tags
+            .iter()
+            .map(|t| t.as_vec())
+            .filter(|t| t.len() > 1)
+            .filter_map(|t| {
+                single_char_tagname(&t[0]).map(|tagnamechar| (tagnamechar, t[1].clone()))
+            })
+            .fold(AllocMap::new(), |mut idx, (tagnamechar, tagval)| {
+                idx.entry(tagnamechar).or_default().insert(tagval);
+                idx
+            })
     }
 }
 
