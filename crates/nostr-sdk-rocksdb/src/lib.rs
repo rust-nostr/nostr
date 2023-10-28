@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use nostr::{Event, EventId, Filter, Timestamp, Url};
+use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
 use nostr_sdk_db::{Backend, DatabaseError, DatabaseOptions, NostrDatabase};
 use nostr_sdk_fbs::{FlatBufferBuilder, FlatBufferUtils};
 use rocksdb::{
@@ -90,6 +90,29 @@ impl RocksDatabase {
 
     fn cf_handle(&self, name: &str) -> Result<Arc<BoundColumnFamily>, DatabaseError> {
         self.db.cf_handle(name).ok_or(DatabaseError::NotFound)
+    }
+
+    fn query_single_filter(
+        &self,
+        filter: &Filter,
+        ids_to_get: &mut HashSet<[u8; 32]>,
+    ) -> Result<(), DatabaseError> {
+        if !filter.kinds.is_empty() {
+            let kind_index_cf = self.cf_handle(KIND_INDEX_CF)?;
+            let keys = filter.kinds.iter().map(|k| k.as_u64().to_be_bytes());
+            for v in self
+                .db
+                .batched_multi_get_cf(&kind_index_cf, keys, false)
+                .into_iter()
+                .flatten()
+                .flatten()
+            {
+                let set: HashSet<[u8; 32]> = HashSet::decode(&v).map_err(DatabaseError::backend)?;
+                ids_to_get.extend(set);
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -190,27 +213,14 @@ impl NostrDatabase for RocksDatabase {
             let mut events: Vec<Event> = Vec::new();
 
             let cf = this.cf_handle(EVENTS_CF)?;
-            let kind_index_cf = this.cf_handle(KIND_INDEX_CF)?;
 
             let mut ids_to_get: HashSet<[u8; 32]> = HashSet::new();
 
-            let filter = filters.first().unwrap();
-            if !filter.kinds.is_empty() {
-                let keys = filter.kinds.iter().map(|k| k.as_u64().to_be_bytes());
-                for v in this
-                    .db
-                    .batched_multi_get_cf(&kind_index_cf, keys, false)
-                    .into_iter()
-                    .flatten()
-                    .flatten()
-                {
-                    let set: HashSet<[u8; 32]> =
-                        HashSet::decode(&v).map_err(DatabaseError::backend)?;
-                    ids_to_get.extend(set);
-                }
-            } else {
-                tracing::debug!("No kinds set to query");
+            for filter in filters.iter() {
+                this.query_single_filter(filter, &mut ids_to_get)?;
             }
+
+            //let mut counter = 0;
 
             for v in this
                 .db
@@ -219,8 +229,18 @@ impl NostrDatabase for RocksDatabase {
                 .flatten()
                 .flatten()
             {
+                /* if let Some(limit) = filter.limit {
+                    if counter >= limit && limit != 0 {
+                        break;
+                    }
+                } */
+
                 let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
-                events.push(event);
+                if filters.match_event(&event) {
+                    events.push(event);
+                }
+
+                //counter += 1;
             }
 
             /* let iter = this.db.full_iterator_cf(&cf, IteratorMode::Start);
