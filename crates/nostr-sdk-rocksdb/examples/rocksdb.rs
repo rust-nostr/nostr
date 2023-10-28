@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-// use std::time::{Duration, Instant};
+// use std::time::Duration;
 
 use nostr::prelude::*;
 use nostr_sdk_db::NostrDatabase;
@@ -18,7 +18,9 @@ async fn main() {
         SecretKey::from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
             .unwrap();
     let keys = Keys::new(secret_key);
+    println!("Pubkey: {}", keys.public_key());
     let database = RocksDatabase::new("./db/rocksdb").unwrap();
+    database.build_indexes().await.unwrap();
 
     /* for i in 0..50_000 {
         let event = EventBuilder::new_text_note(format!("Event #{i}"), &[])
@@ -37,16 +39,16 @@ async fn main() {
         .unwrap();
        database.save_event(&event).await.unwrap();
        println!("{}", event.id);
-    }
+    } */
 
-    for i in 0..10 {
+    /* for i in 0..10 {
         let metadata = Metadata::new().name(format!("Name #{i}"));
         let event = EventBuilder::set_metadata(metadata)
             .to_event(&keys)
             .unwrap();
         database.save_event(&event).await.unwrap();
         tokio::time::sleep(Duration::from_secs(1)).await;
-    } */
+    }  */
 
     /* let event_id =
         EventId::from_hex("b02c1c57a7c5b0e10245df8c26b429ad1a2cbf91d7cada3ecdb524b7e1d984b6")
@@ -57,8 +59,10 @@ async fn main() {
     let events = database
         .query(vec![Filter::new()
             .kind(Kind::Metadata)
-            .author(keys.public_key().to_string())])
+            //.kind(Kind::Custom(123))
+            .author(keys.public_key())])
         .await
         .unwrap();
+    //println!("{events:?}");
     println!("Got {} events", events.len());
 }

@@ -44,7 +44,7 @@ async fn main() {
     let events = database
         .query(vec![Filter::new()
             .kind(Kind::Metadata)
-            .author(keys.public_key().to_string())])
+            .author(keys.public_key())])
         .await
         .unwrap();
     println!("{events:?}");

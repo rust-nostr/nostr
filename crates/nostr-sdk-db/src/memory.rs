@@ -102,9 +102,7 @@ impl MemoryDatabase {
             let mut should_insert: bool = true;
 
             if event.is_replaceable() {
-                let filter: Filter = Filter::new()
-                    .author(event.pubkey.to_string())
-                    .kind(event.kind);
+                let filter: Filter = Filter::new().author(event.pubkey).kind(event.kind);
                 let res: Vec<Event> = self._query(events, vec![filter]).await?;
                 if let Some(ev) = res.into_iter().next() {
                     if ev.created_at >= event.created_at {
@@ -117,7 +115,7 @@ impl MemoryDatabase {
                 match event.identifier() {
                     Some(identifier) => {
                         let filter: Filter = Filter::new()
-                            .author(event.pubkey.to_string())
+                            .author(event.pubkey)
                             .kind(event.kind)
                             .identifier(identifier);
                         let res: Vec<Event> = self._query(events, vec![filter]).await?;

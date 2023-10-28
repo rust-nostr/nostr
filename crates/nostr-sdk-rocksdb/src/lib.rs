@@ -7,10 +7,13 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
-use nostr_sdk_db::{Backend, DatabaseError, DatabaseOptions, NostrDatabase};
+use nostr_sdk_db::{
+    index::DatabaseIndexes, Backend, DatabaseError, DatabaseOptions, EventIndexResult,
+    NostrDatabase,
+};
 use nostr_sdk_fbs::{FlatBufferBuilder, FlatBufferUtils};
 use rocksdb::{
-    BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType,
+    BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, IteratorMode,
     OptimisticTransactionDB, Options, WriteBatchWithTransaction,
 };
 use tokio::sync::RwLock;
@@ -27,6 +30,7 @@ const KIND_INDEX_CF: &str = "kind_index";
 #[derive(Debug, Clone)]
 pub struct RocksDatabase {
     db: Arc<OptimisticTransactionDB>,
+    indexes: DatabaseIndexes,
     fbb: Arc<RwLock<FlatBufferBuilder<'static>>>,
 }
 
@@ -84,6 +88,7 @@ impl RocksDatabase {
 
         Ok(Self {
             db: Arc::new(db),
+            indexes: DatabaseIndexes::new(),
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         })
     }
@@ -92,23 +97,15 @@ impl RocksDatabase {
         self.db.cf_handle(name).ok_or(DatabaseError::NotFound)
     }
 
-    fn query_single_filter(
-        &self,
-        filter: &Filter,
-        ids_to_get: &mut HashSet<[u8; 32]>,
-    ) -> Result<(), DatabaseError> {
-        if !filter.kinds.is_empty() {
-            let kind_index_cf = self.cf_handle(KIND_INDEX_CF)?;
-            let keys = filter.kinds.iter().map(|k| k.as_u64().to_be_bytes());
-            for v in self
-                .db
-                .batched_multi_get_cf(&kind_index_cf, keys, false)
-                .into_iter()
-                .flatten()
-                .flatten()
-            {
-                let set: HashSet<[u8; 32]> = HashSet::decode(&v).map_err(DatabaseError::backend)?;
-                ids_to_get.extend(set);
+    #[tracing::instrument(skip_all)]
+    pub async fn build_indexes(&self) -> Result<(), DatabaseError> {
+        let cf = self.cf_handle(EVENTS_CF)?;
+        let iter = self.db.full_iterator_cf(&cf, IteratorMode::Start);
+
+        for i in iter {
+            if let Ok((_key, value)) = i {
+                let event = Event::decode(&value).map_err(DatabaseError::backend)?;
+                self.indexes.index_event(&event).await;
             }
         }
 
@@ -130,35 +127,43 @@ impl NostrDatabase for RocksDatabase {
 
     #[tracing::instrument(skip_all)]
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
-        // Acquire FlatBuffers Builder
-        let mut fbb = self.fbb.write().await;
+        // Index event
+        let EventIndexResult {
+            to_store,
+            to_discard,
+        } = self.indexes.index_event(&event).await;
 
-        // Get Column Families
-        let events_cf = self.cf_handle(EVENTS_CF)?;
-        let pubkey_index_cf = self.cf_handle(PUBKEY_INDEX_CF)?;
-        let kind_index_cf = self.cf_handle(KIND_INDEX_CF)?;
+        if to_store {
+            // Acquire FlatBuffers Builder
+            let mut fbb = self.fbb.write().await;
 
-        // Serialize key and value
-        let key: &[u8] = event.id.as_bytes();
-        let value: &[u8] = event.encode(&mut fbb);
+            tokio::task::block_in_place(|| {
+                // Get Column Families
+                let events_cf = self.cf_handle(EVENTS_CF)?;
 
-        // Prepare write batch
-        let mut batch = WriteBatchWithTransaction::default();
+                // Serialize key and value
+                let key: &[u8] = event.id.as_bytes();
+                let value: &[u8] = event.encode(&mut fbb);
 
-        // Save event
-        batch.put_cf(&events_cf, key, value);
+                // Prepare write batch
+                let mut batch = WriteBatchWithTransaction::default();
 
-        // Save pubkey index
-        batch.merge_cf(&pubkey_index_cf, event.pubkey.serialize(), key);
+                // Save event
+                batch.put_cf(&events_cf, key, value);
 
-        // Save kind index
-        batch.merge_cf(&kind_index_cf, event.kind.as_u64().to_be_bytes(), key);
+                // Discard events no longer needed
+                for event_id in to_discard.into_iter() {
+                    batch.delete_cf(&events_cf, event_id.as_bytes());
+                }
 
-        // Write batch changes
-        self.db.write(batch).map_err(DatabaseError::backend)?;
+                // Write batch changes
+                self.db.write(batch).map_err(DatabaseError::backend)
+            })?;
 
-        // Return status
-        Ok(true)
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     async fn has_event_already_been_seen(&self, _event_id: EventId) -> Result<bool, Self::Err> {
@@ -208,17 +213,18 @@ impl NostrDatabase for RocksDatabase {
 
     #[tracing::instrument(skip_all)]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
+        let mut ids_to_get: HashSet<EventId> = HashSet::new();
+
+        for filter in filters.iter() {
+            let ids = self.indexes.query(filter).await;
+            ids_to_get.extend(ids);
+        }
+
         let this = self.clone();
         tokio::task::spawn_blocking(move || {
-            let mut events: Vec<Event> = Vec::new();
-
             let cf = this.cf_handle(EVENTS_CF)?;
 
-            let mut ids_to_get: HashSet<[u8; 32]> = HashSet::new();
-
-            for filter in filters.iter() {
-                this.query_single_filter(filter, &mut ids_to_get)?;
-            }
+            let mut events: Vec<Event> = Vec::new();
 
             //let mut counter = 0;
 

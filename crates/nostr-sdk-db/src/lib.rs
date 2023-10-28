@@ -13,10 +13,12 @@ pub use async_trait::async_trait;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 
 mod error;
+pub mod index;
 pub mod memory;
 mod options;
 
 pub use self::error::DatabaseError;
+pub use self::index::{DatabaseIndexes, EventIndexResult};
 pub use self::options::DatabaseOptions;
 
 /// Backend
