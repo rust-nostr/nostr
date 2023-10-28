@@ -406,10 +406,9 @@ mod tests {
                     "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"
                 ],
                 "kinds": [
-                    0,
-                    3
+                    1
                 ],
-                "limit": 200000,
+                "limit": 20,
                 "since": -50123406
             }
         ]);
