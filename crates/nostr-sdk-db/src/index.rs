@@ -4,11 +4,14 @@
 //! Indexes
 
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 use std::sync::Arc;
 
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{Event, EventId, Filter, Kind, Timestamp};
+use nostr::{Alphabet, Event, EventId, Filter, Kind, Timestamp};
 use tokio::sync::RwLock;
+
+type TagIndex = HashMap<EventId, HashMap<Alphabet, HashSet<String>>>;
 
 /// Event Index Result
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -25,7 +28,8 @@ pub struct DatabaseIndexes {
     ids_index: Arc<RwLock<HashMap<EventId, Timestamp>>>,
     kinds_index: Arc<RwLock<HashMap<Kind, HashSet<EventId>>>>,
     authors_index: Arc<RwLock<HashMap<XOnlyPublicKey, HashSet<EventId>>>>,
-    created_at_index: Arc<RwLock<HashMap<Timestamp, HashSet<EventId>>>>,
+    created_at_index: Arc<RwLock<HashMap<Timestamp, HashSet<EventId>>>>, // TODO: remove this and use BTreeMap?
+    tags_index: Arc<RwLock<TagIndex>>,
 }
 
 impl DatabaseIndexes {
@@ -35,6 +39,7 @@ impl DatabaseIndexes {
     }
 
     /// Index [`Event`]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn index_event(&self, event: &Event) -> EventIndexResult {
         // Check if it's expired or ephemeral
         if event.is_expired() || event.is_ephemeral() {
@@ -42,32 +47,8 @@ impl DatabaseIndexes {
         }
 
         let should_insert: bool = true;
-        let mut created_at_index = self.created_at_index.write().await;
-
-        /* if event.is_replaceable() {
-            let filter: Filter = Filter::new()
-                .author(event.pubkey.to_string())
-                .kind(event.kind);
-            let res: HashSet<EventId> = self.query(&filter).await;
-        } else if event.is_parameterized_replaceable() {
-            /* match event.identifier() {
-                Some(identifier) => {
-                    let filter: Filter = Filter::new()
-                        .author(event.pubkey.to_string())
-                        .kind(event.kind)
-                        .identifier(identifier);
-                    let res: Vec<Event> = self._query(events, vec![filter]).await?;
-                    if let Some(ev) = res.into_iter().next() {
-                        if ev.created_at >= event.created_at {
-                            should_insert = false;
-                        } else if ev.created_at < event.created_at {
-                            events.remove(&ev.id);
-                        }
-                    }
-                }
-                None => should_insert = false,
-            } */
-        } */
+        
+        // TODO: check if it's a [parametrized] replaceable event
 
         if should_insert {
             // Index id
@@ -83,8 +64,13 @@ impl DatabaseIndexes {
             self.index_event_author(&mut authors_index, event).await;
 
             // Index created at
+            let mut created_at_index = self.created_at_index.write().await;
             self.index_event_created_at(&mut created_at_index, event)
                 .await;
+
+            // Index tags
+            let mut tags_index = self.tags_index.write().await;
+            self.index_event_tags(&mut tags_index, event).await;
         }
 
         EventIndexResult {
@@ -152,33 +138,38 @@ impl DatabaseIndexes {
             });
     }
 
+    /// Index tags
+    async fn index_event_tags(
+        &self,
+        tags_index: &mut TagIndex,
+        event: &Event,
+    ) {
+        if !event.tags.is_empty() {
+            tags_index.insert(event.id, event.build_tags_index());
+        }
+    }
+
     /// Query
+    #[tracing::instrument(skip_all)]
     pub async fn query(&self, filter: &Filter) -> HashSet<EventId> {
         let mut matching_event_ids = HashSet::new();
 
         let kinds_index = self.kinds_index.read().await;
         let authors_index = self.authors_index.read().await;
         let created_at_index = self.created_at_index.read().await;
+        let tags_index = self.tags_index.read().await;
 
         if !filter.kinds.is_empty() {
-            let mut temp = HashSet::new();
-            for kind in filter.kinds.iter() {
-                if let Some(ids) = kinds_index.get(kind) {
-                    temp.extend(ids);
-                }
-            }
+            let temp = self.query_index(&kinds_index, &filter.kinds).await;
             intersect_or_extend(&mut matching_event_ids, &temp);
         }
 
         if !filter.authors.is_empty() {
-            let mut temp = HashSet::new();
-            for author in filter.authors.iter() {
-                if let Some(ids) = authors_index.get(author) {
-                    temp.extend(ids);
-                }
-            }
+            let temp = self.query_index(&authors_index, &filter.authors).await;
             intersect_or_extend(&mut matching_event_ids, &temp);
         }
+
+        // TODO: check if since >= until
 
         if let Some(since) = filter.since {
             let mut temp = HashSet::new();
@@ -200,9 +191,40 @@ impl DatabaseIndexes {
             intersect_or_extend(&mut matching_event_ids, &temp);
         }
 
+        if !filter.generic_tags.is_empty() {
+            let mut temp = HashSet::new();
+            for (id, idx) in tags_index.iter() {
+                if filter.generic_tags.iter().all(|(tagname, set)| {
+                    idx.get(tagname)
+                        .map(|valset| valset.intersection(set).count() > 0)
+                        .unwrap_or(false)
+                }) {
+                    temp.insert(*id);
+                }
+            }
+            intersect_or_extend(&mut matching_event_ids, &temp);
+        }
+
         // TODO: sort by timestamp and use limit
 
         matching_event_ids
+    }
+
+    async fn query_index<K>(
+        &self,
+        index: &HashMap<K, HashSet<EventId>>,
+        keys: &HashSet<K>,
+    ) -> HashSet<EventId>
+    where
+        K: Eq + Hash,
+    {
+        let mut result: HashSet<EventId> = HashSet::new();
+        for key in keys.iter() {
+            if let Some(ids) = index.get(key) {
+                result.extend(ids);
+            }
+        }
+        result
     }
 
     /// Clear indexes
