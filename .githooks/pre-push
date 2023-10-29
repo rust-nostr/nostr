@@ -11,6 +11,8 @@ buildargs=(
     "-p nostr-sdk"
     "-p nostr-sdk --no-default-features"
     "-p nostr-sdk --features blocking"
+    "-p nostr-sdk-db"
+    "-p nostr-sdk-fbs"
     "-p nostr-ffi"
     "-p nostr-sdk-ffi"
 )
