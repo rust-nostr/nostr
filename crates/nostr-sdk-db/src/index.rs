@@ -3,7 +3,7 @@
 
 //! Indexes
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::Hash;
 use std::sync::Arc;
 
@@ -25,10 +25,10 @@ pub struct EventIndexResult {
 /// Events Indexes
 #[derive(Debug, Clone, Default)]
 pub struct DatabaseIndexes {
-    ids_index: Arc<RwLock<HashMap<EventId, Timestamp>>>,
+    //ids_index: Arc<RwLock<HashMap<EventId, Timestamp>>>,
     kinds_index: Arc<RwLock<HashMap<Kind, HashSet<EventId>>>>,
     authors_index: Arc<RwLock<HashMap<XOnlyPublicKey, HashSet<EventId>>>>,
-    created_at_index: Arc<RwLock<HashMap<Timestamp, HashSet<EventId>>>>, // TODO: remove this and use BTreeMap?
+    created_at_index: Arc<RwLock<BTreeMap<Timestamp, HashSet<EventId>>>>,
     tags_index: Arc<RwLock<TagIndex>>,
 }
 
@@ -47,13 +47,13 @@ impl DatabaseIndexes {
         }
 
         let should_insert: bool = true;
-        
+
         // TODO: check if it's a [parametrized] replaceable event
 
         if should_insert {
             // Index id
-            let mut ids_index = self.ids_index.write().await;
-            self.index_event_id(&mut ids_index, event).await;
+            /* let mut ids_index = self.ids_index.write().await;
+            self.index_event_id(&mut ids_index, event).await; */
 
             // Index kind
             let mut kinds_index = self.kinds_index.write().await;
@@ -79,10 +79,10 @@ impl DatabaseIndexes {
         }
     }
 
-    /// Index id
+    /* /// Index id
     async fn index_event_id(&self, ids_index: &mut HashMap<EventId, Timestamp>, event: &Event) {
         ids_index.insert(event.id, event.created_at);
-    }
+    } */
 
     /// Index kind
     async fn index_event_kind(
@@ -123,7 +123,7 @@ impl DatabaseIndexes {
     /// Index created at
     async fn index_event_created_at(
         &self,
-        created_at_index: &mut HashMap<Timestamp, HashSet<EventId>>,
+        created_at_index: &mut BTreeMap<Timestamp, HashSet<EventId>>,
         event: &Event,
     ) {
         created_at_index
@@ -139,11 +139,7 @@ impl DatabaseIndexes {
     }
 
     /// Index tags
-    async fn index_event_tags(
-        &self,
-        tags_index: &mut TagIndex,
-        event: &Event,
-    ) {
+    async fn index_event_tags(&self, tags_index: &mut TagIndex, event: &Event) {
         if !event.tags.is_empty() {
             tags_index.insert(event.id, event.build_tags_index());
         }
@@ -152,6 +148,16 @@ impl DatabaseIndexes {
     /// Query
     #[tracing::instrument(skip_all)]
     pub async fn query(&self, filter: &Filter) -> HashSet<EventId> {
+        if !filter.ids.is_empty() {
+            return filter.ids.clone();
+        }
+
+        if let (Some(since), Some(until)) = (filter.since, filter.until) {
+            if since > until {
+                return HashSet::new();
+            }
+        }
+
         let mut matching_event_ids = HashSet::new();
 
         let kinds_index = self.kinds_index.read().await;
@@ -169,26 +175,28 @@ impl DatabaseIndexes {
             intersect_or_extend(&mut matching_event_ids, &temp);
         }
 
-        // TODO: check if since >= until
-
-        if let Some(since) = filter.since {
+        if let (Some(since), Some(until)) = (filter.since, filter.until) {
             let mut temp = HashSet::new();
-            for (timestamp, ids) in created_at_index.iter() {
-                if *timestamp >= since {
-                    temp.extend(ids);
-                }
+            for ids in created_at_index.range(since..=until).map(|(_, ids)| ids) {
+                temp.extend(ids);
             }
             intersect_or_extend(&mut matching_event_ids, &temp);
-        }
-
-        if let Some(until) = filter.until {
-            let mut temp = HashSet::new();
-            for (timestamp, ids) in created_at_index.iter() {
-                if *timestamp <= until {
+        } else {
+            if let Some(since) = filter.since {
+                let mut temp = HashSet::new();
+                for (_, ids) in created_at_index.range(since..) {
                     temp.extend(ids);
                 }
+                intersect_or_extend(&mut matching_event_ids, &temp);
             }
-            intersect_or_extend(&mut matching_event_ids, &temp);
+
+            if let Some(until) = filter.until {
+                let mut temp = HashSet::new();
+                for (_, ids) in created_at_index.range(..=until) {
+                    temp.extend(ids);
+                }
+                intersect_or_extend(&mut matching_event_ids, &temp);
+            }
         }
 
         if !filter.generic_tags.is_empty() {
