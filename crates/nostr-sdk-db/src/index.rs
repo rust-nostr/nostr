@@ -3,15 +3,21 @@
 
 //! Indexes
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
+use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::Arc;
 
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Alphabet, Event, EventId, Filter, Kind, Timestamp};
 use tokio::sync::RwLock;
 
-type TagIndex = HashMap<EventId, HashMap<Alphabet, HashSet<String>>>;
+type Mapping = HashMap<SmallerIdentifier, EventId>;
+type KindIndex = HashMap<Kind, HashSet<MappingIdentifier>>;
+type AuthorIndex = HashMap<XOnlyPublicKey, HashSet<MappingIdentifier>>;
+type CreatedAtIndex = BTreeMap<Timestamp, HashSet<MappingIdentifier>>;
+type TagIndex = HashMap<Alphabet, HashMap<MappingIdentifier, HashSet<String>>>;
 
 /// Event Index Result
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -22,13 +28,46 @@ pub struct EventIndexResult {
     pub to_discard: HashSet<EventId>,
 }
 
-/// Events Indexes
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct SmallerIdentifier([u8; 8]);
+
+impl SmallerIdentifier {
+    pub fn new(sid: [u8; 8]) -> Self {
+        Self(sid)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+struct MappingIdentifier {
+    pub timestamp: Timestamp,
+    pub sid: SmallerIdentifier,
+}
+
+impl PartialOrd for MappingIdentifier {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for MappingIdentifier {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let timestamp_cmp = other.timestamp.cmp(&self.timestamp);
+        if timestamp_cmp != Ordering::Equal {
+            return timestamp_cmp;
+        }
+
+        self.sid.cmp(&other.sid)
+    }
+}
+
+/// Database Indexes
 #[derive(Debug, Clone, Default)]
 pub struct DatabaseIndexes {
-    //ids_index: Arc<RwLock<HashMap<EventId, Timestamp>>>,
-    kinds_index: Arc<RwLock<HashMap<Kind, HashSet<EventId>>>>,
-    authors_index: Arc<RwLock<HashMap<XOnlyPublicKey, HashSet<EventId>>>>,
-    created_at_index: Arc<RwLock<BTreeMap<Timestamp, HashSet<EventId>>>>,
+    counter: Arc<AtomicU64>,
+    mapping: Arc<RwLock<Mapping>>,
+    kinds_index: Arc<RwLock<KindIndex>>,
+    authors_index: Arc<RwLock<AuthorIndex>>,
+    created_at_index: Arc<RwLock<CreatedAtIndex>>,
     tags_index: Arc<RwLock<TagIndex>>,
 }
 
@@ -51,26 +90,33 @@ impl DatabaseIndexes {
         // TODO: check if it's a [parametrized] replaceable event
 
         if should_insert {
-            // Index id
-            /* let mut ids_index = self.ids_index.write().await;
-            self.index_event_id(&mut ids_index, event).await; */
+            let mapping_id = MappingIdentifier {
+                sid: self.next_sid(),
+                timestamp: event.created_at,
+            };
+
+            let mut mapping = self.mapping.write().await;
+            mapping.insert(mapping_id.sid, event.id);
 
             // Index kind
             let mut kinds_index = self.kinds_index.write().await;
-            self.index_event_kind(&mut kinds_index, event).await;
+            self.index_event_kind(&mut kinds_index, mapping_id, event)
+                .await;
 
             // Index author
             let mut authors_index = self.authors_index.write().await;
-            self.index_event_author(&mut authors_index, event).await;
+            self.index_event_author(&mut authors_index, mapping_id, event)
+                .await;
 
             // Index created at
             let mut created_at_index = self.created_at_index.write().await;
-            self.index_event_created_at(&mut created_at_index, event)
+            self.index_event_created_at(&mut created_at_index, mapping_id, event)
                 .await;
 
             // Index tags
             let mut tags_index = self.tags_index.write().await;
-            self.index_event_tags(&mut tags_index, event).await;
+            self.index_event_tags(&mut tags_index, mapping_id, event)
+                .await;
         }
 
         EventIndexResult {
@@ -79,25 +125,26 @@ impl DatabaseIndexes {
         }
     }
 
-    /* /// Index id
-    async fn index_event_id(&self, ids_index: &mut HashMap<EventId, Timestamp>, event: &Event) {
-        ids_index.insert(event.id, event.created_at);
-    } */
+    fn next_sid(&self) -> SmallerIdentifier {
+        let next_id: u64 = self.counter.fetch_add(1, AtomicOrdering::SeqCst);
+        SmallerIdentifier::new(next_id.to_be_bytes())
+    }
 
     /// Index kind
     async fn index_event_kind(
         &self,
-        kinds_index: &mut HashMap<Kind, HashSet<EventId>>,
+        kinds_index: &mut KindIndex,
+        mid: MappingIdentifier,
         event: &Event,
     ) {
         kinds_index
             .entry(event.kind)
             .and_modify(|set| {
-                set.insert(event.id);
+                set.insert(mid);
             })
             .or_insert_with(|| {
                 let mut set = HashSet::with_capacity(1);
-                set.insert(event.id);
+                set.insert(mid);
                 set
             });
     }
@@ -105,17 +152,18 @@ impl DatabaseIndexes {
     /// Index author
     async fn index_event_author(
         &self,
-        authors_index: &mut HashMap<XOnlyPublicKey, HashSet<EventId>>,
+        authors_index: &mut AuthorIndex,
+        mid: MappingIdentifier,
         event: &Event,
     ) {
         authors_index
             .entry(event.pubkey)
             .and_modify(|set| {
-                set.insert(event.id);
+                set.insert(mid);
             })
             .or_insert_with(|| {
                 let mut set = HashSet::with_capacity(1);
-                set.insert(event.id);
+                set.insert(mid);
                 set
             });
     }
@@ -123,42 +171,57 @@ impl DatabaseIndexes {
     /// Index created at
     async fn index_event_created_at(
         &self,
-        created_at_index: &mut BTreeMap<Timestamp, HashSet<EventId>>,
+        created_at_index: &mut CreatedAtIndex,
+        mid: MappingIdentifier,
         event: &Event,
     ) {
         created_at_index
             .entry(event.created_at)
             .and_modify(|set| {
-                set.insert(event.id);
+                set.insert(mid);
             })
             .or_insert_with(|| {
                 let mut set = HashSet::with_capacity(1);
-                set.insert(event.id);
+                set.insert(mid);
                 set
             });
     }
 
     /// Index tags
-    async fn index_event_tags(&self, tags_index: &mut TagIndex, event: &Event) {
-        if !event.tags.is_empty() {
-            tags_index.insert(event.id, event.build_tags_index());
+    async fn index_event_tags(
+        &self,
+        tags_index: &mut TagIndex,
+        mid: MappingIdentifier,
+        event: &Event,
+    ) {
+        for (a, set) in event.build_tags_index().into_iter() {
+            tags_index
+                .entry(a)
+                .and_modify(|map| {
+                    map.insert(mid, set.clone());
+                })
+                .or_insert_with(|| {
+                    let mut map = HashMap::with_capacity(1);
+                    map.insert(mid, set);
+                    map
+                });
         }
     }
 
     /// Query
     #[tracing::instrument(skip_all)]
-    pub async fn query(&self, filter: &Filter) -> HashSet<EventId> {
+    pub async fn query(&self, filter: &Filter) -> Vec<EventId> {
         if !filter.ids.is_empty() {
-            return filter.ids.clone();
+            return filter.ids.iter().copied().collect();
         }
 
         if let (Some(since), Some(until)) = (filter.since, filter.until) {
             if since > until {
-                return HashSet::new();
+                return Vec::new();
             }
         }
 
-        let mut matching_event_ids = HashSet::new();
+        let mut matching_sids: BTreeSet<MappingIdentifier> = BTreeSet::new();
 
         let kinds_index = self.kinds_index.read().await;
         let authors_index = self.authors_index.read().await;
@@ -167,66 +230,78 @@ impl DatabaseIndexes {
 
         if !filter.kinds.is_empty() {
             let temp = self.query_index(&kinds_index, &filter.kinds).await;
-            intersect_or_extend(&mut matching_event_ids, &temp);
+            intersect_or_extend(&mut matching_sids, &temp);
         }
 
         if !filter.authors.is_empty() {
             let temp = self.query_index(&authors_index, &filter.authors).await;
-            intersect_or_extend(&mut matching_event_ids, &temp);
+            intersect_or_extend(&mut matching_sids, &temp);
         }
 
         if let (Some(since), Some(until)) = (filter.since, filter.until) {
-            let mut temp = HashSet::new();
+            let mut temp = BTreeSet::new();
             for ids in created_at_index.range(since..=until).map(|(_, ids)| ids) {
                 temp.extend(ids);
             }
-            intersect_or_extend(&mut matching_event_ids, &temp);
+            intersect_or_extend(&mut matching_sids, &temp);
         } else {
             if let Some(since) = filter.since {
-                let mut temp = HashSet::new();
+                let mut temp = BTreeSet::new();
                 for (_, ids) in created_at_index.range(since..) {
                     temp.extend(ids);
                 }
-                intersect_or_extend(&mut matching_event_ids, &temp);
+                intersect_or_extend(&mut matching_sids, &temp);
             }
 
             if let Some(until) = filter.until {
-                let mut temp = HashSet::new();
+                let mut temp = BTreeSet::new();
                 for (_, ids) in created_at_index.range(..=until) {
                     temp.extend(ids);
                 }
-                intersect_or_extend(&mut matching_event_ids, &temp);
+                intersect_or_extend(&mut matching_sids, &temp);
             }
         }
 
         if !filter.generic_tags.is_empty() {
-            let mut temp = HashSet::new();
-            for (id, idx) in tags_index.iter() {
-                if filter.generic_tags.iter().all(|(tagname, set)| {
-                    idx.get(tagname)
-                        .map(|valset| valset.intersection(set).count() > 0)
-                        .unwrap_or(false)
-                }) {
-                    temp.insert(*id);
+            let mut temp = BTreeSet::new();
+
+            for (tagname, set) in filter.generic_tags.iter() {
+                if let Some(tag_map) = tags_index.get(tagname) {
+                    for (id, tag_values) in tag_map {
+                        if set.iter().all(|value| tag_values.contains(value)) {
+                            temp.insert(*id);
+                        }
+                    }
                 }
             }
-            intersect_or_extend(&mut matching_event_ids, &temp);
+
+            intersect_or_extend(&mut matching_sids, &temp);
         }
 
-        // TODO: sort by timestamp and use limit
+        let mapping = self.mapping.read().await;
+
+        let limit: usize = filter.limit.unwrap_or(matching_sids.len());
+        let mut matching_event_ids: Vec<EventId> = Vec::with_capacity(limit);
+
+        for mid in matching_sids.into_iter().take(limit).rev() {
+            match mapping.get(&mid.sid) {
+                Some(event_id) => matching_event_ids.push(*event_id),
+                None => tracing::warn!("Event ID not found for {mid:?}"),
+            }
+        }
 
         matching_event_ids
     }
 
     async fn query_index<K>(
         &self,
-        index: &HashMap<K, HashSet<EventId>>,
+        index: &HashMap<K, HashSet<MappingIdentifier>>,
         keys: &HashSet<K>,
-    ) -> HashSet<EventId>
+    ) -> BTreeSet<MappingIdentifier>
     where
         K: Eq + Hash,
     {
-        let mut result: HashSet<EventId> = HashSet::new();
+        let mut result: BTreeSet<MappingIdentifier> = BTreeSet::new();
         for key in keys.iter() {
             if let Some(ids) = index.get(key) {
                 result.extend(ids);
@@ -243,15 +318,18 @@ impl DatabaseIndexes {
         let mut authors_index = self.authors_index.write().await;
         authors_index.clear();
 
-        let mut created_at_index = self.created_at_index.write().await;
-        created_at_index.clear();
+        /* let mut created_at_index = self.created_at_index.write().await;
+        created_at_index.clear(); */
     }
 }
 
-fn intersect_or_extend(main: &mut HashSet<EventId>, second: &HashSet<EventId>) {
+fn intersect_or_extend<T>(main: &mut BTreeSet<T>, other: &BTreeSet<T>)
+where
+    T: Eq + Ord + Copy,
+{
     if main.is_empty() {
-        main.extend(second);
+        main.extend(other);
     } else {
-        *main = main.intersection(second).copied().collect();
+        *main = main.intersection(other).copied().collect();
     }
 }
