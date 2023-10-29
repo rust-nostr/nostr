@@ -18,13 +18,7 @@ use rocksdb::{
 };
 use tokio::sync::RwLock;
 
-mod ops;
-
-use self::ops::indexes_merge_operator;
-
 const EVENTS_CF: &str = "events";
-const PUBKEY_INDEX_CF: &str = "pubkey_index";
-const KIND_INDEX_CF: &str = "kind_index";
 
 /// RocksDB Nostr Database
 #[derive(Debug, Clone)]
@@ -49,14 +43,7 @@ fn default_opts() -> rocksdb::Options {
 }
 
 fn column_families() -> Vec<ColumnFamilyDescriptor> {
-    let mut index_opts: Options = default_opts();
-    index_opts.set_merge_operator_associative("index_merge_operator", indexes_merge_operator);
-
-    vec![
-        ColumnFamilyDescriptor::new(EVENTS_CF, default_opts()),
-        ColumnFamilyDescriptor::new(PUBKEY_INDEX_CF, index_opts.clone()),
-        ColumnFamilyDescriptor::new(KIND_INDEX_CF, index_opts),
-    ]
+    vec![ColumnFamilyDescriptor::new(EVENTS_CF, default_opts())]
 }
 
 impl RocksDatabase {
@@ -213,12 +200,7 @@ impl NostrDatabase for RocksDatabase {
 
     #[tracing::instrument(skip_all)]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        let mut ids_to_get: HashSet<EventId> = HashSet::new();
-
-        for filter in filters.iter() {
-            let ids = self.indexes.query(filter).await;
-            ids_to_get.extend(ids);
-        }
+        let ids = self.indexes.query(filters.clone()).await;
 
         let this = self.clone();
         tokio::task::spawn_blocking(move || {
@@ -226,50 +208,18 @@ impl NostrDatabase for RocksDatabase {
 
             let mut events: Vec<Event> = Vec::new();
 
-            //let mut counter = 0;
-
             for v in this
                 .db
-                .batched_multi_get_cf(&cf, ids_to_get, false)
+                .batched_multi_get_cf(&cf, ids, false)
                 .into_iter()
                 .flatten()
                 .flatten()
             {
-                /* if let Some(limit) = filter.limit {
-                    if counter >= limit && limit != 0 {
-                        break;
-                    }
-                } */
-
                 let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
                 if filters.match_event(&event) {
                     events.push(event);
                 }
-
-                //counter += 1;
             }
-
-            /* let iter = this.db.full_iterator_cf(&cf, IteratorMode::Start);
-
-            for i in iter {
-                if let Ok((_key, value)) = i {
-                    let event: Event = Event::decode(&value).map_err(DatabaseError::backend)?;
-                    if filters.match_event(&event) {
-                        events.push(event);
-                    }
-                }
-            } */
-
-            /* iter.seek_to_first();
-            while iter.valid() {
-                if let Some(value) = iter.value() {
-                    let event: Event = Event::decode(value).map_err(DatabaseError::backend)?;
-                    if filters.match_event(&event) {
-                        events.push(event);
-                    }
-                };
-                iter.next();
-            } */
 
             Ok(events)
         })
