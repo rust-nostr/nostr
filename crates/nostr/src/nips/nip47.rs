@@ -113,6 +113,36 @@ pub enum ErrorCode {
     Other,
 }
 
+impl fmt::Display for Method {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Method::PayInvoice => write!(f, "pay_invoice"),
+            Method::PayKeysend => write!(f, "pay_keysend"),
+            Method::MakeInvoice => write!(f, "make_invoice"),
+            Method::LookupInvoice => write!(f, "lookup_invoice"),
+            Method::ListInvoices => write!(f, "list_invoices"),
+            Method::ListPayments => write!(f, "list_payments"),
+            Method::GetBalance => write!(f, "get_balance"),
+        }
+    }
+}
+
+impl FromStr for Method {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pay_invoice" => Ok(Method::PayInvoice),
+            "pay_keysend" => Ok(Method::PayKeysend),
+            "make_invoice" => Ok(Method::MakeInvoice),
+            "lookup_invoice" => Ok(Method::LookupInvoice),
+            "list_invoices" => Ok(Method::ListInvoices),
+            "list_payments" => Ok(Method::ListPayments),
+            "get_balance" => Ok(Method::GetBalance),
+            _ => Err(Error::InvalidURI),
+        }
+    }
+}
+
 /// NIP47 Error message
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NIP47Error {
