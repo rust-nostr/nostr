@@ -18,7 +18,7 @@ If you're writing a typical Nostr client or bot, you may be interested in [nostr
 
 ```toml
 [dependencies]
-nostr = "0.24"
+nostr = "0.25"
 ```
 
 ```rust,no_run

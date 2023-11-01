@@ -1043,7 +1043,7 @@ dependencies = [
 
 [[package]]
 name = "nostr"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "aes",
  "base64",
@@ -1101,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sdk"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "async-utility",
  "nostr",
@@ -1139,7 +1139,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sdk-net"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "futures-util",
  "thiserror",
