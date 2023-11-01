@@ -95,7 +95,7 @@
     Add the following to the dependencies array in your `Package.swift`:
 
     ``` swift
-    .package(url: "https://github.com/rust-nostr/nostr-swift.git", from: "0.0.4"),
+    .package(url: "https://github.com/rust-nostr/nostr-swift.git", from: "0.0.5"),
     ```
 
     Import the library in your code:
