@@ -249,6 +249,8 @@ impl Client {
     }
 
     /// Stop the client
+    ///
+    /// Disconnect all relays and set their status to `RelayStatus::Stopped`.
     pub async fn stop(&self) -> Result<(), Error> {
         Ok(self.pool.stop().await?)
     }
@@ -278,7 +280,7 @@ impl Client {
         self.pool.relays().await
     }
 
-    /// Get [`Relay`]
+    /// Get a previously added [`Relay`]
     pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
@@ -289,7 +291,9 @@ impl Client {
 
     /// Add new relay
     ///
-    /// Return `true` if relay it's successfully added, otherwise `false` (like, if was already added)
+    /// This method **NOT** automatically start connection with relay!
+    ///
+    /// Return `false` if the relay already exists.
     ///
     /// # Example
     /// ```rust,no_run
@@ -307,6 +311,8 @@ impl Client {
     ///     .add_relay("wss://relay.damus.io", None)
     ///     .await
     ///     .unwrap();
+    ///
+    /// client.connect().await;
     /// # }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
@@ -320,6 +326,25 @@ impl Client {
     }
 
     /// Add new relay
+    ///
+    /// This method **NOT** automatically start connection with relay!
+    ///
+    /// Return `false` if the relay already exists.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Keys::generate();
+    /// #   let client = Client::new(&my_keys);
+    /// client.add_relay("wss://relay.nostr.info").await.unwrap();
+    /// client.add_relay("wss://relay.damus.io").await.unwrap();
+    ///
+    /// client.connect().await;
+    /// # }
+    /// ```
     #[cfg(target_arch = "wasm32")]
     pub async fn add_relay<U>(&self, url: U) -> Result<bool, Error>
     where
@@ -329,7 +354,11 @@ impl Client {
         self.add_relay_with_opts(url, RelayOptions::default()).await
     }
 
-    /// Add new relay with [`Options`]
+    /// Add new relay with [`RelayOptions`]
+    ///
+    /// This method **NOT** automatically start connection with relay!
+    ///
+    /// Return `false` if the relay already exists.
     ///
     /// # Example
     /// ```rust,no_run
@@ -344,6 +373,8 @@ impl Client {
     ///     .add_relay_with_opts("wss://relay.nostr.info", None, opts)
     ///     .await
     ///     .unwrap();
+    ///
+    /// client.connect().await;
     /// # }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
@@ -360,7 +391,11 @@ impl Client {
         Ok(self.pool.add_relay(url, proxy, opts).await?)
     }
 
-    /// Add new relay with [`Options`]
+    /// Add new relay with [`RelayOptions`]
+    ///
+    /// This method **NOT** automatically start connection with relay!
+    ///
+    /// Return `false` if the relay already exists.
     #[cfg(target_arch = "wasm32")]
     pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
@@ -393,6 +428,8 @@ impl Client {
     }
 
     /// Add multiple relays
+    ///
+    /// This method **NOT** automatically start connection with relays!
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn add_relays<U>(&self, relays: Vec<(U, Option<SocketAddr>)>) -> Result<(), Error>
     where
@@ -406,6 +443,8 @@ impl Client {
     }
 
     /// Add multiple relays
+    ///
+    /// This method **NOT** automatically start connection with relays!
     #[cfg(target_arch = "wasm32")]
     pub async fn add_relays<U>(&self, relays: Vec<U>) -> Result<(), Error>
     where
@@ -418,7 +457,7 @@ impl Client {
         Ok(())
     }
 
-    /// Connect relay
+    /// Connect to a previously added relay
     ///
     /// # Example
     /// ```rust,no_run
@@ -472,7 +511,7 @@ impl Client {
         Ok(())
     }
 
-    /// Connect to all added relays
+    /// Connect relays
     ///
     /// # Example
     /// ```rust,no_run
@@ -537,7 +576,7 @@ impl Client {
         self.pool.subscribe(filters, wait).await;
     }
 
-    /// Unsubscribe
+    /// Unsubscribe from filters
     pub async fn unsubscribe(&self) {
         let wait: Option<Duration> = if self.opts.get_wait_for_subscription() {
             self.opts.send_timeout
@@ -547,7 +586,7 @@ impl Client {
         self.pool.unsubscribe(wait).await;
     }
 
-    /// Unsubscribe with custom wait
+    /// Unsubscribe from filters with custom wait
     pub async fn unsubscribe_with_custom_wait(&self, wait: Option<Duration>) {
         self.pool.unsubscribe(wait).await;
     }
@@ -639,7 +678,7 @@ impl Client {
         Ok(())
     }
 
-    /// Send client message
+    /// Batch send client messages
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
