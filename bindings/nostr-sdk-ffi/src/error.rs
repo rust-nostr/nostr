@@ -13,6 +13,8 @@ pub enum NostrSdkError {
     Generic { err: String },
 }
 
+impl std::error::Error for NostrSdkError {}
+
 impl fmt::Display for NostrSdkError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

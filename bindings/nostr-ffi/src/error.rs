@@ -11,6 +11,8 @@ pub enum NostrError {
     Generic { err: String },
 }
 
+impl std::error::Error for NostrError {}
+
 impl fmt::Display for NostrError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
