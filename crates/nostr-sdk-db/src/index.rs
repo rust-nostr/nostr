@@ -94,17 +94,16 @@ impl DatabaseIndexes {
 
         if event.is_replaceable() {
             // Query event
-            let mut matching_sids: BTreeSet<MappingIdentifier> = BTreeSet::new();
             let mut kinds = HashSet::with_capacity(1);
             let mut authors = HashSet::with_capacity(1);
             kinds.insert(event.kind);
             authors.insert(event.pubkey);
-            let temp = self.query_index(&kinds_index, &kinds);
-            intersect_or_extend(&mut matching_sids, &temp);
-            let temp = self.query_index(&authors_index, &authors);
-            intersect_or_extend(&mut matching_sids, &temp);
 
-            if let Some(mid) = matching_sids.into_iter().next() {
+            let res1 = self.query_index(&kinds_index, &kinds);
+            let res2 = self.query_index(&authors_index, &authors);
+            let matching_sids: HashSet<MappingIdentifier> = multi_intersection(vec![res1, res2]);
+
+            for mid in matching_sids.into_iter() {
                 match mapping.get(&mid.sid) {
                     Some(event_id) => {
                         if mid.timestamp >= event.created_at {
@@ -242,17 +241,17 @@ impl DatabaseIndexes {
     /// Query
     #[tracing::instrument(skip_all)]
     pub async fn query(&self, filters: Vec<Filter>) -> HashSet<EventId> {
-        let mut matching_event_ids: HashSet<EventId> = HashSet::new();
-
         let kinds_index = self.kinds_index.read().await;
         let authors_index = self.authors_index.read().await;
         let created_at_index = self.created_at_index.read().await;
         let tags_index = self.tags_index.read().await;
         let mapping = self.mapping.read().await;
 
+        let mut matching_event_ids: HashSet<EventId> = HashSet::new();
+
         for filter in filters.into_iter() {
             if !filter.ids.is_empty() {
-                matching_event_ids.extend(filter.ids.iter().copied());
+                matching_event_ids.extend(filter.ids);
                 continue;
             }
 
@@ -262,48 +261,46 @@ impl DatabaseIndexes {
                 }
             }
 
-            let mut matching_sids: BTreeSet<MappingIdentifier> = BTreeSet::new();
+            let mut sets: Vec<HashSet<MappingIdentifier>> = Vec::new();
 
             if !filter.kinds.is_empty() {
-                let temp = self.query_index(&kinds_index, &filter.kinds);
-                intersect_or_extend(&mut matching_sids, &temp);
+                sets.push(self.query_index(&kinds_index, &filter.kinds));
             }
 
             if !filter.authors.is_empty() {
-                let temp = self.query_index(&authors_index, &filter.authors);
-                intersect_or_extend(&mut matching_sids, &temp);
+                sets.push(self.query_index(&authors_index, &filter.authors));
             }
 
             if let (Some(since), Some(until)) = (filter.since, filter.until) {
-                let mut temp = BTreeSet::new();
+                let mut temp: HashSet<MappingIdentifier> = HashSet::new();
                 for ids in created_at_index.range(since..=until).map(|(_, ids)| ids) {
                     temp.extend(ids);
                 }
-                intersect_or_extend(&mut matching_sids, &temp);
+                sets.push(temp);
             } else {
                 if let Some(since) = filter.since {
-                    let mut temp = BTreeSet::new();
+                    let mut temp: HashSet<MappingIdentifier> = HashSet::new();
                     for (_, ids) in created_at_index.range(since..) {
                         temp.extend(ids);
                     }
-                    intersect_or_extend(&mut matching_sids, &temp);
+                    sets.push(temp);
                 }
 
                 if let Some(until) = filter.until {
-                    let mut temp = BTreeSet::new();
+                    let mut temp: HashSet<MappingIdentifier> = HashSet::new();
                     for (_, ids) in created_at_index.range(..=until) {
                         temp.extend(ids);
                     }
-                    intersect_or_extend(&mut matching_sids, &temp);
+                    sets.push(temp);
                 }
             }
 
             if !filter.generic_tags.is_empty() {
-                let mut temp = BTreeSet::new();
+                let mut temp: HashSet<MappingIdentifier> = HashSet::new();
 
                 for (tagname, set) in filter.generic_tags.iter() {
                     if let Some(tag_map) = tags_index.get(tagname) {
-                        for (id, tag_values) in tag_map {
+                        for (id, tag_values) in tag_map.iter() {
                             if set.iter().all(|value| tag_values.contains(value)) {
                                 temp.insert(*id);
                             }
@@ -311,15 +308,21 @@ impl DatabaseIndexes {
                     }
                 }
 
-                intersect_or_extend(&mut matching_sids, &temp);
+                sets.push(temp);
             }
 
+            // Intersection
+            let matching_sids: HashSet<MappingIdentifier> = multi_intersection(sets);
+            let matching_sids: BTreeSet<MappingIdentifier> = matching_sids.into_iter().collect();
+
+            // Limit
             let limit: usize = filter.limit.unwrap_or(matching_sids.len());
             let mut ids: Vec<EventId> = Vec::with_capacity(limit);
 
+            // Get ids
             for mid in matching_sids.into_iter().take(limit) {
-                match mapping.get(&mid.sid) {
-                    Some(event_id) => ids.push(*event_id),
+                match mapping.get(&mid.sid).copied() {
+                    Some(event_id) => ids.push(event_id),
                     None => tracing::warn!("Event ID not found for {mid:?}"),
                 }
             }
@@ -334,11 +337,11 @@ impl DatabaseIndexes {
         &self,
         index: &HashMap<K, HashSet<MappingIdentifier>>,
         keys: &HashSet<K>,
-    ) -> BTreeSet<MappingIdentifier>
+    ) -> HashSet<MappingIdentifier>
     where
         K: Eq + Hash,
     {
-        let mut result: BTreeSet<MappingIdentifier> = BTreeSet::new();
+        let mut result: HashSet<MappingIdentifier> = HashSet::new();
         for key in keys.iter() {
             if let Some(ids) = index.get(key) {
                 result.extend(ids);
@@ -360,13 +363,17 @@ impl DatabaseIndexes {
     }
 }
 
-fn intersect_or_extend<T>(main: &mut BTreeSet<T>, other: &BTreeSet<T>)
+fn multi_intersection<T>(mut sets: Vec<HashSet<T>>) -> HashSet<T>
 where
-    T: Eq + Ord + Copy,
+    T: Eq + Hash,
 {
-    if main.is_empty() {
-        main.extend(other);
+    if let Some(mut result) = sets.pop() {
+        if !sets.is_empty() {
+            result.retain(|item| sets.iter().all(|set| set.contains(item)));
+        }
+
+        result
     } else {
-        *main = main.intersection(other).copied().collect();
+        HashSet::new()
     }
 }
