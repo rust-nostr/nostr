@@ -6,12 +6,16 @@
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::num::ParseIntError;
-use core::ops::Range;
+use core::ops::{Add, Range};
 use core::str::FromStr;
 
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
+/// NIP90 - Job request range
+pub const NIP90_JOB_REQUEST_RANGE: Range<u64> = 5_000..5_999;
+/// NIP90 - Job result range
+pub const NIP90_JOB_RESULT_RANGE: Range<u64> = 6_000..6_999;
 /// Regular range
 pub const REGULAR_RANGE: Range<u64> = 1_000..10_000;
 /// Replaceable range
@@ -108,6 +112,12 @@ pub enum Kind {
     SetStall,
     /// Set product (NIP15)
     SetProduct,
+    /// Job Feedback (NIP90)
+    JobFeedback,
+    /// Regular Events (must be between 5000 and <=5999)
+    JobRequest(u16),
+    /// Regular Events (must be between 6000 and <=6999)
+    JobResult(u16),
     /// Regular Events (must be between 1000 and <=9999)
     Regular(u16),
     /// Replaceable event (must be between 10000 and <20000)
@@ -129,6 +139,20 @@ impl Kind {
     /// Get [`Kind`] as `u64`
     pub fn as_u64(&self) -> u64 {
         (*self).into()
+    }
+
+    /// Check if [`Kind`] is a NIP90 job request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    pub fn is_job_request(&self) -> bool {
+        NIP90_JOB_REQUEST_RANGE.contains(&self.as_u64())
+    }
+
+    /// Check if [`Kind`] is a NIP90 job result
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    pub fn is_job_result(&self) -> bool {
+        NIP90_JOB_RESULT_RANGE.contains(&self.as_u64())
     }
 
     /// Check if [`Kind`] is `Regular`
@@ -206,6 +230,9 @@ impl From<u64> for Kind {
             30078 => Self::ApplicationSpecificData,
             1063 => Self::FileMetadata,
             27235 => Self::HttpAuth,
+            7000 => Self::JobFeedback,
+            x if (NIP90_JOB_REQUEST_RANGE).contains(&x) => Self::JobRequest(x as u16),
+            x if (NIP90_JOB_RESULT_RANGE).contains(&x) => Self::JobResult(x as u16),
             x if (REGULAR_RANGE).contains(&x) => Self::Regular(x as u16),
             x if (REPLACEABLE_RANGE).contains(&x) => Self::Replaceable(x as u16),
             x if (EPHEMERAL_RANGE).contains(&x) => Self::Ephemeral(x as u16),
@@ -262,6 +289,9 @@ impl From<Kind> for u64 {
             Kind::ApplicationSpecificData => 30078,
             Kind::FileMetadata => 1063,
             Kind::HttpAuth => 27235,
+            Kind::JobFeedback => 7000,
+            Kind::JobRequest(u) => u as u64,
+            Kind::JobResult(u) => u as u64,
             Kind::Regular(u) => u as u64,
             Kind::Replaceable(u) => u as u64,
             Kind::Ephemeral(u) => u as u64,
@@ -291,6 +321,14 @@ impl Hash for Kind {
         H: Hasher,
     {
         self.as_u64().hash(state);
+    }
+}
+
+impl Add<u64> for Kind {
+    type Output = Self;
+    fn add(self, rhs: u64) -> Self::Output {
+        let kind = self.as_u64();
+        Kind::from(kind + rhs)
     }
 }
 

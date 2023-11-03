@@ -21,7 +21,8 @@ use url_fork::{ParseError, Url};
 use super::id::{self, EventId};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::nips::nip48::Protocol;
-use crate::{Kind, Timestamp, UncheckedUrl};
+use crate::nips::nip90::DataVendingMachineStatus;
+use crate::{Event, JsonUtil, Kind, Timestamp, UncheckedUrl};
 
 /// [`Tag`] error
 #[derive(Debug)]
@@ -481,6 +482,8 @@ pub enum TagKind {
     Proxy,
     /// Emoji
     Emoji,
+    /// Request (NIP90)
+    Request,
     /// Custom tag kind
     Custom(String),
 }
@@ -536,6 +539,7 @@ impl fmt::Display for TagKind {
             Self::Anon => write!(f, "anon"),
             Self::Proxy => write!(f, "proxy"),
             Self::Emoji => write!(f, "emoji"),
+            Self::Request => write!(f, "request"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -595,6 +599,7 @@ where
             "anon" => Self::Anon,
             "proxy" => Self::Proxy,
             "emoji" => Self::Emoji,
+            "request" => Self::Request,
             t => Self::Custom(t.to_owned()),
         }
     }
@@ -655,7 +660,10 @@ pub enum Tag {
     Bolt11(String),
     Preimage(String),
     Relays(Vec<UncheckedUrl>),
-    Amount(u64),
+    Amount {
+        millisats: u64,
+        bolt11: Option<String>,
+    },
     Lnurl(String),
     Name(String),
     PublishedAt(Timestamp),
@@ -674,7 +682,7 @@ pub enum Tag {
     Recording(UncheckedUrl),
     Starts(Timestamp),
     Ends(Timestamp),
-    Status(LiveEventStatus),
+    LiveEventStatus(LiveEventStatus),
     CurrentParticipants(u64),
     TotalParticipants(u64),
     AbsoluteURL(UncheckedUrl),
@@ -692,6 +700,11 @@ pub enum Tag {
         shortcode: String,
         /// URL to the corresponding image file of the emoji
         url: UncheckedUrl,
+    },
+    Request(Event),
+    DataVendingMachineStatus {
+        status: DataVendingMachineStatus,
+        extra_info: Option<String>,
     },
 }
 
@@ -742,7 +755,7 @@ impl Tag {
             Self::Bolt11(..) => TagKind::Bolt11,
             Self::Preimage(..) => TagKind::Preimage,
             Self::Relays(..) => TagKind::Relays,
-            Self::Amount(..) => TagKind::Amount,
+            Self::Amount { .. } => TagKind::Amount,
             Self::Name(..) => TagKind::Name,
             Self::Lnurl(..) => TagKind::Lnurl,
             Self::Url(..) => TagKind::Url,
@@ -757,7 +770,7 @@ impl Tag {
             Self::Recording(..) => TagKind::Recording,
             Self::Starts(..) => TagKind::Starts,
             Self::Ends(..) => TagKind::Ends,
-            Self::Status(..) => TagKind::Status,
+            Self::LiveEventStatus(..) | Self::DataVendingMachineStatus { .. } => TagKind::Status,
             Self::CurrentParticipants(..) => TagKind::CurrentParticipants,
             Self::TotalParticipants(..) => TagKind::TotalParticipants,
             Self::AbsoluteURL(..) => TagKind::U,
@@ -766,6 +779,7 @@ impl Tag {
             Self::Anon { .. } => TagKind::Anon,
             Self::Proxy { .. } => TagKind::Proxy,
             Self::Emoji { .. } => TagKind::Emoji,
+            Self::Request(..) => TagKind::Request,
         }
     }
 }
@@ -843,7 +857,10 @@ where
                 TagKind::Description => Ok(Self::Description(tag_1.to_owned())),
                 TagKind::Bolt11 => Ok(Self::Bolt11(tag_1.to_owned())),
                 TagKind::Preimage => Ok(Self::Preimage(tag_1.to_owned())),
-                TagKind::Amount => Ok(Self::Amount(tag_1.parse()?)),
+                TagKind::Amount => Ok(Self::Amount {
+                    millisats: tag_1.parse()?,
+                    bolt11: None,
+                }),
                 TagKind::Lnurl => Ok(Self::Lnurl(tag_1.to_owned())),
                 TagKind::Name => Ok(Self::Name(tag_1.to_owned())),
                 TagKind::Url => Ok(Self::Url(Url::parse(tag_1)?)),
@@ -855,7 +872,13 @@ where
                 TagKind::Recording => Ok(Self::Recording(UncheckedUrl::from(tag_1))),
                 TagKind::Starts => Ok(Self::Starts(Timestamp::from_str(tag_1)?)),
                 TagKind::Ends => Ok(Self::Ends(Timestamp::from_str(tag_1)?)),
-                TagKind::Status => Ok(Self::Status(LiveEventStatus::from(tag_1))),
+                TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
+                    Ok(status) => Ok(Self::DataVendingMachineStatus {
+                        status,
+                        extra_info: None,
+                    }),
+                    Err(_) => Ok(Self::LiveEventStatus(LiveEventStatus::from(tag_1))), /* TODO: check if unknown status error? */
+                },
                 TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(tag_1.parse()?)),
                 TagKind::TotalParticipants => Ok(Self::TotalParticipants(tag_1.parse()?)),
                 TagKind::U => Ok(Self::AbsoluteURL(UncheckedUrl::from(tag_1))),
@@ -864,6 +887,7 @@ where
                 TagKind::Anon => Ok(Self::Anon {
                     msg: (!tag_1.is_empty()).then_some(tag_1.to_owned()),
                 }),
+                TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
                 _ => Ok(Self::Generic(tag_kind, vec![tag_1.to_owned()])),
             }
         } else if tag_len == 3 {
@@ -945,6 +969,16 @@ where
                     shortcode: tag_1.to_owned(),
                     url: UncheckedUrl::from(tag_2),
                 }),
+                TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
+                    Ok(status) => Ok(Self::DataVendingMachineStatus {
+                        status,
+                        extra_info: Some(tag_2.to_string()),
+                    }),
+                    Err(_) => Ok(Self::Generic(
+                        tag_kind,
+                        tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
+                    )),
+                },
                 _ => Ok(Self::Generic(
                     tag_kind,
                     tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
@@ -1160,8 +1194,12 @@ impl From<Tag> for Vec<String> {
                 .into_iter()
                 .chain(relays.iter().map(|relay| relay.to_string()))
                 .collect::<Vec<_>>(),
-            Tag::Amount(amount) => {
-                vec![TagKind::Amount.to_string(), amount.to_string()]
+            Tag::Amount { millisats, bolt11 } => {
+                let mut tag = vec![TagKind::Amount.to_string(), millisats.to_string()];
+                if let Some(bolt11) = bolt11 {
+                    tag.push(bolt11);
+                }
+                tag
             }
             Tag::Name(name) => {
                 vec![TagKind::Name.to_string(), name]
@@ -1185,7 +1223,7 @@ impl From<Tag> for Vec<String> {
             Tag::Ends(timestamp) => {
                 vec![TagKind::Ends.to_string(), timestamp.to_string()]
             }
-            Tag::Status(s) => {
+            Tag::LiveEventStatus(s) => {
                 vec![TagKind::Status.to_string(), s.to_string()]
             }
             Tag::CurrentParticipants(num) => {
@@ -1213,6 +1251,14 @@ impl From<Tag> for Vec<String> {
             }
             Tag::Emoji { shortcode, url } => {
                 vec![TagKind::Emoji.to_string(), shortcode, url.to_string()]
+            }
+            Tag::Request(event) => vec![TagKind::Request.to_string(), event.as_json()],
+            Tag::DataVendingMachineStatus { status, extra_info } => {
+                let mut tag = vec![TagKind::Status.to_string(), status.to_string()];
+                if let Some(extra_info) = extra_info {
+                    tag.push(extra_info);
+                }
+                tag
             }
         }
     }
@@ -1974,7 +2020,10 @@ mod tests {
 
         assert_eq!(
             Tag::parse(vec!["amount", "10000"]).unwrap(),
-            Tag::Amount(10000)
+            Tag::Amount {
+                millisats: 10_000,
+                bolt11: None
+            }
         );
     }
 }

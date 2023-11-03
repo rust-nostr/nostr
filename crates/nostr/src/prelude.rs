@@ -57,5 +57,6 @@ pub use crate::nips::nip53::{self, *};
 pub use crate::nips::nip57::{self, *};
 pub use crate::nips::nip58::{self, *};
 pub use crate::nips::nip65::{self, *};
+pub use crate::nips::nip90::{self, *};
 pub use crate::nips::nip94::{self, *};
 pub use crate::nips::nip98::{self, *};

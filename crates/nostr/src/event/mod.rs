@@ -175,6 +175,8 @@ impl Event {
 
     /// Returns `true` if the event has an expiration tag that is expired.
     /// If an event has no `Expiration` tag, then it will return `false`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     #[cfg(feature = "std")]
     pub fn is_expired(&self) -> bool {
         let now: Instant = Instant::now();
@@ -183,6 +185,8 @@ impl Event {
 
     /// Returns `true` if the event has an expiration tag that is expired.
     /// If an event has no `Expiration` tag, then it will return `false`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     pub fn is_expired_with_supplier<T>(&self, supplier: &T) -> bool
     where
         T: TimeSupplier,
@@ -196,7 +200,9 @@ impl Event {
         false
     }
 
-    /// Timestamp this event with OpenTimestamps, according to NIP-03
+    /// Timestamp this event with OpenTimestamps
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/03.md>
     #[cfg(feature = "nip03")]
     pub fn timestamp(&mut self) -> Result<(), Error> {
         let ots = nostr_ots::timestamp_event(&self.id.to_hex())?;
@@ -204,22 +210,44 @@ impl Event {
         Ok(())
     }
 
+    /// Check if [`Kind`] is a NIP90 job request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    pub fn is_job_request(&self) -> bool {
+        self.kind.is_job_request()
+    }
+
+    /// Check if [`Kind`] is a NIP90 job result
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    pub fn is_job_result(&self) -> bool {
+        self.kind.is_job_result()
+    }
+
     /// Check if event [`Kind`] is `Regular`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn is_regular(&self) -> bool {
         self.kind.is_regular()
     }
 
     /// Check if event [`Kind`] is `Replaceable`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn is_replaceable(&self) -> bool {
         self.kind.is_replaceable()
     }
 
     /// Check if event [`Kind`] is `Ephemeral`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn is_ephemeral(&self) -> bool {
         self.kind.is_ephemeral()
     }
 
     /// Check if event [`Kind`] is `Parameterized replaceable`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn is_parameterized_replaceable(&self) -> bool {
         self.kind.is_parameterized_replaceable()
     }

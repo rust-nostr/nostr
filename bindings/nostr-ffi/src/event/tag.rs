@@ -10,9 +10,10 @@ use nostr::event::tag::{
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip26::Conditions;
 use nostr::nips::nip48::Protocol;
+use nostr::nips::nip90::DataVendingMachineStatus;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{EventId, Kind, RelayMetadata, Timestamp, UncheckedUrl, Url};
+use nostr::{Event, EventId, JsonUtil, Kind, RelayMetadata, Timestamp, UncheckedUrl, Url};
 
 use crate::error::{NostrError, Result};
 
@@ -115,6 +116,7 @@ pub enum TagKindKnown {
     Anon,
     Proxy,
     Emoji,
+    Request,
 }
 
 impl From<tag::TagKind> for TagKind {
@@ -264,6 +266,9 @@ impl From<tag::TagKind> for TagKind {
             tag::TagKind::Emoji => Self::Known {
                 known: TagKindKnown::Emoji,
             },
+            tag::TagKind::Request => Self::Known {
+                known: TagKindKnown::Request,
+            },
             tag::TagKind::Custom(unknown) => Self::Unknown { unknown },
         }
     }
@@ -321,6 +326,7 @@ impl From<TagKind> for tag::TagKind {
                 TagKindKnown::Anon => Self::Anon,
                 TagKindKnown::Proxy => Self::Proxy,
                 TagKindKnown::Emoji => Self::Emoji,
+                TagKindKnown::Request => Self::Request,
             },
             TagKind::Unknown { unknown } => Self::Custom(unknown),
         }
@@ -437,7 +443,8 @@ pub enum TagEnum {
         urls: Vec<String>,
     },
     Amount {
-        amount: u64,
+        millisats: u64,
+        bolt11: Option<String>,
     },
     Lnurl {
         lnurl: String,
@@ -485,7 +492,7 @@ pub enum TagEnum {
     Ends {
         timestamp: u64,
     },
-    Status {
+    LiveEventStatus {
         status: String,
     },
     CurrentParticipants {
@@ -513,6 +520,13 @@ pub enum TagEnum {
     Emoji {
         shortcode: String,
         url: String,
+    },
+    Request {
+        event: String,
+    },
+    DataVendingMachineStatus {
+        status: String,
+        extra_info: Option<String>,
     },
 }
 
@@ -624,7 +638,7 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::Relays(relays) => Self::Relays {
                 urls: relays.into_iter().map(|r| r.to_string()).collect(),
             },
-            tag::Tag::Amount(amount) => Self::Amount { amount },
+            tag::Tag::Amount { millisats, bolt11 } => Self::Amount { millisats, bolt11 },
             tag::Tag::Name(name) => Self::Name { name },
             tag::Tag::Lnurl(lnurl) => Self::Lnurl { lnurl },
             tag::Tag::Url(url) => Self::Url {
@@ -653,7 +667,7 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::Ends(timestamp) => Self::Ends {
                 timestamp: timestamp.as_u64(),
             },
-            tag::Tag::Status(s) => Self::Status {
+            tag::Tag::LiveEventStatus(s) => Self::LiveEventStatus {
                 status: s.to_string(),
             },
             tag::Tag::CurrentParticipants(num) => Self::CurrentParticipants { num },
@@ -676,6 +690,15 @@ impl From<tag::Tag> for TagEnum {
                 shortcode,
                 url: url.to_string(),
             },
+            tag::Tag::Request(event) => Self::Request {
+                event: event.as_json(),
+            },
+            tag::Tag::DataVendingMachineStatus { status, extra_info } => {
+                Self::DataVendingMachineStatus {
+                    status: status.to_string(),
+                    extra_info,
+                }
+            }
         }
     }
 }
@@ -797,7 +820,7 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::Relays { urls } => Ok(Self::Relays(
                 urls.into_iter().map(UncheckedUrl::from).collect(),
             )),
-            TagEnum::Amount { amount } => Ok(Self::Amount(amount)),
+            TagEnum::Amount { millisats, bolt11 } => Ok(Self::Amount { millisats, bolt11 }),
             TagEnum::Lnurl { lnurl } => Ok(Self::Lnurl(lnurl)),
             TagEnum::Name { name } => Ok(Self::Name(name)),
             TagEnum::PublishedAt { timestamp } => Ok(Self::PublishedAt(Timestamp::from(timestamp))),
@@ -813,7 +836,9 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::Recording { url } => Ok(Self::Recording(UncheckedUrl::from(url))),
             TagEnum::Starts { timestamp } => Ok(Self::Starts(Timestamp::from(timestamp))),
             TagEnum::Ends { timestamp } => Ok(Self::Ends(Timestamp::from(timestamp))),
-            TagEnum::Status { status } => Ok(Self::Status(LiveEventStatus::from(status))),
+            TagEnum::LiveEventStatus { status } => {
+                Ok(Self::LiveEventStatus(LiveEventStatus::from(status)))
+            }
             TagEnum::CurrentParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagEnum::TotalParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagEnum::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
@@ -828,6 +853,13 @@ impl TryFrom<TagEnum> for tag::Tag {
                 shortcode,
                 url: UncheckedUrl::from(url),
             }),
+            TagEnum::Request { event } => Ok(Self::Request(Event::from_json(event)?)),
+            TagEnum::DataVendingMachineStatus { status, extra_info } => {
+                Ok(Self::DataVendingMachineStatus {
+                    status: DataVendingMachineStatus::from_str(&status)?,
+                    extra_info,
+                })
+            }
         }
     }
 }

@@ -462,6 +462,7 @@ enum TagKindKnown {
     "Anon",
     "Proxy",
     "Emoji",
+    "Request",
 };
 
 [Enum]
@@ -495,7 +496,7 @@ interface TagEnum {
     Bolt11(string bolt11);
     Preimage(string preimage);
     Relays(sequence<string> urls);
-    Amount(u64 amount);
+    Amount(u64 millisats, string? bolt11);
     Lnurl(string lnurl);
     Name(string name);
     PublishedAt(u64 timestamp);
@@ -511,7 +512,7 @@ interface TagEnum {
     Recording(string url);
     Starts(u64 timestamp);
     Ends(u64 timestamp);
-    Status(string status);
+    LiveEventStatus(string status);
     CurrentParticipants(u64 num);
     TotalParticipants(u64 num);
     AbsoluteURL(string url);
@@ -520,7 +521,9 @@ interface TagEnum {
     Anon(string? msg);
     Proxy(string id, string protocol);
     Emoji(string shortcode, string url);
-}; 
+    Request(string event);
+    DataVendingMachineStatus(string status, string? extra_info);
+};
 
 interface Tag {
     [Throws=NostrError, Name=parse]

@@ -6,6 +6,7 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
+use core::ops::Range;
 
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand;
@@ -14,9 +15,9 @@ use bitcoin::secp256k1::{self, Secp256k1, Signing, XOnlyPublicKey};
 use serde_json::{json, Value};
 use url_fork::Url;
 
-pub use super::kind::Kind;
-pub use super::tag::{ImageDimensions, Marker, Tag, TagKind};
-use super::{Event, EventId, UnsignedEvent};
+use super::kind::{Kind, NIP90_JOB_REQUEST_RANGE, NIP90_JOB_RESULT_RANGE};
+use super::tag::ImageDimensions;
+use super::{Event, EventId, Marker, Tag, TagKind, UnsignedEvent};
 use crate::key::{self, Keys};
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
@@ -26,6 +27,7 @@ use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip58::Error as Nip58Error;
+use crate::nips::nip90::DataVendingMachineStatus;
 use crate::nips::nip94::FileMetadata;
 use crate::nips::nip98::HttpData;
 use crate::nips::{nip13, nip58};
@@ -36,6 +38,24 @@ use crate::types::{ChannelId, Contact, Metadata, Timestamp};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{JsonUtil, RelayMetadata, UncheckedUrl};
+
+/// Wrong kind error
+#[derive(Debug)]
+pub enum WrongKindError {
+    /// Singe kind
+    Single(Kind),
+    /// Range
+    Range(Range<u64>),
+}
+
+impl fmt::Display for WrongKindError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Single(k) => write!(f, "{k}"),
+            Self::Range(range) => write!(f, "'{} <= k <= {}'", range.start, range.end),
+        }
+    }
+}
 
 /// [`EventBuilder`] error
 #[derive(Debug)]
@@ -53,6 +73,13 @@ pub enum Error {
     NIP04(nip04::Error),
     /// NIP58 error
     NIP58(nip58::Error),
+    /// Wrong kind
+    WrongKind {
+        /// The received wrong kind
+        received: Kind,
+        /// The expected kind (single or range)
+        expected: WrongKindError,
+    },
 }
 
 #[cfg(feature = "std")]
@@ -68,6 +95,9 @@ impl fmt::Display for Error {
             #[cfg(feature = "nip04")]
             Self::NIP04(e) => write!(f, "NIP04: {e}"),
             Self::NIP58(e) => write!(f, "NIP58: {e}"),
+            Self::WrongKind { received, expected } => {
+                write!(f, "Wrong kind: received={received}, expected={expected}")
+            }
         }
     }
 }
@@ -613,7 +643,10 @@ impl EventBuilder {
         }
 
         if let Some(amount) = amount {
-            tags.push(Tag::Amount(amount));
+            tags.push(Tag::Amount {
+                millisats: amount,
+                bolt11: None,
+            });
         }
 
         if let Some(lnurl) = lnurl {
@@ -861,6 +894,82 @@ impl EventBuilder {
         let event_builder = EventBuilder::new(Kind::ProfileBadges, String::new(), &tags);
 
         Ok(event_builder)
+    }
+
+    /// Data Vending Machine - Job Request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    pub fn job_request(kind: Kind, tags: &[Tag]) -> Result<Self, Error> {
+        if kind.is_job_request() {
+            Ok(Self::new(kind, "", tags))
+        } else {
+            Err(Error::WrongKind {
+                received: kind,
+                expected: WrongKindError::Range(NIP90_JOB_REQUEST_RANGE),
+            })
+        }
+    }
+
+    /// Data Vending Machine - Job Result
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    pub fn job_result(
+        job_request: Event,
+        amount_millisats: u64,
+        bolt11: Option<String>,
+    ) -> Result<Self, Error> {
+        let kind: Kind = job_request.kind + 1000;
+        if kind.is_job_result() {
+            let mut tags: Vec<Tag> = job_request
+                .tags
+                .iter()
+                .filter_map(|t| {
+                    if t.kind() == TagKind::I {
+                        Some(t.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            tags.extend_from_slice(&[
+                Tag::Event(job_request.id, None, None),
+                Tag::PubKey(job_request.pubkey, None),
+                Tag::Request(job_request),
+                Tag::Amount {
+                    millisats: amount_millisats,
+                    bolt11,
+                },
+            ]);
+            Ok(Self::new(kind, "", &tags))
+        } else {
+            Err(Error::WrongKind {
+                received: kind,
+                expected: WrongKindError::Range(NIP90_JOB_RESULT_RANGE),
+            })
+        }
+    }
+
+    /// Data Vending Machine - Job Feedback
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    pub fn job_feedback(
+        job_request: &Event,
+        status: DataVendingMachineStatus,
+        extra_info: Option<String>,
+        amount_millisats: u64,
+        bolt11: Option<String>,
+        payload: Option<String>,
+    ) -> Self {
+        let tags = &[
+            Tag::DataVendingMachineStatus { status, extra_info },
+            Tag::Event(job_request.id, None, None),
+            Tag::PubKey(job_request.pubkey, None),
+            Tag::Amount {
+                millisats: amount_millisats,
+                bolt11,
+            },
+        ];
+        Self::new(Kind::JobFeedback, payload.unwrap_or_default(), tags)
     }
 
     /// File metadata

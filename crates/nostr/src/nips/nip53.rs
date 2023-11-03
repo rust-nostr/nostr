@@ -98,7 +98,7 @@ impl From<LiveEvent> for Vec<Tag> {
         }
 
         if let Some(status) = status {
-            tags.push(Tag::Status(status));
+            tags.push(Tag::LiveEventStatus(status));
         }
 
         if let Some(LiveEventHost {
