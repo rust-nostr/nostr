@@ -3,20 +3,20 @@
 
 //! Indexes
 
-use std::cmp::Ordering;
+use std::cmp::{Ordering, Reverse};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
-use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::Arc;
 
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Alphabet, Event, EventId, Filter, Kind, Timestamp};
 use tokio::sync::RwLock;
 
-type Mapping = HashMap<SmallerIdentifier, EventId>;
-type KindIndex = HashMap<Kind, HashSet<MappingIdentifier>>;
-type AuthorIndex = HashMap<XOnlyPublicKey, HashSet<MappingIdentifier>>;
-type CreatedAtIndex = BTreeMap<Timestamp, HashSet<MappingIdentifier>>;
+//type Mapping = HashMap<SmallerIdentifier, EventId>;
+type KindIndex = HashMap<Kind, BTreeSet<MappingIdentifier>>;
+type AuthorIndex = HashMap<PublicKeyPrefix, BTreeSet<MappingIdentifier>>;
+type AuthorAndKindIndex = HashMap<(PublicKeyPrefix, Kind), BTreeSet<MappingIdentifier>>;
+type CreatedAtIndex = BTreeMap<Timestamp, BTreeSet<MappingIdentifier>>;
 type TagIndex = HashMap<Alphabet, HashMap<MappingIdentifier, HashSet<String>>>;
 
 /// Event Index Result
@@ -29,18 +29,21 @@ pub struct EventIndexResult {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct SmallerIdentifier([u8; 8]);
+struct PublicKeyPrefix([u8; 8]);
 
-impl SmallerIdentifier {
-    pub fn new(sid: [u8; 8]) -> Self {
-        Self(sid)
+impl From<XOnlyPublicKey> for PublicKeyPrefix {
+    fn from(pk: XOnlyPublicKey) -> Self {
+        let pk = pk.serialize();
+        let mut prefix = [0u8; 8];
+        prefix.copy_from_slice(&pk[..8]);
+        Self(prefix)
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct MappingIdentifier {
     pub timestamp: Timestamp,
-    pub sid: SmallerIdentifier,
+    pub eid: EventId,
 }
 
 impl PartialOrd for MappingIdentifier {
@@ -51,24 +54,28 @@ impl PartialOrd for MappingIdentifier {
 
 impl Ord for MappingIdentifier {
     fn cmp(&self, other: &Self) -> Ordering {
-        let timestamp_cmp = other.timestamp.cmp(&self.timestamp);
-        if timestamp_cmp != Ordering::Equal {
-            return timestamp_cmp;
+        if self.timestamp != other.timestamp {
+            other.timestamp.cmp(&self.timestamp)
+        } else {
+            self.eid.cmp(&other.eid)
         }
-
-        self.sid.cmp(&other.sid)
     }
+}
+
+#[derive(Debug, Default)]
+struct DatabaseIndexesInner {
+    //mapping: Mapping,
+    kinds_index: KindIndex,
+    authors_index: AuthorIndex,
+    author_and_kind_index: AuthorAndKindIndex,
+    created_at_index: CreatedAtIndex,
+    tags_index: TagIndex,
 }
 
 /// Database Indexes
 #[derive(Debug, Clone, Default)]
 pub struct DatabaseIndexes {
-    counter: Arc<AtomicU64>,
-    mapping: Arc<RwLock<Mapping>>,
-    kinds_index: Arc<RwLock<KindIndex>>,
-    authors_index: Arc<RwLock<AuthorIndex>>,
-    created_at_index: Arc<RwLock<CreatedAtIndex>>,
-    tags_index: Arc<RwLock<TagIndex>>,
+    inner: Arc<RwLock<DatabaseIndexesInner>>,
 }
 
 impl DatabaseIndexes {
@@ -88,9 +95,7 @@ impl DatabaseIndexes {
         let mut should_insert: bool = true;
         let mut to_discard = HashSet::new();
 
-        let mut mapping = self.mapping.write().await;
-        let mut kinds_index = self.kinds_index.write().await;
-        let mut authors_index = self.authors_index.write().await;
+        let mut inner = self.inner.write().await;
 
         if event.is_replaceable() {
             // Query event
@@ -99,20 +104,42 @@ impl DatabaseIndexes {
             kinds.insert(event.kind);
             authors.insert(event.pubkey);
 
-            let res1 = self.query_index(&kinds_index, &kinds);
-            let res2 = self.query_index(&authors_index, &authors);
-            let matching_sids: HashSet<MappingIdentifier> = multi_intersection(vec![res1, res2]);
+            let res1 = self.query_index(&inner.kinds_index, &kinds.into_iter().collect());
+            let res2 = self.query_index(
+                &inner.authors_index,
+                &authors.into_iter().map(|pk| pk.into()).collect(),
+            );
+            let matching_sids: BTreeSet<&MappingIdentifier> = multi_intersection(vec![res1, res2]);
+
+            let mut mids_to_discard = HashSet::new();
 
             for mid in matching_sids.into_iter() {
-                match mapping.get(&mid.sid) {
-                    Some(event_id) => {
-                        if mid.timestamp >= event.created_at {
-                            should_insert = false;
-                        } else if mid.timestamp < event.created_at {
-                            to_discard.insert(*event_id);
-                        }
-                    }
-                    None => tracing::warn!("Event ID not found for {mid:?}"),
+                if mid.timestamp >= event.created_at {
+                    should_insert = false;
+                } else if mid.timestamp < event.created_at {
+                    to_discard.insert(mid.eid);
+                    mids_to_discard.insert(*mid);
+                }
+            }
+
+            for mid in mids_to_discard.iter() {
+                if let Some(set) = inner.kinds_index.get_mut(&event.kind) {
+                    set.remove(mid);
+                }
+                if let Some(set) = inner.authors_index.get_mut(&event.pubkey.into()) {
+                    set.remove(mid);
+                }
+                if let Some(set) = inner
+                    .author_and_kind_index
+                    .get_mut(&(event.pubkey.into(), event.kind))
+                {
+                    set.remove(mid);
+                }
+                if let Some(set) = inner.created_at_index.get_mut(&mid.timestamp) {
+                    set.remove(mid);
+                }
+                for (_, map) in inner.tags_index.iter_mut() {
+                    map.remove(mid);
                 }
             }
         } else if event.is_parameterized_replaceable() {
@@ -138,25 +165,33 @@ impl DatabaseIndexes {
 
         if should_insert {
             let mapping_id = MappingIdentifier {
-                sid: self.next_sid(),
+                eid: event.id,
                 timestamp: event.created_at,
             };
 
-            mapping.insert(mapping_id.sid, event.id);
+            //inner.mapping.insert(mapping_id.sid, event.id);
+
+            let pk: PublicKeyPrefix = event.pubkey.into();
 
             // Index kind
-            self.index_event_kind(&mut kinds_index, mapping_id, event);
+            self.index_event_kind(&mut inner.kinds_index, mapping_id, event.kind);
 
             // Index author
-            self.index_event_author(&mut authors_index, mapping_id, event);
+            self.index_event_author(&mut inner.authors_index, mapping_id, pk);
+
+            // Index author and kind
+            self.index_event_author_and_kind(
+                &mut inner.author_and_kind_index,
+                mapping_id,
+                pk,
+                event.kind,
+            );
 
             // Index created at
-            let mut created_at_index = self.created_at_index.write().await;
-            self.index_event_created_at(&mut created_at_index, mapping_id, event);
+            self.index_event_created_at(&mut inner.created_at_index, mapping_id, event);
 
             // Index tags
-            let mut tags_index = self.tags_index.write().await;
-            self.index_event_tags(&mut tags_index, mapping_id, event);
+            self.index_event_tags(&mut inner.tags_index, mapping_id, event);
         }
 
         EventIndexResult {
@@ -165,20 +200,15 @@ impl DatabaseIndexes {
         }
     }
 
-    fn next_sid(&self) -> SmallerIdentifier {
-        let next_id = self.counter.fetch_add(1, AtomicOrdering::SeqCst);
-        SmallerIdentifier::new(next_id.to_be_bytes())
-    }
-
     /// Index kind
-    fn index_event_kind(&self, kinds_index: &mut KindIndex, mid: MappingIdentifier, event: &Event) {
+    fn index_event_kind(&self, kinds_index: &mut KindIndex, mid: MappingIdentifier, kind: Kind) {
         kinds_index
-            .entry(event.kind)
+            .entry(kind)
             .and_modify(|set| {
                 set.insert(mid);
             })
             .or_insert_with(|| {
-                let mut set = HashSet::with_capacity(1);
+                let mut set = BTreeSet::new();
                 set.insert(mid);
                 set
             });
@@ -189,15 +219,34 @@ impl DatabaseIndexes {
         &self,
         authors_index: &mut AuthorIndex,
         mid: MappingIdentifier,
-        event: &Event,
+        pk: PublicKeyPrefix,
     ) {
         authors_index
-            .entry(event.pubkey)
+            .entry(pk)
             .and_modify(|set| {
                 set.insert(mid);
             })
             .or_insert_with(|| {
-                let mut set = HashSet::with_capacity(1);
+                let mut set = BTreeSet::new();
+                set.insert(mid);
+                set
+            });
+    }
+
+    fn index_event_author_and_kind(
+        &self,
+        author_and_kind_index: &mut AuthorAndKindIndex,
+        mid: MappingIdentifier,
+        pk: PublicKeyPrefix,
+        kind: Kind,
+    ) {
+        author_and_kind_index
+            .entry((pk, kind))
+            .and_modify(|set| {
+                set.insert(mid);
+            })
+            .or_insert_with(|| {
+                let mut set = BTreeSet::new();
                 set.insert(mid);
                 set
             });
@@ -216,7 +265,7 @@ impl DatabaseIndexes {
                 set.insert(mid);
             })
             .or_insert_with(|| {
-                let mut set = HashSet::with_capacity(1);
+                let mut set = BTreeSet::new();
                 set.insert(mid);
                 set
             });
@@ -241,11 +290,7 @@ impl DatabaseIndexes {
     /// Query
     #[tracing::instrument(skip_all)]
     pub async fn query(&self, filters: Vec<Filter>) -> HashSet<EventId> {
-        let kinds_index = self.kinds_index.read().await;
-        let authors_index = self.authors_index.read().await;
-        let created_at_index = self.created_at_index.read().await;
-        let tags_index = self.tags_index.read().await;
-        let mapping = self.mapping.read().await;
+        let inner = self.inner.read().await;
 
         let mut matching_event_ids: HashSet<EventId> = HashSet::new();
 
@@ -261,34 +306,51 @@ impl DatabaseIndexes {
                 }
             }
 
-            let mut sets: Vec<HashSet<MappingIdentifier>> = Vec::new();
+            let mut sets: Vec<BTreeSet<&MappingIdentifier>> = Vec::new();
 
-            if !filter.kinds.is_empty() {
-                sets.push(self.query_index(&kinds_index, &filter.kinds));
-            }
+            if !filter.kinds.is_empty() && !filter.authors.is_empty() {
+                let mut set = HashSet::new();
+                for author in filter.authors.iter() {
+                    for kind in filter.kinds.iter() {
+                        set.insert(((*author).into(), *kind));
+                    }
+                }
+                sets.push(self.query_index(&inner.author_and_kind_index, &set));
+            } else {
+                if !filter.kinds.is_empty() {
+                    sets.push(self.query_index(&inner.kinds_index, &filter.kinds));
+                }
 
-            if !filter.authors.is_empty() {
-                sets.push(self.query_index(&authors_index, &filter.authors));
+                if !filter.authors.is_empty() {
+                    sets.push(self.query_index(
+                        &inner.authors_index,
+                        &filter.authors.into_iter().map(|pk| pk.into()).collect(),
+                    ));
+                }
             }
 
             if let (Some(since), Some(until)) = (filter.since, filter.until) {
-                let mut temp: HashSet<MappingIdentifier> = HashSet::new();
-                for ids in created_at_index.range(since..=until).map(|(_, ids)| ids) {
+                let mut temp = BTreeSet::new();
+                for ids in inner
+                    .created_at_index
+                    .range(since..=until)
+                    .map(|(_, ids)| ids)
+                {
                     temp.extend(ids);
                 }
                 sets.push(temp);
             } else {
                 if let Some(since) = filter.since {
-                    let mut temp: HashSet<MappingIdentifier> = HashSet::new();
-                    for (_, ids) in created_at_index.range(since..) {
+                    let mut temp = BTreeSet::new();
+                    for (_, ids) in inner.created_at_index.range(since..) {
                         temp.extend(ids);
                     }
                     sets.push(temp);
                 }
 
                 if let Some(until) = filter.until {
-                    let mut temp: HashSet<MappingIdentifier> = HashSet::new();
-                    for (_, ids) in created_at_index.range(..=until) {
+                    let mut temp = BTreeSet::new();
+                    for (_, ids) in inner.created_at_index.range(..=until) {
                         temp.extend(ids);
                     }
                     sets.push(temp);
@@ -296,13 +358,13 @@ impl DatabaseIndexes {
             }
 
             if !filter.generic_tags.is_empty() {
-                let mut temp: HashSet<MappingIdentifier> = HashSet::new();
+                let mut temp = BTreeSet::new();
 
                 for (tagname, set) in filter.generic_tags.iter() {
-                    if let Some(tag_map) = tags_index.get(tagname) {
+                    if let Some(tag_map) = inner.tags_index.get(tagname) {
                         for (id, tag_values) in tag_map.iter() {
                             if set.iter().all(|value| tag_values.contains(value)) {
-                                temp.insert(*id);
+                                temp.insert(id);
                             }
                         }
                     }
@@ -312,39 +374,31 @@ impl DatabaseIndexes {
             }
 
             // Intersection
-            let matching_sids: HashSet<MappingIdentifier> = multi_intersection(sets);
-            let matching_sids: BTreeSet<MappingIdentifier> = matching_sids.into_iter().collect();
+            let matching_sids: BTreeSet<&MappingIdentifier> = multi_intersection(sets);
 
             // Limit
             let limit: usize = filter.limit.unwrap_or(matching_sids.len());
-            let mut ids: Vec<EventId> = Vec::with_capacity(limit);
 
             // Get ids
-            for mid in matching_sids.into_iter().take(limit) {
-                match mapping.get(&mid.sid).copied() {
-                    Some(event_id) => ids.push(event_id),
-                    None => tracing::warn!("Event ID not found for {mid:?}"),
-                }
-            }
-
-            matching_event_ids.extend(ids);
+            matching_event_ids.extend(matching_sids.into_iter().take(limit).map(|mid| mid.eid));
         }
 
         matching_event_ids
     }
 
-    fn query_index<K>(
+    #[tracing::instrument(skip_all)]
+    fn query_index<'a, K>(
         &self,
-        index: &HashMap<K, HashSet<MappingIdentifier>>,
+        index: &'a HashMap<K, BTreeSet<MappingIdentifier>>,
         keys: &HashSet<K>,
-    ) -> HashSet<MappingIdentifier>
+    ) -> BTreeSet<&'a MappingIdentifier>
     where
         K: Eq + Hash,
     {
-        let mut result: HashSet<MappingIdentifier> = HashSet::new();
+        let mut result: BTreeSet<&MappingIdentifier> = BTreeSet::new();
         for key in keys.iter() {
             if let Some(ids) = index.get(key) {
-                result.extend(ids);
+                result.extend(ids.iter());
             }
         }
         result
@@ -352,28 +406,27 @@ impl DatabaseIndexes {
 
     /// Clear indexes
     pub async fn clear(&self) {
-        let mut kinds_index = self.kinds_index.write().await;
-        kinds_index.clear();
-
-        let mut authors_index = self.authors_index.write().await;
-        authors_index.clear();
-
-        let mut created_at_index = self.created_at_index.write().await;
-        created_at_index.clear();
+        let mut inner = self.inner.write().await;
+        inner.kinds_index.clear();
+        inner.authors_index.clear();
+        inner.created_at_index.clear();
     }
 }
 
-fn multi_intersection<T>(mut sets: Vec<HashSet<T>>) -> HashSet<T>
+#[tracing::instrument(skip_all)]
+fn multi_intersection<T>(mut sets: Vec<BTreeSet<&T>>) -> BTreeSet<&T>
 where
-    T: Eq + Hash,
+    T: Ord,
 {
+    // Sort by len (DESC)
+    sets.sort_by_cached_key(|set| Reverse(set.len()));
+
     if let Some(mut result) = sets.pop() {
         if !sets.is_empty() {
             result.retain(|item| sets.iter().all(|set| set.contains(item)));
         }
-
         result
     } else {
-        HashSet::new()
+        BTreeSet::new()
     }
 }

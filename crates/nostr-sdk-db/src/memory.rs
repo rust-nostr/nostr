@@ -11,7 +11,9 @@ use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-use crate::{Backend, DatabaseError, DatabaseOptions, NostrDatabase};
+use crate::{
+    Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, NostrDatabase,
+};
 
 /// Memory Database Error
 #[derive(Debug, Error)]
@@ -28,7 +30,8 @@ impl From<Error> for DatabaseError {
 pub struct MemoryDatabase {
     opts: DatabaseOptions,
     seen_event_ids: Arc<RwLock<HashMap<EventId, HashSet<Url>>>>,
-    events: Arc<RwLock<HashMap<EventId, Event>>>, // TODO: order by timestamp (DESC)?
+    events: Arc<RwLock<HashMap<EventId, Event>>>,
+    indexes: DatabaseIndexes,
 }
 
 // TODO: add queue field?
@@ -46,6 +49,7 @@ impl MemoryDatabase {
             opts,
             seen_event_ids: Arc::new(RwLock::new(HashMap::new())),
             events: Arc::new(RwLock::new(HashMap::new())),
+            indexes: DatabaseIndexes::new(),
         }
     }
 
@@ -72,20 +76,6 @@ impl MemoryDatabase {
             });
     }
 
-    async fn _query(
-        &self,
-        events: &HashMap<EventId, Event>,
-        filters: Vec<Filter>,
-    ) -> Result<Vec<Event>, DatabaseError> {
-        let mut list: Vec<Event> = Vec::new();
-        for event in events.values() {
-            if filters.match_event(event) {
-                list.push(event.clone());
-            }
-        }
-        Ok(list)
-    }
-
     async fn _save_event(
         &self,
         events: &mut HashMap<EventId, Event>,
@@ -94,45 +84,18 @@ impl MemoryDatabase {
         self.event_id_seen(event.id, None).await?;
 
         if self.opts.events {
-            if event.is_expired() || event.is_ephemeral() {
-                tracing::warn!("Event {} not saved: expired or ephemeral", event.id);
-                return Ok(false);
-            }
+            let EventIndexResult {
+                to_store,
+                to_discard,
+            } = self.indexes.index_event(&event).await;
 
-            let mut should_insert: bool = true;
-
-            if event.is_replaceable() {
-                let filter: Filter = Filter::new().author(event.pubkey).kind(event.kind);
-                let res: Vec<Event> = self._query(events, vec![filter]).await?;
-                if let Some(ev) = res.into_iter().next() {
-                    if ev.created_at >= event.created_at {
-                        should_insert = false;
-                    } else if ev.created_at < event.created_at {
-                        events.remove(&ev.id);
-                    }
-                }
-            } else if event.is_parameterized_replaceable() {
-                match event.identifier() {
-                    Some(identifier) => {
-                        let filter: Filter = Filter::new()
-                            .author(event.pubkey)
-                            .kind(event.kind)
-                            .identifier(identifier);
-                        let res: Vec<Event> = self._query(events, vec![filter]).await?;
-                        if let Some(ev) = res.into_iter().next() {
-                            if ev.created_at >= event.created_at {
-                                should_insert = false;
-                            } else if ev.created_at < event.created_at {
-                                events.remove(&ev.id);
-                            }
-                        }
-                    }
-                    None => should_insert = false,
-                }
-            }
-
-            if should_insert {
+            if to_store {
                 events.insert(event.id, event);
+
+                for event_id in to_discard.into_iter() {
+                    events.remove(&event_id);
+                }
+
                 Ok(true)
             } else {
                 tracing::warn!("Event {} not saved: unknown", event.id);
@@ -209,10 +172,21 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
         if self.opts.events {
+            let ids = self.indexes.query(filters.clone()).await;
             let events = self.events.read().await;
-            self._query(&events, filters).await
+
+            let mut list: Vec<Event> = Vec::new();
+            for event_id in ids.into_iter() {
+                if let Some(event) = events.get(&event_id) {
+                    if filters.match_event(event) {
+                        list.push(event.clone());
+                    }
+                }
+            }
+            Ok(list)
         } else {
             Err(DatabaseError::FeatureDisabled)
         }
@@ -235,7 +209,7 @@ impl NostrDatabase for MemoryDatabase {
 
     async fn negentropy_items(
         &self,
-        _filter: &Filter,
+        _filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
         Err(DatabaseError::NotSupported)
     }

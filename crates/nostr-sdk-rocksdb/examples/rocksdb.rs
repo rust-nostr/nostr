@@ -53,30 +53,28 @@ async fn main() {
             .to_event(&keys_a)
             .unwrap();
         database.save_event(&event).await.unwrap();
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    } */
+    }
 
-    /*     let event = EventBuilder::new(Kind::Custom(123), "Custom with d tag", &[Tag::Identifier(String::from("myid"))])
-        .to_event(&keys)
+    for i in 0..500_000 {
+        let event = EventBuilder::new(
+            Kind::Custom(123),
+            "Custom with d tag",
+            &[Tag::Identifier(format!("myid{i}"))],
+        )
+        .to_event(&keys_a)
         .unwrap();
-    database.save_event(&event).await.unwrap(); */
-
-    /* let event_id =
-        EventId::from_hex("b02c1c57a7c5b0e10245df8c26b429ad1a2cbf91d7cada3ecdb524b7e1d984b6")
-            .unwrap();
-    let event = database.event_by_id(event_id).await.unwrap();
-    println!("{event:?}"); */
+        database.save_event(&event).await.unwrap();
+    } */
 
     let events = database
         .query(vec![Filter::new()
-            .kind(Kind::Metadata)
-            //.limit(1)
+            .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
+            .limit(20)
             //.kind(Kind::Custom(123))
-            //.identifier("myid")
+            //.identifier("myid5000")
             .author(keys_a.public_key())])
         .await
         .unwrap();
-    //println!("{events:?}");
     println!("Got {} events", events.len());
 
     loop {

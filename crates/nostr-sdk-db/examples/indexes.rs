@@ -41,7 +41,7 @@ async fn main() {
         index.index_event(&event).await;
     }
 
-    for i in 0..10 {
+    for i in 0..1000 {
         let metadata = Metadata::new().name(format!("Name #{i}"));
         let event = EventBuilder::set_metadata(metadata)
             .to_event(&keys_a)
@@ -49,7 +49,7 @@ async fn main() {
         index.index_event(&event).await;
     }
 
-    for i in 0..50_000 {
+    for i in 0..500_000 {
         let event = EventBuilder::new(
             Kind::Custom(123),
             "Custom with d tag",
@@ -62,15 +62,13 @@ async fn main() {
 
     let ids = index
         .query(vec![Filter::new()
-            .kind(Kind::Metadata)
-            //.limit(1)
+            .kinds(vec![Kind::Metadata])
+            //.limit(20)
             //.kind(Kind::Custom(123))
             //.identifier("myid5000")
             .author(keys_a.public_key())])
         .await;
     println!("Got {} ids", ids.len());
 
-    /* loop {
-        tokio::time::sleep(Duration::from_secs(30)).await
-    } */
+    loop {}
 }

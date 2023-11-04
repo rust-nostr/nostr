@@ -96,7 +96,7 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Get `negentropy` items
     async fn negentropy_items(
         &self,
-        filter: &Filter,
+        filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err>;
 
     /// Wipe all data

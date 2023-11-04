@@ -862,7 +862,8 @@ impl RelayPool {
 
     /// Negentropy reconciliation
     pub async fn reconcile(&self, filter: Filter, timeout: Duration) -> Result<(), Error> {
-        let items: Vec<(EventId, Timestamp)> = self.database.negentropy_items(&filter).await?;
+        let items: Vec<(EventId, Timestamp)> =
+            self.database.negentropy_items(filter.clone()).await?;
         self.reconcile_with_items(filter, items, timeout).await
     }
 
