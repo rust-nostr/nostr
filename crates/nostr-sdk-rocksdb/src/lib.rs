@@ -19,6 +19,7 @@ use rocksdb::{
 use tokio::sync::RwLock;
 
 const EVENTS_CF: &str = "events";
+//const EVENTS_SEEN_BY_RELAYS: &str = "event-seen-by-relays";
 
 /// RocksDB Nostr Database
 #[derive(Debug, Clone)]
@@ -34,8 +35,7 @@ fn default_opts() -> rocksdb::Options {
     opts.set_max_open_files(100);
     opts.set_compaction_style(DBCompactionStyle::Level);
     opts.set_compression_type(DBCompressionType::Snappy);
-    opts.set_target_file_size_base(256 << 20);
-    opts.set_write_buffer_size(256 << 20);
+    opts.set_write_buffer_size(5 * 1024 * 1024); // 10 MB
     opts.set_enable_write_thread_adaptive_yield(true);
     opts.set_disable_auto_compactions(false);
     opts.increase_parallelism(2);
@@ -112,7 +112,7 @@ impl NostrDatabase for RocksDatabase {
         DatabaseOptions::default()
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         // Index event
         let EventIndexResult {
@@ -153,8 +153,9 @@ impl NostrDatabase for RocksDatabase {
         }
     }
 
-    async fn has_event_already_been_seen(&self, _event_id: EventId) -> Result<bool, Self::Err> {
-        todo!()
+    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        let cf = self.cf_handle(EVENTS_CF)?;
+        Ok(self.db.key_may_exist_cf(&cf, event_id.as_bytes()))
     }
 
     async fn event_id_seen(
@@ -227,18 +228,66 @@ impl NostrDatabase for RocksDatabase {
         .map_err(DatabaseError::backend)?
     }
 
-    async fn event_ids_by_filters(&self, _filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
-        todo!()
+    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
+        let ids = self.indexes.query(filters.clone()).await;
+
+        let this = self.clone();
+        tokio::task::spawn_blocking(move || {
+            let cf = this.cf_handle(EVENTS_CF)?;
+
+            let mut event_ids: Vec<EventId> = Vec::new();
+
+            for v in this
+                .db
+                .batched_multi_get_cf(&cf, ids, false)
+                .into_iter()
+                .flatten()
+                .flatten()
+            {
+                let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
+                if filters.match_event(&event) {
+                    event_ids.push(event.id);
+                }
+            }
+
+            Ok(event_ids)
+        })
+        .await
+        .map_err(DatabaseError::backend)?
     }
 
     async fn negentropy_items(
         &self,
-        _filter: &Filter,
+        filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        todo!()
+        let ids = self.indexes.query(vec![filter.clone()]).await;
+
+        let this = self.clone();
+        tokio::task::spawn_blocking(move || {
+            let cf = this.cf_handle(EVENTS_CF)?;
+
+            let mut event_ids: Vec<(EventId, Timestamp)> = Vec::new();
+
+            for v in this
+                .db
+                .batched_multi_get_cf(&cf, ids, false)
+                .into_iter()
+                .flatten()
+                .flatten()
+            {
+                let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
+                if filter.match_event(&event) {
+                    event_ids.push((event.id, event.created_at));
+                }
+            }
+
+            Ok(event_ids)
+        })
+        .await
+        .map_err(DatabaseError::backend)?
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {
-        todo!()
+        Err(DatabaseError::NotSupported)
     }
 }
