@@ -8,10 +8,10 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
 use nostr_sdk_db::{
-    index::DatabaseIndexes, Backend, DatabaseError, DatabaseOptions, EventIndexResult,
-    NostrDatabase,
+    index::{DatabaseIndexes, EventIndex},
+    Backend, DatabaseError, DatabaseOptions, EventIndexResult, NostrDatabase,
 };
-use nostr_sdk_fbs::{FlatBufferBuilder, FlatBufferUtils};
+use nostr_sdk_fbs::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, IteratorMode,
     OptimisticTransactionDB, Options, WriteBatchWithTransaction,
@@ -87,15 +87,12 @@ impl RocksDatabase {
     #[tracing::instrument(skip_all)]
     pub async fn build_indexes(&self) -> Result<(), DatabaseError> {
         let cf = self.cf_handle(EVENTS_CF)?;
-        let iter = self.db.full_iterator_cf(&cf, IteratorMode::Start);
-
-        for i in iter {
-            if let Ok((_key, value)) = i {
-                let event = Event::decode(&value).map_err(DatabaseError::backend)?;
-                self.indexes.index_event(&event).await;
-            }
-        }
-
+        let events = self
+            .db
+            .full_iterator_cf(&cf, IteratorMode::Start)
+            .flatten()
+            .filter_map(|(_, value)| EventIndex::decode(&value).ok());
+        self.indexes.bulk_load(events).await;
         Ok(())
     }
 }
@@ -118,7 +115,7 @@ impl NostrDatabase for RocksDatabase {
         let EventIndexResult {
             to_store,
             to_discard,
-        } = self.indexes.index_event(&event).await;
+        } = self.indexes.index_event(event).await;
 
         if to_store {
             // Acquire FlatBuffers Builder
