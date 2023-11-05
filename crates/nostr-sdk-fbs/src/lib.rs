@@ -3,8 +3,6 @@
 
 //! Nostr SDK Flatbuffers
 
-use std::collections::HashSet;
-
 pub use flatbuffers::FlatBufferBuilder;
 use flatbuffers::InvalidFlatbuffer;
 use nostr::secp256k1::schnorr::Signature;
@@ -14,11 +12,8 @@ use thiserror::Error;
 
 #[allow(unused_imports, dead_code, clippy::all)]
 mod event_generated;
-#[allow(unused_imports, dead_code, clippy::all)]
-mod index_generated;
 
-use self::event_generated::event_fbs;
-use self::index_generated::index_fbs;
+pub use self::event_generated::event_fbs;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -34,12 +29,15 @@ pub enum Error {
     NotFound,
 }
 
-pub trait FlatBufferUtils: Sized {
+pub trait FlatBufferEncode {
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8];
+}
+
+pub trait FlatBufferDecode: Sized {
     fn decode(buf: &[u8]) -> Result<Self, Error>;
 }
 
-impl FlatBufferUtils for Event {
+impl FlatBufferEncode for Event {
     #[tracing::instrument(skip_all, level = "trace")]
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
         fbb.reset();
@@ -78,7 +76,9 @@ impl FlatBufferUtils for Event {
 
         fbb.finished_data()
     }
+}
 
+impl FlatBufferDecode for Event {
     #[tracing::instrument(skip_all, level = "trace")]
     fn decode(buf: &[u8]) -> Result<Self, Error> {
         let ev = event_fbs::root_as_event(buf)?;
@@ -101,34 +101,5 @@ impl FlatBufferUtils for Event {
             content: ev.content().ok_or(Error::NotFound)?.to_owned(),
             sig: Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
         })
-    }
-}
-
-impl FlatBufferUtils for HashSet<[u8; 32]> {
-    #[tracing::instrument(skip_all, level = "trace")]
-    fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
-        fbb.reset();
-
-        let list: Vec<index_fbs::Fixed32Bytes> =
-            self.iter().map(index_fbs::Fixed32Bytes::new).collect();
-        let args = index_fbs::IndexSetArgs {
-            data: Some(fbb.create_vector(&list)),
-        };
-
-        let offset = index_fbs::IndexSet::create(fbb, &args);
-
-        index_fbs::finish_index_set_buffer(fbb, offset);
-
-        fbb.finished_data()
-    }
-
-    #[tracing::instrument(skip_all, level = "trace")]
-    fn decode(buf: &[u8]) -> Result<Self, Error> {
-        Ok(index_fbs::root_as_index_set(buf)?
-            .data()
-            .ok_or(Error::NotFound)?
-            .into_iter()
-            .map(|bytes| bytes.0)
-            .collect())
     }
 }
