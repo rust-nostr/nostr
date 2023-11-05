@@ -3,21 +3,120 @@
 
 //! Indexes
 
-use std::cmp::{Ordering, Reverse};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::hash::Hash;
+use std::cmp::Ordering;
+use std::collections::{BTreeSet, HashSet};
 use std::sync::Arc;
 
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{Alphabet, Event, EventId, Filter, Kind, Timestamp};
+use nostr::{Event, EventId, Filter, Kind, TagIndexValues, TagIndexes, Timestamp};
+#[cfg(feature = "flatbuffers")]
+use nostr_sdk_fbs::{event_fbs, Error as FlatBuffersError, FlatBufferDecode};
 use tokio::sync::RwLock;
 
-//type Mapping = HashMap<SmallerIdentifier, EventId>;
-type KindIndex = HashMap<Kind, BTreeSet<MappingIdentifier>>;
-type AuthorIndex = HashMap<PublicKeyPrefix, BTreeSet<MappingIdentifier>>;
-type AuthorAndKindIndex = HashMap<(PublicKeyPrefix, Kind), BTreeSet<MappingIdentifier>>;
-type CreatedAtIndex = BTreeMap<Timestamp, BTreeSet<MappingIdentifier>>;
-type TagIndex = HashMap<Alphabet, HashMap<MappingIdentifier, HashSet<String>>>;
+const PUBLIC_KEY_PREFIX_SIZE: usize = 8;
+
+/// Event Index
+#[derive(Debug, PartialEq, Eq)]
+pub struct EventIndex {
+    created_at: Timestamp,
+    event_id: EventId,
+    pubkey: PublicKeyPrefix,
+    kind: Kind,
+    tags: TagIndexes,
+}
+
+impl PartialOrd for EventIndex {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for EventIndex {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.created_at != other.created_at {
+            other.created_at.cmp(&self.created_at)
+        } else {
+            self.event_id.cmp(&other.event_id)
+        }
+    }
+}
+
+impl From<&Event> for EventIndex {
+    fn from(e: &Event) -> Self {
+        Self {
+            created_at: e.created_at,
+            event_id: e.id,
+            pubkey: PublicKeyPrefix::from(e.pubkey),
+            kind: e.kind,
+            tags: e.build_tags_index(),
+        }
+    }
+}
+
+impl EventIndex {
+    fn filter_tags_match(&self, filter: &Filter) -> bool {
+        if filter.generic_tags.is_empty() || self.tags.is_empty() {
+            return true;
+        }
+
+        filter.generic_tags.iter().all(|(tagname, set)| {
+            let set = TagIndexValues::from(set);
+            self.tags
+                .get(tagname)
+                .map(|valset| valset.intersection(&set).count() > 0)
+                .unwrap_or(false)
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct PublicKeyPrefix([u8; PUBLIC_KEY_PREFIX_SIZE]);
+
+impl From<XOnlyPublicKey> for PublicKeyPrefix {
+    fn from(pk: XOnlyPublicKey) -> Self {
+        let pk = pk.serialize();
+        let mut prefix = [0u8; PUBLIC_KEY_PREFIX_SIZE];
+        prefix.copy_from_slice(&pk[..PUBLIC_KEY_PREFIX_SIZE]);
+        Self(prefix)
+    }
+}
+
+#[cfg(feature = "flatbuffers")]
+impl FlatBufferDecode for EventIndex {
+    fn decode(buf: &[u8]) -> Result<Self, FlatBuffersError> {
+        let ev = event_fbs::root_as_event(buf)?;
+
+        // Compose Public Key prefix
+        let pk = ev.pubkey().ok_or(FlatBuffersError::NotFound)?.0;
+        let mut pubkey = [0u8; PUBLIC_KEY_PREFIX_SIZE];
+        pubkey.copy_from_slice(&pk[..PUBLIC_KEY_PREFIX_SIZE]);
+
+        // Compose tags
+        let iter = ev
+            .tags()
+            .ok_or(FlatBuffersError::NotFound)?
+            .into_iter()
+            .filter_map(|tag| match tag.data() {
+                Some(t) => {
+                    if t.len() > 1 {
+                        Some(t.into_iter().collect::<Vec<&str>>())
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            });
+        let tags = TagIndexes::from(iter);
+
+        Ok(Self {
+            event_id: EventId::from_slice(&ev.id().ok_or(FlatBuffersError::NotFound)?.0)?,
+            pubkey: PublicKeyPrefix(pubkey),
+            created_at: Timestamp::from(ev.created_at()),
+            kind: Kind::from(ev.kind()),
+            tags,
+        })
+    }
+}
 
 /// Event Index Result
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -26,18 +125,6 @@ pub struct EventIndexResult {
     pub to_store: bool,
     /// List of events that should be removed from database
     pub to_discard: HashSet<EventId>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct PublicKeyPrefix([u8; 8]);
-
-impl From<XOnlyPublicKey> for PublicKeyPrefix {
-    fn from(pk: XOnlyPublicKey) -> Self {
-        let pk = pk.serialize();
-        let mut prefix = [0u8; 8];
-        prefix.copy_from_slice(&pk[..8]);
-        Self(prefix)
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -62,26 +149,26 @@ impl Ord for MappingIdentifier {
     }
 }
 
-#[derive(Debug, Default)]
-struct DatabaseIndexesInner {
-    //mapping: Mapping,
-    kinds_index: KindIndex,
-    authors_index: AuthorIndex,
-    author_and_kind_index: AuthorAndKindIndex,
-    created_at_index: CreatedAtIndex,
-    tags_index: TagIndex,
-}
-
 /// Database Indexes
 #[derive(Debug, Clone, Default)]
 pub struct DatabaseIndexes {
-    inner: Arc<RwLock<DatabaseIndexesInner>>,
+    index: Arc<RwLock<BTreeSet<EventIndex>>>,
 }
 
 impl DatabaseIndexes {
     /// New empty indexes
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Bulk load
+    #[tracing::instrument(skip_all)]
+    pub async fn bulk_load<I>(&self, events: I)
+    where
+        I: IntoIterator<Item = EventIndex>,
+    {
+        let mut index = self.index.write().await;
+        index.extend(events);
     }
 
     /// Index [`Event`]
@@ -92,61 +179,23 @@ impl DatabaseIndexes {
             return EventIndexResult::default();
         }
 
-        let mut should_insert: bool = true;
-        let mut to_discard = HashSet::new();
+        let should_insert: bool = true;
+        let to_discard = HashSet::new();
 
-        let mut inner = self.inner.write().await;
-
-        if event.is_replaceable() {
-            // Query event
-            let mut kinds = HashSet::with_capacity(1);
-            let mut authors = HashSet::with_capacity(1);
-            kinds.insert(event.kind);
-            authors.insert(event.pubkey);
-
-            let res1 = self.query_index(&inner.kinds_index, &kinds.into_iter().collect());
-            let res2 = self.query_index(
-                &inner.authors_index,
-                &authors.into_iter().map(|pk| pk.into()).collect(),
-            );
-            let matching_sids: BTreeSet<&MappingIdentifier> = multi_intersection(vec![res1, res2]);
-
-            let mut mids_to_discard = HashSet::new();
-
-            for mid in matching_sids.into_iter() {
-                if mid.timestamp >= event.created_at {
+        /* if event.is_replaceable() {
+            let filter: Filter = Filter::new().author(event.pubkey).kind(event.kind);
+            let res = self.query(events, vec![filter]).await;
+            if let Some(ev) = res.into_iter().next() {
+                if ev.created_at >= event.created_at {
                     should_insert = false;
-                } else if mid.timestamp < event.created_at {
-                    to_discard.insert(mid.eid);
-                    mids_to_discard.insert(*mid);
-                }
-            }
-
-            for mid in mids_to_discard.iter() {
-                if let Some(set) = inner.kinds_index.get_mut(&event.kind) {
-                    set.remove(mid);
-                }
-                if let Some(set) = inner.authors_index.get_mut(&event.pubkey.into()) {
-                    set.remove(mid);
-                }
-                if let Some(set) = inner
-                    .author_and_kind_index
-                    .get_mut(&(event.pubkey.into(), event.kind))
-                {
-                    set.remove(mid);
-                }
-                if let Some(set) = inner.created_at_index.get_mut(&mid.timestamp) {
-                    set.remove(mid);
-                }
-                for (_, map) in inner.tags_index.iter_mut() {
-                    map.remove(mid);
+                } else if ev.created_at < event.created_at {
+                    events.remove(&ev.id);
                 }
             }
         } else if event.is_parameterized_replaceable() {
             match event.identifier() {
-                Some(_identifier) => {
-                    should_insert = false;
-                    /* let filter: Filter = Filter::new()
+                Some(identifier) => {
+                    let filter: Filter = Filter::new()
                         .author(event.pubkey)
                         .kind(event.kind)
                         .identifier(identifier);
@@ -157,41 +206,15 @@ impl DatabaseIndexes {
                         } else if ev.created_at < event.created_at {
                             events.remove(&ev.id);
                         }
-                    } */
+                    }
                 }
                 None => should_insert = false,
             }
-        }
+        } */
 
         if should_insert {
-            let mapping_id = MappingIdentifier {
-                eid: event.id,
-                timestamp: event.created_at,
-            };
-
-            //inner.mapping.insert(mapping_id.sid, event.id);
-
-            let pk: PublicKeyPrefix = event.pubkey.into();
-
-            // Index kind
-            self.index_event_kind(&mut inner.kinds_index, mapping_id, event.kind);
-
-            // Index author
-            self.index_event_author(&mut inner.authors_index, mapping_id, pk);
-
-            // Index author and kind
-            self.index_event_author_and_kind(
-                &mut inner.author_and_kind_index,
-                mapping_id,
-                pk,
-                event.kind,
-            );
-
-            // Index created at
-            self.index_event_created_at(&mut inner.created_at_index, mapping_id, event);
-
-            // Index tags
-            self.index_event_tags(&mut inner.tags_index, mapping_id, event);
+            let mut index = self.index.write().await;
+            index.insert(EventIndex::from(event));
         }
 
         EventIndexResult {
@@ -200,233 +223,49 @@ impl DatabaseIndexes {
         }
     }
 
-    /// Index kind
-    fn index_event_kind(&self, kinds_index: &mut KindIndex, mid: MappingIdentifier, kind: Kind) {
-        kinds_index
-            .entry(kind)
-            .and_modify(|set| {
-                set.insert(mid);
-            })
-            .or_insert_with(|| {
-                let mut set = BTreeSet::new();
-                set.insert(mid);
-                set
-            });
-    }
-
-    /// Index author
-    fn index_event_author(
-        &self,
-        authors_index: &mut AuthorIndex,
-        mid: MappingIdentifier,
-        pk: PublicKeyPrefix,
-    ) {
-        authors_index
-            .entry(pk)
-            .and_modify(|set| {
-                set.insert(mid);
-            })
-            .or_insert_with(|| {
-                let mut set = BTreeSet::new();
-                set.insert(mid);
-                set
-            });
-    }
-
-    fn index_event_author_and_kind(
-        &self,
-        author_and_kind_index: &mut AuthorAndKindIndex,
-        mid: MappingIdentifier,
-        pk: PublicKeyPrefix,
-        kind: Kind,
-    ) {
-        author_and_kind_index
-            .entry((pk, kind))
-            .and_modify(|set| {
-                set.insert(mid);
-            })
-            .or_insert_with(|| {
-                let mut set = BTreeSet::new();
-                set.insert(mid);
-                set
-            });
-    }
-
-    /// Index created at
-    fn index_event_created_at(
-        &self,
-        created_at_index: &mut CreatedAtIndex,
-        mid: MappingIdentifier,
-        event: &Event,
-    ) {
-        created_at_index
-            .entry(event.created_at)
-            .and_modify(|set| {
-                set.insert(mid);
-            })
-            .or_insert_with(|| {
-                let mut set = BTreeSet::new();
-                set.insert(mid);
-                set
-            });
-    }
-
-    /// Index tags
-    fn index_event_tags(&self, tags_index: &mut TagIndex, mid: MappingIdentifier, event: &Event) {
-        for (a, set) in event.build_tags_index().into_iter() {
-            tags_index
-                .entry(a)
-                .and_modify(|map| {
-                    map.insert(mid, set.clone());
-                })
-                .or_insert_with(|| {
-                    let mut map = HashMap::with_capacity(1);
-                    map.insert(mid, set);
-                    map
-                });
-        }
-    }
-
     /// Query
     #[tracing::instrument(skip_all)]
     pub async fn query(&self, filters: Vec<Filter>) -> HashSet<EventId> {
-        let inner = self.inner.read().await;
+        let index = self.index.read().await;
 
-        let mut matching_event_ids: HashSet<EventId> = HashSet::new();
+        let mut matching_ids: HashSet<EventId> = HashSet::new();
 
         for filter in filters.into_iter() {
-            if !filter.ids.is_empty() {
-                matching_event_ids.extend(filter.ids);
-                continue;
-            }
-
             if let (Some(since), Some(until)) = (filter.since, filter.until) {
                 if since > until {
                     continue;
                 }
             }
 
-            let mut sets: Vec<BTreeSet<&MappingIdentifier>> = Vec::new();
-
-            if !filter.kinds.is_empty() && !filter.authors.is_empty() {
-                let mut set = HashSet::new();
-                for author in filter.authors.iter() {
-                    for kind in filter.kinds.iter() {
-                        set.insert(((*author).into(), *kind));
-                    }
-                }
-                sets.push(self.query_index(&inner.author_and_kind_index, &set));
+            let authors: HashSet<PublicKeyPrefix> = filter
+                .authors
+                .iter()
+                .map(|p| PublicKeyPrefix::from(*p))
+                .collect();
+            let iter = index
+                .iter()
+                .filter(|m| {
+                    (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
+                        && filter.since.map_or(true, |t| m.created_at >= t)
+                        && filter.until.map_or(true, |t| m.created_at <= t)
+                        && (filter.authors.is_empty() || authors.contains(&m.pubkey))
+                        && (filter.kinds.is_empty() || filter.kinds.contains(&m.kind))
+                        && m.filter_tags_match(&filter)
+                })
+                .map(|m| m.event_id);
+            if let Some(limit) = filter.limit {
+                matching_ids.extend(iter.take(limit))
             } else {
-                if !filter.kinds.is_empty() {
-                    sets.push(self.query_index(&inner.kinds_index, &filter.kinds));
-                }
-
-                if !filter.authors.is_empty() {
-                    sets.push(self.query_index(
-                        &inner.authors_index,
-                        &filter.authors.into_iter().map(|pk| pk.into()).collect(),
-                    ));
-                }
+                matching_ids.extend(iter)
             }
-
-            if let (Some(since), Some(until)) = (filter.since, filter.until) {
-                let mut temp = BTreeSet::new();
-                for ids in inner
-                    .created_at_index
-                    .range(since..=until)
-                    .map(|(_, ids)| ids)
-                {
-                    temp.extend(ids);
-                }
-                sets.push(temp);
-            } else {
-                if let Some(since) = filter.since {
-                    let mut temp = BTreeSet::new();
-                    for (_, ids) in inner.created_at_index.range(since..) {
-                        temp.extend(ids);
-                    }
-                    sets.push(temp);
-                }
-
-                if let Some(until) = filter.until {
-                    let mut temp = BTreeSet::new();
-                    for (_, ids) in inner.created_at_index.range(..=until) {
-                        temp.extend(ids);
-                    }
-                    sets.push(temp);
-                }
-            }
-
-            if !filter.generic_tags.is_empty() {
-                let mut temp = BTreeSet::new();
-
-                for (tagname, set) in filter.generic_tags.iter() {
-                    if let Some(tag_map) = inner.tags_index.get(tagname) {
-                        for (id, tag_values) in tag_map.iter() {
-                            if set.iter().all(|value| tag_values.contains(value)) {
-                                temp.insert(id);
-                            }
-                        }
-                    }
-                }
-
-                sets.push(temp);
-            }
-
-            // Intersection
-            let matching_sids: BTreeSet<&MappingIdentifier> = multi_intersection(sets);
-
-            // Limit
-            let limit: usize = filter.limit.unwrap_or(matching_sids.len());
-
-            // Get ids
-            matching_event_ids.extend(matching_sids.into_iter().take(limit).map(|mid| mid.eid));
         }
 
-        matching_event_ids
-    }
-
-    #[tracing::instrument(skip_all)]
-    fn query_index<'a, K>(
-        &self,
-        index: &'a HashMap<K, BTreeSet<MappingIdentifier>>,
-        keys: &HashSet<K>,
-    ) -> BTreeSet<&'a MappingIdentifier>
-    where
-        K: Eq + Hash,
-    {
-        let mut result: BTreeSet<&MappingIdentifier> = BTreeSet::new();
-        for key in keys.iter() {
-            if let Some(ids) = index.get(key) {
-                result.extend(ids.iter());
-            }
-        }
-        result
+        matching_ids
     }
 
     /// Clear indexes
     pub async fn clear(&self) {
-        let mut inner = self.inner.write().await;
-        inner.kinds_index.clear();
-        inner.authors_index.clear();
-        inner.created_at_index.clear();
-    }
-}
-
-#[tracing::instrument(skip_all)]
-fn multi_intersection<T>(mut sets: Vec<BTreeSet<&T>>) -> BTreeSet<&T>
-where
-    T: Ord,
-{
-    // Sort by len (DESC)
-    sets.sort_by_cached_key(|set| Reverse(set.len()));
-
-    if let Some(mut result) = sets.pop() {
-        if !sets.is_empty() {
-            result.retain(|item| sets.iter().all(|set| set.contains(item)));
-        }
-        result
-    } else {
-        BTreeSet::new()
+        let mut index = self.index.write().await;
+        index.clear();
     }
 }

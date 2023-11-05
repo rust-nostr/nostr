@@ -1250,6 +1250,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "nostr",
+ "nostr-sdk-fbs",
  "thiserror",
  "tokio",
  "tracing",

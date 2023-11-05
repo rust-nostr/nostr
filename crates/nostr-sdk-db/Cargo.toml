@@ -11,9 +11,14 @@ readme = "README.md"
 rust-version.workspace = true
 keywords = ["nostr", "sdk", "db"]
 
+[features]
+default = []
+flatbuffers = ["dep:nostr-sdk-fbs"]
+
 [dependencies]
 async-trait = { workspace = true }
 nostr = { workspace = true, features = ["std"] }
+nostr-sdk-fbs = { version = "0.1", path = "../nostr-sdk-fbs", optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }

@@ -62,8 +62,8 @@ async fn main() {
 
     let ids = index
         .query(vec![Filter::new()
-            .kinds(vec![Kind::Metadata])
-            //.limit(20)
+            .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
+            .limit(20)
             //.kind(Kind::Custom(123))
             //.identifier("myid5000")
             .author(keys_a.public_key())])
