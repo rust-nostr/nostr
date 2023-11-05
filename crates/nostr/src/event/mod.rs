@@ -173,6 +173,16 @@ impl Event {
             .map_err(|_| Error::InvalidSignature)
     }
 
+    /// Get [`Timestamp`] expiration if set
+    pub fn expiration(&self) -> Option<&Timestamp> {
+        for tag in self.tags.iter() {
+            if let Tag::Expiration(timestamp) = tag {
+                return Some(timestamp);
+            }
+        }
+        None
+    }
+
     /// Returns `true` if the event has an expiration tag that is expired.
     /// If an event has no `Expiration` tag, then it will return `false`.
     ///
@@ -191,11 +201,9 @@ impl Event {
     where
         T: TimeSupplier,
     {
-        let now: Timestamp = Timestamp::now_with_supplier(supplier);
-        for tag in self.tags.iter() {
-            if let Tag::Expiration(timestamp) = tag {
-                return timestamp < &now;
-            }
+        if let Some(timestamp) = self.expiration() {
+            let now: Timestamp = Timestamp::now_with_supplier(supplier);
+            return timestamp < &now;
         }
         false
     }
