@@ -24,6 +24,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::event::{TagIndexValues, TagIndexes};
 use crate::{Event, EventId, JsonUtil, Kind, Timestamp};
 
 /// Alphabet Error
@@ -588,10 +589,11 @@ impl Filter {
             return true;
         }
 
-        let idx: AllocMap<Alphabet, AllocSet<String>> = event.build_tags_index();
+        let idx: TagIndexes = event.build_tags_index();
         self.generic_tags.iter().all(|(tagname, set)| {
+            let set = TagIndexValues::from(set);
             idx.get(tagname)
-                .map(|valset| valset.intersection(set).count() > 0)
+                .map(|valset| valset.intersection(&set).count() > 0)
                 .unwrap_or(false)
         })
     }
