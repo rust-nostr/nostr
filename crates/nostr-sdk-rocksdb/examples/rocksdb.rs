@@ -69,6 +69,14 @@ async fn main() {
         database.save_event(&event).await.unwrap();
     } */
 
+    /* let event_id = EventId::all_zeros();
+    database.event_id_seen(event_id, Some(Url::parse("wss://relay.damus.io").unwrap())).await.unwrap();
+    database.event_id_seen(event_id, Some(Url::parse("wss://relay.nostr.info").unwrap())).await.unwrap();
+    database.event_id_seen(event_id, Some(Url::parse("wss://relay.damus.io").unwrap())).await.unwrap();
+
+    let relays = database.event_recently_seen_on_relays(event_id).await.unwrap();
+    println!("Seen on: {relays:?}"); */
+
     let events = database
         .query(vec![Filter::new()
             .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])

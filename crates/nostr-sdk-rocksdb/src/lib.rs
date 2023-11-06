@@ -18,10 +18,10 @@ use rocksdb::{
 };
 use tokio::sync::RwLock;
 
+mod ops;
+
 const EVENTS_CF: &str = "events";
 const EVENTS_SEEN_BY_RELAYS: &str = "event-seen-by-relays";
-
-const COLUMN_FAMILIES: &[&str] = &[EVENTS_CF, EVENTS_SEEN_BY_RELAYS];
 
 /// RocksDB Nostr Database
 #[derive(Debug, Clone)]
@@ -45,6 +45,19 @@ fn default_opts() -> rocksdb::Options {
     opts
 }
 
+fn column_families() -> Vec<ColumnFamilyDescriptor> {
+    let mut relay_urls_opts: Options = default_opts();
+    relay_urls_opts.set_merge_operator_associative(
+        "relay_urls_merge_operator",
+        ops::relay_urls_merge_operator,
+    );
+
+    vec![
+        ColumnFamilyDescriptor::new(EVENTS_CF, default_opts()),
+        ColumnFamilyDescriptor::new(EVENTS_SEEN_BY_RELAYS, relay_urls_opts),
+    ]
+}
+
 impl RocksDatabase {
     pub fn new<P>(path: P) -> Result<Self, DatabaseError>
     where
@@ -58,14 +71,8 @@ impl RocksDatabase {
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
 
-        let db = OptimisticTransactionDB::open_cf_descriptors(
-            &db_opts,
-            path,
-            COLUMN_FAMILIES
-                .iter()
-                .map(|&name| ColumnFamilyDescriptor::new(name, default_opts())),
-        )
-        .map_err(DatabaseError::backend)?;
+        let db = OptimisticTransactionDB::open_cf_descriptors(&db_opts, path, column_families())
+            .map_err(DatabaseError::backend)?;
 
         match db.live_files() {
             Ok(live_files) => tracing::info!(
@@ -176,10 +183,22 @@ impl NostrDatabase for RocksDatabase {
 
     async fn event_id_seen(
         &self,
-        _event_id: EventId,
-        _relay_url: Option<Url>,
+        event_id: EventId,
+        relay_url: Option<Url>,
     ) -> Result<(), Self::Err> {
-        todo!()
+        let mut fbb = self.fbb.write().await;
+        let cf = self.cf_handle(EVENTS_SEEN_BY_RELAYS)?;
+        let value: HashSet<Url> = match relay_url {
+            Some(relay_url) => {
+                let mut set = HashSet::with_capacity(1);
+                set.insert(relay_url);
+                set
+            }
+            None => HashSet::new(),
+        };
+        self.db
+            .merge_cf(&cf, event_id, value.encode(&mut fbb))
+            .map_err(DatabaseError::backend)
     }
 
     async fn event_ids_seen(
@@ -192,9 +211,17 @@ impl NostrDatabase for RocksDatabase {
 
     async fn event_recently_seen_on_relays(
         &self,
-        _event_id: EventId,
+        event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err> {
-        todo!()
+        let cf = self.cf_handle(EVENTS_SEEN_BY_RELAYS)?;
+        match self
+            .db
+            .get_pinned_cf(&cf, event_id)
+            .map_err(DatabaseError::backend)?
+        {
+            Some(val) => Ok(Some(HashSet::decode(&val).map_err(DatabaseError::backend)?)),
+            None => Ok(None),
+        }
     }
 
     #[tracing::instrument(skip_all)]
