@@ -21,7 +21,7 @@ use crate::Alphabet;
 pub const TAG_INDEX_VALUE_SIZE: usize = 8;
 
 /// Tag Indexes
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TagIndexes {
     inner: AllocMap<Alphabet, TagIndexValues>,
 }
@@ -67,7 +67,7 @@ fn single_char_tagname(tagname: &str) -> Option<Alphabet> {
 }
 
 /// Tag Index Values
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TagIndexValues {
     inner: AllocSet<[u8; TAG_INDEX_VALUE_SIZE]>,
 }
