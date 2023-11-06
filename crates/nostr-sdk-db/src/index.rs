@@ -135,7 +135,6 @@ impl DatabaseIndexes {
     {
         let mut index = self.index.write().await;
         let now = Timestamp::now();
-        // TODO: check if it's expired or ephemeral, check if it's replaceable or param replaceable
         index.extend(
             events
                 .into_iter()
@@ -186,7 +185,9 @@ impl DatabaseIndexes {
         }
 
         // Remove events
-        index.retain(|e| !to_discard.contains(&e.event_id));
+        if !to_discard.is_empty() {
+            index.retain(|e| !to_discard.contains(&e.event_id));
+        }
 
         // Insert event
         if should_insert {
