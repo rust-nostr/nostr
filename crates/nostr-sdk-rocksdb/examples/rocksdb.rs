@@ -27,6 +27,9 @@ async fn main() {
     println!("Pubkey B: {}", keys_b.public_key());
 
     let database = RocksDatabase::new("./db/rocksdb").unwrap();
+
+    println!("Events stored: {}", database.count().await.unwrap());
+
     database.build_indexes().await.unwrap();
 
     /* for i in 0..100_000 {

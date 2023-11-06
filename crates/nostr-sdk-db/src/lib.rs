@@ -57,6 +57,9 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Database options
     fn opts(&self) -> DatabaseOptions;
 
+    /// Count number of [`Event`] stored
+    async fn count(&self) -> Result<usize, Self::Err>;
+
     /// Save [`Event`] into store
     ///
     /// Return `true` if event was successfully saved into database.
@@ -108,7 +111,6 @@ pub trait NostrDatabase: AsyncTraitDeps {
     async fn wipe(&self) -> Result<(), Self::Err>;
 
     /// Get profile metadata
-    #[tracing::instrument(skip_all)]
     async fn profile(&self, public_key: XOnlyPublicKey) -> Result<Metadata, Self::Err> {
         let filter = Filter::new()
             .author(public_key)

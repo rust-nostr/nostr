@@ -119,6 +119,11 @@ impl NostrDatabase for MemoryDatabase {
         self.opts
     }
 
+    async fn count(&self) -> Result<usize, Self::Err> {
+        let events = self.events.read().await;
+        Ok(events.len())
+    }
+
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         let mut events = self.events.write().await;
         self._save_event(&mut events, event.clone()).await

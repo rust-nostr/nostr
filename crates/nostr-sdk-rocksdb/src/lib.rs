@@ -35,7 +35,7 @@ fn default_opts() -> rocksdb::Options {
     opts.set_max_open_files(100);
     opts.set_compaction_style(DBCompactionStyle::Level);
     opts.set_compression_type(DBCompressionType::Snappy);
-    opts.set_write_buffer_size(5 * 1024 * 1024); // 10 MB
+    opts.set_write_buffer_size(64 * 1024 * 1024); // 64 MB
     opts.set_enable_write_thread_adaptive_yield(true);
     opts.set_disable_auto_compactions(false);
     opts.increase_parallelism(2);
@@ -109,6 +109,20 @@ impl NostrDatabase for RocksDatabase {
         DatabaseOptions::default()
     }
 
+    async fn count(&self) -> Result<usize, Self::Err> {
+        let this = self.clone();
+        tokio::task::spawn_blocking(move || {
+            let cf = this.cf_handle(EVENTS_CF)?;
+            Ok(this
+                .db
+                .full_iterator_cf(&cf, IteratorMode::Start)
+                .flatten()
+                .count())
+        })
+        .await
+        .unwrap()
+    }
+
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         // Index event
@@ -137,7 +151,7 @@ impl NostrDatabase for RocksDatabase {
 
                 // Discard events no longer needed
                 for event_id in to_discard.into_iter() {
-                    batch.delete_cf(&events_cf, event_id.as_bytes());
+                    batch.delete_cf(&events_cf, event_id);
                 }
 
                 // Write batch changes
