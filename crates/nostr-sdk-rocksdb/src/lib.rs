@@ -201,14 +201,6 @@ impl NostrDatabase for RocksDatabase {
             .map_err(DatabaseError::backend)
     }
 
-    async fn event_ids_seen(
-        &self,
-        _event_ids: Vec<EventId>,
-        _relay_url: Option<Url>,
-    ) -> Result<(), Self::Err> {
-        todo!()
-    }
-
     async fn event_recently_seen_on_relays(
         &self,
         event_id: EventId,

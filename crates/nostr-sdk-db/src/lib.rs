@@ -77,15 +77,6 @@ pub trait NostrDatabase: AsyncTraitDeps {
         relay_url: Option<Url>,
     ) -> Result<(), Self::Err>;
 
-    /// Set multiple [`EventId`] as seen
-    ///
-    /// Optionally, save also the relay url where the event has been seen (useful for NIP65, aka gossip)
-    async fn event_ids_seen(
-        &self,
-        event_ids: Vec<EventId>,
-        relay_url: Option<Url>,
-    ) -> Result<(), Self::Err>;
-
     /// Get list of relays that have seen the [`EventId`]
     async fn event_recently_seen_on_relays(
         &self,

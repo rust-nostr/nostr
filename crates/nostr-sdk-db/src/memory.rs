@@ -144,19 +144,6 @@ impl NostrDatabase for MemoryDatabase {
         Ok(())
     }
 
-    async fn event_ids_seen(
-        &self,
-        event_ids: Vec<EventId>,
-        relay_url: Option<Url>,
-    ) -> Result<(), Self::Err> {
-        let mut seen_event_ids = self.seen_event_ids.write().await;
-        for event_id in event_ids.into_iter() {
-            self._event_id_seen(&mut seen_event_ids, event_id, relay_url.clone());
-        }
-
-        Ok(())
-    }
-
     async fn event_recently_seen_on_relays(
         &self,
         event_id: EventId,
