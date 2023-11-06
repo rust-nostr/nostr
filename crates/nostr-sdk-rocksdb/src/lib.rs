@@ -19,7 +19,9 @@ use rocksdb::{
 use tokio::sync::RwLock;
 
 const EVENTS_CF: &str = "events";
-//const EVENTS_SEEN_BY_RELAYS: &str = "event-seen-by-relays";
+const EVENTS_SEEN_BY_RELAYS: &str = "event-seen-by-relays";
+
+const COLUMN_FAMILIES: &[&str] = &[EVENTS_CF, EVENTS_SEEN_BY_RELAYS];
 
 /// RocksDB Nostr Database
 #[derive(Debug, Clone)]
@@ -32,18 +34,15 @@ pub struct RocksDatabase {
 fn default_opts() -> rocksdb::Options {
     let mut opts = Options::default();
     opts.set_keep_log_file_num(10);
-    opts.set_max_open_files(100);
+    opts.set_max_open_files(16);
     opts.set_compaction_style(DBCompactionStyle::Level);
     opts.set_compression_type(DBCompressionType::Snappy);
+    opts.set_target_file_size_base(64 * 1024 * 1024); // 64 MB
     opts.set_write_buffer_size(64 * 1024 * 1024); // 64 MB
     opts.set_enable_write_thread_adaptive_yield(true);
     opts.set_disable_auto_compactions(false);
-    opts.increase_parallelism(2);
+    opts.increase_parallelism(num_cpus::get() as i32);
     opts
-}
-
-fn column_families() -> Vec<ColumnFamilyDescriptor> {
-    vec![ColumnFamilyDescriptor::new(EVENTS_CF, default_opts())]
 }
 
 impl RocksDatabase {
@@ -59,8 +58,14 @@ impl RocksDatabase {
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
 
-        let db = OptimisticTransactionDB::open_cf_descriptors(&db_opts, path, column_families())
-            .map_err(DatabaseError::backend)?;
+        let db = OptimisticTransactionDB::open_cf_descriptors(
+            &db_opts,
+            path,
+            COLUMN_FAMILIES
+                .iter()
+                .map(|&name| ColumnFamilyDescriptor::new(name, default_opts())),
+        )
+        .map_err(DatabaseError::backend)?;
 
         match db.live_files() {
             Ok(live_files) => tracing::info!(

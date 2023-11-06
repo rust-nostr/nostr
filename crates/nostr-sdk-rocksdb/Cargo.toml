@@ -15,6 +15,7 @@ keywords = ["nostr", "sdk", "db", "redb"]
 async-trait = { workspace = true }
 nostr = { workspace = true, features = ["std"] }
 nostr-sdk-db = { version = "0.1", path = "../nostr-sdk-db", features = ["flatbuf"] }
+num_cpus = "1.16"
 rocksdb = { version = "0.21", default-features = false, features = ["multi-threaded-cf", "snappy"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
 tracing = { workspace = true, features = ["std"] }
