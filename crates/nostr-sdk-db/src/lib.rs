@@ -3,21 +3,26 @@
 
 //! Nostr SDK Database
 
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
 use std::collections::HashSet;
 
 pub use async_trait::async_trait;
-use nostr::{Event, EventId, Filter, Timestamp, Url};
+use nostr::secp256k1::XOnlyPublicKey;
+use nostr::{Event, EventId, Filter, Metadata, Timestamp, Url};
 
 mod error;
+#[cfg(feature = "flatbuf")]
+pub mod flatbuffers;
 pub mod index;
 pub mod memory;
 mod options;
 
 pub use self::error::DatabaseError;
+#[cfg(feature = "flatbuf")]
+pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
 pub use self::index::{DatabaseIndexes, EventIndexResult};
 pub use self::options::DatabaseOptions;
 

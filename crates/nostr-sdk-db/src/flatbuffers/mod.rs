@@ -1,39 +1,50 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-//! Nostr SDK Flatbuffers
+//! Flatbuffers
 
 pub use flatbuffers::FlatBufferBuilder;
 use flatbuffers::InvalidFlatbuffer;
+use nostr::event::raw::RawEvent;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::{self, XOnlyPublicKey};
 use nostr::{Event, EventId, Kind, Tag, Timestamp};
 use thiserror::Error;
 
-#[allow(unused_imports, dead_code, clippy::all)]
+#[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
 mod event_generated;
 
 pub use self::event_generated::event_fbs;
 
+/// FlatBuffers Error
 #[derive(Debug, Error)]
 pub enum Error {
+    /// Invalud FlatBuffer
     #[error(transparent)]
     InvalidFlatbuffer(#[from] InvalidFlatbuffer),
     #[error(transparent)]
+    /// Event ID error
     EventId(#[from] nostr::event::id::Error),
+    /// Tag error
     #[error(transparent)]
     Tag(#[from] nostr::event::tag::Error),
+    /// Secp256k1 error
     #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),
+    /// Not found
     #[error("not found")]
     NotFound,
 }
 
+/// FlatBuffer Encode trait
 pub trait FlatBufferEncode {
+    /// FlatBuffer encode
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8];
 }
 
+/// FlatBuffer Decode trait
 pub trait FlatBufferDecode: Sized {
+    /// FlatBuffer decode
     fn decode(buf: &[u8]) -> Result<Self, Error>;
 }
 
@@ -100,6 +111,36 @@ impl FlatBufferDecode for Event {
             tags,
             content: ev.content().ok_or(Error::NotFound)?.to_owned(),
             sig: Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
+        })
+    }
+}
+
+impl FlatBufferDecode for RawEvent {
+    #[tracing::instrument(skip_all, level = "trace")]
+    fn decode(buf: &[u8]) -> Result<Self, Error> {
+        let ev = event_fbs::root_as_event(buf)?;
+        Ok(Self {
+            id: ev.id().ok_or(Error::NotFound)?.0,
+            pubkey: ev.pubkey().ok_or(Error::NotFound)?.0,
+            created_at: ev.created_at(),
+            kind: ev.kind(),
+            tags: ev
+                .tags()
+                .ok_or(Error::NotFound)?
+                .into_iter()
+                .filter_map(|tag| match tag.data() {
+                    Some(t) => {
+                        if t.len() > 1 {
+                            Some(t.into_iter().map(|s| s.to_owned()).collect::<Vec<String>>())
+                        } else {
+                            None
+                        }
+                    }
+                    None => None,
+                })
+                .collect(),
+            content: ev.content().ok_or(Error::NotFound)?.to_owned(),
+            sig: ev.sig().ok_or(Error::NotFound)?.0,
         })
     }
 }

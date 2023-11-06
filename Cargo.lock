@@ -1249,22 +1249,12 @@ name = "nostr-sdk-db"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "flatbuffers",
  "nostr",
- "nostr-sdk-fbs",
  "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "nostr-sdk-fbs"
-version = "0.1.0"
-dependencies = [
- "flatbuffers",
- "nostr",
- "thiserror",
- "tracing",
 ]
 
 [[package]]
@@ -1313,7 +1303,6 @@ dependencies = [
  "async-trait",
  "nostr",
  "nostr-sdk-db",
- "nostr-sdk-fbs",
  "rocksdb",
  "tokio",
  "tracing",

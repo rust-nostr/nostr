@@ -7,21 +7,26 @@ use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashSet};
 use std::sync::Arc;
 
+use nostr::event::raw::RawEvent;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Event, EventId, Filter, Kind, TagIndexValues, TagIndexes, Timestamp};
-#[cfg(feature = "flatbuffers")]
-use nostr_sdk_fbs::{event_fbs, Error as FlatBuffersError, FlatBufferDecode};
 use tokio::sync::RwLock;
 
+/// Public Key Prefix Size
 const PUBLIC_KEY_PREFIX_SIZE: usize = 8;
 
 /// Event Index
-#[derive(Debug, PartialEq, Eq)]
-pub struct EventIndex {
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct EventIndex {
+    /// Timestamp (seconds)
     created_at: Timestamp,
+    /// Event ID
     event_id: EventId,
+    /// Public key prefix
     pubkey: PublicKeyPrefix,
+    /// Kind
     kind: Kind,
+    /// Tag indexes
     tags: TagIndexes,
 }
 
@@ -34,10 +39,23 @@ impl PartialOrd for EventIndex {
 impl Ord for EventIndex {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.created_at != other.created_at {
-            other.created_at.cmp(&self.created_at)
+            self.created_at.cmp(&other.created_at).reverse()
         } else {
             self.event_id.cmp(&other.event_id)
         }
+    }
+}
+
+impl TryFrom<RawEvent> for EventIndex {
+    type Error = nostr::event::id::Error;
+    fn try_from(raw: RawEvent) -> Result<Self, Self::Error> {
+        Ok(Self {
+            created_at: Timestamp::from(raw.created_at),
+            event_id: EventId::from_slice(&raw.id)?,
+            pubkey: PublicKeyPrefix::from(raw.pubkey),
+            kind: Kind::from(raw.kind),
+            tags: TagIndexes::from(raw.tags.into_iter()),
+        })
     }
 }
 
@@ -69,52 +87,22 @@ impl EventIndex {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct PublicKeyPrefix([u8; PUBLIC_KEY_PREFIX_SIZE]);
+/// Public Key prefix
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PublicKeyPrefix([u8; PUBLIC_KEY_PREFIX_SIZE]);
 
 impl From<XOnlyPublicKey> for PublicKeyPrefix {
     fn from(pk: XOnlyPublicKey) -> Self {
-        let pk = pk.serialize();
-        let mut prefix = [0u8; PUBLIC_KEY_PREFIX_SIZE];
-        prefix.copy_from_slice(&pk[..PUBLIC_KEY_PREFIX_SIZE]);
-        Self(prefix)
+        let pk: [u8; 32] = pk.serialize();
+        Self::from(pk)
     }
 }
 
-#[cfg(feature = "flatbuffers")]
-impl FlatBufferDecode for EventIndex {
-    fn decode(buf: &[u8]) -> Result<Self, FlatBuffersError> {
-        let ev = event_fbs::root_as_event(buf)?;
-
-        // Compose Public Key prefix
-        let pk = ev.pubkey().ok_or(FlatBuffersError::NotFound)?.0;
+impl From<[u8; 32]> for PublicKeyPrefix {
+    fn from(pk: [u8; 32]) -> Self {
         let mut pubkey = [0u8; PUBLIC_KEY_PREFIX_SIZE];
         pubkey.copy_from_slice(&pk[..PUBLIC_KEY_PREFIX_SIZE]);
-
-        // Compose tags
-        let iter = ev
-            .tags()
-            .ok_or(FlatBuffersError::NotFound)?
-            .into_iter()
-            .filter_map(|tag| match tag.data() {
-                Some(t) => {
-                    if t.len() > 1 {
-                        Some(t.into_iter().collect::<Vec<&str>>())
-                    } else {
-                        None
-                    }
-                }
-                None => None,
-            });
-        let tags = TagIndexes::from(iter);
-
-        Ok(Self {
-            event_id: EventId::from_slice(&ev.id().ok_or(FlatBuffersError::NotFound)?.0)?,
-            pubkey: PublicKeyPrefix(pubkey),
-            created_at: Timestamp::from(ev.created_at()),
-            kind: Kind::from(ev.kind()),
-            tags,
-        })
+        Self(pubkey)
     }
 }
 
@@ -125,28 +113,6 @@ pub struct EventIndexResult {
     pub to_store: bool,
     /// List of events that should be removed from database
     pub to_discard: HashSet<EventId>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct MappingIdentifier {
-    pub timestamp: Timestamp,
-    pub eid: EventId,
-}
-
-impl PartialOrd for MappingIdentifier {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for MappingIdentifier {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.timestamp != other.timestamp {
-            other.timestamp.cmp(&self.timestamp)
-        } else {
-            self.eid.cmp(&other.eid)
-        }
-    }
 }
 
 /// Database Indexes
@@ -165,10 +131,17 @@ impl DatabaseIndexes {
     #[tracing::instrument(skip_all)]
     pub async fn bulk_load<I>(&self, events: I)
     where
-        I: IntoIterator<Item = EventIndex>,
+        I: IntoIterator<Item = RawEvent>,
     {
         let mut index = self.index.write().await;
-        index.extend(events);
+        let now = Timestamp::now();
+        // TODO: check if it's expired or ephemeral, check if it's replaceable or param replaceable
+        index.extend(
+            events
+                .into_iter()
+                .filter(|raw| !raw.is_expired(&now) && !raw.is_ephemeral())
+                .filter_map(|raw| EventIndex::try_from(raw).ok()),
+        );
     }
 
     /// Index [`Event`]
@@ -179,17 +152,18 @@ impl DatabaseIndexes {
             return EventIndexResult::default();
         }
 
-        let should_insert: bool = true;
-        let to_discard = HashSet::new();
+        let mut index = self.index.write().await;
 
-        /* if event.is_replaceable() {
+        let mut should_insert: bool = true;
+        let mut to_discard: HashSet<EventId> = HashSet::new();
+
+        if event.is_replaceable() {
             let filter: Filter = Filter::new().author(event.pubkey).kind(event.kind);
-            let res = self.query(events, vec![filter]).await;
-            if let Some(ev) = res.into_iter().next() {
-                if ev.created_at >= event.created_at {
+            for ev in self.internal_query(&index, &filter).await {
+                if ev.created_at > event.created_at {
                     should_insert = false;
-                } else if ev.created_at < event.created_at {
-                    events.remove(&ev.id);
+                } else if ev.created_at <= event.created_at {
+                    to_discard.insert(ev.event_id);
                 }
             }
         } else if event.is_parameterized_replaceable() {
@@ -199,21 +173,23 @@ impl DatabaseIndexes {
                         .author(event.pubkey)
                         .kind(event.kind)
                         .identifier(identifier);
-                    let res: Vec<Event> = self._query(events, vec![filter]).await?;
-                    if let Some(ev) = res.into_iter().next() {
+                    for ev in self.internal_query(&index, &filter).await {
                         if ev.created_at >= event.created_at {
                             should_insert = false;
                         } else if ev.created_at < event.created_at {
-                            events.remove(&ev.id);
+                            to_discard.insert(ev.event_id);
                         }
                     }
                 }
                 None => should_insert = false,
             }
-        } */
+        }
 
+        // Remove events
+        index.retain(|e| !to_discard.contains(&e.event_id));
+
+        // Insert event
         if should_insert {
-            let mut index = self.index.write().await;
             index.insert(EventIndex::from(event));
         }
 
@@ -221,6 +197,26 @@ impl DatabaseIndexes {
             to_store: should_insert,
             to_discard,
         }
+    }
+
+    async fn internal_query<'a>(
+        &self,
+        index: &'a BTreeSet<EventIndex>,
+        filter: &'a Filter,
+    ) -> impl Iterator<Item = &'a EventIndex> {
+        let authors: HashSet<PublicKeyPrefix> = filter
+            .authors
+            .iter()
+            .map(|p| PublicKeyPrefix::from(*p))
+            .collect();
+        index.iter().filter(move |m| {
+            (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
+                && filter.since.map_or(true, |t| m.created_at >= t)
+                && filter.until.map_or(true, |t| m.created_at <= t)
+                && (filter.authors.is_empty() || authors.contains(&m.pubkey))
+                && (filter.kinds.is_empty() || filter.kinds.contains(&m.kind))
+                && m.filter_tags_match(filter)
+        })
     }
 
     /// Query
@@ -237,21 +233,9 @@ impl DatabaseIndexes {
                 }
             }
 
-            let authors: HashSet<PublicKeyPrefix> = filter
-                .authors
-                .iter()
-                .map(|p| PublicKeyPrefix::from(*p))
-                .collect();
-            let iter = index
-                .iter()
-                .filter(|m| {
-                    (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
-                        && filter.since.map_or(true, |t| m.created_at >= t)
-                        && filter.until.map_or(true, |t| m.created_at <= t)
-                        && (filter.authors.is_empty() || authors.contains(&m.pubkey))
-                        && (filter.kinds.is_empty() || filter.kinds.contains(&m.kind))
-                        && m.filter_tags_match(&filter)
-                })
+            let iter = self
+                .internal_query(&index, &filter)
+                .await
                 .map(|m| m.event_id);
             if let Some(limit) = filter.limit {
                 matching_ids.extend(iter.take(limit))

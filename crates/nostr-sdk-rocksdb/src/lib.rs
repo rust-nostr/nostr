@@ -6,12 +6,12 @@ use std::path::Path;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use nostr::event::raw::RawEvent;
 use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
 use nostr_sdk_db::{
-    index::{DatabaseIndexes, EventIndex},
-    Backend, DatabaseError, DatabaseOptions, EventIndexResult, NostrDatabase,
+    Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
+    FlatBufferDecode, FlatBufferEncode, NostrDatabase,
 };
-use nostr_sdk_fbs::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, IteratorMode,
     OptimisticTransactionDB, Options, WriteBatchWithTransaction,
@@ -91,7 +91,7 @@ impl RocksDatabase {
             .db
             .full_iterator_cf(&cf, IteratorMode::Start)
             .flatten()
-            .filter_map(|(_, value)| EventIndex::decode(&value).ok());
+            .filter_map(|(_, value)| RawEvent::decode(&value).ok());
         self.indexes.bulk_load(events).await;
         Ok(())
     }
