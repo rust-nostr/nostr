@@ -3,18 +3,23 @@
 
 //! Flatbuffers
 
+use std::collections::HashSet;
+
 pub use flatbuffers::FlatBufferBuilder;
 use flatbuffers::InvalidFlatbuffer;
 use nostr::event::raw::RawEvent;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::{self, XOnlyPublicKey};
-use nostr::{Event, EventId, Kind, Tag, Timestamp};
+use nostr::{Event, EventId, Kind, Tag, Timestamp, Url};
 use thiserror::Error;
 
 #[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
 mod event_generated;
+#[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
+mod event_seen_by_generated;
 
-pub use self::event_generated::event_fbs;
+use self::event_generated::event_fbs;
+use self::event_seen_by_generated::event_seen_by_fbs;
 
 /// FlatBuffers Error
 #[derive(Debug, Error)]
@@ -142,5 +147,39 @@ impl FlatBufferDecode for RawEvent {
             content: ev.content().ok_or(Error::NotFound)?.to_owned(),
             sig: ev.sig().ok_or(Error::NotFound)?.0,
         })
+    }
+}
+
+impl FlatBufferEncode for HashSet<Url> {
+    #[tracing::instrument(skip_all, level = "trace")]
+    fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
+        fbb.reset();
+
+        let urls: Vec<_> = self
+            .into_iter()
+            .map(|url| fbb.create_string(&url.to_string()))
+            .collect();
+        let args = event_seen_by_fbs::EventSeenByArgs {
+            relay_urls: Some(fbb.create_vector(&urls)),
+        };
+
+        let offset = event_seen_by_fbs::EventSeenBy::create(fbb, &args);
+
+        event_seen_by_fbs::finish_event_seen_by_buffer(fbb, offset);
+
+        fbb.finished_data()
+    }
+}
+
+impl FlatBufferDecode for HashSet<Url> {
+    #[tracing::instrument(skip_all, level = "trace")]
+    fn decode(buf: &[u8]) -> Result<Self, Error> {
+        let ev = event_seen_by_fbs::root_as_event_seen_by(buf)?;
+        Ok(ev
+            .relay_urls()
+            .ok_or(Error::NotFound)?
+            .into_iter()
+            .filter_map(|url| Url::parse(url).ok())
+            .collect::<HashSet<Url>>())
     }
 }
