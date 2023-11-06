@@ -11,7 +11,7 @@ use std::collections::HashSet;
 
 pub use async_trait::async_trait;
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{Event, EventId, Filter, Metadata, Timestamp, Url};
+use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, Timestamp, Url};
 
 mod error;
 #[cfg(feature = "flatbuf")]
@@ -49,7 +49,7 @@ pub type DynNostrDatabase = dyn NostrDatabase<Err = DatabaseError>;
 #[async_trait]
 pub trait NostrDatabase: AsyncTraitDeps {
     /// Error
-    type Err;
+    type Err: From<DatabaseError>;
 
     /// Name of the backend database used (ex. rocksdb, lmdb, sqlite, indexeddb, ...)
     fn backend(&self) -> Backend;
@@ -106,6 +106,20 @@ pub trait NostrDatabase: AsyncTraitDeps {
 
     /// Wipe all data
     async fn wipe(&self) -> Result<(), Self::Err>;
+
+    /// Get profile metadata
+    #[tracing::instrument(skip_all)]
+    async fn profile(&self, public_key: XOnlyPublicKey) -> Result<Metadata, Self::Err> {
+        let filter = Filter::new()
+            .author(public_key)
+            .kind(Kind::Metadata)
+            .limit(1);
+        let events: Vec<Event> = self.query(vec![filter]).await?;
+        match events.first() {
+            Some(event) => Ok(Metadata::from_json(&event.content).map_err(DatabaseError::nostr)?),
+            None => Ok(Metadata::default()), // TODO: return an Option?
+        }
+    }
 }
 
 /// Alias for `Send` on non-wasm, empty trait (implemented by everything) on
