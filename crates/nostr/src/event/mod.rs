@@ -16,6 +16,7 @@ pub mod builder;
 pub mod id;
 pub mod kind;
 pub mod partial;
+pub mod raw;
 pub mod tag;
 pub mod unsigned;
 
@@ -372,6 +373,7 @@ mod tests {
         assert_eq!(Kind::Custom(123), e.kind);
         assert_eq!(Kind::Custom(123), deserialized.kind);
     }
+
     #[test]
     #[cfg(feature = "std")]
     fn test_event_expired() {
@@ -389,10 +391,8 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_event_not_expired() {
-        let now = Timestamp::now().as_i64();
-
-        // To make sure it is never considered expired
-        let expiry_date: u64 = (now * 2).try_into().unwrap();
+        let now = Timestamp::now();
+        let expiry_date: u64 = now.as_u64() * 2;
 
         let my_keys = Keys::generate();
         let event = EventBuilder::new_text_note(
