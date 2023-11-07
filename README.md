@@ -7,6 +7,9 @@ The project is split up into several crates in the `crates/` directory:
 * [**nostr**](./crates/nostr/): Rust implementation of Nostr protocol.
 * [**nostr-sdk**](./crates/nostr-sdk/): High level client library.
 * [**nostr-sdk-net**](./crates/nostr-sdk-net/): Network library for [**nostr-sdk**](./crates/nostr-sdk/)
+* [**nostr-sdk-db**](./crates/nostr-sdk-db/): Database for [**nostr-sdk**](./crates/nostr-sdk/)
+* [**nostr-sdk-rocksdb**](./crates/nostr-sdk-rocksdb/): RocksDB Storage backend for [**nostr-sdk**](./crates/nostr-sdk/)
+* [**nostr-sdk-indexeddb**](./crates/nostr-sdk-indexeddb/): IndexedDB Storage backend for [**nostr-sdk**](./crates/nostr-sdk/)
 
 ### Bindings
 
