@@ -37,7 +37,9 @@ pub mod pool;
 mod stats;
 
 pub use self::limits::Limits;
-pub use self::options::{FilterOptions, RelayOptions, RelayPoolOptions, RelaySendOptions};
+pub use self::options::{
+    FilterOptions, NegentropyOptions, RelayOptions, RelayPoolOptions, RelaySendOptions,
+};
 use self::options::{MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
 pub use self::stats::RelayConnectionStats;
@@ -1474,15 +1476,22 @@ impl Relay {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        timeout: Duration,
+        opts: NegentropyOptions,
     ) -> Result<(), Error> {
         if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 
+        if !self.is_connected().await
+            && self.stats.attempts() > 1
+            && self.stats.uptime() < MIN_UPTIME
+        {
+            return Err(Error::NotConnected);
+        }
+
         let id_size: usize = 32;
 
-        let mut negentropy = Negentropy::new(id_size, Some(2_500))?;
+        let mut negentropy = Negentropy::new(id_size, Some(4_096))?;
 
         for (id, timestamp) in items.into_iter() {
             let id = Bytes::from_slice(id.as_bytes());
@@ -1497,8 +1506,9 @@ impl Relay {
         self.send_msg(open_msg, Some(Duration::from_secs(10)))
             .await?;
 
+        // TODO: improve timeouts
         let mut notifications = self.notification_sender.subscribe();
-        time::timeout(Some(timeout), async {
+        time::timeout(Some(opts.timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Message(url, msg) = notification {
                     if url == self.url {
@@ -1516,15 +1526,33 @@ impl Relay {
                                         &mut need_ids,
                                     )?;
 
+                                    if need_ids.is_empty() {
+                                        tracing::info!("Reconciliation terminated");
+                                        break;
+                                    }
+
                                     let ids = need_ids
                                         .into_iter()
                                         .filter_map(|id| EventId::from_slice(&id).ok());
                                     let filter = Filter::new().ids(ids);
-                                    self.req_events_of(
-                                        vec![filter],
-                                        Duration::from_secs(120),
-                                        FilterOptions::ExitOnEOSE,
-                                    );
+                                    if !filter.ids.is_empty() {
+                                        if opts.syncrounous {
+                                            self.get_events_of(
+                                                vec![filter],
+                                                Duration::from_secs(30),
+                                                FilterOptions::ExitOnEOSE,
+                                            )
+                                            .await?;
+                                        } else {
+                                            self.req_events_of(
+                                                vec![filter],
+                                                Duration::from_secs(30),
+                                                FilterOptions::ExitOnEOSE,
+                                            );
+                                        }
+                                    } else {
+                                        tracing::warn!("negentropy reconciliation: tried to send empty filters to {}", self.url);
+                                    }
 
                                     match msg {
                                         Some(query) => {
@@ -1585,7 +1613,13 @@ impl Relay {
         let pk = Keys::generate();
         let filter = Filter::new().author(pk.public_key());
         match self
-            .reconcile(filter, Vec::new(), Duration::from_secs(5))
+            .reconcile(
+                filter,
+                Vec::new(),
+                NegentropyOptions::new()
+                    .timeout(Duration::from_secs(5))
+                    .syncrounous(false),
+            )
             .await
         {
             Ok(_) => Ok(true),

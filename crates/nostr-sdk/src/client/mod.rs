@@ -38,7 +38,9 @@ pub use self::options::Options;
 #[cfg(feature = "nip46")]
 pub use self::signer::remote::RemoteSigner;
 use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
-use crate::relay::{FilterOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions};
+use crate::relay::{
+    FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
+};
 use crate::util::TryIntoUrl;
 
 /// [`Client`] error
@@ -1315,8 +1317,8 @@ impl Client {
     }
 
     /// Negentropy reconciliation
-    pub async fn reconcile(&self, filter: Filter, timeout: Duration) -> Result<(), Error> {
-        Ok(self.pool.reconcile(filter, timeout).await?)
+    pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
+        Ok(self.pool.reconcile(filter, opts).await?)
     }
 
     /// Negentropy reconciliation with items
@@ -1324,12 +1326,9 @@ impl Client {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        timeout: Duration,
+        opts: NegentropyOptions,
     ) -> Result<(), Error> {
-        Ok(self
-            .pool
-            .reconcile_with_items(filter, items, timeout)
-            .await?)
+        Ok(self.pool.reconcile_with_items(filter, items, opts).await?)
     }
 
     /// Get a list of channels

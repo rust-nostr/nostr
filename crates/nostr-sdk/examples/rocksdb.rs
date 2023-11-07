@@ -17,11 +17,18 @@ async fn main() -> Result<()> {
 
     client.add_relay("wss://relay.damus.io", None).await?;
     client.add_relay("wss://nostr.wine", None).await?;
+    client.add_relay("wss://atl.purplerelay.com", None).await?;
 
     client.connect().await;
 
-    // Publish a text note
-    client.publish_text_note("Hello world", &[]).await?;
+    /* // Publish a text note
+    client.publish_text_note("Hello world", &[]).await?; */
+
+    // Negentropy reconcile
+    let filter = Filter::new().author(my_keys.public_key());
+    client
+        .reconcile(filter, NegentropyOptions::default())
+        .await?;
 
     // Query events from database
     let filter = Filter::new().author(my_keys.public_key()).limit(10);

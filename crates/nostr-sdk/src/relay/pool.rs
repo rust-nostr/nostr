@@ -24,8 +24,8 @@ use tokio::sync::{broadcast, Mutex, RwLock};
 
 use super::options::RelayPoolOptions;
 use super::{
-    Error as RelayError, FilterOptions, InternalSubscriptionId, Limits, Relay, RelayOptions,
-    RelaySendOptions, RelayStatus,
+    Error as RelayError, FilterOptions, InternalSubscriptionId, Limits, NegentropyOptions, Relay,
+    RelayOptions, RelaySendOptions, RelayStatus,
 };
 use crate::util::TryIntoUrl;
 
@@ -861,10 +861,10 @@ impl RelayPool {
     }
 
     /// Negentropy reconciliation
-    pub async fn reconcile(&self, filter: Filter, timeout: Duration) -> Result<(), Error> {
+    pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
         let items: Vec<(EventId, Timestamp)> =
             self.database.negentropy_items(filter.clone()).await?;
-        self.reconcile_with_items(filter, items, timeout).await
+        self.reconcile_with_items(filter, items, opts).await
     }
 
     /// Negentropy reconciliation with custom items
@@ -872,7 +872,7 @@ impl RelayPool {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        timeout: Duration,
+        opts: NegentropyOptions,
     ) -> Result<(), Error> {
         let mut handles = Vec::new();
         let relays = self.relays().await;
@@ -880,7 +880,7 @@ impl RelayPool {
             let filter = filter.clone();
             let my_items = items.clone();
             let handle = thread::spawn(async move {
-                if let Err(e) = relay.reconcile(filter, my_items, timeout).await {
+                if let Err(e) = relay.reconcile(filter, my_items, opts).await {
                     tracing::error!("Failed to get reconcile with {url}: {e}");
                 }
             });
