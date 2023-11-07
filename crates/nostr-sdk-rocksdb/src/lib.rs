@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 mod ops;
 
 const EVENTS_CF: &str = "events";
-const EVENTS_SEEN_BY_RELAYS: &str = "event-seen-by-relays";
+const EVENTS_SEEN_BY_RELAYS_CF: &str = "event-seen-by-relays";
 
 /// RocksDB Nostr Database
 #[derive(Debug, Clone)]
@@ -54,7 +54,7 @@ fn column_families() -> Vec<ColumnFamilyDescriptor> {
 
     vec![
         ColumnFamilyDescriptor::new(EVENTS_CF, default_opts()),
-        ColumnFamilyDescriptor::new(EVENTS_SEEN_BY_RELAYS, relay_urls_opts),
+        ColumnFamilyDescriptor::new(EVENTS_SEEN_BY_RELAYS_CF, relay_urls_opts),
     ]
 }
 
@@ -187,7 +187,7 @@ impl NostrDatabase for RocksDatabase {
         relay_url: Option<Url>,
     ) -> Result<(), Self::Err> {
         let mut fbb = self.fbb.write().await;
-        let cf = self.cf_handle(EVENTS_SEEN_BY_RELAYS)?;
+        let cf = self.cf_handle(EVENTS_SEEN_BY_RELAYS_CF)?;
         let value: HashSet<Url> = match relay_url {
             Some(relay_url) => {
                 let mut set = HashSet::with_capacity(1);
@@ -205,7 +205,7 @@ impl NostrDatabase for RocksDatabase {
         &self,
         event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err> {
-        let cf = self.cf_handle(EVENTS_SEEN_BY_RELAYS)?;
+        let cf = self.cf_handle(EVENTS_SEEN_BY_RELAYS_CF)?;
         match self
             .db
             .get_pinned_cf(&cf, event_id)
@@ -263,32 +263,11 @@ impl NostrDatabase for RocksDatabase {
         .map_err(DatabaseError::backend)?
     }
 
-    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
-        let ids = self.indexes.query(filters.clone()).await;
-
-        let this = self.clone();
-        tokio::task::spawn_blocking(move || {
-            let cf = this.cf_handle(EVENTS_CF)?;
-
-            let mut event_ids: Vec<EventId> = Vec::new();
-
-            for v in this
-                .db
-                .batched_multi_get_cf(&cf, ids, false)
-                .into_iter()
-                .flatten()
-                .flatten()
-            {
-                let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
-                if filters.match_event(&event) {
-                    event_ids.push(event.id);
-                }
-            }
-
-            Ok(event_ids)
-        })
-        .await
-        .map_err(DatabaseError::backend)?
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+    ) -> Result<HashSet<EventId>, Self::Err> {
+        Ok(self.indexes.query(filters).await)
     }
 
     async fn negentropy_items(

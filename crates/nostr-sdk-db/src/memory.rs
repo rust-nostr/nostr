@@ -179,16 +179,12 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+    ) -> Result<HashSet<EventId>, Self::Err> {
         if self.opts.events {
-            let events = self.events.read().await;
-            let mut list: Vec<EventId> = Vec::new();
-            for event in events.values() {
-                if filters.match_event(event) {
-                    list.push(event.id);
-                }
-            }
-            Ok(list)
+            Ok(self.indexes.query(filters).await)
         } else {
             Err(DatabaseError::FeatureDisabled)
         }

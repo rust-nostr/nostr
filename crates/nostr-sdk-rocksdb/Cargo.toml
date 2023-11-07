@@ -2,14 +2,14 @@
 name = "nostr-sdk-rocksdb"
 version = "0.1.0"
 edition = "2021"
-description = "TODO"
+description = "RocksDB Storage backend for Nostr SDK"
 authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
 rust-version.workspace = true
-keywords = ["nostr", "sdk", "db", "redb"]
+keywords = ["nostr", "sdk", "db", "rocksdb"]
 
 [dependencies]
 async-trait = { workspace = true }
@@ -18,7 +18,7 @@ nostr-sdk-db = { version = "0.1", path = "../nostr-sdk-db", features = ["flatbuf
 num_cpus = "1.16"
 rocksdb = { version = "0.21", default-features = false, features = ["multi-threaded-cf", "snappy"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
-tracing = { workspace = true, features = ["std"] }
+tracing = { workspace = true, features = ["std", "attributes"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }

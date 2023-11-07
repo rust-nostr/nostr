@@ -91,7 +91,10 @@ pub trait NostrDatabase: AsyncTraitDeps {
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err>;
 
     /// Get event IDs by filters
-    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err>;
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+    ) -> Result<HashSet<EventId>, Self::Err>;
 
     /// Get `negentropy` items
     async fn negentropy_items(
