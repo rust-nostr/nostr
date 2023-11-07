@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use nostr::Keys;
 use nostr_sdk_db::memory::MemoryDatabase;
-use nostr_sdk_db::DynNostrDatabase;
+use nostr_sdk_db::{DatabaseError, DynNostrDatabase, NostrDatabase};
 
 #[cfg(feature = "nip46")]
 use super::RemoteSigner;
@@ -35,8 +35,11 @@ impl ClientBuilder {
     }
 
     /// Set database
-    pub fn database(mut self, database: Arc<DynNostrDatabase>) -> Self {
-        self.database = database;
+    pub fn database<D>(mut self, database: D) -> Self
+    where
+        D: NostrDatabase<Err = DatabaseError> + 'static,
+    {
+        self.database = Arc::new(database);
         self
     }
 
