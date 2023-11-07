@@ -6,6 +6,7 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
+#![allow(where_clauses_object_safety)]
 
 use std::collections::HashSet;
 
