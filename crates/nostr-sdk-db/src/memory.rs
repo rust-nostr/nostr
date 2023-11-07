@@ -75,39 +75,10 @@ impl MemoryDatabase {
                 None => HashSet::with_capacity(0),
             });
     }
-
-    async fn _save_event(
-        &self,
-        events: &mut HashMap<EventId, Event>,
-        event: Event,
-    ) -> Result<bool, DatabaseError> {
-        self.event_id_seen(event.id, None).await?;
-
-        if self.opts.events {
-            let EventIndexResult {
-                to_store,
-                to_discard,
-            } = self.indexes.index_event(&event).await;
-
-            if to_store {
-                events.insert(event.id, event);
-
-                for event_id in to_discard.into_iter() {
-                    events.remove(&event_id);
-                }
-
-                Ok(true)
-            } else {
-                tracing::warn!("Event {} not saved: unknown", event.id);
-                Ok(false)
-            }
-        } else {
-            Ok(false)
-        }
-    }
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrDatabase for MemoryDatabase {
     type Err = DatabaseError;
 
@@ -125,8 +96,32 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
-        let mut events = self.events.write().await;
-        self._save_event(&mut events, event.clone()).await
+        // Set event as seen
+        self.event_id_seen(event.id, None).await?;
+
+        if self.opts.events {
+            let EventIndexResult {
+                to_store,
+                to_discard,
+            } = self.indexes.index_event(event).await;
+
+            if to_store {
+                let mut events = self.events.write().await;
+
+                events.insert(event.id, event.clone());
+
+                for event_id in to_discard.into_iter() {
+                    events.remove(&event_id);
+                }
+
+                Ok(true)
+            } else {
+                tracing::warn!("Event {} not saved: unknown", event.id);
+                Ok(false)
+            }
+        } else {
+            Ok(false)
+        }
     }
 
     async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
