@@ -156,8 +156,8 @@ impl FlatBufferEncode for HashSet<Url> {
         fbb.reset();
 
         let urls: Vec<_> = self
-            .into_iter()
-            .map(|url| fbb.create_string(&url.to_string()))
+            .iter()
+            .map(|url| fbb.create_string(url.as_ref()))
             .collect();
         let args = event_seen_by_fbs::EventSeenByArgs {
             relay_urls: Some(fbb.create_vector(&urls)),
