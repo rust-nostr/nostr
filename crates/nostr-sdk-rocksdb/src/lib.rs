@@ -1,6 +1,12 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+//! RocksDB Storage backend for Nostr SDK
+
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+#![warn(rustdoc::bare_urls)]
+
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
@@ -59,7 +65,8 @@ fn column_families() -> Vec<ColumnFamilyDescriptor> {
 }
 
 impl RocksDatabase {
-    pub fn new<P>(path: P) -> Result<Self, DatabaseError>
+    /// Open RocksDB store
+    pub async fn open<P>(path: P) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,
     {
@@ -85,11 +92,15 @@ impl RocksDatabase {
             Err(_) => tracing::warn!("Impossible to get live files"),
         };
 
-        Ok(Self {
+        let this = Self {
             db: Arc::new(db),
             indexes: DatabaseIndexes::new(),
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
-        })
+        };
+
+        this.build_indexes().await?;
+
+        Ok(this)
     }
 
     fn cf_handle(&self, name: &str) -> Result<Arc<BoundColumnFamily>, DatabaseError> {
@@ -97,7 +108,7 @@ impl RocksDatabase {
     }
 
     #[tracing::instrument(skip_all)]
-    pub async fn build_indexes(&self) -> Result<(), DatabaseError> {
+    async fn build_indexes(&self) -> Result<(), DatabaseError> {
         let cf = self.cf_handle(EVENTS_CF)?;
         let events = self
             .db

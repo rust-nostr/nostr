@@ -26,11 +26,9 @@ async fn main() {
     let keys_b = Keys::new(secret_key);
     println!("Pubkey B: {}", keys_b.public_key());
 
-    let database = RocksDatabase::new("./db/rocksdb").unwrap();
+    let database = RocksDatabase::open("./db/rocksdb").await.unwrap();
 
     println!("Events stored: {}", database.count().await.unwrap());
-
-    database.build_indexes().await.unwrap();
 
     /* for i in 0..100_000 {
         let event = EventBuilder::new_text_note(format!("Event #{i}"), &[])
