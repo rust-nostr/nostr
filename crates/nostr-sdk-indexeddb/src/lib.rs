@@ -6,7 +6,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
-#![allow(clippy::arc_with_non_send_sync)]
+#![allow(unknown_lints, clippy::arc_with_non_send_sync)]
 #![cfg_attr(not(target_arch = "wasm32"), allow(unused))]
 
 use std::collections::{HashMap, HashSet};
