@@ -18,8 +18,12 @@
 compile_error!("`blocking` feature can't be enabled for WASM targets");
 
 pub use nostr::{self, *};
+#[cfg(feature = "indexeddb")]
+pub use nostr_sdk_indexeddb::WebDatabase;
 #[cfg(feature = "blocking")]
 use nostr_sdk_net::futures_util::Future;
+#[cfg(feature = "rocksdb")]
+pub use nostr_sdk_rocksdb::RocksDatabase;
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
