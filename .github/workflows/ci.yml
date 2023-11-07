@@ -69,6 +69,7 @@ jobs:
           [
             -p nostr,
             -p nostr-sdk,
+            -p nostr-sdk-indexeddb,
             -p nostr-js,
           ]
     steps:

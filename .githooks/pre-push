@@ -26,6 +26,7 @@ done
 buildargs=(
     "-p nostr-js --target wasm32-unknown-unknown"
     "-p nostr-sdk-js --target wasm32-unknown-unknown"
+    "-p nostr-sdk-indexeddb --target wasm32-unknown-unknown"
 )
 
 for arg in "${buildargs[@]}"; do
