@@ -11,6 +11,9 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
 
+pub extern crate nostr;
+pub extern crate nostr_sdk_db as database;
+
 use async_trait::async_trait;
 use nostr::event::raw::RawEvent;
 use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};

@@ -1,5 +1,8 @@
-use nostr::prelude::*;
-use nostr_sdk_db::NostrDatabase;
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Distributed under the MIT software license
+
+use nostr_sdk_indexeddb::database::NostrDatabase;
+use nostr_sdk_indexeddb::nostr::prelude::*;
 use nostr_sdk_indexeddb::WebDatabase;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::console;

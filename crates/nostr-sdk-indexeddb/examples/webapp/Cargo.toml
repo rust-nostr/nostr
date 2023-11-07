@@ -9,8 +9,6 @@ publish = false
 members = ["."]
 
 [dependencies]
-nostr = { path = "../../../nostr", features = ["std"] }
-nostr-sdk-db = { path = "../../../nostr-sdk-db" }
 nostr-sdk-indexeddb = { path = "../../" }
 tracing-wasm = "0.2"
 wasm-bindgen-futures = "0.4"

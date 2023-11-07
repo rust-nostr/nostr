@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-//!
+//! Web's IndexedDB Storage backend for Nostr SDK
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
@@ -13,6 +13,9 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::future::IntoFuture;
 use std::sync::Arc;
+
+pub extern crate nostr;
+pub extern crate nostr_sdk_db as database;
 
 #[cfg(target_arch = "wasm32")]
 use async_trait::async_trait;
