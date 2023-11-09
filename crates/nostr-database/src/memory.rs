@@ -8,22 +8,11 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
-use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::{
     Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, NostrDatabase,
 };
-
-/// Memory Database Error
-#[derive(Debug, Error)]
-pub enum Error {}
-
-impl From<Error> for DatabaseError {
-    fn from(e: Error) -> Self {
-        DatabaseError::backend(e)
-    }
-}
 
 /// Memory Database (RAM)
 #[derive(Debug)]

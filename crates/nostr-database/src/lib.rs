@@ -6,7 +6,6 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
-#![allow(where_clauses_object_safety)]
 
 use std::collections::HashSet;
 
@@ -47,7 +46,7 @@ pub enum Backend {
 /// A type-erased [`StateStore`].
 pub type DynNostrDatabase = dyn NostrDatabase<Err = DatabaseError>;
 
-/// Nostr SDK Database
+/// Nostr Database
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrDatabase: AsyncTraitDeps {
@@ -106,7 +105,12 @@ pub trait NostrDatabase: AsyncTraitDeps {
 
     /// Wipe all data
     async fn wipe(&self) -> Result<(), Self::Err>;
+}
 
+/// Nostr Database Extension
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+pub trait NostrDatabaseExt: NostrDatabase {
     /// Get profile metadata
     async fn profile(&self, public_key: XOnlyPublicKey) -> Result<Metadata, Self::Err> {
         let filter = Filter::new()
@@ -120,6 +124,10 @@ pub trait NostrDatabase: AsyncTraitDeps {
         }
     }
 }
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl<T: NostrDatabase + ?Sized> NostrDatabaseExt for T {}
 
 /// Alias for `Send` on non-wasm, empty trait (implemented by everything) on
 /// wasm.
