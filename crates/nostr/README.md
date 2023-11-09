@@ -12,7 +12,9 @@
 
 Rust implementation of Nostr protocol.
 
-If you're writing a typical Nostr client or bot, you may be interested in [nostr-sdk](https://crates.io/crates/nostr-sdk).
+You may be interested in:
+* [`nostr-sdk`](https://crates.io/crates/nostr-sdk) if you want to write a typical Nostr client or bot
+* [`nostr-database`](https://crates.io/crates/nostr-database) if you need a database for your Nostr app (native or web)
 
 ## Getting started
 

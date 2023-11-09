@@ -17,8 +17,9 @@ If you're writing a typical Nostr client or bot, this is likely the crate you ne
 However, the crate is designed in a modular way and depends on several
 other lower-level crates. If you're attempting something more custom, you might be interested in these:
 
-- [`nostr`](https://crates.io/crates/nostr): Rust implementation of Nostr protocol
-- [`nostr-sdk-net`](https://crates.io/crates/nostr-sdk-net): Nostr SDK Network library
+* [`nostr`](https://crates.io/crates/nostr): Rust implementation of Nostr protocol
+* [`nostr-database`](https://crates.io/crates/nostr-database): Database for Nostr apps
+* [`nostr-sdk-net`](https://crates.io/crates/nostr-sdk-net): Nostr SDK Network library
 
 ## Getting started
 

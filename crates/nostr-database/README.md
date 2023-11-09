@@ -2,6 +2,16 @@
 
 Database for Nostr apps
 
+## Nostr Database Trait
+
+This library cointains the `NostrDatabase` and `NostrDatabaseExt` traits. You can use the [default backends](#default-backends) or implement your one (PostgreSQL, SQLite, ...).
+
+## Default backends
+
+* Memory (RAM), available in this library
+* RocksDB (desktop, server and mobile devices), available at [`nostr-rocksdb`](https://crates.io/crates/nostr-rocksdb)
+* IndexedDB (web), available at [`nostr-indexeddb`](https://crates.io/crates/nostr-indexeddb)
+
 ## State
 
 **This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
