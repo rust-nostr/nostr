@@ -15,7 +15,7 @@ keywords = ["nostr", "database", "indexeddb"]
 async-trait = { workspace = true }
 indexed_db_futures = "0.4"
 nostr = { workspace = true, features = ["std"] }
-nostr-database = { version = "0.1", path = "../nostr-database", features = ["flatbuf"] }
+nostr-database = { workspace = true, features = ["flatbuf"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
