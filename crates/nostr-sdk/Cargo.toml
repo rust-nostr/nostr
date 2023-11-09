@@ -18,8 +18,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["all-nips"]
 blocking = ["async-utility/blocking", "nostr/blocking"]
-rocksdb = ["dep:nostr-sdk-rocksdb"]
-indexeddb = ["dep:nostr-sdk-indexeddb"]
+rocksdb = ["dep:nostr-rocksdb"]
+indexeddb = ["dep:nostr-indexeddb"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip46", "nip47"]
 nip03 = ["nostr/nip03"]
 nip04 = ["nostr/nip04"]
@@ -33,18 +33,18 @@ nip47 = ["nostr/nip47"]
 [dependencies]
 async-utility = "0.1"
 nostr = { workspace = true, features = ["std"] }
-nostr-sdk-db = { version = "0.1", path = "../nostr-sdk-db" }
+nostr-database = { version = "0.1", path = "../nostr-database" }
 nostr-sdk-net = { version = "0.25", path = "../nostr-sdk-net" }
 once_cell = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true, features = ["std"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-nostr-sdk-rocksdb = { version = "0.1", path = "../nostr-sdk-rocksdb", optional = true }
+nostr-rocksdb = { version = "0.1", path = "../nostr-rocksdb", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "time", "macros", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-nostr-sdk-indexeddb = { version = "0.1", path = "../nostr-sdk-indexeddb", optional = true }
+nostr-indexeddb = { version = "0.1", path = "../nostr-indexeddb", optional = true }
 tokio = { workspace = true, features = ["rt", "macros", "sync"] }
 
 [dev-dependencies]

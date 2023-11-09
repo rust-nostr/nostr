@@ -24,7 +24,7 @@ use nostr::{
     ClientMessage, Event, EventId, Filter, JsonUtil, Keys, RawRelayMessage, RelayMessage,
     SubscriptionId, Timestamp, Url,
 };
-use nostr_sdk_db::DynNostrDatabase;
+use nostr_database::DynNostrDatabase;
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use thiserror::Error;

@@ -1,0 +1,28 @@
+[package]
+name = "nostr-database"
+version = "0.1.0"
+edition = "2021"
+description = "Database for Nostr apps"
+authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "sdk", "db"]
+
+[features]
+default = []
+flatbuf = ["dep:flatbuffers"]
+
+[dependencies]
+async-trait = { workspace = true }
+flatbuffers = { version = "23.5", optional = true }
+nostr = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true, features = ["std", "attributes"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

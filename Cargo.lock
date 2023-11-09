@@ -1297,11 +1297,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-database"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "flatbuffers",
+ "nostr",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "nostr-ffi"
 version = "0.1.0"
 dependencies = [
  "nostr",
  "uniffi",
+]
+
+[[package]]
+name = "nostr-indexeddb"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "indexed_db_futures",
+ "nostr",
+ "nostr-database",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -1330,29 +1358,30 @@ dependencies = [
 ]
 
 [[package]]
-name = "nostr-sdk"
-version = "0.25.0"
+name = "nostr-rocksdb"
+version = "0.1.0"
 dependencies = [
- "async-utility",
+ "async-trait",
  "nostr",
- "nostr-sdk-db",
- "nostr-sdk-indexeddb",
- "nostr-sdk-net",
- "nostr-sdk-rocksdb",
- "once_cell",
- "thiserror",
+ "nostr-database",
+ "num_cpus",
+ "rocksdb",
  "tokio",
  "tracing",
  "tracing-subscriber",
 ]
 
 [[package]]
-name = "nostr-sdk-db"
-version = "0.1.0"
+name = "nostr-sdk"
+version = "0.25.0"
 dependencies = [
- "async-trait",
- "flatbuffers",
+ "async-utility",
  "nostr",
+ "nostr-database",
+ "nostr-indexeddb",
+ "nostr-rocksdb",
+ "nostr-sdk-net",
+ "once_cell",
  "thiserror",
  "tokio",
  "tracing",
@@ -1368,21 +1397,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uniffi",
-]
-
-[[package]]
-name = "nostr-sdk-indexeddb"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "indexed_db_futures",
- "nostr",
- "nostr-sdk-db",
- "thiserror",
- "tokio",
- "tracing",
- "wasm-bindgen",
- "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -1411,20 +1425,6 @@ dependencies = [
  "url-fork",
  "webpki-roots 0.25.2",
  "ws_stream_wasm",
-]
-
-[[package]]
-name = "nostr-sdk-rocksdb"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "nostr",
- "nostr-sdk-db",
- "num_cpus",
- "rocksdb",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

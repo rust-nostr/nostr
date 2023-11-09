@@ -7,11 +7,11 @@ buildargs=(
     "-p nostr --no-default-features --features alloc"
     "-p nostr --no-default-features --features alloc,all-nips"
     "-p nostr --features blocking"
+    "-p nostr-database"
     "-p nostr-sdk-net"
     "-p nostr-sdk"
     "-p nostr-sdk --no-default-features"
     "-p nostr-sdk --features blocking"
-    "-p nostr-sdk-db"
     "-p nostr-ffi"
     "-p nostr-sdk-ffi"
 )
@@ -25,8 +25,8 @@ done
 
 buildargs=(
     "-p nostr-js --target wasm32-unknown-unknown"
+    "-p nostr-indexeddb --target wasm32-unknown-unknown"
     "-p nostr-sdk-js --target wasm32-unknown-unknown"
-    "-p nostr-sdk-indexeddb --target wasm32-unknown-unknown"
 )
 
 for arg in "${buildargs[@]}"; do

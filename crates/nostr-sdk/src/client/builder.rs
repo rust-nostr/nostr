@@ -6,8 +6,8 @@
 use std::sync::Arc;
 
 use nostr::Keys;
-use nostr_sdk_db::memory::MemoryDatabase;
-use nostr_sdk_db::{DatabaseError, DynNostrDatabase, NostrDatabase};
+use nostr_database::memory::MemoryDatabase;
+use nostr_database::{DatabaseError, DynNostrDatabase, NostrDatabase};
 
 #[cfg(feature = "nip46")]
 use super::RemoteSigner;

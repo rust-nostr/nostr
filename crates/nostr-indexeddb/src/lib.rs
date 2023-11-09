@@ -1,0 +1,387 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Distributed under the MIT software license
+
+//! Web's IndexedDB Storage backend for Nostr SDK
+
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+#![warn(rustdoc::bare_urls)]
+#![allow(unknown_lints, clippy::arc_with_non_send_sync)]
+#![cfg_attr(not(target_arch = "wasm32"), allow(unused))]
+
+use std::collections::{HashMap, HashSet};
+use std::fmt;
+use std::future::IntoFuture;
+use std::sync::Arc;
+
+pub extern crate nostr;
+pub extern crate nostr_database as database;
+
+#[cfg(target_arch = "wasm32")]
+use async_trait::async_trait;
+use indexed_db_futures::request::{IdbOpenDbRequestLike, OpenDbRequest};
+use indexed_db_futures::web_sys::IdbTransactionMode;
+use indexed_db_futures::{IdbDatabase, IdbQuerySource, IdbVersionChangeEvent};
+use nostr::event::raw::RawEvent;
+use nostr::{Event, EventId, Filter, Timestamp, Url};
+#[cfg(target_arch = "wasm32")]
+use nostr_database::NostrDatabase;
+use nostr_database::{
+    Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
+    FlatBufferDecode, FlatBufferEncode,
+};
+use tokio::sync::Mutex;
+use wasm_bindgen::JsValue;
+
+mod error;
+mod hex;
+
+pub use self::error::IndexedDBError;
+
+const CURRENT_DB_VERSION: u32 = 2;
+const EVENTS_CF: &str = "events";
+const EVENTS_SEEN_BY_RELAYS_CF: &str = "event-seen-by-relays";
+const ALL_STORES: [&str; 2] = [EVENTS_CF, EVENTS_SEEN_BY_RELAYS_CF];
+
+/// Helper struct for upgrading the inner DB.
+#[derive(Debug, Clone, Default)]
+pub struct OngoingMigration {
+    /// Names of stores to drop.
+    drop_stores: HashSet<&'static str>,
+    /// Names of stores to create.
+    create_stores: HashSet<&'static str>,
+    /// Store name => key-value data to add.
+    data: HashMap<&'static str, Vec<(JsValue, JsValue)>>,
+}
+
+/// IndexedDB Nostr Database
+#[derive(Clone)]
+pub struct WebDatabase {
+    db: Arc<IdbDatabase>,
+    indexes: DatabaseIndexes,
+    fbb: Arc<Mutex<FlatBufferBuilder<'static>>>,
+}
+
+impl fmt::Debug for WebDatabase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WebDatabase")
+            .field("name", &self.db.name())
+            .finish()
+    }
+}
+
+impl WebDatabase {
+    /// Open IndexedDB store
+    pub async fn open<S>(name: S) -> Result<Self, IndexedDBError>
+    where
+        S: AsRef<str>,
+    {
+        let mut this = Self {
+            db: Arc::new(IdbDatabase::open(name.as_ref())?.into_future().await?),
+            indexes: DatabaseIndexes::new(),
+            fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
+        };
+
+        this.migration().await?;
+        this.build_indexes().await?;
+
+        Ok(this)
+    }
+
+    async fn migration(&mut self) -> Result<(), IndexedDBError> {
+        let name: String = self.db.name();
+        let mut old_version: u32 = self.db.version() as u32;
+
+        if old_version < CURRENT_DB_VERSION {
+            // Inside the `onupgradeneeded` callback we would know whether it's a new DB
+            // because the old version would be set to 0, here it is already set to 1 so we
+            // check if the stores exist.
+            if old_version == 1 && self.db.object_store_names().next().is_none() {
+                old_version = 0;
+            }
+
+            if old_version == 0 {
+                tracing::info!("Initializing database schemas...");
+                let migration = OngoingMigration {
+                    create_stores: ALL_STORES.into_iter().collect(),
+                    ..Default::default()
+                };
+                self.apply_migration(CURRENT_DB_VERSION, migration).await?;
+                tracing::info!("Database schemas initialized.");
+            } else {
+                /* if old_version < 3 {
+                    db = migrate_to_v3(db, store_cipher).await?;
+                }
+                if old_version < 4 {
+                    db = migrate_to_v4(db, store_cipher).await?;
+                } */
+            }
+
+            self.db.close();
+
+            let mut db_req: OpenDbRequest = IdbDatabase::open_u32(&name, CURRENT_DB_VERSION)?;
+            db_req.set_on_upgrade_needed(Some(
+                move |evt: &IdbVersionChangeEvent| -> Result<(), JsValue> {
+                    // Sanity check.
+                    // There should be no upgrade needed since the database should have already been
+                    // upgraded to the latest version.
+                    panic!(
+                        "Opening database that was not fully upgraded: \
+                         DB version: {}; latest version: {CURRENT_DB_VERSION}",
+                        evt.old_version()
+                    )
+                },
+            ));
+
+            self.db = Arc::new(db_req.into_future().await?);
+        }
+
+        Ok(())
+    }
+
+    async fn apply_migration(
+        &mut self,
+        version: u32,
+        migration: OngoingMigration,
+    ) -> Result<(), IndexedDBError> {
+        let name: String = self.db.name();
+        self.db.close();
+
+        let mut db_req: OpenDbRequest = IdbDatabase::open_u32(&name, version)?;
+        db_req.set_on_upgrade_needed(Some(
+            move |evt: &IdbVersionChangeEvent| -> Result<(), JsValue> {
+                // Changing the format can only happen in the upgrade procedure
+                for store in &migration.drop_stores {
+                    evt.db().delete_object_store(store)?;
+                }
+                for store in &migration.create_stores {
+                    evt.db().create_object_store(store)?;
+                    tracing::debug!("Created '{store}' object store");
+                }
+
+                Ok(())
+            },
+        ));
+
+        self.db = Arc::new(db_req.into_future().await?);
+
+        // Finally, we can add data to the newly created tables if needed.
+        if !migration.data.is_empty() {
+            let stores: Vec<_> = migration.data.keys().copied().collect();
+            let tx = self
+                .db
+                .transaction_on_multi_with_mode(&stores, IdbTransactionMode::Readwrite)?;
+
+            for (name, data) in migration.data {
+                let store = tx.object_store(name)?;
+                for (key, value) in data {
+                    store.put_key_val(&key, &value)?;
+                }
+            }
+
+            tx.await.into_result()?;
+        }
+
+        Ok(())
+    }
+
+    async fn build_indexes(&self) -> Result<(), IndexedDBError> {
+        tracing::debug!("Building database indexes...");
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(EVENTS_CF)?;
+        let events = store
+            .get_all()?
+            .await?
+            .into_iter()
+            .filter_map(|v| v.as_string())
+            .filter_map(|v| {
+                let bytes = hex::decode(v).ok()?;
+                RawEvent::decode(&bytes).ok()
+            });
+        self.indexes.bulk_load(events).await;
+        tracing::info!("Database indexes loaded");
+        Ok(())
+    }
+}
+
+// Small hack to have the following macro invocation act as the appropriate
+// trait impl block on wasm, but still be compiled on non-wasm as a regular
+// impl block otherwise.
+//
+// The trait impl doesn't compile on non-wasm due to unfulfilled trait bounds,
+// this hack allows us to still have most of rust-analyzer's IDE functionality
+// within the impl block without having to set it up to check things against
+// the wasm target (which would disable many other parts of the codebase).
+#[cfg(target_arch = "wasm32")]
+macro_rules! impl_nostr_database {
+    ({ $($body:tt)* }) => {
+        #[async_trait(?Send)]
+        impl NostrDatabase for WebDatabase {
+            type Err = IndexedDBError;
+
+            $($body)*
+        }
+    };
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+macro_rules! impl_nostr_database {
+    ({ $($body:tt)* }) => {
+        impl WebDatabase {
+            $($body)*
+        }
+    };
+}
+
+impl_nostr_database!({
+    fn backend(&self) -> Backend {
+        Backend::IndexedDB
+    }
+
+    fn opts(&self) -> DatabaseOptions {
+        DatabaseOptions::default()
+    }
+
+    async fn count(&self) -> Result<usize, IndexedDBError> {
+        Err(DatabaseError::NotSupported.into())
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn save_event(&self, event: &Event) -> Result<bool, IndexedDBError> {
+        // Index event
+        let EventIndexResult {
+            to_store,
+            to_discard,
+        } = self.indexes.index_event(event).await;
+
+        if to_store {
+            // Acquire FlatBuffers Builder
+            let mut fbb = self.fbb.lock().await;
+
+            let tx = self
+                .db
+                .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
+            let store = tx.object_store(EVENTS_CF)?;
+            let key = JsValue::from(event.id.to_hex());
+            let value = JsValue::from(hex::encode(event.encode(&mut fbb)));
+            store.put_key_val(&key, &value)?;
+
+            // Discard events no longer needed
+            for event_id in to_discard.into_iter() {
+                let key = JsValue::from(event_id.to_hex());
+                store.delete(&key)?;
+            }
+
+            tx.await.into_result()?;
+
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    async fn has_event_already_been_seen(
+        &self,
+        _event_id: EventId,
+    ) -> Result<bool, IndexedDBError> {
+        todo!()
+    }
+
+    async fn event_id_seen(
+        &self,
+        _event_id: EventId,
+        _relay_url: Option<Url>,
+    ) -> Result<(), IndexedDBError> {
+        todo!()
+    }
+
+    async fn event_recently_seen_on_relays(
+        &self,
+        _event_id: EventId,
+    ) -> Result<Option<HashSet<Url>>, IndexedDBError> {
+        todo!()
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn event_by_id(&self, event_id: EventId) -> Result<Event, IndexedDBError> {
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(EVENTS_CF)?;
+        let key = JsValue::from(event_id.to_hex());
+        match store.get(&key)?.await? {
+            Some(jsvalue) => {
+                let event_hex = jsvalue
+                    .as_string()
+                    .ok_or(IndexedDBError::Database(DatabaseError::NotFound))?;
+                let bytes = hex::decode(event_hex).map_err(DatabaseError::backend)?;
+                Ok(Event::decode(&bytes).map_err(DatabaseError::backend)?)
+            }
+            None => Err(IndexedDBError::Database(DatabaseError::NotFound)),
+        }
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, IndexedDBError> {
+        let ids = self.indexes.query(filters.clone()).await;
+
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(EVENTS_CF)?;
+
+        let mut events: Vec<Event> = Vec::new();
+
+        for event_id in ids.into_iter() {
+            let key = JsValue::from(event_id.to_hex());
+            if let Some(jsvalue) = store.get(&key)?.await? {
+                let event_hex = jsvalue.as_string().ok_or(DatabaseError::NotFound)?;
+                let bytes = hex::decode(event_hex).map_err(DatabaseError::backend)?;
+                let event = Event::decode(&bytes).map_err(DatabaseError::backend)?;
+                events.push(event);
+            }
+        }
+
+        Ok(events)
+    }
+
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+    ) -> Result<HashSet<EventId>, IndexedDBError> {
+        Ok(self.indexes.query(filters).await)
+    }
+
+    async fn negentropy_items(
+        &self,
+        filter: Filter,
+    ) -> Result<Vec<(EventId, Timestamp)>, IndexedDBError> {
+        let ids = self.indexes.query(vec![filter]).await;
+
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(EVENTS_CF)?;
+
+        let mut events: Vec<(EventId, Timestamp)> = Vec::new();
+
+        for event_id in ids.into_iter() {
+            let key = JsValue::from(event_id.to_hex());
+            if let Some(jsvalue) = store.get(&key)?.await? {
+                let event_hex = jsvalue.as_string().ok_or(DatabaseError::NotFound)?;
+                let bytes = hex::decode(event_hex).map_err(DatabaseError::backend)?;
+                let raw = RawEvent::decode(&bytes).map_err(DatabaseError::backend)?;
+                let event_id = EventId::from_slice(&raw.id).map_err(DatabaseError::nostr)?;
+                events.push((event_id, Timestamp::from(raw.created_at)));
+            }
+        }
+
+        Ok(events)
+    }
+
+    async fn wipe(&self) -> Result<(), IndexedDBError> {
+        Err(DatabaseError::NotSupported.into())
+    }
+});

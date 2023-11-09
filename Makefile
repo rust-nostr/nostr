@@ -13,7 +13,7 @@ book:
 	cd book && make build
 
 flatbuf:
-	cd crates/nostr-sdk-db && make flatbuf
+	cd crates/nostr-database && make flatbuf
 
 loc:
 	@echo "--- Counting lines of .rs files (LOC):" && find crates/ bindings/ -type f -name "*.rs" -exec cat {} \; | wc -l

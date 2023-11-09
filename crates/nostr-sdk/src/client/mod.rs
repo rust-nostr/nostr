@@ -22,7 +22,7 @@ use nostr::{
     ChannelId, ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind,
     Metadata, Result, Tag, Timestamp,
 };
-use nostr_sdk_db::DynNostrDatabase;
+use nostr_database::DynNostrDatabase;
 use nostr_sdk_net::futures_util::Future;
 use tokio::sync::{broadcast, RwLock};
 

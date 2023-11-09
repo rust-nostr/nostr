@@ -16,8 +16,7 @@ use nostr::{
     event, ClientMessage, Event, EventId, Filter, JsonUtil, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
-use nostr_sdk_db::memory::MemoryDatabase;
-use nostr_sdk_db::{DatabaseError, DynNostrDatabase};
+use nostr_database::{DatabaseError, DynNostrDatabase, MemoryDatabase};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, RwLock};
