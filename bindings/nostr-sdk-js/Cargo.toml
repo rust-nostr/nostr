@@ -2,7 +2,7 @@
 name = "nostr-sdk-js"
 version = "0.1.0"
 edition = "2021"
-authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
+authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
 publish = false
 
 [lib]
