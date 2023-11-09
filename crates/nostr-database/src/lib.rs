@@ -10,6 +10,7 @@
 use std::collections::HashSet;
 
 pub use async_trait::async_trait;
+pub use nostr;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, Timestamp, Url};
 
