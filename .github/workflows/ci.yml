@@ -35,6 +35,7 @@ jobs:
             -p nostr-sdk,
             -p nostr-sdk --no-default-features,
             -p nostr-sdk --features blocking,
+            -p nostr-sdk --features rocksdb,
           ]
     steps:
     - name: Checkout
@@ -69,8 +70,8 @@ jobs:
         build-args:
           [
             -p nostr,
-             -p nostr-indexeddb,
             -p nostr-sdk,
+            -p nostr-sdk --features indexeddb,
             -p nostr-js,
           ]
     steps:
