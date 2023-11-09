@@ -14,7 +14,6 @@ resolver = "2"
 homepage = "https://github.com/rust-nostr/nostr"
 repository = "https://github.com/rust-nostr/nostr.git"
 license = "MIT"
-rust-version = "1.64.0"
 
 [workspace.dependencies]
 async-trait = "0.1"

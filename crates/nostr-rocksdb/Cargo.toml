@@ -8,8 +8,8 @@ homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
-rust-version.workspace = true
-keywords = ["nostr", "sdk", "db", "rocksdb"]
+rust-version = "1.66.0"
+keywords = ["nostr", "database", "rocksdb"]
 
 [dependencies]
 async-trait = { workspace = true }
