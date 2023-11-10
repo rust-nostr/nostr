@@ -247,13 +247,17 @@ impl RelayPoolOptions {
 /// Negentropy reconciliation options
 #[derive(Debug, Clone, Copy)]
 pub struct NegentropyOptions {
-    /// Timeout for sending event (default: 30 secs)
+    /// Timeout for reconciliation (default: 30 secs)
     pub timeout: Duration,
     /// Syncronous (default: true)
     ///
     /// If `true`, request events and wait that relay send them.
     /// If `false`, request events but continue the reconciliation
     pub syncrounous: bool,
+    /// Bidirectional Sync (default: false)
+    ///
+    /// If `true`, perform the set reconciliation on each side.
+    pub bidirectional: bool,
 }
 
 impl Default for NegentropyOptions {
@@ -261,6 +265,7 @@ impl Default for NegentropyOptions {
         Self {
             timeout: Duration::from_secs(30),
             syncrounous: true,
+            bidirectional: false,
         }
     }
 }
@@ -283,6 +288,14 @@ impl NegentropyOptions {
     /// If `false`, request events but continue the reconciliation
     pub fn syncrounous(mut self, syncrounous: bool) -> Self {
         self.syncrounous = syncrounous;
+        self
+    }
+
+    /// Bidirectional Sync (default: false)
+    ///
+    /// If `true`, perform the set reconciliation on each side.
+    pub fn bidirectional(mut self, bidirectional: bool) -> Self {
+        self.bidirectional = bidirectional;
         self
     }
 }

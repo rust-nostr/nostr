@@ -24,7 +24,7 @@ use nostr::{
     ClientMessage, Event, EventId, Filter, JsonUtil, Keys, RawRelayMessage, RelayMessage,
     SubscriptionId, Timestamp, Url,
 };
-use nostr_database::DynNostrDatabase;
+use nostr_database::{DatabaseError, DynNostrDatabase};
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use thiserror::Error;
@@ -58,6 +58,9 @@ pub enum Error {
     /// Negentropy error
     #[error(transparent)]
     Negentropy(#[from] negentropy::Error),
+    /// Database error
+    #[error(transparent)]
+    Database(#[from] DatabaseError),
     /// Channel timeout
     #[error("channel timeout")]
     ChannelTimeout,
@@ -259,7 +262,6 @@ pub struct Relay {
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
     stats: RelayConnectionStats,
-    #[allow(dead_code)]
     database: Arc<DynNostrDatabase>,
     scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
@@ -1519,12 +1521,22 @@ impl Relay {
                             } => {
                                 if subscription_id == sub_id {
                                     let query: Bytes = Bytes::from_hex(message)?;
+                                    let mut have_ids: Vec<Bytes> = Vec::new();
                                     let mut need_ids: Vec<Bytes> = Vec::new();
                                     let msg: Option<Bytes> = negentropy.reconcile_with_ids(
                                         &query,
-                                        &mut Vec::new(),
+                                        &mut have_ids,
                                         &mut need_ids,
                                     )?;
+
+                                    if opts.bidirectional {
+                                        let ids = have_ids.into_iter().filter_map(|id| EventId::from_slice(&id).ok());
+                                        let filter = Filter::new().ids(ids);
+                                        let events: Vec<Event> = self.database.query(vec![filter]).await?;
+                                        if let Err(e) = self.batch_event(events, RelaySendOptions::default()).await {
+                                            tracing::error!("Impossible to batch events to {}: {e}", self.url);
+                                        }
+                                    }
 
                                     if need_ids.is_empty() {
                                         tracing::info!("Reconciliation terminated");
