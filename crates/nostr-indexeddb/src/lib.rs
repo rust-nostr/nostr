@@ -245,7 +245,12 @@ impl_nostr_database!({
     }
 
     async fn count(&self) -> Result<usize, IndexedDBError> {
-        Err(DatabaseError::NotSupported.into())
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(EVENTS_CF)?;
+        let count: u32 = store.count()?.await?;
+        Ok(count as usize)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
@@ -282,11 +287,25 @@ impl_nostr_database!({
         }
     }
 
-    async fn has_event_already_been_seen(
+    async fn has_event_already_been_saved(
         &self,
-        _event_id: EventId,
+        event_id: EventId,
     ) -> Result<bool, IndexedDBError> {
-        todo!()
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(EVENTS_CF)?;
+        let key = JsValue::from(event_id.to_hex());
+        Ok(store.get(&key)?.await?.is_some())
+    }
+
+    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, IndexedDBError> {
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_SEEN_BY_RELAYS_CF, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(EVENTS_SEEN_BY_RELAYS_CF)?;
+        let key = JsValue::from(event_id.to_hex());
+        Ok(store.get(&key)?.await?.is_some())
     }
 
     async fn event_id_seen(

@@ -68,6 +68,9 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Return `true` if event was successfully saved into database.
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err>;
 
+    /// Check if [`Event`] has already been saved
+    async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err>;
+
     /// Check if [`EventId`] has already been seen
     async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err>;
 

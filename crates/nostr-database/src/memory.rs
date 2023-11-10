@@ -85,9 +85,6 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
-        // Set event as seen
-        self.event_id_seen(event.id, None).await?;
-
         if self.opts.events {
             let EventIndexResult {
                 to_store,
@@ -108,6 +105,15 @@ impl NostrDatabase for MemoryDatabase {
                 tracing::warn!("Event {} not saved: unknown", event.id);
                 Ok(false)
             }
+        } else {
+            Ok(false)
+        }
+    }
+
+    async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        if self.opts.events {
+            let events = self.events.read().await;
+            Ok(events.contains_key(&event_id))
         } else {
             Ok(false)
         }
