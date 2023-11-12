@@ -37,6 +37,8 @@ pub struct Options {
     /// NIP46 timeout (default: 180 secs)
     #[cfg(feature = "nip46")]
     pub nip46_timeout: Option<Duration>,
+    /// Gossip (default: true)
+    pub gossip: bool,
     /// Shutdown on [Client](super::Client) drop
     pub shutdown_on_drop: bool,
     /// Pool Options
@@ -56,6 +58,7 @@ impl Default for Options {
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             #[cfg(feature = "nip46")]
             nip46_timeout: Some(Duration::from_secs(180)),
+            gossip: true,
             shutdown_on_drop: false,
             pool: RelayPoolOptions::default(),
         }
@@ -162,6 +165,14 @@ impl Options {
     pub fn nip46_timeout(self, timeout: Option<Duration>) -> Self {
         Self {
             nip46_timeout: timeout,
+            ..self
+        }
+    }
+
+    /// Gossip
+    pub fn gossip(self, value: bool) -> Self {
+        Self {
+            gossip: value,
             ..self
         }
     }

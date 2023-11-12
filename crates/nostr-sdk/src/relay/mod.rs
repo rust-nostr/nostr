@@ -146,6 +146,15 @@ impl fmt::Display for RelayStatus {
     }
 }
 
+/// Relay Connection Type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RelayConnectionType {
+    /// Manual: realy added manually
+    Manual,
+    /// Gossip: relay added by gossip
+    Gossip,
+}
+
 /// Relay event
 #[derive(Debug)]
 pub enum RelayEvent {
@@ -252,6 +261,7 @@ pub struct Relay {
     #[cfg(not(target_arch = "wasm32"))]
     proxy: Option<SocketAddr>,
     status: Arc<RwLock<RelayStatus>>,
+    connection_type: RelayConnectionType,
     #[cfg(feature = "nip11")]
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
@@ -278,6 +288,7 @@ impl Relay {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new(
         url: Url,
+        connection_type: RelayConnectionType,
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         proxy: Option<SocketAddr>,
@@ -290,6 +301,7 @@ impl Relay {
             url,
             proxy,
             status: Arc::new(RwLock::new(RelayStatus::Initialized)),
+            connection_type,
             #[cfg(feature = "nip11")]
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
@@ -310,6 +322,7 @@ impl Relay {
     #[cfg(target_arch = "wasm32")]
     pub fn new(
         url: Url,
+        connection_type: RelayConnectionType,
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         opts: RelayOptions,
@@ -320,6 +333,7 @@ impl Relay {
         Self {
             url,
             status: Arc::new(RwLock::new(RelayStatus::Initialized)),
+            connection_type,
             #[cfg(feature = "nip11")]
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
@@ -351,6 +365,11 @@ impl Relay {
     pub async fn status(&self) -> RelayStatus {
         let status = self.status.read().await;
         *status
+    }
+
+    /// Relay Connection Type
+    pub fn connection_type(&self) -> RelayConnectionType {
+        self.connection_type
     }
 
     /// Get [`RelayStatus`]
