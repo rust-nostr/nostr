@@ -105,7 +105,9 @@ impl NostrDatabase for SQLiteDatabase {
         conn.interact(move |conn| {
             let mut stmt = conn.prepare_cached("SELECT COUNT(*) FROM events;")?;
             let mut rows = stmt.query([])?;
-            let row = rows.next()?.ok_or(Error::NotFound("count result".into()))?;
+            let row = rows
+                .next()?
+                .ok_or_else(|| Error::NotFound("count result".into()))?;
             let count: usize = row.get(0)?;
             Ok(count)
         })
@@ -229,7 +231,9 @@ impl NostrDatabase for SQLiteDatabase {
         conn.interact(move |conn| {
             let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
             let mut rows = stmt.query([event_id.to_hex()])?;
-            let row = rows.next()?.ok_or(Error::NotFound("event".into()))?;
+            let row = rows
+                .next()?
+                .ok_or_else(|| Error::NotFound("event".into()))?;
             let buf: Vec<u8> = row.get(0)?;
             Ok(Event::decode(&buf)?)
         })
