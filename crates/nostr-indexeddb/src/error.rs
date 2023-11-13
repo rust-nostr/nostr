@@ -31,3 +31,9 @@ impl From<indexed_db_futures::web_sys::DomException> for IndexedDBError {
         }
     }
 }
+
+impl From<IndexedDBError> for DatabaseError {
+    fn from(e: IndexedDBError) -> Self {
+        Self::backend(e)
+    }
+}
