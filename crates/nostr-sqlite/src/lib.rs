@@ -241,19 +241,14 @@ impl NostrDatabase for SQLiteDatabase {
         let ids = self.indexes.query(filters.clone()).await;
         let conn = self.acquire().await?;
         conn.interact(move |conn| {
-            let query = format!(
-                "SELECT event FROM events WHERE {};",
-                ids.iter()
-                    .map(|id| format!("event_id = '{id}'"))
-                    .collect::<Vec<_>>()
-                    .join(" OR ")
-            );
-            let mut stmt = conn.prepare_cached(&query)?;
-            let mut rows = stmt.query([])?;
+            let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
             let mut events = Vec::with_capacity(ids.len());
-            while let Ok(Some(row)) = rows.next() {
-                let buf: Vec<u8> = row.get(0)?;
-                events.push(Event::decode(&buf)?);
+            for id in ids.into_iter() {
+                let mut rows = stmt.query([id.to_hex()])?;
+                while let Ok(Some(row)) = rows.next() {
+                    let buf: Vec<u8> = row.get(0)?;
+                    events.push(Event::decode(&buf)?);
+                }
             }
             Ok(events)
         })
@@ -274,22 +269,17 @@ impl NostrDatabase for SQLiteDatabase {
         let ids = self.indexes.query(vec![filter.clone()]).await;
         let conn = self.acquire().await?;
         conn.interact(move |conn| {
-            let query = format!(
-                "SELECT event FROM events WHERE {};",
-                ids.iter()
-                    .map(|id| format!("event_id = '{id}'"))
-                    .collect::<Vec<_>>()
-                    .join(" OR ")
-            );
-            let mut stmt = conn.prepare_cached(&query)?;
-            let mut rows = stmt.query([])?;
-            let mut items = Vec::with_capacity(ids.len());
-            while let Ok(Some(row)) = rows.next() {
-                let buf: Vec<u8> = row.get(0)?;
-                let event = Event::decode(&buf)?; // TODO: decode RawEvent?
-                items.push((event.id, event.created_at));
+            let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
+            let mut events = Vec::with_capacity(ids.len());
+            for id in ids.into_iter() {
+                let mut rows = stmt.query([id.to_hex()])?;
+                while let Ok(Some(row)) = rows.next() {
+                    let buf: Vec<u8> = row.get(0)?;
+                    let event = Event::decode(&buf)?;
+                    events.push((event.id, event.created_at));
+                }
             }
-            Ok(items)
+            Ok(events)
         })
         .await?
     }
