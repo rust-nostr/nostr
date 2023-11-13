@@ -19,6 +19,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["all-nips"]
 blocking = ["async-utility/blocking", "nostr/blocking"]
 rocksdb = ["dep:nostr-rocksdb"]
+sqlite = ["dep:nostr-sqlite"]
 indexeddb = ["dep:nostr-indexeddb"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip46", "nip47"]
 nip03 = ["nostr/nip03"]
@@ -41,6 +42,7 @@ tracing = { workspace = true, features = ["std"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 nostr-rocksdb = { version = "0.1", path = "../nostr-rocksdb", optional = true }
+nostr-sqlite = { version = "0.1", path = "../nostr-sqlite", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "time", "macros", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -84,6 +86,10 @@ required-features = ["all-nips", "rocksdb"]
 
 [[example]]
 name = "shutdown-on-drop"
+
+[[example]]
+name = "sqlite"
+required-features = ["all-nips", "sqlite"]
 
 [[example]]
 name = "subscriptions"
