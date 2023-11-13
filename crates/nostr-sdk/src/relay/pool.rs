@@ -3,7 +3,7 @@
 
 //! Relay Pool
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -16,14 +16,15 @@ use nostr::{
     event, ClientMessage, Event, EventId, Filter, JsonUtil, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
+use nostr_database::{DatabaseError, DynNostrDatabase, MemoryDatabase};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, RwLock};
 
 use super::options::RelayPoolOptions;
 use super::{
-    Error as RelayError, FilterOptions, InternalSubscriptionId, Limits, Relay, RelayOptions,
-    RelaySendOptions, RelayStatus,
+    Error as RelayError, FilterOptions, InternalSubscriptionId, Limits, NegentropyOptions, Relay,
+    RelayOptions, RelaySendOptions, RelayStatus,
 };
 use crate::util::TryIntoUrl;
 
@@ -45,6 +46,9 @@ pub enum Error {
     /// Message handler error
     #[error(transparent)]
     MessageHandler(#[from] MessageHandleError),
+    /// Database error
+    #[error(transparent)]
+    Database(#[from] DatabaseError),
     /// Thread error
     #[error(transparent)]
     Thread(#[from] thread::Error),
@@ -81,8 +85,6 @@ pub enum RelayPoolMessage {
         /// Relay message
         msg: RawRelayMessage,
     },
-    /// Events sent
-    BatchEvent(Vec<EventId>),
     /// Relay status changed
     RelayStatus {
         /// Relay url
@@ -118,25 +120,23 @@ pub enum RelayPoolNotification {
 
 #[derive(Debug, Clone)]
 struct RelayPoolTask {
+    database: Arc<DynNostrDatabase>,
     receiver: Arc<Mutex<Receiver<RelayPoolMessage>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
-    events: Arc<Mutex<VecDeque<EventId>>>,
     running: Arc<AtomicBool>,
-    max_seen_events: usize,
 }
 
 impl RelayPoolTask {
     pub fn new(
+        database: Arc<DynNostrDatabase>,
         pool_task_receiver: Receiver<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
-        max_seen_events: usize,
     ) -> Self {
         Self {
+            database,
             receiver: Arc::new(Mutex::new(pool_task_receiver)),
-            events: Arc::new(Mutex::new(VecDeque::new())),
             notification_sender,
             running: Arc::new(AtomicBool::new(false)),
-            max_seen_events,
         }
     }
 
@@ -148,11 +148,6 @@ impl RelayPoolTask {
         let _ = self
             .running
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
-    }
-
-    pub async fn clear_already_seen_events(&self) {
-        let mut events = self.events.lock().await;
-        events.clear();
     }
 
     pub fn run(&self) {
@@ -167,8 +162,8 @@ impl RelayPoolTask {
                 while let Some(msg) = receiver.recv().await {
                     match msg {
                         RelayPoolMessage::ReceivedMsg { relay_url, msg } => {
-                            match this.handle_relay_message(msg).await {
-                                Ok(msg) => {
+                            match this.handle_relay_message(relay_url.clone(), msg).await {
+                                Ok(Some(msg)) => {
                                     let _ = this.notification_sender.send(
                                         RelayPoolNotification::Message(
                                             relay_url.clone(),
@@ -179,27 +174,41 @@ impl RelayPoolTask {
                                     match msg {
                                         RelayMessage::Event { event, .. } => {
                                             // Check if event was already seen
-                                            if this.add_event(event.id).await {
-                                                let notification = RelayPoolNotification::Event(
-                                                    relay_url,
-                                                    event.as_ref().clone(),
-                                                );
-                                                let _ = this.notification_sender.send(notification);
+                                            match this.database.has_event_already_been_seen(event.id).await
+                                            {
+                                                Ok(seen) => {
+                                                    if !seen {
+                                                        let _ =
+                                                            this.notification_sender.send(RelayPoolNotification::Event(
+                                                                relay_url,
+                                                                *event.clone(),
+                                                            ));
+                                                    }
+                                                }
+                                                Err(e) => tracing::error!(
+                                                    "Impossible to check if event {} was already seen: {e}",
+                                                    event.id
+                                                ),
                                             }
                                         }
                                         RelayMessage::Notice { message } => {
                                             tracing::warn!("Notice from {relay_url}: {message}")
                                         }
+                                        RelayMessage::Ok {
+                                            event_id,
+                                            status,
+                                            message,
+                                        } => {
+                                            tracing::debug!("Received OK from {relay_url} for event {event_id}: status={status}, message={message}");
+                                        }
                                         _ => (),
                                     }
                                 }
+                                Ok(None) => (),
                                 Err(e) => tracing::error!(
                                     "Impossible to handle relay message from {relay_url}: {e}"
                                 ),
                             }
-                        }
-                        RelayPoolMessage::BatchEvent(ids) => {
-                            this.add_events(ids).await;
                         }
                         RelayPoolMessage::RelayStatus { url, status } => {
                             let _ = this
@@ -236,7 +245,11 @@ impl RelayPoolTask {
         }
     }
 
-    async fn handle_relay_message(&self, msg: RawRelayMessage) -> Result<RelayMessage, Error> {
+    async fn handle_relay_message(
+        &self,
+        relay_url: Url,
+        msg: RawRelayMessage,
+    ) -> Result<Option<RelayMessage>, Error> {
         match msg {
             RawRelayMessage::Event {
                 subscription_id,
@@ -244,6 +257,28 @@ impl RelayPoolTask {
             } => {
                 // Deserialize partial event (id, pubkey and sig)
                 let partial_event: PartialEvent = PartialEvent::from_json(event.to_string())?;
+
+                // Set event as seen by relay
+                if let Err(e) = self
+                    .database
+                    .event_id_seen(partial_event.id, relay_url)
+                    .await
+                {
+                    tracing::error!(
+                        "Impossible to set event {} as seen by relay: {e}",
+                        partial_event.id
+                    );
+                }
+
+                // Check if event was already saved
+                if self
+                    .database
+                    .has_event_already_been_saved(partial_event.id)
+                    .await?
+                {
+                    tracing::trace!("Event {} already saved into database", partial_event.id);
+                    return Ok(None);
+                }
 
                 // Verify signature
                 partial_event.verify_signature()?;
@@ -263,40 +298,16 @@ impl RelayPoolTask {
                 // Verify event ID
                 event.verify_id()?;
 
+                // Save event
+                self.database.save_event(&event).await?;
+
                 // Compose RelayMessage
-                Ok(RelayMessage::Event {
+                Ok(Some(RelayMessage::Event {
                     subscription_id: SubscriptionId::new(subscription_id),
                     event: Box::new(event),
-                })
+                }))
             }
-            m => Ok(RelayMessage::try_from(m)?),
-        }
-    }
-
-    async fn add_event(&self, event_id: EventId) -> bool {
-        let mut events = self.events.lock().await;
-        if events.contains(&event_id) {
-            false
-        } else {
-            while events.len() >= self.max_seen_events {
-                events.pop_front();
-            }
-            events.push_back(event_id);
-            true
-        }
-    }
-
-    async fn add_events(&self, ids: Vec<EventId>) {
-        if !ids.is_empty() {
-            let mut events = self.events.lock().await;
-            for event_id in ids.into_iter() {
-                if !events.contains(&event_id) {
-                    while events.len() >= self.max_seen_events {
-                        events.pop_front();
-                    }
-                    events.push_back(event_id);
-                }
-            }
+            m => Ok(Some(RelayMessage::try_from(m)?)),
         }
     }
 }
@@ -304,6 +315,7 @@ impl RelayPoolTask {
 /// Relay Pool
 #[derive(Debug, Clone)]
 pub struct RelayPool {
+    database: Arc<DynNostrDatabase>,
     relays: Arc<RwLock<HashMap<Url, Relay>>>,
     pool_task_sender: Sender<RelayPoolMessage>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
@@ -337,16 +349,22 @@ impl Drop for RelayPool {
 impl RelayPool {
     /// Create new `RelayPool`
     pub fn new(opts: RelayPoolOptions) -> Self {
+        Self::with_database(opts, Arc::new(MemoryDatabase::default()))
+    }
+
+    /// New with database
+    pub fn with_database(opts: RelayPoolOptions, database: Arc<DynNostrDatabase>) -> Self {
         let (notification_sender, _) = broadcast::channel(opts.notification_channel_size);
         let (pool_task_sender, pool_task_receiver) = mpsc::channel(opts.task_channel_size);
 
         let relay_pool_task = RelayPoolTask::new(
+            database.clone(),
             pool_task_receiver,
             notification_sender.clone(),
-            opts.task_max_seen_events,
         );
 
         let pool = Self {
+            database,
             relays: Arc::new(RwLock::new(HashMap::new())),
             pool_task_sender,
             notification_sender,
@@ -393,14 +411,14 @@ impl RelayPool {
         Ok(())
     }
 
-    /// Clear already seen events
-    pub async fn clear_already_seen_events(&self) {
-        self.pool_task.clear_already_seen_events().await;
-    }
-
     /// Get new notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.notification_sender.subscribe()
+    }
+
+    /// Get database
+    pub fn database(&self) -> Arc<DynNostrDatabase> {
+        self.database.clone()
     }
 
     /// Get relays
@@ -448,6 +466,7 @@ impl RelayPool {
         if !relays.contains_key(&url) {
             let relay = Relay::new(
                 url,
+                self.database.clone(),
                 self.pool_task_sender.clone(),
                 self.notification_sender.clone(),
                 proxy,
@@ -473,6 +492,7 @@ impl RelayPool {
         if !relays.contains_key(&url) {
             let relay = Relay::new(
                 url,
+                self.database.clone(),
                 self.pool_task_sender.clone(),
                 self.notification_sender.clone(),
                 opts,
@@ -499,16 +519,6 @@ impl RelayPool {
         Ok(())
     }
 
-    async fn set_events_as_sent(&self, ids: Vec<EventId>) {
-        if let Err(e) = self
-            .pool_task_sender
-            .send(RelayPoolMessage::BatchEvent(ids))
-            .await
-        {
-            tracing::error!("{e}");
-        };
-    }
-
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
         let relays = self.relays().await;
@@ -518,7 +528,7 @@ impl RelayPool {
         }
 
         if let ClientMessage::Event(event) = &msg {
-            self.set_events_as_sent(vec![event.id]).await;
+            self.database.save_event(event).await?;
         }
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
@@ -562,17 +572,12 @@ impl RelayPool {
             return Err(Error::NoRelays);
         }
 
-        let ids: Vec<EventId> = msgs
-            .iter()
-            .filter_map(|msg| {
-                if let ClientMessage::Event(event) = msg {
-                    Some(event.id)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        self.set_events_as_sent(ids).await;
+        // Save events into database
+        for msg in msgs.iter() {
+            if let ClientMessage::Event(event) = msg {
+                self.database.save_event(event).await?;
+            }
+        }
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -618,7 +623,7 @@ impl RelayPool {
         let url: Url = url.try_into_url()?;
 
         if let ClientMessage::Event(event) = &msg {
-            self.set_events_as_sent(vec![event.id]).await;
+            self.database.save_event(event).await?;
         }
 
         let relays = self.relays().await;
@@ -638,7 +643,7 @@ impl RelayPool {
             return Err(Error::NoRelays);
         }
 
-        self.set_events_as_sent(vec![event.id]).await;
+        self.database.save_event(&event).await?;
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -683,8 +688,10 @@ impl RelayPool {
             return Err(Error::NoRelays);
         }
 
-        let ids: Vec<EventId> = events.iter().map(|e| e.id).collect();
-        self.set_events_as_sent(ids).await;
+        // Save events into database
+        for event in events.iter() {
+            self.database.save_event(event).await?;
+        }
 
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -728,7 +735,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
-        self.set_events_as_sent(vec![event.id]).await;
+        self.database.save_event(&event).await?;
         let relays = self.relays().await;
         if let Some(relay) = relays.get(&url) {
             Ok(relay.send_event(event, opts).await?)
@@ -765,13 +772,20 @@ impl RelayPool {
     }
 
     /// Get events of filters
+    ///
+    /// Get events from local database and relays
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
+        let stored_events: Vec<Event> = self
+            .database
+            .query(filters.clone())
+            .await
+            .unwrap_or_default();
+        let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(stored_events));
         let mut handles = Vec::new();
         let relays = self.relays().await;
         for (url, relay) in relays.into_iter() {
@@ -797,7 +811,9 @@ impl RelayPool {
         Ok(events.lock_owned().await.clone())
     }
 
-    /// Request events of filter. All events will be sent to notification listener
+    /// Request events of filter.
+    ///
+    /// If the events aren't already stored in the database, will be sent to notification listener
     /// until the EOSE "end of stored events" message is received from the relay.
     pub async fn req_events_of(
         &self,
@@ -861,20 +877,27 @@ impl RelayPool {
     }
 
     /// Negentropy reconciliation
-    pub async fn reconcilie(
+    pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
+        let items: Vec<(EventId, Timestamp)> =
+            self.database.negentropy_items(filter.clone()).await?;
+        self.reconcile_with_items(filter, items, opts).await
+    }
+
+    /// Negentropy reconciliation with custom items
+    pub async fn reconcile_with_items(
         &self,
         filter: Filter,
-        my_items: Vec<(EventId, Timestamp)>,
-        timeout: Duration,
+        items: Vec<(EventId, Timestamp)>,
+        opts: NegentropyOptions,
     ) -> Result<(), Error> {
         let mut handles = Vec::new();
         let relays = self.relays().await;
         for (url, relay) in relays.into_iter() {
             let filter = filter.clone();
-            let my_items = my_items.clone();
+            let my_items = items.clone();
             let handle = thread::spawn(async move {
-                if let Err(e) = relay.reconcilie(filter, my_items, timeout).await {
-                    tracing::error!("Failed to get reconcilie with {url}: {e}");
+                if let Err(e) = relay.reconcile(filter, my_items, opts).await {
+                    tracing::error!("Failed to get reconcile with {url}: {e}");
                 }
             });
             handles.push(handle);

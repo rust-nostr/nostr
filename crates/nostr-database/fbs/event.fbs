@@ -1,0 +1,25 @@
+namespace EventFbs;
+
+struct Fixed32Bytes {
+    val: [ubyte:32];
+}
+
+struct Fixed64Bytes {
+    val: [ubyte:64];
+}
+
+table StringVector {
+  data: [string];
+}
+
+table Event {
+  id: Fixed32Bytes;
+  pubkey: Fixed32Bytes;
+  created_at: ulong;
+  kind: ulong;
+  tags: [StringVector];
+  content: string;
+  sig: Fixed64Bytes;
+}
+
+root_type Event;

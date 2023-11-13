@@ -215,11 +215,6 @@ pub struct RelayPoolOptions {
     pub notification_channel_size: usize,
     /// Task channel size (default: 1024)
     pub task_channel_size: usize,
-    /// Max seen events by Task thread (default: 1_000_000)
-    ///
-    /// A lower number can cause receiving in notification channel
-    /// the same event multiple times
-    pub task_max_seen_events: usize,
     /// Shutdown on [RelayPool](super::pool::RelayPool) drop
     pub shutdown_on_drop: bool,
 }
@@ -229,7 +224,6 @@ impl Default for RelayPoolOptions {
         Self {
             notification_channel_size: 1024,
             task_channel_size: 1024,
-            task_max_seen_events: 1_000_000,
             shutdown_on_drop: false,
         }
     }
@@ -247,5 +241,61 @@ impl RelayPoolOptions {
             shutdown_on_drop: value,
             ..self
         }
+    }
+}
+
+/// Negentropy reconciliation options
+#[derive(Debug, Clone, Copy)]
+pub struct NegentropyOptions {
+    /// Timeout for reconciliation (default: 30 secs)
+    pub timeout: Duration,
+    /// Syncronous (default: true)
+    ///
+    /// If `true`, request events and wait that relay send them.
+    /// If `false`, request events but continue the reconciliation
+    pub syncrounous: bool,
+    /// Bidirectional Sync (default: false)
+    ///
+    /// If `true`, perform the set reconciliation on each side.
+    pub bidirectional: bool,
+}
+
+impl Default for NegentropyOptions {
+    fn default() -> Self {
+        Self {
+            timeout: Duration::from_secs(30),
+            syncrounous: true,
+            bidirectional: false,
+        }
+    }
+}
+
+impl NegentropyOptions {
+    /// New default [`NegentropyOptions`]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Timeout for sending event (default: 30 secs)
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Syncronous (default: true)
+    ///
+    /// If `true`, request events and wait that relay send them.
+    /// If `false`, request events but continue the reconciliation
+    pub fn syncrounous(mut self, syncrounous: bool) -> Self {
+        self.syncrounous = syncrounous;
+        self
+    }
+
+    /// Bidirectional Sync (default: false)
+    ///
+    /// If `true`, perform the set reconciliation on each side.
+    pub fn bidirectional(mut self, bidirectional: bool) -> Self {
+        self.bidirectional = bidirectional;
+        self
     }
 }

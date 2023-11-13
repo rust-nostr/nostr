@@ -31,9 +31,11 @@ jobs:
             -p nostr --no-default-features --features alloc,
             -p nostr --no-default-features --features "alloc all-nips",
             -p nostr --features blocking,
+            -p nostr-database
             -p nostr-sdk,
             -p nostr-sdk --no-default-features,
             -p nostr-sdk --features blocking,
+            -p nostr-sdk --features sqlite,
           ]
     steps:
     - name: Checkout
@@ -57,6 +59,40 @@ jobs:
     - name: Clippy
       run: cargo clippy ${{ matrix.build-args }} -- -D warnings
 
+  build-msrv-1660:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - version: stable # STABLE
+          - version: 1.66.0 # MSRV
+        build-args:
+          [
+            -p nostr-sdk --features rocksdb,
+          ]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-msrv-1.66.0-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
+    - name: Set default toolchain
+      run: rustup default ${{ matrix.rust.version }}
+    - name: Set profile
+      run: rustup set profile minimal && rustup component add clippy
+    - name: Build
+      run: cargo build ${{ matrix.build-args }}
+    - name: Tests
+      run: cargo test ${{ matrix.build-args }}
+    - name: Clippy
+      run: cargo clippy ${{ matrix.build-args }} -- -D warnings
+
   build-wasm:
     name: Build WASM
     runs-on: ubuntu-latest
@@ -69,6 +105,7 @@ jobs:
           [
             -p nostr,
             -p nostr-sdk,
+            -p nostr-sdk --features indexeddb,
             -p nostr-js,
           ]
     steps:

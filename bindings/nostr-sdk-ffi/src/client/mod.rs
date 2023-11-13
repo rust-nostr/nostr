@@ -72,10 +72,6 @@ impl Client {
         Ok(self.inner.clone().shutdown()?)
     }
 
-    pub fn clear_already_seen_events(&self) {
-        self.inner.clear_already_seen_events()
-    }
-
     pub fn relays(&self) -> HashMap<String, Arc<Relay>> {
         self.inner
             .relays()

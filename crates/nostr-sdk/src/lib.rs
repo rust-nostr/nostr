@@ -4,6 +4,8 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
+#![allow(unknown_lints)]
+#![allow(clippy::arc_with_non_send_sync)]
 
 //! High level Nostr client library.
 
@@ -16,8 +18,15 @@
 compile_error!("`blocking` feature can't be enabled for WASM targets");
 
 pub use nostr::{self, *};
+pub use nostr_database as database;
+#[cfg(feature = "indexeddb")]
+pub use nostr_indexeddb::{IndexedDBError, WebDatabase};
+#[cfg(feature = "rocksdb")]
+pub use nostr_rocksdb::RocksDatabase;
 #[cfg(feature = "blocking")]
 use nostr_sdk_net::futures_util::Future;
+#[cfg(feature = "sqlite")]
+pub use nostr_sqlite::{Error as SQLiteError, SQLiteDatabase};
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
@@ -30,10 +39,11 @@ pub mod util;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;
-pub use self::client::{Client, Options};
+pub use self::client::{Client, ClientBuilder, Options};
 pub use self::relay::{
-    ActiveSubscription, FilterOptions, InternalSubscriptionId, Relay, RelayConnectionStats,
-    RelayOptions, RelayPoolNotification, RelayPoolOptions, RelaySendOptions, RelayStatus,
+    ActiveSubscription, FilterOptions, InternalSubscriptionId, NegentropyOptions, Relay,
+    RelayConnectionStats, RelayOptions, RelayPoolNotification, RelayPoolOptions, RelaySendOptions,
+    RelayStatus,
 };
 
 #[cfg(feature = "blocking")]

@@ -20,22 +20,27 @@ use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
     ChannelId, ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind,
-    Metadata, Result, Tag,
+    Metadata, Result, Tag, Timestamp,
 };
+use nostr_database::DynNostrDatabase;
 use nostr_sdk_net::futures_util::Future;
 use tokio::sync::{broadcast, RwLock};
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
+pub mod builder;
 pub mod options;
 #[cfg(feature = "nip46")]
 pub mod signer;
 
+pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 #[cfg(feature = "nip46")]
 pub use self::signer::remote::RemoteSigner;
 use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
-use crate::relay::{FilterOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions};
+use crate::relay::{
+    FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
+};
 use crate::util::TryIntoUrl;
 
 /// [`Client`] error
@@ -164,14 +169,7 @@ impl Client {
     /// let client = Client::with_opts(&my_keys, opts);
     /// ```
     pub fn with_opts(keys: &Keys, opts: Options) -> Self {
-        Self {
-            pool: RelayPool::new(opts.pool),
-            keys: Arc::new(RwLock::new(keys.clone())),
-            opts,
-            dropped: Arc::new(AtomicBool::new(false)),
-            #[cfg(feature = "nip46")]
-            remote_signer: None,
-        }
+        ClientBuilder::new(keys).opts(opts).build()
     }
 
     /// Create a new NIP46 Client
@@ -187,12 +185,21 @@ impl Client {
         remote_signer: RemoteSigner,
         opts: Options,
     ) -> Self {
+        ClientBuilder::new(app_keys)
+            .remote_signer(remote_signer)
+            .opts(opts)
+            .build()
+    }
+
+    /// Compose [`Client`] from [`ClientBuilder`]
+    pub fn from_builder(builder: ClientBuilder) -> Self {
         Self {
-            pool: RelayPool::new(opts.pool),
-            keys: Arc::new(RwLock::new(app_keys.clone())),
-            opts,
+            pool: RelayPool::with_database(builder.opts.pool, builder.database),
+            keys: Arc::new(RwLock::new(builder.keys)),
+            opts: builder.opts,
             dropped: Arc::new(AtomicBool::new(false)),
-            remote_signer: Some(remote_signer),
+            #[cfg(feature = "nip46")]
+            remote_signer: builder.remote_signer,
         }
     }
 
@@ -216,6 +223,11 @@ impl Client {
     /// Get [`RelayPool`]
     pub fn pool(&self) -> RelayPool {
         self.pool.clone()
+    }
+
+    /// Get database
+    pub fn database(&self) -> Arc<DynNostrDatabase> {
+        self.pool.database()
     }
 
     /// Get NIP46 uri
@@ -266,9 +278,8 @@ impl Client {
     }
 
     /// Clear already seen events
-    pub async fn clear_already_seen_events(&self) {
-        self.pool.clear_already_seen_events().await;
-    }
+    #[deprecated]
+    pub async fn clear_already_seen_events(&self) {}
 
     /// Get new notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
@@ -1303,6 +1314,21 @@ impl Client {
     {
         let builder = EventBuilder::file_metadata(description, metadata);
         self.send_event_builder(builder).await
+    }
+
+    /// Negentropy reconciliation
+    pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
+        Ok(self.pool.reconcile(filter, opts).await?)
+    }
+
+    /// Negentropy reconciliation with items
+    pub async fn reconcile_with_items(
+        &self,
+        filter: Filter,
+        items: Vec<(EventId, Timestamp)>,
+        opts: NegentropyOptions,
+    ) -> Result<(), Error> {
+        Ok(self.pool.reconcile_with_items(filter, items, opts).await?)
     }
 
     /// Get a list of channels

@@ -3,12 +3,12 @@ name = "nostr-sdk"
 version = "0.25.0"
 edition = "2021"
 description = "High level Nostr client library."
-authors = ["Yuki Kishimoto <yukikishimoto@proton.me>"]
+authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
-rust-version.workspace = true
+rust-version = "1.64.0"
 keywords = ["nostr", "sdk"]
 
 [package.metadata.docs.rs]
@@ -18,6 +18,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["all-nips"]
 blocking = ["async-utility/blocking", "nostr/blocking"]
+rocksdb = ["dep:nostr-rocksdb"]
+sqlite = ["dep:nostr-sqlite"]
+indexeddb = ["dep:nostr-indexeddb"]
 all-nips = ["nip04", "nip05", "nip06", "nip11", "nip46", "nip47"]
 nip03 = ["nostr/nip03"]
 nip04 = ["nostr/nip04"]
@@ -30,16 +33,20 @@ nip47 = ["nostr/nip47"]
 
 [dependencies]
 async-utility = "0.1"
-nostr = { version = "0.25", path = "../nostr", default-features = false, features = ["std"] }
+nostr = { workspace = true, features = ["std"] }
+nostr-database = { workspace = true }
 nostr-sdk-net = { version = "0.25", path = "../nostr-sdk-net" }
 once_cell = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true, features = ["std"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+nostr-rocksdb = { version = "0.1", path = "../nostr-rocksdb", optional = true }
+nostr-sqlite = { version = "0.1", path = "../nostr-sqlite", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "time", "macros", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+nostr-indexeddb = { version = "0.1", path = "../nostr-indexeddb", optional = true }
 tokio = { workspace = true, features = ["rt", "macros", "sync"] }
 
 [dev-dependencies]
@@ -74,7 +81,15 @@ name = "client-stop"
 required-features = ["all-nips"]
 
 [[example]]
+name = "rocksdb"
+required-features = ["all-nips", "rocksdb"]
+
+[[example]]
 name = "shutdown-on-drop"
+
+[[example]]
+name = "sqlite"
+required-features = ["all-nips", "sqlite"]
 
 [[example]]
 name = "subscriptions"

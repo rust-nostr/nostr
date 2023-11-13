@@ -50,7 +50,7 @@ pub mod util;
 
 pub use self::event::tag::{
     ExternalIdentity, HttpMethod, Identity, ImageDimensions, Marker, RelayMetadata, Report, Tag,
-    TagKind,
+    TagIndexValues, TagIndexes, TagKind,
 };
 pub use self::event::{
     Event, EventBuilder, EventId, Kind, MissingPartialEvent, PartialEvent, UnsignedEvent,

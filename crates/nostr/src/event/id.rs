@@ -99,6 +99,11 @@ impl EventId {
         self.as_ref()
     }
 
+    /// Consume and get bytes
+    pub fn to_bytes(self) -> [u8; 32] {
+        self.0.to_byte_array()
+    }
+
     /// Get as hex string
     pub fn to_hex(&self) -> String {
         self.0.to_string()

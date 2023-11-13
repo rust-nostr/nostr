@@ -18,6 +18,9 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url_fork::{ParseError, Url};
 
+pub mod indexes;
+
+pub use self::indexes::{TagIndexValues, TagIndexes};
 use super::id::{self, EventId};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::nips::nip48::Protocol;

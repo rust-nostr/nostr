@@ -24,6 +24,7 @@ use nostr::{
     ClientMessage, Event, EventId, Filter, JsonUtil, Keys, RawRelayMessage, RelayMessage,
     SubscriptionId, Timestamp, Url,
 };
+use nostr_database::{DatabaseError, DynNostrDatabase};
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use thiserror::Error;
@@ -36,7 +37,9 @@ pub mod pool;
 mod stats;
 
 pub use self::limits::Limits;
-pub use self::options::{FilterOptions, RelayOptions, RelayPoolOptions, RelaySendOptions};
+pub use self::options::{
+    FilterOptions, NegentropyOptions, RelayOptions, RelayPoolOptions, RelaySendOptions,
+};
 use self::options::{MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
 pub use self::stats::RelayConnectionStats;
@@ -55,6 +58,9 @@ pub enum Error {
     /// Negentropy error
     #[error(transparent)]
     Negentropy(#[from] negentropy::Error),
+    /// Database error
+    #[error(transparent)]
+    Database(#[from] DatabaseError),
     /// Channel timeout
     #[error("channel timeout")]
     ChannelTimeout,
@@ -256,7 +262,7 @@ pub struct Relay {
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
     stats: RelayConnectionStats,
-    // auto_connect_loop_running: Arc<AtomicBool>,
+    database: Arc<DynNostrDatabase>,
     scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
     pool_sender: Sender<RelayPoolMessage>,
@@ -278,6 +284,7 @@ impl Relay {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new(
         url: Url,
+        database: Arc<DynNostrDatabase>,
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         proxy: Option<SocketAddr>,
@@ -294,7 +301,7 @@ impl Relay {
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
-            // auto_connect_loop_running: Arc::new(AtomicBool::new(false)),
+            database,
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,
@@ -310,6 +317,7 @@ impl Relay {
     #[cfg(target_arch = "wasm32")]
     pub fn new(
         url: Url,
+        database: Arc<DynNostrDatabase>,
         pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         opts: RelayOptions,
@@ -324,7 +332,7 @@ impl Relay {
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
-            // auto_connect_loop_running: Arc::new(AtomicBool::new(false)),
+            database,
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             pool_sender,
@@ -429,16 +437,6 @@ impl Relay {
     pub fn queue(&self) -> usize {
         self.relay_sender.max_capacity() - self.relay_sender.capacity()
     }
-
-    /* fn is_auto_connect_loop_running(&self) -> bool {
-        self.auto_connect_loop_running.load(Ordering::SeqCst)
-    }
-
-    fn set_auto_connect_loop_running(&self, value: bool) {
-        let _ =
-            self.auto_connect_loop_running
-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
-    } */
 
     fn is_scheduled_for_stop(&self) -> bool {
         self.scheduled_for_stop.load(Ordering::SeqCst)
@@ -784,7 +782,11 @@ impl Relay {
                         if size <= max_size {
                             match RawRelayMessage::from_json(&data) {
                                 Ok(msg) => {
-                                    tracing::trace!("Received message to {}: {:?}", relay.url, msg);
+                                    tracing::trace!(
+                                        "Received message from {}: {:?}",
+                                        relay.url,
+                                        msg
+                                    );
                                     if let Err(err) = relay
                                         .pool_sender
                                         .send(RelayPoolMessage::ReceivedMsg {
@@ -1347,7 +1349,7 @@ impl Relay {
     }
 
     /// Get events of filters with custom callback
-    pub async fn get_events_of_with_callback<F>(
+    async fn get_events_of_with_callback<F>(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
@@ -1376,13 +1378,20 @@ impl Relay {
     }
 
     /// Get events of filters
+    ///
+    /// Get events from local database and relay
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
+        let stored_events: Vec<Event> = self
+            .database
+            .query(filters.clone())
+            .await
+            .unwrap_or_default();
+        let events: Mutex<Vec<Event>> = Mutex::new(stored_events);
         self.get_events_of_with_callback(filters, timeout, opts, |event| async {
             let mut events = events.lock().await;
             events.push(event);
@@ -1472,21 +1481,28 @@ impl Relay {
     }
 
     /// Negentropy reconciliation
-    pub async fn reconcilie(
+    pub async fn reconcile(
         &self,
         filter: Filter,
-        my_items: Vec<(EventId, Timestamp)>,
-        timeout: Duration,
+        items: Vec<(EventId, Timestamp)>,
+        opts: NegentropyOptions,
     ) -> Result<(), Error> {
         if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 
+        if !self.is_connected().await
+            && self.stats.attempts() > 1
+            && self.stats.uptime() < MIN_UPTIME
+        {
+            return Err(Error::NotConnected);
+        }
+
         let id_size: usize = 32;
 
-        let mut negentropy = Negentropy::new(id_size, Some(2_500))?;
+        let mut negentropy = Negentropy::new(id_size, Some(4_096))?;
 
-        for (id, timestamp) in my_items.into_iter() {
+        for (id, timestamp) in items.into_iter() {
             let id = Bytes::from_slice(id.as_bytes());
             negentropy.add_item(timestamp.as_u64(), id)?;
         }
@@ -1499,8 +1515,9 @@ impl Relay {
         self.send_msg(open_msg, Some(Duration::from_secs(10)))
             .await?;
 
+        // TODO: improve timeouts
         let mut notifications = self.notification_sender.subscribe();
-        time::timeout(Some(timeout), async {
+        time::timeout(Some(opts.timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Message(url, msg) = notification {
                     if url == self.url {
@@ -1511,22 +1528,50 @@ impl Relay {
                             } => {
                                 if subscription_id == sub_id {
                                     let query: Bytes = Bytes::from_hex(message)?;
+                                    let mut have_ids: Vec<Bytes> = Vec::new();
                                     let mut need_ids: Vec<Bytes> = Vec::new();
                                     let msg: Option<Bytes> = negentropy.reconcile_with_ids(
                                         &query,
-                                        &mut Vec::new(),
+                                        &mut have_ids,
                                         &mut need_ids,
                                     )?;
+
+                                    if opts.bidirectional {
+                                        let ids = have_ids.into_iter().filter_map(|id| EventId::from_slice(&id).ok());
+                                        let filter = Filter::new().ids(ids);
+                                        let events: Vec<Event> = self.database.query(vec![filter]).await?;
+                                        if let Err(e) = self.batch_event(events, RelaySendOptions::default()).await {
+                                            tracing::error!("Impossible to batch events to {}: {e}", self.url);
+                                        }
+                                    }
+
+                                    if need_ids.is_empty() {
+                                        tracing::info!("Reconciliation terminated");
+                                        break;
+                                    }
 
                                     let ids = need_ids
                                         .into_iter()
                                         .filter_map(|id| EventId::from_slice(&id).ok());
                                     let filter = Filter::new().ids(ids);
-                                    self.req_events_of(
-                                        vec![filter],
-                                        Duration::from_secs(120),
-                                        FilterOptions::ExitOnEOSE,
-                                    );
+                                    if !filter.ids.is_empty() {
+                                        if opts.syncrounous {
+                                            self.get_events_of(
+                                                vec![filter],
+                                                Duration::from_secs(30),
+                                                FilterOptions::ExitOnEOSE,
+                                            )
+                                            .await?;
+                                        } else {
+                                            self.req_events_of(
+                                                vec![filter],
+                                                Duration::from_secs(30),
+                                                FilterOptions::ExitOnEOSE,
+                                            );
+                                        }
+                                    } else {
+                                        tracing::warn!("negentropy reconciliation: tried to send empty filters to {}", self.url);
+                                    }
 
                                     match msg {
                                         Some(query) => {
@@ -1587,7 +1632,13 @@ impl Relay {
         let pk = Keys::generate();
         let filter = Filter::new().author(pk.public_key());
         match self
-            .reconcilie(filter, Vec::new(), Duration::from_secs(5))
+            .reconcile(
+                filter,
+                Vec::new(),
+                NegentropyOptions::new()
+                    .timeout(Duration::from_secs(5))
+                    .syncrounous(false),
+            )
             .await
         {
             Ok(_) => Ok(true),

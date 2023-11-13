@@ -17,8 +17,9 @@ If you're writing a typical Nostr client or bot, this is likely the crate you ne
 However, the crate is designed in a modular way and depends on several
 other lower-level crates. If you're attempting something more custom, you might be interested in these:
 
-- [`nostr`](https://crates.io/crates/nostr): Rust implementation of Nostr protocol
-- [`nostr-sdk-net`](https://crates.io/crates/nostr-sdk-net): Nostr SDK Network library
+* [`nostr`](https://crates.io/crates/nostr): Rust implementation of Nostr protocol
+* [`nostr-database`](https://crates.io/crates/nostr-database): Database for Nostr apps
+* [`nostr-sdk-net`](https://crates.io/crates/nostr-sdk-net): Nostr SDK Network library
 
 ## Getting started
 
@@ -123,6 +124,8 @@ The following crate feature flags are available:
 | Feature             | Default | Description                                                                              |
 | ------------------- | :-----: | ---------------------------------------------------------------------------------------- |
 | `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                  |
+| `rocksdb`           |   No    | Enable RocksDB Storage backend                                                           |
+| `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                   |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                          |
 | `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                    |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                  |

@@ -1,4 +1,5 @@
 target/
+db/
 .DS_Store
 *.db
 *.db-shm
