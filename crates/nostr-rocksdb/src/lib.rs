@@ -200,20 +200,13 @@ impl NostrDatabase for RocksDatabase {
         Ok(self.db.key_may_exist_cf(&cf, event_id.as_bytes()))
     }
 
-    async fn event_id_seen(
-        &self,
-        event_id: EventId,
-        relay_url: Option<Url>,
-    ) -> Result<(), Self::Err> {
+    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
         let mut fbb = self.fbb.write().await;
         let cf = self.cf_handle(EVENTS_SEEN_BY_RELAYS_CF)?;
-        let value: HashSet<Url> = match relay_url {
-            Some(relay_url) => {
-                let mut set = HashSet::with_capacity(1);
-                set.insert(relay_url);
-                set
-            }
-            None => HashSet::new(),
+        let value: HashSet<Url> = {
+            let mut set = HashSet::with_capacity(1);
+            set.insert(relay_url);
+            set
         };
         self.db
             .merge_cf(&cf, event_id, value.encode(&mut fbb))
@@ -261,7 +254,7 @@ impl NostrDatabase for RocksDatabase {
         tokio::task::spawn_blocking(move || {
             let cf = this.cf_handle(EVENTS_CF)?;
 
-            let mut events: Vec<Event> = Vec::new();
+            let mut events: Vec<Event> = Vec::with_capacity(ids.len());
 
             for v in this
                 .db

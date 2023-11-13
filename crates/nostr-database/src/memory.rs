@@ -46,22 +46,17 @@ impl MemoryDatabase {
         &self,
         seen_event_ids: &mut HashMap<EventId, HashSet<Url>>,
         event_id: EventId,
-        relay_url: Option<Url>,
+        relay_url: Url,
     ) {
         seen_event_ids
             .entry(event_id)
             .and_modify(|set| {
-                if let Some(relay_url) = &relay_url {
-                    set.insert(relay_url.clone());
-                }
+                set.insert(relay_url.clone());
             })
-            .or_insert_with(|| match relay_url {
-                Some(relay_url) => {
-                    let mut set = HashSet::with_capacity(1);
-                    set.insert(relay_url);
-                    set
-                }
-                None => HashSet::with_capacity(0),
+            .or_insert_with(|| {
+                let mut set = HashSet::with_capacity(1);
+                set.insert(relay_url);
+                set
             });
     }
 }
@@ -124,11 +119,7 @@ impl NostrDatabase for MemoryDatabase {
         Ok(seen_event_ids.contains_key(&event_id))
     }
 
-    async fn event_id_seen(
-        &self,
-        event_id: EventId,
-        relay_url: Option<Url>,
-    ) -> Result<(), Self::Err> {
+    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
         let mut seen_event_ids = self.seen_event_ids.write().await;
         self._event_id_seen(&mut seen_event_ids, event_id, relay_url);
         Ok(())

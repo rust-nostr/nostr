@@ -261,7 +261,7 @@ impl RelayPoolTask {
                 // Set event as seen by relay
                 if let Err(e) = self
                     .database
-                    .event_id_seen(partial_event.id, Some(relay_url))
+                    .event_id_seen(partial_event.id, relay_url)
                     .await
                 {
                     tracing::error!(

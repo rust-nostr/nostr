@@ -311,7 +311,7 @@ impl_nostr_database!({
     async fn event_id_seen(
         &self,
         _event_id: EventId,
-        _relay_url: Option<Url>,
+        _relay_url: Url,
     ) -> Result<(), IndexedDBError> {
         todo!()
     }
@@ -351,7 +351,7 @@ impl_nostr_database!({
             .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
         let store = tx.object_store(EVENTS_CF)?;
 
-        let mut events: Vec<Event> = Vec::new();
+        let mut events: Vec<Event> = Vec::with_capacity(ids.len());
 
         for event_id in ids.into_iter() {
             let key = JsValue::from(event_id.to_hex());

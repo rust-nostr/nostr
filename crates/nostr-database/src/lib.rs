@@ -74,14 +74,10 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Check if [`EventId`] has already been seen
     async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err>;
 
-    /// Set [`EventId`] as seen
+    /// Set [`EventId`] as seen by relay
     ///
-    /// Optionally, save also the relay url where the event has been seen (useful for NIP65, aka gossip)
-    async fn event_id_seen(
-        &self,
-        event_id: EventId,
-        relay_url: Option<Url>,
-    ) -> Result<(), Self::Err>;
+    /// Useful for NIP65 (aka gossip)
+    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err>;
 
     /// Get list of relays that have seen the [`EventId`]
     async fn event_recently_seen_on_relays(
