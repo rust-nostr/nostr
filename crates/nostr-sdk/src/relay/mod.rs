@@ -1349,7 +1349,7 @@ impl Relay {
     }
 
     /// Get events of filters with custom callback
-    pub async fn get_events_of_with_callback<F>(
+    async fn get_events_of_with_callback<F>(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
@@ -1378,13 +1378,20 @@ impl Relay {
     }
 
     /// Get events of filters
+    ///
+    /// Get events from local database and relay
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
+        let stored_events: Vec<Event> = self
+            .database
+            .query(filters.clone())
+            .await
+            .unwrap_or_default();
+        let events: Mutex<Vec<Event>> = Mutex::new(stored_events);
         self.get_events_of_with_callback(filters, timeout, opts, |event| async {
             let mut events = events.lock().await;
             events.push(event);
