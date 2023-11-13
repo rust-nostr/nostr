@@ -3,11 +3,12 @@
 
 //! Nostr Database
 
-#![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
+use core::fmt;
 use std::collections::HashSet;
+use std::sync::Arc;
 
 pub use async_trait::async_trait;
 pub use nostr;
@@ -44,15 +45,49 @@ pub enum Backend {
     Custom(String),
 }
 
-/// A type-erased [`StateStore`].
+/// A type-erased [`NostrDatabase`].
 pub type DynNostrDatabase = dyn NostrDatabase<Err = DatabaseError>;
+
+/// A type that can be type-erased into `Arc<dyn NostrDatabase>`.
+///
+/// This trait is not meant to be implemented directly outside
+/// `matrix-sdk-crypto`, but it is automatically implemented for everything that
+/// implements `NostrDatabase`.
+pub trait IntoNostrDatabase {
+    #[doc(hidden)]
+    fn into_nostr_database(self) -> Arc<DynNostrDatabase>;
+}
+
+impl<T> IntoNostrDatabase for T
+where
+    T: NostrDatabase + Sized + 'static,
+{
+    fn into_nostr_database(self) -> Arc<DynNostrDatabase> {
+        Arc::new(EraseNostrDatabaseError(self))
+    }
+}
+
+// Turns a given `Arc<T>` into `Arc<DynNostrDatabase>` by attaching the
+// NostrDatabase impl vtable of `EraseNostrDatabaseError<T>`.
+impl<T> IntoNostrDatabase for Arc<T>
+where
+    T: NostrDatabase + 'static,
+{
+    fn into_nostr_database(self) -> Arc<DynNostrDatabase> {
+        let ptr: *const T = Arc::into_raw(self);
+        let ptr_erased = ptr as *const EraseNostrDatabaseError<T>;
+        // SAFETY: EraseNostrDatabaseError is repr(transparent) so T and
+        //         EraseNostrDatabaseError<T> have the same layout and ABI
+        unsafe { Arc::from_raw(ptr_erased) }
+    }
+}
 
 /// Nostr Database
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrDatabase: AsyncTraitDeps {
     /// Error
-    type Err: From<DatabaseError>;
+    type Err: From<DatabaseError> + Into<DatabaseError>;
 
     /// Name of the backend database used (ex. rocksdb, lmdb, sqlite, indexeddb, ...)
     fn backend(&self) -> Backend;
@@ -128,6 +163,97 @@ pub trait NostrDatabaseExt: NostrDatabase {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<T: NostrDatabase + ?Sized> NostrDatabaseExt for T {}
+
+#[repr(transparent)]
+struct EraseNostrDatabaseError<T>(T);
+
+impl<T: fmt::Debug> fmt::Debug for EraseNostrDatabaseError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
+    type Err = DatabaseError;
+
+    fn backend(&self) -> Backend {
+        self.0.backend()
+    }
+
+    fn opts(&self) -> DatabaseOptions {
+        self.0.opts()
+    }
+
+    async fn count(&self) -> Result<usize, Self::Err> {
+        self.0.count().await.map_err(Into::into)
+    }
+
+    async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
+        self.0.save_event(event).await.map_err(Into::into)
+    }
+
+    async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        self.0
+            .has_event_already_been_saved(event_id)
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        self.0
+            .has_event_already_been_seen(event_id)
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
+        self.0
+            .event_id_seen(event_id, relay_url)
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn event_recently_seen_on_relays(
+        &self,
+        event_id: EventId,
+    ) -> Result<Option<HashSet<Url>>, Self::Err> {
+        self.0
+            .event_recently_seen_on_relays(event_id)
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
+        self.0.event_by_id(event_id).await.map_err(Into::into)
+    }
+
+    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
+        self.0.query(filters).await.map_err(Into::into)
+    }
+
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+    ) -> Result<HashSet<EventId>, Self::Err> {
+        self.0
+            .event_ids_by_filters(filters)
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn negentropy_items(
+        &self,
+        filter: Filter,
+    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
+        self.0.negentropy_items(filter).await.map_err(Into::into)
+    }
+
+    async fn wipe(&self) -> Result<(), Self::Err> {
+        self.0.wipe().await.map_err(Into::into)
+    }
+}
 
 /// Alias for `Send` on non-wasm, empty trait (implemented by everything) on
 /// wasm.
