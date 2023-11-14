@@ -159,6 +159,22 @@ pub trait NostrDatabaseExt: NostrDatabase {
         }
     }
 
+    /// Get contact list public keys
+    async fn contacts_public_keys(
+        &self,
+        public_key: XOnlyPublicKey,
+    ) -> Result<Vec<XOnlyPublicKey>, Self::Err> {
+        let filter = Filter::new()
+            .author(public_key)
+            .kind(Kind::ContactList)
+            .limit(1);
+        let events: Vec<Event> = self.query(vec![filter]).await?;
+        match events.first() {
+            Some(event) => Ok(event.public_keys().copied().collect()),
+            None => Ok(Vec::new()),
+        }
+    }
+
     /// Get contact list with metadata of [`XOnlyPublicKey`]
     async fn contacts(
         &self,
