@@ -172,25 +172,6 @@ impl RelayPoolTask {
                                     );
 
                                     match msg {
-                                        RelayMessage::Event { event, .. } => {
-                                            // Check if event was already seen
-                                            match this.database.has_event_already_been_seen(event.id).await
-                                            {
-                                                Ok(seen) => {
-                                                    if !seen {
-                                                        let _ =
-                                                            this.notification_sender.send(RelayPoolNotification::Event(
-                                                                relay_url,
-                                                                *event.clone(),
-                                                            ));
-                                                    }
-                                                }
-                                                Err(e) => tracing::error!(
-                                                    "Impossible to check if event {} was already seen: {e}",
-                                                    event.id
-                                                ),
-                                            }
-                                        }
                                         RelayMessage::Notice { message } => {
                                             tracing::warn!("Notice from {relay_url}: {message}")
                                         }
@@ -258,10 +239,16 @@ impl RelayPoolTask {
                 // Deserialize partial event (id, pubkey and sig)
                 let partial_event: PartialEvent = PartialEvent::from_json(event.to_string())?;
 
+                // Check if event id was already seen
+                let seen: bool = self
+                    .database
+                    .has_event_already_been_seen(partial_event.id)
+                    .await?;
+
                 // Set event as seen by relay
                 if let Err(e) = self
                     .database
-                    .event_id_seen(partial_event.id, relay_url)
+                    .event_id_seen(partial_event.id, relay_url.clone())
                     .await
                 {
                     tracing::error!(
@@ -300,6 +287,13 @@ impl RelayPoolTask {
 
                 // Save event
                 self.database.save_event(&event).await?;
+
+                // If not seed, send RelayPoolNotification::Event
+                if !seen {
+                    let _ = self
+                        .notification_sender
+                        .send(RelayPoolNotification::Event(relay_url, event.clone()));
+                }
 
                 // Compose RelayMessage
                 Ok(Some(RelayMessage::Event {
