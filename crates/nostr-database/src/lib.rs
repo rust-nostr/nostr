@@ -158,6 +158,40 @@ pub trait NostrDatabaseExt: NostrDatabase {
             None => Ok(Metadata::default()), // TODO: return an Option?
         }
     }
+
+    /// Get contact list with metadata of [`XOnlyPublicKey`]
+    async fn contacts(
+        &self,
+        public_key: XOnlyPublicKey,
+    ) -> Result<Vec<(XOnlyPublicKey, Metadata)>, Self::Err> {
+        let filter = Filter::new()
+            .author(public_key)
+            .kind(Kind::ContactList)
+            .limit(1);
+        let events: Vec<Event> = self.query(vec![filter]).await?;
+        match events.first() {
+            Some(event) => {
+                let public_keys: Vec<XOnlyPublicKey> = event.public_keys().copied().collect();
+                let size: usize = public_keys.len();
+
+                let filter = Filter::new()
+                    .authors(public_keys)
+                    .kind(Kind::Metadata)
+                    .limit(size);
+                let events: Vec<Event> = self.query(vec![filter]).await?;
+
+                let mut contacts = Vec::with_capacity(size);
+                for event in events.into_iter() {
+                    let metadata: Metadata =
+                        Metadata::from_json(&event.content).unwrap_or_default();
+                    contacts.push((event.pubkey, metadata));
+                }
+
+                Ok(contacts)
+            }
+            None => Ok(Vec::new()),
+        }
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
