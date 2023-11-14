@@ -7,7 +7,8 @@
 #![warn(rustdoc::bare_urls)]
 
 use core::fmt;
-use std::collections::HashSet;
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 pub use async_trait::async_trait;
@@ -179,7 +180,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     async fn contacts(
         &self,
         public_key: XOnlyPublicKey,
-    ) -> Result<Vec<(XOnlyPublicKey, Metadata)>, Self::Err> {
+    ) -> Result<HashMap<XOnlyPublicKey, Metadata>, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::ContactList)
@@ -191,21 +192,29 @@ pub trait NostrDatabaseExt: NostrDatabase {
                 let size: usize = public_keys.len();
 
                 let filter = Filter::new()
-                    .authors(public_keys)
+                    .authors(public_keys.clone())
                     .kind(Kind::Metadata)
                     .limit(size);
-                let events: Vec<Event> = self.query(vec![filter]).await?;
+                let mut contacts: HashMap<XOnlyPublicKey, Metadata> = self
+                    .query(vec![filter])
+                    .await?
+                    .into_iter()
+                    .map(|e| {
+                        let metadata: Metadata =
+                            Metadata::from_json(&e.content).unwrap_or_default();
+                        (e.pubkey, metadata)
+                    })
+                    .collect();
 
-                let mut contacts = Vec::with_capacity(size);
-                for event in events.into_iter() {
-                    let metadata: Metadata =
-                        Metadata::from_json(&event.content).unwrap_or_default();
-                    contacts.push((event.pubkey, metadata));
+                for public_key in public_keys.into_iter() {
+                    if let Entry::Vacant(e) = contacts.entry(public_key) {
+                        e.insert(Metadata::default());
+                    }
                 }
 
                 Ok(contacts)
             }
-            None => Ok(Vec::new()),
+            None => Ok(HashMap::new()),
         }
     }
 }
