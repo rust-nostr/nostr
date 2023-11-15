@@ -228,7 +228,7 @@ impl NostrDatabase for RocksDatabase {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
         let this = self.clone();
         tokio::task::spawn_blocking(move || {
@@ -246,7 +246,7 @@ impl NostrDatabase for RocksDatabase {
         .map_err(DatabaseError::backend)?
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
         let ids = self.indexes.query(filters.clone()).await;
 

@@ -323,7 +323,7 @@ impl_nostr_database!({
         todo!()
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn event_by_id(&self, event_id: EventId) -> Result<Event, IndexedDBError> {
         let tx = self
             .db
@@ -342,7 +342,7 @@ impl_nostr_database!({
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, IndexedDBError> {
         let ids = self.indexes.query(filters.clone()).await;
 

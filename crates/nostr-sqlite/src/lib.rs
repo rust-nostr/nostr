@@ -225,7 +225,7 @@ impl NostrDatabase for SQLiteDatabase {
         .await?
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
         let conn = self.acquire().await?;
         conn.interact(move |conn| {
@@ -240,7 +240,7 @@ impl NostrDatabase for SQLiteDatabase {
         .await?
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
         let ids = self.indexes.query(filters.clone()).await;
         let conn = self.acquire().await?;

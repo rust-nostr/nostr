@@ -145,7 +145,7 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
         if self.opts.events {
             let ids = self.indexes.query(filters.clone()).await;

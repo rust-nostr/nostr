@@ -221,7 +221,7 @@ impl DatabaseIndexes {
     }
 
     /// Query
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn query(&self, filters: Vec<Filter>) -> HashSet<EventId> {
         let index = self.index.read().await;
 
