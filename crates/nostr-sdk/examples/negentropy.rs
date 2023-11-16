@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
     let my_items = Vec::new();
     let filter = Filter::new().author(my_keys.public_key()).limit(10);
     let relay = client.relay("wss://atl.purplerelay.com").await?;
-    let opts = NegentropyOptions::default().syncrounous(false);
+    let opts = NegentropyOptions::default();
     relay.reconcile(filter, my_items, opts).await?;
 
     client

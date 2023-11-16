@@ -1518,11 +1518,56 @@ impl Relay {
         self.send_msg(open_msg, Some(Duration::from_secs(10)))
             .await?;
 
-        // TODO: improve timeouts
         let mut notifications = self.notification_sender.subscribe();
-        time::timeout(Some(opts.timeout), async {
-            while let Ok(notification) = notifications.recv().await {
+        let mut temp_notifications = self.notification_sender.subscribe();
+
+        // Check if negentropy it's supported
+        time::timeout(Some(opts.initial_timeout), async {
+            while let Ok(notification) = temp_notifications.recv().await {
                 if let RelayPoolNotification::Message(url, msg) = notification {
+                    if url == self.url {
+                        match msg {
+                            RelayMessage::NegMsg {
+                                subscription_id, ..
+                            } => {
+                                if subscription_id == sub_id {
+                                    break;
+                                }
+                            }
+                            RelayMessage::NegErr {
+                                subscription_id,
+                                code,
+                            } => {
+                                if subscription_id == sub_id {
+                                    return Err(Error::NegentropyReconciliation(code));
+                                }
+                            }
+                            RelayMessage::Notice { message } => {
+                                if message.contains("bad msg: unknown cmd") {
+                                    return Err(Error::NegentropyNotSupported);
+                                } else if message.contains("bad msg: invalid message")
+                                    && message.contains("NEG-OPEN")
+                                {
+                                    return Err(Error::UnknownNegentropyError);
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+            }
+
+            Ok::<(), Error>(())
+        })
+        .await
+        .ok_or(Error::Timeout)??;
+
+        while let Ok(notification) = time::timeout(Some(opts.recv_timeout), notifications.recv())
+            .await
+            .ok_or(Error::Timeout)?
+        {
+            match notification {
+                RelayPoolNotification::Message(url, msg) => {
                     if url == self.url {
                         match msg {
                             RelayMessage::NegMsg {
@@ -1540,16 +1585,29 @@ impl Relay {
                                     )?;
 
                                     if opts.bidirectional {
-                                        let ids = have_ids.into_iter().filter_map(|id| EventId::from_slice(&id).ok());
+                                        let ids = have_ids
+                                            .into_iter()
+                                            .filter_map(|id| EventId::from_slice(&id).ok());
                                         let filter = Filter::new().ids(ids);
-                                        let events: Vec<Event> = self.database.query(vec![filter]).await?;
-                                        if let Err(e) = self.batch_event(events, RelaySendOptions::default()).await {
+                                        let events: Vec<Event> =
+                                            self.database.query(vec![filter]).await?;
+                                        let msgs: Vec<ClientMessage> = events
+                                            .into_iter()
+                                            .map(ClientMessage::new_event)
+                                            .collect();
+                                        if let Err(e) = self
+                                            .batch_msg(msgs, Some(opts.batch_send_timeout))
+                                            .await
+                                        {
                                             tracing::error!("negentropy reconciliation: impossible to batch events to {}: {e}", self.url);
                                         }
                                     }
 
                                     if need_ids.is_empty() {
-                                        tracing::info!("Negentropy reconciliation terminated for {}", self.url);
+                                        tracing::info!(
+                                            "Negentropy reconciliation terminated for {}",
+                                            self.url
+                                        );
                                         break;
                                     }
 
@@ -1558,20 +1616,12 @@ impl Relay {
                                         .filter_map(|id| EventId::from_slice(&id).ok());
                                     let filter = Filter::new().ids(ids);
                                     if !filter.ids.is_empty() {
-                                        if opts.syncrounous {
-                                            self.get_events_of(
-                                                vec![filter],
-                                                opts.single_reconciliation_timeout,
-                                                FilterOptions::ExitOnEOSE,
-                                            )
-                                            .await?;
-                                        } else {
-                                            self.req_events_of(
-                                                vec![filter],
-                                                opts.single_reconciliation_timeout,
-                                                FilterOptions::ExitOnEOSE,
-                                            );
-                                        }
+                                        self.get_events_of(
+                                            vec![filter],
+                                            opts.get_events_timeout,
+                                            FilterOptions::ExitOnEOSE,
+                                        )
+                                        .await?;
                                     } else {
                                         tracing::warn!("negentropy reconciliation: tried to send empty filters to {}", self.url);
                                     }
@@ -1592,7 +1642,10 @@ impl Relay {
                                             .await?;
                                         }
                                         None => {
-                                            tracing::info!("Negentropy reconciliation terminated for {}", self.url);
+                                            tracing::info!(
+                                                "Negentropy reconciliation terminated for {}",
+                                                self.url
+                                            );
                                             break;
                                         }
                                     }
@@ -1606,23 +1659,19 @@ impl Relay {
                                     return Err(Error::NegentropyReconciliation(code));
                                 }
                             }
-                            RelayMessage::Notice { message } => {
-                                if message.contains("bad msg: unknown cmd") {
-                                    return Err(Error::NegentropyNotSupported);
-                                } else if message.contains("bad msg: invalid message") && message.contains("NEG-OPEN") {
-                                    return Err(Error::UnknownNegentropyError);
-                                }
-                            }
                             _ => (),
                         }
                     }
                 }
-            }
-
-            Ok(())
-        })
-        .await
-        .ok_or(Error::Timeout)??;
+                RelayPoolNotification::RelayStatus { url, status } => {
+                    if url == self.url && status != RelayStatus::Connected {
+                        return Err(Error::NotConnected);
+                    }
+                }
+                RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => break,
+                _ => (),
+            };
+        }
 
         let close_msg = ClientMessage::NegClose {
             subscription_id: sub_id,
@@ -1640,9 +1689,7 @@ impl Relay {
             .reconcile(
                 filter,
                 Vec::new(),
-                NegentropyOptions::new()
-                    .timeout(Duration::from_secs(5))
-                    .syncrounous(false),
+                NegentropyOptions::new().initial_timeout(Duration::from_secs(5)),
             )
             .await
         {

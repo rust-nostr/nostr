@@ -247,17 +247,16 @@ impl RelayPoolOptions {
 /// Negentropy reconciliation options
 #[derive(Debug, Clone, Copy)]
 pub struct NegentropyOptions {
-    /// Total timeout for reconciliation (default: 60 secs)
-    pub timeout: Duration,
-    /// Timeout for **single** reconciliation (default: 30 secs)
+    /// Timeout to check if negentropy it's supported (default: 10 secs)
+    pub initial_timeout: Duration,
+    /// Timeout for messages from relay (default: 10)
     ///
-    /// Should be less than total timeout
-    pub single_reconciliation_timeout: Duration,
-    /// Syncronous (default: true)
-    ///
-    /// If `true`, request events and wait that relay send them.
-    /// If `false`, request events but continue the reconciliation
-    pub syncrounous: bool,
+    /// If relay reply only to first messages, this timeout will stop the loop.
+    pub recv_timeout: Duration,
+    /// Timeout to get needed events from relay (default: 30)
+    pub get_events_timeout: Duration,
+    /// Timeout for sending events to relay (default: 30 secs)
+    pub batch_send_timeout: Duration,
     /// Bidirectional Sync (default: false)
     ///
     /// If `true`, perform the set reconciliation on each side.
@@ -267,9 +266,10 @@ pub struct NegentropyOptions {
 impl Default for NegentropyOptions {
     fn default() -> Self {
         Self {
-            timeout: Duration::from_secs(60),
-            single_reconciliation_timeout: Duration::from_secs(30),
-            syncrounous: true,
+            initial_timeout: Duration::from_secs(10),
+            recv_timeout: Duration::from_secs(10),
+            get_events_timeout: Duration::from_secs(30),
+            batch_send_timeout: Duration::from_secs(30),
             bidirectional: false,
         }
     }
@@ -281,29 +281,29 @@ impl NegentropyOptions {
         Self::default()
     }
 
-    /// Timeout for sending event (default: 60 secs)
-    pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
+    /// Timeout to check if negentropy it's supported (default: 10 secs)
+    pub fn initial_timeout(mut self, initial_timeout: Duration) -> Self {
+        self.initial_timeout = initial_timeout;
         self
     }
 
-    /// Timeout for **single** reconciliation (default: 30 secs)
+    /// Timeout for messages from relay (default: 10)
     ///
-    /// Should be less than total timeout
-    pub fn single_reconciliation_timeout(
-        mut self,
-        single_reconciliation_timeout: Duration,
-    ) -> Self {
-        self.single_reconciliation_timeout = single_reconciliation_timeout;
+    /// If relay reply only to first messages, this timeout will stop the loop.
+    pub fn recv_timeout(mut self, recv_timeout: Duration) -> Self {
+        self.recv_timeout = recv_timeout;
         self
     }
 
-    /// Syncronous (default: true)
-    ///
-    /// If `true`, request events and wait that relay send them.
-    /// If `false`, request events but continue the reconciliation
-    pub fn syncrounous(mut self, syncrounous: bool) -> Self {
-        self.syncrounous = syncrounous;
+    /// Timeout to get needed events from relay (default: 30)
+    pub fn get_events_timeout(mut self, get_events_timeout: Duration) -> Self {
+        self.get_events_timeout = get_events_timeout;
+        self
+    }
+
+    /// Timeout for sending events to relay (default: 30 secs)
+    pub fn batch_send_timeout(mut self, batch_send_timeout: Duration) -> Self {
+        self.batch_send_timeout = batch_send_timeout;
         self
     }
 
