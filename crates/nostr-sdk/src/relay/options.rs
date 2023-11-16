@@ -247,8 +247,12 @@ impl RelayPoolOptions {
 /// Negentropy reconciliation options
 #[derive(Debug, Clone, Copy)]
 pub struct NegentropyOptions {
-    /// Timeout for reconciliation (default: 30 secs)
+    /// Total timeout for reconciliation (default: 60 secs)
     pub timeout: Duration,
+    /// Timeout for **single** reconciliation (default: 30 secs)
+    ///
+    /// Should be less than total timeout
+    pub single_reconciliation_timeout: Duration,
     /// Syncronous (default: true)
     ///
     /// If `true`, request events and wait that relay send them.
@@ -263,7 +267,8 @@ pub struct NegentropyOptions {
 impl Default for NegentropyOptions {
     fn default() -> Self {
         Self {
-            timeout: Duration::from_secs(30),
+            timeout: Duration::from_secs(60),
+            single_reconciliation_timeout: Duration::from_secs(30),
             syncrounous: true,
             bidirectional: false,
         }
@@ -276,9 +281,20 @@ impl NegentropyOptions {
         Self::default()
     }
 
-    /// Timeout for sending event (default: 30 secs)
+    /// Timeout for sending event (default: 60 secs)
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
+        self
+    }
+
+    /// Timeout for **single** reconciliation (default: 30 secs)
+    ///
+    /// Should be less than total timeout
+    pub fn single_reconciliation_timeout(
+        mut self,
+        single_reconciliation_timeout: Duration,
+    ) -> Self {
+        self.single_reconciliation_timeout = single_reconciliation_timeout;
         self
     }
 

@@ -1558,14 +1558,14 @@ impl Relay {
                                         if opts.syncrounous {
                                             self.get_events_of(
                                                 vec![filter],
-                                                Duration::from_secs(30),
+                                                opts.single_reconciliation_timeout,
                                                 FilterOptions::ExitOnEOSE,
                                             )
                                             .await?;
                                         } else {
                                             self.req_events_of(
                                                 vec![filter],
-                                                Duration::from_secs(30),
+                                                opts.single_reconciliation_timeout,
                                                 FilterOptions::ExitOnEOSE,
                                             );
                                         }
