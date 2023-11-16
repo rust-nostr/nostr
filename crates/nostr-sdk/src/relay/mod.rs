@@ -117,6 +117,9 @@ pub enum Error {
     /// Negentropy not supported
     #[error("negentropy not supported")]
     NegentropyNotSupported,
+    /// Unknown negentropy error
+    #[error("unknown negentropy error")]
+    UnknownNegentropyError,
 }
 
 /// Relay connection status
@@ -1541,12 +1544,12 @@ impl Relay {
                                         let filter = Filter::new().ids(ids);
                                         let events: Vec<Event> = self.database.query(vec![filter]).await?;
                                         if let Err(e) = self.batch_event(events, RelaySendOptions::default()).await {
-                                            tracing::error!("Impossible to batch events to {}: {e}", self.url);
+                                            tracing::error!("negentropy reconciliation: impossible to batch events to {}: {e}", self.url);
                                         }
                                     }
 
                                     if need_ids.is_empty() {
-                                        tracing::info!("Reconciliation terminated");
+                                        tracing::info!("Negentropy reconciliation terminated for {}", self.url);
                                         break;
                                     }
 
@@ -1576,7 +1579,7 @@ impl Relay {
                                     match msg {
                                         Some(query) => {
                                             tracing::info!(
-                                                "Continue with reconciliation with {}",
+                                                "Continue negentropy reconciliation with {}",
                                                 self.url
                                             );
                                             self.send_msg(
@@ -1589,7 +1592,7 @@ impl Relay {
                                             .await?;
                                         }
                                         None => {
-                                            tracing::info!("Reconciliation terminated");
+                                            tracing::info!("Negentropy reconciliation terminated for {}", self.url);
                                             break;
                                         }
                                     }
@@ -1606,6 +1609,8 @@ impl Relay {
                             RelayMessage::Notice { message } => {
                                 if message.contains("bad msg: unknown cmd") {
                                     return Err(Error::NegentropyNotSupported);
+                                } else if message.contains("bad msg: invalid message") && message.contains("NEG-OPEN") {
+                                    return Err(Error::UnknownNegentropyError);
                                 }
                             }
                             _ => (),
