@@ -57,8 +57,8 @@ pub use self::event::{
 };
 pub use self::key::Keys;
 pub use self::message::{
-    Alphabet, ClientMessage, Filter, FiltersMatchEvent, RawRelayMessage, RelayMessage,
-    SubscriptionId,
+    Alphabet, ClientMessage, Filter, FiltersMatchEvent, GenericTagValue, RawRelayMessage,
+    RelayMessage, SubscriptionId,
 };
 pub use self::nips::nip19::{FromBech32, ToBech32};
 pub use self::types::{ChannelId, Contact, Entity, Metadata, Profile, Timestamp, UncheckedUrl};

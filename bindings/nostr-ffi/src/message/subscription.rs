@@ -88,7 +88,7 @@ impl Filter {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder
             .inner
-            .events(ids.into_iter().map(|id| id.as_ref().into()).collect());
+            .events(ids.into_iter().map(|id| id.as_ref().into()));
         Arc::new(builder)
     }
 
@@ -102,7 +102,7 @@ impl Filter {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder
             .inner
-            .pubkeys(pubkeys.into_iter().map(|id| *id.as_ref().deref()).collect());
+            .pubkeys(pubkeys.into_iter().map(|id| *id.as_ref().deref()));
         Arc::new(builder)
     }
 
