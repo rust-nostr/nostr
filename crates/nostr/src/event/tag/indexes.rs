@@ -3,7 +3,7 @@
 
 //! Tag Indexes
 
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 #[cfg(not(feature = "std"))]
@@ -15,7 +15,7 @@ use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
 
-use crate::Alphabet;
+use crate::{Alphabet, GenericTagValue};
 
 /// Tag Index Value Size
 pub const TAG_INDEX_VALUE_SIZE: usize = 8;
@@ -48,9 +48,7 @@ where
         let mut tag_index: TagIndexes = TagIndexes::default();
         for t in iter.filter(|t| t.len() > 1) {
             if let Some(tagnamechar) = single_char_tagname(t[0].as_ref()) {
-                let mut inner: [u8; TAG_INDEX_VALUE_SIZE] = [0u8; TAG_INDEX_VALUE_SIZE];
-                let hash = Sha256Hash::hash(t[1].as_ref().as_bytes());
-                inner.copy_from_slice(&hash[..TAG_INDEX_VALUE_SIZE]);
+                let inner = hash(&t[1]);
                 tag_index.entry(tagnamechar).or_default().insert(inner);
             }
         }
@@ -64,6 +62,17 @@ fn single_char_tagname(tagname: &str) -> Option<Alphabet> {
         .chars()
         .next()
         .and_then(|first| Alphabet::try_from(first).ok())
+}
+
+#[inline]
+fn hash<S>(value: S) -> [u8; TAG_INDEX_VALUE_SIZE]
+where
+    S: AsRef<str>,
+{
+    let mut inner: [u8; TAG_INDEX_VALUE_SIZE] = [0u8; TAG_INDEX_VALUE_SIZE];
+    let hash = Sha256Hash::hash(value.as_ref().as_bytes());
+    inner.copy_from_slice(&hash[..TAG_INDEX_VALUE_SIZE]);
+    inner
 }
 
 /// Tag Index Values
@@ -85,16 +94,14 @@ impl DerefMut for TagIndexValues {
     }
 }
 
-impl From<&AllocSet<String>> for TagIndexValues {
-    fn from(value: &AllocSet<String>) -> Self {
+impl From<&AllocSet<GenericTagValue>> for TagIndexValues {
+    fn from(set: &AllocSet<GenericTagValue>) -> Self {
         Self {
-            inner: value
+            inner: set
                 .iter()
-                .map(|s| {
-                    let mut inner = [0u8; TAG_INDEX_VALUE_SIZE];
-                    let hash = Sha256Hash::hash(s.as_bytes());
-                    inner.copy_from_slice(&hash[..TAG_INDEX_VALUE_SIZE]);
-                    inner
+                .map(|value| {
+                    let s: String = value.to_string();
+                    hash(s)
                 })
                 .collect(),
         }

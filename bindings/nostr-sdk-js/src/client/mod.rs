@@ -122,11 +122,16 @@ impl JsClient {
         let timeout = timeout.map(Duration::from_secs);
         match self.inner.get_events_of(filters, timeout).await {
             Ok(events) => {
-                let events: Vec<JsEvent> = events.into_iter().map(|e| e.into()).collect();
-                let events = events.into_iter().map(JsValue::from).collect();
+                let events = events
+                    .into_iter()
+                    .map(|e| {
+                        let e: JsEvent = e.into();
+                        JsValue::from(e)
+                    })
+                    .collect();
                 Ok(events)
             }
-            Err(e) => Err(e).map_err(into_err),
+            Err(e) => Err(into_err(e)),
         }
     }
 

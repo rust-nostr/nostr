@@ -231,6 +231,57 @@ impl<'de> Deserialize<'de> for SubscriptionId {
     }
 }
 
+/// Generic Tag Value
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum GenericTagValue {
+    /// Public Key
+    Pubkey(XOnlyPublicKey),
+    /// Event Id
+    EventId(EventId),
+    /// Other (string)
+    String(String),
+}
+
+impl fmt::Display for GenericTagValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Pubkey(inner) => write!(f, "{inner}"),
+            Self::EventId(inner) => write!(f, "{inner}"),
+            Self::String(inner) => write!(f, "{inner}"),
+        }
+    }
+}
+
+#[allow(missing_docs)]
+pub trait IntoGenericTagValue {
+    fn into_generic_tag_value(self) -> GenericTagValue;
+}
+
+impl IntoGenericTagValue for XOnlyPublicKey {
+    fn into_generic_tag_value(self) -> GenericTagValue {
+        GenericTagValue::Pubkey(self)
+    }
+}
+
+impl IntoGenericTagValue for EventId {
+    fn into_generic_tag_value(self) -> GenericTagValue {
+        GenericTagValue::EventId(self)
+    }
+}
+
+impl IntoGenericTagValue for String {
+    fn into_generic_tag_value(self) -> GenericTagValue {
+        GenericTagValue::String(self)
+    }
+}
+
+impl IntoGenericTagValue for &str {
+    fn into_generic_tag_value(self) -> GenericTagValue {
+        GenericTagValue::String(self.to_string())
+    }
+}
+
 /// Subscription filters
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Filter {
@@ -271,7 +322,7 @@ pub struct Filter {
         deserialize_with = "deserialize_generic_tags"
     )]
     #[serde(default)]
-    pub generic_tags: AllocMap<Alphabet, AllocSet<String>>,
+    pub generic_tags: AllocMap<Alphabet, AllocSet<GenericTagValue>>,
 }
 
 impl Filter {
@@ -364,34 +415,40 @@ impl Filter {
     }
 
     /// Add events
-    pub fn events(self, events: Vec<EventId>) -> Self {
+    pub fn events<I>(self, events: I) -> Self
+    where
+        I: IntoIterator<Item = EventId>,
+    {
         self.custom_tag(Alphabet::E, events)
     }
 
     /// Remove events
-    pub fn remove_events(self, events: Vec<EventId>) -> Self {
+    pub fn remove_events<I>(self, events: I) -> Self
+    where
+        I: IntoIterator<Item = EventId>,
+    {
         self.remove_custom_tag(Alphabet::E, events)
     }
 
     /// Add pubkey
     pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
-        self.custom_tag(Alphabet::P, vec![pubkey.to_string()])
+        self.custom_tag(Alphabet::P, vec![pubkey])
     }
 
     /// Add pubkeys
-    pub fn pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
-        self.custom_tag(
-            Alphabet::P,
-            pubkeys.into_iter().map(|p| p.to_string()).collect(),
-        )
+    pub fn pubkeys<I>(self, pubkeys: I) -> Self
+    where
+        I: IntoIterator<Item = XOnlyPublicKey>,
+    {
+        self.custom_tag(Alphabet::P, pubkeys)
     }
 
     /// Remove pubkeys
-    pub fn remove_pubkeys(self, pubkeys: Vec<XOnlyPublicKey>) -> Self {
-        self.remove_custom_tag(
-            Alphabet::P,
-            pubkeys.into_iter().map(|p| p.to_string()).collect(),
-        )
+    pub fn remove_pubkeys<I>(self, pubkeys: I) -> Self
+    where
+        I: IntoIterator<Item = XOnlyPublicKey>,
+    {
+        self.remove_custom_tag(Alphabet::P, pubkeys)
     }
 
     /// Add hashtag
@@ -401,25 +458,27 @@ impl Filter {
     where
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::T, vec![hashtag])
+        self.custom_tag(Alphabet::T, vec![hashtag.into()])
     }
 
     /// Add hashtags
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    pub fn hashtags<S>(self, hashtags: Vec<S>) -> Self
+    pub fn hashtags<I, S>(self, hashtags: I) -> Self
     where
+        I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::T, hashtags)
+        self.custom_tag(Alphabet::T, hashtags.into_iter().map(|s| s.into()))
     }
 
     /// Remove hashtags
-    pub fn remove_hashtags<S>(self, hashtags: Vec<S>) -> Self
+    pub fn remove_hashtags<I, S>(self, hashtags: I) -> Self
     where
+        I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.remove_custom_tag(Alphabet::T, hashtags)
+        self.remove_custom_tag(Alphabet::T, hashtags.into_iter().map(|s| s.into()))
     }
 
     /// Add reference
@@ -429,25 +488,27 @@ impl Filter {
     where
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::R, vec![reference])
+        self.custom_tag(Alphabet::R, vec![reference.into()])
     }
 
     /// Add references
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    pub fn references<S>(self, references: Vec<S>) -> Self
+    pub fn references<I, S>(self, references: I) -> Self
     where
+        I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::R, references)
+        self.custom_tag(Alphabet::R, references.into_iter().map(|s| s.into()))
     }
 
     /// Remove references
-    pub fn remove_references<S>(self, references: Vec<S>) -> Self
+    pub fn remove_references<I, S>(self, references: I) -> Self
     where
+        I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.remove_custom_tag(Alphabet::R, references)
+        self.remove_custom_tag(Alphabet::R, references.into_iter().map(|s| s.into()))
     }
 
     /// Add identifier
@@ -457,25 +518,27 @@ impl Filter {
     where
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::D, vec![identifier])
+        self.custom_tag(Alphabet::D, vec![identifier.into()])
     }
 
     /// Add identifiers
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/33.md>
-    pub fn identifiers<S>(self, identifiers: Vec<S>) -> Self
+    pub fn identifiers<I, S>(self, identifiers: I) -> Self
     where
+        I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::D, identifiers)
+        self.custom_tag(Alphabet::D, identifiers.into_iter().map(|s| s.into()))
     }
 
     /// Remove identifiers
-    pub fn remove_identifiers<S>(self, identifiers: Vec<S>) -> Self
+    pub fn remove_identifiers<I, S>(self, identifiers: I) -> Self
     where
+        I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.remove_custom_tag(Alphabet::D, identifiers)
+        self.remove_custom_tag(Alphabet::D, identifiers.into_iter().map(|s| s.into()))
     }
 
     /// Add search field
@@ -546,28 +609,34 @@ impl Filter {
     }
 
     /// Add custom tag
-    pub fn custom_tag<S>(mut self, tag: Alphabet, values: Vec<S>) -> Self
+    pub fn custom_tag<I, T>(mut self, tag: Alphabet, values: I) -> Self
     where
-        S: Into<String>,
+        I: IntoIterator<Item = T>,
+        T: IntoGenericTagValue,
     {
-        let values: AllocSet<String> = values.into_iter().map(|value| value.into()).collect();
+        let values: AllocSet<GenericTagValue> = values
+            .into_iter()
+            .map(|v| v.into_generic_tag_value())
+            .collect();
         self.generic_tags
             .entry(tag)
             .and_modify(|list| {
-                for value in values.clone().into_iter() {
-                    list.insert(value);
-                }
+                list.extend(values.clone());
             })
             .or_insert(values);
         self
     }
 
     /// Remove identifiers
-    pub fn remove_custom_tag<S>(mut self, tag: Alphabet, values: Vec<S>) -> Self
+    pub fn remove_custom_tag<I, T>(mut self, tag: Alphabet, values: I) -> Self
     where
-        S: Into<String>,
+        I: IntoIterator<Item = T>,
+        T: IntoGenericTagValue,
     {
-        let values: AllocSet<String> = values.into_iter().map(|id| id.into()).collect();
+        let values: AllocSet<GenericTagValue> = values
+            .into_iter()
+            .map(|v| v.into_generic_tag_value())
+            .collect();
         self.generic_tags.entry(tag).and_modify(|list| {
             list.retain(|value| !values.contains(value));
         });
@@ -630,7 +699,7 @@ impl JsonUtil for Filter {
 }
 
 fn serialize_generic_tags<S>(
-    generic_tags: &AllocMap<Alphabet, AllocSet<String>>,
+    generic_tags: &AllocMap<Alphabet, AllocSet<GenericTagValue>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -645,14 +714,14 @@ where
 
 fn deserialize_generic_tags<'de, D>(
     deserializer: D,
-) -> Result<AllocMap<Alphabet, AllocSet<String>>, D::Error>
+) -> Result<AllocMap<Alphabet, AllocSet<GenericTagValue>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = AllocMap<Alphabet, AllocSet<String>>;
+        type Value = AllocMap<Alphabet, AllocSet<GenericTagValue>>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("map in which the keys are \"#X\" for some character X")
@@ -745,24 +814,33 @@ mod test {
         let filter = Filter::new()
             .identifier("identifier")
             .search("test")
-            .custom_tag(Alphabet::J, vec!["test1"]);
-        let json = r##"{"#d":["identifier"],"#j":["test1"],"search":"test"}"##;
+            .custom_tag(Alphabet::J, vec!["test1"])
+            .custom_tag(
+                Alphabet::P,
+                vec!["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],
+            );
+        let json = r##"{"#d":["identifier"],"#j":["test1"],"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],"search":"test"}"##;
         assert_eq!(filter.as_json(), json.to_string());
     }
 
     #[test]
     fn test_filter_deserialization() {
-        let json = r##"{"#a":["...", "test"],"search":"test","ids":["70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5"]}"##;
+        let json = r##"{"#a":["...", "test"],"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],"search":"test","ids":["70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5"]}"##;
         let filter = Filter::from_json(json).unwrap();
         let event_id =
             EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
                 .unwrap();
+        let pubkey = XOnlyPublicKey::from_str(
+            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
+        )
+        .unwrap();
         assert_eq!(
             filter,
             Filter::new()
                 .ids(vec![event_id])
                 .search("test")
                 .custom_tag(Alphabet::A, vec!["...".to_string(), "test".to_string()])
+                .pubkey(pubkey)
         );
 
         let json = r##"{"#":["..."],"search":"test"}"##;
