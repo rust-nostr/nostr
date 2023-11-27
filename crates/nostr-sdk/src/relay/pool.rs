@@ -16,7 +16,7 @@ use nostr::{
     event, ClientMessage, Event, EventId, Filter, JsonUtil, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
-use nostr_database::{DatabaseError, DynNostrDatabase, MemoryDatabase};
+use nostr_database::{DatabaseError, DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, RwLock};
@@ -347,9 +347,14 @@ impl RelayPool {
     }
 
     /// New with database
-    pub fn with_database(opts: RelayPoolOptions, database: Arc<DynNostrDatabase>) -> Self {
+    pub fn with_database<D>(opts: RelayPoolOptions, database: D) -> Self
+    where
+        D: IntoNostrDatabase,
+    {
         let (notification_sender, _) = broadcast::channel(opts.notification_channel_size);
         let (pool_task_sender, pool_task_receiver) = mpsc::channel(opts.task_channel_size);
+
+        let database: Arc<DynNostrDatabase> = database.into_nostr_database();
 
         let relay_pool_task = RelayPoolTask::new(
             database.clone(),
