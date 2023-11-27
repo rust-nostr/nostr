@@ -50,10 +50,6 @@ pub enum Backend {
 pub type DynNostrDatabase = dyn NostrDatabase<Err = DatabaseError>;
 
 /// A type that can be type-erased into `Arc<dyn NostrDatabase>`.
-///
-/// This trait is not meant to be implemented directly outside
-/// `matrix-sdk-crypto`, but it is automatically implemented for everything that
-/// implements `NostrDatabase`.
 pub trait IntoNostrDatabase {
     #[doc(hidden)]
     fn into_nostr_database(self) -> Arc<DynNostrDatabase>;
