@@ -128,9 +128,17 @@ impl AsRef<[u8]> for EventId {
     }
 }
 
+impl fmt::LowerHex for EventId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_hex())?;
+
+        Ok(())
+    }
+}
+
 impl fmt::Display for EventId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_hex())
+        fmt::LowerHex::fmt(self, f)
     }
 }
 
