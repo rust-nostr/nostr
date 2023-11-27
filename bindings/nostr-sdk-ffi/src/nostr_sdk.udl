@@ -649,6 +649,7 @@ interface Client {
 
     void update_difficulty(u8 difficulty);
     Keys keys();
+    NostrDatabase database();
 
     void start();
     [Throws=NostrSdkError]

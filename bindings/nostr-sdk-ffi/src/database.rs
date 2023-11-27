@@ -14,6 +14,12 @@ pub struct NostrDatabase {
     inner: Arc<DynNostrDatabase>,
 }
 
+impl From<Arc<DynNostrDatabase>> for NostrDatabase {
+    fn from(inner: Arc<DynNostrDatabase>) -> Self {
+        Self { inner }
+    }
+}
+
 impl From<&NostrDatabase> for Arc<DynNostrDatabase> {
     fn from(db: &NostrDatabase) -> Self {
         db.inner.clone()

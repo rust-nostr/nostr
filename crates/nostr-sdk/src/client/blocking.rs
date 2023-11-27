@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
@@ -13,6 +14,7 @@ use nostr::url::Url;
 use nostr::{
     ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Result, Tag,
 };
+use nostr_database::DynNostrDatabase;
 use tokio::sync::broadcast;
 
 #[cfg(feature = "nip46")]
@@ -84,6 +86,11 @@ impl Client {
     /// Change [`Keys`]
     pub fn set_keys(&self, keys: &Keys) {
         RUNTIME.block_on(async { self.client.set_keys(keys).await })
+    }
+
+    /// Get database
+    pub fn database(&self) -> Arc<DynNostrDatabase> {
+        self.client.database()
     }
 
     /// Start a previously stopped client

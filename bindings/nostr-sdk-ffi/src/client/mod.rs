@@ -21,7 +21,7 @@ mod options;
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 use crate::error::Result;
-use crate::Relay;
+use crate::{Relay, NostrDatabase};
 
 pub struct Client {
     inner: ClientSdk,
@@ -58,6 +58,10 @@ impl Client {
 
     pub fn keys(&self) -> Arc<Keys> {
         Arc::new(self.inner.keys().into())
+    }
+
+    pub fn database(&self) -> Arc<NostrDatabase> {
+        Arc::new(self.inner.database().into())
     }
 
     // TODO: add nostr_connect_uri
