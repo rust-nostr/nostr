@@ -21,7 +21,7 @@ mod options;
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 use crate::error::Result;
-use crate::{Relay, NostrDatabase};
+use crate::{NostrDatabase, Relay};
 
 pub struct Client {
     inner: ClientSdk,
