@@ -81,10 +81,7 @@ async fn main() {
         .await
         .unwrap();
 
-    let relays = database
-        .event_recently_seen_on_relays(event_id)
-        .await
-        .unwrap();
+    let relays = database.event_seen_on_relays(event_id).await.unwrap();
     println!("Seen on: {relays:?}");
 
     let events = database

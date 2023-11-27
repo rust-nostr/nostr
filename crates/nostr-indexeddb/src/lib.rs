@@ -316,7 +316,7 @@ impl_nostr_database!({
         todo!()
     }
 
-    async fn event_recently_seen_on_relays(
+    async fn event_seen_on_relays(
         &self,
         _event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, IndexedDBError> {

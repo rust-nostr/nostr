@@ -206,7 +206,7 @@ impl NostrDatabase for SQLiteDatabase {
         Ok(())
     }
 
-    async fn event_recently_seen_on_relays(
+    async fn event_seen_on_relays(
         &self,
         event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err> {

@@ -72,7 +72,7 @@ async fn main() {
     database.event_id_seen(event_id, Some(Url::parse("wss://relay.nostr.info").unwrap())).await.unwrap();
     database.event_id_seen(event_id, Some(Url::parse("wss://relay.damus.io").unwrap())).await.unwrap();
 
-    let relays = database.event_recently_seen_on_relays(event_id).await.unwrap();
+    let relays = database.event_seen_on_relays(event_id).await.unwrap();
     println!("Seen on: {relays:?}"); */
 
     let events = database

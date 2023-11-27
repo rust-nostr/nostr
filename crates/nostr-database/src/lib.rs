@@ -116,7 +116,7 @@ pub trait NostrDatabase: AsyncTraitDeps {
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err>;
 
     /// Get list of relays that have seen the [`EventId`]
-    async fn event_recently_seen_on_relays(
+    async fn event_seen_on_relays(
         &self,
         event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err>;
@@ -274,12 +274,12 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
             .map_err(Into::into)
     }
 
-    async fn event_recently_seen_on_relays(
+    async fn event_seen_on_relays(
         &self,
         event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err> {
         self.0
-            .event_recently_seen_on_relays(event_id)
+            .event_seen_on_relays(event_id)
             .await
             .map_err(Into::into)
     }
