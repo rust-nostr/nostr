@@ -13,7 +13,7 @@ use nostr_ffi::{
 };
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
-use nostr_sdk::Options as OptionsSdk;
+use nostr_sdk::{NegentropyOptions, Options as OptionsSdk};
 
 mod builder;
 mod options;
@@ -233,6 +233,13 @@ impl Client {
                 .file_metadata(description, metadata.as_ref().deref().clone())?
                 .into(),
         ))
+    }
+
+    pub fn reconcile(&self, filter: Arc<Filter>) -> Result<()> {
+        Ok(self.inner.reconcile(
+            filter.as_ref().deref().clone(),
+            NegentropyOptions::default(),
+        )?)
     }
 
     pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {

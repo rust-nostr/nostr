@@ -695,6 +695,9 @@ interface Client {
     [Throws=NostrSdkError]
     EventId file_metadata(string description, FileMetadata metadata);
 
+    [Throws=NostrSdkError]
+    void reconcile(Filter filter);
+
     [Self=ByArc]
     void handle_notifications(HandleNotification handler);
 };
