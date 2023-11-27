@@ -591,6 +591,26 @@ interface Relay {
     void req_events_of(sequence<Filter> filters, duration timeout);
 };
 
+interface NostrDatabase {
+    [Throws=NostrSdkError, Name=sqlite]
+    constructor(string path);
+
+    [Throws=NostrSdkError]
+    u64 count();
+    [Throws=NostrSdkError]
+    boolean save_event(Event event);
+    [Throws=NostrSdkError]
+    sequence<string>? event_seen_on_relays(EventId event_id);
+    [Throws=NostrSdkError]
+    Event event_by_id(EventId event_id);
+    [Throws=NostrSdkError]
+    sequence<Event> query(sequence<Filter> filters);
+    [Throws=NostrSdkError]
+    void wipe();
+    [Throws=NostrSdkError]
+    Metadata profile(PublicKey public_key);
+};
+
 interface Options {
     constructor();
     [Self=ByArc]
@@ -617,7 +637,8 @@ interface ClientBuilder {
     constructor(Keys keys);
     [Self=ByArc]
     ClientBuilder opts(Options opts);
-    /// Build `Client`
+    [Self=ByArc]
+    ClientBuilder database(NostrDatabase database);
     Client build();
 };
 

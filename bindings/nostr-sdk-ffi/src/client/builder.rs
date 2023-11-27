@@ -6,8 +6,10 @@ use std::sync::Arc;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
 use nostr_ffi::Keys;
+use nostr_sdk::database::DynNostrDatabase;
 
 use super::{Client, ClientSdk, Options};
+use crate::database::NostrDatabase;
 
 #[derive(Clone)]
 pub struct ClientBuilder {
@@ -28,7 +30,12 @@ impl ClientBuilder {
         }
     }
 
-    // TODO: add `database`
+    pub fn database(self: Arc<Self>, database: Arc<NostrDatabase>) -> Arc<Self> {
+        let database: Arc<DynNostrDatabase> = database.as_ref().into();
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.database(database);
+        Arc::new(builder)
+    }
 
     /// Set opts
     pub fn opts(self: Arc<Self>, opts: Arc<Options>) -> Arc<Self> {

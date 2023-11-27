@@ -58,3 +58,15 @@ impl From<nostr_sdk::url::ParseError> for NostrSdkError {
         Self::Generic { err: e.to_string() }
     }
 }
+
+impl From<nostr_sdk::database::DatabaseError> for NostrSdkError {
+    fn from(e: nostr_sdk::database::DatabaseError) -> NostrSdkError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
+impl From<nostr_sdk::SQLiteError> for NostrSdkError {
+    fn from(e: nostr_sdk::SQLiteError) -> NostrSdkError {
+        Self::Generic { err: e.to_string() }
+    }
+}

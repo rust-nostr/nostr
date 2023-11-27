@@ -4,6 +4,7 @@
 #![allow(clippy::new_without_default)]
 
 mod client;
+mod database;
 mod error;
 mod logger;
 mod relay;
@@ -28,6 +29,7 @@ pub use crate::logger::{init_logger, LogLevel};
 
 // Nostr SDK
 pub use crate::client::{Client, ClientBuilder, HandleNotification, Options};
+pub use crate::database::NostrDatabase;
 pub use crate::error::NostrSdkError;
 pub use crate::relay::{ActiveSubscription, Relay, RelayConnectionStats};
 
