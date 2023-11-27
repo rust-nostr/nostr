@@ -10,7 +10,6 @@ use core::str::FromStr;
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::XOnlyPublicKey;
-
 use serde_json::{json, Value};
 
 use super::{Kind, Tag};
@@ -130,9 +129,7 @@ impl AsRef<[u8]> for EventId {
 
 impl fmt::LowerHex for EventId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_hex())?;
-
-        Ok(())
+        write!(f, "{}", self.to_hex())
     }
 }
 
