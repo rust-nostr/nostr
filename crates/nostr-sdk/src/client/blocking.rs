@@ -19,7 +19,7 @@ use tokio::sync::broadcast;
 use super::signer::remote::RemoteSigner;
 use super::{Error, Options, TryIntoUrl};
 use crate::relay::{pool, Relay, RelayOptions, RelayPoolNotification};
-use crate::RUNTIME;
+use crate::{ClientBuilder, RUNTIME};
 
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -62,6 +62,13 @@ impl Client {
     ) -> Self {
         Self {
             client: super::Client::with_remote_signer_and_opts(app_keys, remote_signer, opts),
+        }
+    }
+
+    /// Compose [`Client`] from [`ClientBuilder`]
+    pub fn from_builder(builder: ClientBuilder) -> Self {
+        Self {
+            client: super::Client::from_builder(builder),
         }
     }
 
