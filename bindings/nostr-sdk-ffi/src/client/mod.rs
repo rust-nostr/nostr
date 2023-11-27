@@ -15,14 +15,22 @@ use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 use nostr_sdk::Options as OptionsSdk;
 
+mod builder;
 mod options;
 
+pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 use crate::error::Result;
 use crate::Relay;
 
 pub struct Client {
     inner: ClientSdk,
+}
+
+impl From<ClientSdk> for Client {
+    fn from(inner: ClientSdk) -> Self {
+        Self { inner }
+    }
 }
 
 impl Client {

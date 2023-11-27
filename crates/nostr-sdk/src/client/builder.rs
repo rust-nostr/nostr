@@ -14,6 +14,7 @@ use super::RemoteSigner;
 use crate::{Client, Options};
 
 /// Client builder
+#[derive(Debug, Clone)]
 pub struct ClientBuilder {
     pub(super) keys: Keys,
     pub(super) database: Arc<DynNostrDatabase>,

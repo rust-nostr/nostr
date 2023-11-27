@@ -613,6 +613,14 @@ interface Options {
     Options nip46_timeout(duration? nip46_timeout);
 };
 
+interface ClientBuilder {
+    constructor(Keys keys);
+    [Self=ByArc]
+    ClientBuilder opts(Options opts);
+    /// Build `Client`
+    Client build();
+};
+
 interface Client {
     constructor(Keys keys);
     [Name=with_opts]

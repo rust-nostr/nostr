@@ -13,28 +13,23 @@ trait FromResult<T>: Sized {
     fn from_result(_: T) -> error::Result<Self>;
 }
 
-#[allow(missing_docs)]
-#[allow(unused_imports)]
-mod ffi {
-    // External
-    pub use nostr_ffi::{
-        generate_shared_key, get_nip05_profile, git_hash_version, nip04_decrypt, nip04_encrypt,
-        verify_nip05, ClientMessage, Contact, Event, EventBuilder, EventId, FileMetadata, Filter,
-        ImageDimensions, Keys, Metadata, NostrConnectURI, NostrError, Profile, PublicKey,
-        RelayInformationDocument, RelayMessage, SecretKey, Tag, TagEnum, TagKind, TagKindKnown,
-        Timestamp, UnsignedEvent, ZapRequestData,
-    };
-    pub use nostr_sdk::{Alphabet, RelayStatus};
+// External
+pub use nostr_ffi::{
+    generate_shared_key, get_nip05_profile, git_hash_version, nip04_decrypt, nip04_encrypt,
+    verify_nip05, ClientMessage, Contact, Event, EventBuilder, EventId, FileMetadata, Filter,
+    ImageDimensions, Keys, Metadata, NostrConnectURI, NostrError, Profile, PublicKey,
+    RelayInformationDocument, RelayMessage, SecretKey, Tag, TagEnum, TagKind, TagKindKnown,
+    Timestamp, UnsignedEvent, ZapRequestData,
+};
+pub use nostr_sdk::{Alphabet, RelayStatus};
 
-    // Namespace
-    pub use crate::logger::{init_logger, LogLevel};
+// Namespace
+pub use crate::logger::{init_logger, LogLevel};
 
-    // Nostr SDK
-    pub use crate::client::{Client, HandleNotification, Options};
-    pub use crate::error::NostrSdkError;
-    pub use crate::relay::{ActiveSubscription, Relay, RelayConnectionStats};
+// Nostr SDK
+pub use crate::client::{Client, ClientBuilder, HandleNotification, Options};
+pub use crate::error::NostrSdkError;
+pub use crate::relay::{ActiveSubscription, Relay, RelayConnectionStats};
 
-    // UDL
-    uniffi::include_scaffolding!("nostr_sdk");
-}
-pub use ffi::*;
+// UDL
+uniffi::include_scaffolding!("nostr_sdk");
