@@ -19,7 +19,7 @@ use tokio::sync::broadcast;
 use super::signer::remote::RemoteSigner;
 use super::{Error, Options, TryIntoUrl};
 use crate::relay::{pool, Relay, RelayOptions, RelayPoolNotification};
-use crate::{ClientBuilder, RUNTIME};
+use crate::{ClientBuilder, NegentropyOptions, RUNTIME};
 
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -420,6 +420,11 @@ impl Client {
         S: Into<String>,
     {
         RUNTIME.block_on(async { self.client.file_metadata(description, metadata).await })
+    }
+
+    /// Negentropy reconciliation
+    pub fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
+        RUNTIME.block_on(async move { self.client.reconcile(filter, opts).await })
     }
 
     pub fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
