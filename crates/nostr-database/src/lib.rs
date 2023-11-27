@@ -55,6 +55,12 @@ pub trait IntoNostrDatabase {
     fn into_nostr_database(self) -> Arc<DynNostrDatabase>;
 }
 
+impl IntoNostrDatabase for Arc<DynNostrDatabase> {
+    fn into_nostr_database(self) -> Arc<DynNostrDatabase> {
+        self
+    }
+}
+
 impl<T> IntoNostrDatabase for T
 where
     T: NostrDatabase + Sized + 'static,
