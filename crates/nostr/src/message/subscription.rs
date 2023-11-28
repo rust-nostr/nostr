@@ -654,8 +654,11 @@ impl Filter {
     }
 
     fn tag_match(&self, event: &Event) -> bool {
-        if self.generic_tags.is_empty() || event.tags.is_empty() {
+        if self.generic_tags.is_empty() {
             return true;
+        }
+        if event.tags.is_empty() {
+            return false;
         }
 
         let idx: TagIndexes = event.build_tags_index();
@@ -882,6 +885,17 @@ mod test {
                 "273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"
             );
 
+        let event_with_empty_tags =
+            Event::new_dummy(
+                "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
+                "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
+                Timestamp::from(1612809991),
+                1,
+                vec![],
+                "test",
+                "273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"
+            );
+
         // ID match
         let filter = Filter::new().id(event_id);
         assert!(filter.match_event(&event));
@@ -960,5 +974,10 @@ mod test {
             .unwrap()]),
         ];
         assert!(filters.match_event(&event));
+
+        // Not match (tags filter for events with empty tags)
+        let filter = Filter::new().hashtag("this-should-not-match");
+        assert!(!filter.match_event(&event));
+        assert!(!filter.match_event(&event_with_empty_tags));
     }
 }
