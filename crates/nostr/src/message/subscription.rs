@@ -737,7 +737,14 @@ where
                 if let (Some('#'), Some(ch), None) = (chars.next(), chars.next(), chars.next()) {
                     let tag: Alphabet = Alphabet::from_str(ch.to_string().as_str())
                         .map_err(serde::de::Error::custom)?;
-                    let values = map.next_value()?;
+                    let mut values: AllocSet<GenericTagValue> = map.next_value()?;
+
+                    match tag {
+                        Alphabet::P => values.retain(|v| matches!(v, GenericTagValue::Pubkey(_))),
+                        Alphabet::E => values.retain(|v| matches!(v, GenericTagValue::EventId(_))),
+                        _ => {}
+                    }
+
                     generic_tags.insert(tag, values);
                 } else {
                     map.next_value::<serde::de::IgnoredAny>()?;
