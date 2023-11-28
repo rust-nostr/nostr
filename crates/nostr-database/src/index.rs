@@ -73,8 +73,12 @@ impl From<&Event> for EventIndex {
 
 impl EventIndex {
     fn filter_tags_match(&self, filter: &Filter) -> bool {
-        if filter.generic_tags.is_empty() || self.tags.is_empty() {
+        if filter.generic_tags.is_empty() {
             return true;
+        }
+
+        if self.tags.is_empty() {
+            return false;
         }
 
         filter.generic_tags.iter().all(|(tagname, set)| {
