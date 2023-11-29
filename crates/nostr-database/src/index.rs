@@ -162,7 +162,7 @@ impl DatabaseIndexes {
 
         if event.is_replaceable() {
             let filter: Filter = Filter::new().author(event.pubkey).kind(event.kind);
-            for ev in self.internal_query(&index, &filter).await {
+            for ev in self.internal_query(&index, filter).await {
                 if ev.created_at > event.created_at {
                     should_insert = false;
                 } else if ev.created_at <= event.created_at {
@@ -176,7 +176,7 @@ impl DatabaseIndexes {
                         .author(event.pubkey)
                         .kind(event.kind)
                         .identifier(identifier);
-                    for ev in self.internal_query(&index, &filter).await {
+                    for ev in self.internal_query(&index, filter).await {
                         if ev.created_at >= event.created_at {
                             should_insert = false;
                         } else if ev.created_at < event.created_at {
@@ -207,7 +207,7 @@ impl DatabaseIndexes {
     async fn internal_query<'a>(
         &self,
         index: &'a BTreeSet<EventIndex>,
-        filter: &'a Filter,
+        filter: Filter,
     ) -> impl Iterator<Item = &'a EventIndex> {
         let authors: HashSet<PublicKeyPrefix> = filter
             .authors
@@ -220,16 +220,16 @@ impl DatabaseIndexes {
                 && filter.until.map_or(true, |t| m.created_at <= t)
                 && (filter.authors.is_empty() || authors.contains(&m.pubkey))
                 && (filter.kinds.is_empty() || filter.kinds.contains(&m.kind))
-                && m.filter_tags_match(filter)
+                && m.filter_tags_match(&filter)
         })
     }
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn query(&self, filters: Vec<Filter>) -> HashSet<EventId> {
+    pub async fn query(&self, filters: Vec<Filter>) -> Vec<EventId> {
         let index = self.index.read().await;
 
-        let mut matching_ids: HashSet<EventId> = HashSet::new();
+        let mut matching_ids: BTreeSet<&EventIndex> = BTreeSet::new();
 
         for filter in filters.into_iter() {
             if let (Some(since), Some(until)) = (filter.since, filter.until) {
@@ -238,18 +238,16 @@ impl DatabaseIndexes {
                 }
             }
 
-            let iter = self
-                .internal_query(&index, &filter)
-                .await
-                .map(|m| m.event_id);
-            if let Some(limit) = filter.limit {
+            let limit: Option<usize> = filter.limit;
+            let iter = self.internal_query(&index, filter).await;
+            if let Some(limit) = limit {
                 matching_ids.extend(iter.take(limit))
             } else {
                 matching_ids.extend(iter)
             }
         }
 
-        matching_ids
+        matching_ids.into_iter().map(|e| e.event_id).collect()
     }
 
     /// Clear indexes
