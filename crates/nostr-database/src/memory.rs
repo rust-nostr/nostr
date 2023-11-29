@@ -165,10 +165,7 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-    ) -> Result<HashSet<EventId>, Self::Err> {
+    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
         if self.opts.events {
             Ok(self.indexes.query(filters).await)
         } else {

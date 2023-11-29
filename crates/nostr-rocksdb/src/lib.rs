@@ -16,7 +16,7 @@ pub extern crate nostr_database as database;
 
 use async_trait::async_trait;
 use nostr::event::raw::RawEvent;
-use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
+use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
     FlatBufferDecode, FlatBufferEncode, NostrDatabase,
@@ -248,7 +248,7 @@ impl NostrDatabase for RocksDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        let ids = self.indexes.query(filters.clone()).await;
+        let ids: Vec<EventId> = self.indexes.query(filters).await;
 
         let this = self.clone();
         tokio::task::spawn_blocking(move || {
@@ -258,15 +258,13 @@ impl NostrDatabase for RocksDatabase {
 
             for v in this
                 .db
-                .batched_multi_get_cf(&cf, ids, false)
+                .batched_multi_get_cf(&cf, ids, true)
                 .into_iter()
                 .flatten()
                 .flatten()
             {
                 let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
-                if filters.match_event(&event) {
-                    events.push(event);
-                }
+                events.push(event);
             }
 
             Ok(events)
@@ -275,10 +273,7 @@ impl NostrDatabase for RocksDatabase {
         .map_err(DatabaseError::backend)?
     }
 
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-    ) -> Result<HashSet<EventId>, Self::Err> {
+    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
         Ok(self.indexes.query(filters).await)
     }
 
@@ -286,7 +281,7 @@ impl NostrDatabase for RocksDatabase {
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        let ids = self.indexes.query(vec![filter.clone()]).await;
+        let ids: Vec<EventId> = self.indexes.query(vec![filter]).await;
 
         let this = self.clone();
         tokio::task::spawn_blocking(move || {
@@ -296,15 +291,13 @@ impl NostrDatabase for RocksDatabase {
 
             for v in this
                 .db
-                .batched_multi_get_cf(&cf, ids, false)
+                .batched_multi_get_cf(&cf, ids, true)
                 .into_iter()
                 .flatten()
                 .flatten()
             {
                 let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
-                if filter.match_event(&event) {
-                    event_ids.push((event.id, event.created_at));
-                }
+                event_ids.push((event.id, event.created_at));
             }
 
             Ok(event_ids)

@@ -344,7 +344,7 @@ impl_nostr_database!({
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, IndexedDBError> {
-        let ids = self.indexes.query(filters.clone()).await;
+        let ids = self.indexes.query(filters).await;
 
         let tx = self
             .db
@@ -369,7 +369,7 @@ impl_nostr_database!({
     async fn event_ids_by_filters(
         &self,
         filters: Vec<Filter>,
-    ) -> Result<HashSet<EventId>, IndexedDBError> {
+    ) -> Result<Vec<EventId>, IndexedDBError> {
         Ok(self.indexes.query(filters).await)
     }
 

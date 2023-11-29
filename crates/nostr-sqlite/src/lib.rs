@@ -242,7 +242,7 @@ impl NostrDatabase for SQLiteDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        let ids = self.indexes.query(filters.clone()).await;
+        let ids: Vec<EventId> = self.indexes.query(filters).await;
         let conn = self.acquire().await?;
         conn.interact(move |conn| {
             let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
@@ -259,10 +259,7 @@ impl NostrDatabase for SQLiteDatabase {
         .await?
     }
 
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-    ) -> Result<HashSet<EventId>, Self::Err> {
+    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
         Ok(self.indexes.query(filters).await)
     }
 
@@ -270,7 +267,7 @@ impl NostrDatabase for SQLiteDatabase {
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        let ids = self.indexes.query(vec![filter.clone()]).await;
+        let ids: Vec<EventId> = self.indexes.query(vec![filter]).await;
         let conn = self.acquire().await?;
         conn.interact(move |conn| {
             let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
