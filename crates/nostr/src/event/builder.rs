@@ -332,8 +332,11 @@ impl EventBuilder {
     /// Relay list metadata (NIP65)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    pub fn relay_list(list: Vec<(UncheckedUrl, Option<RelayMetadata>)>) -> Self {
-        let tags: Vec<Tag> = list
+    pub fn relay_list<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = (UncheckedUrl, Option<RelayMetadata>)>,
+    {
+        let tags: Vec<Tag> = iter
             .into_iter()
             .map(|(url, metadata)| Tag::RelayMetadata(url, metadata))
             .collect();
@@ -386,9 +389,12 @@ impl EventBuilder {
     }
 
     /// Set contact list
-    pub fn set_contact_list(list: Vec<Contact>) -> Self {
-        let tags: Vec<Tag> = list
-            .iter()
+    pub fn set_contact_list<I>(contacts: I) -> Self
+    where
+        I: IntoIterator<Item = Contact>,
+    {
+        let tags: Vec<Tag> = contacts
+            .into_iter()
             .map(|contact| Tag::ContactList {
                 pk: contact.pk,
                 relay_url: contact.relay_url.clone(),
@@ -434,11 +440,15 @@ impl EventBuilder {
     }
 
     /// Create delete event
-    pub fn delete<S>(ids: Vec<EventId>, reason: Option<S>) -> Self
+    pub fn delete<I, S>(ids: I, reason: Option<S>) -> Self
     where
+        I: IntoIterator<Item = EventId>,
         S: Into<String>,
     {
-        let tags: Vec<Tag> = ids.iter().map(|id| Tag::Event(*id, None, None)).collect();
+        let tags: Vec<Tag> = ids
+            .into_iter()
+            .map(|id| Tag::Event(id, None, None))
+            .collect();
 
         Self::new(
             Kind::EventDeletion,
@@ -591,12 +601,11 @@ impl EventBuilder {
         live_event_host: XOnlyPublicKey,
         content: S,
         relay_url: Option<Url>,
-        tags: Vec<Tag>,
+        mut tags: Vec<Tag>,
     ) -> Self
     where
         S: Into<String>,
     {
-        let mut tags = tags;
         tags.push(Tag::A {
             kind: Kind::LiveEvent,
             public_key: live_event_host,
@@ -770,7 +779,10 @@ impl EventBuilder {
     /// Create a badge award event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
-    pub fn award_badge(badge_definition: &Event, awarded_pubkeys: Vec<Tag>) -> Result<Self, Error> {
+    pub fn award_badge<I>(badge_definition: &Event, awarded_pubkeys: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = Tag>,
+    {
         let mut tags = Vec::new();
 
         let badge_id = badge_definition
