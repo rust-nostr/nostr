@@ -107,7 +107,7 @@ impl Metadata {
         }
     }
 
-    /// Set display_name
+    /// Set display name
     pub fn display_name<S>(self, display_name: S) -> Self
     where
         S: Into<String>,

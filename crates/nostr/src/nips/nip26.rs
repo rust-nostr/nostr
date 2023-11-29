@@ -300,7 +300,7 @@ impl DelegationTag {
     where
         C: Verification,
     {
-        // verify signature
+        // Verify signature
         verify_delegation_signature_with_ctx(
             secp,
             self.delegator_pubkey,
@@ -310,7 +310,7 @@ impl DelegationTag {
         )
         .map_err(|_| Error::ConditionsValidation(ValidationError::InvalidSignature))?;
 
-        // validate conditions
+        // Validate conditions
         self.conditions.evaluate(event_properties)?;
 
         Ok(())
@@ -469,7 +469,7 @@ impl Conditions {
         Ok(())
     }
 
-    /// Get [`Vec<Contifion>`]
+    /// Get [`Vec<Condition>`]
     pub fn inner(&self) -> Vec<Condition> {
         self.0.clone()
     }
@@ -477,7 +477,7 @@ impl Conditions {
 
 impl fmt::Display for Conditions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // convert parts, join
+        // Convert parts, join
         let conditions: String = self
             .0
             .iter()
@@ -534,7 +534,6 @@ impl EventProperties {
     }
 
     /// Create from an Event
-
     pub fn from_event(event: &Event) -> Self {
         Self {
             kind: event.kind.as_u64(),
@@ -601,7 +600,7 @@ mod test {
         let tag =
             DelegationTag::new(&delegator_keys, delegatee_pubkey, conditions.clone()).unwrap();
 
-        // verify signature (it's variable)
+        // Verify signature (it's variable)
         let verify_result = verify_delegation_signature(
             delegator_keys.public_key(),
             tag.signature(),
@@ -610,7 +609,7 @@ mod test {
         );
         assert!(verify_result.is_ok());
 
-        // signature changes, cannot compare to expected constant, use signature from result
+        // Signature changes, cannot compare to expected constant, use signature from result
         let expected = format!(
             "[\"delegation\",\"1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4\",\"kind=1&created_at>1676067553&created_at<1678659553\",\"{}\"]",
             &tag.signature.to_string());
@@ -658,14 +657,13 @@ mod test {
             )
             .is_ok());
 
-        // additional test: verify a value from inside the tag
+        // Additional test: verify a value from inside the tag
         assert_eq!(
             tag.conditions().to_string(),
             "kind=1&created_at>1676067553&created_at<1678659553"
         );
 
-        // additional test: try validation with invalid values, invalid event kind
-
+        // Additional test: try validation with invalid values, invalid event kind
         match tag
             .validate_with_ctx(
                 &secp,
@@ -697,7 +695,7 @@ mod test {
         let signature =
             sign_delegation(&delegator_keys, delegatee_public_key, conditions.clone()).unwrap();
 
-        // signature is changing, validate by verify method
+        // Signature is changing, validate by verify method
         let verify_result = verify_delegation_signature(
             delegator_keys.public_key(),
             signature,
@@ -724,7 +722,7 @@ mod test {
         let signature =
             sign_delegation(&delegator_keys, delegatee_public_key, conditions.clone()).unwrap();
 
-        // signature is changing, validate by lowlevel verify
+        // Signature is changing, validate by lowlevel verify
         let unhashed_token: String =
             format!("nostr:delegation:{delegatee_public_key}:{conditions}");
         let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
@@ -743,7 +741,8 @@ mod test {
             SecretKey::from_str("ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c")
                 .unwrap();
         let delegator_keys = Keys::new_with_ctx(&secp, delegator_secret_key);
-        // use one concrete signature
+
+        // Use one concrete signature
         let signature = Signature::from_str("f9f00fcf8480686d9da6dfde1187d4ba19c54f6ace4c73361a14db429c4b96eb30b29283d6ea1f06ba9e18e06e408244c689039ddadbacffc56060f3da5b04b8").unwrap();
         let delegatee_pk = XOnlyPublicKey::from_str(
             "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",
@@ -829,12 +828,12 @@ mod test {
 
         let tag = DelegationTag::new(&delegator_keys, delegatee_pubkey, conditions).unwrap();
 
-        // positive
+        // Positive
         assert!(tag
             .validate(delegatee_pubkey, &EventProperties::new(1, 1677000000))
             .is_ok());
 
-        // signature verification fails if wrong delegatee key is given
+        // Signature verification fails if wrong delegatee key is given
         let wrong_pubkey = XOnlyPublicKey::from_str(
             "14b91c20c0287495615210ef7772192d43eca6d2a34342e723bd237035e7955b",
         )
@@ -850,7 +849,7 @@ mod test {
             _ => panic!("Expected ConditionsValidation"),
         }
 
-        // wrong event kind
+        // Wrong event kind
         match tag
             .validate(delegatee_pubkey, &EventProperties::new(9, 1677000000))
             .err()
@@ -860,7 +859,7 @@ mod test {
             _ => panic!("Expected ConditionsValidation"),
         };
 
-        // wrong creation time
+        // Wrong creation time
         match tag
             .validate(delegatee_pubkey, &EventProperties::new(1, 1679000000))
             .err()
@@ -892,11 +891,11 @@ mod test {
             "kind=1&created_at>1674834236&created_at<1677426236"
         );
 
-        // special: empty string
+        // Special: empty string
         let c_empty = Conditions::from_str("").unwrap();
         assert_eq!(c_empty.to_string(), "");
 
-        // one condition
+        // One condition
         let c_one = Conditions::from_str("created_at<10000").unwrap();
         assert_eq!(c_one.to_string(), "created_at<10000");
     }
@@ -962,7 +961,6 @@ mod test {
         assert!(c_complex
             .evaluate(&EventProperties::new(1, 1677000000))
             .is_ok());
-        //assert_eq!(c_complex.evaluate(&EventProperties{ kind: 1, created_time: 1677000000}).err().unwrap(), ValidationError::InvalidKind);
         assert_eq!(
             c_complex
                 .evaluate(&EventProperties::new(5, 1677000000))

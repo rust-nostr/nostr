@@ -103,11 +103,11 @@ impl Timestamp {
         let timestamp: u64 = self.as_u64();
 
         if timestamp >= 253_402_300_800 {
-            // year 9999
+            // Year 9999
             return String::from("Unavailable");
         }
 
-        /* 2000-03-01 (mod 400 year, immediately after feb29 */
+        // 2000-03-01 (mod 400 year, immediately after feb29
         const LEAPOCH: i64 = 11017;
         const DAYS_PER_400Y: i64 = 365 * 400 + 97;
         const DAYS_PER_100Y: i64 = 365 * 100 + 24;
