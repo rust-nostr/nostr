@@ -440,7 +440,15 @@ impl EventBuilder {
     }
 
     /// Create delete event
-    pub fn delete<I, S>(ids: I, reason: Option<S>) -> Self
+    pub fn delete<I>(ids: I) -> Self
+    where
+        I: IntoIterator<Item = EventId>,
+    {
+        Self::delete_with_reason(ids, "")
+    }
+
+    /// Create delete event with reason
+    pub fn delete_with_reason<I, S>(ids: I, reason: S) -> Self
     where
         I: IntoIterator<Item = EventId>,
         S: Into<String>,
@@ -450,11 +458,7 @@ impl EventBuilder {
             .map(|id| Tag::Event(id, None, None))
             .collect();
 
-        Self::new(
-            Kind::EventDeletion,
-            reason.map(|s| s.into()).unwrap_or_default(),
-            &tags,
-        )
+        Self::new(Kind::EventDeletion, reason.into(), &tags)
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event

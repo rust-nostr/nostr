@@ -131,7 +131,10 @@ impl JsEventBuilder {
             .map(|v| Ok(util::downcast::<JsEventId>(&v, "EventId")?.inner))
             .collect::<Result<Vec<EventId>, JsError>>()?;
         Ok(Self {
-            builder: EventBuilder::delete(ids, reason.as_deref()),
+            builder: match reason {
+                Some(reason) => EventBuilder::delete_with_reason(ids, reason),
+                None => EventBuilder::delete(ids),
+            },
         })
     }
 

@@ -308,11 +308,8 @@ impl Client {
         RUNTIME.block_on(async { self.client.repost_event(event_id, public_key).await })
     }
 
-    pub fn delete_event<S>(&self, event_id: EventId, reason: Option<S>) -> Result<EventId, Error>
-    where
-        S: Into<String>,
-    {
-        RUNTIME.block_on(async { self.client.delete_event(event_id, reason).await })
+    pub fn delete_event(&self, event_id: EventId) -> Result<EventId, Error> {
+        RUNTIME.block_on(async { self.client.delete_event(event_id).await })
     }
 
     pub fn like(&self, event_id: EventId, public_key: XOnlyPublicKey) -> Result<EventId, Error> {

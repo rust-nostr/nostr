@@ -1089,15 +1089,8 @@ impl Client {
     /// Delete event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    pub async fn delete_event<S>(
-        &self,
-        event_id: EventId,
-        reason: Option<S>,
-    ) -> Result<EventId, Error>
-    where
-        S: Into<String>,
-    {
-        let builder = EventBuilder::delete(vec![event_id], reason);
+    pub async fn delete_event(&self, event_id: EventId) -> Result<EventId, Error> {
+        let builder = EventBuilder::delete(vec![event_id]);
         self.send_event_builder(builder).await
     }
 

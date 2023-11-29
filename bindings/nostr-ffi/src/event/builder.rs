@@ -155,7 +155,10 @@ impl EventBuilder {
     pub fn delete(ids: Vec<Arc<EventId>>, reason: Option<String>) -> Self {
         let ids: Vec<nostr::EventId> = ids.into_iter().map(|e| e.as_ref().into()).collect();
         Self {
-            builder: EventBuilderSdk::delete(ids, reason.as_deref()),
+            builder: match reason {
+                Some(reason) => EventBuilderSdk::delete_with_reason(ids, reason),
+                None => EventBuilderSdk::delete(ids),
+            },
         }
     }
 

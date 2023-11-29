@@ -20,10 +20,9 @@ fn main() -> Result<()> {
 
     client.connect();
 
-    client.delete_event(
-        EventId::from_hex("57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc")?,
-        Some("reason"),
-    )?;
+    client.delete_event(EventId::from_hex(
+        "57689882a98ac4db67933196c121489dea7e1231f7c0f20accad4de838500edc",
+    )?)?;
 
     let subscription = Filter::new()
         .pubkey(my_keys.public_key())

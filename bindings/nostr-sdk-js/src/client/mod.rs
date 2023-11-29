@@ -304,13 +304,9 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[wasm_bindgen(js_name = deleteEvent)]
-    pub async fn delete_event(
-        &self,
-        event_id: &JsEventId,
-        reason: Option<String>,
-    ) -> Result<JsEventId> {
+    pub async fn delete_event(&self, event_id: &JsEventId) -> Result<JsEventId> {
         self.inner
-            .delete_event(event_id.into(), reason)
+            .delete_event(event_id.into())
             .await
             .map_err(into_err)
             .map(|id| id.into())

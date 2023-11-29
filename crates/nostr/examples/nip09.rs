@@ -12,11 +12,9 @@ fn main() -> Result<()> {
     let event_id =
         EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?;
 
-    let event: Event = EventBuilder::delete(
-        vec![event_id],
-        Some("these posts were published by accident"),
-    )
-    .to_event(&my_keys)?;
+    let event: Event =
+        EventBuilder::delete_with_reason(vec![event_id], "these posts were published by accident")
+            .to_event(&my_keys)?;
 
     println!("{}", event.as_json());
 
