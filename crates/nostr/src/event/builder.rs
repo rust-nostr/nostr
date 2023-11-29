@@ -397,8 +397,8 @@ impl EventBuilder {
             .into_iter()
             .map(|contact| Tag::ContactList {
                 pk: contact.pk,
-                relay_url: contact.relay_url.clone(),
-                alias: contact.alias.clone(),
+                relay_url: contact.relay_url,
+                alias: contact.alias,
             })
             .collect();
 
