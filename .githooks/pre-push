@@ -25,6 +25,8 @@ for arg in "${buildargs[@]}"; do
     echo
 done
 
+rustup target add wasm32-unknown-unknown
+
 buildargs=(
     "-p nostr-sdk --features indexeddb --target wasm32-unknown-unknown"
     "-p nostr-js --target wasm32-unknown-unknown"
