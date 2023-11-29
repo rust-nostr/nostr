@@ -291,12 +291,16 @@ impl_nostr_database!({
         &self,
         event_id: EventId,
     ) -> Result<bool, IndexedDBError> {
-        let tx = self
-            .db
-            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
-        let store = tx.object_store(EVENTS_CF)?;
-        let key = JsValue::from(event_id.to_hex());
-        Ok(store.get(&key)?.await?.is_some())
+        if self.indexes.has_been_deleted(&event_id).await {
+            Ok(true)
+        } else {
+            let tx = self
+                .db
+                .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
+            let store = tx.object_store(EVENTS_CF)?;
+            let key = JsValue::from(event_id.to_hex());
+            Ok(store.get(&key)?.await?.is_some())
+        }
     }
 
     async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, IndexedDBError> {

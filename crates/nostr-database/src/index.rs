@@ -123,6 +123,7 @@ pub struct EventIndexResult {
 #[derive(Debug, Clone, Default)]
 pub struct DatabaseIndexes {
     index: Arc<RwLock<BTreeSet<EventIndex>>>,
+    deleted: Arc<RwLock<HashSet<EventId>>>,
 }
 
 impl DatabaseIndexes {
@@ -148,6 +149,8 @@ impl DatabaseIndexes {
     }
 
     /// Index [`Event`]
+    ///
+    /// **This method assume that [`Event`] was already verified**
     #[tracing::instrument(skip_all, level = "trace")]
     pub async fn index_event(&self, event: &Event) -> EventIndexResult {
         // Check if it's expired or ephemeral
@@ -186,6 +189,18 @@ impl DatabaseIndexes {
                 }
                 None => should_insert = false,
             }
+        } else if event.kind == Kind::EventDeletion {
+            let mut deleted = self.deleted.write().await;
+            let ids = event.event_ids().copied();
+            let filter = Filter::new().ids(ids);
+            let pubkey_prefix: PublicKeyPrefix = PublicKeyPrefix::from(event.pubkey);
+            for ev in self.internal_query(&index, filter).await {
+                if ev.pubkey == pubkey_prefix {
+                    to_discard.insert(ev.event_id);
+                    deleted.insert(ev.event_id);
+                }
+            }
+            // TODO: support event deletion by coordinate (`a` tag)
         }
 
         // Remove events
@@ -251,6 +266,12 @@ impl DatabaseIndexes {
         }
 
         matching_ids.into_iter().map(|e| e.event_id).collect()
+    }
+
+    /// Check if an event was deleted
+    pub async fn has_been_deleted(&self, event_id: &EventId) -> bool {
+        let deleted = self.deleted.read().await;
+        deleted.contains(event_id)
     }
 
     /// Clear indexes

@@ -106,7 +106,9 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
-        if self.opts.events {
+        if self.indexes.has_been_deleted(&event_id).await {
+            Ok(true)
+        } else if self.opts.events {
             let events = self.events.read().await;
             Ok(events.contains_key(&event_id))
         } else {

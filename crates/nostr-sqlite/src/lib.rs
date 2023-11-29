@@ -163,19 +163,23 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
-        let conn = self.acquire().await?;
-        conn.interact(move |conn| {
-            let mut stmt = conn.prepare_cached(
-                "SELECT EXISTS(SELECT 1 FROM events WHERE event_id = ? LIMIT 1);",
-            )?;
-            let mut rows = stmt.query([event_id.to_hex()])?;
-            let exists: u8 = match rows.next()? {
-                Some(row) => row.get(0)?,
-                None => 0,
-            };
-            Ok(exists == 1)
-        })
-        .await?
+        if self.indexes.has_been_deleted(&event_id).await {
+            Ok(true)
+        } else {
+            let conn = self.acquire().await?;
+            conn.interact(move |conn| {
+                let mut stmt = conn.prepare_cached(
+                    "SELECT EXISTS(SELECT 1 FROM events WHERE event_id = ? LIMIT 1);",
+                )?;
+                let mut rows = stmt.query([event_id.to_hex()])?;
+                let exists: u8 = match rows.next()? {
+                    Some(row) => row.get(0)?,
+                    None => 0,
+                };
+                Ok(exists == 1)
+            })
+            .await?
+        }
     }
 
     async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
