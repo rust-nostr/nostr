@@ -226,7 +226,10 @@ impl DatabaseIndexes {
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn query(&self, filters: Vec<Filter>) -> Vec<EventId> {
+    pub async fn query<I>(&self, filters: I) -> Vec<EventId>
+    where
+        I: IntoIterator<Item = Filter>,
+    {
         let index = self.index.read().await;
 
         let mut matching_ids: BTreeSet<&EventIndex> = BTreeSet::new();
