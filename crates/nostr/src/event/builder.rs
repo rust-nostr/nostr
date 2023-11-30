@@ -830,12 +830,12 @@ impl EventBuilder {
             return Err(Error::NIP58(nip58::Error::InvalidLength));
         }
 
-        let mut badge_awards = nip58::filter_for_kind(badge_awards, &Kind::BadgeAward);
+        let badge_awards: Vec<Event> = nip58::filter_for_kind(badge_awards, &Kind::BadgeAward);
         if badge_awards.is_empty() {
             return Err(Error::NIP58(Nip58Error::InvalidKind));
         }
 
-        for award in &badge_awards {
+        for award in badge_awards.iter() {
             if !award.tags.iter().any(|t| match t {
                 Tag::PubKey(pub_key, _) => pub_key == pubkey_awarded,
                 _ => false,
@@ -844,72 +844,51 @@ impl EventBuilder {
             }
         }
 
-        let mut badge_definitions =
+        let badge_definitions: Vec<Event> =
             nip58::filter_for_kind(badge_definitions, &Kind::BadgeDefinition);
         if badge_definitions.is_empty() {
             return Err(Error::NIP58(Nip58Error::InvalidKind));
         }
 
         // Add identifier `d` tag
-        let id_tag = Tag::Identifier("profile_badges".to_string());
+        let id_tag: Tag = Tag::Identifier("profile_badges".to_string());
         let mut tags: Vec<Tag> = vec![id_tag];
 
-        let badge_definitions_identifiers = badge_definitions
-            .iter_mut()
-            .map(|event| {
-                let tags = core::mem::take(&mut event.tags);
-                let id =
-                    nip58::extract_identifier(tags).ok_or(Nip58Error::IdentifierTagNotFound)?;
+        let badge_definitions_identifiers = badge_definitions.into_iter().filter_map(|event| {
+            let id: String = event.identifier()?.to_string();
+            Some((event, id))
+        });
 
-                Ok((event.clone(), id))
-            })
-            .collect::<Result<Vec<(Event, Tag)>, Nip58Error>>();
-        let badge_definitions_identifiers =
-            badge_definitions_identifiers.map_err(|_| nip58::Error::IdentifierTagNotFound)?;
-
-        let badge_awards_identifiers = badge_awards
-            .iter_mut()
-            .map(|event| {
-                let tags = core::mem::take(&mut event.tags);
-                let (_, relay_url) = nip58::extract_awarded_public_key(&tags, pubkey_awarded)
-                    .ok_or(Nip58Error::BadgeAwardsLackAwardedPublicKey)?;
-                let (id, a_tag) = tags
-                    .iter()
-                    .find_map(|t| match t {
-                        Tag::A { identifier, .. } => Some((identifier.clone(), t.clone())),
-                        _ => None,
-                    })
-                    .ok_or(Nip58Error::BadgeAwardMissingATag)?;
-                Ok((event.clone(), id, a_tag, relay_url))
-            })
-            .collect::<Result<Vec<(Event, String, Tag, Option<UncheckedUrl>)>, Nip58Error>>();
-        let badge_awards_identifiers = badge_awards_identifiers?;
+        let badge_awards_identifiers = badge_awards.into_iter().filter_map(|event| {
+            let (_, relay_url) = nip58::extract_awarded_public_key(&event.tags, pubkey_awarded)?;
+            let (id, a_tag) = event.tags.iter().find_map(|t| match t {
+                Tag::A { identifier, .. } => Some((identifier.clone(), t.clone())),
+                _ => None,
+            })?;
+            Some((event, id, a_tag, relay_url))
+        });
 
         // This collection has been filtered for the needed tags
-        let users_badges: Vec<(_, _)> =
-            core::iter::zip(badge_definitions_identifiers, badge_awards_identifiers).collect();
+        let users_badges = core::iter::zip(badge_definitions_identifiers, badge_awards_identifiers);
 
         for (badge_definition, badge_award) in users_badges {
-            match (&badge_definition, &badge_award) {
-                ((_, Tag::Identifier(identifier)), (_, badge_id, ..)) if badge_id != identifier => {
+            match (badge_definition, badge_award) {
+                ((_, identifier), (_, badge_id, ..)) if badge_id != identifier => {
                     return Err(Error::NIP58(Nip58Error::MismatchedBadgeDefinitionOrAward));
                 }
-                (
-                    (_, Tag::Identifier(identifier)),
-                    (badge_award_event, badge_id, a_tag, relay_url),
-                ) if badge_id == identifier => {
-                    let badge_definition_event_tag: Tag = a_tag.clone();
+                ((_, identifier), (badge_award_event, badge_id, a_tag, relay_url))
+                    if badge_id == identifier =>
+                {
+                    let badge_definition_event_tag: Tag = a_tag;
                     let badge_award_event_tag: Tag =
-                        Tag::Event(badge_award_event.clone().id, relay_url.clone(), None);
+                        Tag::Event(badge_award_event.id, relay_url, None);
                     tags.extend_from_slice(&[badge_definition_event_tag, badge_award_event_tag]);
                 }
                 _ => {}
             }
         }
 
-        let event_builder = EventBuilder::new(Kind::ProfileBadges, String::new(), &tags);
-
-        Ok(event_builder)
+        Ok(EventBuilder::new(Kind::ProfileBadges, "", &tags))
     }
 
     /// Data Vending Machine - Job Request

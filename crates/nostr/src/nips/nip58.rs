@@ -53,13 +53,6 @@ pub fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Event> {
         .collect()
 }
 
-/// Helper function to extract an identifier tag from an array of tags
-pub fn extract_identifier(tags: Vec<Tag>) -> Option<Tag> {
-    tags.iter()
-        .find(|tag| matches!(tag, Tag::Identifier(_)))
-        .cloned()
-}
-
 /// Helper function to extract the awarded public key from an array of PubKey tags
 pub fn extract_awarded_public_key(
     tags: &[Tag],
