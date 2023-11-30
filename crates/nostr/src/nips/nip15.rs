@@ -246,7 +246,7 @@ pub struct CustomerOrder {
     pub id: String,
     /// Message type (0 in case of customer order)
     #[serde(rename = "type")]
-    pub type_: usize,
+    pub r#type: usize,
     /// Name of the customer
     name: Option<String>,
     /// Address of the customer if product is physical
@@ -268,7 +268,7 @@ pub struct MerchantPaymentRequest {
     pub id: String,
     /// Message type (1 in case of merchant payment request)
     #[serde(rename = "type")]
-    pub type_: usize,
+    pub r#type: usize,
     /// Available payment options
     pub payment_options: Vec<PaymentOption>,
 }
@@ -280,7 +280,7 @@ pub struct MerchantVerifyPayment {
     pub id: String,
     /// Type of the message (2 in case of merchant verify payment)
     #[serde(rename = "type")]
-    pub type_: usize,
+    pub r#type: usize,
     /// Payment successful
     pub paid: bool,
     /// Item shipped
@@ -312,7 +312,7 @@ pub struct CustomerOrderItem {
 pub struct PaymentOption {
     /// Name of the payment option
     #[serde(rename = "type")]
-    pub type_: String,
+    pub r#type: String,
     /// Payment link (url, ln invoice, etc.)
     pub link: String,
 }

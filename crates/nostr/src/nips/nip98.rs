@@ -61,7 +61,7 @@ impl From<bitcoin::hashes::hex::Error> for Error {
 
 /// HTTP Data
 pub struct HttpData {
-    /// absolute request URL
+    /// Absolute request URL
     pub url: UncheckedUrl,
     /// HTTP method
     pub method: HttpMethod,

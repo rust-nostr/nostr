@@ -65,7 +65,7 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-/// Entrypt
+/// Encrypt
 #[cfg(feature = "std")]
 pub fn encrypt<T>(sk: &SecretKey, pk: &XOnlyPublicKey, text: T) -> Result<String, Error>
 where
@@ -74,7 +74,7 @@ where
     encrypt_with_rng(&mut rand::thread_rng(), sk, pk, text)
 }
 
-/// Entrypt
+/// Encrypt
 pub fn encrypt_with_rng<R, T>(
     rng: &mut R,
     sk: &SecretKey,
@@ -106,7 +106,7 @@ where
     ))
 }
 
-/// Dectypt
+/// Decrypt
 pub fn decrypt<S>(
     sk: &SecretKey,
     pk: &XOnlyPublicKey,
@@ -188,7 +188,7 @@ mod tests {
             Error::Base64Decode
         );
 
-        //Content encrypted with aes256 using GCM mode
+        // Content encrypted with aes256 using GCM mode
         assert_eq!(
             decrypt(
                 &sender_sk,

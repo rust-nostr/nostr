@@ -362,7 +362,7 @@ impl Message {
         }
     }
 
-    /// check if current [`Message`] is a request
+    /// Check if current [`Message`] is a request
     pub fn is_request(&self) -> bool {
         match self {
             Message::Request { .. } => true,
@@ -465,7 +465,7 @@ impl Message {
         R: Rng + CryptoRng,
     {
         let req = self.to_request()?;
-        // TODO: remove if let SOme(res) = ...
+        // TODO: remove if let Some(res) = ...
         if let Some(res) = req.generate_response_with_ctx(secp, rng, keys)? {
             Ok(Some(Self::response(self.id(), Some(res), None)))
         } else {
