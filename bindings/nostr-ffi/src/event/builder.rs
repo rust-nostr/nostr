@@ -15,7 +15,7 @@ use crate::error::Result;
 use crate::key::Keys;
 use crate::nips::nip57::ZapRequestData;
 use crate::types::{Contact, Metadata};
-use crate::{FileMetadata, PublicKey, RelayMetadata, Tag, UnsignedEvent};
+use crate::{FileMetadata, NostrConnectMessage, PublicKey, RelayMetadata, Tag, UnsignedEvent};
 
 #[derive(Object)]
 pub struct EventBuilder {
@@ -260,7 +260,20 @@ impl EventBuilder {
         }))
     }
 
-    // TODO: add nostr_connect method
+    #[uniffi::constructor]
+    pub fn nostr_connect(
+        sender_keys: Arc<Keys>,
+        receiver_pubkey: Arc<PublicKey>,
+        msg: NostrConnectMessage,
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::nostr_connect(
+                sender_keys.as_ref().deref(),
+                **receiver_pubkey,
+                msg.try_into()?,
+            )?,
+        }))
+    }
 
     #[uniffi::constructor]
     pub fn report(tags: Vec<Arc<Tag>>, content: String) -> Arc<Self> {
