@@ -15,10 +15,36 @@ use nostr::nips::nip48::Protocol;
 use nostr::nips::nip90::DataVendingMachineStatus;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{Event, EventId, JsonUtil, Kind, RelayMetadata, Timestamp, UncheckedUrl, Url};
+use nostr::{Event, EventId, JsonUtil, Kind, Timestamp, UncheckedUrl, Url};
 use uniffi::{Enum, Object};
 
 use crate::error::{NostrError, Result};
+
+#[derive(Enum)]
+pub enum RelayMetadata {
+    /// Read
+    Read,
+    /// Write
+    Write,
+}
+
+impl From<RelayMetadata> for nostr::RelayMetadata {
+    fn from(value: RelayMetadata) -> Self {
+        match value {
+            RelayMetadata::Read => Self::Read,
+            RelayMetadata::Write => Self::Write,
+        }
+    }
+}
+
+impl From<nostr::RelayMetadata> for RelayMetadata {
+    fn from(value: nostr::RelayMetadata) -> Self {
+        match value {
+            nostr::RelayMetadata::Read => Self::Read,
+            nostr::RelayMetadata::Write => Self::Write,
+        }
+    }
+}
 
 #[derive(Enum)]
 pub enum TagKind {
@@ -372,7 +398,7 @@ pub enum TagEnum {
     },
     RelayMetadata {
         relay_url: String,
-        rw: Option<String>,
+        rw: Option<RelayMetadata>,
     },
     Hashtag {
         hashtag: String,
@@ -574,7 +600,7 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::Reference(r) => Self::Reference { reference: r },
             tag::Tag::RelayMetadata(url, rw) => Self::RelayMetadata {
                 relay_url: url.to_string(),
-                rw: rw.map(|rw| rw.to_string()),
+                rw: rw.map(|rw| rw.into()),
             },
             tag::Tag::Hashtag(t) => Self::Hashtag { hashtag: t },
             tag::Tag::Geohash(g) => Self::Geohash { geohash: g },
@@ -753,13 +779,10 @@ impl TryFrom<TagEnum> for tag::Tag {
                 },
             }),
             TagEnum::Reference { reference } => Ok(Self::Reference(reference)),
-            TagEnum::RelayMetadata { relay_url, rw } => {
-                let rw: Option<RelayMetadata> = match rw {
-                    Some(rw) => Some(RelayMetadata::from_str(&rw)?),
-                    None => None,
-                };
-                Ok(Self::RelayMetadata(UncheckedUrl::from(relay_url), rw))
-            }
+            TagEnum::RelayMetadata { relay_url, rw } => Ok(Self::RelayMetadata(
+                UncheckedUrl::from(relay_url),
+                rw.map(|rw| rw.into()),
+            )),
             TagEnum::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
             TagEnum::Geohash { geohash } => Ok(Self::Geohash(geohash)),
             TagEnum::Identifier { identifier } => Ok(Self::Identifier(identifier)),

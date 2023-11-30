@@ -19,7 +19,7 @@ mod util;
 
 pub use crate::error::NostrError;
 pub use crate::event::{
-    Event, EventBuilder, EventId, Tag, TagEnum, TagKind, TagKindKnown, UnsignedEvent,
+    Event, EventBuilder, EventId, RelayMetadata, Tag, TagEnum, TagKind, TagKindKnown, UnsignedEvent,
 };
 pub use crate::key::{Keys, PublicKey, SecretKey};
 pub use crate::message::{Alphabet, ClientMessage, Filter, RelayMessage};

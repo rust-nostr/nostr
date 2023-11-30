@@ -2,11 +2,12 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::url::Url;
-use nostr::{ChannelId, Contact as ContactSdk};
+use nostr::{ChannelId, Contact as ContactSdk, UncheckedUrl};
 use uniffi::Object;
 
 use super::{Event, EventId};
@@ -14,7 +15,7 @@ use crate::error::Result;
 use crate::key::Keys;
 use crate::nips::nip57::ZapRequestData;
 use crate::types::{Contact, Metadata};
-use crate::{FileMetadata, PublicKey, Tag, UnsignedEvent};
+use crate::{FileMetadata, PublicKey, RelayMetadata, Tag, UnsignedEvent};
 
 #[derive(Object)]
 pub struct EventBuilder {
@@ -96,6 +97,16 @@ impl EventBuilder {
         Ok(Arc::new(Self {
             inner: nostr::EventBuilder::add_recommended_relay(&url),
         }))
+    }
+
+    #[uniffi::constructor]
+    pub fn relay_list(list: HashMap<String, Option<RelayMetadata>>) -> Arc<Self> {
+        let iter = list
+            .into_iter()
+            .map(|(url, r)| (UncheckedUrl::from(url), r.map(|r| r.into())));
+        Arc::new(Self {
+            inner: nostr::EventBuilder::relay_list(iter),
+        })
     }
 
     #[uniffi::constructor]
