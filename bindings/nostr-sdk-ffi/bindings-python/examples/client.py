@@ -20,7 +20,7 @@ print(f" bech32: {event_id.to_bech32()}")
 time.sleep(2.0)
 
 print("Getting events from relays...")
-filter = Filter().authors([keys.public_key().to_hex()])
+filter = Filter().authors([keys.public_key()])
 events = client.get_events_of([filter], timedelta(seconds=10))
 for event in events:
     print(event.as_json())
