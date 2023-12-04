@@ -5,17 +5,67 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/01.md>
 
+use alloc::borrow::ToOwned;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::fmt;
+use core::num::ParseIntError;
+use core::str::FromStr;
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
-use bitcoin::secp256k1::XOnlyPublicKey;
+use bitcoin::secp256k1::{self, XOnlyPublicKey};
 
+use crate::event::id;
 use crate::nips::nip19::{
     Error as Bech32Error, FromBech32, ToBech32, AUTHOR, KIND,
     PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT, RELAY, SPECIAL,
 };
 use crate::{Filter, Kind, Tag, UncheckedUrl};
+
+/// [`RawEvent`] error
+#[derive(Debug)]
+pub enum Error {
+    /// Secp256k1 error
+    Secp256k1(secp256k1::Error),
+    /// Event ID error
+    EventId(id::Error),
+    /// Parse Int error
+    ParseInt(ParseIntError),
+    /// Invalid coordinate
+    InvalidCoordinate,
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::EventId(e) => write!(f, "Event ID: {e}"),
+            Self::ParseInt(e) => write!(f, "Parse Int: {e}"),
+            Self::InvalidCoordinate => write!(f, "Invalid coordinate"),
+        }
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
+}
+
+impl From<id::Error> for Error {
+    fn from(e: id::Error) -> Self {
+        Self::EventId(e)
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(e: ParseIntError) -> Self {
+        Self::ParseInt(e)
+    }
+}
 
 /// Coordinate for event (`a` tag)
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -76,6 +126,25 @@ impl From<Coordinate> for Filter {
                 .kind(value.kind)
                 .author(value.pubkey)
                 .identifier(value.identifier)
+        }
+    }
+}
+
+impl FromStr for Coordinate {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut kpi = s.split(':');
+        if let (Some(kind_str), Some(pubkey_str), Some(identifier)) =
+            (kpi.next(), kpi.next(), kpi.next())
+        {
+            Ok(Self {
+                kind: Kind::from_str(kind_str)?,
+                pubkey: XOnlyPublicKey::from_str(pubkey_str)?,
+                identifier: identifier.to_owned(),
+                relays: Vec::new(),
+            })
+        } else {
+            Err(Error::InvalidCoordinate)
         }
     }
 }
