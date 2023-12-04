@@ -28,7 +28,10 @@ async fn main() {
 
     let database = RocksDatabase::open("./db/rocksdb").await.unwrap();
 
-    println!("Events stored: {}", database.count().await.unwrap());
+    println!(
+        "Events stored: {}",
+        database.count(vec![Filter::new()]).await.unwrap()
+    );
 
     /* for i in 0..100_000 {
         let event = EventBuilder::new_text_note(format!("Event #{i}"), &[])

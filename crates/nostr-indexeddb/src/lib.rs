@@ -244,15 +244,6 @@ impl_nostr_database!({
         DatabaseOptions::default()
     }
 
-    async fn count(&self) -> Result<usize, IndexedDBError> {
-        let tx = self
-            .db
-            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
-        let store = tx.object_store(EVENTS_CF)?;
-        let count: u32 = store.count()?.await?;
-        Ok(count as usize)
-    }
-
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, IndexedDBError> {
         // Index event
@@ -344,6 +335,10 @@ impl_nostr_database!({
             }
             None => Err(IndexedDBError::Database(DatabaseError::NotFound)),
         }
+    }
+
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, IndexedDBError> {
+        Ok(self.indexes.count(filters).await)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]

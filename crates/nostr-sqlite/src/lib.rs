@@ -100,20 +100,6 @@ impl NostrDatabase for SQLiteDatabase {
         DatabaseOptions::default()
     }
 
-    async fn count(&self) -> Result<usize, Self::Err> {
-        let conn = self.acquire().await?;
-        conn.interact(move |conn| {
-            let mut stmt = conn.prepare_cached("SELECT COUNT(*) FROM events;")?;
-            let mut rows = stmt.query([])?;
-            let row = rows
-                .next()?
-                .ok_or_else(|| Error::NotFound("count result".into()))?;
-            let count: usize = row.get(0)?;
-            Ok(count)
-        })
-        .await?
-    }
-
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         // Index event
@@ -242,6 +228,11 @@ impl NostrDatabase for SQLiteDatabase {
             Ok(Event::decode(&buf)?)
         })
         .await?
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
+        Ok(self.indexes.count(filters).await)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
