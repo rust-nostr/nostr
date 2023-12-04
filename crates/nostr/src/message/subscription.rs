@@ -683,6 +683,11 @@ impl Filter {
             && self.authors_match(event)
             && self.tag_match(event)
     }
+
+    /// Check if [`Filter`] is empty
+    pub fn is_empty(&self) -> bool {
+        self == &Filter::default()
+    }
 }
 
 /// Filters match event trait
@@ -979,5 +984,14 @@ mod test {
         let filter = Filter::new().hashtag("this-should-not-match");
         assert!(!filter.match_event(&event));
         assert!(!filter.match_event(&event_with_empty_tags));
+    }
+
+    #[test]
+    fn test_filter_is_empty() {
+        let filter = Filter::new().identifier("test");
+        assert!(!filter.is_empty());
+
+        let filter = Filter::new();
+        assert!(filter.is_empty());
     }
 }
