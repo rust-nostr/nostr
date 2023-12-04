@@ -48,7 +48,7 @@ where
         let mut tag_index: TagIndexes = TagIndexes::default();
         for t in iter.filter(|t| t.len() > 1) {
             if let Some(tagnamechar) = single_char_tagname(t[0].as_ref()) {
-                let inner = hash(&t[1]);
+                let inner = hash(t[1].as_ref());
                 tag_index.entry(tagnamechar).or_default().insert(inner);
             }
         }
@@ -94,16 +94,14 @@ impl DerefMut for TagIndexValues {
     }
 }
 
-impl From<&AllocSet<GenericTagValue>> for TagIndexValues {
-    fn from(set: &AllocSet<GenericTagValue>) -> Self {
-        Self {
-            inner: set
-                .iter()
-                .map(|value| {
-                    let s: String = value.to_string();
-                    hash(s)
-                })
-                .collect(),
-        }
+impl TagIndexValues {
+    #[allow(missing_docs)]
+    pub fn iter(
+        set: &AllocSet<GenericTagValue>,
+    ) -> impl Iterator<Item = [u8; TAG_INDEX_VALUE_SIZE]> + '_ {
+        set.iter().map(|value| {
+            let s: String = value.to_string();
+            hash(s)
+        })
     }
 }

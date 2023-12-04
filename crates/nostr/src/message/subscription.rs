@@ -663,10 +663,12 @@ impl Filter {
 
         let idx: TagIndexes = event.build_tags_index();
         self.generic_tags.iter().all(|(tagname, set)| {
-            let set = TagIndexValues::from(set);
-            idx.get(tagname)
-                .map(|valset| valset.intersection(&set).count() > 0)
-                .unwrap_or(false)
+            idx.get(tagname).map_or(false, |valset| {
+                TagIndexValues::iter(set)
+                    .filter(|t| valset.contains(t))
+                    .count()
+                    > 0
+            })
         })
     }
 
