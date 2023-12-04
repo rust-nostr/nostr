@@ -386,4 +386,10 @@ mod tests {
         assert_ne!(Kind::Authentication, Kind::EncryptedDirectMessage);
         assert_ne!(Kind::TextNote, Kind::Custom(2));
     }
+
+    #[test]
+    fn test_kind_is_parameterized_replaceable() {
+        assert!(Kind::ParameterizedReplaceable(32122).is_parameterized_replaceable());
+        assert!(!Kind::ParameterizedReplaceable(1).is_parameterized_replaceable());
+    }
 }
