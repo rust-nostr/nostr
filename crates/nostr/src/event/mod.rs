@@ -26,6 +26,7 @@ pub use self::kind::Kind;
 pub use self::partial::{MissingPartialEvent, PartialEvent};
 pub use self::tag::{Marker, Tag, TagIndexValues, TagIndexes, TagKind};
 pub use self::unsigned::UnsignedEvent;
+use crate::nips::nip01::Coordinate;
 #[cfg(feature = "std")]
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
@@ -288,6 +289,24 @@ impl Event {
     pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
         self.tags.iter().filter_map(|t| match t {
             Tag::Event(id, ..) => Some(id),
+            _ => None,
+        })
+    }
+
+    /// Extract coordinates from tags (`a` tag)
+    pub fn coordinates(&self) -> impl Iterator<Item = Coordinate> + '_ {
+        self.tags.iter().filter_map(|t| match t {
+            Tag::A {
+                kind,
+                public_key,
+                identifier,
+                ..
+            } => Some(Coordinate {
+                kind: *kind,
+                pubkey: *public_key,
+                identifier: identifier.clone(),
+                relays: Vec::new(),
+            }),
             _ => None,
         })
     }

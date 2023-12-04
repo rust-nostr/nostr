@@ -14,6 +14,9 @@ use once_cell::sync::Lazy;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+use crate::nips::nip01::Coordinate;
+use crate::{EventId, Tag};
+
 /// Generate shared key
 ///
 /// **Important: use of a strong cryptographic hash function may be critical to security! Do NOT use
@@ -61,5 +64,34 @@ where
     /// Serialize to JSON string
     fn as_json(&self) -> String {
         serde_json::json!(self).to_string()
+    }
+}
+
+/// Event ID or Coordinate
+pub enum EventIdOrCoordinate {
+    /// Event ID
+    Id(EventId),
+    /// Event Coordinate (`a` tag)
+    Coordinate(Coordinate),
+}
+
+impl From<EventIdOrCoordinate> for Tag {
+    fn from(value: EventIdOrCoordinate) -> Self {
+        match value {
+            EventIdOrCoordinate::Id(id) => id.into(),
+            EventIdOrCoordinate::Coordinate(a) => a.into(),
+        }
+    }
+}
+
+impl From<EventId> for EventIdOrCoordinate {
+    fn from(id: EventId) -> Self {
+        Self::Id(id)
+    }
+}
+
+impl From<Coordinate> for EventIdOrCoordinate {
+    fn from(coordinate: Coordinate) -> Self {
+        Self::Coordinate(coordinate)
     }
 }

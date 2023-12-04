@@ -35,6 +35,7 @@ use crate::nips::{nip13, nip58};
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 use crate::types::{ChannelId, Contact, Metadata, Timestamp};
+use crate::util::EventIdOrCoordinate;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{JsonUtil, RelayMetadata, UncheckedUrl};
@@ -440,22 +441,27 @@ impl EventBuilder {
     }
 
     /// Create delete event
-    pub fn delete<I>(ids: I) -> Self
+    pub fn delete<I, T>(ids: I) -> Self
     where
-        I: IntoIterator<Item = EventId>,
+        I: IntoIterator<Item = T>,
+        T: Into<EventIdOrCoordinate>,
     {
         Self::delete_with_reason(ids, "")
     }
 
     /// Create delete event with reason
-    pub fn delete_with_reason<I, S>(ids: I, reason: S) -> Self
+    pub fn delete_with_reason<I, T, S>(ids: I, reason: S) -> Self
     where
-        I: IntoIterator<Item = EventId>,
+        I: IntoIterator<Item = T>,
+        T: Into<EventIdOrCoordinate>,
         S: Into<String>,
     {
         let tags: Vec<Tag> = ids
             .into_iter()
-            .map(|id| Tag::Event(id, None, None))
+            .map(|t| {
+                let middle: EventIdOrCoordinate = t.into();
+                middle.into()
+            })
             .collect();
 
         Self::new(Kind::EventDeletion, reason.into(), &tags)
