@@ -15,7 +15,7 @@ use crate::nips::nip19::{
     Error as Bech32Error, FromBech32, ToBech32, AUTHOR, KIND,
     PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT, RELAY, SPECIAL,
 };
-use crate::{Kind, Tag, UncheckedUrl};
+use crate::{Filter, Kind, Tag, UncheckedUrl};
 
 /// Coordinate for event (`a` tag)
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -63,6 +63,19 @@ impl From<Coordinate> for Tag {
             public_key: value.pubkey,
             identifier: value.identifier,
             relay_url: value.relays.first().map(UncheckedUrl::from),
+        }
+    }
+}
+
+impl From<Coordinate> for Filter {
+    fn from(value: Coordinate) -> Self {
+        if value.identifier.is_empty() {
+            Filter::new().kind(value.kind).author(value.pubkey)
+        } else {
+            Filter::new()
+                .kind(value.kind)
+                .author(value.pubkey)
+                .identifier(value.identifier)
         }
     }
 }
