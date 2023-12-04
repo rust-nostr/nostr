@@ -165,7 +165,7 @@ impl DatabaseIndexes {
 
         if event.is_replaceable() {
             let filter: Filter = Filter::new().author(event.pubkey).kind(event.kind);
-            for ev in self.internal_query(&index, filter).await {
+            for ev in self.internal_query(&index, filter, false).await {
                 if ev.created_at > event.created_at {
                     should_insert = false;
                 } else if ev.created_at <= event.created_at {
@@ -179,7 +179,7 @@ impl DatabaseIndexes {
                         .author(event.pubkey)
                         .kind(event.kind)
                         .identifier(identifier);
-                    for ev in self.internal_query(&index, filter).await {
+                    for ev in self.internal_query(&index, filter, false).await {
                         if ev.created_at >= event.created_at {
                             should_insert = false;
                         } else if ev.created_at < event.created_at {
@@ -191,16 +191,30 @@ impl DatabaseIndexes {
             }
         } else if event.kind == Kind::EventDeletion {
             let mut deleted = self.deleted.write().await;
-            let ids = event.event_ids().copied();
-            let filter = Filter::new().ids(ids);
             let pubkey_prefix: PublicKeyPrefix = PublicKeyPrefix::from(event.pubkey);
-            for ev in self.internal_query(&index, filter).await {
+
+            // Check `e` tags
+            let ids = event.event_ids().copied();
+            let filter: Filter = Filter::new().ids(ids);
+            for ev in self.internal_query(&index, filter, false).await {
                 if ev.pubkey == pubkey_prefix {
                     to_discard.insert(ev.event_id);
                     deleted.insert(ev.event_id);
                 }
             }
-            // TODO: support event deletion by coordinate (`a` tag)
+
+            // Check `a` tags
+            for coordinate in event.coordinates() {
+                let coordinate_pubkey_prefix: PublicKeyPrefix =
+                    PublicKeyPrefix::from(coordinate.pubkey);
+                if coordinate_pubkey_prefix == pubkey_prefix {
+                    let filter: Filter = coordinate.into();
+                    for ev in self.internal_query(&index, filter, false).await {
+                        to_discard.insert(ev.event_id);
+                        deleted.insert(ev.event_id);
+                    }
+                }
+            }
         }
 
         // Remove events
@@ -223,6 +237,7 @@ impl DatabaseIndexes {
         &self,
         index: &'a BTreeSet<EventIndex>,
         filter: Filter,
+        allow_empty_filter: bool,
     ) -> impl Iterator<Item = &'a EventIndex> {
         let authors: HashSet<PublicKeyPrefix> = filter
             .authors
@@ -230,12 +245,16 @@ impl DatabaseIndexes {
             .map(|p| PublicKeyPrefix::from(*p))
             .collect();
         index.iter().filter(move |m| {
-            (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
-                && filter.since.map_or(true, |t| m.created_at >= t)
-                && filter.until.map_or(true, |t| m.created_at <= t)
-                && (filter.authors.is_empty() || authors.contains(&m.pubkey))
-                && (filter.kinds.is_empty() || filter.kinds.contains(&m.kind))
-                && m.filter_tags_match(&filter)
+            if (filter.is_empty() && allow_empty_filter) || !filter.is_empty() {
+                (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
+                    && filter.since.map_or(true, |t| m.created_at >= t)
+                    && filter.until.map_or(true, |t| m.created_at <= t)
+                    && (filter.authors.is_empty() || authors.contains(&m.pubkey))
+                    && (filter.kinds.is_empty() || filter.kinds.contains(&m.kind))
+                    && m.filter_tags_match(&filter)
+            } else {
+                false
+            }
         })
     }
 
@@ -257,7 +276,7 @@ impl DatabaseIndexes {
             }
 
             let limit: Option<usize> = filter.limit;
-            let iter = self.internal_query(&index, filter).await;
+            let iter = self.internal_query(&index, filter, true).await;
             if let Some(limit) = limit {
                 matching_ids.extend(iter.take(limit))
             } else {
@@ -278,5 +297,107 @@ impl DatabaseIndexes {
     pub async fn clear(&self) {
         let mut index = self.index.write().await;
         index.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use nostr::nips::nip01::Coordinate;
+    use nostr::secp256k1::SecretKey;
+    use nostr::{EventBuilder, FromBech32, Keys, Tag};
+
+    use super::*;
+
+    const SECRET_KEY_A: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
+    const SECRET_KEY_B: &str = "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
+
+    #[tokio::test]
+    async fn test_event_deletion() {
+        let indexes = DatabaseIndexes::new();
+
+        // Keys
+        let keys_a = Keys::new(SecretKey::from_bech32(SECRET_KEY_A).unwrap());
+        let keys_b = Keys::new(SecretKey::from_bech32(SECRET_KEY_B).unwrap());
+
+        // Build some events
+        let events = [
+            EventBuilder::new_text_note("Text note", &[])
+                .to_event(&keys_a)
+                .unwrap(),
+            EventBuilder::new(
+                Kind::ParameterizedReplaceable(32121),
+                "Empty 1",
+                &[Tag::Identifier(String::from("abdefgh:12345678"))],
+            )
+            .to_event(&keys_a)
+            .unwrap(),
+            EventBuilder::new(
+                Kind::ParameterizedReplaceable(32122),
+                "Empty 2",
+                &[Tag::Identifier(String::from("abdefgh:12345678"))],
+            )
+            .to_event(&keys_a)
+            .unwrap(),
+            EventBuilder::new(
+                Kind::ParameterizedReplaceable(32122),
+                "",
+                &[Tag::Identifier(String::from("ijklmnop:87654321"))],
+            )
+            .to_event(&keys_a)
+            .unwrap(),
+            EventBuilder::new(
+                Kind::ParameterizedReplaceable(32122),
+                "",
+                &[Tag::Identifier(String::from("abdefgh:87654321"))],
+            )
+            .to_event(&keys_b)
+            .unwrap(),
+            EventBuilder::new(
+                Kind::ParameterizedReplaceable(32122),
+                "",
+                &[Tag::Identifier(String::from("abdefgh:12345678"))],
+            )
+            .to_event(&keys_b)
+            .unwrap(),
+            EventBuilder::new(
+                Kind::ParameterizedReplaceable(32122),
+                "Test",
+                &[Tag::Identifier(String::from("abdefgh:12345678"))],
+            )
+            .to_event(&keys_a)
+            .unwrap(),
+        ];
+
+        for event in events.iter() {
+            indexes.index_event(event).await;
+        }
+
+        // Total events: 6
+
+        // Invalid event deletion (wrong signing keys)
+        let coordinate =
+            Coordinate::new(Kind::ParameterizedReplaceable(32122), keys_a.public_key());
+        let event = EventBuilder::delete([coordinate])
+            .to_event(&keys_b)
+            .unwrap();
+        indexes.index_event(&event).await;
+
+        // Total events: 7 (6 + 1)
+
+        // Delete valid event
+        let coordinate =
+            Coordinate::new(Kind::ParameterizedReplaceable(32122), keys_a.public_key())
+                .identifier("ijklmnop:87654321");
+        let event = EventBuilder::delete([coordinate])
+            .to_event(&keys_a)
+            .unwrap();
+        indexes.index_event(&event).await;
+
+        // Total events: 7 (7 - 1 + 1)
+
+        // Check total number of indexes
+        let filter = Filter::new();
+        let res = indexes.query([filter]).await;
+        assert_eq!(res.len(), 7);
     }
 }
