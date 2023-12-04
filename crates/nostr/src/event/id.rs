@@ -150,3 +150,9 @@ impl From<EventId> for String {
         event_id.to_string()
     }
 }
+
+impl From<EventId> for Tag {
+    fn from(id: EventId) -> Self {
+        Tag::Event(id, None, None)
+    }
+}
