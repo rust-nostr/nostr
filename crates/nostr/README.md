@@ -136,7 +136,6 @@ The following crate feature flags are available:
 | ✅         | [30 - Custom Emoji](https://github.com/nostr-protocol/nips/blob/master/30.md)                                                       |
 | ❌         | [31 - Dealing with Unknown Events](https://github.com/nostr-protocol/nips/blob/master/31.md)                                        |
 | ❌         | [32 - Labeling](https://github.com/nostr-protocol/nips/blob/master/32.md)                                                           |
-| ✅         | [33 - Parameterized Replaceable Events](https://github.com/nostr-protocol/nips/blob/master/33.md)                                   |
 | ✅         | [36 - Sensitive Content](https://github.com/nostr-protocol/nips/blob/master/36.md)                                                  |
 | ✅         | [39 - External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md)                                    |
 | ✅         | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                                               |

@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 
 use bitcoin::secp256k1::XOnlyPublicKey;
 
-use super::nip33::ParameterizedReplaceableEvent;
+use super::nip01::Coordinate;
 use crate::{EventId, UncheckedUrl};
 
 /// Zap Request Data
@@ -27,7 +27,7 @@ pub struct ZapRequestData {
     /// Event ID
     pub event_id: Option<EventId>,
     /// NIP-33 event coordinate that allows tipping parameterized replaceable events such as NIP-23 long-form notes.
-    pub event_coordinate: Option<ParameterizedReplaceableEvent>,
+    pub event_coordinate: Option<Coordinate>,
 }
 
 impl ZapRequestData {
@@ -71,7 +71,7 @@ impl ZapRequestData {
     }
 
     /// NIP-33 event coordinate that allows tipping parameterized replaceable events such as NIP-23 long-form notes.
-    pub fn event_coordinate(self, event_coordinate: ParameterizedReplaceableEvent) -> Self {
+    pub fn event_coordinate(self, event_coordinate: Coordinate) -> Self {
         Self {
             event_coordinate: Some(event_coordinate),
             ..self
