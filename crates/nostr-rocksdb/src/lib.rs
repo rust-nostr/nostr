@@ -135,20 +135,6 @@ impl NostrDatabase for RocksDatabase {
         DatabaseOptions::default()
     }
 
-    async fn count(&self) -> Result<usize, Self::Err> {
-        let this = self.clone();
-        tokio::task::spawn_blocking(move || {
-            let cf = this.cf_handle(EVENTS_CF)?;
-            Ok(this
-                .db
-                .full_iterator_cf(&cf, IteratorMode::Start)
-                .flatten()
-                .count())
-        })
-        .await
-        .unwrap()
-    }
-
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         // Index event
@@ -248,6 +234,11 @@ impl NostrDatabase for RocksDatabase {
         })
         .await
         .map_err(DatabaseError::backend)?
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
+        Ok(self.indexes.count(filters).await)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]

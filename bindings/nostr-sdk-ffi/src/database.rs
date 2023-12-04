@@ -36,10 +36,6 @@ impl NostrDatabase {
         })
     }
 
-    pub fn count(&self) -> Result<u64> {
-        block_on(async move { Ok(self.inner.count().await? as u64) })
-    }
-
     /// Save [`Event`] into store
     ///
     /// Return `true` if event was successfully saved into database.
@@ -58,6 +54,14 @@ impl NostrDatabase {
     /// Get [`Event`] by [`EventId`]
     pub fn event_by_id(&self, event_id: Arc<EventId>) -> Result<Arc<Event>> {
         block_on(async move { Ok(Arc::new(self.inner.event_by_id(**event_id).await?.into())) })
+    }
+
+    pub fn count(&self, filters: Vec<Arc<Filter>>) -> Result<u64> {
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        block_on(async move { Ok(self.inner.count(filters).await? as u64) })
     }
 
     pub fn query(&self, filters: Vec<Arc<Filter>>) -> Result<Vec<Arc<Event>>> {

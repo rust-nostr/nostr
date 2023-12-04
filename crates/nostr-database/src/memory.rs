@@ -74,11 +74,6 @@ impl NostrDatabase for MemoryDatabase {
         self.opts
     }
 
-    async fn count(&self) -> Result<usize, Self::Err> {
-        let events = self.events.read().await;
-        Ok(events.len())
-    }
-
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         if self.opts.events {
             let EventIndexResult {
@@ -145,6 +140,11 @@ impl NostrDatabase for MemoryDatabase {
         } else {
             Err(DatabaseError::FeatureDisabled)
         }
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
+        Ok(self.indexes.count(filters).await)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]

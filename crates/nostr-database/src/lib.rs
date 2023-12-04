@@ -98,9 +98,6 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Database options
     fn opts(&self) -> DatabaseOptions;
 
-    /// Count number of [`Event`] stored
-    async fn count(&self) -> Result<usize, Self::Err>;
-
     /// Save [`Event`] into store
     ///
     /// Return `true` if event was successfully saved into database.
@@ -125,6 +122,11 @@ pub trait NostrDatabase: AsyncTraitDeps {
 
     /// Get [`Event`] by [`EventId`]
     async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err>;
+
+    /// Count number of [`Event`] found by filters
+    ///
+    /// Use `Filter::new()` or `Filter::default()` to count all events.
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err>;
 
     /// Query store with filters
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err>;
@@ -244,10 +246,6 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
         self.0.opts()
     }
 
-    async fn count(&self) -> Result<usize, Self::Err> {
-        self.0.count().await.map_err(Into::into)
-    }
-
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         self.0.save_event(event).await.map_err(Into::into)
     }
@@ -285,6 +283,10 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
 
     async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
         self.0.event_by_id(event_id).await.map_err(Into::into)
+    }
+
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
+        self.0.count(filters).await.map_err(Into::into)
     }
 
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {

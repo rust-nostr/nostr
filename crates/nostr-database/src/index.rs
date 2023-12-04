@@ -95,10 +95,16 @@ impl EventIndex {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PublicKeyPrefix([u8; PUBLIC_KEY_PREFIX_SIZE]);
 
-impl From<XOnlyPublicKey> for PublicKeyPrefix {
-    fn from(pk: XOnlyPublicKey) -> Self {
+impl From<&XOnlyPublicKey> for PublicKeyPrefix {
+    fn from(pk: &XOnlyPublicKey) -> Self {
         let pk: [u8; 32] = pk.serialize();
         Self::from(pk)
+    }
+}
+
+impl From<XOnlyPublicKey> for PublicKeyPrefix {
+    fn from(pk: XOnlyPublicKey) -> Self {
+        Self::from(&pk)
     }
 }
 
@@ -239,11 +245,8 @@ impl DatabaseIndexes {
         filter: Filter,
         allow_empty_filter: bool,
     ) -> impl Iterator<Item = &'a EventIndex> {
-        let authors: HashSet<PublicKeyPrefix> = filter
-            .authors
-            .iter()
-            .map(|p| PublicKeyPrefix::from(*p))
-            .collect();
+        let authors: HashSet<PublicKeyPrefix> =
+            filter.authors.iter().map(PublicKeyPrefix::from).collect();
         index.iter().filter(move |m| {
             if (filter.is_empty() && allow_empty_filter) || !filter.is_empty() {
                 (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
@@ -287,6 +290,35 @@ impl DatabaseIndexes {
         matching_ids.into_iter().map(|e| e.event_id).collect()
     }
 
+    /// Count events
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub async fn count<I>(&self, filters: I) -> usize
+    where
+        I: IntoIterator<Item = Filter>,
+    {
+        let index = self.index.read().await;
+
+        let mut counter: usize = 0;
+
+        for filter in filters.into_iter() {
+            if let (Some(since), Some(until)) = (filter.since, filter.until) {
+                if since > until {
+                    continue;
+                }
+            }
+
+            let limit: Option<usize> = filter.limit;
+            let iter = self.internal_query(&index, filter, true).await;
+            if let Some(limit) = limit {
+                counter += iter.take(limit).count();
+            } else {
+                counter += iter.count();
+            }
+        }
+
+        counter
+    }
+
     /// Check if an event was deleted
     pub async fn has_been_deleted(&self, event_id: &EventId) -> bool {
         let deleted = self.deleted.read().await;
@@ -312,7 +344,7 @@ mod tests {
     const SECRET_KEY_B: &str = "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
 
     #[tokio::test]
-    async fn test_event_deletion() {
+    async fn test_database_indexes() {
         let indexes = DatabaseIndexes::new();
 
         // Keys
@@ -397,7 +429,12 @@ mod tests {
 
         // Check total number of indexes
         let filter = Filter::new();
-        let res = indexes.query([filter]).await;
-        assert_eq!(res.len(), 7);
+        assert_eq!(indexes.count([filter]).await, 7);
+
+        // Check if query len and count match
+        assert_eq!(
+            indexes.query([Filter::new()]).await.len(),
+            indexes.count([Filter::new()]).await
+        );
     }
 }
