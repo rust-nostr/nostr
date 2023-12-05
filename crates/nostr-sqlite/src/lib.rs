@@ -83,7 +83,7 @@ impl SQLiteDatabase {
                 Ok::<HashSet<RawEvent>, Error>(events)
             })
             .await??;
-        self.indexes.bulk_load(events).await;
+        self.indexes.bulk_index(events).await;
         Ok(())
     }
 }

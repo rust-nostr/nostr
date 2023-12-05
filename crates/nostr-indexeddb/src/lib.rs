@@ -200,7 +200,7 @@ impl WebDatabase {
                 let bytes = hex::decode(v).ok()?;
                 RawEvent::decode(&bytes).ok()
             });
-        self.indexes.bulk_load(events).await;
+        self.indexes.bulk_index(events).await;
         tracing::info!("Database indexes loaded");
         Ok(())
     }

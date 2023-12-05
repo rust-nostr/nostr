@@ -118,7 +118,7 @@ impl RocksDatabase {
             .full_iterator_cf(&cf, IteratorMode::Start)
             .flatten()
             .filter_map(|(_, value)| RawEvent::decode(&value).ok());
-        self.indexes.bulk_load(events).await;
+        self.indexes.bulk_index(events).await;
         Ok(())
     }
 }
