@@ -12,7 +12,7 @@ use core::ops::{Deref, DerefMut};
 #[cfg(feature = "std")]
 use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::siphash24::Hash as SipHash24;
 use bitcoin::hashes::Hash;
 
 use crate::{Alphabet, GenericTagValue};
@@ -70,7 +70,7 @@ where
     S: AsRef<str>,
 {
     let mut inner: [u8; TAG_INDEX_VALUE_SIZE] = [0u8; TAG_INDEX_VALUE_SIZE];
-    let hash = Sha256Hash::hash(value.as_ref().as_bytes());
+    let hash = SipHash24::hash(value.as_ref().as_bytes());
     inner.copy_from_slice(&hash[..TAG_INDEX_VALUE_SIZE]);
     inner
 }
