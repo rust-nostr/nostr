@@ -10,6 +10,7 @@ license.workspace = true
 readme = "README.md"
 rust-version = "1.64.0"
 keywords = ["nostr", "database"]
+exclude = ["fuzz"]
 
 [features]
 default = []
