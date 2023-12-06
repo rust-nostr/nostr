@@ -6,6 +6,7 @@ members = [
     "bindings/nostr-sdk-js",
     "bindings/uniffi-bindgen",
     "crates/*",
+    "crates/nostr-database/fuzz/perf"
 ]
 default-members = ["crates/*"]
 resolver = "2"

@@ -12,7 +12,7 @@ use core::ops::{Deref, DerefMut};
 #[cfg(feature = "std")]
 use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hashes::siphash24::Hash as SipHash24;
 use bitcoin::hashes::Hash;
 
 use crate::{Alphabet, GenericTagValue};
@@ -48,7 +48,7 @@ where
         let mut tag_index: TagIndexes = TagIndexes::default();
         for t in iter.filter(|t| t.len() > 1) {
             if let Some(tagnamechar) = single_char_tagname(t[0].as_ref()) {
-                let inner = hash(&t[1]);
+                let inner = hash(t[1].as_ref());
                 tag_index.entry(tagnamechar).or_default().insert(inner);
             }
         }
@@ -70,7 +70,7 @@ where
     S: AsRef<str>,
 {
     let mut inner: [u8; TAG_INDEX_VALUE_SIZE] = [0u8; TAG_INDEX_VALUE_SIZE];
-    let hash = Sha256Hash::hash(value.as_ref().as_bytes());
+    let hash = SipHash24::hash(value.as_ref().as_bytes());
     inner.copy_from_slice(&hash[..TAG_INDEX_VALUE_SIZE]);
     inner
 }
@@ -94,16 +94,14 @@ impl DerefMut for TagIndexValues {
     }
 }
 
-impl From<&AllocSet<GenericTagValue>> for TagIndexValues {
-    fn from(set: &AllocSet<GenericTagValue>) -> Self {
-        Self {
-            inner: set
-                .iter()
-                .map(|value| {
-                    let s: String = value.to_string();
-                    hash(s)
-                })
-                .collect(),
-        }
+impl TagIndexValues {
+    #[allow(missing_docs)]
+    pub fn iter(
+        set: &AllocSet<GenericTagValue>,
+    ) -> impl Iterator<Item = [u8; TAG_INDEX_VALUE_SIZE]> + '_ {
+        set.iter().map(|value| {
+            let s: String = value.to_string();
+            hash(s)
+        })
     }
 }

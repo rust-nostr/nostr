@@ -189,7 +189,7 @@ impl WebDatabase {
         tracing::debug!("Building database indexes...");
         let tx = self
             .db
-            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
         let store = tx.object_store(EVENTS_CF)?;
         let events = store
             .get_all()?
@@ -200,7 +200,16 @@ impl WebDatabase {
                 let bytes = hex::decode(v).ok()?;
                 RawEvent::decode(&bytes).ok()
             });
-        self.indexes.bulk_load(events).await;
+
+        // Build indexes
+        let to_discard: HashSet<EventId> = self.indexes.bulk_index(events).await;
+
+        // Discard events
+        for event_id in to_discard.into_iter() {
+            let key = JsValue::from(event_id.to_hex());
+            store.delete(&key)?;
+        }
+
         tracing::info!("Database indexes loaded");
         Ok(())
     }

@@ -77,6 +77,40 @@ pub enum Alphabet {
     Z,
 }
 
+impl Alphabet {
+    /// Get as char
+    pub fn as_char(&self) -> char {
+        match self {
+            Self::A => 'a',
+            Self::B => 'b',
+            Self::C => 'c',
+            Self::D => 'd',
+            Self::E => 'e',
+            Self::F => 'f',
+            Self::G => 'g',
+            Self::H => 'h',
+            Self::I => 'i',
+            Self::J => 'j',
+            Self::K => 'k',
+            Self::L => 'l',
+            Self::M => 'm',
+            Self::N => 'n',
+            Self::O => 'o',
+            Self::P => 'p',
+            Self::Q => 'q',
+            Self::R => 'r',
+            Self::S => 's',
+            Self::T => 't',
+            Self::U => 'u',
+            Self::V => 'v',
+            Self::W => 'w',
+            Self::X => 'x',
+            Self::Y => 'y',
+            Self::Z => 'z',
+        }
+    }
+}
+
 impl fmt::Display for Alphabet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -663,10 +697,12 @@ impl Filter {
 
         let idx: TagIndexes = event.build_tags_index();
         self.generic_tags.iter().all(|(tagname, set)| {
-            let set = TagIndexValues::from(set);
-            idx.get(tagname)
-                .map(|valset| valset.intersection(&set).count() > 0)
-                .unwrap_or(false)
+            idx.get(tagname).map_or(false, |valset| {
+                TagIndexValues::iter(set)
+                    .filter(|t| valset.contains(t))
+                    .count()
+                    > 0
+            })
         })
     }
 

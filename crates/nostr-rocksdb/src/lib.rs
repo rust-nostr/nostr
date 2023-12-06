@@ -118,7 +118,24 @@ impl RocksDatabase {
             .full_iterator_cf(&cf, IteratorMode::Start)
             .flatten()
             .filter_map(|(_, value)| RawEvent::decode(&value).ok());
-        self.indexes.bulk_load(events).await;
+
+        // Build indexes
+        let to_discard: HashSet<EventId> = self.indexes.bulk_index(events).await;
+
+        // Discard events
+        if !to_discard.is_empty() {
+            // Prepare write batch
+            let mut batch = WriteBatchWithTransaction::default();
+
+            // Discard events no longer needed
+            for event_id in to_discard.into_iter() {
+                batch.delete_cf(&cf, event_id);
+            }
+
+            // Write batch changes
+            self.db.write(batch).map_err(DatabaseError::backend)?;
+        }
+
         Ok(())
     }
 }
