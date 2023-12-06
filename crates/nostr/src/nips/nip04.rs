@@ -106,12 +106,12 @@ where
     ))
 }
 
-/// Decrypt
-pub fn decrypt<S>(
+/// Decrypts content to bytes
+pub fn decrypt_to_bytes<S>(
     sk: &SecretKey,
     pk: &XOnlyPublicKey,
     encrypted_content: S,
-) -> Result<String, Error>
+) -> Result<Vec<u8>, Error>
 where
     S: Into<String>,
 {
@@ -134,6 +134,19 @@ where
         .decrypt_padded_vec_mut::<Pkcs7>(&encrypted_content)
         .map_err(|_| Error::WrongBlockMode)?;
 
+    Ok(result)
+}
+
+/// Decrypts content to a UTF-8 string
+pub fn decrypt<S>(
+    sk: &SecretKey,
+    pk: &XOnlyPublicKey,
+    encrypted_content: S,
+) -> Result<String, Error>
+where
+    S: Into<String>,
+{
+    let result = decrypt_to_bytes(sk, pk, encrypted_content)?;
     String::from_utf8(result).map_err(|_| Error::Utf8Encode)
 }
 
