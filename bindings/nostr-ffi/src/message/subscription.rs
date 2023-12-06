@@ -4,22 +4,80 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::message::subscription::Alphabet;
+use nostr::message::subscription;
 use nostr::JsonUtil;
+use uniffi::{Enum, Object};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::{Event, EventId, PublicKey, Timestamp};
 
-#[derive(Clone)]
-pub struct Filter {
-    inner: nostr::Filter,
+#[derive(Enum)]
+pub enum Alphabet {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
 }
 
-impl Default for Filter {
-    fn default() -> Self {
-        Self::new()
+impl From<Alphabet> for subscription::Alphabet {
+    fn from(value: Alphabet) -> Self {
+        match value {
+            Alphabet::A => Self::A,
+            Alphabet::B => Self::B,
+            Alphabet::C => Self::C,
+            Alphabet::D => Self::D,
+            Alphabet::E => Self::E,
+            Alphabet::F => Self::F,
+            Alphabet::G => Self::G,
+            Alphabet::H => Self::H,
+            Alphabet::I => Self::I,
+            Alphabet::J => Self::J,
+            Alphabet::K => Self::K,
+            Alphabet::L => Self::L,
+            Alphabet::M => Self::M,
+            Alphabet::N => Self::N,
+            Alphabet::O => Self::O,
+            Alphabet::P => Self::P,
+            Alphabet::Q => Self::Q,
+            Alphabet::R => Self::R,
+            Alphabet::S => Self::S,
+            Alphabet::T => Self::T,
+            Alphabet::U => Self::U,
+            Alphabet::V => Self::V,
+            Alphabet::W => Self::W,
+            Alphabet::X => Self::X,
+            Alphabet::Y => Self::Y,
+            Alphabet::Z => Self::Z,
+        }
     }
+}
+
+#[derive(Clone, Object)]
+pub struct Filter {
+    inner: nostr::Filter,
 }
 
 impl Deref for Filter {
@@ -35,11 +93,13 @@ impl From<nostr::Filter> for Filter {
     }
 }
 
+#[uniffi::export]
 impl Filter {
-    pub fn new() -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
             inner: nostr::Filter::new(),
-        }
+        })
     }
 
     pub fn id(self: Arc<Self>, id: Arc<EventId>) -> Arc<Self> {
@@ -138,7 +198,7 @@ impl Filter {
 
     pub fn custom_tag(self: Arc<Self>, tag: Alphabet, content: Vec<String>) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.custom_tag(tag, content);
+        builder.inner = builder.inner.custom_tag(tag.into(), content);
         Arc::new(builder)
     }
 
@@ -146,10 +206,11 @@ impl Filter {
         self.inner.match_event(event.as_ref().deref())
     }
 
-    pub fn from_json(json: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_json(json: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: nostr::Filter::from_json(json)?,
-        })
+        }))
     }
 
     pub fn as_json(&self) -> String {

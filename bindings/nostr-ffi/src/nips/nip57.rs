@@ -5,11 +5,12 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip57;
+use uniffi::Object;
 
 use crate::helper::unwrap_or_clone_arc;
 use crate::{EventId, PublicKey};
 
-#[derive(Clone)]
+#[derive(Clone, Object)]
 pub struct ZapRequestData {
     inner: nip57::ZapRequestData,
 }
@@ -27,14 +28,16 @@ impl From<nip57::ZapRequestData> for ZapRequestData {
     }
 }
 
+#[uniffi::export]
 impl ZapRequestData {
-    pub fn new(public_key: Arc<PublicKey>, relays: Vec<String>) -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn new(public_key: Arc<PublicKey>, relays: Vec<String>) -> Arc<Self> {
+        Arc::new(Self {
             inner: nip57::ZapRequestData::new(
                 public_key.as_ref().into(),
                 relays.into_iter().map(|r| r.into()).collect(),
             ),
-        }
+        })
     }
 
     pub fn amount(self: Arc<Self>, amount: u64) -> Arc<Self> {

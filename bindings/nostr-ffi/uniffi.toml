@@ -1,10 +1,5 @@
 [bindings.kotlin]
 package_name = "nostr"
-cdylib_name = "nostr_ffi"
 
 [bindings.swift]
 ffi_module_filename = "nostrFFI"
-cdylib_name = "nostr_ffi"
-
-[bindings.python]
-cdylib_name = "nostr_ffi"

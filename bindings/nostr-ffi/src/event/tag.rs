@@ -3,6 +3,7 @@
 
 use std::ops::Deref;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use nostr::event::tag::{
     self, HttpMethod, Identity, ImageDimensions, LiveEventMarker, LiveEventStatus, Marker, Report,
@@ -14,14 +15,17 @@ use nostr::nips::nip90::DataVendingMachineStatus;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Event, EventId, JsonUtil, Kind, RelayMetadata, Timestamp, UncheckedUrl, Url};
+use uniffi::{Enum, Object};
 
 use crate::error::{NostrError, Result};
 
+#[derive(Enum)]
 pub enum TagKind {
     Known { known: TagKindKnown },
     Unknown { unknown: String },
 }
 
+#[derive(Enum)]
 pub enum TagKindKnown {
     /// Public key
     P,
@@ -333,6 +337,7 @@ impl From<TagKind> for tag::TagKind {
     }
 }
 
+#[derive(Enum)]
 pub enum TagEnum {
     Unknown {
         kind: TagKind,
@@ -864,6 +869,7 @@ impl TryFrom<TagEnum> for tag::Tag {
     }
 }
 
+#[derive(Object)]
 pub struct Tag {
     inner: tag::Tag,
 }
@@ -881,17 +887,20 @@ impl Deref for Tag {
     }
 }
 
+#[uniffi::export]
 impl Tag {
-    pub fn parse(data: Vec<String>) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn parse(data: Vec<String>) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: tag::Tag::try_from(data)?,
-        })
+        }))
     }
 
-    pub fn from_enum(e: TagEnum) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_enum(e: TagEnum) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: tag::Tag::try_from(e)?,
-        })
+        }))
     }
 
     pub fn as_enum(&self) -> TagEnum {

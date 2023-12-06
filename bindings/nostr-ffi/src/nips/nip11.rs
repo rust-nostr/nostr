@@ -2,12 +2,15 @@
 // Distributed under the MIT software license
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use nostr::nips::nip11;
 use nostr::Url;
+use uniffi::Object;
 
 use crate::error::Result;
 
+#[derive(Object)]
 pub struct RelayInformationDocument {
     inner: nip11::RelayInformationDocument,
 }
@@ -18,16 +21,18 @@ impl From<nip11::RelayInformationDocument> for RelayInformationDocument {
     }
 }
 
+#[uniffi::export]
 impl RelayInformationDocument {
-    pub fn get(url: String, proxy: Option<String>) -> Result<Self> {
+    #[uniffi::constructor]
+    pub fn get(url: String, proxy: Option<String>) -> Result<Arc<Self>> {
         let url: Url = Url::parse(&url)?;
         let proxy: Option<SocketAddr> = match proxy {
             Some(proxy) => Some(proxy.parse()?),
             None => None,
         };
-        Ok(Self {
+        Ok(Arc::new(Self {
             inner: nip11::RelayInformationDocument::get_blocking(url, proxy)?,
-        })
+        }))
     }
 
     pub fn name(&self) -> Option<String> {

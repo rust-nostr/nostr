@@ -6,10 +6,12 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip46;
+use uniffi::Object;
 
 use crate::error::Result;
 use crate::PublicKey;
 
+#[derive(Object)]
 pub struct NostrConnectURI {
     inner: nip46::NostrConnectURI,
 }
@@ -27,11 +29,13 @@ impl Deref for NostrConnectURI {
     }
 }
 
+#[uniffi::export]
 impl NostrConnectURI {
-    pub fn from_string(uri: String) -> Result<Self> {
-        Ok(Self {
+    #[uniffi::constructor]
+    pub fn from_string(uri: String) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
             inner: nip46::NostrConnectURI::from_str(&uri)?,
-        })
+        }))
     }
 
     pub fn public_key(&self) -> Arc<PublicKey> {

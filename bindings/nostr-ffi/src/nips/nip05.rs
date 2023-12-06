@@ -10,6 +10,7 @@ use nostr::nips::nip05;
 use crate::error::Result;
 use crate::{Profile, PublicKey};
 
+#[uniffi::export]
 pub fn verify_nip05(
     public_key: Arc<PublicKey>,
     nip05: String,
@@ -26,6 +27,7 @@ pub fn verify_nip05(
     )?)
 }
 
+#[uniffi::export]
 pub fn get_nip05_profile(nip05: String, proxy: Option<String>) -> Result<Arc<Profile>> {
     let proxy: Option<SocketAddr> = match proxy {
         Some(proxy) => Some(proxy.parse()?),

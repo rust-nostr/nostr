@@ -2,7 +2,9 @@
 // Distributed under the MIT software license
 
 use nostr::{JsonUtil, RelayMessage as NRelayMessage};
+use uniffi::Enum;
 
+#[derive(Enum)]
 pub enum RelayMessage {
     Ev {
         subscription_id: String,
