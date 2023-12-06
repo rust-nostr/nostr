@@ -111,6 +111,6 @@ python-win:
 	cargo build --release
 	cargo run -p uniffi-bindgen generate --library ..\..\target\release\nostr_ffi.dll --language python --no-format -o bindings-python/src/nostr/
 	copy ..\..\target\release\nostr_ffi.dll bindings-python\src\nostr
-	del /F /Q bindings-python\dist\*
+	del /F /Q bindings-python\dist\* 2>nul || exit /b 0
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	FOR %%i in (.\bindings-python\dist\*.whl) DO pip install %i --force-reinstall
