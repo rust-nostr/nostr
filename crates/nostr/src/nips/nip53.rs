@@ -6,14 +6,102 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/53.md>
 
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::fmt;
+use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::XOnlyPublicKey;
 
-use crate::event::tag::{LiveEventMarker, LiveEventStatus};
 use crate::{ImageDimensions, Tag, Timestamp, UncheckedUrl};
+
+/// NIP53 Error
+#[derive(Debug)]
+pub enum Error {
+    /// Unknown [`LiveEventMarker`]
+    UnknownLiveEventMarker(String),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnknownLiveEventMarker(u) => write!(f, "Unknown live event marker: {u}"),
+        }
+    }
+}
+
+/// Live Event Marker
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum LiveEventMarker {
+    /// Host
+    Host,
+    /// Speaker
+    Speaker,
+    /// Participant
+    Participant,
+}
+
+impl fmt::Display for LiveEventMarker {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Host => write!(f, "Host"),
+            Self::Speaker => write!(f, "Speaker"),
+            Self::Participant => write!(f, "Participant"),
+        }
+    }
+}
+
+impl FromStr for LiveEventMarker {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Host" => Ok(Self::Host),
+            "Speaker" => Ok(Self::Speaker),
+            "Participant" => Ok(Self::Participant),
+            s => Err(Error::UnknownLiveEventMarker(s.to_string())),
+        }
+    }
+}
+
+/// Live Event Status
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum LiveEventStatus {
+    /// Planned
+    Planned,
+    /// Live
+    Live,
+    /// Ended
+    Ended,
+    /// Custom
+    Custom(String),
+}
+
+impl fmt::Display for LiveEventStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Planned => write!(f, "planned"),
+            Self::Live => write!(f, "live"),
+            Self::Ended => write!(f, "ended"),
+            Self::Custom(s) => write!(f, "{s}"),
+        }
+    }
+}
+
+impl<S> From<S> for LiveEventStatus
+where
+    S: Into<String>,
+{
+    fn from(s: S) -> Self {
+        let s: String = s.into();
+        match s.as_str() {
+            "planned" => Self::Planned,
+            "live" => Self::Live,
+            "ended" => Self::Ended,
+            _ => Self::Custom(s),
+        }
+    }
+}
 
 /// Live Event Host
 pub struct LiveEventHost {

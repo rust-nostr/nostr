@@ -25,6 +25,7 @@ pub use self::indexes::{TagIndexValues, TagIndexes};
 use super::id::{self, EventId};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::nips::nip48::Protocol;
+use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::{Event, JsonUtil, Kind, Timestamp, UncheckedUrl};
 
@@ -35,8 +36,6 @@ pub enum Error {
     MarkerParseError,
     /// Unknown [`Report`]
     UnknownReportType,
-    /// Unknown [`LiveEventMarker`]
-    UnknownLiveEventMarker(String),
     /// Impossible to find tag kind
     KindNotFound,
     /// Invalid length
@@ -55,6 +54,8 @@ pub enum Error {
     EventId(id::Error),
     /// NIP26 error
     NIP26(Nip26Error),
+    ///NIP53 error
+    NIP53(nip53::Error),
     /// Event Error
     Event(crate::event::Error),
     /// NIP-39 Error
@@ -75,7 +76,6 @@ impl fmt::Display for Error {
         match self {
             Self::MarkerParseError => write!(f, "Impossible to parse marker"),
             Self::UnknownReportType => write!(f, "Unknown report type"),
-            Self::UnknownLiveEventMarker(u) => write!(f, "Unknown live event marker: {u}"),
             Self::KindNotFound => write!(f, "Impossible to find tag kind"),
             Self::InvalidLength => write!(f, "Invalid length"),
             Self::InvalidZapRequest => write!(f, "Invalid Zap request"),
@@ -85,6 +85,7 @@ impl fmt::Display for Error {
             Self::Url(e) => write!(f, "Url: {e}"),
             Self::EventId(e) => write!(f, "Event ID: {e}"),
             Self::NIP26(e) => write!(f, "NIP26: {e}"),
+            Self::NIP53(e) => write!(f, "NIP53: {e}"),
             Self::Event(e) => write!(f, "Event: {e}"),
             Self::InvalidIdentity => write!(f, "Invalid identity tag"),
             Self::InvalidImageDimensions => write!(f, "Invalid image dimensions"),
@@ -130,6 +131,12 @@ impl From<Nip26Error> for Error {
     }
 }
 
+impl From<nip53::Error> for Error {
+    fn from(e: nip53::Error) -> Self {
+        Self::NIP53(e)
+    }
+}
+
 impl From<crate::event::Error> for Error {
     fn from(e: crate::event::Error) -> Self {
         Self::Event(e)
@@ -166,78 +173,6 @@ where
         match s.as_str() {
             "root" => Self::Root,
             "reply" => Self::Reply,
-            _ => Self::Custom(s),
-        }
-    }
-}
-
-/// Live Event Marker
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LiveEventMarker {
-    /// Host
-    Host,
-    /// Speaker
-    Speaker,
-    /// Participant
-    Participant,
-}
-
-impl fmt::Display for LiveEventMarker {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Host => write!(f, "Host"),
-            Self::Speaker => write!(f, "Speaker"),
-            Self::Participant => write!(f, "Participant"),
-        }
-    }
-}
-
-impl FromStr for LiveEventMarker {
-    type Err = Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Host" => Ok(Self::Host),
-            "Speaker" => Ok(Self::Speaker),
-            "Participant" => Ok(Self::Participant),
-            s => Err(Error::UnknownLiveEventMarker(s.to_string())),
-        }
-    }
-}
-
-/// Live Event Status
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LiveEventStatus {
-    /// Planned
-    Planned,
-    /// Live
-    Live,
-    /// Ended
-    Ended,
-    /// Custom
-    Custom(String),
-}
-
-impl fmt::Display for LiveEventStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Planned => write!(f, "planned"),
-            Self::Live => write!(f, "live"),
-            Self::Ended => write!(f, "ended"),
-            Self::Custom(s) => write!(f, "{s}"),
-        }
-    }
-}
-
-impl<S> From<S> for LiveEventStatus
-where
-    S: Into<String>,
-{
-    fn from(s: S) -> Self {
-        let s: String = s.into();
-        match s.as_str() {
-            "planned" => Self::Planned,
-            "live" => Self::Live,
-            "ended" => Self::Ended,
             _ => Self::Custom(s),
         }
     }

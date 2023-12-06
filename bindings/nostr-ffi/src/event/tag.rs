@@ -6,12 +6,11 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use nostr::event::tag::{
-    self, HttpMethod, Identity, ImageDimensions, LiveEventMarker, LiveEventStatus, Marker, Report,
-};
+use nostr::event::tag::{self, HttpMethod, Identity, ImageDimensions, Marker, Report};
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip26::Conditions;
 use nostr::nips::nip48::Protocol;
+use nostr::nips::nip53::{LiveEventMarker, LiveEventStatus};
 use nostr::nips::nip90::DataVendingMachineStatus;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::XOnlyPublicKey;

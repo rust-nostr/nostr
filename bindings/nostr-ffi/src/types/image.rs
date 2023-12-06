@@ -17,6 +17,12 @@ impl From<nostr::ImageDimensions> for ImageDimensions {
     }
 }
 
+impl From<ImageDimensions> for nostr::ImageDimensions {
+    fn from(dim: ImageDimensions) -> Self {
+        dim.inner
+    }
+}
+
 impl From<&ImageDimensions> for nostr::ImageDimensions {
     fn from(dim: &ImageDimensions) -> Self {
         dim.inner

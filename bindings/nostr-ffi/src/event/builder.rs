@@ -13,6 +13,7 @@ use uniffi::Object;
 use super::{Event, EventId};
 use crate::error::Result;
 use crate::key::Keys;
+use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::types::{Contact, Metadata};
 use crate::{FileMetadata, NostrConnectMessage, PublicKey, RelayMetadata, Tag, UnsignedEvent};
@@ -273,6 +274,13 @@ impl EventBuilder {
                 msg.try_into()?,
             )?,
         }))
+    }
+
+    #[uniffi::constructor]
+    pub fn live_event(live_event: LiveEvent) -> Arc<Self> {
+        Arc::new(Self {
+            inner: nostr::EventBuilder::live_event(live_event.into()),
+        })
     }
 
     #[uniffi::constructor]
