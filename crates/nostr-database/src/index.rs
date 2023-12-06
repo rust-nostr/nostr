@@ -181,6 +181,27 @@ impl From<Filter> for FilterIndex {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct WrappedRawEvent {
+    raw: RawEvent,
+}
+
+impl PartialOrd for WrappedRawEvent {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for WrappedRawEvent {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.raw.created_at != other.raw.created_at {
+            self.raw.created_at.cmp(&other.raw.created_at)
+        } else {
+            self.raw.id.cmp(&other.raw.id)
+        }
+    }
+}
+
 /// Event Index Result
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EventIndexResult {
@@ -215,8 +236,15 @@ impl DatabaseIndexes {
         let mut to_discard: HashSet<EventId> = HashSet::new();
         let now = Timestamp::now();
 
+        // Sort ASC to prevent issues during index
+        let events: BTreeSet<WrappedRawEvent> = events
+            .into_iter()
+            .map(|raw| WrappedRawEvent { raw })
+            .collect();
+
         events
             .into_iter()
+            .map(|w| w.raw)
             .filter(|raw| !raw.is_expired(&now) && !raw.is_ephemeral())
             .for_each(|event| {
                 let _ = self.index_raw_event(&mut index, &mut deleted, &mut to_discard, event);
@@ -299,6 +327,8 @@ impl DatabaseIndexes {
                     let filter: Filter = coordinate.into();
                     let filter: Filter = filter.until(timestamp);
                     for ev in self.internal_query(index, deleted, filter) {
+                        // Not check if ev.pubkey match the pubkey_prefix because asume that query
+                        // returned only the events owned by pubkey_prefix
                         to_discard.insert(ev.event_id);
                     }
                 }
