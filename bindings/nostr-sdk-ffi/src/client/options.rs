@@ -6,8 +6,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
+use uniffi::Object;
 
-#[derive(Clone)]
+#[derive(Clone, Object)]
 pub struct Options {
     inner: nostr_sdk::Options,
 }
@@ -25,11 +26,13 @@ impl From<nostr_sdk::Options> for Options {
     }
 }
 
+#[uniffi::export]
 impl Options {
-    pub fn new() -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
             inner: nostr_sdk::Options::new(),
-        }
+        })
     }
 
     pub fn wait_for_connection(self: Arc<Self>, wait: bool) -> Arc<Self> {

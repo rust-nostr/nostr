@@ -7,7 +7,7 @@ print(keys.public_key().to_bech32())
 
 client = Client(keys)
 
-client.add_relay("wss://relay.damus.io")
+client.add_relay("wss://relay.damus.io", None)
 client.connect()
 
 print("Mining a POW text note...")

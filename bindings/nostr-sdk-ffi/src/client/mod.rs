@@ -14,6 +14,7 @@ use nostr_ffi::{
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
 use nostr_sdk::{NegentropyOptions, Options as OptionsSdk};
+use uniffi::Object;
 
 mod builder;
 mod options;
@@ -23,6 +24,7 @@ pub use self::options::Options;
 use crate::error::Result;
 use crate::{NostrDatabase, Relay};
 
+#[derive(Object)]
 pub struct Client {
     inner: ClientSdk,
 }
@@ -33,19 +35,22 @@ impl From<ClientSdk> for Client {
     }
 }
 
+#[uniffi::export]
 impl Client {
-    pub fn new(keys: Arc<Keys>) -> Self {
+    #[uniffi::constructor]
+    pub fn new(keys: Arc<Keys>) -> Arc<Self> {
         let opts: OptionsSdk = OptionsSdk::new().shutdown_on_drop(true);
-        Self {
+        Arc::new(Self {
             inner: ClientSdk::with_opts(keys.as_ref().deref(), opts),
-        }
+        })
     }
 
-    pub fn with_opts(keys: Arc<Keys>, opts: Arc<Options>) -> Self {
+    #[uniffi::constructor]
+    pub fn with_opts(keys: Arc<Keys>, opts: Arc<Options>) -> Arc<Self> {
         let opts: OptionsSdk = opts.as_ref().deref().clone().shutdown_on_drop(true);
-        Self {
+        Arc::new(Self {
             inner: ClientSdk::with_opts(keys.as_ref().deref(), opts),
-        }
+        })
     }
 
     // TODO: add with_remote_signer
@@ -266,6 +271,7 @@ impl Client {
     }
 }
 
+#[uniffi::export(callback_interface)]
 pub trait HandleNotification: Send + Sync + Debug {
     fn handle_msg(&self, relay_url: String, msg: RelayMessage);
     fn handle(&self, relay_url: String, event: Arc<Event>);

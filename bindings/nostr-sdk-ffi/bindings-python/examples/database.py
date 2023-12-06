@@ -8,8 +8,8 @@ print(keys.public_key().to_bech32())
 database = NostrDatabase.sqlite("nostr.db")
 client = ClientBuilder(keys).database(database).build()
 
-client.add_relay("wss://relay.damus.io")
-client.add_relay("wss://atl.purplerelay.com")
+client.add_relay("wss://relay.damus.io", None)
+client.add_relay("wss://atl.purplerelay.com", None)
 client.connect()
 
 # Negentropy reconciliation

@@ -4,9 +4,9 @@ import time
 keys = Keys.generate()
 client = Client(keys)
 
-client.add_relay("wss://relay.damus.io")
-client.add_relay("wss://nostr.wine")
-client.add_relay("wss://relay.nostr.info")
+client.add_relay("wss://relay.damus.io", None)
+client.add_relay("wss://nostr.wine", None)
+client.add_relay("wss://relay.nostr.info", None)
 client.connect()
 
 while True:

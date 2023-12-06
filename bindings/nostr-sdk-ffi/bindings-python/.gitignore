@@ -8,6 +8,7 @@ libnostr_sdk_ffi.dylib
 
 *.swp
 
+src/nostr-sdk/nostr.py
 src/nostr-sdk/nostr_sdk.py
 src/nostr-sdk/*.so
 *.whl

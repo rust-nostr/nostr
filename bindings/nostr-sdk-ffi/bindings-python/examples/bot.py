@@ -14,9 +14,9 @@ print(f"Bot public key: {pk.to_bech32()}")
 
 client = Client(keys)
 
-client.add_relay("wss://relay.damus.io")
-client.add_relay("wss://nostr.mom")
-client.add_relay("wss://nostr.oxtr.dev")
+client.add_relay("wss://relay.damus.io", None)
+client.add_relay("wss://nostr.mom", None)
+client.add_relay("wss://nostr.oxtr.dev", None)
 client.connect()
 
 filter = Filter().pubkey(pk).kind(4).since(Timestamp.now())

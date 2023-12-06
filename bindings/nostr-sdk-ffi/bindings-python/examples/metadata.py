@@ -5,7 +5,7 @@ keys = Keys.generate()
 
 client = Client(keys)
 
-client.add_relay("wss://relay.damus.io")
+client.add_relay("wss://relay.damus.io", None)
 client.connect()
 
 # Set metadata

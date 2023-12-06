@@ -7,9 +7,11 @@ use std::sync::Arc;
 use nostr_ffi::{Event, EventId, Filter, Metadata, PublicKey};
 use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
 use nostr_sdk::{block_on, SQLiteDatabase};
+use uniffi::Object;
 
 use crate::error::Result;
 
+#[derive(Object)]
 pub struct NostrDatabase {
     inner: Arc<DynNostrDatabase>,
 }
@@ -26,13 +28,15 @@ impl From<&NostrDatabase> for Arc<DynNostrDatabase> {
     }
 }
 
+#[uniffi::export]
 impl NostrDatabase {
-    pub fn sqlite(path: String) -> Result<Self> {
+    #[uniffi::constructor]
+    pub fn sqlite(path: String) -> Result<Arc<Self>> {
         block_on(async move {
             let db = Arc::new(SQLiteDatabase::open(path).await?);
-            Ok(Self {
+            Ok(Arc::new(Self {
                 inner: db.into_nostr_database(),
-            })
+            }))
         })
     }
 

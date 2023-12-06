@@ -25,7 +25,7 @@ thiserror = "1.0"
 tokio = { version = "1.32", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = "0.3"
-uniffi = "0.25"
+uniffi = { git = "https://github.com/mozilla/uniffi-rs", rev = "d380d164cfdba9e091c461baa6855f0a2294ac5b" }
 url-fork = { version = "3.0", default-features = false }
 
 [profile.release]
