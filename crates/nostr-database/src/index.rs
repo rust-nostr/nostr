@@ -226,21 +226,21 @@ impl DatabaseIndexes {
 
     /// Bulk index
     #[tracing::instrument(skip_all)]
-    pub async fn bulk_index<I>(&self, events: I)
+    pub async fn bulk_index<I>(&self, events: I) -> HashSet<EventId>
     where
         I: IntoIterator<Item = RawEvent>,
     {
-        let mut index = self.index.write().await;
-        let mut deleted = self.deleted.write().await;
-
-        let mut to_discard: HashSet<EventId> = HashSet::new();
-        let now = Timestamp::now();
-
         // Sort ASC to prevent issues during index
         let events: BTreeSet<WrappedRawEvent> = events
             .into_iter()
             .map(|raw| WrappedRawEvent { raw })
             .collect();
+
+        let mut index = self.index.write().await;
+        let mut deleted = self.deleted.write().await;
+
+        let mut to_discard: HashSet<EventId> = HashSet::new();
+        let now = Timestamp::now();
 
         events
             .into_iter()
@@ -253,10 +253,10 @@ impl DatabaseIndexes {
         // Remove events
         if !to_discard.is_empty() {
             index.retain(|e| !to_discard.contains(&e.event_id));
-            deleted.extend(to_discard);
+            deleted.extend(to_discard.iter());
         }
 
-        // TODO: return to_discard events?
+        to_discard
     }
 
     fn index_raw_event(

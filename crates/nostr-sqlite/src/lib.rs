@@ -83,7 +83,26 @@ impl SQLiteDatabase {
                 Ok::<HashSet<RawEvent>, Error>(events)
             })
             .await??;
-        self.indexes.bulk_index(events).await;
+
+        // Build indexes
+        let to_discard = self.indexes.bulk_index(events).await;
+
+        // Discard events
+        if !to_discard.is_empty() {
+            let conn = self.acquire().await?;
+            conn.interact(move |conn| {
+                let delete_query = format!(
+                    "DELETE FROM events WHERE {};",
+                    to_discard
+                        .iter()
+                        .map(|id| format!("event_id = '{id}'"))
+                        .collect::<Vec<_>>()
+                        .join(" AND ")
+                );
+                conn.execute(&delete_query, [])
+            })
+            .await??;
+        }
         Ok(())
     }
 }
