@@ -13,6 +13,10 @@ pub enum RelayMessage {
     Notice {
         message: String,
     },
+    Closed {
+        subscription_id: String,
+        message: String,
+    },
     EndOfStoredEvents {
         subscription_id: String,
     },
@@ -47,6 +51,13 @@ impl From<NRelayMessage> for RelayMessage {
             } => Self::Ev {
                 subscription_id: subscription_id.to_string(),
                 event: event.as_json(),
+            },
+            NRelayMessage::Closed {
+                subscription_id,
+                message,
+            } => Self::Closed {
+                subscription_id: subscription_id.to_string(),
+                message,
             },
             NRelayMessage::Notice { message } => Self::Notice { message },
             NRelayMessage::EndOfStoredEvents(sub_id) => Self::EndOfStoredEvents {

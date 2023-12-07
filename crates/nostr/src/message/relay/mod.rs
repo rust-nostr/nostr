@@ -108,6 +108,13 @@ pub enum RelayMessage {
         /// Message
         message: String,
     },
+    /// `["CLOSED", <subscription_id>, <message>]` (NIP01)
+    Closed {
+        /// Subscription ID
+        subscription_id: SubscriptionId,
+        /// Message
+        message: String,
+    },
     /// `["AUTH", <challenge-string>]` (NIP42)
     Auth {
         /// Challenge
@@ -175,6 +182,17 @@ impl RelayMessage {
         }
     }
 
+    /// Create new `CLOSED` message
+    pub fn new_closed<S>(subscription_id: SubscriptionId, message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::Closed {
+            subscription_id,
+            message: message.into(),
+        }
+    }
+
     /// Create new `EOSE` message
     pub fn new_eose(subscription_id: SubscriptionId) -> Self {
         Self::EndOfStoredEvents(subscription_id)
@@ -217,6 +235,10 @@ impl RelayMessage {
                 subscription_id,
             } => json!(["EVENT", subscription_id, event]),
             Self::Notice { message } => json!(["NOTICE", message]),
+            Self::Closed {
+                subscription_id,
+                message,
+            } => json!(["CLOSED", subscription_id, message]),
             Self::EndOfStoredEvents(subscription_id) => {
                 json!(["EOSE", subscription_id])
             }
@@ -294,6 +316,13 @@ impl TryFrom<RawRelayMessage> for RelayMessage {
                 SubscriptionId::new(subscription_id),
             )),
             RawRelayMessage::Notice { message } => Ok(Self::Notice { message }),
+            RawRelayMessage::Closed {
+                subscription_id,
+                message,
+            } => Ok(Self::Closed {
+                subscription_id: SubscriptionId::new(subscription_id),
+                message,
+            }),
             RawRelayMessage::Auth { challenge } => Ok(Self::Auth { challenge }),
             RawRelayMessage::Count {
                 subscription_id,
@@ -339,13 +368,37 @@ mod tests {
     }
     #[test]
     fn test_handle_invalid_notice() {
-        //Missing content
+        // Missing content
         let invalid_notice_msg = r#"["NOTICE"]"#;
-        //The content is not string
+        // The content is not string
         let invalid_notice_msg_content = r#"["NOTICE": 404]"#;
 
         assert!(RelayMessage::from_json(invalid_notice_msg).is_err(),);
         assert!(RelayMessage::from_json(invalid_notice_msg_content).is_err(),);
+    }
+
+    #[test]
+    fn test_handle_valid_closed() {
+        let valid_closed_msg = r#"["CLOSED","random-subscription-id","reason"]"#;
+        let handled_valid_closed_msg =
+            RelayMessage::new_closed(SubscriptionId::new("random-subscription-id"), "reason");
+
+        assert_eq!(
+            RelayMessage::from_json(valid_closed_msg).unwrap(),
+            handled_valid_closed_msg
+        );
+    }
+
+    #[test]
+    fn test_handle_invalid_closed() {
+        // Missing subscription ID
+        assert!(RelayMessage::from_json(r#"["CLOSED"]"#).is_err());
+
+        // The subscription ID is not a string
+        assert!(RelayMessage::from_json(r#"["CLOSED", 404, "reason"]"#).is_err());
+
+        // The content is not a string
+        assert!(RelayMessage::from_json(r#"["CLOSED", "random-subscription-id", 404]"#).is_err())
     }
 
     #[test]
@@ -372,7 +425,7 @@ mod tests {
     fn test_handle_invalid_event() {
         // Missing Event field
         let invalid_event_msg = r#"["EVENT", "random_string"]"#;
-        //Event JSON with incomplete content
+        // Event JSON with incomplete content
         let invalid_event_msg_content = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"}]"#;
 
         assert!(RelayMessage::from_json(invalid_event_msg).is_err(),);
