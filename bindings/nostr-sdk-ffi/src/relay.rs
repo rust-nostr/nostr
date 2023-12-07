@@ -7,10 +7,12 @@ use std::{collections::HashMap, ops::Deref};
 
 use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument, Timestamp};
 use nostr_sdk::relay::InternalSubscriptionId;
-use nostr_sdk::{block_on, relay, FilterOptions, RelayStatus};
+use nostr_sdk::{block_on, relay, FilterOptions};
+use uniffi::{Enum, Object};
 
 use crate::error::Result;
 
+#[derive(Object)]
 pub struct RelayConnectionStats {
     inner: relay::RelayConnectionStats,
 }
@@ -21,6 +23,7 @@ impl From<relay::RelayConnectionStats> for RelayConnectionStats {
     }
 }
 
+#[uniffi::export]
 impl RelayConnectionStats {
     pub fn attempts(&self) -> u64 {
         self.inner.attempts() as u64
@@ -36,7 +39,7 @@ impl RelayConnectionStats {
 
     pub fn connected_at(&self) -> Arc<Timestamp> {
         let secs = self.inner.connected_at().as_u64();
-        Arc::new(Timestamp::from_secs(secs))
+        Timestamp::from_secs(secs)
     }
 
     pub fn bytes_sent(&self) -> u64 {
@@ -52,6 +55,7 @@ impl RelayConnectionStats {
     }
 }
 
+#[derive(Object)]
 pub struct ActiveSubscription {
     inner: relay::ActiveSubscription,
 }
@@ -62,6 +66,7 @@ impl From<relay::ActiveSubscription> for ActiveSubscription {
     }
 }
 
+#[uniffi::export]
 impl ActiveSubscription {
     pub fn id(&self) -> String {
         self.inner.id().to_string()
@@ -76,6 +81,39 @@ impl ActiveSubscription {
     }
 }
 
+#[derive(Enum)]
+pub enum RelayStatus {
+    /// Relay initialized
+    Initialized,
+    /// Pending
+    Pending,
+    /// Connecting
+    Connecting,
+    /// Relay connected
+    Connected,
+    /// Relay disconnected, will retry to connect again
+    Disconnected,
+    /// Stop
+    Stopped,
+    /// Relay completely disconnected
+    Terminated,
+}
+
+impl From<nostr_sdk::RelayStatus> for RelayStatus {
+    fn from(value: nostr_sdk::RelayStatus) -> Self {
+        match value {
+            nostr_sdk::RelayStatus::Initialized => Self::Initialized,
+            nostr_sdk::RelayStatus::Pending => Self::Pending,
+            nostr_sdk::RelayStatus::Connecting => Self::Connecting,
+            nostr_sdk::RelayStatus::Connected => Self::Connected,
+            nostr_sdk::RelayStatus::Disconnected => Self::Disconnected,
+            nostr_sdk::RelayStatus::Stopped => Self::Stopped,
+            nostr_sdk::RelayStatus::Terminated => Self::Terminated,
+        }
+    }
+}
+
+#[derive(Object)]
 pub struct Relay {
     inner: relay::Relay,
 }
@@ -86,6 +124,7 @@ impl From<relay::Relay> for Relay {
     }
 }
 
+#[uniffi::export]
 impl Relay {
     pub fn url(&self) -> String {
         self.inner.url().to_string()
@@ -96,7 +135,7 @@ impl Relay {
     }
 
     pub fn status(&self) -> RelayStatus {
-        self.inner.status_blocking()
+        self.inner.status_blocking().into()
     }
 
     pub fn is_connected(&self) -> bool {

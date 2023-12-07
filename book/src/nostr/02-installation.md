@@ -56,7 +56,7 @@
     Import the library in your code:
 
     ```kotlin
-    import nostr.*
+    import rust.nostr.protocol.*
     ```
 
     ## Known issues

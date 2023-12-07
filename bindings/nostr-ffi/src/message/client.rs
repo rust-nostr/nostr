@@ -2,9 +2,11 @@
 // Distributed under the MIT software license
 
 use nostr::{Event, Filter, JsonUtil, SubscriptionId};
+use uniffi::Enum;
 
 use crate::NostrError;
 
+#[derive(Enum)]
 pub enum ClientMessage {
     Ev {
         event: String,

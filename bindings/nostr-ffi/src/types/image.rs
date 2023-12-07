@@ -1,6 +1,11 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use std::sync::Arc;
+
+use uniffi::Object;
+
+#[derive(Object)]
 pub struct ImageDimensions {
     inner: nostr::ImageDimensions,
 }
@@ -17,11 +22,13 @@ impl From<&ImageDimensions> for nostr::ImageDimensions {
     }
 }
 
+#[uniffi::export]
 impl ImageDimensions {
-    pub fn new(width: u64, height: u64) -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn new(width: u64, height: u64) -> Arc<Self> {
+        Arc::new(Self {
             inner: nostr::ImageDimensions { width, height },
-        }
+        })
     }
 
     pub fn width(&self) -> u64 {

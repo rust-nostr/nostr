@@ -41,6 +41,12 @@
     }
     ```
 
+    Import the library in your code:
+
+    ```kotlin
+    import rust.nostr.sdk.*
+    ```
+
     ## Known issues
 
     ### JNA dependency

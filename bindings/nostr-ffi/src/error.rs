@@ -4,9 +4,11 @@
 use std::fmt;
 use std::net::AddrParseError;
 
+use uniffi::Error;
+
 pub type Result<T, E = NostrError> = std::result::Result<T, E>;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum NostrError {
     Generic { err: String },
 }

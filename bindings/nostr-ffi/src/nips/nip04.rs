@@ -9,6 +9,7 @@ use nostr::nips::nip04;
 use crate::error::Result;
 use crate::{PublicKey, SecretKey};
 
+#[uniffi::export]
 pub fn nip04_encrypt(
     secret_key: Arc<SecretKey>,
     public_key: Arc<PublicKey>,
@@ -21,6 +22,7 @@ pub fn nip04_encrypt(
     )?)
 }
 
+#[uniffi::export]
 pub fn nip04_decrypt(
     secret_key: Arc<SecretKey>,
     public_key: Arc<PublicKey>,

@@ -5,10 +5,11 @@ use std::fmt;
 use std::net::AddrParseError;
 
 use tracing::subscriber::SetGlobalDefaultError;
+use uniffi::Error;
 
 pub type Result<T, E = NostrSdkError> = std::result::Result<T, E>;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum NostrSdkError {
     Generic { err: String },
 }

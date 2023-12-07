@@ -8,12 +8,13 @@ use std::sync::Arc;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip94;
 use nostr::url::Url;
+use uniffi::Object;
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::ImageDimensions;
 
-#[derive(Clone)]
+#[derive(Clone, Object)]
 pub struct FileMetadata {
     inner: nip94::FileMetadata,
 }
@@ -31,13 +32,15 @@ impl From<nip94::FileMetadata> for FileMetadata {
     }
 }
 
+#[uniffi::export]
 impl FileMetadata {
-    pub fn new(url: String, mime_type: String, hash: String) -> Result<Self> {
+    #[uniffi::constructor]
+    pub fn new(url: String, mime_type: String, hash: String) -> Result<Arc<Self>> {
         let url = Url::parse(&url)?;
         let hash = Sha256Hash::from_str(&hash)?;
-        Ok(Self {
+        Ok(Arc::new(Self {
             inner: nip94::FileMetadata::new(url, mime_type, hash),
-        })
+        }))
     }
 
     pub fn aes_256_gcm(self: Arc<Self>, key: String, iv: String) -> Arc<Self> {

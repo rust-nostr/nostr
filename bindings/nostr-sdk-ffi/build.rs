@@ -8,7 +8,6 @@ const DEFAULT_CLANG_VERSION: &str = "14.0.7";
 
 fn main() {
     setup_x86_64_android_workaround();
-    uniffi::generate_scaffolding("./src/nostr_sdk.udl").expect("Building the UDL file failed");
 }
 
 /// Adds a temporary workaround for an issue with the Rust compiler and Android

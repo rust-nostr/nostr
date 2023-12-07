@@ -2,7 +2,11 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::sync::Arc;
 
+use uniffi::Object;
+
+#[derive(Object)]
 pub struct Timestamp {
     inner: nostr::Timestamp,
 }
@@ -20,18 +24,21 @@ impl Deref for Timestamp {
     }
 }
 
+#[uniffi::export]
 impl Timestamp {
     /// Get UNIX timestamp
-    pub fn now() -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn now() -> Arc<Self> {
+        Arc::new(Self {
             inner: nostr::Timestamp::now(),
-        }
+        })
     }
 
-    pub fn from_secs(secs: u64) -> Self {
-        Self {
+    #[uniffi::constructor]
+    pub fn from_secs(secs: u64) -> Arc<Self> {
+        Arc::new(Self {
             inner: nostr::Timestamp::from(secs),
-        }
+        })
     }
 
     /// Get timestamp as [`u64`]

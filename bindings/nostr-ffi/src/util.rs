@@ -9,6 +9,7 @@ use nostr::util;
 use crate::error::Result;
 use crate::{PublicKey, SecretKey};
 
+#[uniffi::export]
 pub fn generate_shared_key(
     secret_key: Arc<SecretKey>,
     public_key: Arc<PublicKey>,
