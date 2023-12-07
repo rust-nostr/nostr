@@ -24,14 +24,14 @@ sdk-root:
 		exit 1 ; \
 	fi
 
-kotlin-clean:
-	mkdir -p ffi/kotlin/jniLibs
-	find ./ffi/kotlin/jniLibs -name libnostr_ffi.so -type f -delete
+clean-android:
+	rm -rf ffi/android
+	rm -rf ffi/kotlin
 
-kotlin: android
+kotlin: clean-android android
 	cargo run -p uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_ffi.so --language kotlin --no-format -o ffi/kotlin
 
-android: kotlin-clean aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
 aarch64-linux-android: $(SOURCES) ndk-home
 	cargo ndk -t aarch64-linux-android -o ffi/kotlin/jniLibs build --release	
