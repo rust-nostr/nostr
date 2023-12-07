@@ -4,9 +4,9 @@
 #![allow(clippy::new_without_default)]
 
 pub use nostr_ffi::{
-    generate_shared_key, get_nip05_profile, git_hash_version, nip04_decrypt, nip04_encrypt,
-    verify_nip05, Alphabet, ClientMessage, Contact, Event, EventBuilder, EventId, FileMetadata,
-    Filter, ImageDimensions, Keys, Metadata, NostrConnectURI, NostrError, Profile, PublicKey,
+    generate_shared_key, get_nip05_profile, nip04_decrypt, nip04_encrypt, verify_nip05, Alphabet,
+    ClientMessage, Contact, Event, EventBuilder, EventId, FileMetadata, Filter, ImageDimensions,
+    Keys, Metadata, NostrConnectURI, NostrError, NostrLibrary, Profile, PublicKey,
     RelayInformationDocument, RelayMessage, SecretKey, Tag, TagEnum, TagKind, TagKindKnown,
     Timestamp, UnsignedEvent, ZapRequestData,
 };

@@ -7,4 +7,4 @@ mod subscription;
 
 pub use self::client::ClientMessage;
 pub use self::relay::RelayMessage;
-pub use self::subscription::Filter;
+pub use self::subscription::{Alphabet, Filter};
