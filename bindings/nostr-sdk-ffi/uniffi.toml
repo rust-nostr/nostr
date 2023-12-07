@@ -1,5 +1,5 @@
 [bindings.kotlin]
-package_name = "nostr_sdk"
+package_name = "rust.nostr.sdk"
 
 [bindings.swift]
 ffi_module_filename = "nostr_sdkFFI"
