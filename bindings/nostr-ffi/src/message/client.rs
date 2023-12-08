@@ -2,67 +2,63 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr::{Event, Filter, JsonUtil, SubscriptionId};
+use std::ops::Deref;
+use std::sync::Arc;
+
+use nostr::SubscriptionId;
 use uniffi::Enum;
 
-use crate::NostrError;
+use crate::{Event, Filter};
 
 #[derive(Enum)]
 pub enum ClientMessage {
-    Ev {
-        event: String,
+    Event {
+        event: Arc<Event>,
     },
     Req {
         subscription_id: String,
-        filters: Vec<String>,
+        filters: Vec<Arc<Filter>>,
     },
     Count {
         subscription_id: String,
-        filters: Vec<String>,
+        filters: Vec<Arc<Filter>>,
     },
     Close {
         subscription_id: String,
     },
     Auth {
-        event: String,
+        event: Arc<Event>,
     },
 }
 
-impl TryFrom<ClientMessage> for nostr::ClientMessage {
-    type Error = NostrError;
-    fn try_from(value: ClientMessage) -> Result<Self, Self::Error> {
+impl From<ClientMessage> for nostr::ClientMessage {
+    fn from(value: ClientMessage) -> Self {
         match value {
-            ClientMessage::Ev { event } => Ok(Self::Event(Box::new(Event::from_json(event)?))),
+            ClientMessage::Event { event } => Self::Event(Box::new(event.as_ref().deref().clone())),
             ClientMessage::Req {
                 subscription_id,
                 filters,
-            } => {
-                let mut f = Vec::new();
-                for filter in filters.into_iter() {
-                    f.push(Filter::from_json(filter)?);
-                }
-                Ok(Self::Req {
-                    subscription_id: SubscriptionId::new(subscription_id),
-                    filters: f,
-                })
-            }
+            } => Self::Req {
+                subscription_id: SubscriptionId::new(subscription_id),
+                filters: filters
+                    .into_iter()
+                    .map(|f| f.as_ref().deref().clone())
+                    .collect(),
+            },
             ClientMessage::Count {
                 subscription_id,
                 filters,
-            } => {
-                let mut f = Vec::new();
-                for filter in filters.into_iter() {
-                    f.push(Filter::from_json(filter)?);
-                }
-                Ok(Self::Count {
-                    subscription_id: SubscriptionId::new(subscription_id),
-                    filters: f,
-                })
-            }
+            } => Self::Count {
+                subscription_id: SubscriptionId::new(subscription_id),
+                filters: filters
+                    .into_iter()
+                    .map(|f| f.as_ref().deref().clone())
+                    .collect(),
+            },
             ClientMessage::Close { subscription_id } => {
-                Ok(Self::Close(SubscriptionId::new(subscription_id)))
+                Self::Close(SubscriptionId::new(subscription_id))
             }
-            ClientMessage::Auth { event } => Ok(Self::Auth(Box::new(Event::from_json(event)?))),
+            ClientMessage::Auth { event } => Self::Auth(Box::new(event.as_ref().deref().clone())),
         }
     }
 }

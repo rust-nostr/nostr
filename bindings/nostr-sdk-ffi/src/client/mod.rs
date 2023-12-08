@@ -181,13 +181,13 @@ impl Client {
     // TODO: add req_events_of_with_opts
 
     pub fn send_msg(&self, msg: ClientMessage) -> Result<()> {
-        Ok(self.inner.send_msg(msg.try_into()?)?)
+        Ok(self.inner.send_msg(msg.into())?)
     }
 
     // TODO: add send_msg_with_custom_wait
 
     pub fn send_msg_to(&self, url: String, msg: ClientMessage) -> Result<()> {
-        Ok(self.inner.send_msg_to(url, msg.try_into()?)?)
+        Ok(self.inner.send_msg_to(url, msg.into())?)
     }
 
     // TODO: add send_msg_to_with_custom_wait

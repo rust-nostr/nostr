@@ -193,7 +193,7 @@ impl Relay {
     }
 
     pub fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<()> {
-        block_on(async move { Ok(self.inner.send_msg(msg.try_into()?, wait).await?) })
+        block_on(async move { Ok(self.inner.send_msg(msg.into(), wait).await?) })
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<Filter>>, wait: Option<Duration>) -> Result<()> {
