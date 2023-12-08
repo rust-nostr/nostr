@@ -309,8 +309,7 @@ impl EventBuilder {
                 content,
                 relay_url,
                 tags,
-            )
-            .into(),
+            ),
         }))
     }
 
@@ -387,6 +386,27 @@ impl EventBuilder {
                 awarded_pubkeys
                     .into_iter()
                     .map(|a| a.as_ref().deref().clone()),
+            )?,
+        }))
+    }
+
+    #[uniffi::constructor]
+    pub fn profile_badges(
+        badge_definitions: Vec<Arc<Event>>,
+        badge_awards: Vec<Arc<Event>>,
+        pubkey_awarded: &PublicKey,
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::profile_badges(
+                badge_definitions
+                    .into_iter()
+                    .map(|b| b.as_ref().deref().clone())
+                    .collect(),
+                badge_awards
+                    .into_iter()
+                    .map(|b| b.as_ref().deref().clone())
+                    .collect(),
+                pubkey_awarded.deref(),
             )?,
         }))
     }
