@@ -756,10 +756,10 @@ impl EventBuilder {
     /// let description = Some(String::from("This is a test badge"));
     /// let image_url = Some(UncheckedUrl::from("https://nostr.build/someimage/1337"));
     /// let image_size = Some(ImageDimensions::new(1024, 1024));
-    /// let thumbs = Some(vec![(
+    /// let thumbs = vec![(
     ///     UncheckedUrl::from("https://nostr.build/somethumbnail/1337"),
     ///     Some(ImageDimensions::new(256, 256)),
-    /// )]);
+    /// )];
     ///
     /// let event_builder =
     ///     EventBuilder::define_badge(badge_id, name, description, image_url, image_size, thumbs);
@@ -770,7 +770,7 @@ impl EventBuilder {
         description: Option<S>,
         image: Option<UncheckedUrl>,
         image_dimensions: Option<ImageDimensions>,
-        thumbnails: Option<Vec<(UncheckedUrl, Option<ImageDimensions>)>>,
+        thumbnails: Vec<(UncheckedUrl, Option<ImageDimensions>)>,
     ) -> Self
     where
         S: Into<String>,
@@ -801,15 +801,13 @@ impl EventBuilder {
         }
 
         // Set thumbnail tags
-        if let Some(thumbs) = thumbnails {
-            for (thumb, dimensions) in thumbs {
-                let thumb_tag = if let Some(dimensions) = dimensions {
-                    Tag::Thumb(thumb, Some(dimensions))
-                } else {
-                    Tag::Thumb(thumb, None)
-                };
-                tags.push(thumb_tag);
-            }
+        for (thumb, dimensions) in thumbnails.into_iter() {
+            let thumb_tag = if let Some(dimensions) = dimensions {
+                Tag::Thumb(thumb, Some(dimensions))
+            } else {
+                Tag::Thumb(thumb, None)
+            };
+            tags.push(thumb_tag);
         }
 
         Self::new(Kind::BadgeDefinition, "", &tags)
@@ -1143,7 +1141,8 @@ mod tests {
     #[test]
     fn test_badge_definition_event_builder_badge_id_only() {
         let badge_id = String::from("bravery");
-        let event_builder = EventBuilder::define_badge(badge_id, None, None, None, None, None);
+        let event_builder =
+            EventBuilder::define_badge(badge_id, None, None, None, None, Vec::new());
 
         let has_id = event_builder
             .tags
@@ -1163,10 +1162,10 @@ mod tests {
         let description = Some(String::from("Brave pubkey"));
         let image_url = Some(UncheckedUrl::from("https://nostr.build/someimage/1337"));
         let image_size = Some(ImageDimensions::new(1024, 1024));
-        let thumbs = Some(vec![(
+        let thumbs = vec![(
             UncheckedUrl::from("https://nostr.build/somethumbnail/1337"),
             Some(ImageDimensions::new(256, 256)),
-        )]);
+        )];
 
         let event_builder =
             EventBuilder::define_badge(badge_id, name, description, image_url, image_size, thumbs);
@@ -1279,7 +1278,7 @@ mod tests {
             ),
         ];
         let bravery_badge_event =
-            self::EventBuilder::define_badge("bravery", None, None, None, None, None)
+            self::EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())
                 .to_event(&badge_one_keys)
                 .unwrap();
         let bravery_badge_award =
@@ -1293,7 +1292,7 @@ mod tests {
         let badge_two_pubkey = badge_two_keys.public_key();
 
         let honor_badge_event =
-            self::EventBuilder::define_badge("honor", None, None, None, None, None)
+            self::EventBuilder::define_badge("honor", None, None, None, None, Vec::new())
                 .to_event(&badge_two_keys)
                 .unwrap();
         let honor_badge_award =

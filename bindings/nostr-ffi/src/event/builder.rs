@@ -16,7 +16,10 @@ use crate::key::Keys;
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::types::{Contact, Metadata};
-use crate::{FileMetadata, NostrConnectMessage, PublicKey, RelayMetadata, Tag, UnsignedEvent};
+use crate::{
+    FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
+    UnsignedEvent,
+};
 
 #[derive(Object)]
 pub struct EventBuilder {
@@ -340,6 +343,35 @@ impl EventBuilder {
                 bolt11,
                 preimage,
                 zap_request.as_ref().deref().clone(),
+            ),
+        })
+    }
+
+    #[uniffi::constructor]
+    pub fn define_badge(
+        badge_id: String,
+        name: Option<String>,
+        description: Option<String>,
+        image: Option<String>,
+        image_dimensions: Option<Arc<ImageDimensions>>,
+        thumbnails: Vec<Image>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            inner: nostr::EventBuilder::define_badge(
+                badge_id,
+                name,
+                description,
+                image.map(UncheckedUrl::from),
+                image_dimensions.map(|i| i.as_ref().into()),
+                thumbnails
+                    .into_iter()
+                    .map(|i: Image| {
+                        (
+                            UncheckedUrl::from(i.url),
+                            i.dimensions.map(|d| d.as_ref().into()),
+                        )
+                    })
+                    .collect(),
             ),
         })
     }
