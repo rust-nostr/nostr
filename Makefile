@@ -6,6 +6,9 @@ precommit:
 bench:
 	RUSTFLAGS='--cfg=bench' cargo +nightly bench -p nostr
 
+indexes-perf:
+	cd crates/nostr-database/fuzz/perf && make graph
+
 clean:
 	cargo clean
 

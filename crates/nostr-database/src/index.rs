@@ -246,9 +246,10 @@ impl DatabaseIndexes {
         events
             .into_iter()
             .map(|w| w.raw)
-            .filter(|raw| !raw.is_expired(&now) && !raw.is_ephemeral())
+            .filter(|raw| !raw.is_ephemeral())
             .for_each(|event| {
-                let _ = self.index_raw_event(&mut index, &mut deleted, &mut to_discard, event);
+                let _ =
+                    self.index_raw_event(&mut index, &mut deleted, &mut to_discard, event, &now);
             });
 
         // Remove events
@@ -266,12 +267,19 @@ impl DatabaseIndexes {
         deleted: &mut HashSet<EventId>,
         to_discard: &mut HashSet<EventId>,
         raw: RawEvent,
+        now: &Timestamp,
     ) -> Result<(), Error> {
         // Parse event ID
         let event_id: EventId = EventId::from_slice(&raw.id)?;
 
         // Check if was deleted
         if deleted.contains(&event_id) {
+            return Ok(());
+        }
+
+        // Check if is expired
+        if raw.is_expired(now) {
+            to_discard.insert(event_id);
             return Ok(());
         }
 
