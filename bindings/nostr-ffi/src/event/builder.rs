@@ -377,6 +377,21 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
+    pub fn award_badge(
+        badge_definition: Arc<Event>,
+        awarded_pubkeys: Vec<Arc<Tag>>,
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::award_badge(
+                badge_definition.as_ref().deref(),
+                awarded_pubkeys
+                    .into_iter()
+                    .map(|a| a.as_ref().deref().clone()),
+            )?,
+        }))
+    }
+
+    #[uniffi::constructor]
     pub fn file_metadata(description: String, metadata: Arc<FileMetadata>) -> Arc<Self> {
         Arc::new(Self {
             inner: nostr::EventBuilder::file_metadata(
