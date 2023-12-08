@@ -399,6 +399,19 @@ impl EventBuilder {
         }))
     }
 
+    /// Data Vending Machine - Job Request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[uniffi::constructor]
+    pub fn job_request(kind: u64, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::job_request(
+                kind.into(),
+                tags.into_iter().map(|t| t.as_ref().deref().clone()),
+            )?,
+        }))
+    }
+
     #[uniffi::constructor]
     pub fn file_metadata(description: String, metadata: Arc<FileMetadata>) -> Arc<Self> {
         Arc::new(Self {
