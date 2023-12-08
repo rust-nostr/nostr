@@ -34,6 +34,13 @@ pub enum RawRelayMessage {
         /// Message
         message: String,
     },
+    /// `["CLOSED", <subscription_id>, <message>]` (NIP01)
+    Closed {
+        /// Subscription ID
+        subscription_id: String,
+        /// Message
+        message: String,
+    },
     /// `["AUTH", <challenge-string>]` (NIP42)
     Auth {
         /// Challenge
@@ -83,6 +90,19 @@ impl RawRelayMessage {
             }
             return Ok(Self::Notice {
                 message: serde_json::from_value(v[1].clone())?,
+            });
+        }
+
+        // Closed
+        // Relay response format: ["CLOSED", <subscription_id>, <message>]
+        if v[0] == "CLOSED" {
+            if v_len != 3 {
+                return Err(MessageHandleError::InvalidMessageFormat);
+            }
+
+            return Ok(Self::Closed {
+                subscription_id: serde_json::from_value(v[1].clone())?,
+                message: serde_json::from_value(v[2].clone())?,
             });
         }
 
