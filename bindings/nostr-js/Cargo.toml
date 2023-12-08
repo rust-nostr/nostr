@@ -3,7 +3,7 @@ name = "nostr-js"
 version = "0.1.0"
 edition = "2021"
 description = "Nostr protocol implementation, for JavaScript"
-authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
+authors.workspace = true
 publish = false
 
 [lib]

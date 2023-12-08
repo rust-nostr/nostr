@@ -1,6 +1,5 @@
-// Copyright 2022 The Matrix.org Foundation C.I.C.
-//
 // Copyright (c) 2022-2023 Yuki Kishimoto
+// Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
 use js_sys::{Object, Reflect};
@@ -33,14 +32,3 @@ where
         )))
     }
 }
-
-/* /// Transform a value `JS` from JavaScript to a Rust wrapper, to a
-/// Rust wrapped type.
-pub fn try_array_to_vec<JS, Rust>(
-    array: Array,
-) -> Result<Vec<Rust>, <JS as TryFrom<JsValue>>::Error>
-where
-    JS: TryFrom<JsValue> + Into<Rust>,
-{
-    array.iter().map(|item| JS::try_from(item).map(Into::into)).collect()
-} */

@@ -12,6 +12,7 @@ default-members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
+authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
 homepage = "https://github.com/rust-nostr/nostr"
 repository = "https://github.com/rust-nostr/nostr.git"
 license = "MIT"

@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
+// Copyright (c) 2023-2024 Rust Nostr Developersopers
 // Distributed under the MIT software license
 
 use std::ops::Deref;
