@@ -193,7 +193,7 @@ impl JsClient {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }
         self.inner
-            .publish_text_note(content, &new_tags)
+            .publish_text_note(content, new_tags)
             .await
             .map_err(into_err)
             .map(|id| id.into())

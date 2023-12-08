@@ -43,12 +43,9 @@ impl Deref for EventBuilder {
 impl EventBuilder {
     #[uniffi::constructor]
     pub fn new(kind: u64, content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
-        let tags = tags
-            .into_iter()
-            .map(|t| t.as_ref().deref().clone())
-            .collect::<Vec<_>>();
+        let tags = tags.into_iter().map(|t| t.as_ref().deref().clone());
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::new(kind.into(), content, &tags),
+            inner: nostr::EventBuilder::new(kind.into(), content, tags),
         }))
     }
 
@@ -115,23 +112,17 @@ impl EventBuilder {
 
     #[uniffi::constructor]
     pub fn new_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
-        let tags = tags
-            .into_iter()
-            .map(|t| t.as_ref().deref().clone())
-            .collect::<Vec<_>>();
+        let tags = tags.into_iter().map(|t| t.as_ref().deref().clone());
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::new_text_note(content, &tags),
+            inner: nostr::EventBuilder::new_text_note(content, tags),
         }))
     }
 
     #[uniffi::constructor]
     pub fn long_form_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
-        let tags = tags
-            .into_iter()
-            .map(|t| t.as_ref().deref().clone())
-            .collect::<Vec<_>>();
+        let tags = tags.into_iter().map(|t| t.as_ref().deref().clone());
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::long_form_text_note(content, &tags),
+            inner: nostr::EventBuilder::long_form_text_note(content, tags),
         }))
     }
 
@@ -315,12 +306,9 @@ impl EventBuilder {
 
     #[uniffi::constructor]
     pub fn report(tags: Vec<Arc<Tag>>, content: String) -> Arc<Self> {
-        let tags = tags
-            .into_iter()
-            .map(|t| t.as_ref().deref().clone())
-            .collect::<Vec<_>>();
+        let tags = tags.into_iter().map(|t| t.as_ref().deref().clone());
         Arc::new(Self {
-            inner: nostr::EventBuilder::report(&tags, content),
+            inner: nostr::EventBuilder::report(tags, content),
         })
     }
 

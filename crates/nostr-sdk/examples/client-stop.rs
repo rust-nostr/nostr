@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
 
     thread::sleep(Duration::from_secs(10)).await;
 
-    client.publish_text_note("Test", &[]).await?;
+    client.publish_text_note("Test", []).await?;
 
     Ok(())
 }

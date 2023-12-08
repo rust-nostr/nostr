@@ -29,14 +29,14 @@ async fn main() {
     let database = MemoryDatabase::new(opts);
 
     for i in 0..100_000 {
-        let event = EventBuilder::new_text_note(format!("Event #{i}"), &[])
+        let event = EventBuilder::new_text_note(format!("Event #{i}"), [])
             .to_event(&keys_a)
             .unwrap();
         database.save_event(&event).await.unwrap();
 
         let event = EventBuilder::new_text_note(
             format!("Reply to event #{i}"),
-            &[
+            [
                 Tag::Event(event.id, None, None),
                 Tag::PubKey(event.pubkey, None),
             ],
@@ -58,7 +58,7 @@ async fn main() {
         let event = EventBuilder::new(
             Kind::Custom(123),
             "Custom with d tag",
-            &[Tag::Identifier(format!("myid{i}"))],
+            [Tag::Identifier(format!("myid{i}"))],
         )
         .to_event(&keys_a)
         .unwrap();

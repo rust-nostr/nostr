@@ -354,7 +354,7 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_custom_kind() {
         let keys = Keys::generate();
-        let e: Event = EventBuilder::new(Kind::Custom(123), "my content", &[])
+        let e: Event = EventBuilder::new(Kind::Custom(123), "my content", [])
             .to_event(&keys)
             .unwrap();
 
@@ -372,7 +372,7 @@ mod tests {
         let my_keys = Keys::generate();
         let event = EventBuilder::new_text_note(
             "my content",
-            &[Tag::Expiration(Timestamp::from(1600000000))],
+            [Tag::Expiration(Timestamp::from(1600000000))],
         )
         .to_event(&my_keys)
         .unwrap();
@@ -389,7 +389,7 @@ mod tests {
         let my_keys = Keys::generate();
         let event = EventBuilder::new_text_note(
             "my content",
-            &[Tag::Expiration(Timestamp::from(expiry_date))],
+            [Tag::Expiration(Timestamp::from(expiry_date))],
         )
         .to_event(&my_keys)
         .unwrap();
@@ -401,7 +401,7 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_event_without_expiration_tag() {
         let my_keys = Keys::generate();
-        let event = EventBuilder::new_text_note("my content", &[])
+        let event = EventBuilder::new_text_note("my content", [])
             .to_event(&my_keys)
             .unwrap();
         assert!(!&event.is_expired());

@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
         .await?;
 
     let id = client
-        .publish_text_note("Testing nostr-sdk nostr-connect client", &[])
+        .publish_text_note("Testing nostr-sdk nostr-connect client", [])
         .await?;
     println!("Published text note: {id}\n");
 
