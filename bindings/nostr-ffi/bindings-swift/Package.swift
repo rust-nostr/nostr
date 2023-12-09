@@ -12,8 +12,7 @@ let package = Package(
     products: [
         .library(name: "Nostr", targets: ["nostrFFI", "Nostr"]),
     ],
-    dependencies: [
-    ],
+    dependencies: [],
     targets: [
         .binaryTarget(name: "nostrFFI", path: "./nostrFFI.xcframework"),
         .target(name: "Nostr", dependencies: ["nostrFFI"]),

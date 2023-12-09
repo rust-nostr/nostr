@@ -2563,7 +2563,6 @@ dependencies = [
  "camino",
  "clap",
  "uniffi_bindgen",
- "uniffi_build",
  "uniffi_core",
  "uniffi_macros",
 ]

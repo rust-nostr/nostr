@@ -12,8 +12,7 @@ let package = Package(
     products: [
         .library(name: "NostrSDK", targets: ["nostr_sdkFFI", "NostrSDK"]),
     ],
-    dependencies: [
-    ],
+    dependencies: [],
     targets: [
         .binaryTarget(name: "nostr_sdkFFI", path: "./nostr_sdkFFI.xcframework"),
         .target(name: "NostrSDK", dependencies: ["nostr_sdkFFI"]),
