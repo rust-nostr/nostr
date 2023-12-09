@@ -88,15 +88,16 @@ swift-darwin: darwin-universal
 bindings-swift: ios-universal darwin-universal
 	mkdir -p bindings-swift/Sources/NostrSDK
 	cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a --no-format --language swift --out-dir bindings-swift/Sources/NostrSDK
+	mv bindings-swift/Sources/NostrSDK/nostr.swift bindings-swift/Sources/NostrSDK/Nostr.swift
 	mv bindings-swift/Sources/NostrSDK/nostr_sdk.swift bindings-swift/Sources/NostrSDK/NostrSDK.swift
-	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64/nostr_sdkFFI.framework/Headers
-	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/nostr_sdkFFI.framework/Headers
-	cp bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h bindings-swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/nostr_sdkFFI.framework/Headers
-	cp ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/ios-arm64/nostr_sdkFFI.framework/nostr_sdkFFI
-	cp ../../target/ios-universal-sim/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/nostr_sdkFFI.framework/nostr_sdkFFI
-	cp ../../target/darwin-universal/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/nostr_sdkFFI.framework/nostr_sdkFFI
-	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.h
-	rm bindings-swift/Sources/NostrSDK/nostr_sdkFFI.modulemap
+	cp bindings-swift/Sources/NostrSDK/*.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64/Headers
+	cp bindings-swift/Sources/NostrSDK/*.h bindings-swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/Headers
+	cp bindings-swift/Sources/NostrSDK/*.h bindings-swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/Headers
+	cp ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/ios-arm64/nostr_sdkFFI.a
+	cp ../../target/ios-universal-sim/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/nostr_sdkFFI.a
+	cp ../../target/darwin-universal/release/libnostr_sdk_ffi.a bindings-swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/nostr_sdkFFI.a
+	rm bindings-swift/Sources/NostrSDK/*.h
+	rm bindings-swift/Sources/NostrSDK/*.modulemap
 
 python:
 	rm -rf bindings-python/dist

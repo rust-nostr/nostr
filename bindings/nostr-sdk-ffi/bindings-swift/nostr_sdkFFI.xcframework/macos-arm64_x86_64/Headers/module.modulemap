@@ -1,0 +1,9 @@
+module nostrFFI {
+  header "nostrFFI.h"
+  export *
+}
+
+module nostr_sdkFFI {
+  header "nostr_sdkFFI.h"
+  export *
+}

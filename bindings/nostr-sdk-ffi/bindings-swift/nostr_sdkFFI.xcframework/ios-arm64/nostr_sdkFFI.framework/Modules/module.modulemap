@@ -1,6 +1,0 @@
-framework module nostr_sdkFFI {
-  umbrella header "nostr_sdkFFI-umbrella.h"
-
-  export *
-  module * { export * }
-}

@@ -2,6 +2,5 @@
 .build/
 *.xcodeproj
 Sources/
-**/nostr_sdkFFI.h
-**/nostr_sdkFFI
-**/nostr_sdkFFI.modulemap
+**/Headers/*.h
+**/nostr_sdkFFI.a
