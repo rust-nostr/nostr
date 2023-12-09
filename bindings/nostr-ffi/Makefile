@@ -88,14 +88,14 @@ bindings-swift: ios-universal darwin-universal
 	mkdir -p bindings-swift/Sources/Nostr
 	cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_ffi.a --no-format --language swift --out-dir bindings-swift/Sources/Nostr
 	mv bindings-swift/Sources/Nostr/nostr.swift bindings-swift/Sources/Nostr/Nostr.swift
-	cp bindings-swift/Sources/Nostr/nostrFFI.h bindings-swift/nostrFFI.xcframework/ios-arm64/nostrFFI.framework/Headers
-	cp bindings-swift/Sources/Nostr/nostrFFI.h bindings-swift/nostrFFI.xcframework/ios-arm64_x86_64-simulator/nostrFFI.framework/Headers
-	cp bindings-swift/Sources/Nostr/nostrFFI.h bindings-swift/nostrFFI.xcframework/macos-arm64_x86_64/nostrFFI.framework/Headers
-	cp ../../target/aarch64-apple-ios/release/libnostr_ffi.a bindings-swift/nostrFFI.xcframework/ios-arm64/nostrFFI.framework/nostrFFI
-	cp ../../target/ios-universal-sim/release/libnostr_ffi.a bindings-swift/nostrFFI.xcframework/ios-arm64_x86_64-simulator/nostrFFI.framework/nostrFFI
-	cp ../../target/darwin-universal/release/libnostr_ffi.a bindings-swift/nostrFFI.xcframework/macos-arm64_x86_64/nostrFFI.framework/nostrFFI
-	rm bindings-swift/Sources/Nostr/nostrFFI.h
-	rm bindings-swift/Sources/Nostr/nostrFFI.modulemap
+	cp bindings-swift/Sources/Nostr/*.h bindings-swift/nostrFFI.xcframework/ios-arm64/Headers
+	cp bindings-swift/Sources/Nostr/*.h bindings-swift/nostrFFI.xcframework/ios-arm64_x86_64-simulator/Headers
+	cp bindings-swift/Sources/Nostr/*.h bindings-swift/nostrFFI.xcframework/macos-arm64_x86_64/Headers
+	cp ../../target/aarch64-apple-ios/release/libnostr_ffi.a bindings-swift/nostrFFI.xcframework/ios-arm64/nostrFFI.a
+	cp ../../target/ios-universal-sim/release/libnostr_ffi.a bindings-swift/nostrFFI.xcframework/ios-arm64_x86_64-simulator/nostrFFI.a
+	cp ../../target/darwin-universal/release/libnostr_ffi.a bindings-swift/nostrFFI.xcframework/macos-arm64_x86_64/nostrFFI.a
+	rm bindings-swift/Sources/Nostr/*.h
+	rm bindings-swift/Sources/Nostr/*.modulemap
 
 python:
 	rm -rf bindings-python/dist

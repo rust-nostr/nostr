@@ -1,0 +1,4 @@
+module nostrFFI {
+  header "nostrFFI.h"
+  export *
+}
