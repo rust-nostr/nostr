@@ -1,5 +1,2 @@
 [bindings.kotlin]
 package_name = "rust.nostr.protocol"
-
-[bindings.swift]
-ffi_module_filename = "nostrFFI"
