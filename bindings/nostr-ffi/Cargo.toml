@@ -11,4 +11,4 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 nostr  = { path = "../../crates/nostr", features = ["blocking"] }
-uniffi = { workspace = true }
+uniffi.workspace = true

@@ -101,13 +101,13 @@ bindings-swift: ios-universal darwin-universal
 
 python:
 	rm -rf bindings-python/dist
-	pip install -r bindings-python/requirements.txt
+	pip install -r bindings-python/requirements.txt --break-system-packages
 	cargo build --release
 	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.so --language python --no-format -o bindings-python/src/nostr-sdk/
 	cp ../../target/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/ | true
 	cp ../../target/release/libnostr_sdk_ffi.dylib bindings-python/src/nostr-sdk/ | true
 	cd bindings-python && python setup.py --verbose bdist_wheel
-	pip install ./bindings-python/dist/nostr_sdk-*.whl --force-reinstall
+	pip install ./bindings-python/dist/nostr_sdk-*.whl --force-reinstall --break-system-packages
 
 python-win:
 	pip install -r bindings-python\requirements.txt

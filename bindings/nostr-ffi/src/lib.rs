@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+//! Nostr FFI
+
 use std::sync::Arc;
 
 use uniffi::Object;

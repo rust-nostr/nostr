@@ -46,7 +46,7 @@ impl Keys {
     #[uniffi::constructor]
     pub fn from_public_key(pk: Arc<PublicKey>) -> Arc<Self> {
         Arc::new(Self {
-            inner: key::Keys::from_public_key(*pk.as_ref().deref()),
+            inner: key::Keys::from_public_key(**pk),
         })
     }
 

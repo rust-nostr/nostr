@@ -99,13 +99,13 @@ bindings-swift: ios-universal darwin-universal
 
 python:
 	rm -rf bindings-python/dist
-	pip install -r bindings-python/requirements.txt
+	pip install -r bindings-python/requirements.txt --break-system-packages
 	cargo build --release
 	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.so --language python --no-format -o bindings-python/src/nostr/
 	cp ../../target/release/libnostr_ffi.so bindings-python/src/nostr/ | true
 	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/ | true
 	cd bindings-python && python setup.py --verbose bdist_wheel
-	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall
+	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall --break-system-packages
 
 python-win:
 	pip install -r bindings-python\requirements.txt
