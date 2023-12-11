@@ -6,6 +6,7 @@
 
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, HashSet};
+//use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::Arc;
 
 use nostr::event::id;
@@ -14,6 +15,7 @@ use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{
     Alphabet, Event, EventId, Filter, GenericTagValue, Kind, TagIndexValues, TagIndexes, Timestamp,
 };
+use rayon::prelude::*;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -255,7 +257,7 @@ impl DatabaseIndexes {
         // Remove events
         if !to_discard.is_empty() {
             index.retain(|e| !to_discard.contains(&e.event_id));
-            deleted.extend(to_discard.iter());
+            deleted.par_extend(to_discard.par_iter());
         }
 
         to_discard
@@ -464,17 +466,75 @@ impl DatabaseIndexes {
     where
         T: Into<FilterIndex>,
     {
+        self.internal_parallel_query(index, deleted, filter)
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
+    fn internal_parallel_query<'a, T>(
+        &self,
+        index: &'a BTreeSet<EventIndex>,
+        deleted: &'a HashSet<EventId>,
+        filter: T,
+    ) -> impl ParallelIterator<Item = &'a EventIndex>
+    where
+        T: Into<FilterIndex>,
+    {
         let filter: FilterIndex = filter.into();
-        index.iter().filter(move |m| {
+        index.par_iter().filter(move |m| {
             !deleted.contains(&m.event_id)
                 && filter.until.map_or(true, |t| m.created_at <= t)
                 && filter.since.map_or(true, |t| m.created_at >= t)
+                && (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
                 && (filter.authors.is_empty() || filter.authors.contains(&m.pubkey))
                 && (filter.kinds.is_empty() || filter.kinds.contains(&m.kind))
                 && m.filter_tags_match(&filter)
-                && (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
         })
     }
+
+    /* fn internal_multi_parallel_query<'a, I, T>(
+        &self,
+        index: &'a BTreeSet<EventIndex>,
+        deleted: &'a HashSet<EventId>,
+        filters: I,
+    ) -> impl ParallelIterator<Item = &'a EventIndex>
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<FilterIndex>,
+    {
+        let filters: Vec<FilterIndex> = filters.into_iter().map(|f| f.into()).collect();
+        let limits: Vec<Option<usize>> = filters.iter().map(|f| f.limit).collect();
+        let counter: Vec<AtomicUsize> = filters.iter().map(|_| AtomicUsize::new(0)).collect();
+        index
+            .par_iter()
+            .filter(move |i| !deleted.contains(&i.event_id))
+            .filter(move |i| {
+                filters.par_iter().enumerate().any(|(index, filter)| {
+                    if let Some(Some(limit)) = limits.get(index) {
+                        if let Some(counter) = counter.get(index) {
+                            if counter.load(AtomicOrdering::SeqCst) >= *limit {
+                                return false;
+                            }
+                        }
+                    }
+
+                    let status: bool = filter.until.map_or(true, |t| i.created_at <= t)
+                        && filter.since.map_or(true, |t| i.created_at >= t)
+                        && (filter.ids.is_empty() || filter.ids.contains(&i.event_id))
+                        && (filter.authors.is_empty() || filter.authors.contains(&i.pubkey))
+                        && (filter.kinds.is_empty() || filter.kinds.contains(&i.kind))
+                        && i.filter_tags_match(&filter);
+
+                    if status {
+                        if let Some(counter) = counter.get(index) {
+                            counter.fetch_add(1, AtomicOrdering::SeqCst);
+                        }
+                    }
+
+                    status
+                })
+            })
+    } */
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
@@ -488,18 +548,24 @@ impl DatabaseIndexes {
         let mut matching_ids: BTreeSet<&EventIndex> = BTreeSet::new();
 
         for filter in filters.into_iter() {
+            if filter.is_empty() {
+                return index.iter().map(|e| e.event_id).collect();
+            }
+
             if let (Some(since), Some(until)) = (filter.since, filter.until) {
                 if since > until {
                     continue;
                 }
             }
 
-            let limit: Option<usize> = filter.limit;
-            let iter = self.internal_query(&index, &deleted, filter);
-            if let Some(limit) = limit {
-                matching_ids.extend(iter.take(limit))
+            if let Some(limit) = filter.limit {
+                matching_ids.par_extend(
+                    self.internal_query(&index, &deleted, filter)
+                        .take(limit)
+                        .par_bridge(),
+                )
             } else {
-                matching_ids.extend(iter)
+                matching_ids.par_extend(self.internal_parallel_query(&index, &deleted, filter))
             }
         }
 
@@ -518,6 +584,11 @@ impl DatabaseIndexes {
         let mut counter: usize = 0;
 
         for filter in filters.into_iter() {
+            if filter.is_empty() {
+                counter = index.len();
+                break;
+            }
+
             if let (Some(since), Some(until)) = (filter.since, filter.until) {
                 if since > until {
                     continue;
@@ -525,11 +596,14 @@ impl DatabaseIndexes {
             }
 
             let limit: Option<usize> = filter.limit;
-            let iter = self.internal_query(&index, &deleted, filter);
+            let count = self
+                .internal_parallel_query(&index, &deleted, filter)
+                .count();
             if let Some(limit) = limit {
-                counter += iter.take(limit).count();
+                let count = if limit >= count { limit } else { count };
+                counter += count;
             } else {
-                counter += iter.count();
+                counter += count;
             }
         }
 

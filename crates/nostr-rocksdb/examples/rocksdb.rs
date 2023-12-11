@@ -80,14 +80,20 @@ async fn main() {
     println!("Seen on: {relays:?}"); */
 
     let events = database
-        .query(vec![Filter::new()
-            .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
-            .limit(20)
-            //.kind(Kind::Custom(123))
-            //.identifier("myid5000")
-            .author(keys_a.public_key())])
+        .query(vec![
+            Filter::new()
+                //.kinds(vec![Kind::Custom(123), Kind::TextNote])
+                .kind(Kind::Custom(123))
+                .identifier("myid5000")
+                .author(keys_a.public_key()),
+            Filter::new()
+                .limit(1)
+                .kind(Kind::Metadata)
+                .author(keys_a.public_key()),
+        ])
         .await
         .unwrap();
+    println!("Events: {:?}", events);
     println!("Got {} events", events.len());
 
     loop {
