@@ -7,6 +7,7 @@
 use std::collections::{HashMap, HashSet};
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
+use std::ops::Mul;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -415,8 +416,16 @@ impl Relay {
         subscription.clone()
     }
 
-    /// Update [`ActiveSubscription`]
-    pub async fn update_subscription_filters(
+    /// Get [`ActiveSubscription`] by [`InternalSubscriptionId`]
+    pub async fn subscription(
+        &self,
+        internal_id: &InternalSubscriptionId,
+    ) -> Option<ActiveSubscription> {
+        let subscription = self.subscriptions.read().await;
+        subscription.get(internal_id).cloned()
+    }
+
+    async fn update_subscription_filters(
         &self,
         internal_id: InternalSubscriptionId,
         filters: Vec<Filter>,
@@ -1178,21 +1187,19 @@ impl Relay {
             return Err(Error::ReadDisabled);
         }
 
-        let subscriptions = self.subscriptions().await;
-        let sub = subscriptions
-            .get(&internal_id)
+        let sub: ActiveSubscription = self
+            .subscription(&internal_id)
+            .await
             .ok_or(Error::InternalIdNotFound)?;
-
-        self.send_msg(
-            ClientMessage::new_req(sub.id.clone(), sub.filters.clone()),
-            wait,
-        )
-        .await?;
+        self.send_msg(ClientMessage::new_req(sub.id, sub.filters), wait)
+            .await?;
 
         Ok(())
     }
 
-    /// Subscribe to filter with internal ID set to `InternalSubscriptionId::Default`
+    /// Subscribe to filters
+    ///
+    /// Internal Subscription ID set to `InternalSubscriptionId::Default`
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
@@ -1223,6 +1230,8 @@ impl Relay {
     }
 
     /// Unsubscribe
+    ///
+    /// Internal Subscription ID set to `InternalSubscriptionId::Default`
     pub async fn unsubscribe(&self, wait: Option<Duration>) -> Result<(), Error> {
         self.unsubscribe_with_internal_id(InternalSubscriptionId::Default, wait)
             .await

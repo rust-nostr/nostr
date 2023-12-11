@@ -745,6 +745,8 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
+    ///
+    /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
     pub async fn subscribe(&self, filters: Vec<Filter>, wait: Option<Duration>) {
         let relays = self.relays().await;
         self.update_subscription_filters(filters.clone()).await;
@@ -759,6 +761,8 @@ impl RelayPool {
     }
 
     /// Unsubscribe from filters
+    ///
+    /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
     pub async fn unsubscribe(&self, wait: Option<Duration>) {
         let relays = self.relays().await;
         for relay in relays.values() {
@@ -862,6 +866,8 @@ impl RelayPool {
     }
 
     /// Connect to relay
+    ///
+    /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
     pub async fn connect_relay(&self, relay: &Relay, wait_for_connection: bool) {
         let filters: Vec<Filter> = self.subscription_filters().await;
         relay

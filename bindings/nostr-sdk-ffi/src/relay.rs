@@ -7,7 +7,6 @@ use std::time::Duration;
 use std::{collections::HashMap, ops::Deref};
 
 use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument, Timestamp};
-use nostr_sdk::relay::InternalSubscriptionId;
 use nostr_sdk::{block_on, relay, FilterOptions};
 use uniffi::{Enum, Object};
 
@@ -156,18 +155,6 @@ impl Relay {
                 .map(|(id, sub)| (id.to_string(), Arc::new(sub.into())))
                 .collect()
         })
-    }
-
-    pub fn update_subscription_filters(&self, internal_id: String, filters: Vec<Arc<Filter>>) {
-        block_on(
-            self.inner.update_subscription_filters(
-                InternalSubscriptionId::Custom(internal_id),
-                filters
-                    .into_iter()
-                    .map(|f| f.as_ref().deref().clone())
-                    .collect(),
-            ),
-        )
     }
 
     // TODO: add opts
