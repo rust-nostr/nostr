@@ -49,7 +49,7 @@ fn main() -> Result<()> {
         .lud16("yuki@getalby.com")
         .custom_field("custom_field", "my value");
 
-    let event: Event = EventBuilder::set_metadata(metadata).to_event(&my_keys)?;
+    let event: Event = EventBuilder::set_metadata(&metadata).to_event(&my_keys)?;
 
     // New text note
     let event: Event = EventBuilder::new_text_note("Hello from Nostr SDK", &[]).to_event(&my_keys)?;

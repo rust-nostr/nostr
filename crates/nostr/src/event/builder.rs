@@ -320,9 +320,9 @@ impl EventBuilder {
     ///     .nip05("username@example.com")
     ///     .lud16("yuki@getalby.com");
     ///
-    /// let builder = EventBuilder::set_metadata(metadata);
+    /// let builder = EventBuilder::set_metadata(&metadata);
     /// ```
-    pub fn set_metadata(metadata: Metadata) -> Self {
+    pub fn set_metadata(metadata: &Metadata) -> Self {
         Self::new(Kind::Metadata, metadata.as_json(), &[])
     }
 
@@ -486,7 +486,7 @@ impl EventBuilder {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel(metadata: Metadata) -> Self {
+    pub fn new_channel(metadata: &Metadata) -> Self {
         Self::new(Kind::ChannelCreation, metadata.as_json(), &[])
     }
 
@@ -496,7 +496,7 @@ impl EventBuilder {
     pub fn set_channel_metadata(
         channel_id: ChannelId,
         relay_url: Option<Url>,
-        metadata: Metadata,
+        metadata: &Metadata,
     ) -> Self {
         Self::new(
             Kind::ChannelMetadata,

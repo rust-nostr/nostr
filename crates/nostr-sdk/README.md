@@ -75,7 +75,7 @@ async fn main() -> Result<()> {
         .custom_field("custom_field", "my value");
 
     // Update metadata
-    client.set_metadata(metadata).await?;
+    client.set_metadata(&metadata).await?;
 
     // Publish a text note
     client.publish_text_note("My first text note from Nostr SDK!", &[]).await?;

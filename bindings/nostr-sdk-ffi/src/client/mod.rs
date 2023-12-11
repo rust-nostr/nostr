@@ -214,9 +214,7 @@ impl Client {
 
     pub fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<Arc<EventId>> {
         Ok(Arc::new(
-            self.inner
-                .set_metadata(metadata.as_ref().deref().clone())?
-                .into(),
+            self.inner.set_metadata(metadata.as_ref().deref())?.into(),
         ))
     }
 

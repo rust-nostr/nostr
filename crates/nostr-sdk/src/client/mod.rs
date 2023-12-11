@@ -821,10 +821,10 @@ impl Client {
     ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
     ///     .nip05("username@example.com");
     ///
-    /// client.set_metadata(metadata).await.unwrap();
+    /// client.set_metadata(&metadata).await.unwrap();
     /// # }
     /// ```
-    pub async fn set_metadata(&self, metadata: Metadata) -> Result<EventId, Error> {
+    pub async fn set_metadata(&self, metadata: &Metadata) -> Result<EventId, Error> {
         let builder = EventBuilder::set_metadata(metadata);
         self.send_event_builder(builder).await
     }
@@ -1204,7 +1204,7 @@ impl Client {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub async fn new_channel(&self, metadata: Metadata) -> Result<EventId, Error> {
+    pub async fn new_channel(&self, metadata: &Metadata) -> Result<EventId, Error> {
         let builder = EventBuilder::new_channel(metadata);
         self.send_event_builder(builder).await
     }
@@ -1216,7 +1216,7 @@ impl Client {
         &self,
         channel_id: ChannelId,
         relay_url: Option<Url>,
-        metadata: Metadata,
+        metadata: &Metadata,
     ) -> Result<EventId, Error> {
         let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata);
         self.send_event_builder(builder).await

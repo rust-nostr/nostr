@@ -48,7 +48,7 @@ async fn main() {
 
     for i in 0..10 {
         let metadata = Metadata::new().name(format!("Name #{i}"));
-        let event = EventBuilder::set_metadata(metadata)
+        let event = EventBuilder::set_metadata(&metadata)
             .to_event(&keys_a)
             .unwrap();
         database.save_event(&event).await.unwrap();

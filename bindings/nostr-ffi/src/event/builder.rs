@@ -86,14 +86,13 @@ impl EventBuilder {
     #[uniffi::constructor]
     pub fn set_metadata(metadata: Arc<Metadata>) -> Arc<Self> {
         Arc::new(Self {
-            inner: nostr::EventBuilder::set_metadata(metadata.as_ref().deref().clone()),
+            inner: nostr::EventBuilder::set_metadata(metadata.as_ref().deref()),
         })
     }
 
     #[uniffi::constructor]
     pub fn add_recommended_relay(url: String) -> Result<Arc<Self>> {
         let url = Url::parse(&url)?;
-
         Ok(Arc::new(Self {
             inner: nostr::EventBuilder::add_recommended_relay(&url),
         }))
@@ -191,7 +190,7 @@ impl EventBuilder {
     #[uniffi::constructor]
     pub fn new_channel(metadata: Arc<Metadata>) -> Arc<Self> {
         Arc::new(Self {
-            inner: nostr::EventBuilder::new_channel(metadata.as_ref().deref().clone()),
+            inner: nostr::EventBuilder::new_channel(metadata.as_ref().deref()),
         })
     }
 
@@ -209,7 +208,7 @@ impl EventBuilder {
             inner: nostr::EventBuilder::set_channel_metadata(
                 ChannelId::from_hex(channel_id)?,
                 relay_url,
-                metadata.as_ref().deref().clone(),
+                metadata.as_ref().deref(),
             ),
         }))
     }

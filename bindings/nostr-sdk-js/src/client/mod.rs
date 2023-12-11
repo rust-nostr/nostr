@@ -176,7 +176,7 @@ impl JsClient {
     #[wasm_bindgen(js_name = setMetadata)]
     pub async fn set_metadata(&self, metadata: &JsMetadata) -> Result<JsEventId> {
         self.inner
-            .set_metadata(metadata.into())
+            .set_metadata(metadata.deref())
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -364,7 +364,7 @@ impl JsClient {
     #[wasm_bindgen(js_name = newChannel)]
     pub async fn new_channel(&self, metadata: &JsMetadata) -> Result<JsEventId> {
         self.inner
-            .new_channel(metadata.into())
+            .new_channel(metadata.deref())
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -385,7 +385,7 @@ impl JsClient {
             None => None,
         };
         self.inner
-            .set_channel_metadata(channel_id.into(), relay_url, metadata.into())
+            .set_channel_metadata(channel_id.into(), relay_url, metadata.deref())
             .await
             .map_err(into_err)
             .map(|id| id.into())

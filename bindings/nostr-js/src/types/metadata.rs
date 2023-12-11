@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -18,9 +20,10 @@ impl From<Metadata> for JsMetadata {
     }
 }
 
-impl From<&JsMetadata> for Metadata {
-    fn from(metadata: &JsMetadata) -> Self {
-        metadata.inner.clone()
+impl Deref for JsMetadata {
+    type Target = Metadata;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 

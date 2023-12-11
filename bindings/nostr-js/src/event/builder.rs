@@ -64,7 +64,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = setMetadata)]
     pub fn set_metadata(metadata: &JsMetadata) -> Self {
         Self {
-            builder: EventBuilder::set_metadata(metadata.into()),
+            builder: EventBuilder::set_metadata(metadata.deref()),
         }
     }
 
@@ -149,7 +149,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = newChannel)]
     pub fn new_channel(metadata: &JsMetadata) -> Self {
         Self {
-            builder: EventBuilder::new_channel(metadata.into()),
+            builder: EventBuilder::new_channel(metadata.deref()),
         }
     }
 
@@ -167,7 +167,7 @@ impl JsEventBuilder {
             builder: EventBuilder::set_channel_metadata(
                 channel_id.into(),
                 relay_url,
-                metadata.into(),
+                metadata.deref(),
             ),
         })
     }

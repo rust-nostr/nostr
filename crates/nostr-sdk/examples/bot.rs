@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
         .name("nostr-sdk-bot-example")
         .display_name("Nostr SDK Bot Example")
         .website(Url::parse("https://github.com/rust-nostr/nostr")?);
-    client.set_metadata(metadata).await?;
+    client.set_metadata(&metadata).await?;
 
     let subscription = Filter::new()
         .pubkey(keys.public_key())
