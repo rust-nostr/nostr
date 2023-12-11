@@ -300,7 +300,7 @@ impl NostrDatabase for RocksDatabase {
         tokio::task::spawn_blocking(move || {
             let cf = this.cf_handle(EVENTS_CF)?;
 
-            let mut event_ids: Vec<(EventId, Timestamp)> = Vec::new();
+            let mut event_ids: Vec<(EventId, Timestamp)> = Vec::with_capacity(ids.len());
 
             for v in this
                 .db
