@@ -250,12 +250,18 @@ impl RelayPoolOptions {
 pub struct NegentropyOptions {
     /// Timeout to check if negentropy it's supported (default: 10 secs)
     pub initial_timeout: Duration,
-    /// Timeout for messages from relay (default: 10)
+    /* /// Timeout for messages from relay (default: 10)
     ///
     /// If relay reply only to first messages, this timeout will stop the loop.
-    pub recv_timeout: Duration,
-    /// Timeout to get needed events from relay (default: 30)
-    pub get_events_timeout: Duration,
+    pub recv_timeout: Duration, */
+    /// Static timeout to get needed events from relay (default: 10)
+    ///
+    /// This timeout is added to `relative_get_events_timeout`
+    pub static_get_events_timeout: Duration,
+    /// Relative timeout to get needed events from relay (default: 250 ms per event)
+    ///
+    /// This timeout is added to `static_get_events_timeout`
+    pub relative_get_events_timeout: Duration,
     /// Timeout for sending events to relay (default: 30 secs)
     pub batch_send_timeout: Duration,
     /// Bidirectional Sync (default: false)
@@ -268,8 +274,9 @@ impl Default for NegentropyOptions {
     fn default() -> Self {
         Self {
             initial_timeout: Duration::from_secs(10),
-            recv_timeout: Duration::from_secs(10),
-            get_events_timeout: Duration::from_secs(30),
+            //recv_timeout: Duration::from_secs(600),
+            static_get_events_timeout: Duration::from_secs(10),
+            relative_get_events_timeout: Duration::from_millis(250),
             batch_send_timeout: Duration::from_secs(30),
             bidirectional: false,
         }
@@ -288,17 +295,27 @@ impl NegentropyOptions {
         self
     }
 
-    /// Timeout for messages from relay (default: 10)
+    /* /// Timeout for messages from relay (default: 10)
     ///
     /// If relay reply only to first messages, this timeout will stop the loop.
     pub fn recv_timeout(mut self, recv_timeout: Duration) -> Self {
         self.recv_timeout = recv_timeout;
         self
+    } */
+
+    /// Static timeout to get needed events from relay (default: 10)
+    ///
+    /// This timeout is added to `relative_get_events_timeout`
+    pub fn static_get_events_timeout(mut self, static_get_events_timeout: Duration) -> Self {
+        self.static_get_events_timeout = static_get_events_timeout;
+        self
     }
 
-    /// Timeout to get needed events from relay (default: 30)
-    pub fn get_events_timeout(mut self, get_events_timeout: Duration) -> Self {
-        self.get_events_timeout = get_events_timeout;
+    /// Relative timeout to get needed events from relay (default: 250 ms per event)
+    ///
+    /// This timeout is added to `static_get_events_timeout`
+    pub fn relative_get_events_timeout(mut self, relative_get_events_timeout: Duration) -> Self {
+        self.relative_get_events_timeout = relative_get_events_timeout;
         self
     }
 

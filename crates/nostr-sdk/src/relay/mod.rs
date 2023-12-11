@@ -1572,10 +1572,7 @@ impl Relay {
         .await
         .ok_or(Error::Timeout)??;
 
-        while let Ok(notification) = time::timeout(Some(opts.recv_timeout), notifications.recv())
-            .await
-            .ok_or(Error::Timeout)?
-        {
+        while let Ok(notification) = notifications.recv().await {
             match notification {
                 RelayPoolNotification::Message(url, msg) => {
                     if url == self.url {
@@ -1626,9 +1623,13 @@ impl Relay {
                                         .filter_map(|id| EventId::from_slice(&id).ok());
                                     let filter = Filter::new().ids(ids);
                                     if !filter.ids.is_empty() {
+                                        let timeout: Duration = opts.static_get_events_timeout
+                                            + opts
+                                                .relative_get_events_timeout
+                                                .mul(filter.ids.len() as u32);
                                         self.get_events_of(
                                             vec![filter],
-                                            opts.get_events_timeout,
+                                            timeout,
                                             FilterOptions::ExitOnEOSE,
                                         )
                                         .await?;
