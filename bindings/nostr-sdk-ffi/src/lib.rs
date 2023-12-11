@@ -6,8 +6,6 @@
 
 nostr_ffi::uniffi_reexport_scaffolding!();
 
-pub use nostr_ffi as nostr;
-
 mod client;
 mod database;
 mod error;
