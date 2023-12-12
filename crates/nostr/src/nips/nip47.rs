@@ -120,6 +120,12 @@ pub enum ErrorCode {
     /// The wallet does not have enough funds to cover a fee reserve or the payment amount
     #[serde(rename = "INSUFFICIENT_BALANCE")]
     InsufficientBalance,
+    /// The payment failed. This may be due to a timeout, exhausting all routes, insufficient capacity or similar.
+    #[serde(rename = "PAYMENT_FAILED")]
+    PaymentFailed,
+    /// The invoice could not be found by the given parameters.
+    #[serde(rename = "NOT_FOUND")]
+    NotFound,
     /// The wallet has exceeded its spending quota
     #[serde(rename = "QUOTA_EXCEEDED")]
     QuotaExceeded,
@@ -141,12 +147,14 @@ impl fmt::Display for Method {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Method::PayInvoice => write!(f, "pay_invoice"),
+            Method::MultiPayInvoice => write!(f, "multi_pay_invoice"),
             Method::PayKeysend => write!(f, "pay_keysend"),
+            Method::MultiPayKeysend => write!(f, "multi_pay_keysend"),
             Method::MakeInvoice => write!(f, "make_invoice"),
             Method::LookupInvoice => write!(f, "lookup_invoice"),
-            Method::ListInvoices => write!(f, "list_invoices"),
-            Method::ListPayments => write!(f, "list_payments"),
+            Method::ListTransactions => write!(f, "list_transactions"),
             Method::GetBalance => write!(f, "get_balance"),
+            Method::GetInfo => write!(f, "get_info"),
         }
     }
 }
@@ -157,12 +165,14 @@ impl FromStr for Method {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "pay_invoice" => Ok(Method::PayInvoice),
+            "multi_pay_invoice" => Ok(Method::MultiPayInvoice),
             "pay_keysend" => Ok(Method::PayKeysend),
+            "multi_pay_keysend" => Ok(Method::MultiPayKeysend),
             "make_invoice" => Ok(Method::MakeInvoice),
             "lookup_invoice" => Ok(Method::LookupInvoice),
-            "list_invoices" => Ok(Method::ListInvoices),
-            "list_payments" => Ok(Method::ListPayments),
+            "list_transactions" => Ok(Method::ListTransactions),
             "get_balance" => Ok(Method::GetBalance),
+            "get_info" => Ok(Method::GetInfo),
             _ => Err(Error::InvalidURI),
         }
     }
@@ -183,24 +193,30 @@ pub enum Method {
     /// Pay Invoice
     #[serde(rename = "pay_invoice")]
     PayInvoice,
+    /// Multi Pay Invoice
+    #[serde(rename = "multi_pay_invoice")]
+    MultiPayInvoice,
     /// Pay Keysend
     #[serde(rename = "pay_keysend")]
     PayKeysend,
+    /// Multi Pay Keysend
+    #[serde(rename = "multi_pay_keysend")]
+    MultiPayKeysend,
     /// Make Invoice
     #[serde(rename = "make_invoice")]
     MakeInvoice,
     /// Lookup Invoice
     #[serde(rename = "lookup_invoice")]
     LookupInvoice,
-    /// List Invoices
-    #[serde(rename = "list_invoices")]
-    ListInvoices,
-    /// List Payments
-    #[serde(rename = "list_payments")]
-    ListPayments,
+    /// List transactions
+    #[serde(rename = "list_transactions")]
+    ListTransactions,
     /// Get Balance
     #[serde(rename = "get_balance")]
     GetBalance,
+    /// Get Info
+    #[serde(rename = "get_info")]
+    GetInfo,
 }
 
 /// Nostr Wallet Connect Request Params
@@ -208,18 +224,22 @@ pub enum Method {
 pub enum RequestParams {
     /// Pay Invoice
     PayInvoice(PayInvoiceRequestParams),
+    /// Multiple Pay Invoice
+    MultiPayInvoice(MultiPayInvoiceRequestParams),
     /// Pay Keysend
     PayKeysend(PayKeysendRequestParams),
+    /// Multiple Pay Keysend
+    MultiPayKeysend(MultiPayKeysendRequestParams),
     /// Make Invoice
     MakeInvoice(MakeInvoiceRequestParams),
     /// Lookup Invoice
     LookupInvoice(LookupInvoiceRequestParams),
-    /// List Invoices
-    ListInvoices(ListInvoicesRequestParams),
-    /// List Payments
-    ListPayments(ListPaymentsRequestParams),
+    /// List Transactions
+    ListTransactions(ListTransactionsRequestParams),
     /// Get Balance
     GetBalance,
+    /// Get Info
+    GetInfo,
 }
 
 impl Serialize for RequestParams {
@@ -229,12 +249,14 @@ impl Serialize for RequestParams {
     {
         match self {
             RequestParams::PayInvoice(p) => p.serialize(serializer),
+            RequestParams::MultiPayInvoice(p) => p.serialize(serializer),
             RequestParams::PayKeysend(p) => p.serialize(serializer),
+            RequestParams::MultiPayKeysend(p) => p.serialize(serializer),
             RequestParams::MakeInvoice(p) => p.serialize(serializer),
             RequestParams::LookupInvoice(p) => p.serialize(serializer),
-            RequestParams::ListInvoices(p) => p.serialize(serializer),
-            RequestParams::ListPayments(p) => p.serialize(serializer),
+            RequestParams::ListTransactions(p) => p.serialize(serializer),
             RequestParams::GetBalance => serializer.serialize_none(),
+            RequestParams::GetInfo => serializer.serialize_none(),
         }
     }
 }
@@ -242,8 +264,21 @@ impl Serialize for RequestParams {
 /// Pay Invoice Request Params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PayInvoiceRequestParams {
+    /// Optional id
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     /// Request invoice
     pub invoice: String,
+    /// Optional amount in millisatoshis
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount: Option<u64>,
+}
+
+/// Multiple Pay Invoice Request Params
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MultiPayInvoiceRequestParams {
+    /// Requested invoices
+    pub invoices: Vec<PayInvoiceRequestParams>,
 }
 
 /// TLVs to be added to the keysend payment
@@ -251,7 +286,7 @@ pub struct PayInvoiceRequestParams {
 pub struct KeysendTLVRecord {
     /// TLV type
     #[serde(rename = "type")]
-    pub type_: u64,
+    pub tlv_type: u64,
     /// TLV value
     pub value: String,
 }
@@ -259,13 +294,13 @@ pub struct KeysendTLVRecord {
 /// Pay Invoice Request Params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PayKeysendRequestParams {
+    /// Optional id
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     /// Amount in millisatoshis
     pub amount: i64,
     /// Receiver's node id
     pub pubkey: String,
-    /// Optional message
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
     /// Optional preimage
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preimage: Option<String>,
@@ -273,6 +308,13 @@ pub struct PayKeysendRequestParams {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tlv_records: Vec<KeysendTLVRecord>,
+}
+
+/// Multiple Pay Keysend Request Params
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MultiPayKeysendRequestParams {
+    /// Requested keysends
+    pub keysends: Vec<PayKeysendRequestParams>,
 }
 
 /// Make Invoice Request Params
@@ -284,8 +326,6 @@ pub struct MakeInvoiceRequestParams {
     pub description: Option<String>,
     /// Invoice description hash
     pub description_hash: Option<String>,
-    /// Preimage to be used for the invoice
-    pub preimage: Option<String>,
     /// Invoice expiry in seconds
     pub expiry: Option<i64>,
 }
@@ -299,9 +339,20 @@ pub struct LookupInvoiceRequestParams {
     pub bolt11: Option<String>,
 }
 
-/// List Invoice Request Params
+/// Transaction Type
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum TransactionType {
+    /// Incoming payments
+    #[serde(rename = "incoming")]
+    Incoming,
+    /// Outgoing payments
+    #[serde(rename = "outgoing")]
+    Outgoing,
+}
+
+/// List Transactions Request Params
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ListInvoicesRequestParams {
+pub struct ListTransactionsRequestParams {
     /// Starting timestamp in seconds since epoch
     #[serde(skip_serializing_if = "Option::is_none")]
     pub from: Option<u64>,
@@ -317,23 +368,10 @@ pub struct ListInvoicesRequestParams {
     /// If true, include unpaid invoices
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unpaid: Option<bool>,
-}
-
-/// List Payments Request Params
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ListPaymentsRequestParams {
-    /// Starting timestamp in seconds since epoch
+    /// [`TransactionType::Incoming`] for invoices, [`TransactionType::Outgoing`] for payments, [`None`] for both
+    #[serde(rename = "type")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub from: Option<u64>,
-    /// Ending timestamp in seconds since epoch
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub until: Option<u64>,
-    /// Number of invoices to return
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u64>,
-    /// Offset of the first invoice to return
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u64>,
+    pub transaction_type: Option<TransactionType>,
 }
 
 /// NIP47 Request
@@ -363,9 +401,17 @@ impl Request {
                 let params: PayInvoiceRequestParams = serde_json::from_value(template.params)?;
                 RequestParams::PayInvoice(params)
             }
+            Method::MultiPayInvoice => {
+                let params: MultiPayInvoiceRequestParams = serde_json::from_value(template.params)?;
+                RequestParams::MultiPayInvoice(params)
+            }
             Method::PayKeysend => {
                 let params: PayKeysendRequestParams = serde_json::from_value(template.params)?;
                 RequestParams::PayKeysend(params)
+            }
+            Method::MultiPayKeysend => {
+                let params: MultiPayKeysendRequestParams = serde_json::from_value(template.params)?;
+                RequestParams::MultiPayKeysend(params)
             }
             Method::MakeInvoice => {
                 let params: MakeInvoiceRequestParams = serde_json::from_value(template.params)?;
@@ -375,15 +421,13 @@ impl Request {
                 let params: LookupInvoiceRequestParams = serde_json::from_value(template.params)?;
                 RequestParams::LookupInvoice(params)
             }
-            Method::ListInvoices => {
-                let params: ListInvoicesRequestParams = serde_json::from_value(template.params)?;
-                RequestParams::ListInvoices(params)
-            }
-            Method::ListPayments => {
-                let params: ListPaymentsRequestParams = serde_json::from_value(template.params)?;
-                RequestParams::ListPayments(params)
+            Method::ListTransactions => {
+                let params: ListTransactionsRequestParams =
+                    serde_json::from_value(template.params)?;
+                RequestParams::ListTransactions(params)
             }
             Method::GetBalance => RequestParams::GetBalance,
+            Method::GetInfo => RequestParams::GetInfo,
         };
 
         Ok(Self {
@@ -432,8 +476,6 @@ pub struct PayInvoiceResponseResult {
 pub struct PayKeysendResponseResult {
     /// Response preimage
     pub preimage: String,
-    /// Payment hash
-    pub payment_hash: String,
 }
 
 /// NIP47 Response Result
@@ -448,46 +490,63 @@ pub struct MakeInvoiceResponseResult {
 /// NIP47 Response Result
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct LookupInvoiceResponseResult {
+    /// Transaction type
+    #[serde(rename = "type")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction_type: Option<TransactionType>,
     /// Bolt11 invoice
-    pub invoice: String,
-    /// If the invoice has been paid
-    pub paid: bool,
-}
-
-/// NIP47 Response Result
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ListPaymentResponseResult {
-    /// Bolt11 invoice
-    pub invoice: String,
-    /// Preimage for the payment
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invoice: Option<String>,
+    /// Invoice's description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Invoice's description hash
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description_hash: Option<String>,
+    /// Payment preimage
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub preimage: Option<String>,
+    /// Payment hash
+    pub payment_hash: String,
+    /// Amount in millisatoshis
+    pub amount: u64,
+    /// Fees paid in millisatoshis
+    pub fees_paid: u64,
+    /// Creation timestamp in seconds since epoch
+    pub created_at: u64,
+    /// Expiration timestamp in seconds since epoch
+    pub expires_at: u64,
+    /// Settled timestamp in seconds since epoch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub settled_at: Option<u64>,
+    /// Optional metadata about the payment
+    pub metadata: Value,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-/// Budget renewal type
-pub enum BudgetType {
-    /// Daily
-    Daily,
-    /// Weekly
-    Weekly,
-    /// Monthly
-    Monthly,
-    /// Yearly
-    Yearly,
-}
-
-/// NIP47 Response Result
+/// NIP47 `get_balance` Response Result
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GetBalanceResponseResult {
-    /// Balance amount in sats
+    /// Balance amount in msats
     pub balance: u64,
-    /// Max amount payable within current budget
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_amount: Option<u64>,
-    /// Budget renewal type
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub budget_renewal: Option<BudgetType>,
+}
+
+/// NIP47 `get_info` Response Result
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct GetInfoResponseResult {
+    /// The alias of the lightning node
+    pub alias: String,
+    /// The color of the current node in hex code format
+    pub color: String,
+    /// Lightning Node's public key
+    pub pubkey: String,
+    /// Active network
+    pub network: String,
+    /// Current block height
+    pub block_height: u32,
+    /// Most Recent Block Hash
+    pub block_hash: String,
+    /// Available methods for this connection
+    pub methods: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -495,18 +554,22 @@ pub struct GetBalanceResponseResult {
 pub enum ResponseResult {
     /// Pay Invoice
     PayInvoice(PayInvoiceResponseResult),
+    /// Multiple Pay Invoice
+    MultiPayInvoice(PayInvoiceResponseResult),
     /// Pay Keysend
     PayKeysend(PayKeysendResponseResult),
+    /// Multiple Pay Keysend
+    MultiPayKeysend(PayKeysendResponseResult),
     /// Make Invoice
     MakeInvoice(MakeInvoiceResponseResult),
     /// Lookup Invoice
     LookupInvoice(LookupInvoiceResponseResult),
     /// List Invoices
-    ListInvoices(Vec<LookupInvoiceResponseResult>),
-    /// List Payments
-    ListPayments(Vec<ListPaymentResponseResult>),
+    ListTransactions(Vec<LookupInvoiceResponseResult>),
     /// Get Balance
     GetBalance(GetBalanceResponseResult),
+    /// Get Info
+    GetInfo(GetInfoResponseResult),
 }
 
 impl Serialize for ResponseResult {
@@ -516,12 +579,14 @@ impl Serialize for ResponseResult {
     {
         match self {
             ResponseResult::PayInvoice(p) => p.serialize(serializer),
+            ResponseResult::MultiPayInvoice(p) => p.serialize(serializer),
             ResponseResult::PayKeysend(p) => p.serialize(serializer),
+            ResponseResult::MultiPayKeysend(p) => p.serialize(serializer),
             ResponseResult::MakeInvoice(p) => p.serialize(serializer),
             ResponseResult::LookupInvoice(p) => p.serialize(serializer),
-            ResponseResult::ListInvoices(p) => p.serialize(serializer),
-            ResponseResult::ListPayments(p) => p.serialize(serializer),
+            ResponseResult::ListTransactions(p) => p.serialize(serializer),
             ResponseResult::GetBalance(p) => p.serialize(serializer),
+            ResponseResult::GetInfo(p) => p.serialize(serializer),
         }
     }
 }
@@ -559,9 +624,17 @@ impl Response {
                     let result: PayInvoiceResponseResult = serde_json::from_value(result)?;
                     ResponseResult::PayInvoice(result)
                 }
+                Method::MultiPayInvoice => {
+                    let result: PayInvoiceResponseResult = serde_json::from_value(result)?;
+                    ResponseResult::MultiPayInvoice(result)
+                }
                 Method::PayKeysend => {
                     let result: PayKeysendResponseResult = serde_json::from_value(result)?;
                     ResponseResult::PayKeysend(result)
+                }
+                Method::MultiPayKeysend => {
+                    let result: PayKeysendResponseResult = serde_json::from_value(result)?;
+                    ResponseResult::MultiPayKeysend(result)
                 }
                 Method::MakeInvoice => {
                     let result: MakeInvoiceResponseResult = serde_json::from_value(result)?;
@@ -571,15 +644,15 @@ impl Response {
                     let result: LookupInvoiceResponseResult = serde_json::from_value(result)?;
                     ResponseResult::LookupInvoice(result)
                 }
-                Method::ListInvoices => {
+                Method::ListTransactions => {
                     let result: Vec<LookupInvoiceResponseResult> = serde_json::from_value(result)?;
-                    ResponseResult::ListInvoices(result)
-                }
-                Method::ListPayments => {
-                    let result: Vec<ListPaymentResponseResult> = serde_json::from_value(result)?;
-                    ResponseResult::ListPayments(result)
+                    ResponseResult::ListTransactions(result)
                 }
                 Method::GetBalance => {
+                    let result: GetBalanceResponseResult = serde_json::from_value(result)?;
+                    ResponseResult::GetBalance(result)
+                }
+                Method::GetInfo => {
                     let result: GetBalanceResponseResult = serde_json::from_value(result)?;
                     ResponseResult::GetBalance(result)
                 }
@@ -795,7 +868,7 @@ mod test {
     fn serialize_request() {
         let request = Request {
             method: Method::PayInvoice,
-            params: RequestParams::PayInvoice(PayInvoiceRequestParams { invoice: "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp".to_string() }),
+            params: RequestParams::PayInvoice(PayInvoiceRequestParams { id: None, invoice: "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp".to_string(), amount: None }),
         };
 
         assert_eq!(Request::from_json(request.as_json()).unwrap(), request);
