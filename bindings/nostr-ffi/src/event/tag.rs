@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use nostr::event::tag::{self, HttpMethod, Identity, ImageDimensions, Marker, Report};
+use nostr::event::tag::{self, Identity, ImageDimensions, Marker, Report};
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip26::Conditions;
 use nostr::nips::nip48::Protocol;
@@ -18,6 +18,25 @@ use nostr::{Event, EventId, JsonUtil, Kind, Timestamp, UncheckedUrl, Url};
 use uniffi::{Enum, Object};
 
 use crate::error::{NostrError, Result};
+
+#[derive(Enum)]
+pub enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Patch,
+}
+
+impl From<HttpMethod> for tag::HttpMethod {
+    fn from(value: HttpMethod) -> Self {
+        match value {
+            HttpMethod::Get => Self::GET,
+            HttpMethod::Post => Self::POST,
+            HttpMethod::Put => Self::PUT,
+            HttpMethod::Patch => Self::PATCH,
+        }
+    }
+}
 
 #[derive(Enum)]
 pub enum RelayMetadata {
@@ -870,7 +889,7 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::CurrentParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagEnum::TotalParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagEnum::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
-            TagEnum::Method { method } => Ok(Self::Method(HttpMethod::from_str(&method)?)),
+            TagEnum::Method { method } => Ok(Self::Method(tag::HttpMethod::from_str(&method)?)),
             TagEnum::Payload { hash } => Ok(Self::Payload(Sha256Hash::from_str(&hash)?)),
             TagEnum::Anon { msg } => Ok(Self::Anon { msg }),
             TagEnum::Proxy { id, protocol } => Ok(Self::Proxy {

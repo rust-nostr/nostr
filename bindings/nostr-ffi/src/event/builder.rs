@@ -16,6 +16,7 @@ use crate::key::Keys;
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
+use crate::nips::nip98::HttpData;
 use crate::types::{Contact, Metadata};
 use crate::{
     FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
@@ -457,5 +458,12 @@ impl EventBuilder {
                 metadata.as_ref().deref().clone(),
             ),
         })
+    }
+
+    #[uniffi::constructor]
+    pub fn http_auth(data: HttpData) -> Self {
+        Self {
+            inner: nostr::EventBuilder::http_auth(data.into()),
+        }
     }
 }

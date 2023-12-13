@@ -10,7 +10,7 @@ use uniffi::Object;
 
 mod builder;
 mod id;
-mod tag;
+pub mod tag;
 mod unsigned;
 
 pub use self::builder::EventBuilder;
