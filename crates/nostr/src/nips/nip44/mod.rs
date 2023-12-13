@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP44 - EXPERIMENTAL
+//! NIP44
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/44.md>
 
@@ -20,6 +20,8 @@ use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::XChaCha20;
 
+pub mod v2;
+
 use crate::util;
 
 /// Error
@@ -27,10 +29,12 @@ use crate::util;
 pub enum Error {
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
+    /// NIP44 V2 error
+    V2(v2::ErrorV2),
+    /// Error while decoding from base64
+    Base64Decode(base64::DecodeError),
     /// Invalid lenght
     InvalidLength,
-    /// Error while decoding from base64
-    Base64Decode,
     /// Error while encoding to UTF-8
     Utf8Encode,
     /// Unknown version
@@ -48,8 +52,9 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::V2(e) => write!(f, "{e}"),
+            Self::Base64Decode(e) => write!(f, "Error while decoding from base64: {e}"),
             Self::InvalidLength => write!(f, "Invalid length"),
-            Self::Base64Decode => write!(f, "Error while decoding from base64"),
             Self::Utf8Encode => write!(f, "Error while encoding to UTF-8"),
             Self::UnknownVersion(v) => write!(f, "unknown version: {v}"),
             Self::VersionNotFound => write!(f, "Version not found in payload"),
@@ -64,14 +69,29 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
+impl From<v2::ErrorV2> for Error {
+    fn from(e: v2::ErrorV2) -> Self {
+        Self::V2(e)
+    }
+}
+
+impl From<base64::DecodeError> for Error {
+    fn from(e: base64::DecodeError) -> Self {
+        Self::Base64Decode(e)
+    }
+}
+
 /// Payload version
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum Version {
     /// Reserved
     // Reserved = 0x00,
-    /// XChaCha20
-    XChaCha20 = 0x01,
+    /// V1 (deprecated)
+    #[deprecated]
+    V1 = 0x01,
+    /// V2 - Secp256k1 ECDH, HKDF, padding, ChaCha20, HMAC-SHA256 and base64
+    V2 = 0x02,
 }
 
 impl Version {
@@ -85,7 +105,9 @@ impl TryFrom<u8> for Version {
     type Error = Error;
     fn try_from(version: u8) -> Result<Self, Self::Error> {
         match version {
-            0x01 => Ok(Self::XChaCha20),
+            #[allow(deprecated)]
+            0x01 => Ok(Self::V1),
+            0x02 => Ok(Self::V2),
             v => Err(Error::UnknownVersion(v)),
         }
     }
@@ -118,9 +140,10 @@ where
     T: AsRef<[u8]>,
 {
     match version {
-        Version::XChaCha20 => {
+        #[allow(deprecated)]
+        Version::V1 => {
             // Compose key
-            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
+            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
             let key: Sha256Hash = Sha256Hash::hash(&shared_key);
 
             // Generate 192-bit nonce
@@ -142,10 +165,14 @@ where
             // Encode payload to base64
             Ok(general_purpose::STANDARD.encode(payload))
         }
+        Version::V2 => {
+            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+            v2::encrypt_with_rng(rng, &shared_key, content)
+        }
     }
 }
 
-/// Decrypt - EXPERIMENTAL
+/// Decrypt
 pub fn decrypt<T>(
     secret_key: &SecretKey,
     public_key: &XOnlyPublicKey,
@@ -155,15 +182,14 @@ where
     T: AsRef<[u8]>,
 {
     // Decode base64 payload
-    let payload: Vec<u8> = general_purpose::STANDARD
-        .decode(payload)
-        .map_err(|_| Error::Base64Decode)?;
+    let payload: Vec<u8> = general_purpose::STANDARD.decode(payload)?;
 
     // Get version byte
     let version: u8 = *payload.first().ok_or(Error::VersionNotFound)?;
 
     match Version::try_from(version)? {
-        Version::XChaCha20 => {
+        #[allow(deprecated)]
+        Version::V1 => {
             // Get data from payload
             let nonce: &[u8] = payload
                 .get(1..25)
@@ -173,7 +199,7 @@ where
                 .ok_or_else(|| Error::NotFound(String::from("ciphertext")))?;
 
             // Compose key
-            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
+            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
             let key: Sha256Hash = Sha256Hash::hash(&shared_key);
 
             // Compose cipher
@@ -186,6 +212,10 @@ where
             // Convert bytes to string
             String::from_utf8(buffer.to_vec()).map_err(|_| Error::Utf8Encode)
         }
+        Version::V2 => {
+            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+            v2::decrypt(&shared_key, &payload)
+        }
     }
 }
 
@@ -194,7 +224,7 @@ where
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::secp256k1::{KeyPair, Secp256k1};
+    use bitcoin::secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
 
     use super::*;
 
@@ -216,19 +246,10 @@ mod tests {
         let bob_key_pair = KeyPair::from_secret_key(&secp, &bob_sk);
         let bob_pk = XOnlyPublicKey::from_keypair(&bob_key_pair).0;
 
-        let encrypted_content_from_outside = "Abd8jOLZT0OAEE6kZ5hI1qd1ZRrVR1W46vRyZCL5";
-
         let content = String::from("hello");
-
-        let encrypted_content = encrypt(&alice_sk, &bob_pk, &content, Version::XChaCha20).unwrap();
-
+        let encrypted_content = encrypt(&alice_sk, &bob_pk, &content, Version::V2).unwrap();
         assert_eq!(
             decrypt(&bob_sk, &alice_pk, &encrypted_content).unwrap(),
-            content
-        );
-
-        assert_eq!(
-            decrypt(&bob_sk, &alice_pk, encrypted_content_from_outside).unwrap(),
             content
         );
     }

@@ -7,15 +7,9 @@ use std::sync::Arc;
 
 use nostr::util;
 
-use crate::error::Result;
 use crate::{PublicKey, SecretKey};
 
 #[uniffi::export]
-pub fn generate_shared_key(
-    secret_key: Arc<SecretKey>,
-    public_key: Arc<PublicKey>,
-) -> Result<Vec<u8>> {
-    let shared_key: [u8; 32] =
-        util::generate_shared_key(secret_key.as_ref().deref(), public_key.as_ref().deref())?;
-    Ok(shared_key.to_vec())
+pub fn generate_shared_key(secret_key: Arc<SecretKey>, public_key: Arc<PublicKey>) -> Vec<u8> {
+    util::generate_shared_key(secret_key.as_ref().deref(), public_key.as_ref().deref()).to_vec()
 }
