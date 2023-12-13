@@ -413,6 +413,21 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
+    pub fn job_result(
+        job_request: Arc<Event>,
+        amount_millisats: u64,
+        bolt11: Option<String>,
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::job_result(
+                job_request.as_ref().deref().clone(),
+                amount_millisats,
+                bolt11,
+            )?,
+        }))
+    }
+
+    #[uniffi::constructor]
     pub fn file_metadata(description: String, metadata: Arc<FileMetadata>) -> Arc<Self> {
         Arc::new(Self {
             inner: nostr::EventBuilder::file_metadata(
