@@ -15,6 +15,7 @@ use crate::error::Result;
 use crate::key::Keys;
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
+use crate::nips::nip90::DataVendingMachineStatus;
 use crate::types::{Contact, Metadata};
 use crate::{
     FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
@@ -425,6 +426,27 @@ impl EventBuilder {
                 bolt11,
             )?,
         }))
+    }
+
+    #[uniffi::constructor]
+    pub fn job_feedback(
+        job_request: Arc<Event>,
+        status: DataVendingMachineStatus,
+        extra_info: Option<String>,
+        amount_millisats: u64,
+        bolt11: Option<String>,
+        payload: Option<String>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            inner: nostr::EventBuilder::job_feedback(
+                job_request.as_ref().deref(),
+                status.into(),
+                extra_info,
+                amount_millisats,
+                bolt11,
+                payload,
+            ),
+        })
     }
 
     #[uniffi::constructor]
