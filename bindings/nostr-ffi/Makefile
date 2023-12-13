@@ -1,6 +1,22 @@
 CURRENT_DIR := $(shell pwd)
 SOURCES=$(sort $(wildcard ./src/*.rs ./src/**/*.rs))
 
+ifeq ($(OS),Windows_NT)
+    # Windows
+    LIB_UNIFFI_EXT := dll
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Linux)
+        # Linux
+        LIB_UNIFFI_EXT := so
+
+    endif
+    ifeq ($(UNAME_S),Darwin)
+        # macOS
+        LIB_UNIFFI_EXT := a
+    endif
+endif
+
 .PHONY: init
 init:
 	rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
@@ -99,13 +115,13 @@ bindings-swift: ios-universal darwin-universal
 
 python:
 	rm -rf bindings-python/dist
-	pip install -r bindings-python/requirements.txt --break-system-packages
+	pip install -r bindings-python/requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.so --language python --no-format -o bindings-python/src/nostr/
+	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.$(LIB_UNIFFI_EXT) --language python --no-format -o bindings-python/src/nostr/
 	cp ../../target/release/libnostr_ffi.so bindings-python/src/nostr/ | true
 	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/ | true
 	cd bindings-python && python setup.py --verbose bdist_wheel
-	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall --break-system-packages
+	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall
 
 python-win:
 	pip install -r bindings-python\requirements.txt
