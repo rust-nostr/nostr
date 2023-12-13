@@ -39,7 +39,7 @@ alloc = [
     "serde_json/alloc",
 ]
 blocking = ["reqwest?/blocking"]
-all-nips = ["nip04", "nip05", "nip06", "nip11", "nip46", "nip47"]
+all-nips = ["nip04", "nip05", "nip06", "nip11", "nip44", "nip46", "nip47"]
 nip03 = ["dep:nostr-ots"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip05 = ["dep:reqwest"]

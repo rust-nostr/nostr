@@ -26,7 +26,6 @@ pub use crate::message::{Alphabet, ClientMessage, Filter, RelayMessage};
 pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
 pub use crate::nips::nip05::{get_nip05_profile, verify_nip05};
 pub use crate::nips::nip11::RelayInformationDocument;
-//pub use crate::nips::nip44::{nip44_decrypt, nip44_encrypt};
 pub use crate::nips::nip46::NostrConnectURI;
 pub use crate::nips::nip57::ZapRequestData;
 pub use crate::nips::nip94::FileMetadata;
