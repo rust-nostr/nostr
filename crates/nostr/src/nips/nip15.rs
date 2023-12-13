@@ -200,7 +200,10 @@ pub struct ShippingMethod {
 
 impl ShippingMethod {
     /// Create a new shipping method
-    pub fn new(id: &str, cost: f64) -> Self {
+    pub fn new<S>(id: S, cost: f64) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             id: id.into(),
             name: None,
@@ -210,7 +213,10 @@ impl ShippingMethod {
     }
 
     /// Set the name of the shipping method
-    pub fn name(self, name: &str) -> Self {
+    pub fn name<S>(self, name: S) -> Self
+    where
+        S: Into<String>,
+    {
         Self {
             name: Some(name.into()),
             ..self
@@ -223,9 +229,9 @@ impl ShippingMethod {
     }
 
     /// Get the product shipping cost of the shipping method
-    pub fn get_shipping_cost(self) -> ShippingCost {
+    pub fn get_shipping_cost(&self) -> ShippingCost {
         ShippingCost {
-            id: self.id,
+            id: self.id.clone(),
             cost: self.cost,
         }
     }

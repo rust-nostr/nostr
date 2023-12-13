@@ -13,7 +13,7 @@ use uniffi::Object;
 use super::{Event, EventId};
 use crate::error::Result;
 use crate::key::Keys;
-use crate::nips::nip15::StallData;
+use crate::nips::nip15::{ProductData, StallData};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -472,6 +472,13 @@ impl EventBuilder {
     pub fn new_stall_data(data: StallData) -> Self {
         Self {
             inner: nostr::EventBuilder::new_stall_data(data.into()),
+        }
+    }
+
+    #[uniffi::constructor]
+    pub fn new_product_data(data: ProductData) -> Self {
+        Self {
+            inner: nostr::EventBuilder::new_product_data(data.into()),
         }
     }
 }
