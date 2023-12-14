@@ -70,6 +70,9 @@ pub enum Error {
     Secp256k1(secp256k1::Error),
     /// Unsigned event error
     Unsigned(super::unsigned::Error),
+    /// OpenTimestamps error
+    #[cfg(feature = "nip03")]
+    OpenTimestamps(nostr_ots::Error),
     /// NIP04 error
     #[cfg(feature = "nip04")]
     NIP04(nip04::Error),
@@ -94,6 +97,8 @@ impl fmt::Display for Error {
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
+            #[cfg(feature = "nip03")]
+            Self::OpenTimestamps(e) => write!(f, "NIP03: {e}"),
             #[cfg(feature = "nip04")]
             Self::NIP04(e) => write!(f, "NIP04: {e}"),
             Self::NIP58(e) => write!(f, "NIP58: {e}"),
@@ -125,6 +130,13 @@ impl From<secp256k1::Error> for Error {
 impl From<super::unsigned::Error> for Error {
     fn from(e: super::unsigned::Error) -> Self {
         Self::Unsigned(e)
+    }
+}
+
+#[cfg(feature = "nip03")]
+impl From<nostr_ots::Error> for Error {
+    fn from(e: nostr_ots::Error) -> Self {
+        Self::OpenTimestamps(e)
     }
 }
 
@@ -405,6 +417,22 @@ impl EventBuilder {
             .collect();
 
         Self::new(Kind::ContactList, "", &tags)
+    }
+
+    /// OpenTimestamps Attestations for Events
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/03.md>
+    #[cfg(feature = "nip03")]
+    pub fn opentimestamps(
+        event_id: EventId,
+        relay_url: Option<UncheckedUrl>,
+    ) -> Result<Self, Error> {
+        let ots: String = nostr_ots::timestamp_event(&event_id.to_hex())?;
+        Ok(Self::new(
+            Kind::OpenTimestamps,
+            ots,
+            &[Tag::Event(event_id, relay_url, None)],
+        ))
     }
 
     /// Create encrypted direct msg event

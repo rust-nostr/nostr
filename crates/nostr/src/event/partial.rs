@@ -90,8 +90,6 @@ impl PartialEvent {
             tags: missing.tags,
             content: missing.content,
             sig: self.sig,
-            #[cfg(feature = "nip03")]
-            ots: missing.ots,
         }
     }
 }
@@ -111,10 +109,6 @@ pub struct MissingPartialEvent {
     pub tags: Vec<Tag>,
     /// Content
     pub content: String,
-    /// OpenTimestamps Attestations
-    #[cfg(feature = "nip03")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ots: Option<String>,
 }
 
 impl JsonUtil for MissingPartialEvent {

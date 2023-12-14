@@ -113,8 +113,6 @@ impl UnsignedEvent {
             tags: self.tags,
             content: self.content,
             sig: keys.sign_schnorr_with_ctx(secp, &message, rng)?,
-            #[cfg(feature = "nip03")]
-            ots: None,
         })
     }
 
@@ -141,8 +139,6 @@ impl UnsignedEvent {
             tags: self.tags,
             content: self.content,
             sig,
-            #[cfg(feature = "nip03")]
-            ots: None,
         };
         event.verify_with_ctx(secp)?;
         Ok(event)

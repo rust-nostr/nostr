@@ -48,9 +48,6 @@ pub enum Error {
     Secp256k1(secp256k1::Error),
     /// Hex decoding error
     Hex(bitcoin::hashes::hex::Error),
-    /// OpenTimestamps error
-    #[cfg(feature = "nip03")]
-    OpenTimestamps(nostr_ots::Error),
 }
 
 #[cfg(feature = "std")]
@@ -64,8 +61,6 @@ impl fmt::Display for Error {
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::Hex(e) => write!(f, "Hex: {e}"),
-            #[cfg(feature = "nip03")]
-            Self::OpenTimestamps(e) => write!(f, "NIP03: {e}"),
         }
     }
 }
@@ -88,13 +83,6 @@ impl From<bitcoin::hashes::hex::Error> for Error {
     }
 }
 
-#[cfg(feature = "nip03")]
-impl From<nostr_ots::Error> for Error {
-    fn from(e: nostr_ots::Error) -> Self {
-        Self::OpenTimestamps(e)
-    }
-}
-
 /// [`Event`] struct
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Event {
@@ -112,10 +100,6 @@ pub struct Event {
     pub content: String,
     /// Signature
     pub sig: Signature,
-    /// OpenTimestamps Attestations
-    #[cfg(feature = "nip03")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ots: Option<String>,
 }
 
 impl Event {
@@ -209,16 +193,6 @@ impl Event {
             return timestamp < &now;
         }
         false
-    }
-
-    /// Timestamp this event with OpenTimestamps
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/03.md>
-    #[cfg(feature = "nip03")]
-    pub fn timestamp(&mut self) -> Result<(), Error> {
-        let ots = nostr_ots::timestamp_event(&self.id.to_hex())?;
-        self.ots = Some(ots);
-        Ok(())
     }
 
     /// Check if [`Kind`] is a NIP90 job request
@@ -358,8 +332,6 @@ impl Event {
             tags,
             content: content.into(),
             sig: Signature::from_str(sig).unwrap(),
-            #[cfg(feature = "nip03")]
-            ots: None,
         }
     }
 }

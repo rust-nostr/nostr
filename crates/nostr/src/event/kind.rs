@@ -37,6 +37,8 @@ pub enum Kind {
     RecommendRelay,
     /// Contacts (NIP02)
     ContactList,
+    /// OpenTimestamps Attestations (NIP03)
+    OpenTimestamps,
     /// Encrypted Direct Messages (NIP04)
     EncryptedDirectMessage,
     /// Event Deletion (NIP09)
@@ -193,6 +195,7 @@ impl From<u64> for Kind {
             1 => Self::TextNote,
             2 => Self::RecommendRelay,
             3 => Self::ContactList,
+            1040 => Self::OpenTimestamps,
             4 => Self::EncryptedDirectMessage,
             5 => Self::EventDeletion,
             6 => Self::Repost,
@@ -252,6 +255,7 @@ impl From<Kind> for u64 {
             Kind::TextNote => 1,
             Kind::RecommendRelay => 2,
             Kind::ContactList => 3,
+            Kind::OpenTimestamps => 1040,
             Kind::EncryptedDirectMessage => 4,
             Kind::EventDeletion => 5,
             Kind::Repost => 6,
