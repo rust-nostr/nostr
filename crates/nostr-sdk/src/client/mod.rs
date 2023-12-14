@@ -954,10 +954,10 @@ impl Client {
                         contact_list.push(Contact::new::<String>(pk, relay_url, None))
                     }
                     Tag::ContactList {
-                        pk,
+                        public_key,
                         relay_url,
                         alias,
-                    } => contact_list.push(Contact::new(pk, relay_url, alias)),
+                    } => contact_list.push(Contact::new(public_key, relay_url, alias)),
                     _ => (),
                 }
             }

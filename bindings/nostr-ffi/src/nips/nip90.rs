@@ -24,3 +24,15 @@ impl From<DataVendingMachineStatus> for nip90::DataVendingMachineStatus {
         }
     }
 }
+
+impl From<nip90::DataVendingMachineStatus> for DataVendingMachineStatus {
+    fn from(value: nip90::DataVendingMachineStatus) -> Self {
+        match value {
+            nip90::DataVendingMachineStatus::PaymentRequired => Self::PaymentRequired,
+            nip90::DataVendingMachineStatus::Processing => Self::Processing,
+            nip90::DataVendingMachineStatus::Error => Self::Error,
+            nip90::DataVendingMachineStatus::Success => Self::Success,
+            nip90::DataVendingMachineStatus::Partial => Self::Partial,
+        }
+    }
+}

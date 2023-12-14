@@ -197,25 +197,25 @@ impl From<LiveEvent> for Vec<Tag> {
         }) = host
         {
             tags.push(Tag::PubKeyLiveEvent {
-                pk: public_key,
+                public_key,
                 relay_url,
                 marker: LiveEventMarker::Host,
                 proof,
             });
         }
 
-        for (pk, relay_url) in speakers.into_iter() {
+        for (public_key, relay_url) in speakers.into_iter() {
             tags.push(Tag::PubKeyLiveEvent {
-                pk,
+                public_key,
                 relay_url,
                 marker: LiveEventMarker::Speaker,
                 proof: None,
             });
         }
 
-        for (pk, relay_url) in participants.into_iter() {
+        for (public_key, relay_url) in participants.into_iter() {
             tags.push(Tag::PubKeyLiveEvent {
-                pk,
+                public_key,
                 relay_url,
                 marker: LiveEventMarker::Participant,
                 proof: None,

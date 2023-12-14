@@ -253,7 +253,7 @@ impl Event {
     pub fn public_keys(&self) -> impl Iterator<Item = &XOnlyPublicKey> {
         self.tags.iter().filter_map(|t| match t {
             Tag::PubKey(pk, ..) => Some(pk),
-            Tag::ContactList { pk, .. } => Some(pk),
+            Tag::ContactList { public_key, .. } => Some(public_key),
             _ => None,
         })
     }

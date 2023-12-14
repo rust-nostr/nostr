@@ -11,6 +11,67 @@ use uniffi::{Enum, Record};
 
 use crate::{ImageDimensions, PublicKey, Timestamp};
 
+#[derive(Enum)]
+/// Live Event Marker
+pub enum LiveEventMarker {
+    /// Host
+    Host,
+    /// Speaker
+    Speaker,
+    /// Participant
+    Participant,
+}
+
+impl From<LiveEventMarker> for nip53::LiveEventMarker {
+    fn from(value: LiveEventMarker) -> Self {
+        match value {
+            LiveEventMarker::Host => Self::Host,
+            LiveEventMarker::Speaker => Self::Speaker,
+            LiveEventMarker::Participant => Self::Participant,
+        }
+    }
+}
+
+impl From<nip53::LiveEventMarker> for LiveEventMarker {
+    fn from(value: nip53::LiveEventMarker) -> Self {
+        match value {
+            nip53::LiveEventMarker::Host => Self::Host,
+            nip53::LiveEventMarker::Speaker => Self::Speaker,
+            nip53::LiveEventMarker::Participant => Self::Participant,
+        }
+    }
+}
+
+#[derive(Enum)]
+pub enum LiveEventStatus {
+    Planned,
+    Live,
+    Ended,
+    Custom { custom: String },
+}
+
+impl From<LiveEventStatus> for nip53::LiveEventStatus {
+    fn from(value: LiveEventStatus) -> Self {
+        match value {
+            LiveEventStatus::Planned => Self::Planned,
+            LiveEventStatus::Live => Self::Live,
+            LiveEventStatus::Ended => Self::Ended,
+            LiveEventStatus::Custom { custom } => Self::Custom(custom),
+        }
+    }
+}
+
+impl From<nip53::LiveEventStatus> for LiveEventStatus {
+    fn from(value: nip53::LiveEventStatus) -> Self {
+        match value {
+            nip53::LiveEventStatus::Planned => Self::Planned,
+            nip53::LiveEventStatus::Live => Self::Live,
+            nip53::LiveEventStatus::Ended => Self::Ended,
+            nip53::LiveEventStatus::Custom(custom) => Self::Custom { custom },
+        }
+    }
+}
+
 #[derive(Record)]
 pub struct LiveEventHost {
     pub public_key: Arc<PublicKey>,
@@ -35,25 +96,6 @@ impl From<LiveEventHost> for nip53::LiveEventHost {
 pub struct Image {
     pub url: String,
     pub dimensions: Option<Arc<ImageDimensions>>,
-}
-
-#[derive(Enum)]
-pub enum LiveEventStatus {
-    Planned,
-    Live,
-    Ended,
-    Custom { custom: String },
-}
-
-impl From<LiveEventStatus> for nip53::LiveEventStatus {
-    fn from(value: LiveEventStatus) -> Self {
-        match value {
-            LiveEventStatus::Planned => Self::Planned,
-            LiveEventStatus::Live => Self::Live,
-            LiveEventStatus::Ended => Self::Ended,
-            LiveEventStatus::Custom { custom } => Self::Custom(custom),
-        }
-    }
 }
 
 #[derive(Record)]

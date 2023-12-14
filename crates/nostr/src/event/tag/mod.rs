@@ -553,7 +553,7 @@ pub enum Tag {
     EventReport(EventId, Report),
     PubKeyReport(XOnlyPublicKey, Report),
     PubKeyLiveEvent {
-        pk: XOnlyPublicKey,
+        public_key: XOnlyPublicKey,
         relay_url: Option<UncheckedUrl>,
         marker: LiveEventMarker,
         proof: Option<Signature>,
@@ -572,7 +572,7 @@ pub enum Tag {
     },
     Relay(UncheckedUrl),
     ContactList {
-        pk: XOnlyPublicKey,
+        public_key: XOnlyPublicKey,
         relay_url: Option<UncheckedUrl>,
         alias: Option<String>,
     },
@@ -581,7 +581,7 @@ pub enum Tag {
         difficulty: u8,
     },
     Delegation {
-        delegator_pk: XOnlyPublicKey,
+        delegator: XOnlyPublicKey,
         conditions: Conditions,
         sig: Signature,
     },
@@ -930,18 +930,18 @@ where
 
             match tag_kind {
                 TagKind::P => {
-                    let pk = XOnlyPublicKey::from_str(tag_1)?;
+                    let public_key = XOnlyPublicKey::from_str(tag_1)?;
                     let relay_url = (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2));
 
                     match LiveEventMarker::from_str(tag_3) {
                         Ok(marker) => Ok(Self::PubKeyLiveEvent {
-                            pk,
+                            public_key,
                             relay_url,
                             marker,
                             proof: None,
                         }),
                         Err(_) => Ok(Self::ContactList {
-                            pk,
+                            public_key,
                             relay_url,
                             alias: (!tag_3.is_empty()).then_some(tag_3.to_owned()),
                         }),
@@ -953,7 +953,7 @@ where
                     (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
                 )),
                 TagKind::Delegation => Ok(Self::Delegation {
-                    delegator_pk: XOnlyPublicKey::from_str(tag_1)?,
+                    delegator: XOnlyPublicKey::from_str(tag_1)?,
                     conditions: Conditions::from_str(tag_2)?,
                     sig: Signature::from_str(tag_3)?,
                 }),
@@ -970,7 +970,7 @@ where
 
             match tag_kind {
                 TagKind::P => Ok(Self::PubKeyLiveEvent {
-                    pk: XOnlyPublicKey::from_str(tag_1)?,
+                    public_key: XOnlyPublicKey::from_str(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: LiveEventMarker::from_str(tag_3)?,
                     proof: Signature::from_str(tag_4).ok(),
@@ -1020,14 +1020,14 @@ impl From<Tag> for Vec<String> {
                 vec![TagKind::P.to_string(), pk.to_string(), report.to_string()]
             }
             Tag::PubKeyLiveEvent {
-                pk,
+                public_key,
                 relay_url,
                 marker,
                 proof,
             } => {
                 let mut tag = vec![
                     TagKind::P.to_string(),
-                    pk.to_string(),
+                    public_key.to_string(),
                     relay_url.map(|u| u.to_string()).unwrap_or_default(),
                     marker.to_string(),
                 ];
@@ -1065,12 +1065,12 @@ impl From<Tag> for Vec<String> {
             Tag::ExternalIdentity(identity) => identity.into(),
             Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
             Tag::ContactList {
-                pk,
+                public_key,
                 relay_url,
                 alias,
             } => vec![
                 TagKind::P.to_string(),
-                pk.to_string(),
+                public_key.to_string(),
                 relay_url.unwrap_or_default().to_string(),
                 alias.unwrap_or_default(),
             ],
@@ -1080,12 +1080,12 @@ impl From<Tag> for Vec<String> {
                 difficulty.to_string(),
             ],
             Tag::Delegation {
-                delegator_pk,
+                delegator,
                 conditions,
                 sig,
             } => vec![
                 TagKind::Delegation.to_string(),
-                delegator_pk.to_string(),
+                delegator.to_string(),
                 conditions.to_string(),
                 sig.to_string(),
             ],
@@ -1554,7 +1554,7 @@ mod tests {
                 "Speaker",
             ],
             Tag::PubKeyLiveEvent {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1573,7 +1573,7 @@ mod tests {
                 "Participant",
             ],
             Tag::PubKeyLiveEvent {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1592,7 +1592,7 @@ mod tests {
                 "alias",
             ],
             Tag::ContactList {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1627,7 +1627,7 @@ mod tests {
                 "kind=1",
                 "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             ],
-            Tag::Delegation { delegator_pk: XOnlyPublicKey::from_str(
+            Tag::Delegation { delegator: XOnlyPublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
             .as_vec()
@@ -1647,7 +1647,7 @@ mod tests {
                 "a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"
             ],
             Tag::PubKeyLiveEvent {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 ).unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
@@ -1875,7 +1875,7 @@ mod tests {
             ])
             .unwrap(),
             Tag::ContactList {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1909,7 +1909,7 @@ mod tests {
                 "kind=1",
                 "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             ]).unwrap(),
-            Tag::Delegation { delegator_pk: XOnlyPublicKey::from_str(
+            Tag::Delegation { delegator: XOnlyPublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
         );

@@ -410,7 +410,7 @@ impl EventBuilder {
         I: IntoIterator<Item = Contact>,
     {
         let tags = contacts.into_iter().map(|contact| Tag::ContactList {
-            pk: contact.pk,
+            public_key: contact.pk,
             relay_url: contact.relay_url,
             alias: contact.alias,
         });
