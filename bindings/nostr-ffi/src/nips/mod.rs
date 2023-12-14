@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+pub mod nip01;
 pub mod nip04;
 pub mod nip05;
 pub mod nip11;

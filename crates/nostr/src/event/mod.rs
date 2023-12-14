@@ -110,7 +110,7 @@ impl Event {
         Ok(serde_json::from_value(value)?)
     }
 
-    /// Verify [`EventId`] and [`Signature`]
+    /// Verify both [`EventId`] and [`Signature`]
     #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
         self.verify_with_ctx(&SECP256K1)
@@ -144,7 +144,7 @@ impl Event {
         }
     }
 
-    /// Verify event [`Signature`]
+    /// Verify only event [`Signature`]
     #[cfg(feature = "std")]
     pub fn verify_signature(&self) -> Result<(), Error> {
         self.verify_with_ctx(&SECP256K1)
