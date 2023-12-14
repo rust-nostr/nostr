@@ -429,7 +429,7 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::OpenTimestamps,
             ots,
-            &[Tag::Event(event_id, relay_url, None)],
+            [Tag::Event(event_id, relay_url, None)],
         ))
     }
 
