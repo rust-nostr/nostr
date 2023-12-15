@@ -667,8 +667,12 @@ impl From<tag::Tag> for TagEnum {
                 kind: kind.into(),
                 data,
             },
-            tag::Tag::Event(id, relay_url, marker) => Self::Event {
-                event_id: Arc::new(id.into()),
+            tag::Tag::Event {
+                event_id,
+                relay_url,
+                marker,
+            } => Self::Event {
+                event_id: Arc::new(event_id.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.map(|m| m.into()),
             },
@@ -835,11 +839,11 @@ impl TryFrom<TagEnum> for tag::Tag {
                 event_id,
                 relay_url,
                 marker,
-            } => Ok(Self::Event(
-                **event_id,
-                relay_url.map(UncheckedUrl::from),
-                marker.map(tag::Marker::from),
-            )),
+            } => Ok(Self::Event {
+                event_id: **event_id,
+                relay_url: relay_url.map(UncheckedUrl::from),
+                marker: marker.map(tag::Marker::from),
+            }),
             TagEnum::PublicKey {
                 public_key,
                 relay_url,

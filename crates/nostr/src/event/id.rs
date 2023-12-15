@@ -153,7 +153,7 @@ impl From<EventId> for String {
 }
 
 impl From<EventId> for Tag {
-    fn from(id: EventId) -> Self {
-        Tag::Event(id, None, None)
+    fn from(event_id: EventId) -> Self {
+        Tag::event(event_id)
     }
 }

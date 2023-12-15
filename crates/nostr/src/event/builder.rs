@@ -392,7 +392,7 @@ impl EventBuilder {
     ///     Tag::Title("Lorem Ipsum".to_string()),
     ///     Tag::PublishedAt(Timestamp::from(1296962229)),
     ///     Tag::Hashtag("placeholder".to_string()),
-    ///     Tag::Event(event_id, Some(UncheckedUrl::from("wss://relay.example.com")), None),
+    ///     Tag::event(event_id),
     /// ];
     /// let builder = EventBuilder::long_form_text_note("My first text note from Nostr SDK!", []);
     /// ```
@@ -446,7 +446,7 @@ impl EventBuilder {
     {
         let mut tags: Vec<Tag> = vec![Tag::public_key(receiver_pubkey)];
         if let Some(reply_to) = reply_to {
-            tags.push(Tag::Event(reply_to, None, None));
+            tags.push(Tag::event(reply_to));
         }
         Ok(Self::new(
             Kind::EncryptedDirectMessage,
@@ -460,10 +460,7 @@ impl EventBuilder {
         Self::new(
             Kind::Repost,
             String::new(),
-            [
-                Tag::Event(event_id, None, None),
-                Tag::public_key(public_key),
-            ],
+            [Tag::event(event_id), Tag::public_key(public_key)],
         )
     }
 
@@ -498,10 +495,7 @@ impl EventBuilder {
         Self::new(
             Kind::Reaction,
             content,
-            [
-                Tag::Event(event_id, None, None),
-                Tag::public_key(public_key),
-            ],
+            [Tag::event(event_id), Tag::public_key(public_key)],
         )
     }
 
@@ -523,11 +517,11 @@ impl EventBuilder {
         Self::new(
             Kind::ChannelMetadata,
             metadata.as_json(),
-            [Tag::Event(
-                channel_id.into(),
-                relay_url.map(|u| u.into()),
-                None,
-            )],
+            [Tag::Event {
+                event_id: channel_id.into(),
+                relay_url: relay_url.map(|u| u.into()),
+                marker: None,
+            }],
         )
     }
 
@@ -541,11 +535,11 @@ impl EventBuilder {
         Self::new(
             Kind::ChannelMessage,
             content,
-            [Tag::Event(
-                channel_id.into(),
-                Some(relay_url.into()),
-                Some(Marker::Root),
-            )],
+            [Tag::Event {
+                event_id: channel_id.into(),
+                relay_url: Some(relay_url.into()),
+                marker: Some(Marker::Root),
+            }],
         )
     }
 
@@ -566,7 +560,7 @@ impl EventBuilder {
         Self::new(
             Kind::ChannelHideMessage,
             content.to_string(),
-            [Tag::Event(message_id, None, None)],
+            [Tag::event(message_id)],
         )
     }
 
@@ -678,7 +672,7 @@ impl EventBuilder {
         }
 
         if let Some(event_id) = event_id {
-            tags.push(Tag::Event(event_id, None, None));
+            tags.push(Tag::event(event_id));
         }
 
         if let Some(event_coordinate) = event_coordinate {
@@ -906,8 +900,11 @@ impl EventBuilder {
                     if badge_id == identifier =>
                 {
                     let badge_definition_event_tag: Tag = a_tag;
-                    let badge_award_event_tag: Tag =
-                        Tag::Event(badge_award_event.id, relay_url, None);
+                    let badge_award_event_tag: Tag = Tag::Event {
+                        event_id: badge_award_event.id,
+                        relay_url,
+                        marker: None,
+                    };
                     tags.extend_from_slice(&[badge_definition_event_tag, badge_award_event_tag]);
                 }
                 _ => {}
@@ -956,7 +953,7 @@ impl EventBuilder {
                 })
                 .collect();
             tags.extend_from_slice(&[
-                Tag::Event(job_request.id, None, None),
+                Tag::event(job_request.id),
                 Tag::public_key(job_request.pubkey),
                 Tag::Request(job_request),
                 Tag::Amount {
@@ -986,7 +983,7 @@ impl EventBuilder {
     ) -> Self {
         let tags = [
             Tag::DataVendingMachineStatus { status, extra_info },
-            Tag::Event(job_request.id, None, None),
+            Tag::event(job_request.id),
             Tag::public_key(job_request.pubkey),
             Tag::Amount {
                 millisats: amount_millisats,

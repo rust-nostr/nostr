@@ -548,7 +548,11 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Tag {
     Generic(TagKind, Vec<String>),
-    Event(EventId, Option<UncheckedUrl>, Option<Marker>),
+    Event {
+        event_id: EventId,
+        relay_url: Option<UncheckedUrl>,
+        marker: Option<Marker>,
+    },
     PublicKey {
         public_key: XOnlyPublicKey,
         relay_url: Option<UncheckedUrl>,
@@ -656,11 +660,19 @@ impl Tag {
     }
 
     /// Compose `Tag::Event` without `relay_url` and `marker`
+    ///
+    /// JSON: `["e", "event-id"]`
     pub fn event(event_id: EventId) -> Self {
-        Self::Event(event_id, None, None)
+        Self::Event {
+            event_id,
+            relay_url: None,
+            marker: None,
+        }
     }
 
     /// Compose `Tag::PublicKey` without `relay_url` and `alias`
+    ///
+    /// JSON: `["p", "<public-key>"]`
     pub fn public_key(public_key: XOnlyPublicKey) -> Self {
         Self::PublicKey {
             public_key,
@@ -678,7 +690,7 @@ impl Tag {
     pub fn kind(&self) -> TagKind {
         match self {
             Self::Generic(kind, ..) => kind.clone(),
-            Self::Event(..) => TagKind::E,
+            Self::Event { .. } => TagKind::E,
             Self::PublicKey { .. } => TagKind::P,
             Self::EventReport(..) => TagKind::E,
             Self::PubKeyReport(..) => TagKind::P,
@@ -781,12 +793,8 @@ where
                         Err(Error::InvalidLength)
                     }
                 }
-                TagKind::P => Ok(Self::PublicKey {
-                    public_key: XOnlyPublicKey::from_str(tag_1)?,
-                    relay_url: None,
-                    alias: None,
-                }),
-                TagKind::E => Ok(Self::Event(EventId::from_hex(tag_1)?, None, None)),
+                TagKind::P => Ok(Self::public_key(XOnlyPublicKey::from_str(tag_1)?)),
+                TagKind::E => Ok(Self::event(EventId::from_hex(tag_1)?)),
                 TagKind::R => {
                     if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
                         Ok(Self::RelayMetadata(UncheckedUrl::from(tag_1), None))
@@ -872,13 +880,19 @@ where
                 TagKind::E => {
                     let event_id = EventId::from_hex(tag_1)?;
                     if tag_2.is_empty() {
-                        Ok(Self::Event(event_id, Some(UncheckedUrl::empty()), None))
+                        Ok(Self::Event {
+                            event_id,
+                            relay_url: Some(UncheckedUrl::empty()),
+                            marker: None,
+                        })
                     } else {
                         match Report::from_str(tag_2) {
                             Ok(report) => Ok(Self::EventReport(event_id, report)),
-                            Err(_) => {
-                                Ok(Self::Event(event_id, Some(UncheckedUrl::from(tag_2)), None))
-                            }
+                            Err(_) => Ok(Self::Event {
+                                event_id,
+                                relay_url: Some(UncheckedUrl::from(tag_2)),
+                                marker: None,
+                            }),
                         }
                     }
                 }
@@ -971,11 +985,11 @@ where
                         }),
                     }
                 }
-                TagKind::E => Ok(Self::Event(
-                    EventId::from_hex(tag_1)?,
-                    (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
-                    (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
-                )),
+                TagKind::E => Ok(Self::Event {
+                    event_id: EventId::from_hex(tag_1)?,
+                    relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
+                    marker: (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
+                }),
                 TagKind::Delegation => Ok(Self::Delegation {
                     delegator: XOnlyPublicKey::from_str(tag_1)?,
                     conditions: Conditions::from_str(tag_2)?,
@@ -1017,8 +1031,12 @@ impl From<Tag> for Vec<String> {
     fn from(data: Tag) -> Self {
         match data {
             Tag::Generic(kind, data) => [vec![kind.to_string()], data].concat(),
-            Tag::Event(id, relay_url, marker) => {
-                let mut tag = vec![TagKind::E.to_string(), id.to_hex()];
+            Tag::Event {
+                event_id,
+                relay_url,
+                marker,
+            } => {
+                let mut tag = vec![TagKind::E.to_string(), event_id.to_hex()];
                 if let Some(relay_url) = relay_url {
                     tag.push(relay_url.to_string());
                 }
@@ -1413,13 +1431,11 @@ mod tests {
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
             ],
-            Tag::Event(
+            Tag::event(
                 EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
-                .unwrap(),
-                None,
-                None
+                .unwrap()
             )
             .as_vec()
         );
@@ -1479,14 +1495,14 @@ mod tests {
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 ""
             ],
-            Tag::Event(
-                EventId::from_hex(
+            Tag::Event {
+                event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                Some(UncheckedUrl::empty()),
-                None
-            )
+                relay_url: Some(UncheckedUrl::empty()),
+                marker: None
+            }
             .as_vec()
         );
 
@@ -1496,14 +1512,14 @@ mod tests {
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 "wss://relay.damus.io"
             ],
-            Tag::Event(
-                EventId::from_hex(
+            Tag::Event {
+                event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                Some(UncheckedUrl::from("wss://relay.damus.io")),
-                None
-            )
+                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                marker: None
+            }
             .as_vec()
         );
 
@@ -1629,14 +1645,14 @@ mod tests {
                 "",
                 "reply"
             ],
-            Tag::Event(
-                EventId::from_hex(
+            Tag::Event {
+                event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                None,
-                Some(Marker::Reply)
-            )
+                relay_url: None,
+                marker: Some(Marker::Reply)
+            }
             .as_vec()
         );
 
@@ -1710,13 +1726,11 @@ mod tests {
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
             ])
             .unwrap(),
-            Tag::Event(
+            Tag::event(
                 EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
-                .unwrap(),
-                None,
-                None
+                .unwrap()
             )
         );
 
@@ -1793,14 +1807,14 @@ mod tests {
                 ""
             ])
             .unwrap(),
-            Tag::Event(
-                EventId::from_hex(
+            Tag::Event {
+                event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                Some(UncheckedUrl::empty()),
-                None
-            )
+                relay_url: Some(UncheckedUrl::empty()),
+                marker: None
+            }
         );
 
         assert_eq!(
@@ -1810,14 +1824,14 @@ mod tests {
                 "wss://relay.damus.io"
             ])
             .unwrap(),
-            Tag::Event(
-                EventId::from_hex(
+            Tag::Event {
+                event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                Some(UncheckedUrl::from("wss://relay.damus.io")),
-                None
-            )
+                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                marker: None
+            }
         );
 
         assert_eq!(
@@ -1912,14 +1926,14 @@ mod tests {
                 "reply"
             ])
             .unwrap(),
-            Tag::Event(
-                EventId::from_hex(
+            Tag::Event {
+                event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                None,
-                Some(Marker::Reply)
-            )
+                relay_url: None,
+                marker: Some(Marker::Reply)
+            }
         );
 
         assert_eq!(

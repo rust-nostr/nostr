@@ -261,7 +261,7 @@ impl Event {
     /// **This method extract ONLY `Tag::Event`**
     pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
         self.tags.iter().filter_map(|t| match t {
-            Tag::Event(id, ..) => Some(id),
+            Tag::Event { event_id, .. } => Some(event_id),
             _ => None,
         })
     }

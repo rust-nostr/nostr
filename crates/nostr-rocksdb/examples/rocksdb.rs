@@ -43,7 +43,7 @@ async fn main() {
         let event = EventBuilder::new_text_note(
             format!("Reply to event #{i}"),
             &[
-                Tag::Event(event.id, None, None),
+                Tag::event(event.id),
                 Tag::PubKey(event.pubkey, None),
             ],
         )
