@@ -16,11 +16,10 @@ pub extern crate nostr;
 pub extern crate nostr_database as database;
 
 use async_trait::async_trait;
-use nostr::event::raw::RawEvent;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
-    FlatBufferDecode, FlatBufferEncode, NostrDatabase,
+    FlatBufferDecode, FlatBufferEncode, NostrDatabase, RawEvent,
 };
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, IteratorMode,
@@ -118,7 +117,8 @@ impl RocksDatabase {
             .db
             .full_iterator_cf(&cf, IteratorMode::Start)
             .flatten()
-            .filter_map(|(_, value)| RawEvent::decode(&value).ok());
+            .filter_map(|(_, value)| RawEvent::decode(&value).ok())
+            .collect();
 
         // Build indexes
         let to_discard: HashSet<EventId> = self.indexes.bulk_index(events).await;

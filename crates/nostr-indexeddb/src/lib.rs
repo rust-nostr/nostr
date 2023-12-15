@@ -23,13 +23,12 @@ use async_trait::async_trait;
 use indexed_db_futures::request::{IdbOpenDbRequestLike, OpenDbRequest};
 use indexed_db_futures::web_sys::IdbTransactionMode;
 use indexed_db_futures::{IdbDatabase, IdbQuerySource, IdbVersionChangeEvent};
-use nostr::event::raw::RawEvent;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 #[cfg(target_arch = "wasm32")]
 use nostr_database::NostrDatabase;
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
-    FlatBufferDecode, FlatBufferEncode,
+    FlatBufferDecode, FlatBufferEncode, RawEvent,
 };
 use tokio::sync::Mutex;
 use wasm_bindgen::JsValue;
@@ -203,7 +202,7 @@ impl WebDatabase {
             });
 
         // Build indexes
-        let to_discard: HashSet<EventId> = self.indexes.bulk_index(events).await;
+        let to_discard: HashSet<EventId> = self.indexes.bulk_index(events.collect()).await;
 
         // Discard events
         for event_id in to_discard.into_iter() {
@@ -402,7 +401,7 @@ impl_nostr_database!({
                 let bytes = hex::decode(event_hex).map_err(DatabaseError::backend)?;
                 let raw = RawEvent::decode(&bytes).map_err(DatabaseError::backend)?;
                 let event_id = EventId::from_slice(&raw.id).map_err(DatabaseError::nostr)?;
-                events.push((event_id, Timestamp::from(raw.created_at)));
+                events.push((event_id, raw.created_at));
             }
         }
 

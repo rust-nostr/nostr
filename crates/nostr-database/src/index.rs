@@ -10,7 +10,6 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 use nostr::event::id;
-use nostr::event::raw::RawEvent;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{
     Alphabet, Event, EventId, Filter, GenericTagValue, Kind, TagIndexValues, TagIndexes, Timestamp,
@@ -18,6 +17,8 @@ use nostr::{
 use rayon::prelude::*;
 use thiserror::Error;
 use tokio::sync::RwLock;
+
+use crate::raw::RawEvent;
 
 /// Public Key Prefix Size
 const PUBLIC_KEY_PREFIX_SIZE: usize = 8;
@@ -63,10 +64,10 @@ impl TryFrom<RawEvent> for EventIndex {
     type Error = nostr::event::id::Error;
     fn try_from(raw: RawEvent) -> Result<Self, Self::Error> {
         Ok(Self {
-            created_at: Timestamp::from(raw.created_at),
+            created_at: raw.created_at,
             event_id: EventId::from_slice(&raw.id)?,
             pubkey: PublicKeyPrefix::from(raw.pubkey),
-            kind: Kind::from(raw.kind),
+            kind: raw.kind,
             tags: TagIndexes::from(raw.tags.into_iter()),
         })
     }
@@ -184,27 +185,6 @@ impl From<Filter> for FilterIndex {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct WrappedRawEvent {
-    raw: RawEvent,
-}
-
-impl PartialOrd for WrappedRawEvent {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for WrappedRawEvent {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.raw.created_at != other.raw.created_at {
-            self.raw.created_at.cmp(&other.raw.created_at)
-        } else {
-            self.raw.id.cmp(&other.raw.id)
-        }
-    }
-}
-
 /// Event Index Result
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EventIndexResult {
@@ -229,16 +209,7 @@ impl DatabaseIndexes {
 
     /// Bulk index
     #[tracing::instrument(skip_all)]
-    pub async fn bulk_index<I>(&self, events: I) -> HashSet<EventId>
-    where
-        I: IntoIterator<Item = RawEvent>,
-    {
-        // Sort ASC to prevent issues during index
-        let events: BTreeSet<WrappedRawEvent> = events
-            .into_iter()
-            .map(|raw| WrappedRawEvent { raw })
-            .collect();
-
+    pub async fn bulk_index(&self, events: BTreeSet<RawEvent>) -> HashSet<EventId> {
         let mut index = self.index.write().await;
         let mut deleted = self.deleted.write().await;
 
@@ -247,8 +218,7 @@ impl DatabaseIndexes {
 
         events
             .into_iter()
-            .map(|w| w.raw)
-            .filter(|raw| !raw.is_ephemeral())
+            .filter(|raw| !raw.kind.is_ephemeral())
             .for_each(|event| {
                 let _ =
                     self.index_raw_event(&mut index, &mut deleted, &mut to_discard, event, &now);
@@ -287,47 +257,45 @@ impl DatabaseIndexes {
 
         // Compose others fields
         let pubkey_prefix: PublicKeyPrefix = PublicKeyPrefix::from(raw.pubkey);
-        let timestamp = Timestamp::from(raw.created_at);
-        let kind = Kind::from(raw.kind);
 
         let mut should_insert: bool = true;
 
-        if kind.is_replaceable() {
-            let filter: FilterIndex = FilterIndex::default().author(pubkey_prefix).kind(kind);
+        if raw.kind.is_replaceable() {
+            let filter: FilterIndex = FilterIndex::default().author(pubkey_prefix).kind(raw.kind);
             for ev in self.internal_query(index, deleted, filter) {
-                if ev.created_at > timestamp {
+                if ev.created_at > raw.created_at {
                     should_insert = false;
-                } else if ev.created_at <= timestamp {
+                } else if ev.created_at <= raw.created_at {
                     to_discard.insert(ev.event_id);
                 }
             }
-        } else if kind.is_parameterized_replaceable() {
+        } else if raw.kind.is_parameterized_replaceable() {
             match raw.identifier() {
                 Some(identifier) => {
                     let filter: FilterIndex = FilterIndex::default()
                         .author(pubkey_prefix)
-                        .kind(kind)
+                        .kind(raw.kind)
                         .identifier(identifier);
                     for ev in self.internal_query(index, deleted, filter) {
-                        if ev.created_at >= timestamp {
+                        if ev.created_at >= raw.created_at {
                             should_insert = false;
-                        } else if ev.created_at < timestamp {
+                        } else if ev.created_at < raw.created_at {
                             to_discard.insert(ev.event_id);
                         }
                     }
                 }
                 None => should_insert = false,
             }
-        } else if kind == Kind::EventDeletion {
+        } else if raw.kind == Kind::EventDeletion {
             // Check `e` tags
             let ids = raw.event_ids();
-            let filter: Filter = Filter::new().ids(ids).until(timestamp);
+            let filter: Filter = Filter::new().ids(ids).until(raw.created_at);
             if !filter.ids.is_empty() {
-                for ev in self.internal_query(index, deleted, filter) {
-                    if ev.pubkey == pubkey_prefix {
-                        to_discard.insert(ev.event_id);
-                    }
-                }
+                to_discard.par_extend(
+                    self.internal_parallel_query(index, deleted, filter)
+                        .filter(|ev| ev.pubkey == pubkey_prefix)
+                        .map(|ev| ev.event_id),
+                );
             }
 
             // Check `a` tags
@@ -336,12 +304,13 @@ impl DatabaseIndexes {
                     PublicKeyPrefix::from(coordinate.pubkey);
                 if coordinate_pubkey_prefix == pubkey_prefix {
                     let filter: Filter = coordinate.into();
-                    let filter: Filter = filter.until(timestamp);
-                    for ev in self.internal_query(index, deleted, filter) {
-                        // Not check if ev.pubkey match the pubkey_prefix because asume that query
-                        // returned only the events owned by pubkey_prefix
-                        to_discard.insert(ev.event_id);
-                    }
+                    let filter: Filter = filter.until(raw.created_at);
+                    // Not check if ev.pubkey match the pubkey_prefix because asume that query
+                    // returned only the events owned by pubkey_prefix
+                    to_discard.par_extend(
+                        self.internal_parallel_query(index, deleted, filter)
+                            .map(|ev| ev.event_id),
+                    );
                 }
             }
         }
@@ -349,10 +318,10 @@ impl DatabaseIndexes {
         // Insert event
         if should_insert {
             index.insert(EventIndex {
-                created_at: timestamp,
+                created_at: raw.created_at,
                 event_id,
                 pubkey: pubkey_prefix,
-                kind,
+                kind: raw.kind,
                 tags: TagIndexes::from(raw.tags.into_iter()),
             });
         }
@@ -419,11 +388,11 @@ impl DatabaseIndexes {
             let ids = event.event_ids().copied();
             let filter: Filter = Filter::new().ids(ids).until(event.created_at);
             if !filter.ids.is_empty() {
-                for ev in self.internal_query(&index, &deleted, filter) {
-                    if ev.pubkey == pubkey_prefix {
-                        to_discard.insert(ev.event_id);
-                    }
-                }
+                to_discard.par_extend(
+                    self.internal_parallel_query(&index, &deleted, filter)
+                        .filter(|ev| ev.pubkey == pubkey_prefix)
+                        .map(|ev| ev.event_id),
+                );
             }
 
             // Check `a` tags
@@ -433,9 +402,10 @@ impl DatabaseIndexes {
                 if coordinate_pubkey_prefix == pubkey_prefix {
                     let filter: Filter = coordinate.into();
                     let filter: Filter = filter.until(event.created_at);
-                    for ev in self.internal_query(&index, &deleted, filter) {
-                        to_discard.insert(ev.event_id);
-                    }
+                    to_discard.par_extend(
+                        self.internal_parallel_query(&index, &deleted, filter)
+                            .map(|ev| ev.event_id),
+                    );
                 }
             }
         }
@@ -443,7 +413,7 @@ impl DatabaseIndexes {
         // Remove events
         if !to_discard.is_empty() {
             index.retain(|e| !to_discard.contains(&e.event_id));
-            deleted.extend(to_discard.iter());
+            deleted.par_extend(to_discard.par_iter());
         }
 
         // Insert event

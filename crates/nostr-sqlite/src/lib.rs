@@ -8,7 +8,7 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -17,11 +17,10 @@ pub extern crate nostr_database as database;
 
 use async_trait::async_trait;
 use deadpool_sqlite::{Config, Object, Pool, Runtime};
-use nostr::event::raw::RawEvent;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
-    FlatBufferDecode, FlatBufferEncode, NostrDatabase,
+    FlatBufferDecode, FlatBufferEncode, NostrDatabase, RawEvent,
 };
 use rusqlite::config::DbConfig;
 use tokio::sync::RwLock;
@@ -75,13 +74,13 @@ impl SQLiteDatabase {
             .interact(move |conn| {
                 let mut stmt = conn.prepare_cached("SELECT event FROM events;")?;
                 let mut rows = stmt.query([])?;
-                let mut events = HashSet::new();
+                let mut events = BTreeSet::new();
                 while let Ok(Some(row)) = rows.next() {
                     let buf: Vec<u8> = row.get(0)?;
                     let raw = RawEvent::decode(&buf)?;
                     events.insert(raw);
                 }
-                Ok::<HashSet<RawEvent>, Error>(events)
+                Ok::<BTreeSet<RawEvent>, Error>(events)
             })
             .await??;
 

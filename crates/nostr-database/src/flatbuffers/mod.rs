@@ -8,7 +8,6 @@ use std::collections::HashSet;
 
 pub use flatbuffers::FlatBufferBuilder;
 use flatbuffers::InvalidFlatbuffer;
-use nostr::event::raw::RawEvent;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::secp256k1::{self, XOnlyPublicKey};
 use nostr::{Event, EventId, Kind, Tag, Timestamp, Url};
@@ -21,6 +20,7 @@ mod event_seen_by_generated;
 
 use self::event_generated::event_fbs;
 use self::event_seen_by_generated::event_seen_by_fbs;
+use crate::raw::RawEvent;
 
 /// FlatBuffers Error
 #[derive(Debug, Error)]
@@ -128,8 +128,8 @@ impl FlatBufferDecode for RawEvent {
         Ok(Self {
             id: ev.id().ok_or(Error::NotFound)?.0,
             pubkey: ev.pubkey().ok_or(Error::NotFound)?.0,
-            created_at: ev.created_at(),
-            kind: ev.kind(),
+            created_at: Timestamp::from(ev.created_at()),
+            kind: Kind::from(ev.kind()),
             tags: ev
                 .tags()
                 .ok_or(Error::NotFound)?
@@ -146,7 +146,6 @@ impl FlatBufferDecode for RawEvent {
                 })
                 .collect(),
             content: ev.content().ok_or(Error::NotFound)?.to_owned(),
-            sig: ev.sig().ok_or(Error::NotFound)?.0,
         })
     }
 }

@@ -23,6 +23,7 @@ pub mod flatbuffers;
 pub mod index;
 pub mod memory;
 mod options;
+mod raw;
 
 pub use self::error::DatabaseError;
 #[cfg(feature = "flatbuf")]
@@ -30,6 +31,7 @@ pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncod
 pub use self::index::{DatabaseIndexes, EventIndexResult};
 pub use self::memory::MemoryDatabase;
 pub use self::options::DatabaseOptions;
+pub use self::raw::RawEvent;
 
 /// Backend
 pub enum Backend {

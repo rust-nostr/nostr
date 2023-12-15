@@ -15,7 +15,7 @@ async fn main() {
     // Load events
     let events: Vec<Event> = serde_json::from_str(EVENTS).unwrap();
     let len = events.len();
-    let events = events.into_iter().map(|e| e.into());
+    let events = events.into_iter().map(|e| e.into()).collect();
 
     // Indexes
     let indexes = DatabaseIndexes::new();
