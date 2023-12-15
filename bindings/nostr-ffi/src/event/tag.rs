@@ -477,9 +477,10 @@ pub enum TagEnum {
         relay_url: Option<String>,
         marker: Option<Marker>,
     },
-    PubKey {
+    PublicKey {
         public_key: Arc<PublicKey>,
         relay_url: Option<String>,
+        alias: Option<String>,
     },
     EventReport {
         event_id: Arc<EventId>,
@@ -522,11 +523,6 @@ pub enum TagEnum {
     },
     RelayUrl {
         relay_url: String,
-    },
-    ContactList {
-        public_key: Arc<PublicKey>,
-        relay_url: Option<String>,
-        alias: Option<String>,
     },
     POW {
         nonce: String,
@@ -676,9 +672,14 @@ impl From<tag::Tag> for TagEnum {
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.map(|m| m.into()),
             },
-            tag::Tag::PubKey(pk, relay_url) => Self::PubKey {
-                public_key: Arc::new(pk.into()),
+            tag::Tag::PublicKey {
+                public_key,
+                relay_url,
+                alias,
+            } => Self::PublicKey {
+                public_key: Arc::new(public_key.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
+                alias,
             },
             tag::Tag::EventReport(id, report) => Self::EventReport {
                 event_id: Arc::new(id.into()),
@@ -723,15 +724,6 @@ impl From<tag::Tag> for TagEnum {
             },
             tag::Tag::Relay(url) => Self::RelayUrl {
                 relay_url: url.to_string(),
-            },
-            tag::Tag::ContactList {
-                public_key,
-                relay_url,
-                alias,
-            } => Self::ContactList {
-                public_key: Arc::new(public_key.into()),
-                relay_url: relay_url.map(|u| u.to_string()),
-                alias,
             },
             tag::Tag::POW { nonce, difficulty } => Self::POW {
                 nonce: nonce.to_string(),
@@ -848,13 +840,15 @@ impl TryFrom<TagEnum> for tag::Tag {
                 relay_url.map(UncheckedUrl::from),
                 marker.map(tag::Marker::from),
             )),
-            TagEnum::PubKey {
+            TagEnum::PublicKey {
                 public_key,
                 relay_url,
-            } => Ok(Self::PubKey(
-                **public_key,
-                relay_url.map(UncheckedUrl::from),
-            )),
+                alias,
+            } => Ok(Self::PublicKey {
+                public_key: **public_key,
+                relay_url: relay_url.map(UncheckedUrl::from),
+                alias,
+            }),
             TagEnum::EventReport { event_id, report } => {
                 Ok(Self::EventReport(**event_id, report.into()))
             }
@@ -896,15 +890,6 @@ impl TryFrom<TagEnum> for tag::Tag {
                 relay_url: relay_url.map(UncheckedUrl::from),
             }),
             TagEnum::RelayUrl { relay_url } => Ok(Self::Relay(UncheckedUrl::from(relay_url))),
-            TagEnum::ContactList {
-                public_key,
-                relay_url,
-                alias,
-            } => Ok(Self::ContactList {
-                public_key: **public_key,
-                relay_url: relay_url.map(UncheckedUrl::from),
-                alias,
-            }),
             TagEnum::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,
                 difficulty,

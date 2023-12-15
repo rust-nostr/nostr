@@ -252,8 +252,7 @@ impl Event {
     /// **This method extract ONLY `Tag::PubKey` and `Tag::ContactList`**
     pub fn public_keys(&self) -> impl Iterator<Item = &XOnlyPublicKey> {
         self.tags.iter().filter_map(|t| match t {
-            Tag::PubKey(pk, ..) => Some(pk),
-            Tag::ContactList { public_key, .. } => Some(public_key),
+            Tag::PublicKey { public_key, .. } => Some(public_key),
             _ => None,
         })
     }

@@ -34,7 +34,11 @@ async fn main() {
             format!("Reply to event #{i}"),
             [
                 Tag::Event(event.id, None, None),
-                Tag::PubKey(event.pubkey, None),
+                Tag::PublicKey {
+                    public_key: event.pubkey,
+                    relay_url: None,
+                    alias: None,
+                },
             ],
         )
         .to_event(&keys_b)

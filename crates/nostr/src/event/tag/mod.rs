@@ -549,7 +549,11 @@ where
 pub enum Tag {
     Generic(TagKind, Vec<String>),
     Event(EventId, Option<UncheckedUrl>, Option<Marker>),
-    PubKey(XOnlyPublicKey, Option<UncheckedUrl>),
+    PublicKey {
+        public_key: XOnlyPublicKey,
+        relay_url: Option<UncheckedUrl>,
+        alias: Option<String>,
+    },
     EventReport(EventId, Report),
     PubKeyReport(XOnlyPublicKey, Report),
     PubKeyLiveEvent {
@@ -571,11 +575,6 @@ pub enum Tag {
         relay_url: Option<UncheckedUrl>,
     },
     Relay(UncheckedUrl),
-    ContactList {
-        public_key: XOnlyPublicKey,
-        relay_url: Option<UncheckedUrl>,
-        alias: Option<String>,
-    },
     POW {
         nonce: u128,
         difficulty: u8,
@@ -666,7 +665,7 @@ impl Tag {
         match self {
             Self::Generic(kind, ..) => kind.clone(),
             Self::Event(..) => TagKind::E,
-            Self::PubKey(..) => TagKind::P,
+            Self::PublicKey { .. } => TagKind::P,
             Self::EventReport(..) => TagKind::E,
             Self::PubKeyReport(..) => TagKind::P,
             Self::PubKeyLiveEvent { .. } => TagKind::P,
@@ -678,7 +677,6 @@ impl Tag {
             Self::ExternalIdentity(..) => TagKind::I,
             Self::A { .. } => TagKind::A,
             Self::Relay(..) => TagKind::Relay,
-            Self::ContactList { .. } => TagKind::P,
             Self::POW { .. } => TagKind::Nonce,
             Self::Delegation { .. } => TagKind::Delegation,
             Self::ContentWarning { .. } => TagKind::ContentWarning,
@@ -769,7 +767,11 @@ where
                         Err(Error::InvalidLength)
                     }
                 }
-                TagKind::P => Ok(Self::PubKey(XOnlyPublicKey::from_str(tag_1)?, None)),
+                TagKind::P => Ok(Self::PublicKey {
+                    public_key: XOnlyPublicKey::from_str(tag_1)?,
+                    relay_url: None,
+                    alias: None,
+                }),
                 TagKind::E => Ok(Self::Event(EventId::from_hex(tag_1)?, None, None)),
                 TagKind::R => {
                     if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
@@ -835,13 +837,21 @@ where
 
             match tag_kind {
                 TagKind::P => {
-                    let pubkey = XOnlyPublicKey::from_str(tag_1)?;
+                    let public_key = XOnlyPublicKey::from_str(tag_1)?;
                     if tag_2.is_empty() {
-                        Ok(Self::PubKey(pubkey, Some(UncheckedUrl::empty())))
+                        Ok(Self::PublicKey {
+                            public_key,
+                            relay_url: Some(UncheckedUrl::empty()),
+                            alias: None,
+                        })
                     } else {
                         match Report::from_str(tag_2) {
-                            Ok(report) => Ok(Self::PubKeyReport(pubkey, report)),
-                            Err(_) => Ok(Self::PubKey(pubkey, Some(UncheckedUrl::from(tag_2)))),
+                            Ok(report) => Ok(Self::PubKeyReport(public_key, report)),
+                            Err(_) => Ok(Self::PublicKey {
+                                public_key,
+                                relay_url: Some(UncheckedUrl::from(tag_2)),
+                                alias: None,
+                            }),
                         }
                     }
                 }
@@ -940,7 +950,7 @@ where
                             marker,
                             proof: None,
                         }),
-                        Err(_) => Ok(Self::ContactList {
+                        Err(_) => Ok(Self::PublicKey {
                             public_key,
                             relay_url,
                             alias: (!tag_3.is_empty()).then_some(tag_3.to_owned()),
@@ -1006,10 +1016,17 @@ impl From<Tag> for Vec<String> {
                 }
                 tag
             }
-            Tag::PubKey(pk, relay_url) => {
-                let mut tag = vec![TagKind::P.to_string(), pk.to_string()];
+            Tag::PublicKey {
+                public_key,
+                relay_url,
+                alias,
+            } => {
+                let mut tag = vec![TagKind::P.to_string(), public_key.to_string()];
                 if let Some(relay_url) = relay_url {
                     tag.push(relay_url.to_string());
+                }
+                if let Some(alias) = alias {
+                    tag.push(alias);
                 }
                 tag
             }
@@ -1064,16 +1081,6 @@ impl From<Tag> for Vec<String> {
             }
             Tag::ExternalIdentity(identity) => identity.into(),
             Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
-            Tag::ContactList {
-                public_key,
-                relay_url,
-                alias,
-            } => vec![
-                TagKind::P.to_string(),
-                public_key.to_string(),
-                relay_url.unwrap_or_default().to_string(),
-                alias.unwrap_or_default(),
-            ],
             Tag::POW { nonce, difficulty } => vec![
                 TagKind::Nonce.to_string(),
                 nonce.to_string(),
@@ -1336,19 +1343,20 @@ mod tests {
 
         assert_eq!(
             tag,
-            &Tag::PubKey(
-                XOnlyPublicKey::from_str(
+            &Tag::PublicKey {
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                None
-            )
+                relay_url: None,
+                alias: None,
+            }
         );
     }
 
     #[test]
     fn test_serialize_tag_to_event() {
-        let pubkey = XOnlyPublicKey::from_str(
+        let public_key = XOnlyPublicKey::from_str(
             "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
         )
         .unwrap();
@@ -1357,7 +1365,7 @@ mod tests {
             "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3",
             Timestamp::from(1671739153),
             4,
-            vec![Tag::PubKey(pubkey, None)],
+            vec![Tag::PublicKey{public_key, relay_url: None, alias: None}],
             "8y4MRYrb4ztvXO2NmsHvUA==?iv=MplZo7oSdPfH/vdMC8Hmwg==",
             "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8"
         );
@@ -1379,13 +1387,14 @@ mod tests {
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ],
-            Tag::PubKey(
-                XOnlyPublicKey::from_str(
+            Tag::PublicKey {
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                None
-            )
+                relay_url: None,
+                alias: None,
+            }
             .as_vec()
         );
 
@@ -1443,13 +1452,14 @@ mod tests {
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
                 "wss://relay.damus.io"
             ],
-            Tag::PubKey(
-                XOnlyPublicKey::from_str(
+            Tag::PublicKey {
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                Some(UncheckedUrl::from("wss://relay.damus.io"))
-            )
+                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                alias: None,
+            }
             .as_vec()
         );
 
@@ -1591,7 +1601,7 @@ mod tests {
                 "wss://relay.damus.io",
                 "alias",
             ],
-            Tag::ContactList {
+            Tag::PublicKey {
                 public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
@@ -1676,13 +1686,14 @@ mod tests {
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ])
             .unwrap(),
-            Tag::PubKey(
-                XOnlyPublicKey::from_str(
+            Tag::PublicKey {
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                None
-            )
+                relay_url: None,
+                alias: None,
+            }
         );
 
         assert_eq!(
@@ -1757,13 +1768,14 @@ mod tests {
                 "wss://relay.damus.io"
             ])
             .unwrap(),
-            Tag::PubKey(
-                XOnlyPublicKey::from_str(
+            Tag::PublicKey {
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                Some(UncheckedUrl::from("wss://relay.damus.io"))
-            )
+                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                alias: None,
+            }
         );
 
         assert_eq!(
@@ -1874,7 +1886,7 @@ mod tests {
                 "alias",
             ])
             .unwrap(),
-            Tag::ContactList {
+            Tag::PublicKey {
                 public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )

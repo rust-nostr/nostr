@@ -60,9 +60,11 @@ pub fn extract_awarded_public_key(
     awarded_public_key: &XOnlyPublicKey,
 ) -> Option<(XOnlyPublicKey, Option<UncheckedUrl>)> {
     tags.iter().find_map(|t| match t {
-        Tag::PubKey(pub_key, unchecked_url) if pub_key == awarded_public_key => {
-            Some((*pub_key, unchecked_url.clone()))
-        }
+        Tag::PublicKey {
+            public_key,
+            relay_url,
+            ..
+        } if public_key == awarded_public_key => Some((*public_key, relay_url.clone())),
         _ => None,
     })
 }

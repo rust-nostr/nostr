@@ -949,16 +949,13 @@ impl Client {
 
         for event in events.into_iter() {
             for tag in event.tags.into_iter() {
-                match tag {
-                    Tag::PubKey(pk, relay_url) => {
-                        contact_list.push(Contact::new::<String>(pk, relay_url, None))
-                    }
-                    Tag::ContactList {
-                        public_key,
-                        relay_url,
-                        alias,
-                    } => contact_list.push(Contact::new(public_key, relay_url, alias)),
-                    _ => (),
+                if let Tag::PublicKey {
+                    public_key,
+                    relay_url,
+                    alias,
+                } = tag
+                {
+                    contact_list.push(Contact::new(public_key, relay_url, alias))
                 }
             }
         }
@@ -1062,7 +1059,11 @@ impl Client {
                 EventBuilder::new(
                     Kind::EncryptedDirectMessage,
                     content,
-                    [Tag::PubKey(receiver, None)],
+                    [Tag::PublicKey {
+                        public_key: receiver,
+                        relay_url: None,
+                        alias: None,
+                    }],
                 )
             } else {
                 return Err(Error::ResponseNotMatchRequest);

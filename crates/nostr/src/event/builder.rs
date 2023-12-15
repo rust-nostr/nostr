@@ -409,7 +409,7 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = Contact>,
     {
-        let tags = contacts.into_iter().map(|contact| Tag::ContactList {
+        let tags = contacts.into_iter().map(|contact| Tag::PublicKey {
             public_key: contact.pk,
             relay_url: contact.relay_url,
             alias: contact.alias,
@@ -444,7 +444,11 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let mut tags: Vec<Tag> = vec![Tag::PubKey(receiver_pubkey, None)];
+        let mut tags: Vec<Tag> = vec![Tag::PublicKey {
+            public_key: receiver_pubkey,
+            relay_url: None,
+            alias: None,
+        }];
         if let Some(reply_to) = reply_to {
             tags.push(Tag::Event(reply_to, None, None));
         }
@@ -462,7 +466,11 @@ impl EventBuilder {
             String::new(),
             [
                 Tag::Event(event_id, None, None),
-                Tag::PubKey(public_key, None),
+                Tag::PublicKey {
+                    public_key,
+                    relay_url: None,
+                    alias: None,
+                },
             ],
         )
     }
@@ -500,7 +508,11 @@ impl EventBuilder {
             content,
             [
                 Tag::Event(event_id, None, None),
-                Tag::PubKey(public_key, None),
+                Tag::PublicKey {
+                    public_key,
+                    relay_url: None,
+                    alias: None,
+                },
             ],
         )
     }
@@ -573,7 +585,7 @@ impl EventBuilder {
     /// Mute channel user
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn mute_channel_user<S>(pubkey: XOnlyPublicKey, reason: Option<S>) -> Self
+    pub fn mute_channel_user<S>(public_key: XOnlyPublicKey, reason: Option<S>) -> Self
     where
         S: Into<String>,
     {
@@ -584,7 +596,11 @@ impl EventBuilder {
         Self::new(
             Kind::ChannelMuteUser,
             content.to_string(),
-            [Tag::PubKey(pubkey, None)],
+            [Tag::PublicKey {
+                public_key,
+                relay_url: None,
+                alias: None,
+            }],
         )
     }
 
@@ -614,7 +630,11 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::NostrConnect,
             nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, msg.as_json())?,
-            [Tag::PubKey(receiver_pubkey, None)],
+            [Tag::PublicKey {
+                public_key: receiver_pubkey,
+                relay_url: None,
+                alias: None,
+            }],
         ))
     }
 
@@ -671,7 +691,11 @@ impl EventBuilder {
             event_id,
             event_coordinate,
         } = data;
-        let mut tags = vec![Tag::PubKey(public_key, None)];
+        let mut tags = vec![Tag::PublicKey {
+            public_key,
+            relay_url: None,
+            alias: None,
+        }];
 
         if !relays.is_empty() {
             tags.push(Tag::Relays(relays));
@@ -837,7 +861,7 @@ impl EventBuilder {
         // Add awarded pubkeys
         let ptags = awarded_pubkeys
             .into_iter()
-            .filter(|p| matches!(p, Tag::PubKey(..)));
+            .filter(|p| matches!(p, Tag::PublicKey { .. }));
         tags.extend(ptags);
 
         // Build event
@@ -863,7 +887,7 @@ impl EventBuilder {
 
         for award in badge_awards.iter() {
             if !award.tags.iter().any(|t| match t {
-                Tag::PubKey(pub_key, _) => pub_key == pubkey_awarded,
+                Tag::PublicKey { public_key, .. } => public_key == pubkey_awarded,
                 _ => false,
             }) {
                 return Err(Error::NIP58(Nip58Error::BadgeAwardsLackAwardedPublicKey));
@@ -957,7 +981,11 @@ impl EventBuilder {
                 .collect();
             tags.extend_from_slice(&[
                 Tag::Event(job_request.id, None, None),
-                Tag::PubKey(job_request.pubkey, None),
+                Tag::PublicKey {
+                    public_key: job_request.pubkey,
+                    relay_url: None,
+                    alias: None,
+                },
                 Tag::Request(job_request),
                 Tag::Amount {
                     millisats: amount_millisats,
@@ -987,7 +1015,11 @@ impl EventBuilder {
         let tags = [
             Tag::DataVendingMachineStatus { status, extra_info },
             Tag::Event(job_request.id, None, None),
-            Tag::PubKey(job_request.pubkey, None),
+            Tag::PublicKey {
+                public_key: job_request.pubkey,
+                relay_url: None,
+                alias: None,
+            },
             Tag::Amount {
                 millisats: amount_millisats,
                 bolt11,
@@ -1225,20 +1257,22 @@ mod tests {
 
         // Create new event with the event builder
         let awarded_pubkeys = vec![
-            Tag::PubKey(
-                XOnlyPublicKey::from_str(
+            Tag::PublicKey {
+                public_key: XOnlyPublicKey::from_str(
                     "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
                 )
                 .unwrap(),
-                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
-            ),
-            Tag::PubKey(
-                XOnlyPublicKey::from_str(
+                relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
+                alias: None,
+            },
+            Tag::PublicKey {
+                public_key: XOnlyPublicKey::from_str(
                     "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
                 )
                 .unwrap(),
-                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
-            ),
+                relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
+                alias: None,
+            },
         ];
         let event_builder: Event =
             EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)
@@ -1264,14 +1298,19 @@ mod tests {
         let relay_url = UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap();
 
         let awarded_pubkeys = vec![
-            Tag::PubKey(pub_key.clone(), Some(relay_url.clone())),
-            Tag::PubKey(
-                XOnlyPublicKey::from_str(
+            Tag::PublicKey {
+                public_key: pub_key.clone(),
+                relay_url: Some(relay_url.clone()),
+                alias: None,
+            },
+            Tag::PublicKey {
+                public_key: XOnlyPublicKey::from_str(
                     "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
                 )
                 .unwrap(),
-                Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
-            ),
+                relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
+                alias: None,
+            },
         ];
         let bravery_badge_event =
             self::EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())
