@@ -1,11 +1,11 @@
 # Introduction
 
-Collection of libraries to build fast and secure `nostr` application on `desktop`, `mobile` and `web` environments.
+Build **fast**, **stable** and **efficient** nostr apps for **any environment**: desktop/server, mobile, embedded devices and web.
 
 ## Libraries
 
-* [Nostr](./nostr/01-index.md): Implementation of the `nostr` protocol
-* [Nostr SDK](./nostr-sdk/01-index.md): High level nostr client library
+* [Nostr](./protocol/01-index.md): Implementation of the `nostr` protocol
+* [Nostr SDK](./sdk/01-index.md): High level nostr client library
 
 ## State
 

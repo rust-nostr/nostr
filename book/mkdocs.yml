@@ -1,5 +1,5 @@
 site_name: Rust Nostr Book
-site_url: https://rust-nostr.github.io/book
+site_url: https://rust-nostr.github.io/nostr
 repo_url: https://github.com/rust-nostr/nostr
 
 docs_dir: src
@@ -71,9 +71,9 @@ nav:
   - Home:
     - index.md
   - Nostr:
-    - Overview: nostr/01-index.md
-    - Installation: nostr/02-installation.md
-    - Keys: nostr/03-keys.md
+    - Overview: protocol/01-index.md
+    - Installation: protocol/02-installation.md
+    - Keys: protocol/03-keys.md
   - Nostr SDK:
-    - Overview: nostr-sdk/01-index.md
-    - Installation: nostr-sdk/02-installation.md
+    - Overview: sdk/01-index.md
+    - Installation: sdk/02-installation.md
