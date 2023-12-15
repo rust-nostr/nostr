@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use nostr::key::{self, FromPkStr, FromSkStr};
 use nostr::nips::nip06::FromMnemonic;
+use nostr::secp256k1::Message;
 use uniffi::Object;
 
 mod public_key;
@@ -37,53 +38,53 @@ impl From<key::Keys> for Keys {
 #[uniffi::export]
 impl Keys {
     #[uniffi::constructor]
-    pub fn new(sk: Arc<SecretKey>) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new(sk: Arc<SecretKey>) -> Self {
+        Self {
             inner: key::Keys::new(**sk),
-        })
+        }
     }
 
     #[uniffi::constructor]
-    pub fn from_public_key(pk: Arc<PublicKey>) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn from_public_key(pk: Arc<PublicKey>) -> Self {
+        Self {
             inner: key::Keys::from_public_key(**pk),
-        })
+        }
     }
 
     #[uniffi::constructor]
-    pub fn from_sk_str(sk: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_sk_str(sk: String) -> Result<Self> {
+        Ok(Self {
             inner: key::Keys::from_sk_str(&sk)?,
-        }))
-    }
-
-    #[uniffi::constructor]
-    pub fn from_pk_str(pk: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
-            inner: key::Keys::from_pk_str(&pk)?,
-        }))
-    }
-
-    #[uniffi::constructor]
-    pub fn generate() -> Arc<Self> {
-        Arc::new(Self {
-            inner: key::Keys::generate(),
         })
     }
 
     #[uniffi::constructor]
-    pub fn vanity(prefixes: Vec<String>, bech32: bool, num_cores: u8) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
-            inner: key::Keys::vanity(prefixes, bech32, num_cores as usize)?,
-        }))
+    pub fn from_pk_str(pk: String) -> Result<Self> {
+        Ok(Self {
+            inner: key::Keys::from_pk_str(&pk)?,
+        })
     }
 
     #[uniffi::constructor]
-    pub fn from_mnemonic(mnemonic: String, passphrase: Option<String>) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn generate() -> Self {
+        Self {
+            inner: key::Keys::generate(),
+        }
+    }
+
+    #[uniffi::constructor]
+    pub fn vanity(prefixes: Vec<String>, bech32: bool, num_cores: u8) -> Result<Self> {
+        Ok(Self {
+            inner: key::Keys::vanity(prefixes, bech32, num_cores as usize)?,
+        })
+    }
+
+    #[uniffi::constructor]
+    pub fn from_mnemonic(mnemonic: String, passphrase: Option<String>) -> Result<Self> {
+        Ok(Self {
             inner: key::Keys::from_mnemonic(mnemonic, passphrase)
                 .map_err(|e| NostrError::Generic { err: e.to_string() })?,
-        }))
+        })
     }
 
     pub fn public_key(&self) -> Arc<PublicKey> {
@@ -92,5 +93,10 @@ impl Keys {
 
     pub fn secret_key(&self) -> Result<Arc<SecretKey>> {
         Ok(Arc::new(self.inner.secret_key()?.into()))
+    }
+
+    pub fn sign_schnorr(&self, message: Vec<u8>) -> Result<String> {
+        let message = Message::from_slice(&message)?;
+        Ok(self.inner.sign_schnorr(&message)?.to_string())
     }
 }

@@ -4,7 +4,6 @@
 
 use std::ops::Deref;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use nostr::nips::nip19::{FromBech32, ToBech32};
 use nostr::secp256k1::SecretKey as Sk;
@@ -33,24 +32,24 @@ impl Deref for SecretKey {
 #[uniffi::export]
 impl SecretKey {
     #[uniffi::constructor]
-    pub fn from_hex(hex: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_hex(hex: String) -> Result<Self> {
+        Ok(Self {
             inner: Sk::from_str(&hex)?,
-        }))
+        })
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(sk: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_bech32(sk: String) -> Result<Self> {
+        Ok(Self {
             inner: Sk::from_bech32(sk)?,
-        }))
+        })
     }
 
     #[uniffi::constructor]
-    pub fn from_bytes(bytes: Vec<u8>) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+        Ok(Self {
             inner: Sk::from_slice(&bytes)?,
-        }))
+        })
     }
 
     pub fn to_hex(&self) -> String {
