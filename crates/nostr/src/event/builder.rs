@@ -444,11 +444,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let mut tags: Vec<Tag> = vec![Tag::PublicKey {
-            public_key: receiver_pubkey,
-            relay_url: None,
-            alias: None,
-        }];
+        let mut tags: Vec<Tag> = vec![Tag::public_key(receiver_pubkey)];
         if let Some(reply_to) = reply_to {
             tags.push(Tag::Event(reply_to, None, None));
         }
@@ -466,11 +462,7 @@ impl EventBuilder {
             String::new(),
             [
                 Tag::Event(event_id, None, None),
-                Tag::PublicKey {
-                    public_key,
-                    relay_url: None,
-                    alias: None,
-                },
+                Tag::public_key(public_key),
             ],
         )
     }
@@ -508,11 +500,7 @@ impl EventBuilder {
             content,
             [
                 Tag::Event(event_id, None, None),
-                Tag::PublicKey {
-                    public_key,
-                    relay_url: None,
-                    alias: None,
-                },
+                Tag::public_key(public_key),
             ],
         )
     }
@@ -596,11 +584,7 @@ impl EventBuilder {
         Self::new(
             Kind::ChannelMuteUser,
             content.to_string(),
-            [Tag::PublicKey {
-                public_key,
-                relay_url: None,
-                alias: None,
-            }],
+            [Tag::public_key(public_key)],
         )
     }
 
@@ -630,11 +614,7 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::NostrConnect,
             nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, msg.as_json())?,
-            [Tag::PublicKey {
-                public_key: receiver_pubkey,
-                relay_url: None,
-                alias: None,
-            }],
+            [Tag::public_key(receiver_pubkey)],
         ))
     }
 
@@ -691,11 +671,7 @@ impl EventBuilder {
             event_id,
             event_coordinate,
         } = data;
-        let mut tags = vec![Tag::PublicKey {
-            public_key,
-            relay_url: None,
-            alias: None,
-        }];
+        let mut tags = vec![Tag::public_key(public_key)];
 
         if !relays.is_empty() {
             tags.push(Tag::Relays(relays));
@@ -981,11 +957,7 @@ impl EventBuilder {
                 .collect();
             tags.extend_from_slice(&[
                 Tag::Event(job_request.id, None, None),
-                Tag::PublicKey {
-                    public_key: job_request.pubkey,
-                    relay_url: None,
-                    alias: None,
-                },
+                Tag::public_key(job_request.pubkey),
                 Tag::Request(job_request),
                 Tag::Amount {
                     millisats: amount_millisats,
@@ -1015,11 +987,7 @@ impl EventBuilder {
         let tags = [
             Tag::DataVendingMachineStatus { status, extra_info },
             Tag::Event(job_request.id, None, None),
-            Tag::PublicKey {
-                public_key: job_request.pubkey,
-                relay_url: None,
-                alias: None,
-            },
+            Tag::public_key(job_request.pubkey),
             Tag::Amount {
                 millisats: amount_millisats,
                 bolt11,

@@ -1059,11 +1059,7 @@ impl Client {
                 EventBuilder::new(
                     Kind::EncryptedDirectMessage,
                     content,
-                    [Tag::PublicKey {
-                        public_key: receiver,
-                        relay_url: None,
-                        alias: None,
-                    }],
+                    [Tag::public_key(receiver)],
                 )
             } else {
                 return Err(Error::ResponseNotMatchRequest);

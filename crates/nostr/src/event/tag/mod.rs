@@ -655,6 +655,20 @@ impl Tag {
         Tag::try_from(data)
     }
 
+    /// Compose `Tag::Event` without `relay_url` and `marker`
+    pub fn event(event_id: EventId) -> Self {
+        Self::Event(event_id, None, None)
+    }
+
+    /// Compose `Tag::PublicKey` without `relay_url` and `alias`
+    pub fn public_key(public_key: XOnlyPublicKey) -> Self {
+        Self::PublicKey {
+            public_key,
+            relay_url: None,
+            alias: None,
+        }
+    }
+
     /// Get [`Tag`] as string vector
     pub fn as_vec(&self) -> Vec<String> {
         self.clone().into()
@@ -1343,14 +1357,12 @@ mod tests {
 
         assert_eq!(
             tag,
-            &Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+            &Tag::public_key(
+                XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
-                .unwrap(),
-                relay_url: None,
-                alias: None,
-            }
+                .unwrap()
+            )
         );
     }
 
@@ -1387,14 +1399,12 @@ mod tests {
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ],
-            Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+            Tag::public_key(
+                XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
-                .unwrap(),
-                relay_url: None,
-                alias: None,
-            }
+                .unwrap()
+            )
             .as_vec()
         );
 
@@ -1686,14 +1696,12 @@ mod tests {
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ])
             .unwrap(),
-            Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+            Tag::public_key(
+                XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
-                .unwrap(),
-                relay_url: None,
-                alias: None,
-            }
+                .unwrap()
+            )
         );
 
         assert_eq!(

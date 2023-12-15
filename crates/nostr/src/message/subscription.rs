@@ -920,7 +920,7 @@ mod test {
                 Timestamp::from(1612809991),
                 1,
                 vec![
-                    Tag::PublicKey {public_key: XOnlyPublicKey::from_str("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap(), relay_url: None, alias: None, },
+                    Tag::public_key(XOnlyPublicKey::from_str("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
                     Tag::Event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap(), None, None),
                 ],
                 "test",
