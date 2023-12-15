@@ -115,7 +115,7 @@ impl From<Event> for RawEvent {
             pubkey: event.pubkey.serialize(),
             created_at: event.created_at,
             kind: event.kind,
-            tags: event.tags.into_iter().map(|t| t.as_vec()).collect(),
+            tags: event.tags.into_iter().map(|t| t.to_vec()).collect(),
             content: event.content,
         }
     }

@@ -686,6 +686,11 @@ impl Tag {
         self.clone().into()
     }
 
+    /// Consume [`Tag`] and return string vector
+    pub fn to_vec(self) -> Vec<String> {
+        self.into()
+    }
+
     /// Get [`TagKind`]
     pub fn kind(&self) -> TagKind {
         match self {
