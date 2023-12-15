@@ -1,3 +1,0 @@
-[submodule "book/public"]
-	path = book/public
-	url = https://github.com/rust-nostr/rust-nostr.github.io.git
