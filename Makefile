@@ -12,8 +12,11 @@ indexes-perf:
 clean:
 	cargo clean
 
-book:
-	cd book && make build
+serve-book:
+	cd book && make serve
+
+deploy-book:
+	cd book && make deploy
 
 flatbuf:
 	cd crates/nostr-database && make flatbuf

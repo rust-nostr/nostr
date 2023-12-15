@@ -73,9 +73,7 @@ nav:
   - Nostr:
     - Overview: nostr/01-index.md
     - Installation: nostr/02-installation.md
-    - Features: nostr/03-features.md
-    - Keys: nostr/04-keys.md
+    - Keys: nostr/03-keys.md
   - Nostr SDK:
     - Overview: nostr-sdk/01-index.md
     - Installation: nostr-sdk/02-installation.md
-    - Features: nostr-sdk/03-features.md
