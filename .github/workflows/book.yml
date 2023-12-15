@@ -1,0 +1,42 @@
+name: Deploy Book
+
+on:
+  push:
+    paths:
+      - 'book/**'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  deploy:
+    name: Deploy book
+    runs-on: ubuntu-latest
+    defaults:
+        run:
+          working-directory: ./crates/nostr/examples/embedded
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Init
+        run: make init
+
+      - name: Build
+        run:  make build
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.ref == 'refs/heads/master' }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: book-deployment
+          publish_dir: ./site
