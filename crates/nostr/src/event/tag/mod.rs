@@ -25,6 +25,7 @@ pub use self::indexes::{TagIndexValues, TagIndexes};
 use super::id::{self, EventId};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::nips::nip48::Protocol;
+use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::{Event, JsonUtil, Kind, Timestamp, UncheckedUrl};
 
@@ -35,8 +36,6 @@ pub enum Error {
     MarkerParseError,
     /// Unknown [`Report`]
     UnknownReportType,
-    /// Unknown [`LiveEventMarker`]
-    UnknownLiveEventMarker(String),
     /// Impossible to find tag kind
     KindNotFound,
     /// Invalid length
@@ -55,6 +54,8 @@ pub enum Error {
     EventId(id::Error),
     /// NIP26 error
     NIP26(Nip26Error),
+    ///NIP53 error
+    NIP53(nip53::Error),
     /// Event Error
     Event(crate::event::Error),
     /// NIP-39 Error
@@ -75,7 +76,6 @@ impl fmt::Display for Error {
         match self {
             Self::MarkerParseError => write!(f, "Impossible to parse marker"),
             Self::UnknownReportType => write!(f, "Unknown report type"),
-            Self::UnknownLiveEventMarker(u) => write!(f, "Unknown live event marker: {u}"),
             Self::KindNotFound => write!(f, "Impossible to find tag kind"),
             Self::InvalidLength => write!(f, "Invalid length"),
             Self::InvalidZapRequest => write!(f, "Invalid Zap request"),
@@ -85,6 +85,7 @@ impl fmt::Display for Error {
             Self::Url(e) => write!(f, "Url: {e}"),
             Self::EventId(e) => write!(f, "Event ID: {e}"),
             Self::NIP26(e) => write!(f, "NIP26: {e}"),
+            Self::NIP53(e) => write!(f, "NIP53: {e}"),
             Self::Event(e) => write!(f, "Event: {e}"),
             Self::InvalidIdentity => write!(f, "Invalid identity tag"),
             Self::InvalidImageDimensions => write!(f, "Invalid image dimensions"),
@@ -130,6 +131,12 @@ impl From<Nip26Error> for Error {
     }
 }
 
+impl From<nip53::Error> for Error {
+    fn from(e: nip53::Error) -> Self {
+        Self::NIP53(e)
+    }
+}
+
 impl From<crate::event::Error> for Error {
     fn from(e: crate::event::Error) -> Self {
         Self::Event(e)
@@ -166,78 +173,6 @@ where
         match s.as_str() {
             "root" => Self::Root,
             "reply" => Self::Reply,
-            _ => Self::Custom(s),
-        }
-    }
-}
-
-/// Live Event Marker
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LiveEventMarker {
-    /// Host
-    Host,
-    /// Speaker
-    Speaker,
-    /// Participant
-    Participant,
-}
-
-impl fmt::Display for LiveEventMarker {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Host => write!(f, "Host"),
-            Self::Speaker => write!(f, "Speaker"),
-            Self::Participant => write!(f, "Participant"),
-        }
-    }
-}
-
-impl FromStr for LiveEventMarker {
-    type Err = Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Host" => Ok(Self::Host),
-            "Speaker" => Ok(Self::Speaker),
-            "Participant" => Ok(Self::Participant),
-            s => Err(Error::UnknownLiveEventMarker(s.to_string())),
-        }
-    }
-}
-
-/// Live Event Status
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LiveEventStatus {
-    /// Planned
-    Planned,
-    /// Live
-    Live,
-    /// Ended
-    Ended,
-    /// Custom
-    Custom(String),
-}
-
-impl fmt::Display for LiveEventStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Planned => write!(f, "planned"),
-            Self::Live => write!(f, "live"),
-            Self::Ended => write!(f, "ended"),
-            Self::Custom(s) => write!(f, "{s}"),
-        }
-    }
-}
-
-impl<S> From<S> for LiveEventStatus
-where
-    S: Into<String>,
-{
-    fn from(s: S) -> Self {
-        let s: String = s.into();
-        match s.as_str() {
-            "planned" => Self::Planned,
-            "live" => Self::Live,
-            "ended" => Self::Ended,
             _ => Self::Custom(s),
         }
     }
@@ -618,7 +553,7 @@ pub enum Tag {
     EventReport(EventId, Report),
     PubKeyReport(XOnlyPublicKey, Report),
     PubKeyLiveEvent {
-        pk: XOnlyPublicKey,
+        public_key: XOnlyPublicKey,
         relay_url: Option<UncheckedUrl>,
         marker: LiveEventMarker,
         proof: Option<Signature>,
@@ -637,7 +572,7 @@ pub enum Tag {
     },
     Relay(UncheckedUrl),
     ContactList {
-        pk: XOnlyPublicKey,
+        public_key: XOnlyPublicKey,
         relay_url: Option<UncheckedUrl>,
         alias: Option<String>,
     },
@@ -646,7 +581,7 @@ pub enum Tag {
         difficulty: u8,
     },
     Delegation {
-        delegator_pk: XOnlyPublicKey,
+        delegator: XOnlyPublicKey,
         conditions: Conditions,
         sig: Signature,
     },
@@ -995,18 +930,18 @@ where
 
             match tag_kind {
                 TagKind::P => {
-                    let pk = XOnlyPublicKey::from_str(tag_1)?;
+                    let public_key = XOnlyPublicKey::from_str(tag_1)?;
                     let relay_url = (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2));
 
                     match LiveEventMarker::from_str(tag_3) {
                         Ok(marker) => Ok(Self::PubKeyLiveEvent {
-                            pk,
+                            public_key,
                             relay_url,
                             marker,
                             proof: None,
                         }),
                         Err(_) => Ok(Self::ContactList {
-                            pk,
+                            public_key,
                             relay_url,
                             alias: (!tag_3.is_empty()).then_some(tag_3.to_owned()),
                         }),
@@ -1018,7 +953,7 @@ where
                     (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
                 )),
                 TagKind::Delegation => Ok(Self::Delegation {
-                    delegator_pk: XOnlyPublicKey::from_str(tag_1)?,
+                    delegator: XOnlyPublicKey::from_str(tag_1)?,
                     conditions: Conditions::from_str(tag_2)?,
                     sig: Signature::from_str(tag_3)?,
                 }),
@@ -1035,7 +970,7 @@ where
 
             match tag_kind {
                 TagKind::P => Ok(Self::PubKeyLiveEvent {
-                    pk: XOnlyPublicKey::from_str(tag_1)?,
+                    public_key: XOnlyPublicKey::from_str(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: LiveEventMarker::from_str(tag_3)?,
                     proof: Signature::from_str(tag_4).ok(),
@@ -1085,14 +1020,14 @@ impl From<Tag> for Vec<String> {
                 vec![TagKind::P.to_string(), pk.to_string(), report.to_string()]
             }
             Tag::PubKeyLiveEvent {
-                pk,
+                public_key,
                 relay_url,
                 marker,
                 proof,
             } => {
                 let mut tag = vec![
                     TagKind::P.to_string(),
-                    pk.to_string(),
+                    public_key.to_string(),
                     relay_url.map(|u| u.to_string()).unwrap_or_default(),
                     marker.to_string(),
                 ];
@@ -1130,12 +1065,12 @@ impl From<Tag> for Vec<String> {
             Tag::ExternalIdentity(identity) => identity.into(),
             Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
             Tag::ContactList {
-                pk,
+                public_key,
                 relay_url,
                 alias,
             } => vec![
                 TagKind::P.to_string(),
-                pk.to_string(),
+                public_key.to_string(),
                 relay_url.unwrap_or_default().to_string(),
                 alias.unwrap_or_default(),
             ],
@@ -1145,12 +1080,12 @@ impl From<Tag> for Vec<String> {
                 difficulty.to_string(),
             ],
             Tag::Delegation {
-                delegator_pk,
+                delegator,
                 conditions,
                 sig,
             } => vec![
                 TagKind::Delegation.to_string(),
-                delegator_pk.to_string(),
+                delegator.to_string(),
                 conditions.to_string(),
                 sig.to_string(),
             ],
@@ -1619,7 +1554,7 @@ mod tests {
                 "Speaker",
             ],
             Tag::PubKeyLiveEvent {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1638,7 +1573,7 @@ mod tests {
                 "Participant",
             ],
             Tag::PubKeyLiveEvent {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1657,7 +1592,7 @@ mod tests {
                 "alias",
             ],
             Tag::ContactList {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1692,7 +1627,7 @@ mod tests {
                 "kind=1",
                 "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             ],
-            Tag::Delegation { delegator_pk: XOnlyPublicKey::from_str(
+            Tag::Delegation { delegator: XOnlyPublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
             .as_vec()
@@ -1712,7 +1647,7 @@ mod tests {
                 "a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"
             ],
             Tag::PubKeyLiveEvent {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 ).unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
@@ -1940,7 +1875,7 @@ mod tests {
             ])
             .unwrap(),
             Tag::ContactList {
-                pk: XOnlyPublicKey::from_str(
+                public_key: XOnlyPublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1974,7 +1909,7 @@ mod tests {
                 "kind=1",
                 "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             ]).unwrap(),
-            Tag::Delegation { delegator_pk: XOnlyPublicKey::from_str(
+            Tag::Delegation { delegator: XOnlyPublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
         );

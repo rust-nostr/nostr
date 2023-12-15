@@ -37,7 +37,7 @@ impl JsEventBuilder {
         }
 
         Ok(Self {
-            builder: EventBuilder::new(kind.into(), content, &new_tags),
+            builder: EventBuilder::new(kind.into(), content, new_tags),
         })
     }
 
@@ -85,7 +85,7 @@ impl JsEventBuilder {
         }
 
         Ok(Self {
-            builder: EventBuilder::new_text_note(content, &new_tags),
+            builder: EventBuilder::new_text_note(content, new_tags),
         })
     }
 

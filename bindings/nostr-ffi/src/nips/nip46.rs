@@ -7,10 +7,10 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip46;
-use uniffi::Object;
+use uniffi::{Enum, Object};
 
 use crate::error::Result;
-use crate::PublicKey;
+use crate::{JsonValue, NostrError, PublicKey};
 
 #[derive(Object)]
 pub struct NostrConnectURI {
@@ -57,5 +57,44 @@ impl NostrConnectURI {
 
     pub fn description(&self) -> Option<String> {
         self.inner.metadata.description.clone()
+    }
+}
+
+#[derive(Enum)]
+pub enum NostrConnectMessage {
+    Request {
+        id: String,
+        method: String,
+        params: Vec<JsonValue>,
+    },
+    Response {
+        id: String,
+        result: Option<JsonValue>,
+        error: Option<String>,
+    },
+}
+
+impl TryFrom<NostrConnectMessage> for nip46::Message {
+    type Error = NostrError;
+
+    fn try_from(value: NostrConnectMessage) -> Result<Self, Self::Error> {
+        Ok(match value {
+            NostrConnectMessage::Request { id, method, params } => Self::Request {
+                id,
+                method,
+                params: params
+                    .into_iter()
+                    .filter_map(|v| v.try_into().ok())
+                    .collect(),
+            },
+            NostrConnectMessage::Response { id, result, error } => Self::Response {
+                id,
+                result: match result {
+                    Some(a) => Some(a.try_into()?),
+                    None => None,
+                },
+                error,
+            },
+        })
     }
 }

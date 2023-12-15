@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
     thread::sleep(Duration::from_secs(10)).await;
 
     // Try to publish a text note (will fail since the client is dropped)
-    client.publish_text_note("Hello world", &[]).await?;
+    client.publish_text_note("Hello world", []).await?;
 
     Ok(())
 }

@@ -6,19 +6,147 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use nostr::event::tag::{
-    self, HttpMethod, Identity, ImageDimensions, LiveEventMarker, LiveEventStatus, Marker, Report,
-};
+use nostr::event::tag;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip26::Conditions;
-use nostr::nips::nip48::Protocol;
-use nostr::nips::nip90::DataVendingMachineStatus;
 use nostr::secp256k1::schnorr::Signature;
-use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{Event, EventId, JsonUtil, Kind, RelayMetadata, Timestamp, UncheckedUrl, Url};
-use uniffi::{Enum, Object};
+use nostr::{Kind, UncheckedUrl, Url};
+use uniffi::{Enum, Object, Record};
 
 use crate::error::{NostrError, Result};
+use crate::nips::nip48::Protocol;
+use crate::nips::nip53::LiveEventMarker;
+use crate::nips::nip90::DataVendingMachineStatus;
+use crate::Event;
+use crate::{EventId, ImageDimensions, LiveEventStatus, PublicKey, Timestamp};
+
+/// Marker
+#[derive(Enum)]
+pub enum Marker {
+    /// Root
+    Root,
+    /// Reply
+    Reply,
+    /// Custom
+    Custom { custom: String },
+}
+
+impl From<Marker> for tag::Marker {
+    fn from(value: Marker) -> Self {
+        match value {
+            Marker::Root => Self::Root,
+            Marker::Reply => Self::Reply,
+            Marker::Custom { custom } => Self::Custom(custom),
+        }
+    }
+}
+
+impl From<tag::Marker> for Marker {
+    fn from(value: tag::Marker) -> Self {
+        match value {
+            tag::Marker::Root => Self::Root,
+            tag::Marker::Reply => Self::Reply,
+            tag::Marker::Custom(custom) => Self::Custom { custom },
+        }
+    }
+}
+
+/// Report
+#[derive(Enum)]
+pub enum Report {
+    /// Depictions of nudity, porn, etc
+    Nudity,
+    /// Profanity, hateful speech, etc.
+    Profanity,
+    /// Something which may be illegal in some jurisdiction
+    ///
+    /// Remember: there is what is right and there is the law.
+    Illegal,
+    /// Spam
+    Spam,
+    /// Someone pretending to be someone else
+    Impersonation,
+}
+
+impl From<Report> for tag::Report {
+    fn from(value: Report) -> Self {
+        match value {
+            Report::Nudity => Self::Nudity,
+            Report::Profanity => Self::Profanity,
+            Report::Illegal => Self::Illegal,
+            Report::Spam => Self::Spam,
+            Report::Impersonation => Self::Impersonation,
+        }
+    }
+}
+
+impl From<tag::Report> for Report {
+    fn from(value: tag::Report) -> Self {
+        match value {
+            tag::Report::Nudity => Self::Nudity,
+            tag::Report::Profanity => Self::Profanity,
+            tag::Report::Illegal => Self::Illegal,
+            tag::Report::Spam => Self::Spam,
+            tag::Report::Impersonation => Self::Impersonation,
+        }
+    }
+}
+
+#[derive(Enum)]
+pub enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Patch,
+}
+
+impl From<HttpMethod> for tag::HttpMethod {
+    fn from(value: HttpMethod) -> Self {
+        match value {
+            HttpMethod::Get => Self::GET,
+            HttpMethod::Post => Self::POST,
+            HttpMethod::Put => Self::PUT,
+            HttpMethod::Patch => Self::PATCH,
+        }
+    }
+}
+
+impl From<tag::HttpMethod> for HttpMethod {
+    fn from(value: tag::HttpMethod) -> Self {
+        match value {
+            tag::HttpMethod::GET => Self::Get,
+            tag::HttpMethod::POST => Self::Post,
+            tag::HttpMethod::PUT => Self::Put,
+            tag::HttpMethod::PATCH => Self::Patch,
+        }
+    }
+}
+
+#[derive(Enum)]
+pub enum RelayMetadata {
+    /// Read
+    Read,
+    /// Write
+    Write,
+}
+
+impl From<RelayMetadata> for nostr::RelayMetadata {
+    fn from(value: RelayMetadata) -> Self {
+        match value {
+            RelayMetadata::Read => Self::Read,
+            RelayMetadata::Write => Self::Write,
+        }
+    }
+}
+
+impl From<nostr::RelayMetadata> for RelayMetadata {
+    fn from(value: nostr::RelayMetadata) -> Self {
+        match value {
+            nostr::RelayMetadata::Read => Self::Read,
+            nostr::RelayMetadata::Write => Self::Write,
+        }
+    }
+}
 
 #[derive(Enum)]
 pub enum TagKind {
@@ -344,27 +472,27 @@ pub enum TagEnum {
         kind: TagKind,
         data: Vec<String>,
     },
-    E {
-        event_id: String,
+    Event {
+        event_id: Arc<EventId>,
         relay_url: Option<String>,
-        marker: Option<String>,
+        marker: Option<Marker>,
     },
     PubKey {
-        public_key: String,
+        public_key: Arc<PublicKey>,
         relay_url: Option<String>,
     },
     EventReport {
-        event_id: String,
-        report: String,
+        event_id: Arc<EventId>,
+        report: Report,
     },
     PubKeyReport {
-        public_key: String,
-        report: String,
+        public_key: Arc<PublicKey>,
+        report: Report,
     },
     PubKeyLiveEvent {
-        pk: String,
+        public_key: Arc<PublicKey>,
         relay_url: Option<String>,
-        marker: String,
+        marker: LiveEventMarker,
         proof: Option<String>,
     },
     Reference {
@@ -372,7 +500,7 @@ pub enum TagEnum {
     },
     RelayMetadata {
         relay_url: String,
-        rw: Option<String>,
+        rw: Option<RelayMetadata>,
     },
     Hashtag {
         hashtag: String,
@@ -384,12 +512,11 @@ pub enum TagEnum {
         identifier: String,
     },
     ExternalIdentity {
-        identity: String,
-        proof: String,
+        identity: Identity,
     },
     A {
         kind: u64,
-        public_key: String,
+        public_key: Arc<PublicKey>,
         identifier: String,
         relay_url: Option<String>,
     },
@@ -397,7 +524,7 @@ pub enum TagEnum {
         relay_url: String,
     },
     ContactList {
-        pk: String,
+        public_key: Arc<PublicKey>,
         relay_url: Option<String>,
         alias: Option<String>,
     },
@@ -406,7 +533,7 @@ pub enum TagEnum {
         difficulty: u8,
     },
     Delegation {
-        delegator_pk: String,
+        delegator: Arc<PublicKey>,
         conditions: String,
         sig: String,
     },
@@ -414,7 +541,7 @@ pub enum TagEnum {
         reason: Option<String>,
     },
     Expiration {
-        timestamp: u64,
+        timestamp: Arc<Timestamp>,
     },
     Subject {
         subject: String,
@@ -427,11 +554,11 @@ pub enum TagEnum {
     },
     Image {
         url: String,
-        dimensions: Option<String>,
+        dimensions: Option<Arc<ImageDimensions>>,
     },
     Thumb {
         url: String,
-        dimensions: Option<String>,
+        dimensions: Option<Arc<ImageDimensions>>,
     },
     Summary {
         summary: String,
@@ -459,7 +586,7 @@ pub enum TagEnum {
         name: String,
     },
     PublishedAt {
-        timestamp: u64,
+        timestamp: Arc<Timestamp>,
     },
     Url {
         url: String,
@@ -477,8 +604,9 @@ pub enum TagEnum {
     Size {
         size: u64,
     },
+    /// Size of file in pixels
     Dim {
-        dimensions: String,
+        dimensions: Arc<ImageDimensions>,
     },
     Magnet {
         uri: String,
@@ -493,13 +621,13 @@ pub enum TagEnum {
         url: String,
     },
     Starts {
-        timestamp: u64,
+        timestamp: Arc<Timestamp>,
     },
     Ends {
-        timestamp: u64,
+        timestamp: Arc<Timestamp>,
     },
     LiveEventStatus {
-        status: String,
+        status: LiveEventStatus,
     },
     CurrentParticipants {
         num: u64,
@@ -511,7 +639,7 @@ pub enum TagEnum {
         url: String,
     },
     Method {
-        method: String,
+        method: HttpMethod,
     },
     Payload {
         hash: String,
@@ -521,17 +649,17 @@ pub enum TagEnum {
     },
     Proxy {
         id: String,
-        protocol: String,
+        protocol: Protocol,
     },
     Emoji {
         shortcode: String,
         url: String,
     },
     Request {
-        event: String,
+        event: Arc<Event>,
     },
     DataVendingMachineStatus {
-        status: String,
+        status: DataVendingMachineStatus,
         extra_info: Option<String>,
     },
 }
@@ -543,38 +671,38 @@ impl From<tag::Tag> for TagEnum {
                 kind: kind.into(),
                 data,
             },
-            tag::Tag::Event(id, relay_url, marker) => Self::E {
-                event_id: id.to_hex(),
+            tag::Tag::Event(id, relay_url, marker) => Self::Event {
+                event_id: Arc::new(id.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
-                marker: marker.map(|m| m.to_string()),
+                marker: marker.map(|m| m.into()),
             },
             tag::Tag::PubKey(pk, relay_url) => Self::PubKey {
-                public_key: pk.to_string(),
+                public_key: Arc::new(pk.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
             },
             tag::Tag::EventReport(id, report) => Self::EventReport {
-                event_id: id.into(),
-                report: report.to_string(),
+                event_id: Arc::new(id.into()),
+                report: report.into(),
             },
             tag::Tag::PubKeyReport(pk, report) => Self::PubKeyReport {
-                public_key: pk.to_string(),
-                report: report.to_string(),
+                public_key: Arc::new(pk.into()),
+                report: report.into(),
             },
             tag::Tag::PubKeyLiveEvent {
-                pk,
+                public_key,
                 relay_url,
                 marker,
                 proof,
             } => Self::PubKeyLiveEvent {
-                pk: pk.to_string(),
+                public_key: Arc::new(public_key.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
-                marker: marker.to_string(),
+                marker: marker.into(),
                 proof: proof.map(|p| p.to_string()),
             },
             tag::Tag::Reference(r) => Self::Reference { reference: r },
             tag::Tag::RelayMetadata(url, rw) => Self::RelayMetadata {
                 relay_url: url.to_string(),
-                rw: rw.map(|rw| rw.to_string()),
+                rw: rw.map(|rw| rw.into()),
             },
             tag::Tag::Hashtag(t) => Self::Hashtag { hashtag: t },
             tag::Tag::Geohash(g) => Self::Geohash { geohash: g },
@@ -586,23 +714,22 @@ impl From<tag::Tag> for TagEnum {
                 relay_url,
             } => Self::A {
                 kind: kind.as_u64(),
-                public_key: public_key.to_string(),
+                public_key: Arc::new(public_key.into()),
                 identifier,
                 relay_url: relay_url.map(|u| u.to_string()),
             },
             tag::Tag::ExternalIdentity(identity) => Self::ExternalIdentity {
-                identity: format!("{}:{}", identity.platform, identity.ident),
-                proof: identity.proof,
+                identity: identity.into(),
             },
             tag::Tag::Relay(url) => Self::RelayUrl {
                 relay_url: url.to_string(),
             },
             tag::Tag::ContactList {
-                pk,
+                public_key,
                 relay_url,
                 alias,
             } => Self::ContactList {
-                pk: pk.to_string(),
+                public_key: Arc::new(public_key.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 alias,
             },
@@ -611,32 +738,32 @@ impl From<tag::Tag> for TagEnum {
                 difficulty,
             },
             tag::Tag::Delegation {
-                delegator_pk,
+                delegator,
                 conditions,
                 sig,
             } => Self::Delegation {
-                delegator_pk: delegator_pk.to_string(),
+                delegator: Arc::new(delegator.into()),
                 conditions: conditions.to_string(),
                 sig: sig.to_string(),
             },
             tag::Tag::ContentWarning { reason } => Self::ContentWarning { reason },
             tag::Tag::Expiration(timestamp) => Self::Expiration {
-                timestamp: timestamp.as_u64(),
+                timestamp: Arc::new(timestamp.into()),
             },
             tag::Tag::Subject(sub) => Self::Subject { subject: sub },
             tag::Tag::Challenge(challenge) => Self::Challenge { challenge },
             tag::Tag::Title(title) => Self::Title { title },
             tag::Tag::Image(image, dimensions) => Self::Image {
                 url: image.to_string(),
-                dimensions: dimensions.map(|d| d.to_string()),
+                dimensions: dimensions.map(|d| Arc::new(d.into())),
             },
             tag::Tag::Thumb(thumb, dimensions) => Self::Thumb {
                 url: thumb.to_string(),
-                dimensions: dimensions.map(|d| d.to_string()),
+                dimensions: dimensions.map(|d| Arc::new(d.into())),
             },
             tag::Tag::Summary(summary) => Self::Summary { summary },
             tag::Tag::PublishedAt(timestamp) => Self::PublishedAt {
-                timestamp: timestamp.as_u64(),
+                timestamp: Arc::new(timestamp.into()),
             },
             tag::Tag::Description(description) => Self::Description { desc: description },
             tag::Tag::Bolt11(bolt11) => Self::Bolt11 { bolt11 },
@@ -657,7 +784,7 @@ impl From<tag::Tag> for TagEnum {
             },
             tag::Tag::Size(bytes) => Self::Size { size: bytes as u64 },
             tag::Tag::Dim(dim) => Self::Dim {
-                dimensions: dim.to_string(),
+                dimensions: Arc::new(dim.into()),
             },
             tag::Tag::Magnet(uri) => Self::Magnet { uri },
             tag::Tag::Blurhash(data) => Self::Blurhash { blurhash: data },
@@ -668,21 +795,19 @@ impl From<tag::Tag> for TagEnum {
                 url: url.to_string(),
             },
             tag::Tag::Starts(timestamp) => Self::Starts {
-                timestamp: timestamp.as_u64(),
+                timestamp: Arc::new(timestamp.into()),
             },
             tag::Tag::Ends(timestamp) => Self::Ends {
-                timestamp: timestamp.as_u64(),
+                timestamp: Arc::new(timestamp.into()),
             },
-            tag::Tag::LiveEventStatus(s) => Self::LiveEventStatus {
-                status: s.to_string(),
-            },
+            tag::Tag::LiveEventStatus(s) => Self::LiveEventStatus { status: s.into() },
             tag::Tag::CurrentParticipants(num) => Self::CurrentParticipants { num },
             tag::Tag::TotalParticipants(num) => Self::TotalParticipants { num },
             tag::Tag::AbsoluteURL(url) => Self::AbsoluteURL {
                 url: url.to_string(),
             },
             tag::Tag::Method(method) => Self::Method {
-                method: method.to_string(),
+                method: method.into(),
             },
             tag::Tag::Payload(p) => Self::Payload {
                 hash: p.to_string(),
@@ -690,18 +815,18 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::Anon { msg } => Self::Anon { msg },
             tag::Tag::Proxy { id, protocol } => Self::Proxy {
                 id,
-                protocol: protocol.to_string(),
+                protocol: protocol.into(),
             },
             tag::Tag::Emoji { shortcode, url } => Self::Emoji {
                 shortcode,
                 url: url.to_string(),
             },
             tag::Tag::Request(event) => Self::Request {
-                event: event.as_json(),
+                event: Arc::new(event.into()),
             },
             tag::Tag::DataVendingMachineStatus { status, extra_info } => {
                 Self::DataVendingMachineStatus {
-                    status: status.to_string(),
+                    status: status.into(),
                     extra_info,
                 }
             }
@@ -714,58 +839,51 @@ impl TryFrom<TagEnum> for tag::Tag {
     fn try_from(value: TagEnum) -> Result<Self, Self::Error> {
         match value {
             TagEnum::Unknown { kind, data } => Ok(Self::Generic(kind.into(), data)),
-            TagEnum::E {
+            TagEnum::Event {
                 event_id,
                 relay_url,
                 marker,
             } => Ok(Self::Event(
-                EventId::from_str(&event_id)?,
+                **event_id,
                 relay_url.map(UncheckedUrl::from),
-                marker.map(Marker::from),
+                marker.map(tag::Marker::from),
             )),
             TagEnum::PubKey {
                 public_key,
                 relay_url,
             } => Ok(Self::PubKey(
-                XOnlyPublicKey::from_str(&public_key)?,
+                **public_key,
                 relay_url.map(UncheckedUrl::from),
             )),
-            TagEnum::EventReport { event_id, report } => Ok(Self::EventReport(
-                EventId::from_str(&event_id)?,
-                Report::from_str(&report)?,
-            )),
-            TagEnum::PubKeyReport { public_key, report } => Ok(Self::PubKeyReport(
-                XOnlyPublicKey::from_str(&public_key)?,
-                Report::from_str(&report)?,
-            )),
+            TagEnum::EventReport { event_id, report } => {
+                Ok(Self::EventReport(**event_id, report.into()))
+            }
+            TagEnum::PubKeyReport { public_key, report } => {
+                Ok(Self::PubKeyReport(**public_key, report.into()))
+            }
             TagEnum::PubKeyLiveEvent {
-                pk,
+                public_key,
                 relay_url,
                 marker,
                 proof,
             } => Ok(Self::PubKeyLiveEvent {
-                pk: XOnlyPublicKey::from_str(&pk)?,
+                public_key: **public_key,
                 relay_url: relay_url.map(UncheckedUrl::from),
-                marker: LiveEventMarker::from_str(&marker)?,
+                marker: marker.into(),
                 proof: match proof {
                     Some(proof) => Some(Signature::from_str(&proof)?),
                     None => None,
                 },
             }),
             TagEnum::Reference { reference } => Ok(Self::Reference(reference)),
-            TagEnum::RelayMetadata { relay_url, rw } => {
-                let rw: Option<RelayMetadata> = match rw {
-                    Some(rw) => Some(RelayMetadata::from_str(&rw)?),
-                    None => None,
-                };
-                Ok(Self::RelayMetadata(UncheckedUrl::from(relay_url), rw))
-            }
+            TagEnum::RelayMetadata { relay_url, rw } => Ok(Self::RelayMetadata(
+                UncheckedUrl::from(relay_url),
+                rw.map(|rw| rw.into()),
+            )),
             TagEnum::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
             TagEnum::Geohash { geohash } => Ok(Self::Geohash(geohash)),
             TagEnum::Identifier { identifier } => Ok(Self::Identifier(identifier)),
-            TagEnum::ExternalIdentity { identity, proof } => {
-                Ok(Self::ExternalIdentity(Identity::new(identity, proof)?))
-            }
+            TagEnum::ExternalIdentity { identity } => Ok(Self::ExternalIdentity(identity.into())),
             TagEnum::A {
                 kind,
                 public_key,
@@ -773,17 +891,17 @@ impl TryFrom<TagEnum> for tag::Tag {
                 relay_url,
             } => Ok(Self::A {
                 kind: Kind::from(kind),
-                public_key: XOnlyPublicKey::from_str(&public_key)?,
+                public_key: **public_key,
                 identifier,
                 relay_url: relay_url.map(UncheckedUrl::from),
             }),
             TagEnum::RelayUrl { relay_url } => Ok(Self::Relay(UncheckedUrl::from(relay_url))),
             TagEnum::ContactList {
-                pk,
+                public_key,
                 relay_url,
                 alias,
             } => Ok(Self::ContactList {
-                pk: XOnlyPublicKey::from_str(&pk)?,
+                public_key: **public_key,
                 relay_url: relay_url.map(UncheckedUrl::from),
                 alias,
             }),
@@ -792,32 +910,26 @@ impl TryFrom<TagEnum> for tag::Tag {
                 difficulty,
             }),
             TagEnum::Delegation {
-                delegator_pk,
+                delegator,
                 conditions,
                 sig,
             } => Ok(Self::Delegation {
-                delegator_pk: XOnlyPublicKey::from_str(&delegator_pk)?,
+                delegator: **delegator,
                 conditions: Conditions::from_str(&conditions)?,
                 sig: Signature::from_str(&sig)?,
             }),
             TagEnum::ContentWarning { reason } => Ok(Self::ContentWarning { reason }),
-            TagEnum::Expiration { timestamp } => Ok(Self::Expiration(Timestamp::from(timestamp))),
+            TagEnum::Expiration { timestamp } => Ok(Self::Expiration(**timestamp)),
             TagEnum::Subject { subject } => Ok(Self::Subject(subject)),
             TagEnum::Challenge { challenge } => Ok(Self::Challenge(challenge)),
             TagEnum::Title { title } => Ok(Self::Title(title)),
             TagEnum::Image { url, dimensions } => Ok(Self::Image(
                 UncheckedUrl::from(url),
-                match dimensions {
-                    Some(dim) => Some(ImageDimensions::from_str(&dim)?),
-                    None => None,
-                },
+                dimensions.map(|d| d.as_ref().into()),
             )),
             TagEnum::Thumb { url, dimensions } => Ok(Self::Thumb(
                 UncheckedUrl::from(url),
-                match dimensions {
-                    Some(dim) => Some(ImageDimensions::from_str(&dim)?),
-                    None => None,
-                },
+                dimensions.map(|d| d.as_ref().into()),
             )),
             TagEnum::Summary { summary } => Ok(Self::Summary(summary)),
             TagEnum::Description { desc } => Ok(Self::Description(desc)),
@@ -829,40 +941,38 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::Amount { millisats, bolt11 } => Ok(Self::Amount { millisats, bolt11 }),
             TagEnum::Lnurl { lnurl } => Ok(Self::Lnurl(lnurl)),
             TagEnum::Name { name } => Ok(Self::Name(name)),
-            TagEnum::PublishedAt { timestamp } => Ok(Self::PublishedAt(Timestamp::from(timestamp))),
+            TagEnum::PublishedAt { timestamp } => Ok(Self::PublishedAt(**timestamp)),
             TagEnum::Url { url } => Ok(Self::Url(Url::parse(&url)?)),
             TagEnum::MimeType { mime } => Ok(Self::MimeType(mime)),
             TagEnum::Aes256Gcm { key, iv } => Ok(Self::Aes256Gcm { key, iv }),
             TagEnum::Sha256 { hash } => Ok(Self::Sha256(Sha256Hash::from_str(&hash)?)),
             TagEnum::Size { size } => Ok(Self::Size(size as usize)),
-            TagEnum::Dim { dimensions } => Ok(Self::Dim(ImageDimensions::from_str(&dimensions)?)),
+            TagEnum::Dim { dimensions } => Ok(Self::Dim(dimensions.as_ref().into())),
             TagEnum::Magnet { uri } => Ok(Self::Magnet(uri)),
             TagEnum::Blurhash { blurhash } => Ok(Self::Blurhash(blurhash)),
             TagEnum::Streaming { url } => Ok(Self::Streaming(UncheckedUrl::from(url))),
             TagEnum::Recording { url } => Ok(Self::Recording(UncheckedUrl::from(url))),
-            TagEnum::Starts { timestamp } => Ok(Self::Starts(Timestamp::from(timestamp))),
-            TagEnum::Ends { timestamp } => Ok(Self::Ends(Timestamp::from(timestamp))),
-            TagEnum::LiveEventStatus { status } => {
-                Ok(Self::LiveEventStatus(LiveEventStatus::from(status)))
-            }
+            TagEnum::Starts { timestamp } => Ok(Self::Starts(**timestamp)),
+            TagEnum::Ends { timestamp } => Ok(Self::Ends(**timestamp)),
+            TagEnum::LiveEventStatus { status } => Ok(Self::LiveEventStatus(status.into())),
             TagEnum::CurrentParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagEnum::TotalParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagEnum::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
-            TagEnum::Method { method } => Ok(Self::Method(HttpMethod::from_str(&method)?)),
+            TagEnum::Method { method } => Ok(Self::Method(method.into())),
             TagEnum::Payload { hash } => Ok(Self::Payload(Sha256Hash::from_str(&hash)?)),
             TagEnum::Anon { msg } => Ok(Self::Anon { msg }),
             TagEnum::Proxy { id, protocol } => Ok(Self::Proxy {
                 id,
-                protocol: Protocol::from(protocol),
+                protocol: protocol.into(),
             }),
             TagEnum::Emoji { shortcode, url } => Ok(Self::Emoji {
                 shortcode,
                 url: UncheckedUrl::from(url),
             }),
-            TagEnum::Request { event } => Ok(Self::Request(Event::from_json(event)?)),
+            TagEnum::Request { event } => Ok(Self::Request(event.as_ref().deref().clone())),
             TagEnum::DataVendingMachineStatus { status, extra_info } => {
                 Ok(Self::DataVendingMachineStatus {
-                    status: DataVendingMachineStatus::from_str(&status)?,
+                    status: status.into(),
                     extra_info,
                 })
             }
@@ -914,5 +1024,71 @@ impl Tag {
 
     pub fn kind(&self) -> TagKind {
         self.inner.kind().into()
+    }
+}
+
+/// Supported external identity providers
+#[derive(Enum)]
+pub enum ExternalIdentity {
+    /// github.com
+    GitHub,
+    /// twitter.com
+    Twitter,
+    /// mastodon.social
+    Mastodon,
+    /// telegram.org
+    Telegram,
+}
+
+impl From<ExternalIdentity> for tag::ExternalIdentity {
+    fn from(value: ExternalIdentity) -> Self {
+        match value {
+            ExternalIdentity::GitHub => Self::GitHub,
+            ExternalIdentity::Twitter => Self::Twitter,
+            ExternalIdentity::Mastodon => Self::Mastodon,
+            ExternalIdentity::Telegram => Self::Telegram,
+        }
+    }
+}
+
+impl From<tag::ExternalIdentity> for ExternalIdentity {
+    fn from(value: tag::ExternalIdentity) -> Self {
+        match value {
+            tag::ExternalIdentity::GitHub => Self::GitHub,
+            tag::ExternalIdentity::Twitter => Self::Twitter,
+            tag::ExternalIdentity::Mastodon => Self::Mastodon,
+            tag::ExternalIdentity::Telegram => Self::Telegram,
+        }
+    }
+}
+
+/// A NIP-39 external identity
+#[derive(Record)]
+pub struct Identity {
+    /// The external identity provider
+    pub platform: ExternalIdentity,
+    /// The user's identity (username) on the provider
+    pub ident: String,
+    /// The user's proof on the provider
+    pub proof: String,
+}
+
+impl From<Identity> for tag::Identity {
+    fn from(value: Identity) -> Self {
+        Self {
+            platform: value.platform.into(),
+            ident: value.ident,
+            proof: value.proof,
+        }
+    }
+}
+
+impl From<tag::Identity> for Identity {
+    fn from(value: tag::Identity) -> Self {
+        Self {
+            platform: value.platform.into(),
+            ident: value.ident,
+            proof: value.proof,
+        }
     }
 }

@@ -842,14 +842,15 @@ impl Client {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client
-    ///     .publish_text_note("My first text note from Nostr SDK!", &[])
+    ///     .publish_text_note("My first text note from Nostr SDK!", [])
     ///     .await
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<EventId, Error>
+    pub async fn publish_text_note<S, I>(&self, content: S, tags: I) -> Result<EventId, Error>
     where
         S: Into<String>,
+        I: IntoIterator<Item = Tag>,
     {
         let builder = EventBuilder::new_text_note(content, tags);
         self.send_event_builder(builder).await
@@ -953,10 +954,10 @@ impl Client {
                         contact_list.push(Contact::new::<String>(pk, relay_url, None))
                     }
                     Tag::ContactList {
-                        pk,
+                        public_key,
                         relay_url,
                         alias,
-                    } => contact_list.push(Contact::new(pk, relay_url, alias)),
+                    } => contact_list.push(Contact::new(public_key, relay_url, alias)),
                     _ => (),
                 }
             }
@@ -1061,7 +1062,7 @@ impl Client {
                 EventBuilder::new(
                     Kind::EncryptedDirectMessage,
                     content,
-                    &[Tag::PubKey(receiver, None)],
+                    [Tag::PubKey(receiver, None)],
                 )
             } else {
                 return Err(Error::ResponseNotMatchRequest);

@@ -646,48 +646,48 @@ mod tests {
 
         // Build some events
         let events = [
-            EventBuilder::new_text_note("Text note", &[])
+            EventBuilder::new_text_note("Text note", [])
                 .to_event(&keys_a)
                 .unwrap(),
             EventBuilder::new(
                 Kind::ParameterizedReplaceable(32121),
                 "Empty 1",
-                &[Tag::Identifier(String::from("abdefgh:12345678"))],
+                [Tag::Identifier(String::from("abdefgh:12345678"))],
             )
             .to_event(&keys_a)
             .unwrap(),
             EventBuilder::new(
                 Kind::ParameterizedReplaceable(32122),
                 "Empty 2",
-                &[Tag::Identifier(String::from("abdefgh:12345678"))],
+                [Tag::Identifier(String::from("abdefgh:12345678"))],
             )
             .to_event(&keys_a)
             .unwrap(),
             EventBuilder::new(
                 Kind::ParameterizedReplaceable(32122),
                 "",
-                &[Tag::Identifier(String::from("ijklmnop:87654321"))],
+                [Tag::Identifier(String::from("ijklmnop:87654321"))],
             )
             .to_event(&keys_a)
             .unwrap(),
             EventBuilder::new(
                 Kind::ParameterizedReplaceable(32122),
                 "",
-                &[Tag::Identifier(String::from("abdefgh:87654321"))],
+                [Tag::Identifier(String::from("abdefgh:87654321"))],
             )
             .to_event(&keys_b)
             .unwrap(),
             EventBuilder::new(
                 Kind::ParameterizedReplaceable(32122),
                 "",
-                &[Tag::Identifier(String::from("abdefgh:12345678"))],
+                [Tag::Identifier(String::from("abdefgh:12345678"))],
             )
             .to_event(&keys_b)
             .unwrap(),
             EventBuilder::new(
                 Kind::ParameterizedReplaceable(32122),
                 "Test",
-                &[Tag::Identifier(String::from("abdefgh:12345678"))],
+                [Tag::Identifier(String::from("abdefgh:12345678"))],
             )
             .to_event(&keys_a)
             .unwrap(),

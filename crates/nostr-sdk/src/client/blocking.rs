@@ -251,9 +251,10 @@ impl Client {
         RUNTIME.block_on(async { self.client.set_metadata(metadata).await })
     }
 
-    pub fn publish_text_note<S>(&self, content: S, tags: &[Tag]) -> Result<EventId, Error>
+    pub fn publish_text_note<S, I>(&self, content: S, tags: I) -> Result<EventId, Error>
     where
         S: Into<String>,
+        I: IntoIterator<Item = Tag>,
     {
         RUNTIME.block_on(async { self.client.publish_text_note(content, tags).await })
     }

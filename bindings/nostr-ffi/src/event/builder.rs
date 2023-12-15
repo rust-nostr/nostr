@@ -2,19 +2,27 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::url::Url;
-use nostr::{ChannelId, Contact as ContactSdk};
+use nostr::{ChannelId, Contact as ContactSdk, UncheckedUrl};
 use uniffi::Object;
 
 use super::{Event, EventId};
 use crate::error::Result;
 use crate::key::Keys;
+use crate::nips::nip15::{ProductData, StallData};
+use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
+use crate::nips::nip90::DataVendingMachineStatus;
+use crate::nips::nip98::HttpData;
 use crate::types::{Contact, Metadata};
-use crate::{FileMetadata, PublicKey, Tag, UnsignedEvent};
+use crate::{
+    FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
+    UnsignedEvent,
+};
 
 #[derive(Object)]
 pub struct EventBuilder {
@@ -38,12 +46,9 @@ impl Deref for EventBuilder {
 impl EventBuilder {
     #[uniffi::constructor]
     pub fn new(kind: u64, content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
-        let tags = tags
-            .into_iter()
-            .map(|t| t.as_ref().deref().clone())
-            .collect::<Vec<_>>();
+        let tags = tags.into_iter().map(|t| t.as_ref().deref().clone());
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::new(kind.into(), content, &tags),
+            inner: nostr::EventBuilder::new(kind.into(), content, tags),
         }))
     }
 
@@ -99,24 +104,28 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn new_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
-        let tags = tags
+    pub fn relay_list(list: HashMap<String, Option<RelayMetadata>>) -> Arc<Self> {
+        let iter = list
             .into_iter()
-            .map(|t| t.as_ref().deref().clone())
-            .collect::<Vec<_>>();
+            .map(|(url, r)| (UncheckedUrl::from(url), r.map(|r| r.into())));
+        Arc::new(Self {
+            inner: nostr::EventBuilder::relay_list(iter),
+        })
+    }
+
+    #[uniffi::constructor]
+    pub fn new_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
+        let tags = tags.into_iter().map(|t| t.as_ref().deref().clone());
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::new_text_note(content, &tags),
+            inner: nostr::EventBuilder::new_text_note(content, tags),
         }))
     }
 
     #[uniffi::constructor]
     pub fn long_form_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
-        let tags = tags
-            .into_iter()
-            .map(|t| t.as_ref().deref().clone())
-            .collect::<Vec<_>>();
+        let tags = tags.into_iter().map(|t| t.as_ref().deref().clone());
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::long_form_text_note(content, &tags),
+            inner: nostr::EventBuilder::long_form_text_note(content, tags),
         }))
     }
 
@@ -249,16 +258,60 @@ impl EventBuilder {
         }))
     }
 
-    // TODO: add nostr_connect method
+    #[uniffi::constructor]
+    pub fn nostr_connect(
+        sender_keys: Arc<Keys>,
+        receiver_pubkey: Arc<PublicKey>,
+        msg: NostrConnectMessage,
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::nostr_connect(
+                sender_keys.as_ref().deref(),
+                **receiver_pubkey,
+                msg.try_into()?,
+            )?,
+        }))
+    }
 
     #[uniffi::constructor]
-    pub fn report(tags: Vec<Arc<Tag>>, content: String) -> Arc<Self> {
+    pub fn live_event(live_event: LiveEvent) -> Arc<Self> {
+        Arc::new(Self {
+            inner: nostr::EventBuilder::live_event(live_event.into()),
+        })
+    }
+
+    #[uniffi::constructor]
+    pub fn live_event_msg(
+        live_event_id: String,
+        live_event_host: Arc<PublicKey>,
+        content: String,
+        relay_url: Option<String>,
+        tags: Vec<Arc<Tag>>,
+    ) -> Result<Arc<Self>> {
+        let relay_url = match relay_url {
+            Some(url) => Some(Url::parse(&url)?),
+            None => None,
+        };
         let tags = tags
             .into_iter()
             .map(|t| t.as_ref().deref().clone())
-            .collect::<Vec<_>>();
+            .collect();
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::live_event_msg(
+                live_event_id,
+                **live_event_host,
+                content,
+                relay_url,
+                tags,
+            ),
+        }))
+    }
+
+    #[uniffi::constructor]
+    pub fn report(tags: Vec<Arc<Tag>>, content: String) -> Arc<Self> {
+        let tags = tags.into_iter().map(|t| t.as_ref().deref().clone());
         Arc::new(Self {
-            inner: nostr::EventBuilder::report(&tags, content),
+            inner: nostr::EventBuilder::report(tags, content),
         })
     }
 
@@ -285,6 +338,120 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
+    pub fn define_badge(
+        badge_id: String,
+        name: Option<String>,
+        description: Option<String>,
+        image: Option<String>,
+        image_dimensions: Option<Arc<ImageDimensions>>,
+        thumbnails: Vec<Image>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            inner: nostr::EventBuilder::define_badge(
+                badge_id,
+                name,
+                description,
+                image.map(UncheckedUrl::from),
+                image_dimensions.map(|i| i.as_ref().into()),
+                thumbnails
+                    .into_iter()
+                    .map(|i: Image| {
+                        (
+                            UncheckedUrl::from(i.url),
+                            i.dimensions.map(|d| d.as_ref().into()),
+                        )
+                    })
+                    .collect(),
+            ),
+        })
+    }
+
+    #[uniffi::constructor]
+    pub fn award_badge(
+        badge_definition: Arc<Event>,
+        awarded_pubkeys: Vec<Arc<Tag>>,
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::award_badge(
+                badge_definition.as_ref().deref(),
+                awarded_pubkeys
+                    .into_iter()
+                    .map(|a| a.as_ref().deref().clone()),
+            )?,
+        }))
+    }
+
+    #[uniffi::constructor]
+    pub fn profile_badges(
+        badge_definitions: Vec<Arc<Event>>,
+        badge_awards: Vec<Arc<Event>>,
+        pubkey_awarded: &PublicKey,
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::profile_badges(
+                badge_definitions
+                    .into_iter()
+                    .map(|b| b.as_ref().deref().clone())
+                    .collect(),
+                badge_awards
+                    .into_iter()
+                    .map(|b| b.as_ref().deref().clone())
+                    .collect(),
+                pubkey_awarded.deref(),
+            )?,
+        }))
+    }
+
+    /// Data Vending Machine - Job Request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[uniffi::constructor]
+    pub fn job_request(kind: u64, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::job_request(
+                kind.into(),
+                tags.into_iter().map(|t| t.as_ref().deref().clone()),
+            )?,
+        }))
+    }
+
+    #[uniffi::constructor]
+    pub fn job_result(
+        job_request: Arc<Event>,
+        amount_millisats: u64,
+        bolt11: Option<String>,
+    ) -> Result<Arc<Self>> {
+        Ok(Arc::new(Self {
+            inner: nostr::EventBuilder::job_result(
+                job_request.as_ref().deref().clone(),
+                amount_millisats,
+                bolt11,
+            )?,
+        }))
+    }
+
+    #[uniffi::constructor]
+    pub fn job_feedback(
+        job_request: Arc<Event>,
+        status: DataVendingMachineStatus,
+        extra_info: Option<String>,
+        amount_millisats: u64,
+        bolt11: Option<String>,
+        payload: Option<String>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            inner: nostr::EventBuilder::job_feedback(
+                job_request.as_ref().deref(),
+                status.into(),
+                extra_info,
+                amount_millisats,
+                bolt11,
+                payload,
+            ),
+        })
+    }
+
+    #[uniffi::constructor]
     pub fn file_metadata(description: String, metadata: Arc<FileMetadata>) -> Arc<Self> {
         Arc::new(Self {
             inner: nostr::EventBuilder::file_metadata(
@@ -292,5 +459,26 @@ impl EventBuilder {
                 metadata.as_ref().deref().clone(),
             ),
         })
+    }
+
+    #[uniffi::constructor]
+    pub fn http_auth(data: HttpData) -> Self {
+        Self {
+            inner: nostr::EventBuilder::http_auth(data.into()),
+        }
+    }
+
+    #[uniffi::constructor]
+    pub fn new_stall_data(data: StallData) -> Self {
+        Self {
+            inner: nostr::EventBuilder::new_stall_data(data.into()),
+        }
+    }
+
+    #[uniffi::constructor]
+    pub fn new_product_data(data: ProductData) -> Self {
+        Self {
+            inner: nostr::EventBuilder::new_product_data(data.into()),
+        }
     }
 }
