@@ -227,22 +227,8 @@ impl Nip19Event {
             relays: relays.into_iter().map(|u| u.into()).collect(),
         }
     }
-}
 
-impl FromBech32 for Nip19Event {
-    type Err = Error;
-    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
-    where
-        S: Into<String>,
-    {
-        let (hrp, data, checksum) = bech32::decode(&s.into())?;
-
-        if hrp != PREFIX_BECH32_EVENT || checksum != Variant::Bech32 {
-            return Err(Error::WrongPrefixOrVariant);
-        }
-
-        let mut data: Vec<u8> = Vec::from_base32(&data)?;
-
+    fn from_bech32_data(mut data: Vec<u8>) -> Result<Nip19Event, Error> {
         let mut event_id: Option<EventId> = None;
         let mut relays: Vec<String> = Vec::new();
 
@@ -272,6 +258,23 @@ impl FromBech32 for Nip19Event {
             event_id: event_id.ok_or_else(|| Error::FieldMissing("event id".to_string()))?,
             relays,
         })
+    }
+}
+
+impl FromBech32 for Nip19Event {
+    type Err = Error;
+    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
+    where
+        S: Into<String>,
+    {
+        let (hrp, data, checksum) = bech32::decode(&s.into())?;
+
+        if hrp != PREFIX_BECH32_EVENT || checksum != Variant::Bech32 {
+            return Err(Error::WrongPrefixOrVariant);
+        }
+
+        let data: Vec<u8> = Vec::from_base32(&data)?;
+        Nip19Event::from_bech32_data(data)
     }
 }
 
