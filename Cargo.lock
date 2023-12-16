@@ -2953,7 +2953,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-ws"
-version = "0.7.4"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "601c6f6340b473083c38e6cdda1f39dfc35d67b0e4b54fa56624d6189c2aa366"
 dependencies = [
  "async_io_stream",
  "futures",

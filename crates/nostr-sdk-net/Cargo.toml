@@ -24,4 +24,4 @@ tokio-tungstenite = { version = "0.20", features = ["rustls-tls-webpki-roots"] }
 webpki-roots = "0.25"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-ws_stream_wasm = "0.7"
+wasm-ws = "0.1"

@@ -7,12 +7,12 @@
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::StreamExt;
 use url_fork::Url;
-use ws_stream_wasm::{WsErr, WsMessage, WsMeta, WsStream};
+use wasm_ws::{WebSocket, WsErr, WsMessage, WsStream};
 
 type Sink = SplitSink<WsStream, WsMessage>;
 type Stream = SplitStream<WsStream>;
 
 pub async fn connect(url: &Url) -> Result<(Sink, Stream), WsErr> {
-    let (_ws, stream) = WsMeta::connect(url, None).await?;
+    let (_ws, stream) = WebSocket::connect(url).await?;
     Ok(stream.split())
 }
