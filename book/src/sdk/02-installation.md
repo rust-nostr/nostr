@@ -27,6 +27,12 @@
     pip install nostr-sdk 
     ```
 
+=== "JavaScript"
+
+    ```bash
+    npm i @rust-nostr/nostr-sdk
+    ```
+
 === "Kotlin"
 
     To use the Kotlin language bindings for `nostr-sdk` in your Android project add the following to your gradle dependencies:

@@ -39,6 +39,12 @@
     from nostr_protocol import *
     ```
 
+=== "JavaScript"
+
+    ```bash
+    npm i @rust-nostr/nostr 
+    ```
+
 === "Kotlin"
 
     To use the Kotlin language bindings for `nostr` in your Android project add the following to your gradle dependencies:

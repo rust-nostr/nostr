@@ -35,7 +35,7 @@ Check the example in the [`embedded/`](./crates/nostr/examples/embedded/) direct
     * Python: https://pypi.org/project/nostr-sdk
     * Kotlin: [`io.github.rust-nostr:nostr-sdk`](https://central.sonatype.com/artifact/io.github.rust-nostr/nostr-sdk/)
     * Swift: https://github.com/rust-nostr/nostr-sdk-swift
-    * JavaScript: TODO
+    * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr-sdk
 
 ## State
 
