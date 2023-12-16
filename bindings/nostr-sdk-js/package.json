@@ -1,5 +1,5 @@
 {
-  "name": "@rust-nostr/nostr-sdk-js",
+  "name": "@rust-nostr/nostr-sdk",
   "version": "0.1.0",
   "description": "High level Nostr client library.",
   "keywords": [
@@ -31,11 +31,14 @@
   "main": "pkg/nostr_sdk_js.js",
   "types": "pkg/nostr_sdk_js.d.ts",
   "files": [
-      "pkg/nostr_sdk_js_bg.wasm.js",
-      "pkg/nostr_sdk_js_bg.wasm.d.ts",
-      "pkg/nostr_sdk_js.js",
-      "pkg/nostr_sdk_js.d.ts"
+    "pkg/nostr_sdk_js_bg.wasm.js",
+    "pkg/nostr_sdk_js_bg.wasm.d.ts",
+    "pkg/nostr_sdk_js.js",
+    "pkg/nostr_sdk_js.d.ts"
   ],
+  "dependencies": {
+    "ws": "^8.15.1"
+  },
   "devDependencies": {
     "wasm-pack": "^0.10.2"
   },

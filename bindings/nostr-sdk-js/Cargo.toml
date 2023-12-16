@@ -13,9 +13,9 @@ js-sys = "0.3"
 nostr-js = { path = "../nostr-js" }
 nostr-sdk = { path = "../../crates/nostr-sdk" }
 serde-wasm-bindgen = "0.5"
+tracing-wasm = "0.2"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-wasm-logger = "0.2"
 
 [package.metadata.wasm-pack.profile.profiling]
 wasm-opt = false

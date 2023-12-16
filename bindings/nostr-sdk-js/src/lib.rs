@@ -15,5 +15,5 @@ pub mod client;
 
 #[wasm_bindgen(js_name = initLogger)]
 pub fn init_logger() {
-    wasm_logger::init(wasm_logger::Config::default());
+    tracing_wasm::set_as_global_default();
 }

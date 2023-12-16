@@ -1,3 +1,17 @@
+// Import `WebSocket` from `ws` library (required to make this library work on nodejs native environments)
+let WebSocketClass;
+
+// Check if WebSocket is available in the current environment
+if (typeof WebSocket !== 'undefined') {
+  // Native WebSocket available in the browser
+  WebSocketClass = WebSocket;
+} else {
+  // Import 'ws' for Node.js environment
+  WebSocketClass = require('ws');
+}
+
+WebSocket = WebSocketClass;
+
 let inited = false;
 module.exports.loadWasmSync = function () {
     if (inited) {

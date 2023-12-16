@@ -1587,9 +1587,9 @@ dependencies = [
  "nostr-js",
  "nostr-sdk",
  "serde-wasm-bindgen",
+ "tracing-wasm",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-logger",
 ]
 
 [[package]]
@@ -1603,8 +1603,8 @@ dependencies = [
  "tokio-socks",
  "tokio-tungstenite",
  "url-fork",
+ "wasm-ws",
  "webpki-roots",
- "ws_stream_wasm",
 ]
 
 [[package]]
@@ -2544,6 +2544,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-wasm"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4575c663a174420fa2d78f4108ff68f65bf2fbb7dd89f33749b6e826b3626e07"
+dependencies = [
+ "tracing",
+ "tracing-subscriber",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "try-lock"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2941,13 +2952,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-logger"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "074649a66bb306c8f2068c9016395fa65d8e08d2affcbf95acf3c24c3ab19718"
+name = "wasm-ws"
+version = "0.7.4"
 dependencies = [
- "log",
+ "async_io_stream",
+ "futures",
+ "js-sys",
+ "pharos",
+ "send_wrapper",
+ "thiserror",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 
@@ -3089,25 +3104,6 @@ checksum = "524e57b2c537c0f9b1e69f1965311ec12182b4122e45035b1508cd24d2adadb1"
 dependencies = [
  "cfg-if",
  "windows-sys",
-]
-
-[[package]]
-name = "ws_stream_wasm"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7999f5f4217fe3818726b66257a4475f71e74ffd190776ad053fa159e50737f5"
-dependencies = [
- "async_io_stream",
- "futures",
- "js-sys",
- "log",
- "pharos",
- "rustc_version",
- "send_wrapper",
- "thiserror",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
