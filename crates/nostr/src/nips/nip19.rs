@@ -48,6 +48,8 @@ pub enum Error {
     EventId(id::Error),
     /// Wrong prefix or variant
     WrongPrefixOrVariant,
+    /// Not implemented
+    NotImplemented,
     /// Field missing
     FieldMissing(String),
     /// TLV error
@@ -71,6 +73,7 @@ impl fmt::Display for Error {
             Self::FieldMissing(name) => write!(f, "Field missing: {name}"),
             Self::TLV => write!(f, "TLV (type-length-value) error"),
             Self::TryFromSlice => write!(f, "Impossible to perform conversion from slice"),
+            Self::NotImplemented => write!(f, "Not implemented"),
         }
     }
 }
