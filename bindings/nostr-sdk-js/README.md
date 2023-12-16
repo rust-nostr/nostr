@@ -7,11 +7,11 @@ JavaScript bindings of the [`nostr-sdk`](https://crates.io/crates/nostr-sdk) cra
 ## Getting started
 
 ```sh
-npm i @rust-nostr/nostr-sdk-js
+npm i @rust-nostr/nostr-sdk
 ```
     
 ```javascript
-const { Keys, Client, Metadata, EventId, PublicKey, EventBuilder } = require("@rust-nostr/nostr-sdk-js");
+const { Keys, Client, Metadata, EventId, PublicKey, EventBuilder } = require("@rust-nostr/nostr-sdk");
 
 async function main() {
     let keys = Keys.generate();
@@ -51,7 +51,7 @@ async function main() {
     let event = EventBuilder.newReaction(event_id, public_key, "🧡").toEvent(keys);
 
     // Send custom event to all relays
-    await client.send_event(event);
+    await client.sendEvent(event);
 
     // Send custom event to a specific previously added relay
     // await client.sendEventTo("wss://relay.damus.io", event);

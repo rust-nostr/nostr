@@ -42,7 +42,7 @@ async function main() {
     let event = EventBuilder.newReaction(event_id, public_key, "🧡").toEvent(keys);
 
     // Send custom event to all relays
-    await client.send_event(event);
+    await client.sendEvent(event);
 
     // Send custom event to a specific previously added relay
     // await client.sendEventTo("wss://relay.damus.io", event);
