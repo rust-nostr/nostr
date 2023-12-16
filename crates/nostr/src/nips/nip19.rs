@@ -295,6 +295,94 @@ impl ToBech32 for Nip19Event {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct Nip19Profile {
+    pub pubkey: XOnlyPublicKey,
+    pub relays: Vec<String>,
+}
+
+impl Nip19Profile {
+    pub fn new<S>(pubkey: XOnlyPublicKey, relays: Vec<S>) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            pubkey,
+            relays: relays.into_iter().map(|u| u.into()).collect(),
+        }
+    }
+
+    fn from_bech32_data(mut data: Vec<u8>) -> Result<Nip19Profile, Error> {
+        let mut pubkey: Option<XOnlyPublicKey> = None;
+        let mut relays: Vec<String> = Vec::new();
+
+        while !data.is_empty() {
+            let t = data.first().ok_or(Error::TLV)?;
+            let l = data.get(1).ok_or(Error::TLV)?;
+            let l = *l as usize;
+
+            let bytes = data.get(2..l + 2).ok_or(Error::TLV)?;
+
+            match *t {
+                SPECIAL => {
+                    if pubkey.is_none() {
+                        pubkey = Some(XOnlyPublicKey::from_slice(bytes)?);
+                    }
+                }
+                RELAY => {
+                    relays.push(String::from_utf8(bytes.to_vec())?);
+                }
+                _ => (),
+            };
+
+            data.drain(..l + 2);
+        }
+
+        Ok(Self {
+            pubkey: pubkey.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
+            relays,
+        })
+    }
+}
+
+impl ToBech32 for Nip19Profile {
+    type Err = Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        let mut bytes: Vec<u8> = vec![SPECIAL, 32];
+        bytes.extend(self.pubkey.serialize());
+
+        for relay in self.relays.iter() {
+            bytes.extend([RELAY, relay.len() as u8]);
+            bytes.extend(relay.as_bytes());
+        }
+
+        let data = bytes.to_base32();
+        Ok(bech32::encode(
+            PREFIX_BECH32_PROFILE,
+            data,
+            Variant::Bech32,
+        )?)
+    }
+}
+
+impl FromBech32 for Nip19Profile {
+    type Err = Error;
+    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
+    where
+        S: Into<String>,
+    {
+        let (hrp, data, checksum) = bech32::decode(&s.into())?;
+
+        if hrp != PREFIX_BECH32_PROFILE || checksum != Variant::Bech32 {
+            return Err(Error::WrongPrefixOrVariant);
+        }
+
+        let data: Vec<u8> = Vec::from_base32(&data)?;
+        Nip19Profile::from_bech32_data(data)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
