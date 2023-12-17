@@ -5,12 +5,13 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_ffi::{Event, EventId, Filter, Metadata, PublicKey};
+use nostr_ffi::{Event, EventId, Filter, PublicKey};
 use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
 use nostr_sdk::{block_on, SQLiteDatabase};
 use uniffi::Object;
 
 use crate::error::Result;
+use crate::profile::Profile;
 
 #[derive(Object)]
 pub struct NostrDatabase {
@@ -90,7 +91,7 @@ impl NostrDatabase {
         block_on(async move { Ok(self.inner.wipe().await?) })
     }
 
-    pub fn profile(&self, public_key: Arc<PublicKey>) -> Result<Arc<Metadata>> {
+    pub fn profile(&self, public_key: Arc<PublicKey>) -> Result<Arc<Profile>> {
         block_on(async move { Ok(Arc::new(self.inner.profile(**public_key).await?.into())) })
     }
 }

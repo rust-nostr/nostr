@@ -8,8 +8,7 @@
 #![warn(rustdoc::bare_urls)]
 
 use core::fmt;
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashSet};
 use std::sync::Arc;
 
 pub use async_trait::async_trait;
@@ -23,6 +22,7 @@ pub mod flatbuffers;
 pub mod index;
 pub mod memory;
 mod options;
+pub mod profile;
 mod raw;
 
 pub use self::error::DatabaseError;
@@ -31,6 +31,7 @@ pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncod
 pub use self::index::{DatabaseIndexes, EventIndexResult};
 pub use self::memory::MemoryDatabase;
 pub use self::options::DatabaseOptions;
+pub use self::profile::Profile;
 pub use self::raw::RawEvent;
 
 /// Backend
@@ -152,15 +153,18 @@ pub trait NostrDatabase: AsyncTraitDeps {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrDatabaseExt: NostrDatabase {
     /// Get profile metadata
-    async fn profile(&self, public_key: XOnlyPublicKey) -> Result<Metadata, Self::Err> {
+    async fn profile(&self, public_key: XOnlyPublicKey) -> Result<Profile, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
         let events: Vec<Event> = self.query(vec![filter]).await?;
         match events.first() {
-            Some(event) => Ok(Metadata::from_json(&event.content).map_err(DatabaseError::nostr)?),
-            None => Ok(Metadata::default()), // TODO: return an Option?
+            Some(event) => {
+                let metadata = Metadata::from_json(&event.content).map_err(DatabaseError::nostr)?;
+                Ok(Profile::new(public_key, metadata))
+            }
+            None => Ok(Profile::new(public_key, Metadata::default())), // TODO: return an Option?
         }
     }
 
@@ -181,10 +185,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     }
 
     /// Get contact list with metadata of [`XOnlyPublicKey`]
-    async fn contacts(
-        &self,
-        public_key: XOnlyPublicKey,
-    ) -> Result<HashMap<XOnlyPublicKey, Metadata>, Self::Err> {
+    async fn contacts(&self, public_key: XOnlyPublicKey) -> Result<BTreeSet<Profile>, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::ContactList)
@@ -199,26 +200,18 @@ pub trait NostrDatabaseExt: NostrDatabase {
                     .authors(public_keys.clone())
                     .kind(Kind::Metadata)
                     .limit(size);
-                let mut contacts: HashMap<XOnlyPublicKey, Metadata> = self
+                Ok(self
                     .query(vec![filter])
                     .await?
                     .into_iter()
                     .map(|e| {
                         let metadata: Metadata =
                             Metadata::from_json(&e.content).unwrap_or_default();
-                        (e.pubkey, metadata)
+                        Profile::new(e.pubkey, metadata)
                     })
-                    .collect();
-
-                for public_key in public_keys.into_iter() {
-                    if let Entry::Vacant(e) = contacts.entry(public_key) {
-                        e.insert(Metadata::default());
-                    }
-                }
-
-                Ok(contacts)
+                    .collect())
             }
-            None => Ok(HashMap::new()),
+            None => Ok(BTreeSet::new()),
         }
     }
 }

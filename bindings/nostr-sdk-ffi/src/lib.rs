@@ -10,6 +10,7 @@ mod client;
 mod database;
 mod error;
 mod logger;
+pub mod profile;
 mod relay;
 mod thread;
 
