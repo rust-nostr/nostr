@@ -11,9 +11,7 @@ use std::time::Duration;
 use nostr::key::XOnlyPublicKey;
 use nostr::nips::nip94::FileMetadata;
 use nostr::url::Url;
-use nostr::{
-    ChannelId, ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Result, Tag,
-};
+use nostr::{ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Result, Tag};
 use nostr_database::DynNostrDatabase;
 use tokio::sync::broadcast;
 
@@ -335,7 +333,7 @@ impl Client {
 
     pub fn set_channel_metadata(
         &self,
-        channel_id: ChannelId,
+        channel_id: EventId,
         relay_url: Option<Url>,
         metadata: &Metadata,
     ) -> Result<EventId, Error> {
@@ -348,7 +346,7 @@ impl Client {
 
     pub fn send_channel_msg<S>(
         &self,
-        channel_id: ChannelId,
+        channel_id: EventId,
         relay_url: Url,
         msg: S,
     ) -> Result<EventId, Error>

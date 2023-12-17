@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 use super::{JsEvent, JsEventId, JsTags};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
-use crate::types::{JsChannelId, JsContact, JsMetadata};
+use crate::types::{JsContact, JsMetadata};
 use crate::util;
 
 #[wasm_bindgen(js_name = EventBuilder)]
@@ -155,7 +155,7 @@ impl JsEventBuilder {
 
     #[wasm_bindgen(js_name = setChannelMetadata)]
     pub fn set_channel_metadata(
-        channel_id: &JsChannelId,
+        channel_id: &JsEventId,
         relay_url: Option<String>,
         metadata: &JsMetadata,
     ) -> Result<JsEventBuilder> {
@@ -174,7 +174,7 @@ impl JsEventBuilder {
 
     #[wasm_bindgen(js_name = newChannelMsg)]
     pub fn new_channel_msg(
-        channel_id: &JsChannelId,
+        channel_id: &JsEventId,
         relay_url: String,
         content: String,
     ) -> Result<JsEventBuilder> {

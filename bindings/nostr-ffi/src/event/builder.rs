@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::url::Url;
-use nostr::{ChannelId, Contact as ContactSdk, UncheckedUrl};
+use nostr::{Contact as ContactSdk, UncheckedUrl};
 use uniffi::Object;
 
 use super::{Event, EventId};
@@ -205,7 +205,7 @@ impl EventBuilder {
 
     #[uniffi::constructor]
     pub fn set_channel_metadata(
-        channel_id: String,
+        channel_id: Arc<EventId>,
         relay_url: Option<String>,
         metadata: Arc<Metadata>,
     ) -> Result<Arc<Self>> {
@@ -215,7 +215,7 @@ impl EventBuilder {
         };
         Ok(Arc::new(Self {
             inner: nostr::EventBuilder::set_channel_metadata(
-                ChannelId::from_hex(channel_id)?,
+                **channel_id,
                 relay_url,
                 metadata.as_ref().deref(),
             ),
@@ -224,13 +224,13 @@ impl EventBuilder {
 
     #[uniffi::constructor]
     pub fn new_channel_msg(
-        channel_id: String,
+        channel_id: Arc<EventId>,
         relay_url: String,
         content: String,
     ) -> Result<Arc<Self>> {
         Ok(Arc::new(Self {
             inner: nostr::EventBuilder::new_channel_msg(
-                ChannelId::from_hex(channel_id)?,
+                **channel_id,
                 Url::parse(&relay_url)?,
                 content,
             ),

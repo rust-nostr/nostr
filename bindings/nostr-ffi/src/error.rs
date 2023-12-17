@@ -168,12 +168,6 @@ impl From<nostr::event::id::Error> for NostrError {
     }
 }
 
-impl From<nostr::types::channel_id::Error> for NostrError {
-    fn from(e: nostr::types::channel_id::Error) -> NostrError {
-        Self::Generic { err: e.to_string() }
-    }
-}
-
 impl From<AddrParseError> for NostrError {
     fn from(e: AddrParseError) -> NostrError {
         Self::Generic { err: e.to_string() }

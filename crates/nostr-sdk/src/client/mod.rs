@@ -18,8 +18,8 @@ use nostr::nips::nip94::FileMetadata;
 use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
 use nostr::{
-    ChannelId, ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind,
-    Metadata, Result, Tag, Timestamp,
+    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind, Metadata,
+    Result, Tag, Timestamp,
 };
 use nostr_database::DynNostrDatabase;
 use nostr_sdk_net::futures_util::Future;
@@ -1141,7 +1141,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn set_channel_metadata(
         &self,
-        channel_id: ChannelId,
+        channel_id: EventId,
         relay_url: Option<Url>,
         metadata: &Metadata,
     ) -> Result<EventId, Error> {
@@ -1154,7 +1154,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn send_channel_msg<S>(
         &self,
-        channel_id: ChannelId,
+        channel_id: EventId,
         relay_url: Url,
         msg: S,
     ) -> Result<EventId, Error>

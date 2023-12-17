@@ -35,7 +35,7 @@ use crate::nips::{nip13, nip58};
 #[cfg(feature = "std")]
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
-use crate::types::{ChannelId, Contact, Metadata, Timestamp};
+use crate::types::{Contact, Metadata, Timestamp};
 use crate::util::EventIdOrCoordinate;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
@@ -510,7 +510,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn set_channel_metadata(
-        channel_id: ChannelId,
+        channel_id: EventId,
         relay_url: Option<Url>,
         metadata: &Metadata,
     ) -> Self {
@@ -518,7 +518,7 @@ impl EventBuilder {
             Kind::ChannelMetadata,
             metadata.as_json(),
             [Tag::Event {
-                event_id: channel_id.into(),
+                event_id: channel_id,
                 relay_url: relay_url.map(|u| u.into()),
                 marker: None,
             }],
@@ -528,7 +528,7 @@ impl EventBuilder {
     /// New channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel_msg<S>(channel_id: ChannelId, relay_url: Url, content: S) -> Self
+    pub fn new_channel_msg<S>(channel_id: EventId, relay_url: Url, content: S) -> Self
     where
         S: Into<String>,
     {
@@ -536,7 +536,7 @@ impl EventBuilder {
             Kind::ChannelMessage,
             content,
             [Tag::Event {
-                event_id: channel_id.into(),
+                event_id: channel_id,
                 relay_url: Some(relay_url.into()),
                 marker: Some(Marker::Root),
             }],

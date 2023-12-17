@@ -11,9 +11,7 @@ use std::time::Duration;
 use js_sys::Array;
 use nostr_js::error::{into_err, Result};
 use nostr_js::util;
-use nostr_js::{
-    JsChannelId, JsContact, JsEvent, JsEventId, JsFilter, JsKeys, JsMetadata, JsPublicKey,
-};
+use nostr_js::{JsContact, JsEvent, JsEventId, JsFilter, JsKeys, JsMetadata, JsPublicKey};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -378,7 +376,7 @@ impl JsClient {
     #[wasm_bindgen(js_name = setChannelMetadata)]
     pub async fn set_channel_metadata(
         &self,
-        channel_id: &JsChannelId,
+        channel_id: &JsEventId,
         relay_url: Option<String>,
         metadata: &JsMetadata,
     ) -> Result<JsEventId> {
@@ -399,7 +397,7 @@ impl JsClient {
     #[wasm_bindgen(js_name = sendChannelMsg)]
     pub async fn send_channel_msg(
         &self,
-        channel_id: &JsChannelId,
+        channel_id: &JsEventId,
         relay_url: String,
         msg: String,
     ) -> Result<JsEventId> {

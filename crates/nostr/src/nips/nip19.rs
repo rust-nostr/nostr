@@ -23,7 +23,6 @@ use crate::event::id::{self, EventId};
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 pub const PREFIX_BECH32_NOTE_ID: &str = "note";
-pub const PREFIX_BECH32_CHANNEL: &str = "nchannel";
 pub const PREFIX_BECH32_PROFILE: &str = "nprofile";
 pub const PREFIX_BECH32_EVENT: &str = "nevent";
 pub const PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT: &str = "naddr";
@@ -116,8 +115,6 @@ enum Nip19Prefix {
     NPub,
     /// note
     Note,
-    /// nchannel
-    NChannel,
     /// nprofile
     NProfile,
     /// nevent
@@ -135,7 +132,6 @@ impl TryFrom<&str> for Nip19Prefix {
             PREFIX_BECH32_SECRET_KEY => Ok(Nip19Prefix::NSec),
             PREFIX_BECH32_PUBLIC_KEY => Ok(Nip19Prefix::NPub),
             PREFIX_BECH32_NOTE_ID => Ok(Nip19Prefix::Note),
-            PREFIX_BECH32_CHANNEL => Ok(Nip19Prefix::NChannel),
             PREFIX_BECH32_PROFILE => Ok(Nip19Prefix::NProfile),
             PREFIX_BECH32_EVENT => Ok(Nip19Prefix::NEvent),
             PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT => Ok(Nip19Prefix::NAddr),
@@ -233,7 +229,6 @@ impl FromBech32 for Nip19 {
             Nip19Prefix::NEvent => Ok(Self::Event(Nip19Event::from_bech32_data(data)?)),
             Nip19Prefix::Note => Ok(Self::EventId(EventId::from_slice(data.as_slice())?)),
             Nip19Prefix::NAddr => Err(Error::NotImplemented),
-            Nip19Prefix::NChannel => Err(Error::NotImplemented),
         }
     }
 }
