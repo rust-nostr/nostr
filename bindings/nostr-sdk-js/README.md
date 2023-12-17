@@ -2,7 +2,15 @@
 	
 ## Description
 
-JavaScript bindings of the [`nostr-sdk`](https://crates.io/crates/nostr-sdk) crate.
+A high-level, [Nostr](https://github.com/nostr-protocol/nostr) client library.
+
+If you're writing a typical Nostr client or bot, this is likely the crate you need.
+
+However, the crate is designed in a modular way and depends on several other lower-level libraries. If you're attempting something more custom, you might be interested in these:
+
+- [`nostr`](https://www.npmjs.com/package/@rust-nostr/nostr): Implementation of Nostr protocol
+
+This library **should** work on every JavaScript environment (nodejs, web, react native, ...).
 
 ## Getting started
 
@@ -11,9 +19,14 @@ npm i @rust-nostr/nostr-sdk
 ```
     
 ```javascript
-const { Keys, Client, Metadata, EventId, PublicKey, EventBuilder } = require("@rust-nostr/nostr-sdk");
+const { Keys, Client, Metadata, EventId, PublicKey, EventBuilder, loadWasmAsync } = require("@rust-nostr/nostr-sdk");
 
 async function main() {
+    // Load WASM 
+    // if you are in a non async context, use loadWasmSync()
+    await loadWasmAsync();
+
+    // Generate random keys
     let keys = Keys.generate();
 
     // Hex keys
