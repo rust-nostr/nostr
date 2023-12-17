@@ -9,7 +9,8 @@ use std::sync::Arc;
 use nostr::nips::nip05;
 
 use crate::error::Result;
-use crate::{Profile, PublicKey};
+use crate::nips::nip19::Nip19Profile;
+use crate::PublicKey;
 
 #[uniffi::export]
 pub fn verify_nip05(
@@ -29,7 +30,7 @@ pub fn verify_nip05(
 }
 
 #[uniffi::export]
-pub fn get_nip05_profile(nip05: String, proxy: Option<String>) -> Result<Arc<Profile>> {
+pub fn get_nip05_profile(nip05: String, proxy: Option<String>) -> Result<Arc<Nip19Profile>> {
     let proxy: Option<SocketAddr> = match proxy {
         Some(proxy) => Some(proxy.parse()?),
         None => None,
