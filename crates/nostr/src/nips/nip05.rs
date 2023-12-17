@@ -18,7 +18,7 @@ use bitcoin::secp256k1::{self, XOnlyPublicKey};
 use reqwest::Proxy;
 use serde_json::Value;
 
-use crate::Profile;
+use crate::nips::nip19::Nip19Profile;
 
 /// `NIP05` error
 #[derive(Debug)]
@@ -185,7 +185,7 @@ where
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn get_profile<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Profile, Error>
+pub async fn get_profile<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
 where
     S: Into<String>,
 {
@@ -204,13 +204,13 @@ where
     let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
     let relays = get_relays_from_json(json, public_key);
 
-    Ok(Profile { public_key, relays })
+    Ok(Nip19Profile { public_key, relays })
 }
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "blocking")]
-pub fn get_profile_blocking<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Profile, Error>
+pub fn get_profile_blocking<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
 where
     S: Into<String>,
 {
@@ -229,12 +229,12 @@ where
     let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
     let relays = get_relays_from_json(json, public_key);
 
-    Ok(Profile { public_key, relays })
+    Ok(Nip19Profile { public_key, relays })
 }
 
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(target_arch = "wasm32")]
-pub async fn get_profile<S>(nip05: S) -> Result<Profile, Error>
+pub async fn get_profile<S>(nip05: S) -> Result<Nip19Profile, Error>
 where
     S: Into<String>,
 {
@@ -248,5 +248,5 @@ where
     let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
     let relays = get_relays_from_json(json, public_key);
 
-    Ok(Profile { public_key, relays })
+    Ok(Nip19Profile { public_key, relays })
 }

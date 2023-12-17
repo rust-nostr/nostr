@@ -13,9 +13,8 @@ use core::fmt;
 use bitcoin::secp256k1::XOnlyPublicKey;
 
 use super::nip01::Coordinate;
-use super::nip19::{Error as NIP19Error, FromBech32, Nip19Event, ToBech32};
+use super::nip19::{Error as NIP19Error, FromBech32, Nip19Event, Nip19Profile, ToBech32};
 use crate::event::id::EventId;
-use crate::types::profile::Profile;
 
 /// URI scheme
 pub const SCHEME: &str = "nostr";
@@ -72,7 +71,7 @@ where
 
 impl NostrURI for XOnlyPublicKey {}
 impl NostrURI for EventId {}
-impl NostrURI for Profile {}
+impl NostrURI for Nip19Profile {}
 impl NostrURI for Nip19Event {}
 impl NostrURI for Coordinate {}
 
