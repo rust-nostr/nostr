@@ -2,9 +2,11 @@
 	
 ## Description
 
-JavaScript bindings of the [`nostr`](https://crates.io/crates/nostr) crate.
+JavaScript bindings of [nostr](https://github.com/rust-nostr/nostr) library.
 
-This library - should - work on every JavaScript environment (nodejs, web, react native, ...).
+If you're writing a typical Nostr client or bot, you may be interested in [nostr-sdk](https://www.npmjs.com/package/@rust-nostr/nostr-sdk).
+
+This library **should** work on every JavaScript environment (nodejs, web, react native, ...).
 
 ## Getting started
 
