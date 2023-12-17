@@ -28,72 +28,10 @@ pub const PREFIX_BECH32_PROFILE: &str = "nprofile";
 pub const PREFIX_BECH32_EVENT: &str = "nevent";
 pub const PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT: &str = "naddr";
 
-/// To ensure total matching on prefixes when decoding a [`Nip19`] object
-enum Nip19Prefix {
-    /// nsec
-    NSec,
-    /// npub
-    NPub,
-    /// note
-    Note,
-    /// nchannel
-    NChannel,
-    /// nprofile
-    NProfile,
-    /// nevent
-    NEvent,
-    /// naddr
-    NAddr,
-}
-
-/// Convert NIP19 [`&str`] prefixes to [`Nip19Prefix`]
-impl TryFrom<&str> for Nip19Prefix {
-    type Error = Error;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            PREFIX_BECH32_SECRET_KEY => Ok(Nip19Prefix::NSec),
-            PREFIX_BECH32_PUBLIC_KEY => Ok(Nip19Prefix::NPub),
-            PREFIX_BECH32_NOTE_ID => Ok(Nip19Prefix::Note),
-            PREFIX_BECH32_CHANNEL => Ok(Nip19Prefix::NChannel),
-            PREFIX_BECH32_PROFILE => Ok(Nip19Prefix::NProfile),
-            PREFIX_BECH32_EVENT => Ok(Nip19Prefix::NEvent),
-            PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT => Ok(Nip19Prefix::NAddr),
-            _ => Err(Error::WrongPrefixOrVariant),
-        }
-    }
-}
-
-/// Convert NIP19 [`String`] prefixes to [`Nip19Prefix`]
-impl TryFrom<String> for Nip19Prefix {
-    type Error = Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        value.as_str().try_into()
-    }
-}
-
 pub const SPECIAL: u8 = 0;
 pub const RELAY: u8 = 1;
 pub const AUTHOR: u8 = 2;
 pub const KIND: u8 = 3;
-
-/// A representation any `fNIP19` bech32 nostr object. Useful for decoding
-/// `NIP19` bech32 strings without necessarily knowing what you're decoding
-/// ahead of time.
-#[derive(Debug, Eq, PartialEq)]
-pub enum Nip19 {
-    /// nsec
-    Secret(SecretKey),
-    /// npub
-    Pubkey(XOnlyPublicKey),
-    /// nprofile
-    Profile(Nip19Profile),
-    /// note
-    EventId(EventId),
-    /// nevent
-    Event(Nip19Event),
-}
 
 /// `NIP19` error
 #[derive(Debug, Eq, PartialEq)]
@@ -170,6 +108,68 @@ impl From<id::Error> for Error {
     }
 }
 
+/// To ensure total matching on prefixes when decoding a [`Nip19`] object
+enum Nip19Prefix {
+    /// nsec
+    NSec,
+    /// npub
+    NPub,
+    /// note
+    Note,
+    /// nchannel
+    NChannel,
+    /// nprofile
+    NProfile,
+    /// nevent
+    NEvent,
+    /// naddr
+    NAddr,
+}
+
+/// Convert NIP19 [`&str`] prefixes to [`Nip19Prefix`]
+impl TryFrom<&str> for Nip19Prefix {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            PREFIX_BECH32_SECRET_KEY => Ok(Nip19Prefix::NSec),
+            PREFIX_BECH32_PUBLIC_KEY => Ok(Nip19Prefix::NPub),
+            PREFIX_BECH32_NOTE_ID => Ok(Nip19Prefix::Note),
+            PREFIX_BECH32_CHANNEL => Ok(Nip19Prefix::NChannel),
+            PREFIX_BECH32_PROFILE => Ok(Nip19Prefix::NProfile),
+            PREFIX_BECH32_EVENT => Ok(Nip19Prefix::NEvent),
+            PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT => Ok(Nip19Prefix::NAddr),
+            _ => Err(Error::WrongPrefixOrVariant),
+        }
+    }
+}
+
+/// Convert NIP19 [`String`] prefixes to [`Nip19Prefix`]
+impl TryFrom<String> for Nip19Prefix {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.as_str().try_into()
+    }
+}
+
+/// A representation any `fNIP19` bech32 nostr object. Useful for decoding
+/// `NIP19` bech32 strings without necessarily knowing what you're decoding
+/// ahead of time.
+#[derive(Debug, Eq, PartialEq)]
+pub enum Nip19 {
+    /// nsec
+    Secret(SecretKey),
+    /// npub
+    Pubkey(XOnlyPublicKey),
+    /// nprofile
+    Profile(Nip19Profile),
+    /// note
+    EventId(EventId),
+    /// nevent
+    Event(Nip19Event),
+}
+
 pub trait FromBech32: Sized {
     type Err;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
@@ -224,14 +224,14 @@ impl FromBech32 for Nip19 {
             return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data)?;
+        let data: Vec<u8> = Vec::<u8>::from_base32(&data)?;
 
         match prefix {
-            Nip19Prefix::NSec => Ok(Nip19::Secret(SecretKey::from_slice(data.as_slice())?)),
-            Nip19Prefix::NPub => Ok(Nip19::Pubkey(XOnlyPublicKey::from_slice(data.as_slice())?)),
-            Nip19Prefix::NProfile => Ok(Nip19::Profile(Nip19Profile::from_bech32_data(data)?)),
-            Nip19Prefix::NEvent => Ok(Nip19::Event(Nip19Event::from_bech32_data(data)?)),
-            Nip19Prefix::Note => Ok(Nip19::EventId(EventId::from_slice(data.as_slice())?)),
+            Nip19Prefix::NSec => Ok(Self::Secret(SecretKey::from_slice(data.as_slice())?)),
+            Nip19Prefix::NPub => Ok(Self::Pubkey(XOnlyPublicKey::from_slice(data.as_slice())?)),
+            Nip19Prefix::NProfile => Ok(Self::Profile(Nip19Profile::from_bech32_data(data)?)),
+            Nip19Prefix::NEvent => Ok(Self::Event(Nip19Event::from_bech32_data(data)?)),
+            Nip19Prefix::Note => Ok(Self::EventId(EventId::from_slice(data.as_slice())?)),
             Nip19Prefix::NAddr => Err(Error::NotImplemented),
             Nip19Prefix::NChannel => Err(Error::NotImplemented),
         }
@@ -264,8 +264,8 @@ impl FromBech32 for EventId {
             return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data)?;
-        Ok(EventId::from_slice(data.as_slice())?)
+        let data: Vec<u8> = Vec::<u8>::from_base32(&data)?;
+        Ok(Self::from_slice(data.as_slice())?)
     }
 }
 
@@ -331,7 +331,7 @@ impl Nip19Event {
         }
     }
 
-    fn from_bech32_data(mut data: Vec<u8>) -> Result<Nip19Event, Error> {
+    fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut event_id: Option<EventId> = None;
         let mut relays: Vec<String> = Vec::new();
 
@@ -377,7 +377,7 @@ impl FromBech32 for Nip19Event {
         }
 
         let data: Vec<u8> = Vec::from_base32(&data)?;
-        Nip19Event::from_bech32_data(data)
+        Self::from_bech32_data(data)
     }
 }
 
@@ -400,23 +400,23 @@ impl ToBech32 for Nip19Event {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Nip19Profile {
-    pub pubkey: XOnlyPublicKey,
+    pub public_key: XOnlyPublicKey,
     pub relays: Vec<String>,
 }
 
 impl Nip19Profile {
-    pub fn new<S>(pubkey: XOnlyPublicKey, relays: Vec<S>) -> Self
+    pub fn new<S>(public_key: XOnlyPublicKey, relays: Vec<S>) -> Self
     where
         S: Into<String>,
     {
         Self {
-            pubkey,
+            public_key,
             relays: relays.into_iter().map(|u| u.into()).collect(),
         }
     }
 
-    fn from_bech32_data(mut data: Vec<u8>) -> Result<Nip19Profile, Error> {
-        let mut pubkey: Option<XOnlyPublicKey> = None;
+    fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
+        let mut public_key: Option<XOnlyPublicKey> = None;
         let mut relays: Vec<String> = Vec::new();
 
         while !data.is_empty() {
@@ -428,8 +428,8 @@ impl Nip19Profile {
 
             match *t {
                 SPECIAL => {
-                    if pubkey.is_none() {
-                        pubkey = Some(XOnlyPublicKey::from_slice(bytes)?);
+                    if public_key.is_none() {
+                        public_key = Some(XOnlyPublicKey::from_slice(bytes)?);
                     }
                 }
                 RELAY => {
@@ -442,7 +442,7 @@ impl Nip19Profile {
         }
 
         Ok(Self {
-            pubkey: pubkey.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
+            public_key: public_key.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
             relays,
         })
     }
@@ -453,7 +453,7 @@ impl ToBech32 for Nip19Profile {
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
         let mut bytes: Vec<u8> = vec![SPECIAL, 32];
-        bytes.extend(self.pubkey.serialize());
+        bytes.extend(self.public_key.serialize());
 
         for relay in self.relays.iter() {
             bytes.extend([RELAY, relay.len() as u8]);
@@ -482,7 +482,7 @@ impl FromBech32 for Nip19Profile {
         }
 
         let data: Vec<u8> = Vec::from_base32(&data)?;
-        Nip19Profile::from_bech32_data(data)
+        Self::from_bech32_data(data)
     }
 }
 
