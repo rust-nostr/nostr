@@ -8,7 +8,6 @@ use wasm_bindgen::prelude::*;
 
 pub mod error;
 mod event;
-mod future;
 mod key;
 mod message;
 pub mod nips;

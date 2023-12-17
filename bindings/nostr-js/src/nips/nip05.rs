@@ -2,19 +2,16 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use js_sys::Promise;
 use nostr::nips::nip05;
 use wasm_bindgen::prelude::*;
 
-use crate::future::future_to_promise;
+use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
 
 /// Verify NIP05
 #[wasm_bindgen(js_name = verifyNip05)]
-pub fn verify_nip05(public_key: JsPublicKey, nip05: String) -> Promise {
-    future_to_promise(async move {
-        Ok(nip05::verify(public_key.into(), nip05.as_str(), None)
-            .await
-            .is_ok())
-    })
+pub async fn verify_nip05(public_key: JsPublicKey, nip05: String) -> Result<()> {
+    nip05::verify(public_key.into(), nip05.as_str(), None)
+        .await
+        .map_err(into_err)
 }
