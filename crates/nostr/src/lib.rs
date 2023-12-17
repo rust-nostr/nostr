@@ -62,7 +62,7 @@ pub use self::message::{
     RelayMessage, SubscriptionId,
 };
 pub use self::nips::nip19::{FromBech32, ToBech32};
-pub use self::types::{ChannelId, Contact, Entity, Metadata, Profile, Timestamp, UncheckedUrl};
+pub use self::types::{ChannelId, Contact, Entity, Metadata, Timestamp, UncheckedUrl};
 pub use self::util::JsonUtil;
 #[cfg(feature = "std")]
 pub use self::util::SECP256K1;
