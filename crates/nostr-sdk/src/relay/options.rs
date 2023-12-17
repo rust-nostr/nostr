@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,6 +17,9 @@ pub const MAX_ADJ_RETRY_SEC: u64 = 60;
 /// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
+    /// Proxy
+    #[cfg(not(target_arch = "wasm32"))]
+    pub proxy: Option<SocketAddr>,
     /// Allow/disallow read actions (default: true)
     read: Arc<AtomicBool>,
     /// Allow/disallow write actions (default: true)
@@ -32,6 +37,8 @@ pub struct RelayOptions {
 impl Default for RelayOptions {
     fn default() -> Self {
         Self {
+            #[cfg(not(target_arch = "wasm32"))]
+            proxy: None,
             read: Arc::new(AtomicBool::new(true)),
             write: Arc::new(AtomicBool::new(true)),
             reconnect: Arc::new(AtomicBool::new(true)),
@@ -45,6 +52,13 @@ impl RelayOptions {
     /// New [`RelayOptions`]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set proxy
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn proxy(mut self, proxy: Option<SocketAddr>) -> Self {
+        self.proxy = proxy;
+        self
     }
 
     /// Set read option
