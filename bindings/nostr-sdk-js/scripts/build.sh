@@ -16,7 +16,10 @@ set -e
 
 cd $(dirname "$0")/..
 
-WASM_BINDGEN_WEAKREF=1 wasm-pack build --target nodejs --scope rust-nostr --out-dir pkg "${WASM_PACK_ARGS[@]}"
+wasm-pack build --target nodejs --scope rust-nostr --weak-refs --out-dir pkg "${WASM_PACK_ARGS[@]}"
+
+# Shrinking .wasm Size
+wc -c pkg/nostr_sdk_js_bg.wasm
 
 # Convert the Wasm into a JS file that exports the base64'ed Wasm.
 echo "module.exports = \`$(base64 pkg/nostr_sdk_js_bg.wasm)\`;" > pkg/nostr_sdk_js_bg.wasm.js

@@ -1,4 +1,3 @@
-// Import `WebSocket` from `ws` library (required to make this library work on nodejs native environments)
 let WebSocketClass;
 
 // Check if WebSocket is available in the current environment

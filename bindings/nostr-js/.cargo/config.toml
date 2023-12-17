@@ -2,7 +2,9 @@
 target = "wasm32-unknown-unknown"
 
 [profile.release]
-opt-level = "s"
+opt-level = 3
 lto = true
 codegen-units = 1
 panic = "abort"
+strip = true
+debug = false
