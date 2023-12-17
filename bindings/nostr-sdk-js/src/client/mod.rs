@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+#![allow(non_snake_case)]
+
 // use std::collections::HashMap;
 use std::ops::Deref;
 use std::time::Duration;
