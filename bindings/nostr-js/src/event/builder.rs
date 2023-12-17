@@ -92,9 +92,8 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = setContactList)]
     pub fn set_contact_list(list: Array) -> Result<JsEventBuilder> {
         let list = list
-            .iter()
-            .map(|v| Ok(util::downcast::<JsContact>(&v, "Contact")?.inner()))
-            .collect::<Result<Vec<Contact>, JsError>>()?;
+            .into_iter()
+            .filter_map(|v| Some(util::downcast::<JsContact>(&v, "Contact").ok()?.inner()));
         Ok(Self {
             builder: EventBuilder::set_contact_list(list),
         })
@@ -128,9 +127,8 @@ impl JsEventBuilder {
     #[wasm_bindgen]
     pub fn delete(ids: Array, reason: Option<String>) -> Result<JsEventBuilder> {
         let ids = ids
-            .iter()
-            .map(|v| Ok(util::downcast::<JsEventId>(&v, "EventId")?.inner))
-            .collect::<Result<Vec<EventId>, JsError>>()?;
+            .into_iter()
+            .filter_map(|v| Some(util::downcast::<JsEventId>(&v, "EventId").ok()?.inner));
         Ok(Self {
             builder: match reason {
                 Some(reason) => EventBuilder::delete_with_reason(ids, reason),

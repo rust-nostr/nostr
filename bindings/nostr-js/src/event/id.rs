@@ -14,8 +14,8 @@ pub struct JsEventId {
 }
 
 impl From<EventId> for JsEventId {
-    fn from(event_id: EventId) -> Self {
-        Self { inner: event_id }
+    fn from(inner: EventId) -> Self {
+        Self { inner }
     }
 }
 

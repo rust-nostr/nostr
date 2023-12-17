@@ -84,9 +84,8 @@ impl JsFilter {
     #[wasm_bindgen]
     pub fn ids(&self, ids: Array) -> Result<JsFilter> {
         let ids = ids
-            .iter()
-            .map(|v| Ok(util::downcast::<JsEventId>(&v, "EventId")?.inner))
-            .collect::<Result<Vec<EventId>, JsError>>()?;
+            .into_iter()
+            .filter_map(|v| Some(util::downcast::<JsEventId>(&v, "EventId").ok()?.inner));
         Ok(Self {
             inner: self.inner.to_owned().ids(ids),
         })
@@ -104,9 +103,8 @@ impl JsFilter {
     #[wasm_bindgen]
     pub fn authors(&self, authors: Array) -> Result<JsFilter> {
         let authors = authors
-            .iter()
-            .map(|v| Ok(util::downcast::<JsPublicKey>(&v, "PublicKey")?.inner))
-            .collect::<Result<Vec<XOnlyPublicKey>, JsError>>()?;
+            .into_iter()
+            .filter_map(|v| Some(util::downcast::<JsPublicKey>(&v, "PublicKey").ok()?.inner));
         Ok(Self {
             inner: self.inner.to_owned().authors(authors),
         })
@@ -123,7 +121,7 @@ impl JsFilter {
     /// Set kinds
     #[wasm_bindgen]
     pub fn kinds(&self, kinds: Vec<u64>) -> Self {
-        let kinds: Vec<Kind> = kinds.into_iter().map(Kind::from).collect();
+        let kinds = kinds.into_iter().map(Kind::from);
         Self {
             inner: self.inner.to_owned().kinds(kinds),
         }
@@ -141,9 +139,8 @@ impl JsFilter {
     #[wasm_bindgen]
     pub fn events(&self, ids: Array) -> Result<JsFilter> {
         let events = ids
-            .iter()
-            .map(|v| Ok(util::downcast::<JsEventId>(&v, "EventId")?.inner))
-            .collect::<Result<Vec<EventId>, JsError>>()?;
+            .into_iter()
+            .filter_map(|v| Some(util::downcast::<JsEventId>(&v, "EventId").ok()?.inner));
         Ok(Self {
             inner: self.inner.to_owned().events(events),
         })
@@ -161,9 +158,8 @@ impl JsFilter {
     #[wasm_bindgen]
     pub fn pubkeys(&self, pubkeys: Array) -> Result<JsFilter> {
         let pubkeys = pubkeys
-            .iter()
-            .map(|v| Ok(util::downcast::<JsPublicKey>(&v, "PublicKey")?.inner))
-            .collect::<Result<Vec<XOnlyPublicKey>, JsError>>()?;
+            .into_iter()
+            .filter_map(|v| Some(util::downcast::<JsPublicKey>(&v, "PublicKey").ok()?.inner));
         Ok(Self {
             inner: self.inner.to_owned().pubkeys(pubkeys),
         })
@@ -184,7 +180,7 @@ impl JsFilter {
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
     pub fn hashtags(&self, hashtags: Vec<JsString>) -> Self {
-        let hashtags: Vec<String> = hashtags.iter().filter_map(|t| t.as_string()).collect();
+        let hashtags = hashtags.into_iter().filter_map(|t| t.as_string());
         Self {
             inner: self.inner.to_owned().hashtags(hashtags),
         }
@@ -205,7 +201,7 @@ impl JsFilter {
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
     pub fn references(&self, v: Vec<JsString>) -> Result<JsFilter> {
-        let v: Vec<String> = v.iter().filter_map(|v| v.as_string()).collect();
+        let v = v.into_iter().filter_map(|v| v.as_string());
         Ok(Self {
             inner: self.inner.to_owned().references(v),
         })
