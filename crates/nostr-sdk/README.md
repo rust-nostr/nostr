@@ -54,11 +54,14 @@ async fn main() -> Result<()> {
     let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
 
     // Add relays
-    client.add_relay("wss://relay.damus.io", None).await?;
-    client.add_relay("wss://relay.nostr.info", proxy).await?;
-    client.add_relay(
+    client.add_relay("wss://relay.damus.io").await?;
+    client.add_relay_with_opts(
+        "wss://relay.nostr.info", 
+        RelayOptions::new().proxy(proxy).write(false)
+    ).await?;
+    client.add_relay_with_opts(
         "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
-        proxy,
+        RelayOptions::new().proxy(proxy),
     ).await?;
 
     // Connect to relays

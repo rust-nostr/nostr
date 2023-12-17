@@ -15,8 +15,8 @@ async fn main() -> Result<()> {
 
     let opts = Options::new().shutdown_on_drop(true);
     let client = Client::with_opts(&my_keys, opts);
-    client.add_relay("wss://relay.nostr.info", None).await?;
-    client.add_relay("wss://relay.damus.io", None).await?;
+    client.add_relay("wss://relay.nostr.info").await?;
+    client.add_relay("wss://relay.damus.io").await?;
 
     client.connect().await;
 

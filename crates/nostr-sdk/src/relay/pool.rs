@@ -5,8 +5,6 @@
 //! Relay Pool
 
 use std::collections::HashMap;
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -450,38 +448,6 @@ impl RelayPool {
     }
 
     /// Add new relay
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn add_relay<U>(
-        &self,
-        url: U,
-        proxy: Option<SocketAddr>,
-        opts: RelayOptions,
-    ) -> Result<bool, Error>
-    where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        let url: Url = url.try_into_url()?;
-        let mut relays = self.relays.write().await;
-        if !relays.contains_key(&url) {
-            let relay = Relay::new(
-                url,
-                self.database.clone(),
-                self.pool_task_sender.clone(),
-                self.notification_sender.clone(),
-                proxy,
-                opts,
-                Limits::default(),
-            );
-            relays.insert(relay.url(), relay);
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
-    /// Add new relay
-    #[cfg(target_arch = "wasm32")]
     pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,

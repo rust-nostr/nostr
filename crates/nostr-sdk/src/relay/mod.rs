@@ -260,8 +260,6 @@ impl ActiveSubscription {
 #[derive(Debug, Clone)]
 pub struct Relay {
     url: Url,
-    #[cfg(not(target_arch = "wasm32"))]
-    proxy: Option<SocketAddr>,
     status: Arc<RwLock<RelayStatus>>,
     #[cfg(feature = "nip11")]
     document: Arc<RwLock<RelayInformationDocument>>,
@@ -286,40 +284,6 @@ impl PartialEq for Relay {
 
 impl Relay {
     /// Create new `Relay`
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn new(
-        url: Url,
-        database: Arc<DynNostrDatabase>,
-        pool_sender: Sender<RelayPoolMessage>,
-        notification_sender: broadcast::Sender<RelayPoolNotification>,
-        proxy: Option<SocketAddr>,
-        opts: RelayOptions,
-        limits: Limits,
-    ) -> Self {
-        let (relay_sender, relay_receiver) = mpsc::channel::<Message>(1024);
-
-        Self {
-            url,
-            proxy,
-            status: Arc::new(RwLock::new(RelayStatus::Initialized)),
-            #[cfg(feature = "nip11")]
-            document: Arc::new(RwLock::new(RelayInformationDocument::new())),
-            opts,
-            stats: RelayConnectionStats::new(),
-            database,
-            scheduled_for_stop: Arc::new(AtomicBool::new(false)),
-            scheduled_for_termination: Arc::new(AtomicBool::new(false)),
-            pool_sender,
-            relay_sender,
-            relay_receiver: Arc::new(Mutex::new(relay_receiver)),
-            notification_sender,
-            subscriptions: Arc::new(RwLock::new(HashMap::new())),
-            limits,
-        }
-    }
-
-    /// Create new `Relay`
-    #[cfg(target_arch = "wasm32")]
     pub fn new(
         url: Url,
         database: Arc<DynNostrDatabase>,
@@ -357,7 +321,7 @@ impl Relay {
     /// Get proxy
     #[cfg(not(target_arch = "wasm32"))]
     pub fn proxy(&self) -> Option<SocketAddr> {
-        self.proxy
+        self.opts.proxy
     }
 
     /// Get [`RelayStatus`]
@@ -578,11 +542,10 @@ impl Relay {
             let relay = self.clone();
             thread::spawn(async move {
                 #[cfg(not(target_arch = "wasm32"))]
-                let document = RelayInformationDocument::get(relay.url(), relay.proxy()).await;
+                let proxy = relay.proxy();
                 #[cfg(target_arch = "wasm32")]
-                let document = RelayInformationDocument::get(relay.url()).await;
-
-                match document {
+                let proxy = None;
+                match RelayInformationDocument::get(relay.url(), proxy).await {
                     Ok(document) => relay.set_document(document).await,
                     Err(e) => tracing::error!(
                         "Impossible to get information document from {}: {}",
@@ -594,7 +557,7 @@ impl Relay {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        let connection = net::native::connect(&self.url, self.proxy, None).await;
+        let connection = net::native::connect(&self.url, self.proxy(), None).await;
         #[cfg(target_arch = "wasm32")]
         let connection = net::wasm::connect(&self.url).await;
 

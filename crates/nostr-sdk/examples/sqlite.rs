@@ -16,9 +16,9 @@ async fn main() -> Result<()> {
     let database = SQLiteDatabase::open("./db/sqlite.db").await?;
     let client: Client = ClientBuilder::new(&my_keys).database(database).build();
 
-    client.add_relay("wss://relay.damus.io", None).await?;
-    client.add_relay("wss://nostr.wine", None).await?;
-    client.add_relay("wss://atl.purplerelay.com", None).await?;
+    client.add_relay("wss://relay.damus.io").await?;
+    client.add_relay("wss://nostr.wine").await?;
+    client.add_relay("wss://atl.purplerelay.com").await?;
 
     client.connect().await;
 

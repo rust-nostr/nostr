@@ -14,7 +14,7 @@ async fn main() -> Result<()> {
     let my_keys = Keys::new(secret_key);
 
     let client = Client::new(&my_keys);
-    client.add_relay("wss://atl.purplerelay.com", None).await?;
+    client.add_relay("wss://atl.purplerelay.com").await?;
 
     client.connect().await;
 

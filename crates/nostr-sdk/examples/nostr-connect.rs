@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
     let signer = RemoteSigner::new(relay_url.clone(), None);
 
     let client = Client::with_remote_signer(&app_keys, signer);
-    client.add_relay(relay_url, None).await?;
+    client.add_relay(relay_url).await?;
 
     let metadata = NostrConnectMetadata::new("Nostr SDK").url(Url::parse("https://example.com")?);
     let nostr_connect_uri: NostrConnectURI = client.nostr_connect_uri(metadata).await?;

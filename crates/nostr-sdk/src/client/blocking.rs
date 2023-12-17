@@ -5,7 +5,6 @@
 #![allow(missing_docs)]
 
 use std::collections::HashMap;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -133,33 +132,29 @@ impl Client {
     }
 
     /// Add multiple relays
-    pub fn add_relays<U>(&self, relays: Vec<(U, Option<SocketAddr>)>) -> Result<(), Error>
+    pub fn add_relays<I, U>(&self, relays: I) -> Result<(), Error>
     where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.add_relays(relays).await })
     }
 
-    pub fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<bool, Error>
+    pub fn add_relay<U>(&self, url: U) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        RUNTIME.block_on(async { self.client.add_relay(url, proxy).await })
+        RUNTIME.block_on(async { self.client.add_relay(url).await })
     }
 
-    pub fn add_relay_with_opts<U>(
-        &self,
-        url: U,
-        proxy: Option<SocketAddr>,
-        opts: RelayOptions,
-    ) -> Result<bool, Error>
+    pub fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        RUNTIME.block_on(async { self.client.add_relay_with_opts(url, proxy, opts).await })
+        RUNTIME.block_on(async { self.client.add_relay_with_opts(url, opts).await })
     }
 
     pub fn remove_relay<U>(&self, url: U) -> Result<(), Error>

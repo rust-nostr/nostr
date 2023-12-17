@@ -5,8 +5,6 @@
 //! Client
 
 use std::collections::HashMap;
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -315,49 +313,12 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// client
-    ///     .add_relay("wss://relay.nostr.info", None)
-    ///     .await
-    ///     .unwrap();
-    /// client
-    ///     .add_relay("wss://relay.damus.io", None)
-    ///     .await
-    ///     .unwrap();
-    ///
-    /// client.connect().await;
-    /// # }
-    /// ```
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn add_relay<U>(&self, url: U, proxy: Option<SocketAddr>) -> Result<bool, Error>
-    where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        self.add_relay_with_opts(url, proxy, RelayOptions::default())
-            .await
-    }
-
-    /// Add new relay
-    ///
-    /// This method **NOT** automatically start connection with relay!
-    ///
-    /// Return `false` if the relay already exists.
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
     /// client.add_relay("wss://relay.nostr.info").await.unwrap();
     /// client.add_relay("wss://relay.damus.io").await.unwrap();
     ///
     /// client.connect().await;
     /// # }
     /// ```
-    #[cfg(target_arch = "wasm32")]
     pub async fn add_relay<U>(&self, url: U) -> Result<bool, Error>
     where
         U: TryIntoUrl,
@@ -374,41 +335,24 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
+    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+    ///
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let opts = RelayOptions::new().write(false).retry_sec(11);
+    /// let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
+    /// let opts = RelayOptions::new().proxy(proxy).write(false).retry_sec(11);
     /// client
-    ///     .add_relay_with_opts("wss://relay.nostr.info", None, opts)
+    ///     .add_relay_with_opts("wss://relay.nostr.info", opts)
     ///     .await
     ///     .unwrap();
     ///
     /// client.connect().await;
     /// # }
     /// ```
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn add_relay_with_opts<U>(
-        &self,
-        url: U,
-        proxy: Option<SocketAddr>,
-        opts: RelayOptions,
-    ) -> Result<bool, Error>
-    where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        Ok(self.pool.add_relay(url, proxy, opts).await?)
-    }
-
-    /// Add new relay with [`RelayOptions`]
-    ///
-    /// This method **NOT** automatically start connection with relay!
-    ///
-    /// Return `false` if the relay already exists.
-    #[cfg(target_arch = "wasm32")]
     pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
@@ -442,24 +386,9 @@ impl Client {
     /// Add multiple relays
     ///
     /// This method **NOT** automatically start connection with relays!
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn add_relays<U>(&self, relays: Vec<(U, Option<SocketAddr>)>) -> Result<(), Error>
+    pub async fn add_relays<I, U>(&self, relays: I) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        for (url, proxy) in relays.into_iter() {
-            self.add_relay(url, proxy).await?;
-        }
-        Ok(())
-    }
-
-    /// Add multiple relays
-    ///
-    /// This method **NOT** automatically start connection with relays!
-    #[cfg(target_arch = "wasm32")]
-    pub async fn add_relays<U>(&self, relays: Vec<U>) -> Result<(), Error>
-    where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {

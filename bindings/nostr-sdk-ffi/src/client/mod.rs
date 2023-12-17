@@ -4,7 +4,6 @@
 
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
@@ -102,13 +101,8 @@ impl Client {
         Ok(Arc::new(self.inner.relay(url)?.into()))
     }
 
-    pub fn add_relay(&self, url: String, proxy: Option<String>) -> Result<bool> {
-        let proxy: Option<SocketAddr> = match proxy {
-            Some(proxy) => Some(proxy.parse()?),
-            None => None,
-        };
-
-        Ok(self.inner.add_relay(url, proxy)?)
+    pub fn add_relay(&self, url: String) -> Result<bool> {
+        Ok(self.inner.add_relay(url)?)
     }
 
     // TODO: add add_relay_with_opts

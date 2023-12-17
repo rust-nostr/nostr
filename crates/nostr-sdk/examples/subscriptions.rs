@@ -15,9 +15,9 @@ async fn main() -> Result<()> {
     let opts = Options::new().wait_for_send(false);
     let client = Client::with_opts(&my_keys, opts);
 
-    client.add_relay("wss://nostr.oxtr.dev", None).await?;
-    client.add_relay("wss://relay.damus.io", None).await?;
-    client.add_relay("wss://nostr.openchain.fr", None).await?;
+    client.add_relay("wss://nostr.oxtr.dev").await?;
+    client.add_relay("wss://relay.damus.io").await?;
+    client.add_relay("wss://nostr.openchain.fr").await?;
 
     client.connect().await;
 

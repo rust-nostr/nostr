@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
     let my_keys: nostr::Keys = Keys::from_public_key(public_key);
 
     let client = Client::new(&my_keys);
-    client.add_relay("wss://nostr.mikedilger.com", None).await?;
+    client.add_relay("wss://nostr.mikedilger.com").await?;
 
     client.connect().await;
 

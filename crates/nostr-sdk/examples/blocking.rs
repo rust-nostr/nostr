@@ -15,9 +15,9 @@ fn main() -> Result<()> {
     let opts = Options::new().wait_for_send(false);
     let client = Client::with_opts(&my_keys, opts);
 
-    client.add_relay("wss://relay.nostr.info", None)?;
-    client.add_relay("wss://relay.damus.io", None)?;
-    client.add_relay("wss://nostr.openchain.fr", None)?;
+    client.add_relay("wss://relay.nostr.info")?;
+    client.add_relay("wss://relay.damus.io")?;
+    client.add_relay("wss://nostr.openchain.fr")?;
 
     client.connect();
 

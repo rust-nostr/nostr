@@ -22,11 +22,11 @@ async fn main() -> Result<()> {
 
     println!("Bot public key: {}", keys.public_key().to_bech32()?);
 
-    client.add_relay("wss://nostr.oxtr.dev", None).await?;
-    client.add_relay("wss://relay.damus.io", None).await?;
-    client.add_relay("wss://nostr.mom", None).await?;
-    client.add_relay("wss://nostr.wine", None).await?;
-    client.add_relay("wss://relay.nostr.info", None).await?;
+    client.add_relay("wss://nostr.oxtr.dev").await?;
+    client.add_relay("wss://relay.damus.io").await?;
+    client.add_relay("wss://nostr.mom").await?;
+    client.add_relay("wss://nostr.wine").await?;
+    client.add_relay("wss://relay.nostr.info").await?;
 
     client.connect().await;
 
