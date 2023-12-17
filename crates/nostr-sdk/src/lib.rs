@@ -19,7 +19,7 @@
 compile_error!("`blocking` feature can't be enabled for WASM targets");
 
 pub use nostr::{self, *};
-pub use nostr_database as database;
+pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
 #[cfg(feature = "indexeddb")]
 pub use nostr_indexeddb::{IndexedDBError, WebDatabase};
 #[cfg(feature = "rocksdb")]
