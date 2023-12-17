@@ -35,7 +35,9 @@ impl JsRelayInformationDocument {
         future_to_promise(async move {
             let url = Url::parse(&url).map_err(into_err)?;
             Ok(Self {
-                inner: RelayInformationDocument::get(url).await.map_err(into_err)?,
+                inner: RelayInformationDocument::get(url, None)
+                    .await
+                    .map_err(into_err)?,
             })
         })
     }

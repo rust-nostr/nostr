@@ -10,7 +10,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
-#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -188,16 +187,24 @@ impl RelayInformationDocument {
     }
 
     /// Get Relay Information Document
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn get(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
+    ///
+    /// **Proxy is ignored for WASM targets!**
+    pub async fn get(url: Url, _proxy: Option<SocketAddr>) -> Result<Self, Error> {
         use reqwest::Client;
 
-        let mut builder = Client::builder();
-        if let Some(proxy) = proxy {
-            let proxy = format!("socks5h://{proxy}");
-            builder = builder.proxy(Proxy::all(proxy)?);
-        }
-        let client: Client = builder.build()?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let client: Client = {
+            let mut builder = Client::builder();
+            if let Some(proxy) = _proxy {
+                let proxy = format!("socks5h://{proxy}");
+                builder = builder.proxy(Proxy::all(proxy)?);
+            }
+            builder.build()?
+        };
+
+        #[cfg(target_arch = "wasm32")]
+        let client: Client = Client::new();
+
         let url = Self::with_http_scheme(url)?;
         let req = client
             .get(url.to_string())
@@ -234,29 +241,6 @@ impl RelayInformationDocument {
         match req.send() {
             Ok(response) => {
                 let json: String = response.text()?;
-                tracing::debug!("Response: {json}");
-                match serde_json::from_slice(json.as_bytes()) {
-                    Ok(json) => Ok(json),
-                    Err(_) => Err(Error::InvalidInformationDocument),
-                }
-            }
-            Err(_) => Err(Error::InaccessibleInformationDocument),
-        }
-    }
-
-    /// Get Relay Information Document
-    #[cfg(target_arch = "wasm32")]
-    pub async fn get(url: Url) -> Result<Self, Error> {
-        use reqwest::Client;
-
-        let client: Client = Client::new();
-        let url = Self::with_http_scheme(url)?;
-        let req = client
-            .get(url.to_string())
-            .header("Accept", "application/nostr+json");
-        match req.send().await {
-            Ok(response) => {
-                let json: String = response.text().await?;
                 tracing::debug!("Response: {json}");
                 match serde_json::from_slice(json.as_bytes()) {
                     Ok(json) => Ok(json),
