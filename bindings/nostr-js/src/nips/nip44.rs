@@ -12,14 +12,17 @@ use crate::key::{JsPublicKey, JsSecretKey};
 
 #[wasm_bindgen(js_name = NIP44Version)]
 pub enum JsNIP44Version {
-    /// XChaCha20
-    XChaCha20 = 1,
+    /// V1 - Deprecated
+    Deprecated = 1,
+    V2 = 2,
 }
 
 impl From<Version> for JsNIP44Version {
     fn from(version: Version) -> Self {
         match version {
-            Version::XChaCha20 => Self::XChaCha20,
+            #[allow(deprecated)]
+            Version::V1 => Self::Deprecated,
+            Version::V2 => Self::V2,
         }
     }
 }
@@ -27,7 +30,9 @@ impl From<Version> for JsNIP44Version {
 impl From<JsNIP44Version> for Version {
     fn from(version: JsNIP44Version) -> Self {
         match version {
-            JsNIP44Version::XChaCha20 => Self::XChaCha20,
+            #[allow(deprecated)]
+            JsNIP44Version::Deprecated => Self::V1,
+            JsNIP44Version::V2 => Self::V2,
         }
     }
 }
