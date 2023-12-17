@@ -13,7 +13,7 @@ use crate::key::JsPublicKey;
 #[wasm_bindgen(js_name = verifyNip05)]
 pub fn verify_nip05(public_key: JsPublicKey, nip05: String) -> Promise {
     future_to_promise(async move {
-        Ok(nip05::verify(public_key.into(), nip05.as_str())
+        Ok(nip05::verify(public_key.into(), nip05.as_str(), None)
             .await
             .is_ok())
     })

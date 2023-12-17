@@ -10,7 +10,6 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
-#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 
 use bitcoin::secp256k1::{self, XOnlyPublicKey};
@@ -120,11 +119,12 @@ where
 }
 
 /// Verify NIP05
-#[cfg(not(target_arch = "wasm32"))]
+///
+/// **Proxy is ignored for WASM targets!**
 pub async fn verify<S>(
     public_key: XOnlyPublicKey,
     nip05: S,
-    proxy: Option<SocketAddr>,
+    _proxy: Option<SocketAddr>,
 ) -> Result<(), Error>
 where
     S: Into<String>,
@@ -132,12 +132,20 @@ where
     use reqwest::Client;
 
     let (url, name) = compose_url(nip05)?;
-    let mut builder = Client::builder();
-    if let Some(proxy) = proxy {
-        let proxy = format!("socks5h://{proxy}");
-        builder = builder.proxy(Proxy::all(proxy)?);
-    }
-    let client: Client = builder.build()?;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let client: Client = {
+        let mut builder = Client::builder();
+        if let Some(proxy) = _proxy {
+            let proxy = format!("socks5h://{proxy}");
+            builder = builder.proxy(Proxy::all(proxy)?);
+        }
+        builder.build()?
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let client: Client = Client::new();
+
     let res = client.get(url).send().await?;
     let json: Value = serde_json::from_str(&res.text().await?)?;
     verify_json(public_key, json, name)
@@ -168,36 +176,30 @@ where
     verify_json(public_key, json, name)
 }
 
-/// Verify NIP05
-#[cfg(target_arch = "wasm32")]
-pub async fn verify<S>(public_key: XOnlyPublicKey, nip05: S) -> Result<(), Error>
-where
-    S: Into<String>,
-{
-    use reqwest::Client;
-
-    let (url, name) = compose_url(nip05)?;
-    let client: Client = Client::new();
-    let res = client.get(url).send().await?;
-    let json: Value = serde_json::from_str(&res.text().await?)?;
-    verify_json(public_key, json, name)
-}
-
 /// Get [Profile] from NIP05 (public key and list of advertised relays)
-#[cfg(not(target_arch = "wasm32"))]
-pub async fn get_profile<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
+///
+/// **Proxy is ignored for WASM targets!**
+pub async fn get_profile<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
 where
     S: Into<String>,
 {
     use reqwest::Client;
 
     let (url, name) = compose_url(nip05)?;
-    let mut builder = Client::builder();
-    if let Some(proxy) = proxy {
-        let proxy = format!("socks5h://{proxy}");
-        builder = builder.proxy(Proxy::all(proxy)?);
-    }
-    let client: Client = builder.build()?;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let client: Client = {
+        let mut builder = Client::builder();
+        if let Some(proxy) = _proxy {
+            let proxy = format!("socks5h://{proxy}");
+            builder = builder.proxy(Proxy::all(proxy)?);
+        }
+        builder.build()?
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let client: Client = Client::new();
+
     let res = client.get(url).send().await?;
     let json: Value = serde_json::from_str(&res.text().await?)?;
 
@@ -225,25 +227,6 @@ where
     let client: Client = builder.build()?;
     let res = client.get(url).send()?;
     let json: Value = serde_json::from_str(&res.text()?)?;
-
-    let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
-    let relays = get_relays_from_json(json, public_key);
-
-    Ok(Nip19Profile { public_key, relays })
-}
-
-/// Get [Profile] from NIP05 (public key and list of advertised relays)
-#[cfg(target_arch = "wasm32")]
-pub async fn get_profile<S>(nip05: S) -> Result<Nip19Profile, Error>
-where
-    S: Into<String>,
-{
-    use reqwest::Client;
-
-    let (url, name) = compose_url(nip05)?;
-    let client: Client = Client::new();
-    let res = client.get(url).send().await?;
-    let json: Value = serde_json::from_str(&res.text().await?)?;
 
     let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
     let relays = get_relays_from_json(json, public_key);
