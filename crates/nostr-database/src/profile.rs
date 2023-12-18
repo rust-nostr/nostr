@@ -33,7 +33,17 @@ impl PartialOrd for Profile {
 
 impl Ord for Profile {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.name().to_lowercase().cmp(&other.name().to_lowercase())
+        if self.public_key == other.public_key {
+            Ordering::Equal
+        } else {
+            self.name().to_lowercase().cmp(&other.name().to_lowercase())
+        }
+    }
+}
+
+impl From<XOnlyPublicKey> for Profile {
+    fn from(public_key: XOnlyPublicKey) -> Self {
+        Self::new(public_key, Metadata::default())
     }
 }
 

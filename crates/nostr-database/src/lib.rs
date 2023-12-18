@@ -15,6 +15,7 @@ pub use async_trait::async_trait;
 pub use nostr;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, Timestamp, Url};
+use rayon::prelude::*;
 
 mod error;
 #[cfg(feature = "flatbuf")]
@@ -190,6 +191,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     }
 
     /// Get contact list with metadata of [`XOnlyPublicKey`]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn contacts(&self, public_key: XOnlyPublicKey) -> Result<BTreeSet<Profile>, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
@@ -198,14 +200,11 @@ pub trait NostrDatabaseExt: NostrDatabase {
         let events: Vec<Event> = self.query(vec![filter]).await?;
         match events.first() {
             Some(event) => {
-                let public_keys: Vec<XOnlyPublicKey> = event.public_keys().copied().collect();
-                let size: usize = public_keys.len();
-
+                // Get contacts metadata
                 let filter = Filter::new()
-                    .authors(public_keys.clone())
-                    .kind(Kind::Metadata)
-                    .limit(size);
-                Ok(self
+                    .authors(event.public_keys().copied())
+                    .kind(Kind::Metadata);
+                let mut contacts: BTreeSet<Profile> = self
                     .query(vec![filter])
                     .await?
                     .into_iter()
@@ -214,7 +213,12 @@ pub trait NostrDatabaseExt: NostrDatabase {
                             Metadata::from_json(&e.content).unwrap_or_default();
                         Profile::new(e.pubkey, metadata)
                     })
-                    .collect())
+                    .collect();
+
+                // Extend with missing public keys
+                contacts.par_extend(event.public_keys().par_bridge().copied().map(Profile::from));
+
+                Ok(contacts)
             }
             None => Ok(BTreeSet::new()),
         }
