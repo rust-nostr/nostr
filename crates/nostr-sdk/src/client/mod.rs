@@ -305,6 +305,8 @@ impl Client {
     ///
     /// Return `false` if the relay already exists.
     ///
+    /// To use a proxy, see `Client::add_relay_with_opts`.
+    ///
     /// # Example
     /// ```rust,no_run
     /// use nostr_sdk::prelude::*;
