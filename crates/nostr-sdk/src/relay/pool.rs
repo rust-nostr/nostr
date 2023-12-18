@@ -87,7 +87,7 @@ pub enum RelayPoolMessage {
     /// Relay status changed
     RelayStatus {
         /// Relay url
-        url: Url,
+        relay_url: Url,
         /// Relay Status
         status: RelayStatus,
     },
@@ -101,13 +101,23 @@ pub enum RelayPoolMessage {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelayPoolNotification {
     /// Received an [`Event`]. Does not include events sent by this client.
-    Event(Url, Event),
+    Event {
+        /// Relay url
+        relay_url: Url,
+        /// Event
+        event: Event,
+    },
     /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
-    Message(Url, RelayMessage),
+    Message {
+        /// Relay url
+        relay_url: Url,
+        /// Relay Message
+        message: RelayMessage,
+    },
     /// Relay status changed
     RelayStatus {
         /// Relay url
-        url: Url,
+        relay_url: Url,
         /// Relay Status
         status: RelayStatus,
     },
@@ -164,10 +174,10 @@ impl RelayPoolTask {
                             match this.handle_relay_message(relay_url.clone(), msg).await {
                                 Ok(Some(msg)) => {
                                     let _ = this.notification_sender.send(
-                                        RelayPoolNotification::Message(
-                                            relay_url.clone(),
-                                            msg.clone(),
-                                        ),
+                                        RelayPoolNotification::Message {
+                                            relay_url: relay_url.clone(),
+                                            message: msg.clone(),
+                                        },
                                     );
 
                                     match msg {
@@ -190,10 +200,10 @@ impl RelayPoolTask {
                                 ),
                             }
                         }
-                        RelayPoolMessage::RelayStatus { url, status } => {
+                        RelayPoolMessage::RelayStatus { relay_url, status } => {
                             let _ = this
                                 .notification_sender
-                                .send(RelayPoolNotification::RelayStatus { url, status });
+                                .send(RelayPoolNotification::RelayStatus { relay_url, status });
                         }
                         RelayPoolMessage::Stop => {
                             tracing::debug!("Received stop msg");
@@ -287,11 +297,12 @@ impl RelayPoolTask {
                 // Save event
                 self.database.save_event(&event).await?;
 
-                // If not seed, send RelayPoolNotification::Event
+                // If not seen, send RelayPoolNotification::Event
                 if !seen {
-                    let _ = self
-                        .notification_sender
-                        .send(RelayPoolNotification::Event(relay_url, event.clone()));
+                    let _ = self.notification_sender.send(RelayPoolNotification::Event {
+                        relay_url,
+                        event: event.clone(),
+                    });
                 }
 
                 // Compose RelayMessage

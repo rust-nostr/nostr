@@ -343,7 +343,7 @@ impl Relay {
 
         // Send notification
         if let Err(e) = self.pool_sender.try_send(RelayPoolMessage::RelayStatus {
-            url: self.url(),
+            relay_url: self.url(),
             status,
         }) {
             tracing::error!("Impossible to send RelayPoolMessage::RelayStatus message: {e}");
@@ -998,15 +998,16 @@ impl Relay {
             let mut notifications = self.notification_sender.subscribe();
             while let Ok(notification) = notifications.recv().await {
                 match notification {
-                    RelayPoolNotification::Message(
-                        url,
-                        RelayMessage::Ok {
-                            event_id,
-                            status,
-                            message,
-                        },
-                    ) => {
-                        if self.url == url && id == event_id {
+                    RelayPoolNotification::Message {
+                        relay_url,
+                        message:
+                            RelayMessage::Ok {
+                                event_id,
+                                status,
+                                message,
+                            },
+                    } => {
+                        if self.url == relay_url && id == event_id {
                             if status {
                                 return Ok(event_id);
                             } else {
@@ -1014,8 +1015,8 @@ impl Relay {
                             }
                         }
                     }
-                    RelayPoolNotification::RelayStatus { url, status } => {
-                        if opts.skip_disconnected && url == self.url {
+                    RelayPoolNotification::RelayStatus { relay_url, status } => {
+                        if opts.skip_disconnected && relay_url == self.url {
                             if let RelayStatus::Disconnected
                             | RelayStatus::Stopped
                             | RelayStatus::Terminated = status
@@ -1070,15 +1071,16 @@ impl Relay {
             let mut notifications = self.notification_sender.subscribe();
             while let Ok(notification) = notifications.recv().await {
                 match notification {
-                    RelayPoolNotification::Message(
-                        url,
-                        RelayMessage::Ok {
-                            event_id,
-                            status,
-                            message,
-                        },
-                    ) => {
-                        if self.url == url && missing.remove(&event_id) {
+                    RelayPoolNotification::Message {
+                        relay_url,
+                        message:
+                            RelayMessage::Ok {
+                                event_id,
+                                status,
+                                message,
+                            },
+                    } => {
+                        if self.url == relay_url && missing.remove(&event_id) {
                             if status {
                                 published.insert(event_id);
                             } else {
@@ -1086,8 +1088,8 @@ impl Relay {
                             }
                         }
                     }
-                    RelayPoolNotification::RelayStatus { url, status } => {
-                        if opts.skip_disconnected && url == self.url {
+                    RelayPoolNotification::RelayStatus { relay_url, status } => {
+                        if opts.skip_disconnected && relay_url == self.url {
                             if let RelayStatus::Disconnected
                             | RelayStatus::Stopped
                             | RelayStatus::Terminated = status
@@ -1258,8 +1260,8 @@ impl Relay {
         let mut notifications = self.notification_sender.subscribe();
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message(_, msg) = notification {
-                    match msg {
+                if let RelayPoolNotification::Message { message, .. } = notification {
+                    match message {
                         RelayMessage::Event {
                             subscription_id,
                             event,
@@ -1292,7 +1294,10 @@ impl Relay {
                         }
                         RelayMessage::Ok { .. } => (),
                         _ => {
-                            tracing::debug!("Receive unhandled message {msg:?} from {}", self.url)
+                            tracing::debug!(
+                                "Receive unhandled message {message:?} from {}",
+                                self.url
+                            )
                         }
                     };
                 }
@@ -1304,13 +1309,14 @@ impl Relay {
         if let FilterOptions::WaitDurationAfterEOSE(duration) = opts {
             time::timeout(Some(duration), async {
                 while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotification::Message(
-                        _,
-                        RelayMessage::Event {
-                            subscription_id,
-                            event,
-                        },
-                    ) = notification
+                    if let RelayPoolNotification::Message {
+                        message:
+                            RelayMessage::Event {
+                                subscription_id,
+                                event,
+                            },
+                        ..
+                    } = notification
                     {
                         if subscription_id.eq(&id) {
                             callback(*event).await;
@@ -1432,15 +1438,16 @@ impl Relay {
         let mut notifications = self.notification_sender.subscribe();
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message(
-                    url,
-                    RelayMessage::Count {
-                        subscription_id,
-                        count: c,
-                    },
-                ) = notification
+                if let RelayPoolNotification::Message {
+                    relay_url,
+                    message:
+                        RelayMessage::Count {
+                            subscription_id,
+                            count: c,
+                        },
+                } = notification
                 {
-                    if subscription_id == id && url == self.url {
+                    if subscription_id == id && relay_url == self.url {
                         count = c;
                         break;
                     }
@@ -1497,9 +1504,9 @@ impl Relay {
         // Check if negentropy it's supported
         time::timeout(Some(opts.initial_timeout), async {
             while let Ok(notification) = temp_notifications.recv().await {
-                if let RelayPoolNotification::Message(url, msg) = notification {
-                    if url == self.url {
-                        match msg {
+                if let RelayPoolNotification::Message { relay_url, message } = notification {
+                    if relay_url == self.url {
+                        match message {
                             RelayMessage::NegMsg {
                                 subscription_id, ..
                             } => {
@@ -1537,9 +1544,9 @@ impl Relay {
 
         while let Ok(notification) = notifications.recv().await {
             match notification {
-                RelayPoolNotification::Message(url, msg) => {
-                    if url == self.url {
-                        match msg {
+                RelayPoolNotification::Message { relay_url, message } => {
+                    if relay_url == self.url {
+                        match message {
                             RelayMessage::NegMsg {
                                 subscription_id,
                                 message,
@@ -1637,8 +1644,8 @@ impl Relay {
                         }
                     }
                 }
-                RelayPoolNotification::RelayStatus { url, status } => {
-                    if url == self.url && status != RelayStatus::Connected {
+                RelayPoolNotification::RelayStatus { relay_url, status } => {
+                    if relay_url == self.url && status != RelayStatus::Connected {
                         return Err(Error::NotConnected);
                     }
                 }

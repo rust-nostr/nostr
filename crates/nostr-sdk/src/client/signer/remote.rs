@@ -131,7 +131,7 @@ impl Client {
             let mut notifications = self.notifications();
             time::timeout(timeout, async {
                 while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotification::Event(_url, event) = notification {
+                    if let RelayPoolNotification::Event { event, .. } = notification {
                         if event.kind == Kind::NostrConnect {
                             let msg: String =
                                 nip04::decrypt(&secret_key, &event.pubkey, &event.content)?;
@@ -204,7 +204,7 @@ impl Client {
         let mut notifications = self.notifications();
         let future = async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event(_url, event) = notification {
+                if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind == Kind::NostrConnect {
                         let msg = nip04::decrypt(&secret_key, &event.pubkey, &event.content)?;
                         let msg = Message::from_json(msg)?;

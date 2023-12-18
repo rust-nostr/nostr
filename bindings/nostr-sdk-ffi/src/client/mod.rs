@@ -249,11 +249,11 @@ impl Client {
             tracing::debug!("Client Thread Started");
             Ok(self.inner.handle_notifications(|notification| {
                 match notification {
-                    RelayPoolNotificationSdk::Message(url, msg) => {
-                        handler.handle_msg(url.to_string(), msg.into())
+                    RelayPoolNotificationSdk::Message { relay_url, message } => {
+                        handler.handle_msg(relay_url.to_string(), message.into())
                     }
-                    RelayPoolNotificationSdk::Event(url, event) => {
-                        handler.handle(url.to_string(), Arc::new(event.into()))
+                    RelayPoolNotificationSdk::Event { relay_url, event } => {
+                        handler.handle(relay_url.to_string(), Arc::new(event.into()))
                     }
                     _ => (),
                 }

@@ -34,7 +34,7 @@ fn main() -> Result<()> {
     client.disconnect_relay("wss://relay.nostr.info")?;
 
     client.handle_notifications(|notification| {
-        if let RelayPoolNotification::Event(_url, event) = notification {
+        if let RelayPoolNotification::Event { event, .. } = notification {
             if event.kind == Kind::EncryptedDirectMessage {
                 if let Ok(msg) = nip04::decrypt(
                     &my_keys.secret_key().unwrap(),

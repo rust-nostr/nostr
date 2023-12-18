@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
 
     client
         .handle_notifications(|notification| async {
-            if let RelayPoolNotification::Event(_url, event) = notification {
+            if let RelayPoolNotification::Event { event, .. } = notification {
                 println!("{:?}", event);
             }
             Ok(false) // Set to true to exit from the loop
