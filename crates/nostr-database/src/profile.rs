@@ -5,6 +5,7 @@
 //! Profile
 
 use core::cmp::Ordering;
+use core::hash::{Hash, Hasher};
 
 use nostr::secp256k1::XOnlyPublicKey;
 
@@ -33,11 +34,13 @@ impl PartialOrd for Profile {
 
 impl Ord for Profile {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.public_key == other.public_key {
-            Ordering::Equal
-        } else {
-            self.name().to_lowercase().cmp(&other.name().to_lowercase())
-        }
+        self.name().cmp(&other.name())
+    }
+}
+
+impl Hash for Profile {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.public_key.hash(state)
     }
 }
 

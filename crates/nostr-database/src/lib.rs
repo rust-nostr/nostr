@@ -15,7 +15,6 @@ pub use async_trait::async_trait;
 pub use nostr;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, Timestamp, Url};
-use rayon::prelude::*;
 
 mod error;
 #[cfg(feature = "flatbuf")]
@@ -207,7 +206,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
                 let filter = Filter::new()
                     .authors(event.public_keys().copied())
                     .kind(Kind::Metadata);
-                let mut contacts: BTreeSet<Profile> = self
+                let mut contacts: HashSet<Profile> = self
                     .query(vec![filter])
                     .await?
                     .into_iter()
@@ -219,9 +218,9 @@ pub trait NostrDatabaseExt: NostrDatabase {
                     .collect();
 
                 // Extend with missing public keys
-                contacts.par_extend(event.public_keys().par_bridge().copied().map(Profile::from));
+                contacts.extend(event.public_keys().copied().map(Profile::from));
 
-                Ok(contacts)
+                Ok(contacts.into_iter().collect())
             }
             None => Ok(BTreeSet::new()),
         }
