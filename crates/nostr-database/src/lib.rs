@@ -105,6 +105,8 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Save [`Event`] into store
     ///
     /// Return `true` if event was successfully saved into database.
+    ///
+    /// **This method assume that [`Event`] was already verified**
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err>;
 
     /// Check if [`Event`] has already been saved
