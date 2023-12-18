@@ -115,6 +115,9 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Check if [`EventId`] has already been seen
     async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err>;
 
+    /// Check if [`EventId`] has been deleted
+    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err>;
+
     /// Set [`EventId`] as seen by relay
     ///
     /// Useful for NIP65 (aka gossip)
@@ -260,6 +263,10 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
             .has_event_already_been_seen(event_id)
             .await
             .map_err(Into::into)
+    }
+
+    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        self.0.has_been_deleted(event_id).await.map_err(Into::into)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {

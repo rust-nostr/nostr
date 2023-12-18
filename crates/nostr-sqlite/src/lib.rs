@@ -203,6 +203,10 @@ impl NostrDatabase for SQLiteDatabase {
         .await?
     }
 
+    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        Ok(self.indexes.has_been_deleted(&event_id).await)
+    }
+
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
         let conn = self.acquire().await?;
         conn.interact(move |conn| {

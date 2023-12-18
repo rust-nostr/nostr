@@ -312,6 +312,10 @@ impl_nostr_database!({
         Ok(store.get(&key)?.await?.is_some())
     }
 
+    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, IndexedDBError> {
+        Ok(self.indexes.has_been_deleted(&event_id).await)
+    }
+
     async fn event_id_seen(
         &self,
         _event_id: EventId,

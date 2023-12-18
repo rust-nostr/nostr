@@ -117,6 +117,10 @@ impl NostrDatabase for MemoryDatabase {
         Ok(seen_event_ids.contains_key(&event_id))
     }
 
+    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        Ok(self.indexes.has_been_deleted(&event_id).await)
+    }
+
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
         let mut seen_event_ids = self.seen_event_ids.write().await;
         self._event_id_seen(&mut seen_event_ids, event_id, relay_url);

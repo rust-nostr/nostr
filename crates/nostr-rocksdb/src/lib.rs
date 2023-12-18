@@ -208,6 +208,10 @@ impl NostrDatabase for RocksDatabase {
         Ok(self.db.key_may_exist_cf(&cf, event_id.as_bytes()))
     }
 
+    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        Ok(self.indexes.has_been_deleted(&event_id).await)
+    }
+
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
         let mut fbb = self.fbb.write().await;
         let cf = self.cf_handle(EVENTS_SEEN_BY_RELAYS_CF)?;
