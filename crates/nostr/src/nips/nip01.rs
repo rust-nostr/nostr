@@ -154,9 +154,9 @@ impl FromBech32 for Coordinate {
     type Err = Bech32Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(&s.into())?;
+        let (hrp, data, checksum) = bech32::decode(s.as_ref())?;
 
         if hrp != PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT || checksum != Variant::Bech32 {
             return Err(Bech32Error::WrongPrefixOrVariant);

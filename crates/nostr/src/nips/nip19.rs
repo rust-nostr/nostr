@@ -170,16 +170,16 @@ pub trait FromBech32: Sized {
     type Err;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
-        S: Into<String>;
+        S: AsRef<str>;
 }
 
 impl FromBech32 for SecretKey {
     type Err = Error;
     fn from_bech32<S>(secret_key: S) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(&secret_key.into())?;
+        let (hrp, data, checksum) = bech32::decode(secret_key.as_ref())?;
 
         if hrp != PREFIX_BECH32_SECRET_KEY || checksum != Variant::Bech32 {
             return Err(Error::WrongPrefixOrVariant);
@@ -194,9 +194,9 @@ impl FromBech32 for XOnlyPublicKey {
     type Err = Error;
     fn from_bech32<S>(public_key: S) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(&public_key.into())?;
+        let (hrp, data, checksum) = bech32::decode(public_key.as_ref())?;
 
         if hrp != PREFIX_BECH32_PUBLIC_KEY || checksum != Variant::Bech32 {
             return Err(Error::WrongPrefixOrVariant);
@@ -211,9 +211,9 @@ impl FromBech32 for Nip19 {
     type Err = Error;
     fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(&hash.into())?;
+        let (hrp, data, checksum) = bech32::decode(hash.as_ref())?;
         let prefix: Nip19Prefix = hrp.try_into()?;
 
         if checksum != Variant::Bech32 {
@@ -251,9 +251,9 @@ impl FromBech32 for EventId {
     type Err = Error;
     fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(&hash.into())?;
+        let (hrp, data, checksum) = bech32::decode(hash.as_ref())?;
 
         if hrp != PREFIX_BECH32_NOTE_ID || checksum != Variant::Bech32 {
             return Err(Error::WrongPrefixOrVariant);
@@ -317,8 +317,9 @@ pub struct Nip19Event {
 }
 
 impl Nip19Event {
-    pub fn new<S>(event_id: EventId, relays: Vec<S>) -> Self
+    pub fn new<I, S>(event_id: EventId, relays: I) -> Self
     where
+        I: IntoIterator<Item = S>,
         S: Into<String>,
     {
         Self {
@@ -374,9 +375,9 @@ impl FromBech32 for Nip19Event {
     type Err = Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(&s.into())?;
+        let (hrp, data, checksum) = bech32::decode(s.as_ref())?;
 
         if hrp != PREFIX_BECH32_EVENT || checksum != Variant::Bech32 {
             return Err(Error::WrongPrefixOrVariant);
@@ -411,8 +412,9 @@ pub struct Nip19Profile {
 }
 
 impl Nip19Profile {
-    pub fn new<S>(public_key: XOnlyPublicKey, relays: Vec<S>) -> Self
+    pub fn new<I, S>(public_key: XOnlyPublicKey, relays: I) -> Self
     where
+        I: IntoIterator<Item = S>,
         S: Into<String>,
     {
         Self {
@@ -479,9 +481,9 @@ impl FromBech32 for Nip19Profile {
     type Err = Error;
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(&s.into())?;
+        let (hrp, data, checksum) = bech32::decode(s.as_ref())?;
 
         if hrp != PREFIX_BECH32_PROFILE || checksum != Variant::Bech32 {
             return Err(Error::WrongPrefixOrVariant);
