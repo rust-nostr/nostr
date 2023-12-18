@@ -248,7 +248,7 @@ impl Event {
 
     /// Extract public keys from tags (`p` tag)
     ///
-    /// **This method extract ONLY `Tag::PubKey` and `Tag::ContactList`**
+    /// **This method extract ONLY `Tag::PublicKey`**
     pub fn public_keys(&self) -> impl Iterator<Item = &XOnlyPublicKey> {
         self.tags.iter().filter_map(|t| match t {
             Tag::PublicKey { public_key, .. } => Some(public_key),
