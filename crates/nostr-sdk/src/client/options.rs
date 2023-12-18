@@ -4,6 +4,8 @@
 
 //! Client Options
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -38,6 +40,9 @@ pub struct Options {
     /// NIP46 timeout (default: 180 secs)
     #[cfg(feature = "nip46")]
     pub nip46_timeout: Option<Duration>,
+    /// Proxy
+    #[cfg(not(target_arch = "wasm32"))]
+    pub proxy: Option<SocketAddr>,
     /// Shutdown on [Client](super::Client) drop
     pub shutdown_on_drop: bool,
     /// Pool Options
@@ -57,6 +62,8 @@ impl Default for Options {
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             #[cfg(feature = "nip46")]
             nip46_timeout: Some(Duration::from_secs(180)),
+            #[cfg(not(target_arch = "wasm32"))]
+            proxy: None,
             shutdown_on_drop: false,
             pool: RelayPoolOptions::default(),
         }
@@ -165,6 +172,13 @@ impl Options {
             nip46_timeout: timeout,
             ..self
         }
+    }
+
+    /// Proxy
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn proxy(mut self, proxy: Option<SocketAddr>) -> Self {
+        self.proxy = proxy;
+        self
     }
 
     /// Shutdown client on drop
