@@ -166,11 +166,14 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .limit(1);
         let events: Vec<Event> = self.query(vec![filter]).await?;
         match events.first() {
-            Some(event) => {
-                let metadata = Metadata::from_json(&event.content).map_err(DatabaseError::nostr)?;
-                Ok(Profile::new(public_key, metadata))
-            }
-            None => Ok(Profile::new(public_key, Metadata::default())), // TODO: return an Option?
+            Some(event) => match Metadata::from_json(&event.content) {
+                Ok(metadata) => Ok(Profile::new(public_key, metadata)),
+                Err(e) => {
+                    tracing::error!("Impossible to deserialize profile metadata: {e}");
+                    Ok(Profile::from(public_key))
+                }
+            },
+            None => Ok(Profile::from(public_key)),
         }
     }
 
