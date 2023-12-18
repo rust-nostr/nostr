@@ -166,6 +166,8 @@ pub enum Nip19 {
     EventId(EventId),
     /// nevent
     Event(Nip19Event),
+    /// naddr
+    Coordinate(Coordinate),
 }
 
 pub trait FromBech32: Sized {
@@ -230,7 +232,7 @@ impl FromBech32 for Nip19 {
             Nip19Prefix::NProfile => Ok(Self::Profile(Nip19Profile::from_bech32_data(data)?)),
             Nip19Prefix::NEvent => Ok(Self::Event(Nip19Event::from_bech32_data(data)?)),
             Nip19Prefix::Note => Ok(Self::EventId(EventId::from_slice(data.as_slice())?)),
-            Nip19Prefix::NAddr => Err(Error::NotImplemented),
+            Nip19Prefix::NAddr => Ok(Self::Coordinate(Coordinate::from_bech32_data(data)?)),
         }
     }
 }
@@ -245,6 +247,7 @@ impl ToBech32 for Nip19 {
             Nip19::Event(event) => event.to_bech32(),
             Nip19::Profile(profile) => profile.to_bech32(),
             Nip19::EventId(event_id) => event_id.to_bech32(),
+            Nip19::Coordinate(coordinate) => coordinate.to_bech32(),
         }
     }
 }
@@ -496,20 +499,8 @@ impl FromBech32 for Nip19Profile {
     }
 }
 
-impl FromBech32 for Coordinate {
-    type Err = Error;
-    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data, checksum) = bech32::decode(s.as_ref())?;
-
-        if hrp != PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT || checksum != Variant::Bech32 {
-            return Err(Error::WrongPrefixOrVariant);
-        }
-
-        let mut data: Vec<u8> = Vec::from_base32(&data)?;
-
+impl Coordinate {
+    fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut identifier: Option<String> = None;
         let mut pubkey: Option<XOnlyPublicKey> = None;
         let mut kind: Option<Kind> = None;
@@ -556,6 +547,23 @@ impl FromBech32 for Coordinate {
             identifier: identifier.ok_or_else(|| Error::FieldMissing("identifier".to_string()))?,
             relays,
         })
+    }
+}
+
+impl FromBech32 for Coordinate {
+    type Err = Error;
+    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
+    where
+        S: AsRef<str>,
+    {
+        let (hrp, data, checksum) = bech32::decode(s.as_ref())?;
+
+        if hrp != PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT || checksum != Variant::Bech32 {
+            return Err(Error::WrongPrefixOrVariant);
+        }
+
+        let data: Vec<u8> = Vec::from_base32(&data)?;
+        Self::from_bech32_data(data)
     }
 }
 
