@@ -973,8 +973,8 @@ where
 
             match tag_kind {
                 TagKind::P => {
-                    let public_key = XOnlyPublicKey::from_str(tag_1)?;
-                    let relay_url = (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2));
+                    let public_key: XOnlyPublicKey = XOnlyPublicKey::from_str(tag_1)?;
+                    let relay_url: Option<UncheckedUrl> = Some(UncheckedUrl::from(tag_2));
 
                     match LiveEventMarker::from_str(tag_3) {
                         Ok(marker) => Ok(Self::PubKeyLiveEvent {
@@ -986,7 +986,7 @@ where
                         Err(_) => Ok(Self::PublicKey {
                             public_key,
                             relay_url,
-                            alias: (!tag_3.is_empty()).then_some(tag_3.to_owned()),
+                            alias: Some(tag_3.to_string()),
                         }),
                     }
                 }
