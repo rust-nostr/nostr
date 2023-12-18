@@ -312,6 +312,7 @@ impl ToBech32 for EventId {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Nip19Event {
     pub event_id: EventId,
+    pub author: Option<XOnlyPublicKey>,
     pub relays: Vec<String>,
 }
 
@@ -322,12 +323,14 @@ impl Nip19Event {
     {
         Self {
             event_id,
+            author: None,
             relays: relays.into_iter().map(|u| u.into()).collect(),
         }
     }
 
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut event_id: Option<EventId> = None;
+        let mut author: Option<XOnlyPublicKey> = None;
         let mut relays: Vec<String> = Vec::new();
 
         while !data.is_empty() {
@@ -343,6 +346,13 @@ impl Nip19Event {
                         event_id = Some(EventId::from_slice(bytes)?);
                     }
                 }
+                // from nip19: "for nevent, *optionally*, the 32 bytes of
+                // the pubkey of the event"
+                AUTHOR => {
+                    if author.is_none() {
+                        author = Some(XOnlyPublicKey::from_slice(bytes)?);
+                    }
+                }
                 RELAY => {
                     relays.push(String::from_utf8(bytes.to_vec())?);
                 }
@@ -354,6 +364,7 @@ impl Nip19Event {
 
         Ok(Self {
             event_id: event_id.ok_or_else(|| Error::FieldMissing("event id".to_string()))?,
+            author,
             relays,
         })
     }
@@ -553,5 +564,16 @@ mod tests {
         );
 
         assert_eq!(nip19.to_bech32().unwrap(), nprofile);
+    }
+
+    #[test]
+    fn from_bech32_nevent_author() {
+        let expected_pubkey = XOnlyPublicKey::from_str(
+            "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
+        )
+        .unwrap();
+        let nevent = "nevent1qqsdhet4232flykq3048jzc9msmaa3hnxuesxy3lnc33vd0wt9xwk6szyqewrqnkx4zsaweutf739s0cu7et29zrntqs5elw70vlm8zudr3y24sqsgy";
+        let event = Nip19Event::from_bech32(nevent).unwrap();
+        assert_eq!(event.author, Some(expected_pubkey));
     }
 }
