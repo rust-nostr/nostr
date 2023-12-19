@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 #![allow(clippy::drop_non_drop)]
+#![allow(non_snake_case)]
 
 use wasm_bindgen::prelude::*;
 

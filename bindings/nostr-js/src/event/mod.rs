@@ -63,10 +63,11 @@ impl JsEvent {
         self.inner.kind.into()
     }
 
-    /* #[wasm_bindgen(getter)]
-    pub fn tags(&self) -> JsTags {
-        self.inner.tags.iter().map(|t| t.as_vec()).collect()
-    } */
+    #[wasm_bindgen(getter)]
+    pub fn tags(&self) -> Result<JsTags> {
+        let tags: Vec<Vec<String>> = self.inner.tags.iter().map(|t| t.as_vec()).collect();
+        Ok(serde_wasm_bindgen::to_value(&tags)?.into())
+    }
 
     #[wasm_bindgen(getter)]
     pub fn content(&self) -> String {
