@@ -10,7 +10,7 @@
 
 use core::ops::Deref;
 
-pub use super::nip01::Coordinate;
+use super::nip01::Coordinate;
 
 #[deprecated(since = "0.26.0", note = "use `Coordinate` instead")]
 pub struct ParameterizedReplaceableEvent {
