@@ -10,8 +10,8 @@ use std::time::Duration;
 
 use js_sys::Array;
 use nostr_js::error::{into_err, Result};
-use nostr_js::event::JsTag;
-use nostr_js::{JsContact, JsEvent, JsEventId, JsFilter, JsKeys, JsMetadata, JsPublicKey};
+use nostr_js::event::{JsEvent, JsEventArray, JsEventId, JsTag};
+use nostr_js::{JsContact, JsFilter, JsKeys, JsMetadata, JsPublicKey};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -116,22 +116,23 @@ impl JsClient {
         &self,
         filters: Vec<JsFilter>,
         timeout: Option<u64>,
-    ) -> Result<Array> {
+    ) -> Result<JsEventArray> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
-        let timeout = timeout.map(Duration::from_secs);
-        match self.inner.get_events_of(filters, timeout).await {
-            Ok(events) => {
-                let events = events
-                    .into_iter()
-                    .map(|e| {
-                        let e: JsEvent = e.into();
-                        JsValue::from(e)
-                    })
-                    .collect();
-                Ok(events)
-            }
-            Err(e) => Err(into_err(e)),
-        }
+        let timeout: Option<Duration> = timeout.map(Duration::from_secs);
+        let events: Vec<Event> = self
+            .inner
+            .get_events_of(filters, timeout)
+            .await
+            .map_err(into_err)?;
+        let events: JsEventArray = events
+            .into_iter()
+            .map(|e| {
+                let e: JsEvent = e.into();
+                JsValue::from(e)
+            })
+            .collect::<Array>()
+            .unchecked_into();
+        Ok(events)
     }
 
     /// Request events of filters.

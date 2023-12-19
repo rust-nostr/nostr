@@ -18,6 +18,12 @@ pub use self::tag::{JsTag, JsTagArray};
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
 
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "Event[]")]
+    pub type JsEventArray;
+}
+
 #[wasm_bindgen(js_name = Event)]
 pub struct JsEvent {
     inner: Event,
