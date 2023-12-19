@@ -15,6 +15,12 @@ pub struct JsRelayMessage {
     inner: RelayMessage,
 }
 
+impl From<RelayMessage> for JsRelayMessage {
+    fn from(inner: RelayMessage) -> Self {
+        Self { inner }
+    }
+}
+
 #[wasm_bindgen(js_class = RelayMessage)]
 impl JsRelayMessage {
     /// Create new `EVENT` message
