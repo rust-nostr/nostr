@@ -17,6 +17,7 @@ use nostr::nips::nip46::{NostrConnectMetadata, NostrConnectURI, Request, Respons
 use nostr::nips::nip94::FileMetadata;
 use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
+use nostr::util::EventIdOrCoordinate;
 use nostr::{
     ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind, Metadata,
     Result, Tag, Timestamp,
@@ -1026,8 +1027,11 @@ impl Client {
     /// Delete event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    pub async fn delete_event(&self, event_id: EventId) -> Result<EventId, Error> {
-        let builder = EventBuilder::delete(vec![event_id]);
+    pub async fn delete_event<T>(&self, id: T) -> Result<EventId, Error>
+    where
+        T: Into<EventIdOrCoordinate>,
+    {
+        let builder = EventBuilder::delete([id]);
         self.send_event_builder(builder).await
     }
 
