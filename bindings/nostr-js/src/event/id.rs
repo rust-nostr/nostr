@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -12,6 +14,13 @@ use crate::key::JsPublicKey;
 #[wasm_bindgen(js_name = EventId)]
 pub struct JsEventId {
     pub(crate) inner: EventId,
+}
+
+impl Deref for JsEventId {
+    type Target = EventId;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 impl From<EventId> for JsEventId {

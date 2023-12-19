@@ -1,0 +1,86 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Copyright (c) 2023-2024 Rust Nostr Developers
+// Distributed under the MIT software license
+
+use std::ops::Deref;
+
+use nostr::{JsonUtil, RelayMessage, SubscriptionId};
+use wasm_bindgen::prelude::*;
+
+use crate::error::{into_err, Result};
+use crate::event::{JsEvent, JsEventId};
+
+#[wasm_bindgen(js_name = RelayMessage)]
+pub struct JsRelayMessage {
+    inner: RelayMessage,
+}
+
+#[wasm_bindgen(js_class = RelayMessage)]
+impl JsRelayMessage {
+    /// Create new `EVENT` message
+    pub fn event(subscription_id: String, event: &JsEvent) -> Self {
+        Self {
+            inner: RelayMessage::new_event(
+                SubscriptionId::new(subscription_id),
+                event.deref().clone(),
+            ),
+        }
+    }
+
+    /// Create new `NOTICE` message
+    pub fn notice(message: String) -> Self {
+        Self {
+            inner: RelayMessage::new_notice(message),
+        }
+    }
+
+    /// Create new `CLOSED` message
+    pub fn closed(subscription_id: String, message: String) -> Self {
+        Self {
+            inner: RelayMessage::new_closed(SubscriptionId::new(subscription_id), message),
+        }
+    }
+
+    /// Create new `EOSE` message
+    pub fn eose(subscription_id: String) -> Self {
+        Self {
+            inner: RelayMessage::new_eose(SubscriptionId::new(subscription_id)),
+        }
+    }
+
+    /// Create new `OK` message
+    pub fn ok(event_id: &JsEventId, status: bool, message: String) -> Self {
+        Self {
+            inner: RelayMessage::new_ok(**event_id, status, message),
+        }
+    }
+
+    /// Create new `AUTH` message
+    pub fn auth(challenge: String) -> Self {
+        Self {
+            inner: RelayMessage::new_auth(challenge),
+        }
+    }
+
+    /// Create new `EVENT` message
+    pub fn count(subscription_id: String, count: u64) -> Self {
+        Self {
+            inner: RelayMessage::new_count(SubscriptionId::new(subscription_id), count as usize),
+        }
+    }
+
+    /// Deserialize `RelayMessage` from JSON string
+    ///
+    /// **This method NOT verify the event signature!**
+    #[wasm_bindgen(js_name = fromJson)]
+    pub fn from_json(json: String) -> Result<JsRelayMessage> {
+        Ok(Self {
+            inner: RelayMessage::from_json(json).map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = asJson)]
+    pub fn as_json(&self) -> String {
+        self.inner.as_json()
+    }
+}
