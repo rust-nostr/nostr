@@ -3,16 +3,17 @@
 // Distributed under the MIT software license
 
 #![allow(clippy::drop_non_drop)]
+#![allow(non_snake_case)]
+#![allow(clippy::new_without_default)]
 
 use wasm_bindgen::prelude::*;
 
 pub mod error;
-mod event;
-mod key;
-mod message;
+pub mod event;
+pub mod key;
+pub mod message;
 pub mod nips;
-mod types;
-pub mod util;
+pub mod types;
 
 pub use self::event::{JsEvent, JsEventBuilder, JsEventId};
 pub use self::key::{JsKeys, JsPublicKey, JsSecretKey};

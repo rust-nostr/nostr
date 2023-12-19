@@ -4,15 +4,13 @@
 
 use std::ops::Deref;
 
-use js_sys::Array;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use super::{JsEvent, JsEventId, JsTags};
+use super::{JsEvent, JsEventId, JsTag};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::types::{JsContact, JsMetadata};
-use crate::util;
 
 #[wasm_bindgen(js_name = EventBuilder)]
 pub struct JsEventBuilder {
@@ -29,10 +27,9 @@ impl Deref for JsEventBuilder {
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
-    pub fn new(kind: u64, content: String, tags: JsTags) -> Result<JsEventBuilder> {
-        let tags: Vec<Vec<String>> = serde_wasm_bindgen::from_value(tags.into())?;
+    pub fn new(kind: u64, content: String, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter() {
+        for tag in tags.into_iter().map(|t| t.to_vec()) {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }
 
@@ -77,10 +74,9 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = newTextNote)]
-    pub fn new_text_note(content: String, tags: JsTags) -> Result<JsEventBuilder> {
-        let tags: Vec<Vec<String>> = serde_wasm_bindgen::from_value(tags.into())?;
+    pub fn new_text_note(content: String, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter() {
+        for tag in tags.into_iter().map(|t| t.to_vec()) {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }
 
@@ -90,10 +86,8 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = setContactList)]
-    pub fn set_contact_list(list: Array) -> Result<JsEventBuilder> {
-        let list = list
-            .into_iter()
-            .filter_map(|v| Some(util::downcast::<JsContact>(&v, "Contact").ok()?.inner()));
+    pub fn set_contact_list(list: Vec<JsContact>) -> Result<JsEventBuilder> {
+        let list = list.into_iter().map(|c| c.inner());
         Ok(Self {
             builder: EventBuilder::set_contact_list(list),
         })
@@ -125,10 +119,8 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn delete(ids: Array, reason: Option<String>) -> Result<JsEventBuilder> {
-        let ids = ids
-            .into_iter()
-            .filter_map(|v| Some(util::downcast::<JsEventId>(&v, "EventId").ok()?.inner));
+    pub fn delete(ids: Vec<JsEventId>, reason: Option<String>) -> Result<JsEventBuilder> {
+        let ids = ids.into_iter().map(|id| id.inner);
         Ok(Self {
             builder: match reason {
                 Some(reason) => EventBuilder::delete_with_reason(ids, reason),

@@ -8,10 +8,11 @@
 use std::ops::Deref;
 use std::time::Duration;
 
-use js_sys::Array;
+use js_sys::{Array, Function};
 use nostr_js::error::{into_err, Result};
-use nostr_js::util;
-use nostr_js::{JsContact, JsEvent, JsEventId, JsFilter, JsKeys, JsMetadata, JsPublicKey};
+use nostr_js::event::{JsEvent, JsEventArray, JsEventId, JsTag};
+use nostr_js::message::JsRelayMessage;
+use nostr_js::{JsContact, JsFilter, JsKeys, JsMetadata, JsPublicKey};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -98,11 +99,8 @@ impl JsClient {
 
     /// Subscribe to filters
     #[wasm_bindgen]
-    pub async fn subscribe(&self, filters: Array) -> Result<()> {
-        let filters = filters
-            .iter()
-            .map(|v| Ok(util::downcast::<JsFilter>(&v, "Filter")?.inner()))
-            .collect::<Result<Vec<Filter>, JsError>>()?;
+    pub async fn subscribe(&self, filters: Vec<JsFilter>) -> Result<()> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
         self.inner.subscribe(filters).await;
         Ok(())
     }
@@ -115,36 +113,35 @@ impl JsClient {
 
     /// Get events of filters
     #[wasm_bindgen(js_name = getEventsOf)]
-    pub async fn get_events_of(&self, filters: Array, timeout: Option<u64>) -> Result<Array> {
-        let filters = filters
-            .iter()
-            .map(|v| Ok(util::downcast::<JsFilter>(&v, "Filter")?.inner()))
-            .collect::<Result<Vec<Filter>, JsError>>()?;
-        let timeout = timeout.map(Duration::from_secs);
-        match self.inner.get_events_of(filters, timeout).await {
-            Ok(events) => {
-                let events = events
-                    .into_iter()
-                    .map(|e| {
-                        let e: JsEvent = e.into();
-                        JsValue::from(e)
-                    })
-                    .collect();
-                Ok(events)
-            }
-            Err(e) => Err(into_err(e)),
-        }
+    pub async fn get_events_of(
+        &self,
+        filters: Vec<JsFilter>,
+        timeout: Option<u64>,
+    ) -> Result<JsEventArray> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
+        let timeout: Option<Duration> = timeout.map(Duration::from_secs);
+        let events: Vec<Event> = self
+            .inner
+            .get_events_of(filters, timeout)
+            .await
+            .map_err(into_err)?;
+        let events: JsEventArray = events
+            .into_iter()
+            .map(|e| {
+                let e: JsEvent = e.into();
+                JsValue::from(e)
+            })
+            .collect::<Array>()
+            .unchecked_into();
+        Ok(events)
     }
 
     /// Request events of filters.
     /// All events will be received on notification listener
     /// until the EOSE "end of stored events" message is received from the relay.
     #[wasm_bindgen(js_name = reqEventsOf)]
-    pub async fn req_events_of(&self, filters: Array, timeout: Option<u64>) -> Result<()> {
-        let filters = filters
-            .iter()
-            .map(|v| Ok(util::downcast::<JsFilter>(&v, "Filter")?.inner()))
-            .collect::<Result<Vec<Filter>, JsError>>()?;
+    pub async fn req_events_of(&self, filters: Vec<JsFilter>, timeout: Option<u64>) -> Result<()> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
         let timeout = timeout.map(Duration::from_secs);
         self.inner.req_events_of(filters, timeout).await;
         Ok(())
@@ -186,10 +183,9 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = publishTextNote)]
-    pub async fn publish_text_note(&self, content: String, tags: Array) -> Result<JsEventId> {
-        let tags: Vec<Vec<String>> = serde_wasm_bindgen::from_value(tags.into())?;
+    pub async fn publish_text_note(&self, content: String, tags: Vec<JsTag>) -> Result<JsEventId> {
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter() {
+        for tag in tags.into_iter().map(|t| t.to_vec()) {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }
         self.inner
@@ -215,11 +211,8 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[wasm_bindgen(js_name = setContactList)]
-    pub async fn set_contact_list(&self, list: Array) -> Result<JsEventId> {
-        let list = list
-            .iter()
-            .map(|v| Ok(util::downcast::<JsContact>(&v, "Contact")?.inner()))
-            .collect::<Result<Vec<Contact>, JsError>>()?;
+    pub async fn set_contact_list(&self, list: Vec<JsContact>) -> Result<JsEventId> {
+        let list = list.into_iter().map(|c| c.inner());
         self.inner
             .set_contact_list(list)
             .await
@@ -440,4 +433,93 @@ impl JsClient {
             .map_err(into_err)
             .map(|id| id.into())
     }
+
+    /// Handle relay message notifications
+    ///
+    /// Callback function args:
+    /// * Relay Url (string type)
+    /// * Relay message (RelayMessage type)
+    ///
+    /// # Example
+    /// ```javascript
+    /// // Subscribe to filters
+    /// const filter = new Filter().author(keys.publicKey);
+    /// await client.subscribe([filter]);
+    ///
+    /// // Compose handler callback function
+    /// const handleMessage = (relayUrl, message) => {
+    ///     // Handle message
+    ///     console.log(message.asJson())
+    /// }
+    ///
+    /// // Handle events
+    /// await client.handleMessageNotifications(handleMessage);
+    /// ```
+    #[wasm_bindgen(js_name = handleMessageNotifications)]
+    pub async fn handle_message_notifications(&self, callback: Function) -> Result<()> {
+        self.inner
+            .handle_notifications(|notification| async {
+                if let RelayPoolNotification::Message { relay_url, message } = notification {
+                    let message: JsRelayMessage = message.into();
+                    callback
+                        .call2(
+                            &JsValue::NULL,
+                            &relay_url.to_string().into(),
+                            &message.into(),
+                        )
+                        .unwrap();
+                }
+                Ok(false)
+            })
+            .await
+            .map_err(into_err)?;
+        Ok(())
+    }
+
+    /// Handle event notifications
+    ///
+    /// Callback function args:
+    /// * Relay Url (string type)
+    /// * Event (Event type)
+    ///
+    /// # Example
+    /// ```javascript
+    /// // Subscribe to filters
+    /// const filter = new Filter().author(keys.publicKey);
+    /// await client.subscribe([filter]);
+    ///
+    /// // Compose handler callback function
+    /// const handleEvent = (relayUrl, event) => {
+    ///     // Handle event
+    ///     console.log(relayUrl, event.asJson())
+    /// }
+    ///
+    /// // Handle events
+    /// await client.handleEventNotifications(handleEvent);
+    /// ```
+    #[wasm_bindgen(js_name = handleEventNotifications)]
+    pub async fn handle_event_notifications(&self, callback: Function) -> Result<()> {
+        self.inner
+            .handle_notifications(|notification| async {
+                if let RelayPoolNotification::Event { relay_url, event } = notification {
+                    let event: JsEvent = event.into();
+                    callback
+                        .call2(&JsValue::NULL, &relay_url.to_string().into(), &event.into())
+                        .unwrap();
+                }
+                Ok(false)
+            })
+            .await
+            .map_err(into_err)?;
+        Ok(())
+    }
 }
+
+/* #[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(extends = Object, is_type_of = JsValue::is_function, typescript_type = "Function")]
+    pub type HandleEventNotification;
+
+    #[wasm_bindgen(js_name = handleEventNotification, method)]
+    pub fn handle_event_notification(this: &HandleEventNotification, relay_url: String, event: JsEvent);
+} */

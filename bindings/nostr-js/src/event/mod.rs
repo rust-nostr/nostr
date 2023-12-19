@@ -4,6 +4,7 @@
 
 use std::ops::Deref;
 
+use js_sys::Array;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -13,9 +14,15 @@ mod tag;
 
 pub use self::builder::JsEventBuilder;
 pub use self::id::JsEventId;
-pub use self::tag::JsTags;
+pub use self::tag::{JsTag, JsTagArray};
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "Event[]")]
+    pub type JsEventArray;
+}
 
 #[wasm_bindgen(js_name = Event)]
 pub struct JsEvent {
@@ -63,10 +70,19 @@ impl JsEvent {
         self.inner.kind.into()
     }
 
-    /* #[wasm_bindgen(getter)]
-    pub fn tags(&self) -> JsTags {
-        self.inner.tags.iter().map(|t| t.as_vec()).collect()
-    } */
+    #[wasm_bindgen(getter)]
+    pub fn tags(&self) -> JsTagArray {
+        self.inner
+            .tags
+            .iter()
+            .cloned()
+            .map(|t| {
+                let e: JsTag = t.into();
+                JsValue::from(e)
+            })
+            .collect::<Array>()
+            .unchecked_into()
+    }
 
     #[wasm_bindgen(getter)]
     pub fn content(&self) -> String {

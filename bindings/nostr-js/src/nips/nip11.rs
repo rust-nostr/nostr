@@ -20,7 +20,6 @@ impl From<RelayInformationDocument> for JsRelayInformationDocument {
 
 #[wasm_bindgen(js_class = RelayInformationDocument)]
 impl JsRelayInformationDocument {
-    #[allow(clippy::new_without_default)]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {

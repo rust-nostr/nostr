@@ -29,7 +29,6 @@ impl Deref for JsMetadata {
 
 #[wasm_bindgen(js_class = Metadata)]
 impl JsMetadata {
-    #[allow(clippy::new_without_default)]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
