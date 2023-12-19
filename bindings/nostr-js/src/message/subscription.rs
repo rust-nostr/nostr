@@ -2,14 +2,13 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use js_sys::{Array, JsString};
+use js_sys::JsString;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 use crate::event::JsEventId;
 use crate::key::JsPublicKey;
-use crate::util;
 
 #[wasm_bindgen(js_name = SubscriptionId)]
 pub struct JsSubscriptionId {
@@ -82,10 +81,8 @@ impl JsFilter {
 
     /// Set subscription ids
     #[wasm_bindgen]
-    pub fn ids(&self, ids: Array) -> Result<JsFilter> {
-        let ids = ids
-            .into_iter()
-            .filter_map(|v| Some(util::downcast::<JsEventId>(&v, "EventId").ok()?.inner));
+    pub fn ids(&self, ids: Vec<JsEventId>) -> Result<JsFilter> {
+        let ids = ids.into_iter().map(|id| id.inner);
         Ok(Self {
             inner: self.inner.to_owned().ids(ids),
         })
@@ -101,10 +98,8 @@ impl JsFilter {
 
     /// Set authors
     #[wasm_bindgen]
-    pub fn authors(&self, authors: Array) -> Result<JsFilter> {
-        let authors = authors
-            .into_iter()
-            .filter_map(|v| Some(util::downcast::<JsPublicKey>(&v, "PublicKey").ok()?.inner));
+    pub fn authors(&self, authors: Vec<JsPublicKey>) -> Result<JsFilter> {
+        let authors = authors.into_iter().map(|p| p.inner);
         Ok(Self {
             inner: self.inner.to_owned().authors(authors),
         })
@@ -137,12 +132,10 @@ impl JsFilter {
 
     /// Set events
     #[wasm_bindgen]
-    pub fn events(&self, ids: Array) -> Result<JsFilter> {
-        let events = ids
-            .into_iter()
-            .filter_map(|v| Some(util::downcast::<JsEventId>(&v, "EventId").ok()?.inner));
+    pub fn events(&self, ids: Vec<JsEventId>) -> Result<JsFilter> {
+        let ids = ids.into_iter().map(|id| id.inner);
         Ok(Self {
-            inner: self.inner.to_owned().events(events),
+            inner: self.inner.to_owned().events(ids),
         })
     }
 
@@ -156,10 +149,8 @@ impl JsFilter {
 
     /// Set pubkeys
     #[wasm_bindgen]
-    pub fn pubkeys(&self, pubkeys: Array) -> Result<JsFilter> {
-        let pubkeys = pubkeys
-            .into_iter()
-            .filter_map(|v| Some(util::downcast::<JsPublicKey>(&v, "PublicKey").ok()?.inner));
+    pub fn pubkeys(&self, pubkeys: Vec<JsPublicKey>) -> Result<JsFilter> {
+        let pubkeys = pubkeys.into_iter().map(|p| p.inner);
         Ok(Self {
             inner: self.inner.to_owned().pubkeys(pubkeys),
         })

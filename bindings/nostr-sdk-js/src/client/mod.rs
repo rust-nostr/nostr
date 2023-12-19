@@ -10,7 +10,6 @@ use std::time::Duration;
 
 use js_sys::Array;
 use nostr_js::error::{into_err, Result};
-use nostr_js::util;
 use nostr_js::{JsContact, JsEvent, JsEventId, JsFilter, JsKeys, JsMetadata, JsPublicKey};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -98,11 +97,8 @@ impl JsClient {
 
     /// Subscribe to filters
     #[wasm_bindgen]
-    pub async fn subscribe(&self, filters: Array) -> Result<()> {
-        let filters = filters
-            .iter()
-            .map(|v| Ok(util::downcast::<JsFilter>(&v, "Filter")?.inner()))
-            .collect::<Result<Vec<Filter>, JsError>>()?;
+    pub async fn subscribe(&self, filters: Vec<JsFilter>) -> Result<()> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
         self.inner.subscribe(filters).await;
         Ok(())
     }
@@ -115,11 +111,12 @@ impl JsClient {
 
     /// Get events of filters
     #[wasm_bindgen(js_name = getEventsOf)]
-    pub async fn get_events_of(&self, filters: Array, timeout: Option<u64>) -> Result<Array> {
-        let filters = filters
-            .iter()
-            .map(|v| Ok(util::downcast::<JsFilter>(&v, "Filter")?.inner()))
-            .collect::<Result<Vec<Filter>, JsError>>()?;
+    pub async fn get_events_of(
+        &self,
+        filters: Vec<JsFilter>,
+        timeout: Option<u64>,
+    ) -> Result<Array> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
         let timeout = timeout.map(Duration::from_secs);
         match self.inner.get_events_of(filters, timeout).await {
             Ok(events) => {
@@ -140,11 +137,8 @@ impl JsClient {
     /// All events will be received on notification listener
     /// until the EOSE "end of stored events" message is received from the relay.
     #[wasm_bindgen(js_name = reqEventsOf)]
-    pub async fn req_events_of(&self, filters: Array, timeout: Option<u64>) -> Result<()> {
-        let filters = filters
-            .iter()
-            .map(|v| Ok(util::downcast::<JsFilter>(&v, "Filter")?.inner()))
-            .collect::<Result<Vec<Filter>, JsError>>()?;
+    pub async fn req_events_of(&self, filters: Vec<JsFilter>, timeout: Option<u64>) -> Result<()> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
         let timeout = timeout.map(Duration::from_secs);
         self.inner.req_events_of(filters, timeout).await;
         Ok(())
@@ -215,11 +209,8 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[wasm_bindgen(js_name = setContactList)]
-    pub async fn set_contact_list(&self, list: Array) -> Result<JsEventId> {
-        let list = list
-            .iter()
-            .map(|v| Ok(util::downcast::<JsContact>(&v, "Contact")?.inner()))
-            .collect::<Result<Vec<Contact>, JsError>>()?;
+    pub async fn set_contact_list(&self, list: Vec<JsContact>) -> Result<JsEventId> {
+        let list = list.into_iter().map(|c| c.inner());
         self.inner
             .set_contact_list(list)
             .await

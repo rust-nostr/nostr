@@ -822,7 +822,10 @@ impl Client {
     /// Set contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    pub async fn set_contact_list(&self, list: Vec<Contact>) -> Result<EventId, Error> {
+    pub async fn set_contact_list<I>(&self, list: I) -> Result<EventId, Error>
+    where
+        I: IntoIterator<Item = Contact>,
+    {
         let builder = EventBuilder::set_contact_list(list);
         self.send_event_builder(builder).await
     }

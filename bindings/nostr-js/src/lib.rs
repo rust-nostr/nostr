@@ -12,7 +12,6 @@ mod key;
 mod message;
 pub mod nips;
 mod types;
-pub mod util;
 
 pub use self::event::{JsEvent, JsEventBuilder, JsEventId};
 pub use self::key::{JsKeys, JsPublicKey, JsSecretKey};
