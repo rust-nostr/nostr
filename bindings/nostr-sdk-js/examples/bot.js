@@ -30,7 +30,7 @@ async function main() {
         }
     } 
 
-    client.handleEventNotifications(handleEvent);
+    await client.handleEventNotifications(handleEvent);
 }
 
 main();
