@@ -1,4 +1,4 @@
-const { Keys, Client, Filter, loadWasmAsync } = require("../");
+const { Keys, Client, Filter, loadWasmAsync, Timestamp } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -12,7 +12,7 @@ async function main() {
 
     await client.connect();
 
-    const filter = new Filter().author(keys.publicKey).kind(BigInt(4)).until(BigInt(Date.now())).limit(BigInt(10));
+    const filter = new Filter().author(keys.publicKey).kind(BigInt(4)).until(Timestamp.now()).limit(BigInt(10));
     console.log('filter', filter.asJson());
 
     let events = await client.getEventsOf([filter], BigInt(10));

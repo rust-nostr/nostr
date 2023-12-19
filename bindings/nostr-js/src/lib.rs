@@ -4,6 +4,7 @@
 
 #![allow(clippy::drop_non_drop)]
 #![allow(non_snake_case)]
+#![allow(clippy::new_without_default)]
 
 use wasm_bindgen::prelude::*;
 

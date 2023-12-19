@@ -9,6 +9,7 @@ use wasm_bindgen::prelude::*;
 use crate::error::{into_err, Result};
 use crate::event::JsEventId;
 use crate::key::JsPublicKey;
+use crate::types::JsTimestamp;
 
 #[wasm_bindgen(js_name = SubscriptionId)]
 pub struct JsSubscriptionId {
@@ -51,7 +52,6 @@ impl From<&JsFilter> for Filter {
 
 #[wasm_bindgen(js_class = Filter)]
 impl JsFilter {
-    #[allow(clippy::new_without_default)]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
@@ -208,19 +208,17 @@ impl JsFilter {
 
     /// Set since unix timestamp
     #[wasm_bindgen]
-    pub fn since(&self, since: u64) -> Self {
-        let since = Timestamp::from(since);
+    pub fn since(&self, since: &JsTimestamp) -> Self {
         Self {
-            inner: self.inner.to_owned().since(since),
+            inner: self.inner.to_owned().since(**since),
         }
     }
 
     /// Set until unix timestamp
     #[wasm_bindgen]
-    pub fn until(&self, until: u64) -> Self {
-        let until = Timestamp::from(until);
+    pub fn until(&self, until: &JsTimestamp) -> Self {
         Self {
-            inner: self.inner.to_owned().until(until),
+            inner: self.inner.to_owned().until(**until),
         }
     }
 
