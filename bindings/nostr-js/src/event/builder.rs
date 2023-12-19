@@ -7,7 +7,7 @@ use std::ops::Deref;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use super::{JsEvent, JsEventId, JsTags};
+use super::{JsEvent, JsEventId, JsTag};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::types::{JsContact, JsMetadata};
@@ -27,10 +27,9 @@ impl Deref for JsEventBuilder {
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
-    pub fn new(kind: u64, content: String, tags: JsTags) -> Result<JsEventBuilder> {
-        let tags: Vec<Vec<String>> = serde_wasm_bindgen::from_value(tags.into())?;
+    pub fn new(kind: u64, content: String, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter() {
+        for tag in tags.into_iter().map(|t| t.to_vec()) {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }
 
@@ -75,10 +74,9 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = newTextNote)]
-    pub fn new_text_note(content: String, tags: JsTags) -> Result<JsEventBuilder> {
-        let tags: Vec<Vec<String>> = serde_wasm_bindgen::from_value(tags.into())?;
+    pub fn new_text_note(content: String, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter() {
+        for tag in tags.into_iter().map(|t| t.to_vec()) {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }
 

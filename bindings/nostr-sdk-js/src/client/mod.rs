@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use js_sys::Array;
 use nostr_js::error::{into_err, Result};
+use nostr_js::event::JsTag;
 use nostr_js::{JsContact, JsEvent, JsEventId, JsFilter, JsKeys, JsMetadata, JsPublicKey};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -180,10 +181,9 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = publishTextNote)]
-    pub async fn publish_text_note(&self, content: String, tags: Array) -> Result<JsEventId> {
-        let tags: Vec<Vec<String>> = serde_wasm_bindgen::from_value(tags.into())?;
+    pub async fn publish_text_note(&self, content: String, tags: Vec<JsTag>) -> Result<JsEventId> {
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter() {
+        for tag in tags.into_iter().map(|t| t.to_vec()) {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }
         self.inner

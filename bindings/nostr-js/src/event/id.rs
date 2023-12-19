@@ -5,6 +5,7 @@
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use super::JsTag;
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
 
@@ -38,14 +39,13 @@ impl JsEventId {
         pubkey: &JsPublicKey,
         created_at: u64,
         kind: u64,
-        tags: JsValue,
+        tags: Vec<JsTag>,
         content: String,
     ) -> Result<JsEventId> {
         let created_at = Timestamp::from(created_at);
         let kind = Kind::from(kind);
-        let tags: Vec<Vec<String>> = serde_wasm_bindgen::from_value(tags)?;
         let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter() {
+        for tag in tags.into_iter().map(|t| t.to_vec()) {
             new_tags.push(Tag::try_from(tag).map_err(into_err)?);
         }
         Ok(Self {

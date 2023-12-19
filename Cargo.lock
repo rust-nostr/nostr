@@ -1518,7 +1518,6 @@ dependencies = [
  "console_error_panic_hook",
  "js-sys",
  "nostr",
- "serde-wasm-bindgen",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]
@@ -1586,7 +1585,6 @@ dependencies = [
  "js-sys",
  "nostr-js",
  "nostr-sdk",
- "serde-wasm-bindgen",
  "tracing-wasm",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2142,17 +2140,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bca2a08484b285dcb282d0f67b26cadc0df8b19f8c12502c13d966bf9482f001"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-wasm-bindgen"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3b143e2833c57ab9ad3ea280d21fd34e285a42837aeb0ee301f4f41890fa00e"
-dependencies = [
- "js-sys",
- "serde",
- "wasm-bindgen",
 ]
 
 [[package]]

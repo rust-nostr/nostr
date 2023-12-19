@@ -1,4 +1,4 @@
-const { Keys, EventBuilder, loadWasmSync } = require("../");
+const { Keys, EventBuilder, Tag, loadWasmSync } = require("../");
 
 function main() {
     loadWasmSync();
@@ -6,8 +6,9 @@ function main() {
     // Generate new random keys
     let keys = Keys.generate();
     
-    let event = new EventBuilder(BigInt(1), "Testing nostr JS bindings", [["p", "d0a59cd44b6051708e9d437aa01f86451378a130ea7ba38ad43eae0bd0e0c4ce"]]).toEvent(keys);
-    console.log(event.asJson());
+    let event = new EventBuilder(BigInt(1), "Testing nostr JS bindings", [new Tag(["p", "d0a59cd44b6051708e9d437aa01f86451378a130ea7ba38ad43eae0bd0e0c4ce"])]).toEvent(keys);
+    console.log(event.asJson()); // Print event as JSON
+    console.log(event.tags[0].toVec()); // Print first tag
 }
 
 main();

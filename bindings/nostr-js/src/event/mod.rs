@@ -4,6 +4,7 @@
 
 use std::ops::Deref;
 
+use js_sys::Array;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -13,7 +14,7 @@ mod tag;
 
 pub use self::builder::JsEventBuilder;
 pub use self::id::JsEventId;
-pub use self::tag::JsTags;
+pub use self::tag::{JsTag, JsTagArray};
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
 
@@ -64,9 +65,17 @@ impl JsEvent {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn tags(&self) -> Result<JsTags> {
-        let tags: Vec<Vec<String>> = self.inner.tags.iter().map(|t| t.as_vec()).collect();
-        Ok(serde_wasm_bindgen::to_value(&tags)?.into())
+    pub fn tags(&self) -> JsTagArray {
+        self.inner
+            .tags
+            .iter()
+            .cloned()
+            .map(|t| {
+                let e: JsTag = t.into();
+                JsValue::from(e)
+            })
+            .collect::<Array>()
+            .unchecked_into()
     }
 
     #[wasm_bindgen(getter)]

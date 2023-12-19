@@ -8,11 +8,11 @@
 use wasm_bindgen::prelude::*;
 
 pub mod error;
-mod event;
-mod key;
-mod message;
+pub mod event;
+pub mod key;
+pub mod message;
 pub mod nips;
-mod types;
+pub mod types;
 
 pub use self::event::{JsEvent, JsEventBuilder, JsEventId};
 pub use self::key::{JsKeys, JsPublicKey, JsSecretKey};
