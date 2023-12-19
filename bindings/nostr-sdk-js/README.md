@@ -73,6 +73,11 @@ async function main() {
 main();
 ```
 
+More examples can be found at:
+
+* https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-js/examples
+* https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-js/examples
+
 ## Supported NIPs
 
 Look at <https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips>
