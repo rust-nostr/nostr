@@ -4,7 +4,7 @@
 
 //! Relay Pool
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -761,21 +761,34 @@ impl RelayPool {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
+        // Get stored events
         let stored_events: Vec<Event> = self
             .database
             .query(filters.clone())
             .await
             .unwrap_or_default();
+
+        // Compose IDs and Events collections
+        let ids: Arc<Mutex<HashSet<EventId>>> =
+            Arc::new(Mutex::new(stored_events.iter().map(|e| e.id).collect()));
         let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(stored_events));
+
+        // Get relays and start query
         let mut handles = Vec::new();
         let relays = self.relays().await;
         for (url, relay) in relays.into_iter() {
             let filters = filters.clone();
+            let ids = ids.clone();
             let events = events.clone();
             let handle = thread::spawn(async move {
                 if let Err(e) = relay
                     .get_events_of_with_callback(filters, timeout, opts, |event| async {
-                        events.lock().await.push(event);
+                        let mut ids = ids.lock().await;
+                        if !ids.contains(&event.id) {
+                            let mut events = events.lock().await;
+                            ids.insert(event.id);
+                            events.push(event);
+                        }
                     })
                     .await
                 {
@@ -785,6 +798,7 @@ impl RelayPool {
             handles.push(handle);
         }
 
+        // Join threads
         for handle in handles.into_iter().flatten() {
             handle.join().await?;
         }
