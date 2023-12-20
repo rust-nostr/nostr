@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use async_utility::thread;
 use nostr::message::MessageHandleError;
+use nostr::nips::nip01::Coordinate;
 use nostr::{
     event, ClientMessage, Event, EventId, Filter, JsonUtil, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
@@ -235,6 +236,7 @@ impl RelayPoolTask {
         }
     }
 
+    #[tracing::instrument(skip(self), level = "trace")]
     async fn handle_relay_message(
         &self,
         relay_url: Url,
@@ -247,6 +249,42 @@ impl RelayPoolTask {
             } => {
                 // Deserialize partial event (id, pubkey and sig)
                 let partial_event: PartialEvent = PartialEvent::from_json(event.to_string())?;
+
+                // Check if event has been deleted
+                if self
+                    .database
+                    .has_event_id_been_deleted(partial_event.id)
+                    .await?
+                {
+                    tracing::warn!(
+                        "Received event {} that was deleted from {relay_url} [id]",
+                        partial_event.id
+                    );
+                    return Ok(None);
+                }
+
+                // Deserialize missing event fields
+                let missing: MissingPartialEvent =
+                    MissingPartialEvent::from_json(event.to_string())?;
+
+                // Check if event is replaceable and has coordinate
+                if missing.kind.is_replaceable() || missing.kind.is_parameterized_replaceable() {
+                    let coordinate: Coordinate =
+                        Coordinate::new(missing.kind, partial_event.pubkey)
+                            .identifier(missing.identifier().unwrap_or_default());
+                    // Check if event has been deleted
+                    if self
+                        .database
+                        .has_coordinate_been_deleted(coordinate, missing.created_at)
+                        .await?
+                    {
+                        tracing::warn!(
+                            "Received event {} that was deleted from {relay_url} [coordinate]",
+                            partial_event.id
+                        );
+                        return Ok(None);
+                    }
+                }
 
                 // Check if event id was already seen
                 let seen: bool = self
@@ -276,23 +314,16 @@ impl RelayPoolTask {
                     return Ok(None);
                 }
 
-                // Verify signature
-                partial_event.verify_signature()?;
-
-                // Deserialize missing event fields
-                let missing: MissingPartialEvent =
-                    MissingPartialEvent::from_json(event.to_string())?;
-
                 // Compose full event
-                let event: Event = partial_event.merge(missing);
+                let event: Event = partial_event.merge(missing)?;
 
                 // Check if it's expired
                 if event.is_expired() {
                     return Err(Error::EventExpired);
                 }
 
-                // Verify event ID
-                event.verify_id()?;
+                // Verify event
+                event.verify()?;
 
                 // Save event
                 self.database.save_event(&event).await?;

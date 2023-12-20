@@ -38,7 +38,7 @@ nostr-database = { workspace = true }
 nostr-sdk-net = { version = "0.25", path = "../nostr-sdk-net" }
 once_cell = { workspace = true }
 thiserror = { workspace = true }
-tracing = { workspace = true, features = ["std"] }
+tracing = { workspace = true, features = ["std", "attributes"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 nostr-rocksdb = { version = "0.1", path = "../nostr-rocksdb", optional = true }

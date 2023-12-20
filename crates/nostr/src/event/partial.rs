@@ -11,6 +11,7 @@ use core::fmt;
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
 
+use super::tag;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{Event, EventId, JsonUtil, Kind, Tag, Timestamp};
@@ -22,6 +23,8 @@ pub enum Error {
     Json(serde_json::Error),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
+    /// Tag parse
+    Tag(tag::Error),
     /// Invalid signature
     InvalidSignature,
 }
@@ -34,6 +37,7 @@ impl fmt::Display for Error {
         match self {
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Tag(e) => write!(f, "Tag: {e}"),
             Self::InvalidSignature => write!(f, "Invalid signature"),
         }
     }
@@ -48,6 +52,12 @@ impl From<serde_json::Error> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+impl From<tag::Error> for Error {
+    fn from(e: tag::Error) -> Self {
+        Self::Tag(e)
     }
 }
 
@@ -81,16 +91,21 @@ impl PartialEvent {
     }
 
     /// Merge [`MissingPartialEvent`] and compose [`Event`]
-    pub fn merge(&self, missing: MissingPartialEvent) -> Event {
-        Event {
+    pub fn merge(&self, missing: MissingPartialEvent) -> Result<Event, Error> {
+        let mut tags: Vec<Tag> = Vec::with_capacity(missing.tags.len());
+        for tag in missing.tags.into_iter() {
+            tags.push(Tag::parse(tag)?);
+        }
+
+        Ok(Event {
             id: self.id,
             pubkey: self.pubkey,
             created_at: missing.created_at,
             kind: missing.kind,
-            tags: missing.tags,
+            tags,
             content: missing.content,
             sig: self.sig,
-        }
+        })
     }
 }
 
@@ -106,9 +121,21 @@ pub struct MissingPartialEvent {
     /// Kind
     pub kind: Kind,
     /// Vector of [`Tag`]
-    pub tags: Vec<Tag>,
+    pub tags: Vec<Vec<String>>,
     /// Content
     pub content: String,
+}
+
+impl MissingPartialEvent {
+    /// Extract identifier (`d` tag), if exists.
+    pub fn identifier(&self) -> Option<&str> {
+        for tag in self.tags.iter() {
+            if let Some("d") = tag.first().map(|x| x.as_str()) {
+                return tag.get(1).map(|x| x.as_str());
+            }
+        }
+        None
+    }
 }
 
 impl JsonUtil for MissingPartialEvent {
