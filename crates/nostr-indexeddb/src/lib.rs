@@ -331,19 +331,49 @@ impl_nostr_database!({
             .await)
     }
 
-    async fn event_id_seen(
-        &self,
-        _event_id: EventId,
-        _relay_url: Url,
-    ) -> Result<(), IndexedDBError> {
-        todo!()
+    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), IndexedDBError> {
+        let mut set: HashSet<Url> = match self.event_seen_on_relays(event_id).await? {
+            Some(set) => set,
+            None => HashSet::with_capacity(1),
+        };
+
+        if set.insert(relay_url) {
+            // Save
+            let mut fbb = self.fbb.lock().await;
+            let tx = self.db.transaction_on_one_with_mode(
+                EVENTS_SEEN_BY_RELAYS_CF,
+                IdbTransactionMode::Readwrite,
+            )?;
+            let store = tx.object_store(EVENTS_SEEN_BY_RELAYS_CF)?;
+            let key = JsValue::from(event_id.to_hex());
+            let value = JsValue::from(hex::encode(set.encode(&mut fbb)));
+            store.put_key_val(&key, &value)?;
+        }
+
+        Ok(())
     }
 
     async fn event_seen_on_relays(
         &self,
-        _event_id: EventId,
+        event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, IndexedDBError> {
-        todo!()
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_SEEN_BY_RELAYS_CF, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(EVENTS_SEEN_BY_RELAYS_CF)?;
+        let key = JsValue::from(event_id.to_hex());
+        match store.get(&key)?.await? {
+            Some(jsvalue) => {
+                let set_hex = jsvalue
+                    .as_string()
+                    .ok_or(IndexedDBError::Database(DatabaseError::NotFound))?;
+                let bytes = hex::decode(set_hex).map_err(DatabaseError::backend)?;
+                Ok(Some(
+                    HashSet::decode(&bytes).map_err(DatabaseError::backend)?,
+                ))
+            }
+            None => Ok(None),
+        }
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
