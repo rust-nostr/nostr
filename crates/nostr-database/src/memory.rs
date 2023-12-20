@@ -102,29 +102,29 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else if self.opts.events {
             let events = self.events.read().await;
-            Ok(events.contains_key(&event_id))
+            Ok(events.contains_key(event_id))
         } else {
             Ok(false)
         }
     }
 
-    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         let seen_event_ids = self.seen_event_ids.read().await;
-        Ok(seen_event_ids.contains_key(&event_id))
+        Ok(seen_event_ids.contains_key(event_id))
     }
 
-    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         Ok(self.indexes.has_event_id_been_deleted(event_id).await)
     }
 
     async fn has_coordinate_been_deleted(
         &self,
-        coordinate: Coordinate,
+        coordinate: &Coordinate,
         timestamp: Timestamp,
     ) -> Result<bool, Self::Err> {
         Ok(self

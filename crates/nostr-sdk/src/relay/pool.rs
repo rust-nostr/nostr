@@ -253,7 +253,7 @@ impl RelayPoolTask {
                 // Check if event has been deleted
                 if self
                     .database
-                    .has_event_id_been_deleted(partial_event.id)
+                    .has_event_id_been_deleted(&partial_event.id)
                     .await?
                 {
                     tracing::warn!(
@@ -275,7 +275,7 @@ impl RelayPoolTask {
                     // Check if event has been deleted
                     if self
                         .database
-                        .has_coordinate_been_deleted(coordinate, missing.created_at)
+                        .has_coordinate_been_deleted(&coordinate, missing.created_at)
                         .await?
                     {
                         tracing::warn!(
@@ -289,7 +289,7 @@ impl RelayPoolTask {
                 // Check if event id was already seen
                 let seen: bool = self
                     .database
-                    .has_event_already_been_seen(partial_event.id)
+                    .has_event_already_been_seen(&partial_event.id)
                     .await?;
 
                 // Set event as seen by relay
@@ -307,7 +307,7 @@ impl RelayPoolTask {
                 // Check if event was already saved
                 if self
                     .database
-                    .has_event_already_been_saved(partial_event.id)
+                    .has_event_already_been_saved(&partial_event.id)
                     .await?
                 {
                     tracing::trace!("Event {} already saved into database", partial_event.id);

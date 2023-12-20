@@ -290,7 +290,7 @@ impl_nostr_database!({
 
     async fn has_event_already_been_saved(
         &self,
-        event_id: EventId,
+        event_id: &EventId,
     ) -> Result<bool, IndexedDBError> {
         if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
@@ -304,7 +304,10 @@ impl_nostr_database!({
         }
     }
 
-    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, IndexedDBError> {
+    async fn has_event_already_been_seen(
+        &self,
+        event_id: &EventId,
+    ) -> Result<bool, IndexedDBError> {
         let tx = self
             .db
             .transaction_on_one_with_mode(EVENTS_SEEN_BY_RELAYS_CF, IdbTransactionMode::Readonly)?;
@@ -313,13 +316,13 @@ impl_nostr_database!({
         Ok(store.get(&key)?.await?.is_some())
     }
 
-    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, IndexedDBError> {
+    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, IndexedDBError> {
         Ok(self.indexes.has_event_id_been_deleted(event_id).await)
     }
 
     async fn has_coordinate_been_deleted(
         &self,
-        coordinate: Coordinate,
+        coordinate: &Coordinate,
         timestamp: Timestamp,
     ) -> Result<bool, IndexedDBError> {
         Ok(self

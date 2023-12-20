@@ -598,19 +598,19 @@ impl DatabaseIndexes {
     }
 
     /// Check if an event with [`EventId`] has been deleted
-    pub async fn has_event_id_been_deleted(&self, event_id: EventId) -> bool {
+    pub async fn has_event_id_been_deleted(&self, event_id: &EventId) -> bool {
         let deleted_ids = self.deleted_ids.read().await;
-        deleted_ids.contains(&event_id)
+        deleted_ids.contains(event_id)
     }
 
     /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
     pub async fn has_coordinate_been_deleted(
         &self,
-        coordinate: Coordinate,
+        coordinate: &Coordinate,
         timestamp: Timestamp,
     ) -> bool {
         let deleted_coordinates = self.deleted_coordinates.read().await;
-        if let Some(t) = deleted_coordinates.get(&coordinate).copied() {
+        if let Some(t) = deleted_coordinates.get(coordinate).copied() {
             t >= timestamp
         } else {
             false

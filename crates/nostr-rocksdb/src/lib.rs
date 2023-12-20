@@ -194,7 +194,7 @@ impl NostrDatabase for RocksDatabase {
         }
     }
 
-    async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else {
@@ -203,18 +203,18 @@ impl NostrDatabase for RocksDatabase {
         }
     }
 
-    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         let cf = self.cf_handle(EVENTS_SEEN_BY_RELAYS_CF)?;
         Ok(self.db.key_may_exist_cf(&cf, event_id.as_bytes()))
     }
 
-    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         Ok(self.indexes.has_event_id_been_deleted(event_id).await)
     }
 
     async fn has_coordinate_been_deleted(
         &self,
-        coordinate: Coordinate,
+        coordinate: &Coordinate,
         timestamp: Timestamp,
     ) -> Result<bool, Self::Err> {
         Ok(self

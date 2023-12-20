@@ -111,18 +111,18 @@ pub trait NostrDatabase: AsyncTraitDeps {
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err>;
 
     /// Check if [`Event`] has already been saved
-    async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err>;
+    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err>;
 
     /// Check if [`EventId`] has already been seen
-    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err>;
+    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err>;
 
     /// Check if [`EventId`] has been deleted
-    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err>;
+    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err>;
 
     /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
     async fn has_coordinate_been_deleted(
         &self,
-        coordinate: Coordinate,
+        coordinate: &Coordinate,
         timestamp: Timestamp,
     ) -> Result<bool, Self::Err>;
 
@@ -265,21 +265,21 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
         self.0.save_event(event).await.map_err(Into::into)
     }
 
-    async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         self.0
             .has_event_already_been_saved(event_id)
             .await
             .map_err(Into::into)
     }
 
-    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         self.0
             .has_event_already_been_seen(event_id)
             .await
             .map_err(Into::into)
     }
 
-    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         self.0
             .has_event_id_been_deleted(event_id)
             .await
@@ -288,7 +288,7 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
 
     async fn has_coordinate_been_deleted(
         &self,
-        coordinate: Coordinate,
+        coordinate: &Coordinate,
         timestamp: Timestamp,
     ) -> Result<bool, Self::Err> {
         self.0

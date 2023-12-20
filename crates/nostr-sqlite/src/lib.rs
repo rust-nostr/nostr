@@ -168,16 +168,17 @@ impl NostrDatabase for SQLiteDatabase {
         }
     }
 
-    async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else {
             let conn = self.acquire().await?;
+            let event_id: String = event_id.to_hex();
             conn.interact(move |conn| {
                 let mut stmt = conn.prepare_cached(
                     "SELECT EXISTS(SELECT 1 FROM events WHERE event_id = ? LIMIT 1);",
                 )?;
-                let mut rows = stmt.query([event_id.to_hex()])?;
+                let mut rows = stmt.query([event_id])?;
                 let exists: u8 = match rows.next()? {
                     Some(row) => row.get(0)?,
                     None => 0,
@@ -188,13 +189,14 @@ impl NostrDatabase for SQLiteDatabase {
         }
     }
 
-    async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         let conn = self.acquire().await?;
+        let event_id: String = event_id.to_hex();
         conn.interact(move |conn| {
             let mut stmt = conn.prepare_cached(
                 "SELECT EXISTS(SELECT 1 FROM event_seen_by_relays WHERE event_id = ? LIMIT 1);",
             )?;
-            let mut rows = stmt.query([event_id.to_hex()])?;
+            let mut rows = stmt.query([event_id])?;
             let exists: u8 = match rows.next()? {
                 Some(row) => row.get(0)?,
                 None => 0,
@@ -204,13 +206,13 @@ impl NostrDatabase for SQLiteDatabase {
         .await?
     }
 
-    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         Ok(self.indexes.has_event_id_been_deleted(event_id).await)
     }
 
     async fn has_coordinate_been_deleted(
         &self,
-        coordinate: Coordinate,
+        coordinate: &Coordinate,
         timestamp: Timestamp,
     ) -> Result<bool, Self::Err> {
         Ok(self
