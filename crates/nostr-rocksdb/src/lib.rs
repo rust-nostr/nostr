@@ -16,7 +16,7 @@ pub extern crate nostr;
 pub extern crate nostr_database as database;
 
 use async_trait::async_trait;
-use nostr::{Event, EventId, Filter, Timestamp, Url};
+use nostr::{nips::nip01::Coordinate, Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
     FlatBufferDecode, FlatBufferEncode, NostrDatabase, RawEvent,
@@ -195,7 +195,7 @@ impl NostrDatabase for RocksDatabase {
     }
 
     async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
-        if self.indexes.has_been_deleted(&event_id).await {
+        if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else {
             let cf = self.cf_handle(EVENTS_CF)?;
@@ -208,8 +208,19 @@ impl NostrDatabase for RocksDatabase {
         Ok(self.db.key_may_exist_cf(&cf, event_id.as_bytes()))
     }
 
-    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
-        Ok(self.indexes.has_been_deleted(&event_id).await)
+    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        Ok(self.indexes.has_event_id_been_deleted(event_id).await)
+    }
+
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: Coordinate,
+        timestamp: Timestamp,
+    ) -> Result<bool, Self::Err> {
+        Ok(self
+            .indexes
+            .has_coordinate_been_deleted(coordinate, timestamp)
+            .await)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {

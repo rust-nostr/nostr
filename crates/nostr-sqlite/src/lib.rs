@@ -17,6 +17,7 @@ pub extern crate nostr_database as database;
 
 use async_trait::async_trait;
 use deadpool_sqlite::{Config, Object, Pool, Runtime};
+use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
@@ -168,7 +169,7 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
-        if self.indexes.has_been_deleted(&event_id).await {
+        if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else {
             let conn = self.acquire().await?;
@@ -203,8 +204,19 @@ impl NostrDatabase for SQLiteDatabase {
         .await?
     }
 
-    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
-        Ok(self.indexes.has_been_deleted(&event_id).await)
+    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        Ok(self.indexes.has_event_id_been_deleted(event_id).await)
+    }
+
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: Coordinate,
+        timestamp: Timestamp,
+    ) -> Result<bool, Self::Err> {
+        Ok(self
+            .indexes
+            .has_coordinate_been_deleted(coordinate, timestamp)
+            .await)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {

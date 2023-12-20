@@ -23,6 +23,7 @@ use async_trait::async_trait;
 use indexed_db_futures::request::{IdbOpenDbRequestLike, OpenDbRequest};
 use indexed_db_futures::web_sys::IdbTransactionMode;
 use indexed_db_futures::{IdbDatabase, IdbQuerySource, IdbVersionChangeEvent};
+use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 #[cfg(target_arch = "wasm32")]
 use nostr_database::NostrDatabase;
@@ -291,7 +292,7 @@ impl_nostr_database!({
         &self,
         event_id: EventId,
     ) -> Result<bool, IndexedDBError> {
-        if self.indexes.has_been_deleted(&event_id).await {
+        if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else {
             let tx = self
@@ -312,8 +313,19 @@ impl_nostr_database!({
         Ok(store.get(&key)?.await?.is_some())
     }
 
-    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, IndexedDBError> {
-        Ok(self.indexes.has_been_deleted(&event_id).await)
+    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, IndexedDBError> {
+        Ok(self.indexes.has_event_id_been_deleted(event_id).await)
+    }
+
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: Coordinate,
+        timestamp: Timestamp,
+    ) -> Result<bool, IndexedDBError> {
+        Ok(self
+            .indexes
+            .has_coordinate_been_deleted(coordinate, timestamp)
+            .await)
     }
 
     async fn event_id_seen(

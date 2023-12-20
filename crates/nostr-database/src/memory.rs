@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
 use tokio::sync::RwLock;
 
@@ -102,7 +103,7 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn has_event_already_been_saved(&self, event_id: EventId) -> Result<bool, Self::Err> {
-        if self.indexes.has_been_deleted(&event_id).await {
+        if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else if self.opts.events {
             let events = self.events.read().await;
@@ -117,8 +118,19 @@ impl NostrDatabase for MemoryDatabase {
         Ok(seen_event_ids.contains_key(&event_id))
     }
 
-    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
-        Ok(self.indexes.has_been_deleted(&event_id).await)
+    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        Ok(self.indexes.has_event_id_been_deleted(event_id).await)
+    }
+
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: Coordinate,
+        timestamp: Timestamp,
+    ) -> Result<bool, Self::Err> {
+        Ok(self
+            .indexes
+            .has_coordinate_been_deleted(coordinate, timestamp)
+            .await)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {

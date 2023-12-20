@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 pub use async_trait::async_trait;
 pub use nostr;
+use nostr::nips::nip01::Coordinate;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, Timestamp, Url};
 
@@ -116,7 +117,14 @@ pub trait NostrDatabase: AsyncTraitDeps {
     async fn has_event_already_been_seen(&self, event_id: EventId) -> Result<bool, Self::Err>;
 
     /// Check if [`EventId`] has been deleted
-    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err>;
+    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err>;
+
+    /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: Coordinate,
+        timestamp: Timestamp,
+    ) -> Result<bool, Self::Err>;
 
     /// Set [`EventId`] as seen by relay
     ///
@@ -271,8 +279,22 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
             .map_err(Into::into)
     }
 
-    async fn has_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
-        self.0.has_been_deleted(event_id).await.map_err(Into::into)
+    async fn has_event_id_been_deleted(&self, event_id: EventId) -> Result<bool, Self::Err> {
+        self.0
+            .has_event_id_been_deleted(event_id)
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: Coordinate,
+        timestamp: Timestamp,
+    ) -> Result<bool, Self::Err> {
+        self.0
+            .has_coordinate_been_deleted(coordinate, timestamp)
+            .await
+            .map_err(Into::into)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
