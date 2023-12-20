@@ -10,6 +10,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 use nostr::event::id;
+use nostr::nips::nip01::Coordinate;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{
     Alphabet, Event, EventId, Filter, GenericTagValue, Kind, TagIndexValues, TagIndexes, Timestamp,
@@ -198,7 +199,8 @@ pub struct EventIndexResult {
 #[derive(Debug, Clone, Default)]
 pub struct DatabaseIndexes {
     index: Arc<RwLock<BTreeSet<EventIndex>>>,
-    deleted: Arc<RwLock<HashSet<EventId>>>,
+    deleted_ids: Arc<RwLock<HashSet<EventId>>>,
+    deleted_coordinates: Arc<RwLock<HashMap<Coordinate, Timestamp>>>,
 }
 
 impl DatabaseIndexes {
@@ -211,7 +213,8 @@ impl DatabaseIndexes {
     #[tracing::instrument(skip_all)]
     pub async fn bulk_index(&self, events: BTreeSet<RawEvent>) -> HashSet<EventId> {
         let mut index = self.index.write().await;
-        let mut deleted = self.deleted.write().await;
+        let mut deleted_ids = self.deleted_ids.write().await;
+        let mut deleted_coordinates = self.deleted_coordinates.write().await;
 
         let mut to_discard: HashSet<EventId> = HashSet::new();
         let now = Timestamp::now();
@@ -220,14 +223,20 @@ impl DatabaseIndexes {
             .into_iter()
             .filter(|raw| !raw.kind.is_ephemeral())
             .for_each(|event| {
-                let _ =
-                    self.index_raw_event(&mut index, &mut deleted, &mut to_discard, event, &now);
+                let _ = self.index_raw_event(
+                    &mut index,
+                    &mut deleted_ids,
+                    &mut deleted_coordinates,
+                    &mut to_discard,
+                    event,
+                    &now,
+                );
             });
 
         // Remove events
         if !to_discard.is_empty() {
             index.retain(|e| !to_discard.contains(&e.event_id));
-            deleted.par_extend(to_discard.par_iter());
+            deleted_ids.par_extend(to_discard.par_iter());
         }
 
         to_discard
@@ -236,7 +245,8 @@ impl DatabaseIndexes {
     fn index_raw_event(
         &self,
         index: &mut BTreeSet<EventIndex>,
-        deleted: &mut HashSet<EventId>,
+        deleted_ids: &mut HashSet<EventId>,
+        deleted_coordinates: &mut HashMap<Coordinate, Timestamp>,
         to_discard: &mut HashSet<EventId>,
         raw: RawEvent,
         now: &Timestamp,
@@ -245,7 +255,7 @@ impl DatabaseIndexes {
         let event_id: EventId = EventId::from_slice(&raw.id)?;
 
         // Check if was deleted
-        if deleted.contains(&event_id) {
+        if deleted_ids.contains(&event_id) {
             return Ok(());
         }
 
@@ -262,7 +272,7 @@ impl DatabaseIndexes {
 
         if raw.kind.is_replaceable() {
             let filter: FilterIndex = FilterIndex::default().author(pubkey_prefix).kind(raw.kind);
-            for ev in self.internal_query(index, deleted, filter) {
+            for ev in self.internal_query(index, deleted_ids, filter) {
                 if ev.created_at > raw.created_at {
                     should_insert = false;
                 } else if ev.created_at <= raw.created_at {
@@ -276,7 +286,7 @@ impl DatabaseIndexes {
                         .author(pubkey_prefix)
                         .kind(raw.kind)
                         .identifier(identifier);
-                    for ev in self.internal_query(index, deleted, filter) {
+                    for ev in self.internal_query(index, deleted_ids, filter) {
                         if ev.created_at >= raw.created_at {
                             should_insert = false;
                         } else if ev.created_at < raw.created_at {
@@ -292,7 +302,7 @@ impl DatabaseIndexes {
             let filter: Filter = Filter::new().ids(ids).until(raw.created_at);
             if !filter.ids.is_empty() {
                 to_discard.par_extend(
-                    self.internal_parallel_query(index, deleted, filter)
+                    self.internal_parallel_query(index, deleted_ids, filter)
                         .filter(|ev| ev.pubkey == pubkey_prefix)
                         .map(|ev| ev.event_id),
                 );
@@ -303,12 +313,15 @@ impl DatabaseIndexes {
                 let coordinate_pubkey_prefix: PublicKeyPrefix =
                     PublicKeyPrefix::from(coordinate.pubkey);
                 if coordinate_pubkey_prefix == pubkey_prefix {
+                    // Save deleted coordinate at certain timestamp
+                    deleted_coordinates.insert(coordinate.clone(), raw.created_at);
+
                     let filter: Filter = coordinate.into();
                     let filter: Filter = filter.until(raw.created_at);
                     // Not check if ev.pubkey match the pubkey_prefix because asume that query
                     // returned only the events owned by pubkey_prefix
                     to_discard.par_extend(
-                        self.internal_parallel_query(index, deleted, filter)
+                        self.internal_parallel_query(index, deleted_ids, filter)
                             .map(|ev| ev.event_id),
                     );
                 }
@@ -341,13 +354,14 @@ impl DatabaseIndexes {
 
         // Acquire write lock
         let mut index = self.index.write().await;
-        let mut deleted = self.deleted.write().await;
+        let mut deleted_ids = self.deleted_ids.write().await;
+        let mut deleted_coordinates = self.deleted_coordinates.write().await;
 
         let mut should_insert: bool = true;
         let mut to_discard: HashSet<EventId> = HashSet::new();
 
         // Check if was deleted
-        if deleted.contains(&event.id) {
+        if deleted_ids.contains(&event.id) {
             to_discard.insert(event.id);
             return EventIndexResult {
                 to_store: false,
@@ -357,7 +371,7 @@ impl DatabaseIndexes {
 
         if event.is_replaceable() {
             let filter: Filter = Filter::new().author(event.pubkey).kind(event.kind);
-            for ev in self.internal_query(&index, &deleted, filter) {
+            for ev in self.internal_query(&index, &deleted_ids, filter) {
                 if ev.created_at > event.created_at {
                     should_insert = false;
                 } else if ev.created_at <= event.created_at {
@@ -371,7 +385,7 @@ impl DatabaseIndexes {
                         .author(event.pubkey)
                         .kind(event.kind)
                         .identifier(identifier);
-                    for ev in self.internal_query(&index, &deleted, filter) {
+                    for ev in self.internal_query(&index, &deleted_ids, filter) {
                         if ev.created_at >= event.created_at {
                             should_insert = false;
                         } else if ev.created_at < event.created_at {
@@ -389,7 +403,7 @@ impl DatabaseIndexes {
             let filter: Filter = Filter::new().ids(ids).until(event.created_at);
             if !filter.ids.is_empty() {
                 to_discard.par_extend(
-                    self.internal_parallel_query(&index, &deleted, filter)
+                    self.internal_parallel_query(&index, &deleted_ids, filter)
                         .filter(|ev| ev.pubkey == pubkey_prefix)
                         .map(|ev| ev.event_id),
                 );
@@ -400,10 +414,13 @@ impl DatabaseIndexes {
                 let coordinate_pubkey_prefix: PublicKeyPrefix =
                     PublicKeyPrefix::from(coordinate.pubkey);
                 if coordinate_pubkey_prefix == pubkey_prefix {
+                    // Save deleted coordinate at certain timestamp
+                    deleted_coordinates.insert(coordinate.clone(), event.created_at);
+
                     let filter: Filter = coordinate.into();
                     let filter: Filter = filter.until(event.created_at);
                     to_discard.par_extend(
-                        self.internal_parallel_query(&index, &deleted, filter)
+                        self.internal_parallel_query(&index, &deleted_ids, filter)
                             .map(|ev| ev.event_id),
                     );
                 }
@@ -413,7 +430,7 @@ impl DatabaseIndexes {
         // Remove events
         if !to_discard.is_empty() {
             index.retain(|e| !to_discard.contains(&e.event_id));
-            deleted.par_extend(to_discard.par_iter());
+            deleted_ids.par_extend(to_discard.par_iter());
         }
 
         // Insert event
@@ -430,13 +447,13 @@ impl DatabaseIndexes {
     fn internal_query<'a, T>(
         &self,
         index: &'a BTreeSet<EventIndex>,
-        deleted: &'a HashSet<EventId>,
+        deleted_ids: &'a HashSet<EventId>,
         filter: T,
     ) -> impl Iterator<Item = &'a EventIndex>
     where
         T: Into<FilterIndex>,
     {
-        self.internal_parallel_query(index, deleted, filter)
+        self.internal_parallel_query(index, deleted_ids, filter)
             .collect::<Vec<_>>()
             .into_iter()
     }
@@ -444,7 +461,7 @@ impl DatabaseIndexes {
     fn internal_parallel_query<'a, T>(
         &self,
         index: &'a BTreeSet<EventIndex>,
-        deleted: &'a HashSet<EventId>,
+        deleted_ids: &'a HashSet<EventId>,
         filter: T,
     ) -> impl ParallelIterator<Item = &'a EventIndex>
     where
@@ -452,7 +469,7 @@ impl DatabaseIndexes {
     {
         let filter: FilterIndex = filter.into();
         index.par_iter().filter(move |m| {
-            !deleted.contains(&m.event_id)
+            !deleted_ids.contains(&m.event_id)
                 && filter.until.map_or(true, |t| m.created_at <= t)
                 && filter.since.map_or(true, |t| m.created_at >= t)
                 && (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
@@ -513,7 +530,7 @@ impl DatabaseIndexes {
         I: IntoIterator<Item = Filter>,
     {
         let index = self.index.read().await;
-        let deleted = self.deleted.read().await;
+        let deleted_ids = self.deleted_ids.read().await;
 
         let mut matching_ids: BTreeSet<&EventIndex> = BTreeSet::new();
 
@@ -530,12 +547,12 @@ impl DatabaseIndexes {
 
             if let Some(limit) = filter.limit {
                 matching_ids.par_extend(
-                    self.internal_query(&index, &deleted, filter)
+                    self.internal_query(&index, &deleted_ids, filter)
                         .take(limit)
                         .par_bridge(),
                 )
             } else {
-                matching_ids.par_extend(self.internal_parallel_query(&index, &deleted, filter))
+                matching_ids.par_extend(self.internal_parallel_query(&index, &deleted_ids, filter))
             }
         }
 
@@ -549,7 +566,7 @@ impl DatabaseIndexes {
         I: IntoIterator<Item = Filter>,
     {
         let index = self.index.read().await;
-        let deleted = self.deleted.read().await;
+        let deleted_ids = self.deleted_ids.read().await;
 
         let mut counter: usize = 0;
 
@@ -567,7 +584,7 @@ impl DatabaseIndexes {
 
             let limit: Option<usize> = filter.limit;
             let count = self
-                .internal_parallel_query(&index, &deleted, filter)
+                .internal_parallel_query(&index, &deleted_ids, filter)
                 .count();
             if let Some(limit) = limit {
                 let count = if limit >= count { limit } else { count };
@@ -580,18 +597,34 @@ impl DatabaseIndexes {
         counter
     }
 
-    /// Check if an event was deleted
-    pub async fn has_been_deleted(&self, event_id: &EventId) -> bool {
-        let deleted = self.deleted.read().await;
-        deleted.contains(event_id)
+    /// Check if an event with [`EventId`] has been deleted
+    pub async fn has_event_id_been_deleted(&self, event_id: EventId) -> bool {
+        let deleted_ids = self.deleted_ids.read().await;
+        deleted_ids.contains(&event_id)
+    }
+
+    /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
+    pub async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: Coordinate,
+        timestamp: Timestamp,
+    ) -> bool {
+        let deleted_coordinates = self.deleted_coordinates.read().await;
+        if let Some(t) = deleted_coordinates.get(&coordinate).copied() {
+            t >= timestamp
+        } else {
+            false
+        }
     }
 
     /// Clear indexes
     pub async fn clear(&self) {
         let mut index = self.index.write().await;
-        let mut deleted = self.deleted.write().await;
+        let mut deleted_ids = self.deleted_ids.write().await;
+        let mut deleted_coordinates = self.deleted_coordinates.write().await;
         index.clear();
-        deleted.clear();
+        deleted_ids.clear();
+        deleted_coordinates.clear();
     }
 }
 
