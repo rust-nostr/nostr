@@ -2,8 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::sync::Arc;
-
 use uniffi::Object;
 
 #[derive(Object)]
@@ -32,10 +30,10 @@ impl From<&ImageDimensions> for nostr::ImageDimensions {
 #[uniffi::export]
 impl ImageDimensions {
     #[uniffi::constructor]
-    pub fn new(width: u64, height: u64) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new(width: u64, height: u64) -> Self {
+        Self {
             inner: nostr::ImageDimensions { width, height },
-        })
+        }
     }
 
     pub fn width(&self) -> u64 {

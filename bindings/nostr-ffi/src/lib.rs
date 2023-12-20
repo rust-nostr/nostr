@@ -4,6 +4,8 @@
 
 //! Nostr FFI
 
+#![allow(clippy::new_without_default)]
+
 use std::sync::Arc;
 
 use uniffi::Object;
