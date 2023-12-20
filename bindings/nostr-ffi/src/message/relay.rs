@@ -2,28 +2,33 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr::{JsonUtil, RelayMessage as NRelayMessage};
+use std::sync::Arc;
+
+use nostr::JsonUtil;
 use uniffi::Enum;
+
+use crate::error::Result;
+use crate::{Event, EventId};
 
 #[derive(Enum)]
 pub enum RelayMessage {
-    Ev {
+    Event {
         subscription_id: String,
-        event: String,
+        event: Arc<Event>,
+    },
+    Ok {
+        event_id: Arc<EventId>,
+        status: bool,
+        message: String,
+    },
+    EndOfStoredEvents {
+        subscription_id: String,
     },
     Notice {
         message: String,
     },
     Closed {
         subscription_id: String,
-        message: String,
-    },
-    EndOfStoredEvents {
-        subscription_id: String,
-    },
-    Ok {
-        event_id: String,
-        status: bool,
         message: String,
     },
     Auth {
@@ -43,52 +48,64 @@ pub enum RelayMessage {
     },
 }
 
-impl From<NRelayMessage> for RelayMessage {
-    fn from(value: NRelayMessage) -> Self {
+#[uniffi::export]
+impl RelayMessage {
+    /// Deserialize `RelayMessage` from JSON string
+    ///
+    /// **This method NOT verify the event signature!**
+    #[uniffi::constructor]
+    pub fn from_json(json: String) -> Result<Self> {
+        let message = nostr::RelayMessage::from_json(json)?;
+        Ok(message.into())
+    }
+}
+
+impl From<nostr::RelayMessage> for RelayMessage {
+    fn from(value: nostr::RelayMessage) -> Self {
         match value {
-            NRelayMessage::Event {
+            nostr::RelayMessage::Event {
                 subscription_id,
                 event,
-            } => Self::Ev {
+            } => Self::Event {
                 subscription_id: subscription_id.to_string(),
-                event: event.as_json(),
+                event: Arc::new(event.as_ref().clone().into()),
             },
-            NRelayMessage::Closed {
+            nostr::RelayMessage::Closed {
                 subscription_id,
                 message,
             } => Self::Closed {
                 subscription_id: subscription_id.to_string(),
                 message,
             },
-            NRelayMessage::Notice { message } => Self::Notice { message },
-            NRelayMessage::EndOfStoredEvents(sub_id) => Self::EndOfStoredEvents {
+            nostr::RelayMessage::Notice { message } => Self::Notice { message },
+            nostr::RelayMessage::EndOfStoredEvents(sub_id) => Self::EndOfStoredEvents {
                 subscription_id: sub_id.to_string(),
             },
-            NRelayMessage::Ok {
+            nostr::RelayMessage::Ok {
                 event_id,
                 status,
                 message,
             } => Self::Ok {
-                event_id: event_id.to_hex(),
+                event_id: Arc::new(event_id.into()),
                 status,
                 message,
             },
-            NRelayMessage::Auth { challenge } => Self::Auth { challenge },
-            NRelayMessage::Count {
+            nostr::RelayMessage::Auth { challenge } => Self::Auth { challenge },
+            nostr::RelayMessage::Count {
                 subscription_id,
                 count,
             } => Self::Count {
                 subscription_id: subscription_id.to_string(),
                 count: count as u64,
             },
-            NRelayMessage::NegMsg {
+            nostr::RelayMessage::NegMsg {
                 subscription_id,
                 message,
             } => Self::NegMsg {
                 subscription_id: subscription_id.to_string(),
                 message,
             },
-            NRelayMessage::NegErr {
+            nostr::RelayMessage::NegErr {
                 subscription_id,
                 code,
             } => Self::NegErr {
