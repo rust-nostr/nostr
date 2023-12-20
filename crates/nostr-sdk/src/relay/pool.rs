@@ -257,7 +257,7 @@ impl RelayPoolTask {
                     .await?
                 {
                     tracing::warn!(
-                        "Received event {} that was deleted from {relay_url} [id]",
+                        "Received event {} that was deleted: type=id, relay_url={relay_url}",
                         partial_event.id
                     );
                     return Ok(None);
@@ -279,7 +279,7 @@ impl RelayPoolTask {
                         .await?
                     {
                         tracing::warn!(
-                            "Received event {} that was deleted from {relay_url} [coordinate]",
+                            "Received event {} that was deleted: type=coordinate, relay_url={relay_url}",
                             partial_event.id
                         );
                         return Ok(None);
