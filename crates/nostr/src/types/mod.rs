@@ -5,13 +5,11 @@
 //! Types
 
 pub mod contact;
-pub mod entity;
 pub mod metadata;
 pub mod time;
 pub mod url;
 
 pub use self::contact::Contact;
-pub use self::entity::Entity;
 pub use self::metadata::Metadata;
 pub use self::time::Timestamp;
 pub use self::url::UncheckedUrl;
