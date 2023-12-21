@@ -79,10 +79,19 @@ impl Keys {
         })
     }
 
+    /// Derive `Keys` from BIP-39 mnemonics (ENGLISH wordlist).
+    ///
+    /// By default no passphrase is used and account is set to `0`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
     #[uniffi::constructor]
-    pub fn from_mnemonic(mnemonic: String, passphrase: Option<String>) -> Result<Self> {
+    pub fn from_mnemonic(
+        mnemonic: String,
+        passphrase: Option<String>,
+        account: Option<u32>,
+    ) -> Result<Self> {
         Ok(Self {
-            inner: key::Keys::from_mnemonic(mnemonic, passphrase)
+            inner: key::Keys::from_mnemonic_with_account(mnemonic, passphrase, account)
                 .map_err(|e| NostrError::Generic { err: e.to_string() })?,
         })
     }
