@@ -1,5 +1,7 @@
 # Nostr SQLite
 
+This crate implements a storage backend on RocksDB for native environments.
+
 ## State
 
 **This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
