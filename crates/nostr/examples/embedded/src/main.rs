@@ -67,7 +67,7 @@ fn main() -> ! {
 
     // Restore from menmonic
     let mnemonic: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
-    let keys = Keys::from_mnemonic_with_ctx(&secp, mnemonic, None).unwrap();
+    let keys = Keys::from_mnemonic_with_ctx(&secp, mnemonic, None, None).unwrap();
     hprintln!("\nRestore keys from mnemonic:").unwrap();
     print_keys(&keys);
 
