@@ -122,7 +122,7 @@ The following crate feature flags are available:
 | ✅         | [12 - Generic Tag Queries](https://github.com/nostr-protocol/nips/blob/master/12.md)                                                |
 | ✅         | [13 - Proof of Work](https://github.com/nostr-protocol/nips/blob/master/13.md)                                                      |
 | ✅         | [14 - Subject tag in text events](https://github.com/nostr-protocol/nips/blob/master/14.md)                                         |
-| ❌         | [15 - Nostr Marketplace](https://github.com/nostr-protocol/nips/blob/master/15.md)                                                  |
+| ✅         | [15 - Nostr Marketplace](https://github.com/nostr-protocol/nips/blob/master/15.md)                                                  |
 | ✅         | [16 - Event Treatment](https://github.com/nostr-protocol/nips/blob/master/16.md)                                                    |
 | ✅         | [18 - Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)                                                            |
 | ✅         | [19 - bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)                                            |
