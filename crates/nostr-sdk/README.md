@@ -25,7 +25,7 @@ other lower-level crates. If you're attempting something more custom, you might 
 
 ```toml
 [dependencies]
-nostr-sdk = "0.25"
+nostr-sdk = "0.26"
 tokio = { version = "1", features = ["full"] }
 ```
 
