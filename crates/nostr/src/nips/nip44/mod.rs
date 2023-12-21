@@ -22,6 +22,7 @@ use chacha20::XChaCha20;
 
 pub mod v2;
 
+use self::v2::ConversationKey;
 use crate::util;
 
 /// Error
@@ -166,8 +167,8 @@ where
             Ok(general_purpose::STANDARD.encode(payload))
         }
         Version::V2 => {
-            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
-            v2::encrypt_with_rng(rng, &shared_key, content)
+            let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
+            v2::encrypt_with_rng(rng, &conversation_key, content)
         }
     }
 }
@@ -213,8 +214,8 @@ where
             String::from_utf8(buffer.to_vec()).map_err(|_| Error::Utf8Encode)
         }
         Version::V2 => {
-            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
-            v2::decrypt(&shared_key, &payload)
+            let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
+            v2::decrypt(&conversation_key, &payload)
         }
     }
 }
