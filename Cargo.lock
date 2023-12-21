@@ -1441,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "nostr"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "aes",
  "base64",
@@ -1466,7 +1466,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-database"
-version = "0.1.0"
+version = "0.26.0"
 dependencies = [
  "async-trait",
  "flatbuffers",
@@ -1498,7 +1498,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-indexeddb"
-version = "0.1.0"
+version = "0.26.0"
 dependencies = [
  "async-trait",
  "indexed_db_futures",
@@ -1537,7 +1537,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-rocksdb"
-version = "0.1.0"
+version = "0.26.0"
 dependencies = [
  "async-trait",
  "nostr",
@@ -1551,7 +1551,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sdk"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "async-utility",
  "nostr",
@@ -1592,7 +1592,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sdk-net"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "futures-util",
  "thiserror",
@@ -1607,7 +1607,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sqlite"
-version = "0.1.0"
+version = "0.26.0"
 dependencies = [
  "async-trait",
  "deadpool-sqlite",

@@ -6,14 +6,14 @@
 
     ```toml
     [dependencies]
-    nostr = "0.25"
+    nostr = "0.26"
     ```
 
     Alternatively, you can add it directly from `git` source:
 
     ```toml
     [dependencies]
-    nostr = { git = "https://github.com/rust-nostr/nostr", tag = "v0.25.0" }
+    nostr = { git = "https://github.com/rust-nostr/nostr", tag = "v0.26.0" }
     ```
 
     !!! note
