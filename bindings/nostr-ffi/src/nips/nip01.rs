@@ -1,12 +1,13 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip01;
 use uniffi::Record;
 
-use crate::PublicKey;
+use crate::{error::Result, PublicKey};
 
 /// Coordinate for event (`a` tag)
 #[derive(Record)]
@@ -22,6 +23,15 @@ pub struct Coordinate {
     pub identifier: String,
     /// Relays
     pub relays: Vec<String>,
+}
+
+#[uniffi::export]
+impl Coordinate {
+    #[uniffi::constructor]
+    pub fn parse(coordinate: String) -> Result<Self> {
+        let coordinate = nip01::Coordinate::from_str(&coordinate);
+        Ok(coordinate.map(|c| c.into())?)
+    }
 }
 
 impl From<Coordinate> for nip01::Coordinate {
