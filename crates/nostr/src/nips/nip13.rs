@@ -31,7 +31,7 @@ where
 ///
 /// Possible values: 0-255
 pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
-    let mut r = vec![];
+    let mut r = Vec::new();
 
     if leading_zero_bits == 0 {
         return r;
