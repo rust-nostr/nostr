@@ -10,7 +10,7 @@ use crate::{Event, EventId};
 
 #[derive(Enum)]
 pub enum RelayMessage {
-    Event {
+    EventMsg {
         subscription_id: String,
         event: Arc<Event>,
     },
@@ -52,7 +52,7 @@ impl From<nostr::RelayMessage> for RelayMessage {
             nostr::RelayMessage::Event {
                 subscription_id,
                 event,
-            } => Self::Event {
+            } => Self::EventMsg {
                 subscription_id: subscription_id.to_string(),
                 event: Arc::new(event.as_ref().clone().into()),
             },

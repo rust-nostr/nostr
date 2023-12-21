@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+#![allow(non_camel_case_types)]
+
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -472,12 +474,12 @@ pub enum TagEnum {
         kind: TagKind,
         data: Vec<String>,
     },
-    Event {
+    EventTag {
         event_id: Arc<EventId>,
         relay_url: Option<String>,
         marker: Option<Marker>,
     },
-    PublicKey {
+    PublicKeyTag {
         public_key: Arc<PublicKey>,
         relay_url: Option<String>,
         alias: Option<String>,
@@ -499,7 +501,7 @@ pub enum TagEnum {
     Reference {
         reference: String,
     },
-    RelayMetadata {
+    RelayMetadataTag {
         relay_url: String,
         rw: Option<RelayMetadata>,
     },
@@ -512,7 +514,7 @@ pub enum TagEnum {
     Identifier {
         identifier: String,
     },
-    ExternalIdentity {
+    ExternalIdentityTag {
         identity: Identity,
     },
     A {
@@ -584,7 +586,7 @@ pub enum TagEnum {
     PublishedAt {
         timestamp: Arc<Timestamp>,
     },
-    Url {
+    UrlTag {
         url: String,
     },
     MimeType {
@@ -622,7 +624,7 @@ pub enum TagEnum {
     Ends {
         timestamp: Arc<Timestamp>,
     },
-    LiveEventStatus {
+    LiveEventStatusTag {
         status: LiveEventStatus,
     },
     CurrentParticipants {
@@ -654,7 +656,7 @@ pub enum TagEnum {
     Request {
         event: Arc<Event>,
     },
-    DataVendingMachineStatus {
+    DataVendingMachineStatusTag {
         status: DataVendingMachineStatus,
         extra_info: Option<String>,
     },
@@ -671,7 +673,7 @@ impl From<tag::Tag> for TagEnum {
                 event_id,
                 relay_url,
                 marker,
-            } => Self::Event {
+            } => Self::EventTag {
                 event_id: Arc::new(event_id.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.map(|m| m.into()),
@@ -680,7 +682,7 @@ impl From<tag::Tag> for TagEnum {
                 public_key,
                 relay_url,
                 alias,
-            } => Self::PublicKey {
+            } => Self::PublicKeyTag {
                 public_key: Arc::new(public_key.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 alias,
@@ -705,7 +707,7 @@ impl From<tag::Tag> for TagEnum {
                 proof: proof.map(|p| p.to_string()),
             },
             tag::Tag::Reference(r) => Self::Reference { reference: r },
-            tag::Tag::RelayMetadata(url, rw) => Self::RelayMetadata {
+            tag::Tag::RelayMetadata(url, rw) => Self::RelayMetadataTag {
                 relay_url: url.to_string(),
                 rw: rw.map(|rw| rw.into()),
             },
@@ -723,7 +725,7 @@ impl From<tag::Tag> for TagEnum {
                 identifier,
                 relay_url: relay_url.map(|u| u.to_string()),
             },
-            tag::Tag::ExternalIdentity(identity) => Self::ExternalIdentity {
+            tag::Tag::ExternalIdentity(identity) => Self::ExternalIdentityTag {
                 identity: identity.into(),
             },
             tag::Tag::Relay(url) => Self::RelayUrl {
@@ -770,7 +772,7 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::Amount { millisats, bolt11 } => Self::Amount { millisats, bolt11 },
             tag::Tag::Name(name) => Self::Name { name },
             tag::Tag::Lnurl(lnurl) => Self::Lnurl { lnurl },
-            tag::Tag::Url(url) => Self::Url {
+            tag::Tag::Url(url) => Self::UrlTag {
                 url: url.to_string(),
             },
             tag::Tag::MimeType(mime) => Self::MimeType { mime },
@@ -796,7 +798,7 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::Ends(timestamp) => Self::Ends {
                 timestamp: Arc::new(timestamp.into()),
             },
-            tag::Tag::LiveEventStatus(s) => Self::LiveEventStatus { status: s.into() },
+            tag::Tag::LiveEventStatus(s) => Self::LiveEventStatusTag { status: s.into() },
             tag::Tag::CurrentParticipants(num) => Self::CurrentParticipants { num },
             tag::Tag::TotalParticipants(num) => Self::TotalParticipants { num },
             tag::Tag::AbsoluteURL(url) => Self::AbsoluteURL {
@@ -821,7 +823,7 @@ impl From<tag::Tag> for TagEnum {
                 event: Arc::new(event.into()),
             },
             tag::Tag::DataVendingMachineStatus { status, extra_info } => {
-                Self::DataVendingMachineStatus {
+                Self::DataVendingMachineStatusTag {
                     status: status.into(),
                     extra_info,
                 }
@@ -835,7 +837,7 @@ impl TryFrom<TagEnum> for tag::Tag {
     fn try_from(value: TagEnum) -> Result<Self, Self::Error> {
         match value {
             TagEnum::Unknown { kind, data } => Ok(Self::Generic(kind.into(), data)),
-            TagEnum::Event {
+            TagEnum::EventTag {
                 event_id,
                 relay_url,
                 marker,
@@ -844,7 +846,7 @@ impl TryFrom<TagEnum> for tag::Tag {
                 relay_url: relay_url.map(UncheckedUrl::from),
                 marker: marker.map(tag::Marker::from),
             }),
-            TagEnum::PublicKey {
+            TagEnum::PublicKeyTag {
                 public_key,
                 relay_url,
                 alias,
@@ -874,14 +876,16 @@ impl TryFrom<TagEnum> for tag::Tag {
                 },
             }),
             TagEnum::Reference { reference } => Ok(Self::Reference(reference)),
-            TagEnum::RelayMetadata { relay_url, rw } => Ok(Self::RelayMetadata(
+            TagEnum::RelayMetadataTag { relay_url, rw } => Ok(Self::RelayMetadata(
                 UncheckedUrl::from(relay_url),
                 rw.map(|rw| rw.into()),
             )),
             TagEnum::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
             TagEnum::Geohash { geohash } => Ok(Self::Geohash(geohash)),
             TagEnum::Identifier { identifier } => Ok(Self::Identifier(identifier)),
-            TagEnum::ExternalIdentity { identity } => Ok(Self::ExternalIdentity(identity.into())),
+            TagEnum::ExternalIdentityTag { identity } => {
+                Ok(Self::ExternalIdentity(identity.into()))
+            }
             TagEnum::A {
                 kind,
                 public_key,
@@ -931,7 +935,7 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::Lnurl { lnurl } => Ok(Self::Lnurl(lnurl)),
             TagEnum::Name { name } => Ok(Self::Name(name)),
             TagEnum::PublishedAt { timestamp } => Ok(Self::PublishedAt(**timestamp)),
-            TagEnum::Url { url } => Ok(Self::Url(Url::parse(&url)?)),
+            TagEnum::UrlTag { url } => Ok(Self::Url(Url::parse(&url)?)),
             TagEnum::MimeType { mime } => Ok(Self::MimeType(mime)),
             TagEnum::Aes256Gcm { key, iv } => Ok(Self::Aes256Gcm { key, iv }),
             TagEnum::Sha256 { hash } => Ok(Self::Sha256(Sha256Hash::from_str(&hash)?)),
@@ -943,7 +947,7 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::Recording { url } => Ok(Self::Recording(UncheckedUrl::from(url))),
             TagEnum::Starts { timestamp } => Ok(Self::Starts(**timestamp)),
             TagEnum::Ends { timestamp } => Ok(Self::Ends(**timestamp)),
-            TagEnum::LiveEventStatus { status } => Ok(Self::LiveEventStatus(status.into())),
+            TagEnum::LiveEventStatusTag { status } => Ok(Self::LiveEventStatus(status.into())),
             TagEnum::CurrentParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagEnum::TotalParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagEnum::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
@@ -959,7 +963,7 @@ impl TryFrom<TagEnum> for tag::Tag {
                 url: UncheckedUrl::from(url),
             }),
             TagEnum::Request { event } => Ok(Self::Request(event.as_ref().deref().clone())),
-            TagEnum::DataVendingMachineStatus { status, extra_info } => {
+            TagEnum::DataVendingMachineStatusTag { status, extra_info } => {
                 Ok(Self::DataVendingMachineStatus {
                     status: status.into(),
                     extra_info,

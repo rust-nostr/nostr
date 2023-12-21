@@ -13,7 +13,7 @@ use crate::{Event, Filter};
 /// Messages sent by clients, received by relays
 #[derive(Enum)]
 pub enum ClientMessage {
-    Event {
+    EventMsg {
         event: Arc<Event>,
     },
     Req {
@@ -52,7 +52,9 @@ pub enum ClientMessage {
 impl From<ClientMessage> for nostr::ClientMessage {
     fn from(value: ClientMessage) -> Self {
         match value {
-            ClientMessage::Event { event } => Self::Event(Box::new(event.as_ref().deref().clone())),
+            ClientMessage::EventMsg { event } => {
+                Self::Event(Box::new(event.as_ref().deref().clone()))
+            }
             ClientMessage::Req {
                 subscription_id,
                 filters,
@@ -105,7 +107,7 @@ impl From<ClientMessage> for nostr::ClientMessage {
 impl From<nostr::ClientMessage> for ClientMessage {
     fn from(value: nostr::ClientMessage) -> Self {
         match value {
-            nostr::ClientMessage::Event(event) => Self::Event {
+            nostr::ClientMessage::Event(event) => Self::EventMsg {
                 event: Arc::new(event.as_ref().to_owned().into()),
             },
             nostr::ClientMessage::Req {
