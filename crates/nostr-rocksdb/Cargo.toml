@@ -12,7 +12,7 @@ rust-version = "1.66.0"
 keywords = ["nostr", "database", "rocksdb"]
 
 [dependencies]
-async-trait = { workspace = true }
+async-trait.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 num_cpus = "1.16"

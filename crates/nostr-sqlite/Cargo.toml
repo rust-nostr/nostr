@@ -12,12 +12,12 @@ rust-version = "1.64.0"
 keywords = ["nostr", "database", "sqlite"]
 
 [dependencies]
-async-trait = { workspace = true }
+async-trait.workspace = true
 deadpool-sqlite = "0.5"
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 rusqlite = { version = "0.28", features = ["bundled"] }
-thiserror = { workspace = true }
+thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
 

@@ -16,7 +16,7 @@ futures-util = { version = "0.3", default-features = false, features = ["sink", 
 url-fork = { workspace = true, features = ["std"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-thiserror = { workspace = true }
+thiserror.workspace = true
 tokio = { workspace = true, features = ["net", "time"] }
 tokio-rustls = "0.24"
 tokio-socks = "0.5"
