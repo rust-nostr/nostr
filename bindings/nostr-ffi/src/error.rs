@@ -5,6 +5,7 @@
 use std::fmt;
 use std::net::AddrParseError;
 
+use nostr::message::MessageHandleError;
 use uniffi::Error;
 
 pub type Result<T, E = NostrError> = std::result::Result<T, E>;
@@ -44,6 +45,12 @@ impl From<nostr::key::Error> for NostrError {
 
 impl From<nostr::key::vanity::Error> for NostrError {
     fn from(e: nostr::key::vanity::Error) -> NostrError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
+impl From<MessageHandleError> for NostrError {
+    fn from(e: MessageHandleError) -> NostrError {
         Self::Generic { err: e.to_string() }
     }
 }
