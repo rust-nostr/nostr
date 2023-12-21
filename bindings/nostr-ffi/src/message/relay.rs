@@ -4,10 +4,8 @@
 
 use std::sync::Arc;
 
-use nostr::JsonUtil;
 use uniffi::Enum;
 
-use crate::error::Result;
 use crate::{Event, EventId};
 
 #[derive(Enum)]
@@ -46,18 +44,6 @@ pub enum RelayMessage {
         subscription_id: String,
         code: String,
     },
-}
-
-#[uniffi::export]
-impl RelayMessage {
-    /// Deserialize `RelayMessage` from JSON string
-    ///
-    /// **This method NOT verify the event signature!**
-    #[uniffi::constructor]
-    pub fn from_json(json: String) -> Result<Self> {
-        let message = nostr::RelayMessage::from_json(json)?;
-        Ok(message.into())
-    }
 }
 
 impl From<nostr::RelayMessage> for RelayMessage {

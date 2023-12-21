@@ -5,10 +5,9 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::{JsonUtil, SubscriptionId};
+use nostr::SubscriptionId;
 use uniffi::Enum;
 
-use crate::error::Result;
 use crate::{Event, Filter};
 
 /// Messages sent by clients, received by relays
@@ -48,18 +47,6 @@ pub enum ClientMessage {
     NegClose {
         subscription_id: String,
     },
-}
-
-#[uniffi::export]
-impl ClientMessage {
-    /// Deserialize `ClientMessage` from JSON string
-    ///
-    /// **This method NOT verify the event signature!**
-    #[uniffi::constructor]
-    pub fn from_json(json: String) -> Result<Self> {
-        let message = nostr::ClientMessage::from_json(json)?;
-        Ok(message.into())
-    }
 }
 
 impl From<ClientMessage> for nostr::ClientMessage {
