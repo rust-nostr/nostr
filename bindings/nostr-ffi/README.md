@@ -15,7 +15,7 @@ make init
 
 ### Python
 
-For most users, we recommend using our official Python package: TODO.
+For most users, we recommend using our official Python package: [nostr-protocol](https://pypi.org/project/nostr-protocol/)
 
 If you want to compile from source or need more options, read on.
 

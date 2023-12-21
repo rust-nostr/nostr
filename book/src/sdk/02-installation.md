@@ -89,5 +89,5 @@
     Add the following to the dependencies array in your `Package.swift`:
 
     ``` swift
-    .package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.0.5"),
+    .package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.6.0"),
     ```
