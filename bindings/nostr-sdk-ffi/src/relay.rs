@@ -37,7 +37,7 @@ impl RelayConnectionStats {
         self.inner.uptime()
     }
 
-    pub fn connected_at(&self) -> Arc<Timestamp> {
+    pub fn connected_at(&self) -> Timestamp {
         let secs = self.inner.connected_at().as_u64();
         Timestamp::from_secs(secs)
     }
