@@ -5,7 +5,7 @@
 use std::env;
 use std::path::Path;
 
-const DEFAULT_CLANG_VERSION: &str = "14.0.7";
+const DEFAULT_CLANG_VERSION: &str = "17";
 
 fn main() {
     setup_x86_64_android_workaround();
@@ -30,7 +30,7 @@ fn setup_x86_64_android_workaround() {
         let clang_version =
             env::var("NDK_CLANG_VERSION").unwrap_or_else(|_| DEFAULT_CLANG_VERSION.to_owned());
         let linux_x86_64_lib_dir = format!(
-            "toolchains/llvm/prebuilt/{build_os}-x86_64/lib64/clang/{clang_version}/lib/linux/"
+            "toolchains/llvm/prebuilt/{build_os}-x86_64/lib/clang/{clang_version}/lib/linux/"
         );
         let linkpath = format!("{android_ndk_home}/{linux_x86_64_lib_dir}");
         if Path::new(&linkpath).exists() {
