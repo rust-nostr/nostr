@@ -7,25 +7,41 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/21.md>
 
 use alloc::string::String;
-use alloc::vec::Vec;
 use core::fmt;
 
 use bitcoin::secp256k1::XOnlyPublicKey;
 
 use super::nip01::Coordinate;
-use super::nip19::{Error as NIP19Error, FromBech32, Nip19Event, Nip19Profile, ToBech32};
+use super::nip19::{self, FromBech32, Nip19, Nip19Event, Nip19Profile, ToBech32};
 use crate::event::id::EventId;
 
 /// URI scheme
 pub const SCHEME: &str = "nostr";
 
+/// Unsupported Bech32 Type
+#[derive(Debug, PartialEq, Eq)]
+pub enum UnsupportedBech32Type {
+    /// Secret Key
+    SecretKey,
+}
+
+impl fmt::Display for UnsupportedBech32Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SecretKey => write!(f, "secret key"),
+        }
+    }
+}
+
 /// NIP21 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// NIP19 error
-    NIP19(NIP19Error),
+    NIP19(nip19::Error),
     /// Invalid nostr URI
     InvalidURI,
+    /// Unsupported bech32 type
+    UnsupportedBech32Type(UnsupportedBech32Type),
 }
 
 #[cfg(feature = "std")]
@@ -36,14 +52,26 @@ impl fmt::Display for Error {
         match self {
             Self::NIP19(e) => write!(f, "NIP19: {e}"),
             Self::InvalidURI => write!(f, "Invalid nostr URI"),
+            Self::UnsupportedBech32Type(t) => write!(f, "Unsupported bech32 type: {t}"),
         }
     }
 }
 
-impl From<NIP19Error> for Error {
-    fn from(e: NIP19Error) -> Self {
+impl From<nip19::Error> for Error {
+    fn from(e: nip19::Error) -> Self {
         Self::NIP19(e)
     }
+}
+
+fn split_uri(uri: &str) -> Result<&str, Error> {
+    let mut splitted = uri.split(':');
+    let prefix: &str = splitted.next().ok_or(Error::InvalidURI)?;
+
+    if prefix != SCHEME {
+        return Err(Error::InvalidURI);
+    }
+
+    splitted.next().ok_or(Error::InvalidURI)
 }
 
 /// Nostr URI trait
@@ -60,12 +88,10 @@ where
     /// From `nostr` URI
     fn from_nostr_uri<S>(uri: S) -> Result<Self, Error>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        let uri: String = uri.into();
-        let splitted: Vec<&str> = uri.split(':').collect();
-        let data = splitted.get(1).ok_or(Error::InvalidURI)?;
-        Ok(Self::from_bech32(*data)?)
+        let data: &str = split_uri(uri.as_ref())?;
+        Ok(Self::from_bech32(data)?)
     }
 }
 
@@ -74,6 +100,74 @@ impl NostrURI for EventId {}
 impl NostrURI for Nip19Profile {}
 impl NostrURI for Nip19Event {}
 impl NostrURI for Coordinate {}
+
+/// A representation any `NIP21` object. Useful for decoding
+/// `NIP21` strings without necessarily knowing what you're decoding
+/// ahead of time.
+#[derive(Debug, Eq, PartialEq)]
+pub enum Nip21 {
+    /// nostr::npub
+    Pubkey(XOnlyPublicKey),
+    /// nostr::nprofile
+    Profile(Nip19Profile),
+    /// nostr::note
+    EventId(EventId),
+    /// nostr::nevent
+    Event(Nip19Event),
+    /// nostr::naddr
+    Coordinate(Coordinate),
+}
+
+impl From<Nip21> for Nip19 {
+    fn from(value: Nip21) -> Self {
+        match value {
+            Nip21::Pubkey(val) => Self::Pubkey(val),
+            Nip21::Profile(val) => Self::Profile(val),
+            Nip21::EventId(val) => Self::EventId(val),
+            Nip21::Event(val) => Self::Event(val),
+            Nip21::Coordinate(val) => Self::Coordinate(val),
+        }
+    }
+}
+
+impl TryFrom<Nip19> for Nip21 {
+    type Error = Error;
+    fn try_from(value: Nip19) -> Result<Self, Self::Error> {
+        match value {
+            Nip19::Secret(..) => Err(Error::UnsupportedBech32Type(
+                UnsupportedBech32Type::SecretKey,
+            )),
+            Nip19::Pubkey(val) => Ok(Self::Pubkey(val)),
+            Nip19::Profile(val) => Ok(Self::Profile(val)),
+            Nip19::EventId(val) => Ok(Self::EventId(val)),
+            Nip19::Event(val) => Ok(Self::Event(val)),
+            Nip19::Coordinate(val) => Ok(Self::Coordinate(val)),
+        }
+    }
+}
+
+impl Nip21 {
+    /// Parse NIP21 string
+    pub fn parse<S>(uri: S) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        let data: &str = split_uri(uri.as_ref())?;
+        let nip19: Nip19 = Nip19::from_bech32(data)?;
+        Self::try_from(nip19)
+    }
+
+    /// Serialize to NIP21 nostr URI
+    pub fn to_nostr_uri(&self) -> Result<String, Error> {
+        match self {
+            Self::Pubkey(val) => Ok(val.to_bech32()?),
+            Self::Profile(val) => Ok(val.to_bech32()?),
+            Self::EventId(val) => Ok(val.to_bech32()?),
+            Self::Event(val) => Ok(val.to_bech32()?),
+            Self::Coordinate(val) => Ok(val.to_bech32()?),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -105,6 +199,32 @@ mod tests {
             )
             .unwrap(),
             pubkey
+        );
+
+        assert_eq!(
+            Nip21::parse("nostr:npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
+                .unwrap(),
+            Nip21::Pubkey(pubkey),
+        );
+
+        assert_eq!(
+            Nip21::parse("nostr:nprofile1qqsr9cvzwc652r4m83d86ykplrnm9dg5gwdvzzn8ameanlvut35wy3gpz3mhxue69uhhyetvv9ujuerpd46hxtnfduyu75sw").unwrap(),
+            Nip21::Profile(Nip19Profile::new(
+                XOnlyPublicKey::from_str(
+                    "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
+                )
+                .unwrap(),
+                ["wss://relay.damus.io"]
+            )),
+        );
+    }
+
+    #[test]
+    fn test_unsupported_from_nostr_uri() {
+        assert_eq!(
+            Nip21::parse("nostr:nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
+                .unwrap_err(),
+            Error::UnsupportedBech32Type(UnsupportedBech32Type::SecretKey)
         );
     }
 }

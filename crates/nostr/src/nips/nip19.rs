@@ -142,7 +142,7 @@ impl FromStr for Nip19Prefix {
     }
 }
 
-/// A representation any `fNIP19` bech32 nostr object. Useful for decoding
+/// A representation any `NIP19` bech32 nostr object. Useful for decoding
 /// `NIP19` bech32 strings without necessarily knowing what you're decoding
 /// ahead of time.
 #[derive(Debug, Eq, PartialEq)]
@@ -654,10 +654,7 @@ mod tests {
         let nip19 = Nip19::from_bech32(nprofile).unwrap();
 
         assert_eq!(
-            Nip19::Profile(Nip19Profile::new(
-                expected_pubkey,
-                vec!["wss://relay.damus.io"]
-            )),
+            Nip19::Profile(Nip19Profile::new(expected_pubkey, ["wss://relay.damus.io"])),
             nip19
         );
 
