@@ -13,6 +13,7 @@ use alloc::string::String;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::fmt;
+use core::str::FromStr;
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::Hash;
@@ -125,11 +126,10 @@ enum Nip19Prefix {
     NAddr,
 }
 
-/// Convert NIP19 [`&str`] prefixes to [`Nip19Prefix`]
-impl TryFrom<&str> for Nip19Prefix {
-    type Error = Error;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+/// Convert NIP19 prefixes to [`Nip19Prefix`]
+impl FromStr for Nip19Prefix {
+    type Err = Error;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             PREFIX_BECH32_SECRET_KEY => Ok(Nip19Prefix::NSec),
             PREFIX_BECH32_PUBLIC_KEY => Ok(Nip19Prefix::NPub),
@@ -139,15 +139,6 @@ impl TryFrom<&str> for Nip19Prefix {
             PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT => Ok(Nip19Prefix::NAddr),
             _ => Err(Error::WrongPrefixOrVariant),
         }
-    }
-}
-
-/// Convert NIP19 [`String`] prefixes to [`Nip19Prefix`]
-impl TryFrom<String> for Nip19Prefix {
-    type Error = Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        value.as_str().try_into()
     }
 }
 
@@ -218,7 +209,7 @@ impl FromBech32 for Nip19 {
         S: AsRef<str>,
     {
         let (hrp, data, checksum) = bech32::decode(hash.as_ref())?;
-        let prefix: Nip19Prefix = hrp.try_into()?;
+        let prefix: Nip19Prefix = Nip19Prefix::from_str(&hrp)?;
 
         if checksum != Variant::Bech32 {
             return Err(Error::WrongPrefixOrVariant);
