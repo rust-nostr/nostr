@@ -30,7 +30,7 @@ pub enum Nip19Enum {
     /// nevent
     Event { event: Arc<Nip19Event> },
     /// naddr
-    Coord { coordinate: Coordinate },
+    Coord { coordinate: Arc<Coordinate> },
 }
 
 impl From<nip19::Nip19> for Nip19Enum {
@@ -52,7 +52,7 @@ impl From<nip19::Nip19> for Nip19Enum {
                 event: Arc::new(event.into()),
             },
             nip19::Nip19::Coordinate(coordinate) => Self::Coord {
-                coordinate: coordinate.into(),
+                coordinate: Arc::new(coordinate.into()),
             },
         }
     }
