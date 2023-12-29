@@ -8,8 +8,9 @@ use std::sync::Arc;
 use nostr::nips::nip57;
 use uniffi::Object;
 
+use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::{EventId, PublicKey};
+use crate::{Event, EventId, Keys, PublicKey, SecretKey};
 
 #[derive(Clone, Object)]
 pub struct ZapRequestData {
@@ -32,13 +33,19 @@ impl From<nip57::ZapRequestData> for ZapRequestData {
 #[uniffi::export]
 impl ZapRequestData {
     #[uniffi::constructor]
-    pub fn new(public_key: Arc<PublicKey>, relays: Vec<String>) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new(public_key: Arc<PublicKey>, relays: Vec<String>) -> Self {
+        Self {
             inner: nip57::ZapRequestData::new(
                 public_key.as_ref().into(),
-                relays.into_iter().map(|r| r.into()).collect(),
+                relays.into_iter().map(|r| r.into()),
             ),
-        })
+        }
+    }
+
+    pub fn message(self: Arc<Self>, message: String) -> Arc<Self> {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.message(message);
+        Arc::new(builder)
     }
 
     pub fn amount(self: Arc<Self>, amount: u64) -> Arc<Self> {
@@ -58,4 +65,28 @@ impl ZapRequestData {
         builder.inner = builder.inner.event_id(event_id.as_ref().into());
         Arc::new(builder)
     }
+}
+
+#[uniffi::export]
+pub fn nip57_anonymous_zap_request(data: Arc<ZapRequestData>) -> Result<Event> {
+    Ok(nip57::anonymous_zap_request(data.as_ref().deref().clone())?.into())
+}
+
+#[uniffi::export]
+pub fn nip57_private_zap_request(data: Arc<ZapRequestData>, keys: Arc<Keys>) -> Result<Event> {
+    Ok(nip57::private_zap_request(data.as_ref().deref().clone(), keys.deref())?.into())
+}
+
+#[uniffi::export]
+pub fn nip57_decrypt_private_zap_message(
+    secret_key: Arc<SecretKey>,
+    public_key: Arc<PublicKey>,
+    private_zap: Arc<Event>,
+) -> Result<Event> {
+    Ok(nip57::decrypt_private_zap_message(
+        secret_key.deref(),
+        public_key.deref(),
+        private_zap.deref(),
+    )?
+    .into())
 }

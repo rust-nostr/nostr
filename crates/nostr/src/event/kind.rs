@@ -73,6 +73,8 @@ pub enum Kind {
     WalletConnectInfo,
     /// Reporting (NIP56)
     Reporting,
+    /// Zap Private Message (NIP57)
+    ZapPrivateMessage,
     /// Zap Request (NIP57)
     ZapRequest,
     /// Zap Receipt (NIP57)
@@ -213,6 +215,7 @@ impl From<u64> for Kind {
             49 => Self::PublicChatReserved49,
             13194 => Self::WalletConnectInfo,
             1984 => Self::Reporting,
+            9733 => Self::ZapPrivateMessage,
             9734 => Self::ZapRequest,
             9735 => Self::ZapReceipt,
             10000 => Self::MuteList,
@@ -273,6 +276,7 @@ impl From<Kind> for u64 {
             Kind::PublicChatReserved49 => 49,
             Kind::WalletConnectInfo => 13194,
             Kind::Reporting => 1984,
+            Kind::ZapPrivateMessage => 9733,
             Kind::ZapRequest => 9734,
             Kind::ZapReceipt => 9735,
             Kind::MuteList => 10000,

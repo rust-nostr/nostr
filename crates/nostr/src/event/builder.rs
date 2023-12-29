@@ -26,6 +26,7 @@ use crate::nips::nip15::{ProductData, StallData};
 #[cfg(all(feature = "std", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip53::LiveEvent;
+#[cfg(feature = "nip57")]
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip58::Error as Nip58Error;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -159,6 +160,7 @@ pub struct EventBuilder {
     kind: Kind,
     tags: Vec<Tag>,
     content: String,
+    custom_created_at: Option<Timestamp>,
 }
 
 impl EventBuilder {
@@ -172,7 +174,14 @@ impl EventBuilder {
             kind,
             tags: tags.into_iter().collect(),
             content: content.into(),
+            custom_created_at: None,
         }
+    }
+
+    /// Set a custom `created_at` UNIX timestamp
+    pub fn custom_created_at(mut self, created_at: Timestamp) -> Self {
+        self.custom_created_at = Some(created_at);
+        self
     }
 
     /// Build [`Event`]
@@ -203,7 +212,9 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        let created_at: Timestamp = Timestamp::now_with_supplier(supplier);
+        let created_at: Timestamp = self
+            .custom_created_at
+            .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
         let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
         UnsignedEvent {
             id,
@@ -256,7 +267,9 @@ impl EventBuilder {
 
             tags.push(Tag::POW { nonce, difficulty });
 
-            let created_at: Timestamp = Timestamp::now_with_supplier(supplier);
+            let created_at: Timestamp = self
+                .custom_created_at
+                .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
             let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
@@ -653,19 +666,60 @@ impl EventBuilder {
         Self::new(Kind::Reporting, content, tags)
     }
 
-    /// Create zap request event
+    /// Create public zap request event
     ///
     /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    #[cfg(feature = "nip57")]
+    #[deprecated(since = "0.27.0", note = "Use `public_zap_request` instead")]
     pub fn new_zap_request(data: ZapRequestData) -> Self {
+        let message: String = data.message.clone();
         let tags: Vec<Tag> = data.into();
-        Self::new(Kind::ZapRequest, "", tags)
+        Self::new(Kind::ZapRequest, message, tags)
+    }
+
+    /// Create **public** zap request event
+    ///
+    /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
+    ///
+    /// To build a **private** or **anonymous** zap request, use:
+    ///
+    /// ```rust,no_run
+    /// use nostr::prelude::*;
+    ///
+    /// # #[cfg(all(feature = "std", feature = "nip57"))]
+    /// # fn main() {
+    /// # let keys = Keys::generate();
+    /// # let public_key = XOnlyPublicKey::from_bech32(
+    /// # "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
+    /// # ).unwrap();
+    /// # let relays = [UncheckedUrl::from("wss://relay.damus.io")];
+    /// let data = ZapRequestData::new(public_key, relays).message("Zap!");
+    ///
+    /// let anon_zap: Event = nip57::anonymous_zap_request(data.clone()).unwrap();
+    /// println!("Anonymous zap request: {anon_zap:#?}");
+    ///
+    /// let private_zap: Event = nip57::private_zap_request(data, &keys).unwrap();
+    /// println!("Private zap request: {private_zap:#?}");
+    /// # }
+    ///
+    /// # #[cfg(not(all(feature = "std", feature = "nip57")))]
+    /// # fn main() {}
+    /// ```
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    #[cfg(feature = "nip57")]
+    pub fn public_zap_request(data: ZapRequestData) -> Self {
+        let message: String = data.message.clone();
+        let tags: Vec<Tag> = data.into();
+        Self::new(Kind::ZapRequest, message, tags)
     }
 
     /// Create zap receipt event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    #[cfg(feature = "nip57")]
     pub fn new_zap_receipt<S>(bolt11: S, preimage: Option<S>, zap_request: Event) -> Self
     where
         S: Into<String>,
@@ -1061,6 +1115,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "nip57")]
     fn test_zap_event_builder() {
         let bolt11 = String::from("lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0");
         let preimage = Some(String::from(
@@ -1083,6 +1138,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "nip57")]
     fn test_zap_event_builder_without_preimage() {
         let bolt11 = String::from("lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0");
         let preimage = None;
