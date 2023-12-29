@@ -672,7 +672,45 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     #[cfg(feature = "nip57")]
+    #[deprecated(since = "0.27.0", note = "Use `public_zap_request` instead")]
     pub fn new_zap_request(data: ZapRequestData) -> Self {
+        let message: String = data.message.clone();
+        let tags: Vec<Tag> = data.into();
+        Self::new(Kind::ZapRequest, message, tags)
+    }
+
+    /// Create **public** zap request event
+    ///
+    /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
+    ///
+    /// To build a **private** or **anonymous** zap request, use:
+    ///
+    /// ```rust,no_run
+    /// use nostr::prelude::*;
+    ///
+    /// # #[cfg(all(feature = "std", feature = "nip57"))]
+    /// # fn main() {
+    /// # let keys = Keys::generate();
+    /// # let public_key = XOnlyPublicKey::from_bech32(
+    /// # "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
+    /// # ).unwrap();
+    /// # let relays = [UncheckedUrl::from("wss://relay.damus.io")];
+    /// let data = ZapRequestData::new(public_key, relays).message("Zap!");
+    ///
+    /// let anon_zap: Event = nip57::anonymous_zap_request(data.clone()).unwrap();
+    /// println!("Anonymous zap request: {anon_zap:#?}");
+    ///
+    /// let private_zap: Event = nip57::private_zap_request(data, &keys).unwrap();
+    /// println!("Private zap request: {private_zap:#?}");
+    /// # }
+    ///
+    /// # #[cfg(not(all(feature = "std", feature = "nip57")))]
+    /// # fn main() {}
+    /// ```
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    #[cfg(feature = "nip57")]
+    pub fn public_zap_request(data: ZapRequestData) -> Self {
         let message: String = data.message.clone();
         let tags: Vec<Tag> = data.into();
         Self::new(Kind::ZapRequest, message, tags)

@@ -315,10 +315,17 @@ impl EventBuilder {
         })
     }
 
+    /// Create **public** zap request event
+    ///
+    /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
+    ///
+    /// To build a **private** or **anonymous** zap request use `nip57_private_zap_request(...)` or `nip57_anonymous_zap_request(...)` functions.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     #[uniffi::constructor]
-    pub fn new_zap_request(data: Arc<ZapRequestData>) -> Arc<Self> {
+    pub fn public_zap_request(data: Arc<ZapRequestData>) -> Arc<Self> {
         Arc::new(Self {
-            inner: nostr::EventBuilder::new_zap_request(data.as_ref().deref().clone()),
+            inner: nostr::EventBuilder::public_zap_request(data.as_ref().deref().clone()),
         })
     }
 

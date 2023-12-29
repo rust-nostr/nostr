@@ -17,11 +17,11 @@ fn main() -> Result<()> {
     let public_key = XOnlyPublicKey::from_bech32(
         "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
     )?;
-    let relays = vec![UncheckedUrl::from("wss://relay.damus.io")];
+    let relays = [UncheckedUrl::from("wss://relay.damus.io")];
     let msg = "Zap!";
     let data = ZapRequestData::new(public_key, relays).message(msg);
 
-    let public_zap: Event = EventBuilder::new_zap_request(data.clone()).to_event(&alice_keys)?;
+    let public_zap: Event = EventBuilder::public_zap_request(data.clone()).to_event(&alice_keys)?;
     println!("Public zap request: {public_zap:#?}");
 
     let anon_zap: Event = nip57::anonymous_zap_request(data.clone())?;
