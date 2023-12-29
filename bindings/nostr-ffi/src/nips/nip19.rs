@@ -9,10 +9,9 @@ use nostr::nips::nip21::NostrURI;
 use uniffi::Enum;
 use uniffi::Object;
 
+use super::nip01::Coordinate;
 use crate::error::Result;
 use crate::{EventId, PublicKey, SecretKey};
-
-use super::nip01::Coordinate;
 
 /// A representation any `fNIP19` bech32 nostr object. Useful for decoding
 /// `NIP19` bech32 strings without necessarily knowing what you're decoding

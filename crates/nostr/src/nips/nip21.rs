@@ -104,7 +104,7 @@ impl NostrURI for Coordinate {}
 /// A representation any `NIP21` object. Useful for decoding
 /// `NIP21` strings without necessarily knowing what you're decoding
 /// ahead of time.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Nip21 {
     /// nostr::npub
     Pubkey(XOnlyPublicKey),
