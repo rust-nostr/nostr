@@ -37,7 +37,7 @@ impl ZapRequestData {
         Self {
             inner: nip57::ZapRequestData::new(
                 public_key.as_ref().into(),
-                relays.into_iter().map(|r| r.into()).collect(),
+                relays.into_iter().map(|r| r.into()),
             ),
         }
     }
@@ -67,14 +67,12 @@ impl ZapRequestData {
     }
 }
 
-pub fn anonymous_zap_request(data: Arc<ZapRequestData>) -> Result<Arc<Event>> {
-    Ok(Arc::new(
-        nip57::anonymous_zap_request(data.as_ref().deref().clone())?.into(),
-    ))
+#[uniffi::export]
+pub fn nip57_anonymous_zap_request(data: Arc<ZapRequestData>) -> Result<Event> {
+    Ok(nip57::anonymous_zap_request(data.as_ref().deref().clone())?.into())
 }
 
-pub fn private_zap_request(data: Arc<ZapRequestData>, keys: Arc<Keys>) -> Result<Arc<Event>> {
-    Ok(Arc::new(
-        nip57::private_zap_request(data.as_ref().deref().clone(), keys.deref())?.into(),
-    ))
+#[uniffi::export]
+pub fn nip57_private_zap_request(data: Arc<ZapRequestData>, keys: Arc<Keys>) -> Result<Event> {
+    Ok(nip57::private_zap_request(data.as_ref().deref().clone(), keys.deref())?.into())
 }

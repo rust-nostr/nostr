@@ -122,10 +122,13 @@ pub struct ZapRequestData {
 
 impl ZapRequestData {
     /// New Zap Request Data
-    pub fn new(public_key: XOnlyPublicKey, relays: Vec<UncheckedUrl>) -> Self {
+    pub fn new<I>(public_key: XOnlyPublicKey, relays: I) -> Self
+    where
+        I: IntoIterator<Item = UncheckedUrl>,
+    {
         Self {
             public_key,
-            relays,
+            relays: relays.into_iter().collect(),
             message: String::new(),
             amount: None,
             lnurl: None,
