@@ -10,35 +10,44 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 
-#[cfg(feature = "std")]
 use aes::cipher::block_padding::Pkcs7;
 #[cfg(feature = "std")]
-use aes::cipher::{BlockEncryptMut, KeyIvInit};
+use aes::cipher::BlockEncryptMut;
+use aes::cipher::{BlockDecryptMut, KeyIvInit};
 #[cfg(feature = "std")]
-use bitcoin::bech32::{self, ToBase32, Variant};
+use bitcoin::bech32::ToBase32;
+use bitcoin::bech32::{self, FromBase32, Variant};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 
 use super::nip01::Coordinate;
+use super::nip04::Aes256CbcDec;
 #[cfg(feature = "std")]
-use super::nip04::{self, Aes256CbcEnc};
+use super::nip04::Aes256CbcEnc;
 use crate::event::builder::Error as BuilderError;
 use crate::key::Error as KeyError;
+use crate::{event, util, Event, EventId, JsonUtil, Tag, Timestamp, UncheckedUrl};
 #[cfg(feature = "std")]
-use crate::{util, Event, EventBuilder, JsonUtil, Keys, Kind};
-use crate::{EventId, Tag, Timestamp, UncheckedUrl};
+use crate::{EventBuilder, Keys, Kind};
+
+const PRIVATE_ZAP_MSG_BECH32_PREFIX: &str = "pzap";
+const PRIVATE_ZAP_IV_BECH32_PREFIX: &str = "iv";
 
 #[allow(missing_docs)]
 #[derive(Debug)]
 pub enum Error {
     Key(KeyError),
     Builder(BuilderError),
-    #[cfg(feature = "std")]
-    NIP04(nip04::Error),
-    #[cfg(feature = "std")]
+    Event(event::Error),
     Bech32(bech32::Error),
     Secp256k1(secp256k1::Error),
+    InvalidPrivateZapMessage,
+    PrivateZapMessageNotFound,
+    /// Wrong prefix or variant
+    WrongBech32PrefixOrVariant,
+    /// Wrong encryption block mode
+    WrongBlockMode,
 }
 
 #[cfg(feature = "std")]
@@ -49,11 +58,16 @@ impl fmt::Display for Error {
         match self {
             Self::Key(e) => write!(f, "{e}"),
             Self::Builder(e) => write!(f, "{e}"),
-            #[cfg(feature = "std")]
-            Self::NIP04(e) => write!(f, "{e}"),
-            #[cfg(feature = "std")]
+            Self::Event(e) => write!(f, "{e}"),
             Self::Bech32(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::InvalidPrivateZapMessage => write!(f, "Invalid private zap message"),
+            Self::PrivateZapMessageNotFound => write!(f, "Private zap message not found"),
+            Self::WrongBech32PrefixOrVariant => write!(f, "Wrong bech32 prefix or variant"),
+            Self::WrongBlockMode => write!(
+                f,
+                "Wrong encryption block mode. The content must be encrypted using CBC mode!"
+            ),
         }
     }
 }
@@ -70,14 +84,12 @@ impl From<BuilderError> for Error {
     }
 }
 
-#[cfg(feature = "std")]
-impl From<nip04::Error> for Error {
-    fn from(e: nip04::Error) -> Self {
-        Self::NIP04(e)
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
     }
 }
 
-#[cfg(feature = "std")]
 impl From<bech32::Error> for Error {
     fn from(e: bech32::Error) -> Self {
         Self::Bech32(e)
@@ -242,7 +254,7 @@ pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, E
 
     // Create encryption key
     let secret_key: SecretKey =
-        create_encryption_key(keys.secret_key()?, data.public_key, created_at)?;
+        create_encryption_key(&keys.secret_key()?, &data.public_key, created_at)?;
 
     // Compose encrypted message
     let mut tags: Vec<Tag> = vec![Tag::public_key(data.public_key)];
@@ -252,7 +264,7 @@ pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, E
     let json: String = EventBuilder::new(Kind::Custom(9733), &data.message, tags)
         .to_event(keys)?
         .as_json();
-    let msg: String = encrypt_private_zap_message(secret_key, data.public_key, json)?;
+    let msg: String = encrypt_private_zap_message(&secret_key, &data.public_key, json)?;
 
     // Compose event
     let mut tags: Vec<Tag> = data.into();
@@ -265,8 +277,8 @@ pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, E
 
 /// Create NIP57 encryption key for **private** zap
 pub fn create_encryption_key(
-    secret_key: SecretKey,
-    public_key: XOnlyPublicKey,
+    secret_key: &SecretKey,
+    public_key: &XOnlyPublicKey,
     created_at: Timestamp,
 ) -> Result<SecretKey, Error> {
     let mut unhashed: String = secret_key.display_secret().to_string();
@@ -278,14 +290,14 @@ pub fn create_encryption_key(
 
 #[cfg(feature = "std")]
 fn encrypt_private_zap_message<T>(
-    secret_key: SecretKey,
-    public_key: XOnlyPublicKey,
+    secret_key: &SecretKey,
+    public_key: &XOnlyPublicKey,
     msg: T,
 ) -> Result<String, Error>
 where
     T: AsRef<[u8]>,
 {
-    let key: [u8; 32] = util::generate_shared_key(&secret_key, &public_key);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
     let iv: [u8; 16] = secp256k1::rand::random();
 
     let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
@@ -293,11 +305,92 @@ where
 
     // Bech32 msg
     let data = result.to_base32();
-    let encrypted_bech32_msg = bech32::encode("pzap", data, Variant::Bech32)?;
+    let encrypted_bech32_msg =
+        bech32::encode(PRIVATE_ZAP_MSG_BECH32_PREFIX, data, Variant::Bech32)?;
 
     // Bech32 IV
     let data = iv.to_base32();
-    let iv_bech32 = bech32::encode("iv", data, Variant::Bech32)?;
+    let iv_bech32 = bech32::encode(PRIVATE_ZAP_IV_BECH32_PREFIX, data, Variant::Bech32)?;
 
     Ok(format!("{encrypted_bech32_msg}_{iv_bech32}"))
+}
+
+fn extract_anon_tag_message(event: &Event) -> Result<&String, Error> {
+    for tag in event.tags.iter() {
+        if let Tag::Anon { msg } = tag {
+            return msg.as_ref().ok_or(Error::InvalidPrivateZapMessage);
+        }
+    }
+    Err(Error::PrivateZapMessageNotFound)
+}
+
+/// Decrypt **private** zap message
+pub fn decrypt_private_zap_message(
+    secret_key: &SecretKey,
+    public_key: &XOnlyPublicKey,
+    private_zap_event: &Event,
+) -> Result<Event, Error> {
+    let secret_key: SecretKey =
+        create_encryption_key(secret_key, public_key, private_zap_event.created_at)?;
+    let key: [u8; 32] = util::generate_shared_key(&secret_key, public_key);
+
+    let msg: &String = extract_anon_tag_message(private_zap_event)?;
+    let mut splitted = msg.split('_');
+
+    let msg: &str = splitted.next().ok_or(Error::InvalidPrivateZapMessage)?;
+    let iv: &str = splitted.next().ok_or(Error::InvalidPrivateZapMessage)?;
+
+    // IV
+    let (hrp, data, checksum) = bech32::decode(iv)?;
+    if hrp != PRIVATE_ZAP_IV_BECH32_PREFIX || checksum != Variant::Bech32 {
+        return Err(Error::WrongBech32PrefixOrVariant);
+    }
+    let iv: Vec<u8> = Vec::from_base32(&data)?;
+
+    // Msg
+    let (hrp, data, checksum) = bech32::decode(msg)?;
+    if hrp != PRIVATE_ZAP_MSG_BECH32_PREFIX || checksum != Variant::Bech32 {
+        return Err(Error::WrongBech32PrefixOrVariant);
+    }
+    let msg: Vec<u8> = Vec::from_base32(&data)?;
+
+    // Decrypt
+    let cipher = Aes256CbcDec::new(&key.into(), iv.as_slice().into());
+    let result: Vec<u8> = cipher
+        .decrypt_padded_vec_mut::<Pkcs7>(&msg)
+        .map_err(|_| Error::WrongBlockMode)?;
+
+    // TODO: check if event kind is equal to 9733
+    Ok(Event::from_json(result)?)
+}
+
+#[cfg(feature = "std")]
+#[cfg(test)]
+mod tests {
+    use core::str::FromStr;
+
+    use super::*;
+    use crate::FromBech32;
+
+    #[test]
+    fn test_enrypt_decrypt_private_zap_message() {
+        let secret_key =
+            SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+        let alice_keys = Keys::new(secret_key);
+
+        let public_key = XOnlyPublicKey::from_bech32(
+            "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
+        )
+        .unwrap();
+        let relays = [UncheckedUrl::from("wss://relay.damus.io")];
+        let msg = "Private Zap message!";
+        let data = ZapRequestData::new(public_key, relays).message(msg);
+        let private_zap = private_zap_request(data, &alice_keys).unwrap();
+
+        let private_zap_msg =
+            decrypt_private_zap_message(&secret_key, &public_key, &private_zap).unwrap();
+
+        assert_eq!(msg, &private_zap_msg.content,)
+    }
 }

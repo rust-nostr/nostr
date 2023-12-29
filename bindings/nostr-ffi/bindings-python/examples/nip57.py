@@ -1,4 +1,4 @@
-from nostr_protocol import Keys, ZapRequestData, PublicKey, SecretKey, EventBuilder, nip57_anonymous_zap_request, nip57_private_zap_request
+from nostr_protocol import Keys, Event, ZapRequestData, PublicKey, SecretKey, EventBuilder, nip57_anonymous_zap_request, nip57_private_zap_request, nip57_decrypt_private_zap_message
 
 secret_key = SecretKey.from_hex("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
 keys = Keys(secret_key)
@@ -15,4 +15,8 @@ anon_zap = nip57_anonymous_zap_request(data)
 print(f"Anonymous zap request: {anon_zap.as_json()}\n")
 
 private_zap = nip57_private_zap_request(data, keys)
-print(f"Private zap request: {private_zap.as_json()}")
+print(f"Private zap request: {private_zap.as_json()}\n")
+
+# Decode private zap message
+event_msg: Event = nip57_decrypt_private_zap_message(secret_key, public_key, private_zap)
+print(f"Private zap msg: {event_msg.content()}")

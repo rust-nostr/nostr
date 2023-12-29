@@ -10,7 +10,7 @@ use uniffi::Object;
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::{Event, EventId, Keys, PublicKey};
+use crate::{Event, EventId, Keys, PublicKey, SecretKey};
 
 #[derive(Clone, Object)]
 pub struct ZapRequestData {
@@ -75,4 +75,18 @@ pub fn nip57_anonymous_zap_request(data: Arc<ZapRequestData>) -> Result<Event> {
 #[uniffi::export]
 pub fn nip57_private_zap_request(data: Arc<ZapRequestData>, keys: Arc<Keys>) -> Result<Event> {
     Ok(nip57::private_zap_request(data.as_ref().deref().clone(), keys.deref())?.into())
+}
+
+#[uniffi::export]
+pub fn nip57_decrypt_private_zap_message(
+    secret_key: Arc<SecretKey>,
+    public_key: Arc<PublicKey>,
+    private_zap: Arc<Event>,
+) -> Result<Event> {
+    Ok(nip57::decrypt_private_zap_message(
+        secret_key.deref(),
+        public_key.deref(),
+        private_zap.deref(),
+    )?
+    .into())
 }
