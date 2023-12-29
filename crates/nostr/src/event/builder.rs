@@ -655,41 +655,11 @@ impl EventBuilder {
 
     /// Create zap request event
     ///
+    /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     pub fn new_zap_request(data: ZapRequestData) -> Self {
-        let ZapRequestData {
-            public_key,
-            relays,
-            amount,
-            lnurl,
-            event_id,
-            event_coordinate,
-        } = data;
-        let mut tags = vec![Tag::public_key(public_key)];
-
-        if !relays.is_empty() {
-            tags.push(Tag::Relays(relays));
-        }
-
-        if let Some(event_id) = event_id {
-            tags.push(Tag::event(event_id));
-        }
-
-        if let Some(event_coordinate) = event_coordinate {
-            tags.push(event_coordinate.into());
-        }
-
-        if let Some(amount) = amount {
-            tags.push(Tag::Amount {
-                millisats: amount,
-                bolt11: None,
-            });
-        }
-
-        if let Some(lnurl) = lnurl {
-            tags.push(Tag::Lnurl(lnurl));
-        }
-
+        let tags: Vec<Tag> = data.into();
         Self::new(Kind::ZapRequest, "", tags)
     }
 

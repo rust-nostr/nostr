@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 use bitcoin::secp256k1::XOnlyPublicKey;
 
 use super::nip01::Coordinate;
-use crate::{EventId, UncheckedUrl};
+use crate::{EventId, Tag, UncheckedUrl};
 
 /// Zap Request Data
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -77,5 +77,45 @@ impl ZapRequestData {
             event_coordinate: Some(event_coordinate),
             ..self
         }
+    }
+}
+
+impl From<ZapRequestData> for Vec<Tag> {
+    fn from(data: ZapRequestData) -> Self {
+        let ZapRequestData {
+            public_key,
+            relays,
+            amount,
+            lnurl,
+            event_id,
+            event_coordinate,
+        } = data;
+
+        let mut tags: Vec<Tag> = vec![Tag::public_key(public_key)];
+
+        if !relays.is_empty() {
+            tags.push(Tag::Relays(relays));
+        }
+
+        if let Some(event_id) = event_id {
+            tags.push(Tag::event(event_id));
+        }
+
+        if let Some(event_coordinate) = event_coordinate {
+            tags.push(event_coordinate.into());
+        }
+
+        if let Some(amount) = amount {
+            tags.push(Tag::Amount {
+                millisats: amount,
+                bolt11: None,
+            });
+        }
+
+        if let Some(lnurl) = lnurl {
+            tags.push(Tag::Lnurl(lnurl));
+        }
+
+        tags
     }
 }
