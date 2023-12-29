@@ -48,7 +48,7 @@ nip11 = ["dep:reqwest"]
 nip44 = ["dep:base64", "dep:chacha20"]
 nip46 = ["nip04"]
 nip47 = ["nip04"]
-nip57 = ["nip04"]
+nip57 = ["dep:aes", "dep:cbc"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }

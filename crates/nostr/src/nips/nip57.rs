@@ -11,25 +11,31 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use aes::cipher::block_padding::Pkcs7;
-#[cfg(feature = "std")]
-use aes::cipher::BlockEncryptMut;
-use aes::cipher::{BlockDecryptMut, KeyIvInit};
-#[cfg(feature = "std")]
-use bitcoin::bech32::ToBase32;
-use bitcoin::bech32::{self, FromBase32, Variant};
+use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use aes::Aes256;
+use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
+#[cfg(feature = "std")]
+use bitcoin::secp256k1::rand::rngs::OsRng;
+use bitcoin::secp256k1::rand::{CryptoRng, RngCore};
+use bitcoin::secp256k1::{self, Secp256k1, SecretKey, Signing, XOnlyPublicKey};
+use cbc::{Decryptor, Encryptor};
 
 use super::nip01::Coordinate;
-use super::nip04::Aes256CbcDec;
-#[cfg(feature = "std")]
-use super::nip04::Aes256CbcEnc;
 use crate::event::builder::Error as BuilderError;
 use crate::key::Error as KeyError;
-use crate::{event, util, Event, EventId, JsonUtil, Tag, Timestamp, UncheckedUrl};
 #[cfg(feature = "std")]
-use crate::{EventBuilder, Keys, Kind};
+use crate::types::time::Instant;
+use crate::types::time::TimeSupplier;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
+use crate::{
+    event, util, Event, EventBuilder, EventId, JsonUtil, Keys, Kind, Tag, Timestamp, UncheckedUrl,
+};
+
+type Aes256CbcEnc = Encryptor<Aes256>;
+type Aes256CbcDec = Decryptor<Aes256>;
 
 const PRIVATE_ZAP_MSG_BECH32_PREFIX: &str = "pzap";
 const PRIVATE_ZAP_IV_BECH32_PREFIX: &str = "iv";
@@ -250,7 +256,23 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
 /// Create **private** zap request
 #[cfg(feature = "std")]
 pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
-    let created_at: Timestamp = Timestamp::now();
+    private_zap_request_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), data, keys)
+}
+
+/// Create **private** zap request
+pub fn private_zap_request_with_ctx<C, R, T>(
+    secp: &Secp256k1<C>,
+    rng: &mut R,
+    supplier: &T,
+    data: ZapRequestData,
+    keys: &Keys,
+) -> Result<Event, Error>
+where
+    C: Signing,
+    R: RngCore + CryptoRng,
+    T: TimeSupplier,
+{
+    let created_at: Timestamp = Timestamp::now_with_supplier(supplier);
 
     // Create encryption key
     let secret_key: SecretKey =
@@ -261,18 +283,18 @@ pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, E
     if let Some(event_id) = data.event_id {
         tags.push(Tag::event(event_id));
     }
-    let json: String = EventBuilder::new(Kind::Custom(9733), &data.message, tags)
-        .to_event(keys)?
+    let msg: String = EventBuilder::new(Kind::ZapPrivateMessage, &data.message, tags)
+        .to_event_with_ctx(secp, rng, supplier, keys)?
         .as_json();
-    let msg: String = encrypt_private_zap_message(&secret_key, &data.public_key, json)?;
+    let msg: String = encrypt_private_zap_message(rng, &secret_key, &data.public_key, msg)?;
 
     // Compose event
     let mut tags: Vec<Tag> = data.into();
     tags.push(Tag::Anon { msg: Some(msg) });
-    let private_zap_keys: Keys = Keys::new(secret_key);
+    let private_zap_keys: Keys = Keys::new_with_ctx(secp, secret_key);
     Ok(EventBuilder::new(Kind::ZapRequest, "", tags)
         .custom_created_at(created_at)
-        .to_event(&private_zap_keys)?)
+        .to_event_with_ctx(secp, rng, supplier, &private_zap_keys)?)
 }
 
 /// Create NIP57 encryption key for **private** zap
@@ -288,17 +310,19 @@ pub fn create_encryption_key(
     Ok(SecretKey::from_slice(hash.as_byte_array())?)
 }
 
-#[cfg(feature = "std")]
-fn encrypt_private_zap_message<T>(
+fn encrypt_private_zap_message<R, T>(
+    rng: &mut R,
     secret_key: &SecretKey,
     public_key: &XOnlyPublicKey,
     msg: T,
 ) -> Result<String, Error>
 where
+    R: RngCore,
     T: AsRef<[u8]>,
 {
     let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
-    let iv: [u8; 16] = secp256k1::rand::random();
+    let mut iv: [u8; 16] = [0u8; 16];
+    rng.fill_bytes(&mut iv);
 
     let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
     let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(msg.as_ref());
