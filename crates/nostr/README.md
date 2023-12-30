@@ -101,6 +101,7 @@ The following crate feature flags are available:
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                  |
 | `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                      |
 | `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                            |
+| `nip07`             |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers                                |
 | `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                |
 | `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                            |
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                             |
@@ -117,6 +118,7 @@ The following crate feature flags are available:
 | ✅         | [04 - Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)                                           |
 | ✅         | [05 - Mapping Nostr keys to DNS-based internet identifiers](https://github.com/nostr-protocol/nips/blob/master/05.md)               |
 | ✅         | [06 - Basic key derivation from mnemonic seed phrase](https://github.com/nostr-protocol/nips/blob/master/06.md)                     |
+| ✅         | [07 - `window.nostr` capability for web browsers](https://github.com/nostr-protocol/nips/blob/master/07.md)                     |
 | ✅         | [09 - Event Deletion](https://github.com/nostr-protocol/nips/blob/master/09.md)                                                     |
 | ✅         | [10 - Conventions for clients' use of `e` and `p` tags in text events](https://github.com/nostr-protocol/nips/blob/master/10.md)    |
 | ✅         | [11 - Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)                                         |
