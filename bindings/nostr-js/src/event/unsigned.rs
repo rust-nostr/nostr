@@ -3,55 +3,37 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::str::FromStr;
 
 use js_sys::Array;
-use nostr::prelude::*;
+use nostr::bitcoin::secp256k1::schnorr::Signature;
+use nostr::{JsonUtil, UnsignedEvent};
 use wasm_bindgen::prelude::*;
 
-mod builder;
-mod id;
-mod tag;
-mod unsigned;
-
-pub use self::builder::JsEventBuilder;
-pub use self::id::JsEventId;
-pub use self::tag::{JsTag, JsTagArray};
-pub use self::unsigned::JsUnsignedEvent;
+use super::tag::{JsTag, JsTagArray};
 use crate::error::{into_err, Result};
-use crate::key::JsPublicKey;
+use crate::types::JsTimestamp;
+use crate::{JsEvent, JsEventId, JsKeys, JsPublicKey};
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(typescript_type = "Event[]")]
-    pub type JsEventArray;
+#[wasm_bindgen(js_name = UnsignedEvent)]
+pub struct JsUnsignedEvent {
+    inner: UnsignedEvent,
 }
 
-#[wasm_bindgen(js_name = Event)]
-pub struct JsEvent {
-    inner: Event,
-}
-
-impl From<Event> for JsEvent {
-    fn from(event: Event) -> Self {
-        Self { inner: event }
+impl From<UnsignedEvent> for JsUnsignedEvent {
+    fn from(inner: UnsignedEvent) -> Self {
+        Self { inner }
     }
 }
 
-impl Deref for JsEvent {
-    type Target = Event;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl From<JsEvent> for Event {
-    fn from(event: JsEvent) -> Self {
+impl From<JsUnsignedEvent> for UnsignedEvent {
+    fn from(event: JsUnsignedEvent) -> Self {
         event.inner
     }
 }
 
-#[wasm_bindgen(js_class = Event)]
-impl JsEvent {
+#[wasm_bindgen(js_class = UnsignedEvent)]
+impl JsUnsignedEvent {
     #[wasm_bindgen(getter)]
     pub fn id(&self) -> JsEventId {
         self.inner.id.into()
@@ -63,8 +45,8 @@ impl JsEvent {
     }
 
     #[wasm_bindgen(js_name = createdAt, getter)]
-    pub fn created_at(&self) -> u64 {
-        self.inner.created_at.as_u64()
+    pub fn created_at(&self) -> JsTimestamp {
+        self.inner.created_at.into()
     }
 
     #[wasm_bindgen(getter)]
@@ -91,25 +73,26 @@ impl JsEvent {
         self.inner.content.clone()
     }
 
-    #[wasm_bindgen(getter)]
-    pub fn signature(&self) -> String {
-        self.inner.sig.to_string()
-    }
-
-    #[wasm_bindgen]
-    pub fn verify(&self) -> bool {
-        self.inner.verify().is_ok()
-    }
-
     #[wasm_bindgen(js_name = fromJson)]
-    pub fn from_json(json: String) -> Result<JsEvent> {
+    pub fn from_json(json: String) -> Result<JsUnsignedEvent> {
         Ok(Self {
-            inner: Event::from_json(json).map_err(into_err)?,
+            inner: UnsignedEvent::from_json(json).map_err(into_err)?,
         })
     }
 
     #[wasm_bindgen(js_name = asJson)]
     pub fn as_json(&self) -> String {
         self.inner.as_json()
+    }
+
+    /// Sign
+    pub fn sign(self, keys: &JsKeys) -> Result<JsEvent> {
+        Ok(self.inner.sign(keys.deref()).map_err(into_err)?.into())
+    }
+
+    /// Add signature
+    pub fn add_signature(self, sig: String) -> Result<JsEvent> {
+        let sig: Signature = Signature::from_str(&sig).map_err(into_err)?;
+        Ok(self.inner.add_signature(sig).map_err(into_err)?.into())
     }
 }

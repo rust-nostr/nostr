@@ -7,7 +7,7 @@ use std::ops::Deref;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use super::{JsEvent, JsEventId, JsTag};
+use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::types::{JsContact, JsMetadata};
@@ -43,6 +43,11 @@ impl JsEventBuilder {
         Ok(event.into())
     }
 
+    #[wasm_bindgen(js_name = toUnsignedEvent)]
+    pub fn to_unsigned_event(&self, public_key: &JsPublicKey) -> JsUnsignedEvent {
+        self.builder.clone().to_unsigned_event(**public_key).into()
+    }
+
     #[wasm_bindgen(js_name = toPowEvent)]
     pub fn to_pow_event(&self, keys: &JsKeys, difficulty: u8) -> Result<JsEvent> {
         Ok(self
@@ -51,6 +56,18 @@ impl JsEventBuilder {
             .to_pow_event(keys.deref(), difficulty)
             .map_err(into_err)?
             .into())
+    }
+
+    #[wasm_bindgen(js_name = toUnsignedPowEvent)]
+    pub fn to_unsigned_pow_event(
+        &self,
+        public_key: &JsPublicKey,
+        difficulty: u8,
+    ) -> JsUnsignedEvent {
+        self.builder
+            .clone()
+            .to_unsigned_pow_event(**public_key, difficulty)
+            .into()
     }
 
     #[wasm_bindgen(js_name = setMetadata)]
