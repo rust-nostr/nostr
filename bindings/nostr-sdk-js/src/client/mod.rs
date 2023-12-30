@@ -193,12 +193,8 @@ impl JsClient {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = publishTextNote)]
     pub async fn publish_text_note(&self, content: String, tags: Vec<JsTag>) -> Result<JsEventId> {
-        let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter().map(|t| t.to_vec()) {
-            new_tags.push(Tag::try_from(tag).map_err(into_err)?);
-        }
         self.inner
-            .publish_text_note(content, new_tags)
+            .publish_text_note(content, tags.into_iter().map(|t| t.into()))
             .await
             .map_err(into_err)
             .map(|id| id.into())

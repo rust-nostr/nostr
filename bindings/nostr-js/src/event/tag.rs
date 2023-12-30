@@ -5,6 +5,8 @@
 use nostr::Tag;
 use wasm_bindgen::prelude::*;
 
+use crate::error::{into_err, Result};
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(typescript_type = "Tag[]")]
@@ -13,33 +15,39 @@ extern "C" {
 
 #[wasm_bindgen(js_name = Tag)]
 pub struct JsTag {
-    inner: Vec<String>,
+    inner: Tag,
 }
 
 impl From<Tag> for JsTag {
-    fn from(tag: Tag) -> Self {
-        Self {
-            inner: tag.to_vec(),
-        }
+    fn from(inner: Tag) -> Self {
+        Self { inner }
+    }
+}
+
+impl From<JsTag> for Tag {
+    fn from(tag: JsTag) -> Self {
+        tag.inner
     }
 }
 
 #[wasm_bindgen(js_class = Tag)]
 impl JsTag {
-    #[wasm_bindgen(constructor)]
-    pub fn new(tag: Vec<String>) -> Self {
-        Self { inner: tag }
+    #[wasm_bindgen]
+    pub fn parse(tag: Vec<String>) -> Result<JsTag> {
+        Ok(Self {
+            inner: Tag::parse(tag).map_err(into_err)?,
+        })
     }
 
     /// Get tag as vector of string
     #[wasm_bindgen(js_name = asVec)]
     pub fn as_vec(&self) -> Vec<String> {
-        self.inner.clone()
+        self.inner.as_vec()
     }
 
     /// Consume the tag and return vector of string
     #[wasm_bindgen(js_name = toVec)]
     pub fn to_vec(self) -> Vec<String> {
-        self.inner
+        self.inner.to_vec()
     }
 }
