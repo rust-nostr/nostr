@@ -7,7 +7,7 @@ use std::ops::Deref;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use super::{JsEvent, JsEventId, JsTag};
+use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::types::{JsContact, JsMetadata};
@@ -27,15 +27,10 @@ impl Deref for JsEventBuilder {
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
-    pub fn new(kind: u64, content: String, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
-        let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter().map(|t| t.to_vec()) {
-            new_tags.push(Tag::try_from(tag).map_err(into_err)?);
+    pub fn new(kind: u64, content: String, tags: Vec<JsTag>) -> Self {
+        Self {
+            builder: EventBuilder::new(kind.into(), content, tags.into_iter().map(|t| t.into())),
         }
-
-        Ok(Self {
-            builder: EventBuilder::new(kind.into(), content, new_tags),
-        })
     }
 
     #[wasm_bindgen(js_name = toEvent)]
@@ -48,6 +43,11 @@ impl JsEventBuilder {
         Ok(event.into())
     }
 
+    #[wasm_bindgen(js_name = toUnsignedEvent)]
+    pub fn to_unsigned_event(&self, public_key: &JsPublicKey) -> JsUnsignedEvent {
+        self.builder.clone().to_unsigned_event(**public_key).into()
+    }
+
     #[wasm_bindgen(js_name = toPowEvent)]
     pub fn to_pow_event(&self, keys: &JsKeys, difficulty: u8) -> Result<JsEvent> {
         Ok(self
@@ -56,6 +56,18 @@ impl JsEventBuilder {
             .to_pow_event(keys.deref(), difficulty)
             .map_err(into_err)?
             .into())
+    }
+
+    #[wasm_bindgen(js_name = toUnsignedPowEvent)]
+    pub fn to_unsigned_pow_event(
+        &self,
+        public_key: &JsPublicKey,
+        difficulty: u8,
+    ) -> JsUnsignedEvent {
+        self.builder
+            .clone()
+            .to_unsigned_pow_event(**public_key, difficulty)
+            .into()
     }
 
     #[wasm_bindgen(js_name = setMetadata)]
@@ -74,23 +86,18 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = newTextNote)]
-    pub fn new_text_note(content: String, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
-        let mut new_tags: Vec<Tag> = Vec::with_capacity(tags.len());
-        for tag in tags.into_iter().map(|t| t.to_vec()) {
-            new_tags.push(Tag::try_from(tag).map_err(into_err)?);
+    pub fn new_text_note(content: String, tags: Vec<JsTag>) -> Self {
+        Self {
+            builder: EventBuilder::new_text_note(content, tags.into_iter().map(|t| t.into())),
         }
-
-        Ok(Self {
-            builder: EventBuilder::new_text_note(content, new_tags),
-        })
     }
 
     #[wasm_bindgen(js_name = setContactList)]
-    pub fn set_contact_list(list: Vec<JsContact>) -> Result<JsEventBuilder> {
+    pub fn set_contact_list(list: Vec<JsContact>) -> Self {
         let list = list.into_iter().map(|c| c.inner());
-        Ok(Self {
+        Self {
             builder: EventBuilder::set_contact_list(list),
-        })
+        }
     }
 
     #[wasm_bindgen(js_name = newEncryptedDirectMsg)]
@@ -119,14 +126,14 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn delete(ids: Vec<JsEventId>, reason: Option<String>) -> Result<JsEventBuilder> {
+    pub fn delete(ids: Vec<JsEventId>, reason: Option<String>) -> Self {
         let ids = ids.into_iter().map(|id| id.inner);
-        Ok(Self {
+        Self {
             builder: match reason {
                 Some(reason) => EventBuilder::delete_with_reason(ids, reason),
                 None => EventBuilder::delete(ids),
             },
-        })
+        }
     }
 
     #[wasm_bindgen(js_name = newReaction)]

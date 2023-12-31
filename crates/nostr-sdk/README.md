@@ -124,22 +124,23 @@ NOTE: Currently `nip03` feature not support WASM.
 
 The following crate feature flags are available:
 
-| Feature             | Default | Description                                                                              |
-| ------------------- | :-----: | ---------------------------------------------------------------------------------------- |
-| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                  |
-| `sqlite`            |   No    | Enable SQLite Storage backend                                                            |
-| `rocksdb`           |   No    | Enable RocksDB Storage backend                                                           |
-| `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                   |
-| `all-nips`          |   Yes   | Enable all NIPs                                                                          |
-| `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                    |
-| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                  |
-| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                      |
-| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                            |
-| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                |
-| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                            |
-| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                             |
-| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                      |
-| `nip57`             |   Yes   | Enable NIP-57: Zaps                                                                      |
+| Feature             | Default | Description                                                                                 |
+| ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
+| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                     |
+| `sqlite`            |   No    | Enable SQLite Storage backend                                                               |
+| `rocksdb`           |   No    | Enable RocksDB Storage backend                                                              |
+| `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                      |
+| `all-nips`          |   Yes   | Enable all NIPs                                                                             |
+| `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                       |
+| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                     |
+| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                         |
+| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                               |
+| `nip07`             |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**)|
+| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                   |
+| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                               |
+| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                |
+| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                         |
+| `nip57`             |   Yes   | Enable NIP-57: Zaps                                                                         |
 
 ## Supported NIPs
 

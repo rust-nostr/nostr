@@ -1452,6 +1452,7 @@ dependencies = [
  "csv",
  "getrandom",
  "instant",
+ "js-sys",
  "negentropy",
  "nostr-ots",
  "num_cpus",
@@ -1462,6 +1463,9 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url-fork",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

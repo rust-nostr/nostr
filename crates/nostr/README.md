@@ -91,21 +91,22 @@ Check the example in the [embedded/](https://github.com/rust-nostr/nostr/tree/ma
 
 The following crate feature flags are available:
 
-| Feature             | Default | Description                                                                              |
-| ------------------- | :-----: | ---------------------------------------------------------------------------------------- |
-| `std`               |   Yes   | Enable `std` library                                                                     |
-| `alloc`             |   No    | Needed to use this library in `no_std` context                                           |
-| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                  |
-| `all-nips`          |   Yes   | Enable all NIPs                                                                          |
-| `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                    |
-| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                  |
-| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                      |
-| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                            |
-| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                |
-| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                            |
-| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                             |
-| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                      |
-| `nip57`             |   Yes   | Enable NIP-57: Zaps                                                                      |
+| Feature             | Default | Description                                                                                 |
+| ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
+| `std`               |   Yes   | Enable `std` library                                                                        |
+| `alloc`             |   No    | Needed to use this library in `no_std` context                                              |
+| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                     |
+| `all-nips`          |   Yes   | Enable all NIPs                                                                             |
+| `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                       |
+| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                     |
+| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                         |
+| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                               |
+| `nip07`             |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**)|
+| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                   |
+| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                               |
+| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                |
+| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                         |
+| `nip57`             |   Yes   | Enable NIP-57: Zaps                                                                         |
 
 ## Supported NIPs
 
@@ -117,6 +118,7 @@ The following crate feature flags are available:
 | ✅         | [04 - Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)                                           |
 | ✅         | [05 - Mapping Nostr keys to DNS-based internet identifiers](https://github.com/nostr-protocol/nips/blob/master/05.md)               |
 | ✅         | [06 - Basic key derivation from mnemonic seed phrase](https://github.com/nostr-protocol/nips/blob/master/06.md)                     |
+| ✅         | [07 - `window.nostr` capability for web browsers](https://github.com/nostr-protocol/nips/blob/master/07.md)                     |
 | ✅         | [09 - Event Deletion](https://github.com/nostr-protocol/nips/blob/master/09.md)                                                     |
 | ✅         | [10 - Conventions for clients' use of `e` and `p` tags in text events](https://github.com/nostr-protocol/nips/blob/master/10.md)    |
 | ✅         | [11 - Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)                                         |
