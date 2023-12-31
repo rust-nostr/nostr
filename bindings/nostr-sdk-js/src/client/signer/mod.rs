@@ -4,6 +4,7 @@
 
 use std::ops::Deref;
 
+use nostr_js::nips::nip07::JsNip07Signer;
 use nostr_js::JsKeys;
 use nostr_sdk::ClientSigner;
 use wasm_bindgen::prelude::*;
@@ -28,12 +29,17 @@ impl From<ClientSigner> for JsClientSigner {
 
 #[wasm_bindgen(js_class = ClientSigner)]
 impl JsClientSigner {
-    /// Compose client signer using `Keys`
+    /// Private Key Client Signer
     pub fn keys(keys: &JsKeys) -> Self {
         Self {
             inner: ClientSigner::Keys(keys.deref().clone()),
         }
     }
 
-    // TODO
+    /// NIP07 Client Signer
+    pub fn nip07(signer: &JsNip07Signer) -> Self {
+        Self {
+            inner: ClientSigner::NIP07(signer.deref().clone()),
+        }
+    }
 }

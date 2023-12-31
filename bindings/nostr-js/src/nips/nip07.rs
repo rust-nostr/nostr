@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use nostr::nips::nip07::Nip07Signer;
 use nostr::secp256k1::XOnlyPublicKey;
 use wasm_bindgen::prelude::*;
@@ -16,6 +18,13 @@ use crate::{JsEvent, JsPublicKey};
 #[wasm_bindgen(js_name = Nip07Signer)]
 pub struct JsNip07Signer {
     inner: Nip07Signer,
+}
+
+impl Deref for JsNip07Signer {
+    type Target = Nip07Signer;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 #[wasm_bindgen(js_class = Nip07Signer)]
