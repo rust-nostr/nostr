@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr::nips::nip07;
+use nostr::nips::nip07::Nip07Signer;
 use nostr::secp256k1::XOnlyPublicKey;
 use wasm_bindgen::prelude::*;
 
@@ -13,17 +13,17 @@ use crate::{JsEvent, JsPublicKey};
 /// NIP07 Signer for interaction with browser extensions (ex. Alby)
 ///
 /// <https://github.com/aljazceru/awesome-nostr#nip-07-browser-extensions>
-#[wasm_bindgen]
-pub struct Nip07Signer {
-    inner: nip07::Signer,
+#[wasm_bindgen(js_name = Nip07Signer)]
+pub struct JsNip07Signer {
+    inner: Nip07Signer,
 }
 
-#[wasm_bindgen]
-impl Nip07Signer {
+#[wasm_bindgen(js_class = Nip07Signer)]
+impl JsNip07Signer {
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Result<Nip07Signer> {
+    pub fn new() -> Result<JsNip07Signer> {
         Ok(Self {
-            inner: nip07::Signer::new().map_err(into_err)?,
+            inner: Nip07Signer::new().map_err(into_err)?,
         })
     }
 

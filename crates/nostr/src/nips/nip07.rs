@@ -85,12 +85,12 @@ impl From<JsValue> for Error {
 /// NIP07 Signer for interaction with browser extensions (ex. Alby)
 ///
 /// <https://github.com/aljazceru/awesome-nostr#nip-07-browser-extensions>
-pub struct Signer {
+pub struct Nip07Signer {
     /// `window.nostr` object
     nostr_obj: Object,
 }
 
-impl Signer {
+impl Nip07Signer {
     /// Compose new NIP07 Signer
     pub fn new() -> Result<Self, Error> {
         let window: Window = web_sys::window().ok_or(Error::NoGlobalWindowObject)?;
