@@ -271,10 +271,9 @@ dependencies = [
 [[package]]
 name = "bip39"
 version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93f2635620bf0b9d4576eb7bb9a38a55df78bd1205d26fa994b25911a69f212f"
+source = "git+https://github.com/rust-bitcoin/rust-bip39?rev=256a00e7c23c5b2ecc04df90894f60248c8d56d5#256a00e7c23c5b2ecc04df90894f60248c8d56d5"
 dependencies = [
- "bitcoin_hashes 0.11.0",
+ "bitcoin_hashes",
  "serde",
  "unicode-normalization",
 ]
@@ -287,7 +286,7 @@ checksum = "4e99ff7289b20a7385f66a0feda78af2fc119d28fb56aea8886a9cd0a4abdd75"
 dependencies = [
  "bech32",
  "bitcoin-private",
- "bitcoin_hashes 0.12.0",
+ "bitcoin_hashes",
  "core2",
  "hex_lit",
  "secp256k1",
@@ -299,12 +298,6 @@ name = "bitcoin-private"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73290177011694f38ec25e165d0387ab7ea749a4b81cd4c80dae5988229f7a57"
-
-[[package]]
-name = "bitcoin_hashes"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90064b8dee6815a6470d60bad07bbbaee885c0e12d04177138fa3291a01b7bc4"
 
 [[package]]
 name = "bitcoin_hashes"
@@ -1533,7 +1526,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39c8647a2c4202362420b59e7a3b52f6c541446ab6c5b28fd9fae22bc7d75a7"
 dependencies = [
  "base64",
- "bitcoin_hashes 0.12.0",
+ "bitcoin_hashes",
  "opentimestamps",
  "thiserror",
  "ureq",
@@ -1674,7 +1667,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "426fc5f60c647b5d49210a1fb1facea0962a91e60b320b217b15dc06d99f12ba"
 dependencies = [
- "bitcoin_hashes 0.12.0",
+ "bitcoin_hashes",
  "env_logger",
  "log",
 ]
@@ -2107,7 +2100,7 @@ version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25996b82292a7a57ed3508f052cfff8640d38d32018784acd714758b43da9c8f"
 dependencies = [
- "bitcoin_hashes 0.12.0",
+ "bitcoin_hashes",
  "rand",
  "secp256k1-sys",
  "serde",
