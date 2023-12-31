@@ -12,9 +12,13 @@ use js_sys::{Array, Function};
 use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventArray, JsEventId, JsTag};
 use nostr_js::message::JsRelayMessage;
-use nostr_js::{JsContact, JsFilter, JsKeys, JsMetadata, JsPublicKey};
+use nostr_js::{JsContact, JsFilter, JsMetadata, JsPublicKey};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
+
+pub mod signer;
+
+pub use self::signer::JsClientSigner;
 
 // use crate::relay::JsRelay;
 
@@ -26,9 +30,12 @@ pub struct JsClient {
 #[wasm_bindgen(js_class = Client)]
 impl JsClient {
     #[wasm_bindgen(constructor)]
-    pub fn new(keys: &JsKeys) -> Self {
+    pub fn new(signer: Option<JsClientSigner>) -> Self {
         Self {
-            inner: Client::new(keys.deref()),
+            inner: match signer {
+                Some(signer) => Client::new(signer.deref().clone()),
+                None => ClientBuilder::new().build(),
+            },
         }
     }
 
@@ -38,16 +45,18 @@ impl JsClient {
         self.inner.update_difficulty(difficulty);
     }
 
-    /// Get current `Keys`
+    /// Get current client signer
+    ///
+    /// Rise error if it not set.
     #[wasm_bindgen(getter)]
-    pub async fn keys(&self) -> JsKeys {
-        self.inner.keys().await.into()
+    pub async fn signer(&self) -> Result<JsClientSigner> {
+        Ok(self.inner.signer().await.map_err(into_err)?.into())
     }
 
     /// Completely shutdown `Client`
     #[wasm_bindgen]
-    pub async fn shutdown(&self) -> Result<()> {
-        self.inner.clone().shutdown().await.map_err(into_err)
+    pub async fn shutdown(self) -> Result<()> {
+        self.inner.shutdown().await.map_err(into_err)
     }
 
     /* /// Get relays
@@ -149,9 +158,9 @@ impl JsClient {
 
     /// Send event
     #[wasm_bindgen(js_name = sendEvent)]
-    pub async fn send_event(&self, event: JsEvent) -> Result<JsEventId> {
+    pub async fn send_event(&self, event: &JsEvent) -> Result<JsEventId> {
         self.inner
-            .send_event(event.into())
+            .send_event(event.deref().clone())
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -159,9 +168,9 @@ impl JsClient {
 
     /// Send event to specific relay
     #[wasm_bindgen(js_name = sendEventTo)]
-    pub async fn send_event_to(&self, url: String, event: JsEvent) -> Result<JsEventId> {
+    pub async fn send_event_to(&self, url: String, event: &JsEvent) -> Result<JsEventId> {
         self.inner
-            .send_event_to(url, event.into())
+            .send_event_to(url, event.deref().clone())
             .await
             .map_err(into_err)
             .map(|id| id.into())
