@@ -327,6 +327,8 @@ impl FromStr for RelayMetadata {
 pub enum TagKind {
     /// Public key
     P,
+    /// Public key
+    UpperP,
     /// Event id
     E,
     /// Reference (URL, etc.)
@@ -431,6 +433,7 @@ impl fmt::Display for TagKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::P => write!(f, "p"),
+            Self::UpperP => write!(f, "P"),
             Self::E => write!(f, "e"),
             Self::R => write!(f, "r"),
             Self::T => write!(f, "t"),
@@ -491,6 +494,7 @@ where
     fn from(tag: S) -> Self {
         match tag.as_ref() {
             "p" => Self::P,
+            "P" => Self::UpperP,
             "e" => Self::E,
             "r" => Self::R,
             "t" => Self::T,
@@ -557,6 +561,8 @@ pub enum Tag {
         public_key: XOnlyPublicKey,
         relay_url: Option<UncheckedUrl>,
         alias: Option<String>,
+        /// Whether the p tag is an uppercase P or not
+        uppercase: bool,
     },
     EventReport(EventId, Report),
     PubKeyReport(XOnlyPublicKey, Report),
@@ -678,6 +684,7 @@ impl Tag {
             public_key,
             relay_url: None,
             alias: None,
+            uppercase: false,
         }
     }
 
@@ -696,7 +703,12 @@ impl Tag {
         match self {
             Self::Generic(kind, ..) => kind.clone(),
             Self::Event { .. } => TagKind::E,
-            Self::PublicKey { .. } => TagKind::P,
+            Self::PublicKey {
+                uppercase: false, ..
+            } => TagKind::P,
+            Self::PublicKey {
+                uppercase: true, ..
+            } => TagKind::UpperP,
             Self::EventReport(..) => TagKind::E,
             Self::PubKeyReport(..) => TagKind::P,
             Self::PubKeyLiveEvent { .. } => TagKind::P,
@@ -799,6 +811,15 @@ where
                     }
                 }
                 TagKind::P => Ok(Self::public_key(XOnlyPublicKey::from_str(tag_1)?)),
+                TagKind::UpperP => {
+                    let public_key = XOnlyPublicKey::from_str(tag_1)?;
+                    Ok(Self::PublicKey {
+                        public_key,
+                        relay_url: None,
+                        alias: None,
+                        uppercase: true,
+                    })
+                }
                 TagKind::E => Ok(Self::event(EventId::from_hex(tag_1)?)),
                 TagKind::R => {
                     if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
@@ -870,6 +891,7 @@ where
                             public_key,
                             relay_url: Some(UncheckedUrl::empty()),
                             alias: None,
+                            uppercase: false,
                         })
                     } else {
                         match Report::from_str(tag_2) {
@@ -878,6 +900,7 @@ where
                                 public_key,
                                 relay_url: Some(UncheckedUrl::from(tag_2)),
                                 alias: None,
+                                uppercase: false,
                             }),
                         }
                     }
@@ -972,7 +995,7 @@ where
             let tag_3: &str = tag[3].as_ref();
 
             match tag_kind {
-                TagKind::P => {
+                TagKind::P | TagKind::UpperP => {
                     let public_key: XOnlyPublicKey = XOnlyPublicKey::from_str(tag_1)?;
                     let relay_url: Option<UncheckedUrl> = Some(UncheckedUrl::from(tag_2));
 
@@ -987,6 +1010,7 @@ where
                             public_key,
                             relay_url,
                             alias: Some(tag_3.to_string()),
+                            uppercase: tag_kind == TagKind::UpperP,
                         }),
                     }
                 }
@@ -1012,7 +1036,7 @@ where
             let tag_4: &str = tag[4].as_ref();
 
             match tag_kind {
-                TagKind::P => Ok(Self::PubKeyLiveEvent {
+                TagKind::P | TagKind::UpperP => Ok(Self::PubKeyLiveEvent {
                     public_key: XOnlyPublicKey::from_str(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: LiveEventMarker::from_str(tag_3)?,
@@ -1057,8 +1081,14 @@ impl From<Tag> for Vec<String> {
                 public_key,
                 relay_url,
                 alias,
+                uppercase,
             } => {
-                let mut tag = vec![TagKind::P.to_string(), public_key.to_string()];
+                let p_tag = if uppercase {
+                    TagKind::UpperP.to_string()
+                } else {
+                    TagKind::P.to_string()
+                };
+                let mut tag = vec![p_tag, public_key.to_string()];
                 if let Some(relay_url) = relay_url {
                     tag.push(relay_url.to_string());
                 }
@@ -1400,7 +1430,7 @@ mod tests {
             "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3",
             Timestamp::from(1671739153),
             4,
-            vec![Tag::PublicKey{public_key, relay_url: None, alias: None}],
+            vec![Tag::PublicKey{public_key, relay_url: None, alias: None, uppercase: false}],
             "8y4MRYrb4ztvXO2NmsHvUA==?iv=MplZo7oSdPfH/vdMC8Hmwg==",
             "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8"
         );
@@ -1490,6 +1520,7 @@ mod tests {
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 alias: None,
+                uppercase: false,
             }
             .as_vec()
         );
@@ -1638,7 +1669,8 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
-                alias: Some(String::from("alias"))
+                alias: Some(String::from("alias")),
+                uppercase: false,
             }
             .as_vec()
         );
@@ -1802,6 +1834,7 @@ mod tests {
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 alias: None,
+                uppercase: false
             }
         );
 
@@ -1919,7 +1952,8 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
-                alias: Some(String::from("alias"))
+                alias: Some(String::from("alias")),
+                uppercase: false,
             }
         );
 
