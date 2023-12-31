@@ -30,10 +30,10 @@ impl From<nostr_sdk::Options> for Options {
 #[uniffi::export]
 impl Options {
     #[uniffi::constructor]
-    pub fn new() -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new() -> Self {
+        Self {
             inner: nostr_sdk::Options::new(),
-        })
+        }
     }
 
     pub fn wait_for_connection(self: Arc<Self>, wait: bool) -> Arc<Self> {

@@ -6,11 +6,10 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
-use nostr_ffi::Keys;
 use nostr_sdk::database::DynNostrDatabase;
 use uniffi::Object;
 
-use super::{Client, ClientSdk, Options};
+use super::{Client, ClientSdk, ClientSigner, Options};
 use crate::database::NostrDatabase;
 
 #[derive(Clone, Object)]
@@ -28,10 +27,17 @@ impl From<nostr_sdk::ClientBuilder> for ClientBuilder {
 impl ClientBuilder {
     /// New client builder
     #[uniffi::constructor]
-    pub fn new(keys: Arc<Keys>) -> Arc<Self> {
-        Arc::new(Self {
-            inner: nostr_sdk::ClientBuilder::new(keys.as_ref().deref()),
-        })
+    pub fn new() -> Self {
+        Self {
+            inner: nostr_sdk::ClientBuilder::new(),
+        }
+    }
+
+    pub fn signer(self: Arc<Self>, signer: ClientSigner) -> Self {
+        let signer: nostr_sdk::ClientSigner = signer.into();
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.signer(signer);
+        builder
     }
 
     pub fn database(self: Arc<Self>, database: Arc<NostrDatabase>) -> Arc<Self> {

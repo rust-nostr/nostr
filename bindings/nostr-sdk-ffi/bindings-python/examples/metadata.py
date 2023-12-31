@@ -1,11 +1,12 @@
-from nostr_sdk import Metadata, Client, Keys, Filter, PublicKey
+from nostr_sdk import Metadata, Client, ClientSigner, Keys, Filter, PublicKey
 from datetime import timedelta
 
 keys = Keys.generate()
 
-client = Client(keys)
+signer = ClientSigner.KEYS(keys)
+client = Client(signer)
 
-client.add_relay("wss://relay.damus.io", None)
+client.add_relay("wss://relay.damus.io")
 client.connect()
 
 # Set metadata

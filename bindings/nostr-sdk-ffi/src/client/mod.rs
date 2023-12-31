@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::{
-    ClientMessage, Event, EventId, FileMetadata, Filter, Keys, Metadata, PublicKey, RelayMessage,
+    ClientMessage, Event, EventId, FileMetadata, Filter, Metadata, PublicKey, RelayMessage,
 };
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
@@ -18,9 +18,11 @@ use uniffi::Object;
 
 mod builder;
 mod options;
+pub mod signer;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
+pub use self::signer::ClientSigner;
 use crate::error::Result;
 use crate::{NostrDatabase, Relay};
 
@@ -38,40 +40,34 @@ impl From<ClientSdk> for Client {
 #[uniffi::export]
 impl Client {
     #[uniffi::constructor]
-    pub fn new(keys: Arc<Keys>) -> Arc<Self> {
-        let opts: OptionsSdk = OptionsSdk::new().shutdown_on_drop(true);
-        Arc::new(Self {
-            inner: ClientSdk::with_opts(keys.as_ref().deref(), opts),
-        })
+    pub fn new(signer: Option<ClientSigner>) -> Self {
+        Self::with_opts(signer, Arc::new(Options::new()))
     }
 
     #[uniffi::constructor]
-    pub fn with_opts(keys: Arc<Keys>, opts: Arc<Options>) -> Arc<Self> {
+    pub fn with_opts(signer: Option<ClientSigner>, opts: Arc<Options>) -> Self {
         let opts: OptionsSdk = opts.as_ref().deref().clone().shutdown_on_drop(true);
-        Arc::new(Self {
-            inner: ClientSdk::with_opts(keys.as_ref().deref(), opts),
-        })
+        let mut builder = nostr_sdk::ClientBuilder::new().opts(opts);
+        if let Some(signer) = signer {
+            let signer: nostr_sdk::ClientSigner = signer.into();
+            builder = builder.signer(signer);
+        }
+        Self {
+            inner: builder.build().into(),
+        }
     }
-
-    // TODO: add with_remote_signer
-
-    // TODO: add with_remote_signer_and_opts
 
     pub fn update_difficulty(&self, difficulty: u8) {
         self.inner.update_difficulty(difficulty);
     }
 
-    pub fn keys(&self) -> Arc<Keys> {
-        Arc::new(self.inner.keys().into())
+    pub fn signer(&self) -> Result<ClientSigner> {
+        Ok(self.inner.signer()?.into())
     }
 
     pub fn database(&self) -> Arc<NostrDatabase> {
         Arc::new(self.inner.database().into())
     }
-
-    // TODO: add nostr_connect_uri
-
-    // TODO: add remote_signer
 
     pub fn start(&self) {
         self.inner.start();

@@ -6,9 +6,9 @@ print(keys.public_key().to_bech32())
 
 # Change default send timeout
 opts = Options().send_timeout(timedelta(seconds=10))
-client = Client.with_opts(keys, opts)
+client = Client.with_opts(None, opts)
 
-client.add_relay("wss://relay.damus.io", None)
+client.add_relay("wss://relay.damus.io")
 client.connect()
 
 event = EventBuilder.new_text_note("Hello from Rust Nostr Python bindings!", []).to_event(keys)

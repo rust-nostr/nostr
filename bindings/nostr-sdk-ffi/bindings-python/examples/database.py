@@ -6,10 +6,10 @@ keys = Keys.from_sk_str("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9
 print(keys.public_key().to_bech32())
 
 database = NostrDatabase.sqlite("nostr.db")
-client = ClientBuilder(keys).database(database).build()
+client = ClientBuilder().database(database).build()
 
-client.add_relay("wss://relay.damus.io", None)
-client.add_relay("wss://atl.purplerelay.com", None)
+client.add_relay("wss://relay.damus.io")
+client.add_relay("wss://atl.purplerelay.com")
 client.connect()
 
 # Negentropy reconciliation
