@@ -277,10 +277,6 @@ impl Client {
         Ok(self.pool.clone().shutdown().await?)
     }
 
-    /// Clear already seen events
-    #[deprecated]
-    pub async fn clear_already_seen_events(&self) {}
-
     /// Get new notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.pool.notifications()

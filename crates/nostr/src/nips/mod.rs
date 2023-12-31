@@ -22,8 +22,6 @@ pub mod nip15;
 pub mod nip19;
 pub mod nip21;
 pub mod nip26;
-#[deprecated(since = "0.26.0", note = "moved to `nip01`")]
-pub mod nip33;
 #[cfg(feature = "nip44")]
 pub mod nip44;
 #[cfg(all(feature = "std", feature = "nip46"))]

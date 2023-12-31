@@ -47,8 +47,6 @@ pub use crate::nips::nip15::{self, *};
 pub use crate::nips::nip19::{self, *};
 pub use crate::nips::nip21::{self, *};
 pub use crate::nips::nip26::{self, *};
-#[allow(deprecated)]
-pub use crate::nips::nip33::{self, *};
 #[cfg(feature = "nip44")]
 pub use crate::nips::nip44::{self, *};
 #[cfg(all(feature = "std", feature = "nip46"))]
