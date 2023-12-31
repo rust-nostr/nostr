@@ -15,18 +15,17 @@ async fn main() -> Result<()> {
     let secret_key = SecretKey::from_bech32(APP_SECRET_KEY)?;
     let app_keys = Keys::new(secret_key);
     let relay_url = Url::parse("wss://relay.damus.io")?;
-    let signer = Nip46Signer::new(relay_url.clone(), None);
-
-    let client = Client::with_remote_signer(&app_keys, signer);
-    client.add_relay(relay_url).await?;
+    let signer = Nip46Signer::new(relay_url.clone(), app_keys, None);
 
     let metadata = NostrConnectMetadata::new("Nostr SDK").url(Url::parse("https://example.com")?);
-    let nostr_connect_uri: NostrConnectURI = client.nostr_connect_uri(metadata).await?;
+    let nostr_connect_uri: NostrConnectURI = signer.nostr_connect_uri(metadata);
 
     println!("\n###############################################\n");
     println!("Nostr Connect URI: {nostr_connect_uri}");
     println!("\n###############################################\n");
 
+    let client = Client::new(signer);
+    client.add_relay(relay_url).await?;
     client.connect().await;
 
     // Request signer public key since we not added in Client::with_remote_signer

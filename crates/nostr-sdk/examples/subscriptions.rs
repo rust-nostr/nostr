@@ -11,9 +11,10 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let secret_key = SecretKey::from_bech32(BECH32_SK)?;
-    let my_keys = Keys::new(secret_key);
+    let public_key = Keys::new(secret_key).public_key();
+
     let opts = Options::new().wait_for_send(false);
-    let client = Client::with_opts(&my_keys, opts);
+    let client = ClientBuilder::new().opts(opts).build();
 
     client.add_relay("wss://nostr.oxtr.dev").await?;
     client.add_relay("wss://relay.damus.io").await?;
@@ -22,7 +23,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let subscription = Filter::new()
-        .author(my_keys.public_key())
+        .author(public_key)
         .kind(Kind::Metadata)
         .since(Timestamp::now());
 
@@ -34,7 +35,7 @@ async fn main() -> Result<()> {
     let relay = client.relay("wss://relay.damus.io").await?;
     let other_filters = Filter::new()
         .kind(Kind::EncryptedDirectMessage)
-        .pubkey(my_keys.public_key())
+        .pubkey(public_key)
         .since(Timestamp::now());
     relay
         .subscribe_with_internal_id(
@@ -49,13 +50,12 @@ async fn main() -> Result<()> {
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind == Kind::EncryptedDirectMessage {
-                    if nip04::decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content).is_ok()
-                    {
+                    if nip04::decrypt(&secret_key, &event.pubkey, &event.content).is_ok() {
                         // Overwrite subscrption with `other-id` internal ID
                         let relay = client.relay("wss://relay.damus.io").await?;
                         let other_filters = Filter::new()
                             .kind(Kind::TextNote)
-                            .author(my_keys.public_key())
+                            .author(public_key)
                             .since(Timestamp::now());
                         relay
                             .subscribe_with_internal_id(

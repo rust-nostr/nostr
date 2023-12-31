@@ -2,11 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr::Keys;
-use nostr_sdk::nips::nip65;
-use nostr_sdk::prelude::FromBech32;
-use nostr_sdk::secp256k1::XOnlyPublicKey;
-use nostr_sdk::{Client, Filter, Kind, RelayPoolNotification, Result};
+use nostr_sdk::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -15,9 +11,8 @@ async fn main() -> Result<()> {
     let public_key = XOnlyPublicKey::from_bech32(
         "npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c",
     )?;
-    let my_keys: nostr::Keys = Keys::from_public_key(public_key);
 
-    let client = Client::new(&my_keys);
+    let client = Client::default();
     client.add_relay("wss://nostr.mikedilger.com").await?;
 
     client.connect().await;

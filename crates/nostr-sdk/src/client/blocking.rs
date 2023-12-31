@@ -15,8 +15,7 @@ use nostr::{ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Resu
 use nostr_database::DynNostrDatabase;
 use tokio::sync::broadcast;
 
-#[cfg(feature = "nip46")]
-use super::signer::nip46::Nip46Signer;
+use super::signer::ClientSigner;
 use super::{Error, Options, TryIntoUrl};
 use crate::relay::{pool, Relay, RelayOptions, RelayPoolNotification};
 use crate::{ClientBuilder, NegentropyOptions, RUNTIME};
@@ -33,35 +32,21 @@ impl From<super::Client> for Client {
 }
 
 impl Client {
-    pub fn new(keys: &Keys) -> Self {
+    pub fn new<S>(signer: S) -> Self
+    where
+        S: Into<ClientSigner>,
+    {
         Self {
-            client: super::Client::new(keys),
+            client: super::Client::new(signer),
         }
     }
 
-    pub fn with_opts(keys: &Keys, opts: Options) -> Self {
+    pub fn with_opts<S>(signer: S, opts: Options) -> Self
+    where
+        S: Into<ClientSigner>,
+    {
         Self {
-            client: super::Client::with_opts(keys, opts),
-        }
-    }
-
-    /// Create a new NIP46 Client
-    #[cfg(feature = "nip46")]
-    pub fn with_remote_signer(app_keys: &Keys, remote_signer: Nip46Signer) -> Self {
-        Self {
-            client: super::Client::with_remote_signer(app_keys, remote_signer),
-        }
-    }
-
-    /// Create a new NIP46 Client with custom [`Options`]
-    #[cfg(feature = "nip46")]
-    pub fn with_remote_signer_and_opts(
-        app_keys: &Keys,
-        remote_signer: Nip46Signer,
-        opts: Options,
-    ) -> Self {
-        Self {
-            client: super::Client::with_remote_signer_and_opts(app_keys, remote_signer, opts),
+            client: super::Client::with_opts(signer, opts),
         }
     }
 
@@ -76,13 +61,29 @@ impl Client {
         self.client.update_difficulty(difficulty);
     }
 
+    /// Get current client signer
+    ///
+    /// Rise error if it not set.
+    pub fn signer(&self) -> Result<ClientSigner, Error> {
+        RUNTIME.block_on(async { self.client.signer().await })
+    }
+
+    /// Set client signer
+    pub fn set_signer(&self, signer: Option<ClientSigner>) {
+        RUNTIME.block_on(async { self.client.set_signer(signer).await })
+    }
+
     /// Get current [`Keys`]
+    #[deprecated(since = "0.27.0", note = "Use `client.signer()` instead.")]
     pub fn keys(&self) -> Keys {
+        #[allow(deprecated)]
         RUNTIME.block_on(async { self.client.keys().await })
     }
 
     /// Change [`Keys`]
+    #[deprecated(since = "0.27.0", note = "Use `client.set_signer(...)` instead.")]
     pub fn set_keys(&self, keys: &Keys) {
+        #[allow(deprecated)]
         RUNTIME.block_on(async { self.client.set_keys(keys).await })
     }
 

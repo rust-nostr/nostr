@@ -6,34 +6,54 @@
 
 use std::sync::Arc;
 
-use nostr::Keys;
 use nostr_database::memory::MemoryDatabase;
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
 
-#[cfg(feature = "nip46")]
-use super::Nip46Signer;
+use super::signer::ClientSigner;
 use crate::{Client, Options};
 
 /// Client builder
 #[derive(Debug, Clone)]
 pub struct ClientBuilder {
-    pub(super) keys: Keys,
+    pub(super) signer: Option<ClientSigner>,
     pub(super) database: Arc<DynNostrDatabase>,
     pub(super) opts: Options,
-    #[cfg(feature = "nip46")]
-    pub(super) remote_signer: Option<Nip46Signer>,
+}
+
+impl Default for ClientBuilder {
+    fn default() -> Self {
+        Self {
+            signer: None,
+            database: Arc::new(MemoryDatabase::default()),
+            opts: Options::default(),
+        }
+    }
 }
 
 impl ClientBuilder {
-    /// New client builder
-    pub fn new(keys: &Keys) -> Self {
-        Self {
-            keys: keys.clone(),
-            database: Arc::new(MemoryDatabase::default()),
-            opts: Options::default(),
-            #[cfg(feature = "nip46")]
-            remote_signer: None,
-        }
+    /// New default client builder
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set signer
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// // Signer with private keys
+    /// let keys = Keys::generate();
+    /// let builder = ClientBuilder::new().signer(keys);
+    ///
+    /// let _client: Client = builder.build();
+    /// ```
+    pub fn signer<S>(mut self, signer: S) -> Self
+    where
+        S: Into<ClientSigner>,
+    {
+        self.signer = Some(signer.into());
+        self
     }
 
     /// Set database
@@ -48,13 +68,6 @@ impl ClientBuilder {
     /// Set opts
     pub fn opts(mut self, opts: Options) -> Self {
         self.opts = opts;
-        self
-    }
-
-    /// Set remote signer
-    #[cfg(feature = "nip46")]
-    pub fn remote_signer(mut self, remote_signer: Nip46Signer) -> Self {
-        self.remote_signer = Some(remote_signer);
         self
     }
 
