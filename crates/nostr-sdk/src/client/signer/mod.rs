@@ -4,4 +4,4 @@
 
 //! Client Signers
 
-pub mod remote;
+pub mod nip46;

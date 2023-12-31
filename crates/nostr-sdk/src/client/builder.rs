@@ -11,7 +11,7 @@ use nostr_database::memory::MemoryDatabase;
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
 
 #[cfg(feature = "nip46")]
-use super::RemoteSigner;
+use super::Nip46Signer;
 use crate::{Client, Options};
 
 /// Client builder
@@ -21,7 +21,7 @@ pub struct ClientBuilder {
     pub(super) database: Arc<DynNostrDatabase>,
     pub(super) opts: Options,
     #[cfg(feature = "nip46")]
-    pub(super) remote_signer: Option<RemoteSigner>,
+    pub(super) remote_signer: Option<Nip46Signer>,
 }
 
 impl ClientBuilder {
@@ -53,7 +53,7 @@ impl ClientBuilder {
 
     /// Set remote signer
     #[cfg(feature = "nip46")]
-    pub fn remote_signer(mut self, remote_signer: RemoteSigner) -> Self {
+    pub fn remote_signer(mut self, remote_signer: Nip46Signer) -> Self {
         self.remote_signer = Some(remote_signer);
         self
     }

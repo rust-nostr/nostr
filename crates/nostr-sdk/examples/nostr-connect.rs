@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
     let secret_key = SecretKey::from_bech32(APP_SECRET_KEY)?;
     let app_keys = Keys::new(secret_key);
     let relay_url = Url::parse("wss://relay.damus.io")?;
-    let signer = RemoteSigner::new(relay_url.clone(), None);
+    let signer = Nip46Signer::new(relay_url.clone(), None);
 
     let client = Client::with_remote_signer(&app_keys, signer);
     client.add_relay(relay_url).await?;

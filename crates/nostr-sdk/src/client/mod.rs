@@ -36,7 +36,7 @@ pub mod signer;
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 #[cfg(feature = "nip46")]
-pub use self::signer::remote::RemoteSigner;
+pub use self::signer::nip46::Nip46Signer;
 use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
 use crate::relay::{
     FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
@@ -119,7 +119,7 @@ pub struct Client {
     opts: Options,
     dropped: Arc<AtomicBool>,
     #[cfg(feature = "nip46")]
-    remote_signer: Option<RemoteSigner>,
+    remote_signer: Option<Nip46Signer>,
 }
 
 impl Drop for Client {
@@ -174,7 +174,7 @@ impl Client {
 
     /// Create a new NIP46 Client
     #[cfg(feature = "nip46")]
-    pub fn with_remote_signer(app_keys: &Keys, remote_signer: RemoteSigner) -> Self {
+    pub fn with_remote_signer(app_keys: &Keys, remote_signer: Nip46Signer) -> Self {
         Self::with_remote_signer_and_opts(app_keys, remote_signer, Options::default())
     }
 
@@ -182,7 +182,7 @@ impl Client {
     #[cfg(feature = "nip46")]
     pub fn with_remote_signer_and_opts(
         app_keys: &Keys,
-        remote_signer: RemoteSigner,
+        remote_signer: Nip46Signer,
         opts: Options,
     ) -> Self {
         ClientBuilder::new(app_keys)
@@ -250,7 +250,7 @@ impl Client {
 
     /// Get remote signer
     #[cfg(feature = "nip46")]
-    pub fn remote_signer(&self) -> Result<RemoteSigner, Error> {
+    pub fn remote_signer(&self) -> Result<Nip46Signer, Error> {
         self.remote_signer.clone().ok_or(Error::SignerNotConfigured)
     }
 

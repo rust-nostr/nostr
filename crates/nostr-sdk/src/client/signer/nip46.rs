@@ -24,14 +24,14 @@ use crate::relay::RelayPoolNotification;
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 
-/// Remote Signer
+/// NIP46 Signer
 #[derive(Debug, Clone)]
-pub struct RemoteSigner {
+pub struct Nip46Signer {
     relay_url: Url,
     signer_public_key: Arc<Mutex<Option<XOnlyPublicKey>>>,
 }
 
-impl RemoteSigner {
+impl Nip46Signer {
     /// New NIP46 remote signer
     pub fn new(relay_url: Url, signer_public_key: Option<XOnlyPublicKey>) -> Self {
         Self {
@@ -72,7 +72,7 @@ impl Client {
     /// async fn main() {
     ///     let keys = Keys::generate();
     ///     let relay_url = Url::parse("wss://relay.example.com").unwrap();
-    ///     let signer = RemoteSigner::new(relay_url, None);
+    ///     let signer = Nip46Signer::new(relay_url, None);
     ///     let client = Client::with_remote_signer(&keys, signer);
     ///
     ///     // Signer public key MUST be requested in this case
@@ -97,14 +97,14 @@ impl Client {
     ///         "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
     ///     )
     ///     .unwrap();
-    ///     let signer = RemoteSigner::new(relay_url, Some(signer_public_key));
+    ///     let signer = Nip46Signer::new(relay_url, Some(signer_public_key));
     ///
     ///     // Signer public key request isn't needed since we already added in client constructor
     ///     let _client = Client::with_remote_signer(&keys, signer);
     /// }
     /// ```
     pub async fn req_signer_public_key(&self, timeout: Option<Duration>) -> Result<(), Error> {
-        let signer: &RemoteSigner = self
+        let signer: &Nip46Signer = self
             .remote_signer
             .as_ref()
             .ok_or(Error::SignerNotConfigured)?;
@@ -163,7 +163,7 @@ impl Client {
         req: Request,
         timeout: Option<Duration>,
     ) -> Result<Response, Error> {
-        let signer: &RemoteSigner = self
+        let signer: &Nip46Signer = self
             .remote_signer
             .as_ref()
             .ok_or(Error::SignerNotConfigured)?;
