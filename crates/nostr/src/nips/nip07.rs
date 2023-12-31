@@ -85,6 +85,7 @@ impl From<JsValue> for Error {
 /// NIP07 Signer for interaction with browser extensions (ex. Alby)
 ///
 /// <https://github.com/aljazceru/awesome-nostr#nip-07-browser-extensions>
+#[derive(Debug, Clone)]
 pub struct Nip07Signer {
     /// `window.nostr` object
     nostr_obj: Object,
