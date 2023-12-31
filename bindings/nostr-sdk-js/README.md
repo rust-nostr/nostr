@@ -19,25 +19,23 @@ npm i @rust-nostr/nostr-sdk
 ```
     
 ```javascript
-const { Keys, Client, Metadata, EventId, PublicKey, EventBuilder, loadWasmAsync } = require("@rust-nostr/nostr-sdk");
+const { Client, ClientSigner, Keys, Nip07Signer, Metadata, loadWasmAsync } = require("@rust-nostr/nostr-sdk");
 
 async function main() {
     // Load WASM 
     // if you are in a non async context, use loadWasmSync()
     await loadWasmAsync();
 
-    // Generate random keys
-    let keys = Keys.generate();
+    // Compose client with private key
+    let keys = Keys.generate(); // Random keys
+    let signer = ClientSigner.keys(keys);
+    let client = new Client(signer);
 
-    // Hex keys
-    console.log("Public key (hex): ", keys.publicKey.toHex());
-    console.log("Secret key (hex): ", keys.secretKey.toHex());
+    // Compose client with NIP07 signer
+    let nip07_signer = new Nip07Signer();
+    let signer = ClientSigner.nip07(nip07_signer);
+    let client = new Client(signer);
 
-    // Bech32 keys
-    console.log("Public key (bech32): ", keys.publicKey.toBech32());
-    console.log("Secret key (bech32): ", keys.secretKey.toBech32());
-
-    let client = new Client(keys);
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nostr.oxtr.dev");
     await client.addRelay("wss://nostr.bitcoiner.social");
@@ -56,18 +54,8 @@ async function main() {
     
     await client.setMetadata(metadata);
 
+    // Publish text note
     await client.publishTextNote("My first text note from Nostr SDK!", []);
-
-    // Send custom event
-    let event_id = EventId.fromBech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r");
-    let public_key = PublicKey.fromBech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz");
-    let event = EventBuilder.newReaction(event_id, public_key, "🧡").toEvent(keys);
-
-    // Send custom event to all relays
-    await client.sendEvent(event);
-
-    // Send custom event to a specific previously added relay
-    // await client.sendEventTo("wss://relay.damus.io", event);
 }
 
 main();
