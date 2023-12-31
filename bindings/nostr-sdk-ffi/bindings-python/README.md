@@ -23,7 +23,7 @@ import time
 keys = Keys.generate()
 print(keys.public_key().to_bech32())
 
-client = Client(keys)
+client = Client(None)
 
 client.add_relay("wss://relay.damus.io")
 client.connect()

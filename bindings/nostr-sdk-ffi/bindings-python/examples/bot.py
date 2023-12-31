@@ -1,4 +1,5 @@
-from nostr_sdk import Keys, Client, Event, EventBuilder, Filter, HandleNotification, Timestamp, nip04_decrypt, SecretKey, init_logger, LogLevel
+from nostr_sdk import Client, ClientSigner, Keys, Event, EventBuilder, Filter, \
+    HandleNotification, Timestamp, nip04_decrypt, SecretKey, init_logger, LogLevel
 import time
 
 init_logger(LogLevel.DEBUG)
@@ -12,11 +13,12 @@ sk = keys.secret_key()
 pk = keys.public_key()
 print(f"Bot public key: {pk.to_bech32()}")
 
-client = Client(keys)
+signer = ClientSigner.KEYS(keys)
+client = Client(signer)
 
-client.add_relay("wss://relay.damus.io", None)
-client.add_relay("wss://nostr.mom", None)
-client.add_relay("wss://nostr.oxtr.dev", None)
+client.add_relay("wss://relay.damus.io")
+client.add_relay("wss://nostr.mom")
+client.add_relay("wss://nostr.oxtr.dev")
 client.connect()
 
 filter = Filter().pubkey(pk).kind(4).since(Timestamp.now())
@@ -30,8 +32,7 @@ class NotificationHandler(HandleNotification):
             try:
                 msg = nip04_decrypt(sk, event.pubkey(), event.content())
                 print(f"Received new msg: {msg}")
-                event = EventBuilder.new_encrypted_direct_msg(keys, event.pubkey(), f"Echo: {msg}", event.id()).to_event(keys)
-                client.send_event(event)
+                client.send_direct_msg(event.pubkey(), f"Echo: {msg}", event.id())
             except Exception as e:
                 print(f"Error during content decryption: {e}")
 

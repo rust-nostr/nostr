@@ -14,7 +14,10 @@ async fn main() -> Result<()> {
     let my_keys = Keys::new(secret_key);
 
     let database = SQLiteDatabase::open("./db/sqlite.db").await?;
-    let client: Client = ClientBuilder::new(&my_keys).database(database).build();
+    let client: Client = ClientBuilder::default()
+        .signer(&my_keys)
+        .database(database)
+        .build();
 
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nostr.wine").await?;
@@ -22,8 +25,8 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    /* // Publish a text note
-    client.publish_text_note("Hello world", &[]).await?; */
+    // Publish a text note
+    client.publish_text_note("Hello world", []).await?;
 
     // Negentropy reconcile
     let filter = Filter::new().author(my_keys.public_key());

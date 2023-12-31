@@ -1,11 +1,13 @@
-const { Keys, Client, Filter, Timestamp, nip04_decrypt, loadWasmAsync } = require("../");
+const { Keys, Client, ClientSigner, Filter, Timestamp, nip04_decrypt, loadWasmAsync } = require("../");
 
 async function main() {
     await loadWasmAsync();
 
     let keys = Keys.fromSkStr("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
 
-    let client = new Client(keys);
+    let signer = ClientSigner.keys(keys);
+    let client = new Client(signer);
+
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nos.lol");
     await client.addRelay("wss://nostr.oxtr.dev");
@@ -24,6 +26,7 @@ async function main() {
             try {
                 let content = nip04_decrypt(keys.secretKey, event.pubkey, event.content);
                 console.log("Message:", content);
+                client.sendDirectMsg(event.pubkey, "Echo: " + content)
             } catch (error) {
                 console.log("Impossible to decrypt DM:", error);
             }

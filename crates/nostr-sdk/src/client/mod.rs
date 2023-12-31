@@ -13,7 +13,7 @@ use async_utility::thread;
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
 #[cfg(feature = "nip46")]
-use nostr::nips::nip46::{NostrConnectMetadata, NostrConnectURI, Request, Response};
+use nostr::nips::nip46::{Request, Response};
 use nostr::nips::nip94::FileMetadata;
 use nostr::types::metadata::Error as MetadataError;
 use nostr::url::Url;
@@ -30,13 +30,13 @@ use tokio::sync::{broadcast, RwLock};
 pub mod blocking;
 pub mod builder;
 pub mod options;
-#[cfg(feature = "nip46")]
 pub mod signer;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 #[cfg(feature = "nip46")]
-pub use self::signer::remote::RemoteSigner;
+pub use self::signer::nip46::Nip46Signer;
+pub use self::signer::{ClientSigner, ClientSignerType};
 use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
 use crate::relay::{
     FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
@@ -74,9 +74,16 @@ pub enum Error {
     #[error("notification handler error: {0}")]
     Handler(String),
     /// Signer not configured
-    #[cfg(feature = "nip46")]
     #[error("signer not configured")]
     SignerNotConfigured,
+    /// Signer not configured
+    #[error("wrong signer: expected={expected}, found={found}")]
+    WrongSigner {
+        /// Expected client signer type
+        expected: ClientSignerType,
+        /// Found client signer type
+        found: ClientSignerType,
+    },
     /// NIP04 error
     #[cfg(feature = "nip04")]
     #[error(transparent)]
@@ -115,11 +122,15 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
-    keys: Arc<RwLock<Keys>>,
+    signer: Arc<RwLock<Option<ClientSigner>>>,
     opts: Options,
     dropped: Arc<AtomicBool>,
-    #[cfg(feature = "nip46")]
-    remote_signer: Option<RemoteSigner>,
+}
+
+impl Default for Client {
+    fn default() -> Self {
+        ClientBuilder::new().build()
+    }
 }
 
 impl Drop for Client {
@@ -145,7 +156,9 @@ impl Drop for Client {
 }
 
 impl Client {
-    /// Create a new [`Client`]
+    /// Create a new [`Client`] with signer
+    ///
+    /// To create a [`Client`] without any signer use `Client::default()`.
     ///
     /// # Example
     /// ```rust,no_run
@@ -154,11 +167,16 @@ impl Client {
     /// let my_keys = Keys::generate();
     /// let client = Client::new(&my_keys);
     /// ```
-    pub fn new(keys: &Keys) -> Self {
-        Self::with_opts(keys, Options::default())
+    pub fn new<S>(signer: S) -> Self
+    where
+        S: Into<ClientSigner>,
+    {
+        Self::with_opts(signer, Options::default())
     }
 
     /// Create a new [`Client`] with [`Options`]
+    ///
+    /// To create a [`Client`] with custom [`Options`] and without any signer use `ClientBuilder::new().opts(opts).build()`.
     ///
     /// # Example
     /// ```rust,no_run
@@ -168,38 +186,20 @@ impl Client {
     /// let opts = Options::new().wait_for_send(true);
     /// let client = Client::with_opts(&my_keys, opts);
     /// ```
-    pub fn with_opts(keys: &Keys, opts: Options) -> Self {
-        ClientBuilder::new(keys).opts(opts).build()
-    }
-
-    /// Create a new NIP46 Client
-    #[cfg(feature = "nip46")]
-    pub fn with_remote_signer(app_keys: &Keys, remote_signer: RemoteSigner) -> Self {
-        Self::with_remote_signer_and_opts(app_keys, remote_signer, Options::default())
-    }
-
-    /// Create a new NIP46 Client with custom [`Options`]
-    #[cfg(feature = "nip46")]
-    pub fn with_remote_signer_and_opts(
-        app_keys: &Keys,
-        remote_signer: RemoteSigner,
-        opts: Options,
-    ) -> Self {
-        ClientBuilder::new(app_keys)
-            .remote_signer(remote_signer)
-            .opts(opts)
-            .build()
+    pub fn with_opts<S>(signer: S, opts: Options) -> Self
+    where
+        S: Into<ClientSigner>,
+    {
+        ClientBuilder::new().signer(signer).opts(opts).build()
     }
 
     /// Compose [`Client`] from [`ClientBuilder`]
     pub fn from_builder(builder: ClientBuilder) -> Self {
         Self {
             pool: RelayPool::with_database(builder.opts.pool, builder.database),
-            keys: Arc::new(RwLock::new(builder.keys)),
+            signer: Arc::new(RwLock::new(builder.signer)),
             opts: builder.opts,
             dropped: Arc::new(AtomicBool::new(false)),
-            #[cfg(feature = "nip46")]
-            remote_signer: builder.remote_signer,
         }
     }
 
@@ -208,16 +208,36 @@ impl Client {
         self.opts.update_difficulty(difficulty);
     }
 
+    /// Get current client signer
+    ///
+    /// Rise error if it not set.
+    pub async fn signer(&self) -> Result<ClientSigner, Error> {
+        let signer = self.signer.read().await;
+        signer.clone().ok_or(Error::SignerNotConfigured)
+    }
+
+    /// Set client signer
+    pub async fn set_signer(&self, signer: Option<ClientSigner>) {
+        let mut s = self.signer.write().await;
+        *s = signer;
+    }
+
     /// Get current [`Keys`]
+    #[deprecated(since = "0.27.0", note = "Use `client.signer().await` instead.")]
     pub async fn keys(&self) -> Keys {
-        let keys = self.keys.read().await;
-        keys.clone()
+        let signer = self.signer.read().await;
+        if let Some(ClientSigner::Keys(keys)) = &*signer {
+            keys.clone()
+        } else {
+            Keys::generate()
+        }
     }
 
     /// Change [`Keys`]
+    #[deprecated(since = "0.27.0", note = "Use `client.set_signer(...).await` instead.")]
     pub async fn set_keys(&self, keys: &Keys) {
-        let mut current_keys = self.keys.write().await;
-        *current_keys = keys.clone();
+        self.set_signer(Some(ClientSigner::Keys(keys.clone())))
+            .await;
     }
 
     /// Get [`RelayPool`]
@@ -228,30 +248,6 @@ impl Client {
     /// Get database
     pub fn database(&self) -> Arc<DynNostrDatabase> {
         self.pool.database()
-    }
-
-    /// Get NIP46 uri
-    #[cfg(feature = "nip46")]
-    pub async fn nostr_connect_uri(
-        &self,
-        metadata: NostrConnectMetadata,
-    ) -> Result<NostrConnectURI, Error> {
-        let signer = self
-            .remote_signer
-            .as_ref()
-            .ok_or(Error::SignerNotConfigured)?;
-        let keys = self.keys.read().await;
-        Ok(NostrConnectURI::new(
-            keys.public_key(),
-            signer.relay_url(),
-            metadata.name,
-        ))
-    }
-
-    /// Get remote signer
-    #[cfg(feature = "nip46")]
-    pub fn remote_signer(&self) -> Result<RemoteSigner, Error> {
-        self.remote_signer.clone().ok_or(Error::SignerNotConfigured)
     }
 
     /// Start a previously stopped client
@@ -689,49 +685,40 @@ impl Client {
     }
 
     async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
-        #[cfg(feature = "nip46")]
-        let event: Event = if let Some(signer) = self.remote_signer.as_ref() {
-            let signer_public_key = signer
-                .signer_public_key()
-                .await
-                .ok_or(Error::SignerPublicKeyNotFound)?;
-            let unsigned_event = {
+        let event: Event = match self.signer().await? {
+            ClientSigner::Keys(keys) => {
                 let difficulty: u8 = self.opts.get_difficulty();
                 if difficulty > 0 {
-                    builder.to_unsigned_pow_event(signer_public_key, difficulty)
+                    builder.to_pow_event(&keys, difficulty)?
                 } else {
-                    builder.to_unsigned_event(signer_public_key)
+                    builder.to_event(&keys)?
                 }
-            };
-            let res: Response = self
-                .send_req_to_signer(
-                    Request::SignEvent(unsigned_event.clone()),
-                    self.opts.nip46_timeout,
-                )
-                .await?;
-            if let Response::SignEvent(event) = res {
-                event
-            } else {
-                return Err(Error::ResponseNotMatchRequest);
             }
-        } else {
-            let difficulty: u8 = self.opts.get_difficulty();
-            let keys = self.keys.read().await;
-            if difficulty > 0 {
-                builder.to_pow_event(&keys, difficulty)?
-            } else {
-                builder.to_event(&keys)?
-            }
-        };
-
-        #[cfg(not(feature = "nip46"))]
-        let event: Event = {
-            let difficulty: u8 = self.opts.get_difficulty();
-            let keys = self.keys.read().await;
-            if difficulty > 0 {
-                builder.to_pow_event(&keys, difficulty)?
-            } else {
-                builder.to_event(&keys)?
+            #[cfg(feature = "nip46")]
+            ClientSigner::NIP46(nip46) => {
+                let signer_public_key = nip46
+                    .signer_public_key()
+                    .await
+                    .ok_or(Error::SignerPublicKeyNotFound)?;
+                let unsigned_event = {
+                    let difficulty: u8 = self.opts.get_difficulty();
+                    if difficulty > 0 {
+                        builder.to_unsigned_pow_event(signer_public_key, difficulty)
+                    } else {
+                        builder.to_unsigned_event(signer_public_key)
+                    }
+                };
+                let res: Response = self
+                    .send_req_to_signer(
+                        Request::SignEvent(unsigned_event.clone()),
+                        self.opts.nip46_timeout,
+                    )
+                    .await?;
+                if let Response::SignEvent(event) = res {
+                    event
+                } else {
+                    return Err(Error::ResponseNotMatchRequest);
+                }
             }
         };
 
@@ -832,32 +819,21 @@ impl Client {
     }
 
     async fn get_contact_list_filters(&self) -> Result<Vec<Filter>, Error> {
-        #[cfg(feature = "nip46")]
-        let filter = {
-            let mut filter = Filter::new().kind(Kind::ContactList).limit(1);
+        let mut filter: Filter = Filter::new().kind(Kind::ContactList).limit(1);
 
-            if let Some(signer) = self.remote_signer.as_ref() {
-                let signer_public_key = signer
+        match self.signer().await? {
+            ClientSigner::Keys(keys) => {
+                filter = filter.author(keys.public_key());
+            }
+            #[cfg(feature = "nip46")]
+            ClientSigner::NIP46(nip46) => {
+                let signer_public_key = nip46
                     .signer_public_key()
                     .await
                     .ok_or(Error::SignerPublicKeyNotFound)?;
 
                 filter = filter.author(signer_public_key);
-            } else {
-                let keys = self.keys.read().await;
-                filter = filter.author(keys.public_key());
             }
-
-            filter
-        };
-
-        #[cfg(not(feature = "nip46"))]
-        let filter: Filter = {
-            let keys = self.keys.read().await;
-            Filter::new()
-                .author(keys.public_key())
-                .kind(Kind::ContactList)
-                .limit(1)
         };
 
         Ok(vec![filter])
@@ -985,31 +961,30 @@ impl Client {
     where
         S: Into<String>,
     {
-        #[cfg(feature = "nip46")]
-        let builder: EventBuilder = if self.remote_signer.is_some() {
-            let req = Request::Nip04Encrypt {
-                public_key: receiver,
-                text: msg.into(),
-            };
-            let res: Response = self
-                .send_req_to_signer(req, self.opts.nip46_timeout)
-                .await?;
-            if let Response::Nip04Encrypt(content) = res {
-                EventBuilder::new(
-                    Kind::EncryptedDirectMessage,
-                    content,
-                    [Tag::public_key(receiver)],
-                )
-            } else {
-                return Err(Error::ResponseNotMatchRequest);
+        let builder: EventBuilder = match self.signer().await? {
+            ClientSigner::Keys(keys) => {
+                EventBuilder::new_encrypted_direct_msg(&keys, receiver, msg, reply_to)?
             }
-        } else {
-            let keys = self.keys.read().await;
-            EventBuilder::new_encrypted_direct_msg(&keys, receiver, msg, reply_to)?
+            #[cfg(feature = "nip46")]
+            ClientSigner::NIP46(..) => {
+                let req = Request::Nip04Encrypt {
+                    public_key: receiver,
+                    text: msg.into(),
+                };
+                let res: Response = self
+                    .send_req_to_signer(req, self.opts.nip46_timeout)
+                    .await?;
+                if let Response::Nip04Encrypt(content) = res {
+                    EventBuilder::new(
+                        Kind::EncryptedDirectMessage,
+                        content,
+                        [Tag::public_key(receiver)],
+                    )
+                } else {
+                    return Err(Error::ResponseNotMatchRequest);
+                }
+            }
         };
-
-        #[cfg(not(feature = "nip46"))]
-        let builder = EventBuilder::new_encrypted_direct_msg(&self.keys, receiver, msg, reply_to)?;
 
         self.send_event_builder(builder).await
     }

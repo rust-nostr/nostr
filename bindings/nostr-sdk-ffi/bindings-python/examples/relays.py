@@ -1,12 +1,11 @@
-from nostr_sdk import Keys, Client
+from nostr_sdk import Client
 import time
 
-keys = Keys.generate()
-client = Client(keys)
+client = Client(None)
 
-client.add_relay("wss://relay.damus.io", None)
-client.add_relay("wss://nostr.wine", None)
-client.add_relay("wss://relay.nostr.info", None)
+client.add_relay("wss://relay.damus.io")
+client.add_relay("wss://nostr.wine")
+client.add_relay("wss://relay.nostr.info")
 client.connect()
 
 while True:

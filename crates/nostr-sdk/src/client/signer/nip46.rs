@@ -11,9 +11,9 @@ use std::time::Duration;
 
 use async_utility::time;
 use nostr::nips::nip04;
-use nostr::nips::nip46::{Message, Request, Response};
+use nostr::nips::nip46::{Message, NostrConnectMetadata, NostrConnectURI, Request, Response};
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{serde_json, JsonUtil};
+use nostr::{serde_json, JsonUtil, Keys};
 use nostr::{ClientMessage, EventBuilder, Filter, Kind, SubscriptionId, Timestamp, Url};
 use tokio::sync::Mutex;
 
@@ -24,18 +24,20 @@ use crate::relay::RelayPoolNotification;
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 
-/// Remote Signer
+/// NIP46 Signer
 #[derive(Debug, Clone)]
-pub struct RemoteSigner {
+pub struct Nip46Signer {
     relay_url: Url,
+    app_keys: Keys,
     signer_public_key: Arc<Mutex<Option<XOnlyPublicKey>>>,
 }
 
-impl RemoteSigner {
+impl Nip46Signer {
     /// New NIP46 remote signer
-    pub fn new(relay_url: Url, signer_public_key: Option<XOnlyPublicKey>) -> Self {
+    pub fn new(relay_url: Url, app_keys: Keys, signer_public_key: Option<XOnlyPublicKey>) -> Self {
         Self {
             relay_url,
+            app_keys,
             signer_public_key: Arc::new(Mutex::new(signer_public_key)),
         }
     }
@@ -55,6 +57,11 @@ impl RemoteSigner {
         let mut pubkey = self.signer_public_key.lock().await;
         *pubkey = Some(public_key);
     }
+
+    /// Compose Nostr Connect URI
+    pub fn nostr_connect_uri(&self, metadata: NostrConnectMetadata) -> NostrConnectURI {
+        NostrConnectURI::new(self.app_keys.public_key(), self.relay_url(), metadata.name)
+    }
 }
 
 impl Client {
@@ -70,10 +77,10 @@ impl Client {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let keys = Keys::generate();
+    ///     let app_keys = Keys::generate();
     ///     let relay_url = Url::parse("wss://relay.example.com").unwrap();
-    ///     let signer = RemoteSigner::new(relay_url, None);
-    ///     let client = Client::with_remote_signer(&keys, signer);
+    ///     let signer = Nip46Signer::new(relay_url, app_keys, None);
+    ///     let client = Client::new(signer);
     ///
     ///     // Signer public key MUST be requested in this case
     ///     client
@@ -91,29 +98,24 @@ impl Client {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///     let keys = Keys::generate();
+    ///     let app_keys = Keys::generate();
     ///     let relay_url = Url::parse("wss://relay.example.com").unwrap();
     ///     let signer_public_key = XOnlyPublicKey::from_str(
     ///         "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
     ///     )
     ///     .unwrap();
-    ///     let signer = RemoteSigner::new(relay_url, Some(signer_public_key));
+    ///     let signer = Nip46Signer::new(relay_url, app_keys, Some(signer_public_key));
     ///
     ///     // Signer public key request isn't needed since we already added in client constructor
-    ///     let _client = Client::with_remote_signer(&keys, signer);
+    ///     let _client = Client::new(signer);
     /// }
     /// ```
     pub async fn req_signer_public_key(&self, timeout: Option<Duration>) -> Result<(), Error> {
-        let signer: &RemoteSigner = self
-            .remote_signer
-            .as_ref()
-            .ok_or(Error::SignerNotConfigured)?;
+        let signer: Nip46Signer = self.signer().await?.try_into()?;
 
         if signer.signer_public_key().await.is_none() {
-            let keys = self.keys.read().await;
-            let public_key = keys.public_key();
-            let secret_key = keys.secret_key()?;
-            drop(keys);
+            let public_key = signer.app_keys.public_key();
+            let secret_key = signer.app_keys.secret_key()?;
 
             let id = SubscriptionId::generate();
             let filter = Filter::new()
@@ -163,10 +165,8 @@ impl Client {
         req: Request,
         timeout: Option<Duration>,
     ) -> Result<Response, Error> {
-        let signer: &RemoteSigner = self
-            .remote_signer
-            .as_ref()
-            .ok_or(Error::SignerNotConfigured)?;
+        let signer: Nip46Signer = self.signer().await?.try_into()?;
+
         let signer_pubkey = signer
             .signer_public_key()
             .await
@@ -175,15 +175,12 @@ impl Client {
         let msg = Message::request(req.clone());
         let req_id = msg.id();
 
-        let keys = self.keys.read().await;
-        let public_key = keys.public_key();
-        let secret_key = keys.secret_key()?;
+        let public_key = signer.app_keys.public_key();
+        let secret_key = signer.app_keys.secret_key()?;
 
         // Build request
-        let event = EventBuilder::nostr_connect(&keys, signer_pubkey, msg)?.to_event(&keys)?;
-
-        // Drop keys
-        drop(keys);
+        let event = EventBuilder::nostr_connect(&signer.app_keys, signer_pubkey, msg)?
+            .to_event(&signer.app_keys)?;
 
         // Send request to signer
         self.send_event_to(signer.relay_url(), event).await?;

@@ -4,17 +4,16 @@
 
 use nostr_sdk::prelude::*;
 
-const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
-
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let secret_key = SecretKey::from_bech32(BECH32_SK)?;
-    let my_keys = Keys::new(secret_key);
+    let public_key = XOnlyPublicKey::from_bech32(
+        "npub1080l37pfvdpyuzasyuy2ytjykjvq3ylr5jlqlg7tvzjrh9r8vn3sf5yaph",
+    )?;
 
     let database = RocksDatabase::open("./db/rocksdb").await?;
-    let client: Client = ClientBuilder::new(&my_keys).database(database).build();
+    let client: Client = ClientBuilder::new().database(database).build();
 
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nostr.wine").await?;
@@ -22,17 +21,14 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    /* // Publish a text note
-    client.publish_text_note("Hello world", &[]).await?; */
-
     // Negentropy reconcile
-    let filter = Filter::new().author(my_keys.public_key());
+    let filter = Filter::new().author(public_key);
     client
         .reconcile(filter, NegentropyOptions::default())
         .await?;
 
     // Query events from database
-    let filter = Filter::new().author(my_keys.public_key()).limit(10);
+    let filter = Filter::new().author(public_key).limit(10);
     let events = client.database().query(vec![filter]).await?;
     println!("Events: {events:?}");
 

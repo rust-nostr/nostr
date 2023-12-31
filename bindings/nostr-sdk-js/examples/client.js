@@ -1,4 +1,4 @@
-const { Keys, Client, Metadata, EventId, PublicKey, EventBuilder, initLogger, loadWasmAsync } = require("../");
+const { Keys, Client, ClientSigner, Metadata, EventId, PublicKey, EventBuilder, initLogger, loadWasmAsync } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -16,7 +16,8 @@ async function main() {
     console.log("Public key (bech32): ", keys.publicKey.toBech32());
     console.log("Secret key (bech32): ", keys.secretKey.toBech32());
 
-    let client = new Client(keys);
+    let signer = ClientSigner.keys(keys);
+    let client = new Client(signer);
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nos.lol");
     await client.addRelay("wss://nostr.oxtr.dev");
