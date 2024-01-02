@@ -684,14 +684,14 @@ impl Client {
         Ok(self.pool.send_event_to(url, event, opts).await?)
     }
 
-    async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
-        let event: Event = match self.signer().await? {
+    async fn internal_sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
+        match self.signer().await? {
             ClientSigner::Keys(keys) => {
                 let difficulty: u8 = self.opts.get_difficulty();
                 if difficulty > 0 {
-                    builder.to_pow_event(&keys, difficulty)?
+                    Ok(builder.to_pow_event(&keys, difficulty)?)
                 } else {
-                    builder.to_event(&keys)?
+                    Ok(builder.to_event(&keys)?)
                 }
             }
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
@@ -705,7 +705,7 @@ impl Client {
                         builder.to_unsigned_event(public_key)
                     }
                 };
-                nip07.sign_event(unsigned).await?
+                Ok(nip07.sign_event(unsigned).await?)
             }
             #[cfg(feature = "nip46")]
             ClientSigner::NIP46(nip46) => {
@@ -725,13 +725,19 @@ impl Client {
                     .send_req_to_signer(Request::SignEvent(unsigned), self.opts.nip46_timeout)
                     .await?;
                 if let Response::SignEvent(event) = res {
-                    event
+                    Ok(event)
                 } else {
-                    return Err(Error::ResponseNotMatchRequest);
+                    Err(Error::ResponseNotMatchRequest)
                 }
             }
-        };
+        }
+    }
 
+    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
+    ///
+    /// Rise an error if the [`ClientSigner`] is not set.
+    pub async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
+        let event: Event = self.internal_sign_event_builder(builder).await?;
         self.send_event(event).await
     }
 
