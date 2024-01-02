@@ -30,6 +30,7 @@ std = [
     "serde_json/std",
     "tracing/std",
     "url-fork/std",
+    "wasm-bindgen?/std",
 ]
 alloc = [
     "cbc?/alloc",
@@ -61,7 +62,7 @@ chacha20 = { version = "0.9", optional = true }
 negentropy = { version = "0.3", default-features = false }
 nostr-ots = { version = "0.2", optional = true }
 once_cell = { workspace = true, optional = true }
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-webpki-roots", "socks"], optional = true }
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls", "socks"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false }
 tracing.workspace = true
