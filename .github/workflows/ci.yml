@@ -107,6 +107,7 @@ jobs:
             -p nostr-sdk,
             -p nostr-sdk --features indexeddb,
             -p nostr-js,
+            -p nostr-sdk-js,
           ]
     steps:
     - name: Checkout
