@@ -1,6 +1,6 @@
 # Nostr SQLite
 
-This crate implements a storage backend on RocksDB for native environments.
+This crate implements a storage backend on SQLite for native environments.
 
 ## State
 
