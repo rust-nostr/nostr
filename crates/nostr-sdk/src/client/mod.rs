@@ -741,6 +741,22 @@ impl Client {
         self.send_event(event).await
     }
 
+    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
+    ///
+    /// Rise an error if the [`ClientSigner`] is not set.
+    pub async fn send_event_builder_to<U>(
+        &self,
+        url: U,
+        builder: EventBuilder,
+    ) -> Result<EventId, Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let event: Event = self.internal_sign_event_builder(builder).await?;
+        self.send_event_to(url, event).await
+    }
+
     /// Update metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
