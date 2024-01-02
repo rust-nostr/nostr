@@ -146,6 +146,11 @@ impl Kind {
         (*self).into()
     }
 
+    /// Get [`Kind`] as `f64`
+    pub fn as_f64(&self) -> f64 {
+        self.as_u64() as f64
+    }
+
     /// Check if [`Kind`] is a NIP90 job request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
@@ -307,6 +312,12 @@ impl From<Kind> for u64 {
             Kind::ParameterizedReplaceable(u) => u as u64,
             Kind::Custom(u) => u,
         }
+    }
+}
+
+impl From<f64> for Kind {
+    fn from(kind: f64) -> Self {
+        Self::from(kind as u64)
     }
 }
 
