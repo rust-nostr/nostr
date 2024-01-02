@@ -40,6 +40,8 @@ pub use crate::nips::nip04::{self, *};
 pub use crate::nips::nip05::{self, *};
 #[cfg(feature = "nip06")]
 pub use crate::nips::nip06::{self, *};
+#[cfg(all(feature = "nip07", target_arch = "wasm32"))]
+pub use crate::nips::nip07::{self, *};
 #[cfg(all(feature = "std", feature = "nip11"))]
 pub use crate::nips::nip11::{self, *};
 pub use crate::nips::nip13::{self, *};
