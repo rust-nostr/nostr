@@ -12,10 +12,10 @@ async function main() {
 
     await client.connect();
 
-    const filter = new Filter().author(keys.publicKey).kind(BigInt(4)).until(Timestamp.now()).limit(BigInt(10));
+    const filter = new Filter().author(keys.publicKey).kind(4).until(Timestamp.now()).limit(10);
     console.log('filter', filter.asJson());
 
-    let events = await client.getEventsOf([filter], BigInt(10));
+    let events = await client.getEventsOf([filter], 10);
     events.forEach((e) => {
         console.log(e.asJson())
     })

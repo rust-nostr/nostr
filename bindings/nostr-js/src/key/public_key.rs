@@ -2,8 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::ops::Deref;
-use std::str::FromStr;
+use core::ops::Deref;
+use core::str::FromStr;
 
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;

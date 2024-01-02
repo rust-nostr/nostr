@@ -27,7 +27,7 @@ impl Deref for JsEventBuilder {
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
-    pub fn new(kind: u64, content: String, tags: Vec<JsTag>) -> Self {
+    pub fn new(kind: f64, content: String, tags: Vec<JsTag>) -> Self {
         Self {
             builder: EventBuilder::new(kind.into(), content, tags.into_iter().map(|t| t.into())),
         }

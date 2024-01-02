@@ -15,11 +15,6 @@ pub mod message;
 pub mod nips;
 pub mod types;
 
-pub use self::event::{JsEvent, JsEventBuilder, JsEventId};
-pub use self::key::{JsKeys, JsPublicKey, JsSecretKey};
-pub use self::message::{JsFilter, JsSubscriptionId};
-pub use self::types::{JsContact, JsMetadata};
-
 /// Run some stuff when the Wasm module is instantiated.
 ///
 /// Right now, it does the following:

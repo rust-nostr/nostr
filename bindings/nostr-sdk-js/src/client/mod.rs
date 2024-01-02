@@ -11,8 +11,9 @@ use std::time::Duration;
 use js_sys::{Array, Function};
 use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventArray, JsEventId, JsTag};
-use nostr_js::message::JsRelayMessage;
-use nostr_js::{JsContact, JsFilter, JsMetadata, JsPublicKey};
+use nostr_js::key::JsPublicKey;
+use nostr_js::message::{JsFilter, JsRelayMessage};
+use nostr_js::types::{JsContact, JsMetadata};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -125,10 +126,10 @@ impl JsClient {
     pub async fn get_events_of(
         &self,
         filters: Vec<JsFilter>,
-        timeout: Option<u64>,
+        timeout: Option<f64>,
     ) -> Result<JsEventArray> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
-        let timeout: Option<Duration> = timeout.map(Duration::from_secs);
+        let timeout: Option<Duration> = timeout.map(Duration::from_secs_f64);
         let events: Vec<Event> = self
             .inner
             .get_events_of(filters, timeout)
@@ -149,9 +150,9 @@ impl JsClient {
     /// All events will be received on notification listener
     /// until the EOSE "end of stored events" message is received from the relay.
     #[wasm_bindgen(js_name = reqEventsOf)]
-    pub async fn req_events_of(&self, filters: Vec<JsFilter>, timeout: Option<u64>) -> Result<()> {
+    pub async fn req_events_of(&self, filters: Vec<JsFilter>, timeout: Option<f64>) -> Result<()> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
-        let timeout = timeout.map(Duration::from_secs);
+        let timeout = timeout.map(Duration::from_secs_f64);
         self.inner.req_events_of(filters, timeout).await;
         Ok(())
     }

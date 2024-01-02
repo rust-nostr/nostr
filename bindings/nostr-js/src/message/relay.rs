@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::ops::Deref;
+use core::ops::Deref;
 
 use nostr::{JsonUtil, RelayMessage, SubscriptionId};
 use wasm_bindgen::prelude::*;
@@ -69,7 +69,7 @@ impl JsRelayMessage {
     }
 
     /// Create new `EVENT` message
-    pub fn count(subscription_id: String, count: u64) -> Self {
+    pub fn count(subscription_id: String, count: f64) -> Self {
         Self {
             inner: RelayMessage::new_count(SubscriptionId::new(subscription_id), count as usize),
         }

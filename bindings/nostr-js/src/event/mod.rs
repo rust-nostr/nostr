@@ -19,6 +19,7 @@ pub use self::tag::{JsTag, JsTagArray};
 pub use self::unsigned::JsUnsignedEvent;
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
+use crate::types::JsTimestamp;
 
 #[wasm_bindgen]
 extern "C" {
@@ -63,13 +64,13 @@ impl JsEvent {
     }
 
     #[wasm_bindgen(js_name = createdAt, getter)]
-    pub fn created_at(&self) -> u64 {
-        self.inner.created_at.as_u64()
+    pub fn created_at(&self) -> JsTimestamp {
+        self.inner.created_at.into()
     }
 
     #[wasm_bindgen(getter)]
-    pub fn kind(&self) -> u64 {
-        self.inner.kind.into()
+    pub fn kind(&self) -> f64 {
+        self.inner.kind.as_f64()
     }
 
     #[wasm_bindgen(getter)]

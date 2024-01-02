@@ -2,15 +2,15 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::ops::Deref;
+use core::ops::Deref;
 
 use nostr::nips::nip07::Nip07Signer;
 use nostr::secp256k1::XOnlyPublicKey;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
-use crate::event::JsUnsignedEvent;
-use crate::{JsEvent, JsPublicKey};
+use crate::event::{JsEvent, JsUnsignedEvent};
+use crate::key::JsPublicKey;
 
 /// NIP07 Signer for interaction with browser extensions (ex. Alby)
 ///

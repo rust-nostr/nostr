@@ -36,16 +36,16 @@ impl JsTimestamp {
     }
 
     #[wasm_bindgen(js_name = fromSecs)]
-    pub fn from_secs(secs: u64) -> Self {
+    pub fn from_secs(secs: f64) -> Self {
         Self {
-            inner: Timestamp::from(secs),
+            inner: Timestamp::from(secs as u64),
         }
     }
 
     /// Get timestamp as seconds
     #[wasm_bindgen(js_name = asSecs)]
-    pub fn as_secs(&self) -> u64 {
-        self.inner.as_u64()
+    pub fn as_secs(&self) -> f64 {
+        self.inner.as_u64() as f64
     }
 
     /// Convert `Timestamp` to human datetime

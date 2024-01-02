@@ -14,7 +14,7 @@ async function main() {
 
     await client.connect();
 
-    const filter = new Filter().pubkey(keys.publicKey).kind(BigInt(4)).since(Timestamp.now());
+    const filter = new Filter().pubkey(keys.publicKey).kind(4).since(Timestamp.now());
     console.log('filter', filter.asJson());
 
     await client.subscribe([filter]);
@@ -22,7 +22,7 @@ async function main() {
     const handleEvent = (relayUrl, event) => {
         // Handle event
         console.log("Received new event from", relayUrl);
-        if (event.kind == BigInt(4)) {
+        if (event.kind == 4) {
             try {
                 let content = nip04_decrypt(keys.secretKey, event.pubkey, event.content);
                 console.log("Message:", content);

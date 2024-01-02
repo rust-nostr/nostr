@@ -48,7 +48,7 @@ impl JsEventId {
     pub fn new(
         pubkey: &JsPublicKey,
         created_at: &JsTimestamp,
-        kind: u64,
+        kind: f64,
         tags: Vec<JsTag>,
         content: String,
     ) -> Self {

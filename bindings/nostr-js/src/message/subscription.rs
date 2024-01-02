@@ -107,7 +107,7 @@ impl JsFilter {
 
     /// Set kind
     #[wasm_bindgen]
-    pub fn kind(&self, kind: u64) -> Self {
+    pub fn kind(&self, kind: f64) -> Self {
         Self {
             inner: self.inner.to_owned().kind(Kind::from(kind)),
         }
@@ -115,7 +115,7 @@ impl JsFilter {
 
     /// Set kinds
     #[wasm_bindgen]
-    pub fn kinds(&self, kinds: Vec<u64>) -> Self {
+    pub fn kinds(&self, kinds: Vec<f64>) -> Self {
         let kinds = kinds.into_iter().map(Kind::from);
         Self {
             inner: self.inner.to_owned().kinds(kinds),
@@ -224,7 +224,7 @@ impl JsFilter {
 
     /// Set limit
     #[wasm_bindgen]
-    pub fn limit(&self, limit: u64) -> Self {
+    pub fn limit(&self, limit: f64) -> Self {
         Self {
             inner: self.inner.to_owned().limit(limit as usize),
         }

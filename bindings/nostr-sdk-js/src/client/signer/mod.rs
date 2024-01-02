@@ -4,8 +4,8 @@
 
 use std::ops::Deref;
 
+use nostr_js::key::JsKeys;
 use nostr_js::nips::nip07::JsNip07Signer;
-use nostr_js::JsKeys;
 use nostr_sdk::ClientSigner;
 use wasm_bindgen::prelude::*;
 

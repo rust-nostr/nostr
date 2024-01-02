@@ -12,8 +12,9 @@ use wasm_bindgen::prelude::*;
 
 use super::tag::{JsTag, JsTagArray};
 use crate::error::{into_err, Result};
+use crate::event::{JsEvent, JsEventId};
+use crate::key::{JsKeys, JsPublicKey};
 use crate::types::JsTimestamp;
-use crate::{JsEvent, JsEventId, JsKeys, JsPublicKey};
 
 #[wasm_bindgen(js_name = UnsignedEvent)]
 pub struct JsUnsignedEvent {
@@ -50,8 +51,8 @@ impl JsUnsignedEvent {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn kind(&self) -> u64 {
-        self.inner.kind.into()
+    pub fn kind(&self) -> f64 {
+        self.inner.kind.as_f64()
     }
 
     #[wasm_bindgen(getter)]
