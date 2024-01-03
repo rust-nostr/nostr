@@ -15,7 +15,7 @@ mod unsigned;
 
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
-pub use self::tag::{RelayMetadata, Tag, TagEnum, TagKind, TagKindKnown};
+pub use self::tag::{RelayMetadata, Tag, TagEnum, TagKind};
 pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
 use crate::nips::nip01::Coordinate;

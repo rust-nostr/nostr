@@ -152,12 +152,6 @@ impl From<nostr::RelayMetadata> for RelayMetadata {
 
 #[derive(Enum)]
 pub enum TagKind {
-    Known { known: TagKindKnown },
-    Unknown { unknown: String },
-}
-
-#[derive(Enum)]
-pub enum TagKindKnown {
     /// Public key
     P,
     /// Public key
@@ -254,161 +248,64 @@ pub enum TagKindKnown {
     Proxy,
     Emoji,
     Request,
+    Unknown {
+        unknown: String,
+    },
 }
 
 impl From<tag::TagKind> for TagKind {
     fn from(value: tag::TagKind) -> Self {
         match value {
-            tag::TagKind::P => Self::Known {
-                known: TagKindKnown::P,
-            },
-            tag::TagKind::UpperP => Self::Known {
-                known: TagKindKnown::UpperP,
-            },
-            tag::TagKind::E => Self::Known {
-                known: TagKindKnown::E,
-            },
-            tag::TagKind::R => Self::Known {
-                known: TagKindKnown::R,
-            },
-            tag::TagKind::T => Self::Known {
-                known: TagKindKnown::T,
-            },
-            tag::TagKind::G => Self::Known {
-                known: TagKindKnown::G,
-            },
-            tag::TagKind::D => Self::Known {
-                known: TagKindKnown::D,
-            },
-            tag::TagKind::A => Self::Known {
-                known: TagKindKnown::A,
-            },
-            tag::TagKind::I => Self::Known {
-                known: TagKindKnown::I,
-            },
-            tag::TagKind::M => Self::Known {
-                known: TagKindKnown::M,
-            },
-            tag::TagKind::U => Self::Known {
-                known: TagKindKnown::U,
-            },
-            tag::TagKind::X => Self::Known {
-                known: TagKindKnown::X,
-            },
-            tag::TagKind::Relay => Self::Known {
-                known: TagKindKnown::RelayUrl,
-            },
-            tag::TagKind::Nonce => Self::Known {
-                known: TagKindKnown::Nonce,
-            },
-            tag::TagKind::Delegation => Self::Known {
-                known: TagKindKnown::Delegation,
-            },
-            tag::TagKind::ContentWarning => Self::Known {
-                known: TagKindKnown::ContentWarning,
-            },
-            tag::TagKind::Expiration => Self::Known {
-                known: TagKindKnown::Expiration,
-            },
-            tag::TagKind::Subject => Self::Known {
-                known: TagKindKnown::Subject,
-            },
-            tag::TagKind::Challenge => Self::Known {
-                known: TagKindKnown::Challenge,
-            },
-            tag::TagKind::Title => Self::Known {
-                known: TagKindKnown::Title,
-            },
-            tag::TagKind::Image => Self::Known {
-                known: TagKindKnown::Image,
-            },
-            tag::TagKind::Thumb => Self::Known {
-                known: TagKindKnown::Thumb,
-            },
-            tag::TagKind::Summary => Self::Known {
-                known: TagKindKnown::Summary,
-            },
-            tag::TagKind::PublishedAt => Self::Known {
-                known: TagKindKnown::PublishedAt,
-            },
-            tag::TagKind::Description => Self::Known {
-                known: TagKindKnown::Description,
-            },
-            tag::TagKind::Bolt11 => Self::Known {
-                known: TagKindKnown::Bolt11,
-            },
-            tag::TagKind::Preimage => Self::Known {
-                known: TagKindKnown::Preimage,
-            },
-            tag::TagKind::Relays => Self::Known {
-                known: TagKindKnown::Relays,
-            },
-            tag::TagKind::Amount => Self::Known {
-                known: TagKindKnown::Amount,
-            },
-            tag::TagKind::Lnurl => Self::Known {
-                known: TagKindKnown::Lnurl,
-            },
-            tag::TagKind::Name => Self::Known {
-                known: TagKindKnown::Name,
-            },
-            tag::TagKind::Url => Self::Known {
-                known: TagKindKnown::Url,
-            },
-            tag::TagKind::Aes256Gcm => Self::Known {
-                known: TagKindKnown::Aes256Gcm,
-            },
-            tag::TagKind::Size => Self::Known {
-                known: TagKindKnown::Size,
-            },
-            tag::TagKind::Dim => Self::Known {
-                known: TagKindKnown::Dim,
-            },
-            tag::TagKind::Magnet => Self::Known {
-                known: TagKindKnown::Magnet,
-            },
-            tag::TagKind::Blurhash => Self::Known {
-                known: TagKindKnown::Blurhash,
-            },
-            tag::TagKind::Streaming => Self::Known {
-                known: TagKindKnown::Streaming,
-            },
-            tag::TagKind::Recording => Self::Known {
-                known: TagKindKnown::Recording,
-            },
-            tag::TagKind::Starts => Self::Known {
-                known: TagKindKnown::Starts,
-            },
-            tag::TagKind::Ends => Self::Known {
-                known: TagKindKnown::Ends,
-            },
-            tag::TagKind::Status => Self::Known {
-                known: TagKindKnown::Status,
-            },
-            tag::TagKind::CurrentParticipants => Self::Known {
-                known: TagKindKnown::CurrentParticipants,
-            },
-            tag::TagKind::TotalParticipants => Self::Known {
-                known: TagKindKnown::TotalParticipants,
-            },
-            tag::TagKind::Method => Self::Known {
-                known: TagKindKnown::Method,
-            },
-            tag::TagKind::Payload => Self::Known {
-                known: TagKindKnown::Payload,
-            },
-            tag::TagKind::Anon => Self::Known {
-                known: TagKindKnown::Anon,
-            },
-            tag::TagKind::Proxy => Self::Known {
-                known: TagKindKnown::Proxy,
-            },
-            tag::TagKind::Emoji => Self::Known {
-                known: TagKindKnown::Emoji,
-            },
-            tag::TagKind::Request => Self::Known {
-                known: TagKindKnown::Request,
-            },
+            tag::TagKind::P => Self::P,
+            tag::TagKind::UpperP => Self::UpperP,
+            tag::TagKind::E => Self::E,
+            tag::TagKind::R => Self::R,
+            tag::TagKind::T => Self::T,
+            tag::TagKind::G => Self::G,
+            tag::TagKind::D => Self::D,
+            tag::TagKind::A => Self::A,
+            tag::TagKind::I => Self::I,
+            tag::TagKind::M => Self::M,
+            tag::TagKind::U => Self::U,
+            tag::TagKind::X => Self::X,
+            tag::TagKind::Relay => Self::RelayUrl,
+            tag::TagKind::Nonce => Self::Nonce,
+            tag::TagKind::Delegation => Self::Delegation,
+            tag::TagKind::ContentWarning => Self::ContentWarning,
+            tag::TagKind::Expiration => Self::Expiration,
+            tag::TagKind::Subject => Self::Subject,
+            tag::TagKind::Challenge => Self::Challenge,
+            tag::TagKind::Title => Self::Title,
+            tag::TagKind::Image => Self::Image,
+            tag::TagKind::Thumb => Self::Thumb,
+            tag::TagKind::Summary => Self::Summary,
+            tag::TagKind::PublishedAt => Self::PublishedAt,
+            tag::TagKind::Description => Self::Description,
+            tag::TagKind::Bolt11 => Self::Bolt11,
+            tag::TagKind::Preimage => Self::Preimage,
+            tag::TagKind::Relays => Self::Relays,
+            tag::TagKind::Amount => Self::Amount,
+            tag::TagKind::Lnurl => Self::Lnurl,
+            tag::TagKind::Name => Self::Name,
+            tag::TagKind::Url => Self::Url,
+            tag::TagKind::Aes256Gcm => Self::Aes256Gcm,
+            tag::TagKind::Size => Self::Size,
+            tag::TagKind::Dim => Self::Dim,
+            tag::TagKind::Magnet => Self::Magnet,
+            tag::TagKind::Blurhash => Self::Blurhash,
+            tag::TagKind::Streaming => Self::Streaming,
+            tag::TagKind::Recording => Self::Recording,
+            tag::TagKind::Starts => Self::Starts,
+            tag::TagKind::Ends => Self::Ends,
+            tag::TagKind::Status => Self::Status,
+            tag::TagKind::CurrentParticipants => Self::CurrentParticipants,
+            tag::TagKind::TotalParticipants => Self::TotalParticipants,
+            tag::TagKind::Method => Self::Method,
+            tag::TagKind::Payload => Self::Payload,
+            tag::TagKind::Anon => Self::Anon,
+            tag::TagKind::Proxy => Self::Proxy,
+            tag::TagKind::Emoji => Self::Emoji,
+            tag::TagKind::Request => Self::Request,
             tag::TagKind::Custom(unknown) => Self::Unknown { unknown },
         }
     }
@@ -417,58 +314,56 @@ impl From<tag::TagKind> for TagKind {
 impl From<TagKind> for tag::TagKind {
     fn from(value: TagKind) -> Self {
         match value {
-            TagKind::Known { known } => match known {
-                TagKindKnown::P => Self::P,
-                TagKindKnown::UpperP => Self::UpperP,
-                TagKindKnown::E => Self::E,
-                TagKindKnown::R => Self::R,
-                TagKindKnown::T => Self::T,
-                TagKindKnown::G => Self::G,
-                TagKindKnown::D => Self::D,
-                TagKindKnown::A => Self::A,
-                TagKindKnown::I => Self::I,
-                TagKindKnown::M => Self::M,
-                TagKindKnown::U => Self::U,
-                TagKindKnown::X => Self::X,
-                TagKindKnown::RelayUrl => Self::Relay,
-                TagKindKnown::Nonce => Self::Nonce,
-                TagKindKnown::Delegation => Self::Delegation,
-                TagKindKnown::ContentWarning => Self::ContentWarning,
-                TagKindKnown::Expiration => Self::Expiration,
-                TagKindKnown::Subject => Self::Subject,
-                TagKindKnown::Challenge => Self::Challenge,
-                TagKindKnown::Title => Self::Title,
-                TagKindKnown::Image => Self::Image,
-                TagKindKnown::Thumb => Self::Thumb,
-                TagKindKnown::Summary => Self::Summary,
-                TagKindKnown::PublishedAt => Self::PublishedAt,
-                TagKindKnown::Description => Self::Description,
-                TagKindKnown::Bolt11 => Self::Bolt11,
-                TagKindKnown::Preimage => Self::Preimage,
-                TagKindKnown::Relays => Self::Relays,
-                TagKindKnown::Amount => Self::Amount,
-                TagKindKnown::Lnurl => Self::Lnurl,
-                TagKindKnown::Name => Self::Name,
-                TagKindKnown::Url => Self::Url,
-                TagKindKnown::Aes256Gcm => Self::Aes256Gcm,
-                TagKindKnown::Size => Self::Size,
-                TagKindKnown::Dim => Self::Dim,
-                TagKindKnown::Magnet => Self::Magnet,
-                TagKindKnown::Blurhash => Self::Blurhash,
-                TagKindKnown::Streaming => Self::Streaming,
-                TagKindKnown::Recording => Self::Recording,
-                TagKindKnown::Starts => Self::Starts,
-                TagKindKnown::Ends => Self::Ends,
-                TagKindKnown::Status => Self::Status,
-                TagKindKnown::CurrentParticipants => Self::CurrentParticipants,
-                TagKindKnown::TotalParticipants => Self::TotalParticipants,
-                TagKindKnown::Method => Self::Method,
-                TagKindKnown::Payload => Self::Payload,
-                TagKindKnown::Anon => Self::Anon,
-                TagKindKnown::Proxy => Self::Proxy,
-                TagKindKnown::Emoji => Self::Emoji,
-                TagKindKnown::Request => Self::Request,
-            },
+            TagKind::P => Self::P,
+            TagKind::UpperP => Self::UpperP,
+            TagKind::E => Self::E,
+            TagKind::R => Self::R,
+            TagKind::T => Self::T,
+            TagKind::G => Self::G,
+            TagKind::D => Self::D,
+            TagKind::A => Self::A,
+            TagKind::I => Self::I,
+            TagKind::M => Self::M,
+            TagKind::U => Self::U,
+            TagKind::X => Self::X,
+            TagKind::RelayUrl => Self::Relay,
+            TagKind::Nonce => Self::Nonce,
+            TagKind::Delegation => Self::Delegation,
+            TagKind::ContentWarning => Self::ContentWarning,
+            TagKind::Expiration => Self::Expiration,
+            TagKind::Subject => Self::Subject,
+            TagKind::Challenge => Self::Challenge,
+            TagKind::Title => Self::Title,
+            TagKind::Image => Self::Image,
+            TagKind::Thumb => Self::Thumb,
+            TagKind::Summary => Self::Summary,
+            TagKind::PublishedAt => Self::PublishedAt,
+            TagKind::Description => Self::Description,
+            TagKind::Bolt11 => Self::Bolt11,
+            TagKind::Preimage => Self::Preimage,
+            TagKind::Relays => Self::Relays,
+            TagKind::Amount => Self::Amount,
+            TagKind::Lnurl => Self::Lnurl,
+            TagKind::Name => Self::Name,
+            TagKind::Url => Self::Url,
+            TagKind::Aes256Gcm => Self::Aes256Gcm,
+            TagKind::Size => Self::Size,
+            TagKind::Dim => Self::Dim,
+            TagKind::Magnet => Self::Magnet,
+            TagKind::Blurhash => Self::Blurhash,
+            TagKind::Streaming => Self::Streaming,
+            TagKind::Recording => Self::Recording,
+            TagKind::Starts => Self::Starts,
+            TagKind::Ends => Self::Ends,
+            TagKind::Status => Self::Status,
+            TagKind::CurrentParticipants => Self::CurrentParticipants,
+            TagKind::TotalParticipants => Self::TotalParticipants,
+            TagKind::Method => Self::Method,
+            TagKind::Payload => Self::Payload,
+            TagKind::Anon => Self::Anon,
+            TagKind::Proxy => Self::Proxy,
+            TagKind::Emoji => Self::Emoji,
+            TagKind::Request => Self::Request,
             TagKind::Unknown { unknown } => Self::Custom(unknown),
         }
     }
