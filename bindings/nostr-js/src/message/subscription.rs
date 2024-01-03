@@ -50,6 +50,12 @@ impl From<&JsFilter> for Filter {
     }
 }
 
+impl From<Filter> for JsFilter {
+    fn from(inner: Filter) -> Self {
+        Self { inner }
+    }
+}
+
 #[wasm_bindgen(js_class = Filter)]
 impl JsFilter {
     #[wasm_bindgen(constructor)]
@@ -73,161 +79,125 @@ impl JsFilter {
 
     /// Set subscription id
     #[wasm_bindgen]
-    pub fn id(&self, id: &JsEventId) -> Self {
-        Self {
-            inner: self.inner.to_owned().id(id.into()),
-        }
+    pub fn id(self, id: &JsEventId) -> Self {
+        self.inner.id(**id).into()
     }
 
     /// Set subscription ids
     #[wasm_bindgen]
-    pub fn ids(&self, ids: Vec<JsEventId>) -> Result<JsFilter> {
+    pub fn ids(self, ids: Vec<JsEventId>) -> Self {
         let ids = ids.into_iter().map(|id| id.inner);
-        Ok(Self {
-            inner: self.inner.to_owned().ids(ids),
-        })
+        self.inner.ids(ids).into()
     }
 
     /// Set author
     #[wasm_bindgen]
-    pub fn author(&self, author: &JsPublicKey) -> Self {
-        Self {
-            inner: self.inner.to_owned().author(author.into()),
-        }
+    pub fn author(self, author: &JsPublicKey) -> Self {
+        self.inner.author(author.into()).into()
     }
 
     /// Set authors
     #[wasm_bindgen]
-    pub fn authors(&self, authors: Vec<JsPublicKey>) -> Result<JsFilter> {
+    pub fn authors(self, authors: Vec<JsPublicKey>) -> Self {
         let authors = authors.into_iter().map(|p| p.inner);
-        Ok(Self {
-            inner: self.inner.to_owned().authors(authors),
-        })
+        self.inner.authors(authors).into()
     }
 
     /// Set kind
     #[wasm_bindgen]
-    pub fn kind(&self, kind: f64) -> Self {
-        Self {
-            inner: self.inner.to_owned().kind(Kind::from(kind)),
-        }
+    pub fn kind(self, kind: f64) -> Self {
+        self.inner.kind(Kind::from(kind)).into()
     }
 
     /// Set kinds
     #[wasm_bindgen]
-    pub fn kinds(&self, kinds: Vec<f64>) -> Self {
+    pub fn kinds(self, kinds: Vec<f64>) -> Self {
         let kinds = kinds.into_iter().map(Kind::from);
-        Self {
-            inner: self.inner.to_owned().kinds(kinds),
-        }
+        self.inner.kinds(kinds).into()
     }
 
     /// Set event
     #[wasm_bindgen]
-    pub fn event(&self, id: &JsEventId) -> Self {
-        Self {
-            inner: self.inner.to_owned().event(id.into()),
-        }
+    pub fn event(self, id: &JsEventId) -> Self {
+        self.inner.event(id.into()).into()
     }
 
     /// Set events
     #[wasm_bindgen]
-    pub fn events(&self, ids: Vec<JsEventId>) -> Result<JsFilter> {
+    pub fn events(self, ids: Vec<JsEventId>) -> Self {
         let ids = ids.into_iter().map(|id| id.inner);
-        Ok(Self {
-            inner: self.inner.to_owned().events(ids),
-        })
+        self.inner.events(ids).into()
     }
 
     /// Set pubkey
     #[wasm_bindgen]
-    pub fn pubkey(&self, pubkey: &JsPublicKey) -> Self {
-        Self {
-            inner: self.inner.to_owned().pubkey(pubkey.into()),
-        }
+    pub fn pubkey(self, pubkey: &JsPublicKey) -> Self {
+        self.inner.pubkey(pubkey.into()).into()
     }
 
     /// Set pubkeys
     #[wasm_bindgen]
-    pub fn pubkeys(&self, pubkeys: Vec<JsPublicKey>) -> Result<JsFilter> {
+    pub fn pubkeys(self, pubkeys: Vec<JsPublicKey>) -> Self {
         let pubkeys = pubkeys.into_iter().map(|p| p.inner);
-        Ok(Self {
-            inner: self.inner.to_owned().pubkeys(pubkeys),
-        })
+        self.inner.pubkeys(pubkeys).into()
     }
 
     /// Set hashtag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
-    pub fn hashtag(&self, hashtag: String) -> Self {
-        Self {
-            inner: self.inner.to_owned().hashtag(hashtag),
-        }
+    pub fn hashtag(self, hashtag: String) -> Self {
+        self.inner.hashtag(hashtag).into()
     }
 
     /// Set hashtags
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
-    pub fn hashtags(&self, hashtags: Vec<JsString>) -> Self {
+    pub fn hashtags(self, hashtags: Vec<JsString>) -> Self {
         let hashtags = hashtags.into_iter().filter_map(|t| t.as_string());
-        Self {
-            inner: self.inner.to_owned().hashtags(hashtags),
-        }
+        self.inner.hashtags(hashtags).into()
     }
 
     /// Set reference
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
-    pub fn reference(&self, v: String) -> Self {
-        Self {
-            inner: self.inner.to_owned().reference(v),
-        }
+    pub fn reference(self, v: String) -> Self {
+        self.inner.reference(v).into()
     }
 
     /// Set references
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
-    pub fn references(&self, v: Vec<JsString>) -> Result<JsFilter> {
+    pub fn references(self, v: Vec<JsString>) -> Self {
         let v = v.into_iter().filter_map(|v| v.as_string());
-        Ok(Self {
-            inner: self.inner.to_owned().references(v),
-        })
+        self.inner.references(v).into()
     }
 
     /// Set search field
     #[wasm_bindgen]
-    pub fn search(&self, value: String) -> Self {
-        Self {
-            inner: self.inner.to_owned().search(value),
-        }
+    pub fn search(self, value: String) -> Self {
+        self.inner.search(value).into()
     }
 
     /// Set since unix timestamp
     #[wasm_bindgen]
-    pub fn since(&self, since: &JsTimestamp) -> Self {
-        Self {
-            inner: self.inner.to_owned().since(**since),
-        }
+    pub fn since(self, since: &JsTimestamp) -> Self {
+        self.inner.since(**since).into()
     }
 
     /// Set until unix timestamp
     #[wasm_bindgen]
-    pub fn until(&self, until: &JsTimestamp) -> Self {
-        Self {
-            inner: self.inner.to_owned().until(**until),
-        }
+    pub fn until(self, until: &JsTimestamp) -> Self {
+        self.inner.until(**until).into()
     }
 
     /// Set limit
     #[wasm_bindgen]
-    pub fn limit(&self, limit: f64) -> Self {
-        Self {
-            inner: self.inner.to_owned().limit(limit as usize),
-        }
+    pub fn limit(self, limit: f64) -> Self {
+        self.inner.limit(limit as usize).into()
     }
 }
 
