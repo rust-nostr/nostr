@@ -21,6 +21,7 @@ pub mod builder;
 pub mod signer;
 
 pub use self::signer::JsClientSigner;
+use crate::database::JsNostrDatabase;
 
 // use crate::relay::JsRelay;
 
@@ -59,6 +60,11 @@ impl JsClient {
     #[wasm_bindgen(getter)]
     pub async fn signer(&self) -> Result<JsClientSigner> {
         Ok(self.inner.signer().await.map_err(into_err)?.into())
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn database(&self) -> JsNostrDatabase {
+        self.inner.database().into()
     }
 
     /// Completely shutdown `Client`

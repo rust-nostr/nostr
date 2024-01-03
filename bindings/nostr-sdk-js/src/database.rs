@@ -40,9 +40,8 @@ impl From<&JsNostrDatabase> for Arc<DynNostrDatabase> {
 
 #[wasm_bindgen(js_class = NostrDatabase)]
 impl JsNostrDatabase {
-    /// Create new IndexedDB database
-    #[wasm_bindgen(constructor)]
-    pub async fn new(name: String) -> Result<JsNostrDatabase> {
+    /// Open database
+    pub async fn open(name: String) -> Result<JsNostrDatabase> {
         let db = Arc::new(WebDatabase::open(name).await.map_err(into_err)?);
         Ok(Self {
             inner: db.into_nostr_database(),
