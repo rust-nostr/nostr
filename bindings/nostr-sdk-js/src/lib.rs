@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 #![allow(unknown_lints, clippy::arc_with_non_send_sync)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::drop_non_drop)]
 
 use nostr_js::error::{into_err, Result};

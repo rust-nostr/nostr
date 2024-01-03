@@ -17,6 +17,7 @@ use nostr_js::types::{JsContact, JsMetadata};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
+pub mod builder;
 pub mod signer;
 
 pub use self::signer::JsClientSigner;
@@ -26,6 +27,12 @@ pub use self::signer::JsClientSigner;
 #[wasm_bindgen(js_name = Client)]
 pub struct JsClient {
     inner: Client,
+}
+
+impl From<Client> for JsClient {
+    fn from(inner: Client) -> Self {
+        Self { inner }
+    }
 }
 
 #[wasm_bindgen(js_class = Client)]
