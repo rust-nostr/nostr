@@ -905,6 +905,7 @@ impl Client {
                     public_key,
                     relay_url,
                     alias,
+                    uppercase: false,
                 } = tag
                 {
                     contact_list.push(Contact::new(public_key, relay_url, alias))

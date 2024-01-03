@@ -160,6 +160,8 @@ pub enum TagKind {
 pub enum TagKindKnown {
     /// Public key
     P,
+    /// Public key
+    UpperP,
     /// Event id
     E,
     /// Reference (URL, etc.)
@@ -259,6 +261,9 @@ impl From<tag::TagKind> for TagKind {
         match value {
             tag::TagKind::P => Self::Known {
                 known: TagKindKnown::P,
+            },
+            tag::TagKind::UpperP => Self::Known {
+                known: TagKindKnown::UpperP,
             },
             tag::TagKind::E => Self::Known {
                 known: TagKindKnown::E,
@@ -414,6 +419,7 @@ impl From<TagKind> for tag::TagKind {
         match value {
             TagKind::Known { known } => match known {
                 TagKindKnown::P => Self::P,
+                TagKindKnown::UpperP => Self::UpperP,
                 TagKindKnown::E => Self::E,
                 TagKindKnown::R => Self::R,
                 TagKindKnown::T => Self::T,
@@ -483,6 +489,8 @@ pub enum TagEnum {
         public_key: Arc<PublicKey>,
         relay_url: Option<String>,
         alias: Option<String>,
+        /// Whether the p tag is an uppercase P or not
+        uppercase: bool,
     },
     EventReport {
         event_id: Arc<EventId>,
@@ -682,10 +690,12 @@ impl From<tag::Tag> for TagEnum {
                 public_key,
                 relay_url,
                 alias,
+                uppercase,
             } => Self::PublicKeyTag {
                 public_key: Arc::new(public_key.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 alias,
+                uppercase,
             },
             tag::Tag::EventReport(id, report) => Self::EventReport {
                 event_id: Arc::new(id.into()),
@@ -850,10 +860,12 @@ impl TryFrom<TagEnum> for tag::Tag {
                 public_key,
                 relay_url,
                 alias,
+                uppercase,
             } => Ok(Self::PublicKey {
                 public_key: **public_key,
                 relay_url: relay_url.map(UncheckedUrl::from),
                 alias,
+                uppercase,
             }),
             TagEnum::EventReport { event_id, report } => {
                 Ok(Self::EventReport(**event_id, report.into()))

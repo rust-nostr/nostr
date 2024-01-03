@@ -426,6 +426,7 @@ impl EventBuilder {
             public_key: contact.pk,
             relay_url: contact.relay_url,
             alias: contact.alias,
+            uppercase: false,
         });
         Self::new(Kind::ContactList, "", tags)
     }
@@ -752,6 +753,14 @@ impl EventBuilder {
         {
             tags.push(tag);
         }
+
+        // add P tag
+        tags.push(Tag::PublicKey {
+            public_key: zap_request.pubkey,
+            relay_url: None,
+            alias: None,
+            uppercase: true,
+        });
 
         Self::new(Kind::ZapReceipt, "", tags)
     }
@@ -1125,7 +1134,7 @@ mod tests {
         let zap_request_event: Event = Event::from_json(zap_request_json).unwrap();
         let event_builder = EventBuilder::new_zap_receipt(bolt11, preimage, zap_request_event);
 
-        assert_eq!(5, event_builder.tags.len());
+        assert_eq!(6, event_builder.tags.len());
 
         let has_preimage_tag = event_builder
             .tags
@@ -1146,7 +1155,7 @@ mod tests {
         let zap_request_event = Event::from_json(zap_request_json).unwrap();
         let event_builder = EventBuilder::new_zap_receipt(bolt11, preimage, zap_request_event);
 
-        assert_eq!(4, event_builder.tags.len());
+        assert_eq!(5, event_builder.tags.len());
         let has_preimage_tag = event_builder
             .tags
             .clone()
@@ -1255,6 +1264,7 @@ mod tests {
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
                 alias: None,
+                uppercase: false,
             },
             Tag::PublicKey {
                 public_key: XOnlyPublicKey::from_str(
@@ -1263,6 +1273,7 @@ mod tests {
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
                 alias: None,
+                uppercase: false,
             },
         ];
         let event_builder: Event =
@@ -1293,6 +1304,7 @@ mod tests {
                 public_key: pub_key.clone(),
                 relay_url: Some(relay_url.clone()),
                 alias: None,
+                uppercase: false,
             },
             Tag::PublicKey {
                 public_key: XOnlyPublicKey::from_str(
@@ -1301,6 +1313,7 @@ mod tests {
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
                 alias: None,
+                uppercase: false,
             },
         ];
         let bravery_badge_event =
