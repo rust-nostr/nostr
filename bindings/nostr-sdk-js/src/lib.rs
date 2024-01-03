@@ -10,6 +10,7 @@ use wasm_bindgen::prelude::*;
 pub use nostr_js;
 
 pub mod client;
+pub mod profile;
 //pub mod relay;
 
 #[wasm_bindgen(js_name = initLogger)]
