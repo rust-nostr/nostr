@@ -8,6 +8,7 @@
 
 pub use nostr_js;
 
+pub mod abortable;
 pub mod client;
 pub mod database;
 pub mod logger;
