@@ -577,10 +577,6 @@ impl<'de> Deserialize<'de> for Response {
     }
 }
 
-/// Nostr Wallet Connect Info
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NostrWalletConnectInfo {}
-
 fn url_encode<T>(data: T) -> String
 where
     T: AsRef<[u8]>,
