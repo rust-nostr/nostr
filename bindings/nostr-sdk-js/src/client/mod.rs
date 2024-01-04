@@ -8,7 +8,8 @@
 use std::ops::Deref;
 use std::time::Duration;
 
-use js_sys::{Array, Function};
+use async_utility::thread;
+use js_sys::Array;
 use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventArray, JsEventId, JsTag};
 use nostr_js::key::JsPublicKey;
@@ -21,6 +22,7 @@ pub mod builder;
 pub mod signer;
 
 pub use self::signer::JsClientSigner;
+use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
 
 // use crate::relay::JsRelay;
@@ -453,53 +455,11 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Handle relay message notifications
+    /// Handle notifications
     ///
-    /// Callback function args:
-    /// * Relay Url (string type)
-    /// * Relay message (RelayMessage type)
+    /// **This method spawn a thread**, so ensure to keep up the app after calling this (if needed).
     ///
-    /// # Example
-    /// ```javascript
-    /// // Subscribe to filters
-    /// const filter = new Filter().author(keys.publicKey);
-    /// await client.subscribe([filter]);
-    ///
-    /// // Compose handler callback function
-    /// const handleMessage = (relayUrl, message) => {
-    ///     // Handle message
-    ///     console.log(message.asJson())
-    /// }
-    ///
-    /// // Handle events
-    /// await client.handleMessageNotifications(handleMessage);
-    /// ```
-    #[wasm_bindgen(js_name = handleMessageNotifications)]
-    pub async fn handle_message_notifications(&self, callback: Function) -> Result<()> {
-        self.inner
-            .handle_notifications(|notification| async {
-                if let RelayPoolNotification::Message { relay_url, message } = notification {
-                    let message: JsRelayMessage = message.into();
-                    callback
-                        .call2(
-                            &JsValue::NULL,
-                            &relay_url.to_string().into(),
-                            &message.into(),
-                        )
-                        .unwrap();
-                }
-                Ok(false)
-            })
-            .await
-            .map_err(into_err)?;
-        Ok(())
-    }
-
-    /// Handle event notifications
-    ///
-    /// Callback function args:
-    /// * Relay Url (string type)
-    /// * Event (Event type)
+    /// To exit from the handle notifications loop, return `true`, the
     ///
     /// # Example
     /// ```javascript
@@ -507,38 +467,89 @@ impl JsClient {
     /// const filter = new Filter().author(keys.publicKey);
     /// await client.subscribe([filter]);
     ///
-    /// // Compose handler callback function
-    /// const handleEvent = (relayUrl, event) => {
-    ///     // Handle event
-    ///     console.log(relayUrl, event.asJson())
-    /// }
+    /// const handle = {
+    ///    // Handle event
+    ///    handleEvent: async (relayUrl, event) => {
+    ///        console.log("Received new event from", relayUrl);
+    ///        if (event.kind == 4) {
+    ///            try {
+    ///                let content = nip04_decrypt(keys.secretKey, event.pubkey, event.content);
+    ///                console.log("Message:", content);
+    ///                await client.sendDirectMsg(event.pubkey, "Echo: " + content);
     ///
-    /// // Handle events
-    /// await client.handleEventNotifications(handleEvent);
+    ///                if (content == "stop") {
+    ///                    return true;
+    ///                }
+    ///            } catch (error) {
+    ///                console.log("Impossible to decrypt DM:", error);
+    ///            }
+    ///         }
+    ///     },
+    ///     // Handle relay message
+    ///     handleMsg: async (relayUrl, message) => {
+    ///         console.log("Received message from", relayUrl, message.asJson());
+    ///     }
+    ///  };
+    ///
+    /// let abortable = client.handleNotifications(handle);
+    /// // Optionally, call `abortable.abort();` when you need to stop handle notifications thread
     /// ```
-    #[wasm_bindgen(js_name = handleEventNotifications)]
-    pub async fn handle_event_notifications(&self, callback: Function) -> Result<()> {
-        self.inner
+    #[wasm_bindgen(js_name = handleNotifications)]
+    pub fn handle_notifications(&self, callback: HandleNotification) -> JsAbortHandle {
+        let inner = self.inner.clone();
+        let handle = thread::abortable(async move {
+            inner
             .handle_notifications(|notification| async {
-                if let RelayPoolNotification::Event { relay_url, event } = notification {
-                    let event: JsEvent = event.into();
-                    callback
-                        .call2(&JsValue::NULL, &relay_url.to_string().into(), &event.into())
-                        .unwrap();
+                match notification {
+                    RelayPoolNotification::Message { relay_url, message } => {
+                        let message: JsRelayMessage = message.into();
+                        if callback.handle_msg(relay_url.to_string(), message).await.as_bool().unwrap_or_default() {
+                            tracing::info!("Received `true` in `handlemsg`: exiting from `handleNotifications`");
+                            return Ok(true);
+                        }
+                    }
+                    RelayPoolNotification::Event { relay_url, event } => {
+                        let event: JsEvent = event.into();
+                        if callback.handle_event(relay_url.to_string(), event).await.as_bool().unwrap_or_default() {
+                            tracing::info!("Received `true` in `handleEvent`: exiting from `handleNotifications`");
+                            return Ok(true);
+                        }
+                    }
+                    _ => (),
                 }
                 Ok(false)
             })
             .await
-            .map_err(into_err)?;
-        Ok(())
+            .map_err(into_err).unwrap();
+        });
+        handle.into()
     }
 }
 
-/* #[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(extends = Object, is_type_of = JsValue::is_function, typescript_type = "Function")]
-    pub type HandleEventNotification;
+#[wasm_bindgen(typescript_custom_section)]
+const HANDLE_NOTIFICATION: &'static str = r#"
+interface HandleNotification {
+    handleEvent: (relayUrl: string, event: Event) => Promise<boolean>;
+    handleMsg: (relayUrl: string, message: RelayMessage) => Promise<boolean>;
+}
+"#;
 
-    #[wasm_bindgen(js_name = handleEventNotification, method)]
-    pub fn handle_event_notification(this: &HandleEventNotification, relay_url: String, event: JsEvent);
-} */
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "HandleNotification")]
+    pub type HandleNotification;
+
+    #[wasm_bindgen(structural, method, js_name = handleEvent)]
+    pub async fn handle_event(
+        this: &HandleNotification,
+        relay_url: String,
+        event: JsEvent,
+    ) -> JsValue;
+
+    #[wasm_bindgen(structural, method, js_name = handleMsg)]
+    pub async fn handle_msg(
+        this: &HandleNotification,
+        relay_url: String,
+        message: JsRelayMessage,
+    ) -> JsValue;
+}
