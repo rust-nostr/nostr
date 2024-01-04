@@ -52,7 +52,7 @@ nostr-indexeddb = { version = "0.26", path = "../nostr-indexeddb", optional = tr
 tokio = { workspace = true, features = ["rt", "macros", "sync"] }
 
 [dev-dependencies]
-tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
 name = "client-with-opts"
