@@ -4,7 +4,7 @@
 
 //! Util
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 
 use bitcoin::secp256k1::{ecdh, Parity, PublicKey, SecretKey, XOnlyPublicKey};
 #[cfg(feature = "std")]
@@ -56,7 +56,8 @@ where
 
     /// Serialize to JSON string
     fn as_json(&self) -> String {
-        serde_json::json!(self).to_string()
+        // TODO: remove unwrap
+        serde_json::to_string(self).unwrap()
     }
 }
 

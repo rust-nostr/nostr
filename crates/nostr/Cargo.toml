@@ -28,6 +28,7 @@ std = [
     "negentropy/std",
     "serde/std",
     "serde_json/std",
+    "serde_json/preserve_order",
     "tracing/std",
     "url-fork/std",
     "wasm-bindgen?/std",

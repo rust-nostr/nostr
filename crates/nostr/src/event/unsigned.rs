@@ -105,15 +105,15 @@ impl UnsignedEvent {
         R: Rng + CryptoRng,
     {
         let message = Message::from_slice(self.id.as_bytes())?;
-        Ok(Event {
-            id: self.id,
-            pubkey: self.pubkey,
-            created_at: self.created_at,
-            kind: self.kind,
-            tags: self.tags,
-            content: self.content,
-            sig: keys.sign_schnorr_with_ctx(secp, &message, rng)?,
-        })
+        Ok(Event::new(
+            self.id,
+            self.pubkey,
+            self.created_at,
+            self.kind,
+            self.tags,
+            self.content,
+            keys.sign_schnorr_with_ctx(secp, &message, rng)?,
+        ))
     }
 
     /// Add signature to [`UnsignedEvent`]
@@ -131,15 +131,15 @@ impl UnsignedEvent {
     where
         C: Verification,
     {
-        let event = Event {
-            id: self.id,
-            pubkey: self.pubkey,
-            created_at: self.created_at,
-            kind: self.kind,
-            tags: self.tags,
-            content: self.content,
+        let event = Event::new(
+            self.id,
+            self.pubkey,
+            self.created_at,
+            self.kind,
+            self.tags,
+            self.content,
             sig,
-        };
+        );
         event.verify_with_ctx(secp)?;
         Ok(event)
     }
