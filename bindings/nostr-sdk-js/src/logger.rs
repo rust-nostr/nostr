@@ -148,7 +148,7 @@ impl Default for WASMLayerConfigBuilder {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct WASMLayerConfig {
     report_logs_in_timings: bool,
     report_logs_in_console: bool,

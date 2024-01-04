@@ -5,6 +5,7 @@
 #![allow(unknown_lints, clippy::arc_with_non_send_sync)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::drop_non_drop)]
+#![allow(non_snake_case)]
 
 pub use nostr_js;
 
