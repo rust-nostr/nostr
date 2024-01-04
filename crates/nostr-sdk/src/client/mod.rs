@@ -1289,6 +1289,7 @@ impl Client {
     }
 
     /// Get a list of channels
+    #[deprecated(since = "0.27.0")]
     pub async fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
         self.get_events_of(vec![Filter::new().kind(Kind::ChannelCreation)], timeout)
             .await

@@ -428,7 +428,9 @@ impl Client {
         RUNTIME.block_on(async move { self.client.reconcile(filter, opts).await })
     }
 
+    #[deprecated(since = "0.27.0")]
     pub fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
+        #[allow(deprecated)]
         RUNTIME.block_on(async { self.client.get_channels(timeout).await })
     }
 
