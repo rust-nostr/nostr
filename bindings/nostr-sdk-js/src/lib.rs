@@ -6,17 +6,9 @@
 #![allow(clippy::new_without_default)]
 #![allow(clippy::drop_non_drop)]
 
-use nostr_js::error::{into_err, Result};
-use wasm_bindgen::prelude::*;
-
 pub use nostr_js;
 
 pub mod client;
 pub mod database;
+pub mod logger;
 pub mod profile;
-//pub mod relay;
-
-#[wasm_bindgen(js_name = initLogger)]
-pub fn init_logger() -> Result<()> {
-    tracing_wasm::try_set_as_global_default().map_err(into_err)
-}

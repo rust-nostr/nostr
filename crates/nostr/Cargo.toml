@@ -79,7 +79,7 @@ web-sys = { workspace = true, features = ["Window"], optional = true }
 [dev-dependencies]
 csv = "1.1.5"
 num_cpus = "1.15.0"
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 
 [[example]]
 name = "keys"

@@ -9,10 +9,12 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
+async-utility.workspace = true
 js-sys.workspace = true
 nostr-js = { path = "../nostr-js" }
 nostr-sdk = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "indexeddb"] }
-tracing-wasm = "0.2"
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["std", "registry"] }
 wasm-bindgen.workspace = true
 wasm-bindgen-futures.workspace = true
 
