@@ -5,7 +5,7 @@
 //! Nostr Database Indexes
 
 use std::cmp::Ordering;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 //use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::Arc;
 
@@ -134,12 +134,12 @@ impl From<[u8; 32]> for PublicKeyPrefix {
 
 #[derive(Default)]
 struct FilterIndex {
-    ids: HashSet<EventId>,
-    authors: HashSet<PublicKeyPrefix>,
-    kinds: HashSet<Kind>,
+    ids: BTreeSet<EventId>,
+    authors: BTreeSet<PublicKeyPrefix>,
+    kinds: BTreeSet<Kind>,
     since: Option<Timestamp>,
     until: Option<Timestamp>,
-    generic_tags: HashMap<Alphabet, HashSet<GenericTagValue>>,
+    generic_tags: BTreeMap<Alphabet, BTreeSet<GenericTagValue>>,
 }
 
 impl FilterIndex {

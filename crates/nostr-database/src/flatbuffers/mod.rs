@@ -109,15 +109,15 @@ impl FlatBufferDecode for Event {
             })
             .collect::<Result<Vec<Tag>, _>>()?;
 
-        Ok(Self {
-            id: EventId::from_slice(&ev.id().ok_or(Error::NotFound)?.0)?,
-            pubkey: XOnlyPublicKey::from_slice(&ev.pubkey().ok_or(Error::NotFound)?.0)?,
-            created_at: Timestamp::from(ev.created_at()),
-            kind: Kind::from(ev.kind()),
+        Ok(Self::new(
+            EventId::from_slice(&ev.id().ok_or(Error::NotFound)?.0)?,
+            XOnlyPublicKey::from_slice(&ev.pubkey().ok_or(Error::NotFound)?.0)?,
+            Timestamp::from(ev.created_at()),
+            Kind::from(ev.kind()),
             tags,
-            content: ev.content().ok_or(Error::NotFound)?.to_owned(),
-            sig: Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
-        })
+            ev.content().ok_or(Error::NotFound)?.to_owned(),
+            Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
+        ))
     }
 }
 

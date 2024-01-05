@@ -97,15 +97,15 @@ impl PartialEvent {
             tags.push(Tag::parse(tag)?);
         }
 
-        Ok(Event {
-            id: self.id,
-            pubkey: self.pubkey,
-            created_at: missing.created_at,
-            kind: missing.kind,
+        Ok(Event::new(
+            self.id,
+            self.pubkey,
+            missing.created_at,
+            missing.kind,
             tags,
-            content: missing.content,
-            sig: self.sig,
-        })
+            missing.content,
+            self.sig,
+        ))
     }
 }
 

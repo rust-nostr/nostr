@@ -7,10 +7,14 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::cmp::Ordering;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 pub mod builder;
@@ -83,7 +87,7 @@ impl From<bitcoin::hashes::hex::Error> for Error {
 }
 
 /// [`Event`] struct
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Event {
     /// Id
     pub id: EventId,
@@ -99,9 +103,76 @@ pub struct Event {
     pub content: String,
     /// Signature
     pub sig: Signature,
+    /// JSON deserialization key order
+    deser_order: Vec<String>,
+}
+
+impl PartialEq for Event {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.pubkey == other.pubkey
+            && self.created_at == other.created_at
+            && self.kind == other.kind
+            && self.tags == other.tags
+            && self.content == other.content
+            && self.sig == other.sig
+    }
+}
+
+impl Eq for Event {}
+
+impl PartialOrd for Event {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Event {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // TODO: cmp all fields?
+        self.id.cmp(&other.id)
+    }
+}
+
+impl Hash for Event {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.pubkey.hash(state);
+        self.created_at.hash(state);
+        self.kind.hash(state);
+        self.tags.hash(state);
+        self.content.hash(state);
+        self.sig.hash(state);
+    }
 }
 
 impl Event {
+    /// Compose event
+    pub fn new<I, S>(
+        id: EventId,
+        public_key: XOnlyPublicKey,
+        created_at: Timestamp,
+        kind: Kind,
+        tags: I,
+        content: S,
+        sig: Signature,
+    ) -> Self
+    where
+        I: IntoIterator<Item = Tag>,
+        S: Into<String>,
+    {
+        Self {
+            id,
+            pubkey: public_key,
+            created_at,
+            kind,
+            tags: tags.into_iter().collect(),
+            content: content.into(),
+            sig,
+            deser_order: Vec::new(),
+        }
+    }
+
     /// Deserialize [`Event`] from [`Value`]
     ///
     /// **This method NOT verify the signature!**
@@ -304,33 +375,89 @@ impl JsonUtil for Event {
     }
 }
 
-#[cfg(test)]
-impl Event {
-    /// This is just for serde sanity checking
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new_dummy<S>(
-        id: &str,
-        pubkey: &str,
-        created_at: Timestamp,
-        kind: u64,
-        tags: Vec<Tag>,
-        content: S,
-        sig: &str,
-    ) -> Self
-    where
-        S: Into<String>,
-    {
-        use core::str::FromStr;
+#[derive(Serialize, Deserialize)]
+struct EventIntermediate {
+    id: EventId,
+    pubkey: XOnlyPublicKey,
+    created_at: Timestamp,
+    kind: Kind,
+    tags: Vec<Tag>,
+    content: String,
+    sig: Signature,
+}
 
+impl From<Event> for EventIntermediate {
+    fn from(event: Event) -> Self {
         Self {
-            id: EventId::from_hex(id).unwrap(),
-            pubkey: XOnlyPublicKey::from_str(pubkey).unwrap(),
-            created_at,
-            kind: Kind::from(kind),
-            tags,
-            content: content.into(),
-            sig: Signature::from_str(sig).unwrap(),
+            id: event.id,
+            pubkey: event.pubkey,
+            created_at: event.created_at,
+            kind: event.kind,
+            tags: event.tags,
+            content: event.content,
+            sig: event.sig,
         }
+    }
+}
+
+impl Serialize for Event {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.deser_order.is_empty() {
+            let event: EventIntermediate = self.clone().into();
+            event.serialize(serializer)
+        } else {
+            let mut s = serializer.serialize_struct("Event", 7)?;
+            for key in self.deser_order.iter() {
+                match key.as_str() {
+                    "id" => s.serialize_field("id", &self.id)?,
+                    "pubkey" => s.serialize_field("pubkey", &self.pubkey)?,
+                    "created_at" => s.serialize_field("created_at", &self.created_at)?,
+                    "kind" => s.serialize_field("kind", &self.kind)?,
+                    "tags" => s.serialize_field("tags", &self.tags)?,
+                    "content" => s.serialize_field("content", &self.content)?,
+                    "sig" => s.serialize_field("sig", &self.sig)?,
+                    _ => return Err(serde::ser::Error::custom(format!("Unknown key: {}", key))),
+                }
+            }
+            s.end()
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Event {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value: Value = Value::deserialize(deserializer)?;
+
+        let mut deser_order: Vec<String> = Vec::with_capacity(7);
+        if let Value::Object(map) = &value {
+            deser_order = map.keys().cloned().collect();
+        }
+
+        let EventIntermediate {
+            id,
+            pubkey,
+            created_at,
+            kind,
+            tags,
+            content,
+            sig,
+        } = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        Ok(Self {
+            id,
+            pubkey,
+            created_at,
+            kind,
+            tags,
+            content,
+            sig,
+            deser_order,
+        })
     }
 }
 
@@ -412,5 +539,61 @@ mod tests {
 
         let event = Event::from_json(r#"{"content":"Think about this.\n\nThe most powerful centralized institutions in the world have been replaced by a protocol that protects the individual. #bitcoin\n\nDo you doubt that we can replace everything else?\n\nBullish on the future of humanity\nnostr:nevent1qqs9ljegkuk2m2ewfjlhxy054n6ld5dfngwzuep0ddhs64gc49q0nmqpzdmhxue69uhhyetvv9ukzcnvv5hx7un8qgsw3mfhnrr0l6ll5zzsrtpeufckv2lazc8k3ru5c3wkjtv8vlwngksrqsqqqqqpttgr27","created_at":1703184271,"id":"38acf9b08d06859e49237688a9fd6558c448766f47457236c2331f93538992c6","kind":1,"pubkey":"e8ed3798c6ffebffa08501ac39e271662bfd160f688f94c45d692d8767dd345a","sig":"f76d5ecc8e7de688ac12b9d19edaacdcffb8f0c8fa2a44c00767363af3f04dbc069542ddc5d2f63c94cb5e6ce701589d538cf2db3b1f1211a96596fabb6ecafe","tags":[["e","5fcb28b72cadab2e4cbf7311f4acf5f6d1a99a1c2e642f6b6f0d5518a940f9ec","","mention"],["p","e8ed3798c6ffebffa08501ac39e271662bfd160f688f94c45d692d8767dd345a","","mention"],["t","bitcoin"],["t","bitcoin"]]}"#).unwrap();
         event.verify_id().unwrap();
+    }
+
+    // Test only with `std` feature due to `serde_json` preserve_order feature.
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_event_de_serialization_order_preservation() {
+        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
+        let event = Event::from_json(json).unwrap();
+        let reserialized_json = event.as_json();
+        assert_eq!(json, reserialized_json);
+
+        let json = r#"{"kind":3,"pubkey":"f831caf722214748c72db4829986bd0cbb2bb8b3aeade1c959624a52a9629046","content":"","created_at":1698412975,"id":"f55c30722f056e330d8a7a6a9ba1522f7522c0f1ced1c93d78ea833c78a3d6ec","sig":"5092a9ffaecdae7d7794706f085ff5852befdf79df424cc3419bb797bf515ae05d4f19404cb8324b8b4380a4bd497763ac7b0f3b1b63ef4d3baa17e5f5901808","tags":[["p","4ddeb9109a8cd29ba279a637f5ec344f2479ee07df1f4043f3fe26d8948cfef9","",""],["p","bb6fd06e156929649a73e6b278af5e648214a69d88943702f1fb627c02179b95","",""],["p","b8b8210f33888fdbf5cedee9edf13c3e9638612698fe6408aff8609059053420","",""],["p","9dcee4fabcd690dc1da9abdba94afebf82e1e7614f4ea92d61d52ef9cd74e083","",""],["p","3eea9e831fefdaa8df35187a204d82edb589a36b170955ac5ca6b88340befaa0","",""],["p","885238ab4568f271b572bf48b9d6f99fa07644731f288259bd395998ee24754e","",""],["p","568a25c71fba591e39bebe309794d5c15d27dbfa7114cacb9f3586ea1314d126","",""]]}"#;
+        let event = Event::from_json(json).unwrap();
+        let reserialized_json = event.as_json();
+        assert_eq!(
+            event.deser_order,
+            vec![
+                "kind",
+                "pubkey",
+                "content",
+                "created_at",
+                "id",
+                "sig",
+                "tags"
+            ]
+        );
+        assert_eq!(json, reserialized_json);
+
+        let json = r#"{"content":"[[\"e\",\"fd40fc62d6349408c5b63d364c1f695b435cc596b58cfaa449519fbc5f2a41a4\"],[\"e\",\"a515bc18a06f0a3561075870f488365e71c5e90aa429a82845e9f7f0d66b6119\"],[\"e\",\"0eb6c73ed0af393a6a2fd9d8200534be064af9d244ef4b211e38503853755b57\"],[\"e\",\"1e8115cb2ba0e14eeb79fcb5ce6cb88f2db59e156aae9ad9302e86e8529e5e7c\"],[\"e\",\"6138b278802611f0685a75d5156f7bd3702a2acab4ba3864665901b1ffd58055\"],[\"e\",\"42105a71922acd113d77d876220fc49aabfa38ba9f34d2267e4f1d45d98b8eaf\"],[\"e\",\"dcd64141fa7af67e61fb28d02085e5c50bb0ccb72270b95e983183179903ef54\"],[\"e\",\"802f72b45a14639477a6ad9d89df9926d59e15d20387ab276dbe92dc48ddc21e\"],[\"e\",\"67ccd79069e27330480e1111f939c0770548e4222f4b5bcdf87ea9ec09e37abf\"],[\"e\",\"c45f94f3c8648536333b657287f0820c4ff1857fb1849a8ce8a541762f233063\"],[\"e\",\"afd22572b31ab14d0c6f65880e626d8e7fe20407ef1486e3ef78820be37e27d8\"],[\"e\",\"bd6a1a577ecfc5ba2ac5a391cae8f21a6238a7ad61a4ebcdd2a44ca488dd03c9\"],[\"e\",\"044ac6073a9cf1b723028a7828fdca098bcd0b79e5e58c21e2372c6b48bd67ca\"],[\"e\",\"2585dcecf6033f82d689a6456af2c82e7d5d9d9e64f90e2c7e86a80eb7dc765b\"],[\"e\",\"08a579677eee0b1796060dbd1e71dcc7ad0937be64ca278b61ef4c3dde149252\"],[\"e\",\"3ed3eaa26cdd1a35808775a8f0c6bd432c0dd1b9c2bc326c9dd249ecf2fe0270\"],[\"e\",\"a2bc2e1149d952a9af202529f3bdd4e8f11a9fda1bd2ad5c6dbbc8b83a1ebc2f\"],[\"e\",\"82e5c6ee536832ababb8eba47e1255d8b1820ca360d2c467f2f32fc610fe3047\"],[\"e\",\"1990b084eb9d0d524ff52f7fb2f0e7f1a1fee977b893c191af7893f53acf7d05\"],[\"e\",\"8df981ac84ca018c7972874770dbf19996f28e9c785eac473bab246e2ad92661\"],[\"e\",\"b975c677ee7517d9124ec8d69d3fafee7ddf6b1d291cc19dffd2678c2241f095\"],[\"e\",\"972599d1139da7e33dc39f049656935ae3b576492f1c535a0eda8d10b1eeb27d\"],[\"e\",\"eaaa6e0cda6315fa30841e9124a526c23dc631fcbf0ffc5e166bbd41d3585efa\"],[\"e\",\"e5eb71fe3dc364d51b6bd6cef73009704df5ee90674a54cb16168e78bbf8fa95\"],[\"e\",\"a49dd0610479b1d81b26f84b949d88d19abc4c3a6b86a1b6501ff393e9618700\"]]","created_at":1701278715,"id":"d05e7ae9271fe2d8968cccb67c01e3458dbafa4a415e306d49b22729b088c8a1","kind":6300,"pubkey":"6b37d5dc88c1cbd32d75b713f6d4c2f7766276f51c9337af9d32c8d715cc1b93","sig":"ee590cf98548039ccbeccb246e55310ad14bb0a307452dacca3f9d1760ac5fdb22d1f1bd932c5fc41d97b8cc16d82719c8ad24440b8d99c38ff2eb0486576253","tags":[["status","success"],["request","{\"created_at\":1701278699,\"content\":\"\",\"tags\":[[\"relays\",\"wss://pablof7z.nostr1.com\",\"wss://purplepag.es\",\"wss://nos.lol\",\"wss://relay.f7z.io\",\"wss://relay.damus.io\",\"wss://relay.snort.social\",\"wss://offchain.pub/\",\"wss://nostr-pub.wellorder.net\"],[\"output\",\"text/plain\"],[\"param\",\"user\",\"99bb5591c9116600f845107d31f9b59e2f7c7e09a1ff802e84f1d43da557ca64\"],[\"relays\",\"wss://relay.damus.io\",\"wss://offchain.pub/\",\"wss://pablof7z.nostr1.com\",\"wss://nos.lol\"]],\"kind\":5300,\"pubkey\":\"99bb5591c9116600f845107d31f9b59e2f7c7e09a1ff802e84f1d43da557ca64\",\"id\":\"5635e5dd930b3c831f6ab1e348bb488f3c9aca2f13190e93ab5e5e1e1ba1835e\",\"sig\":\"babbf39cf1875271d99be7319667f6f83349ffa0ad9262a7ca4719b60601e19642763733840fd7cbef2e883a19fd7829102709fb6af25a6d978b82fba2673140\"}"],["e","5635e5dd930b3c831f6ab1e348bb488f3c9aca2f13190e93ab5e5e1e1ba1835e"],["p","99bb5591c9116600f845107d31f9b59e2f7c7e09a1ff802e84f1d43da557ca64"],["p","99bb5591c9116600f845107d31f9b59e2f7c7e09a1ff802e84f1d43da557ca64"]]}"#;
+        let event = Event::from_json(json).unwrap();
+        let reserialized_json = event.as_json();
+        assert_eq!(json, reserialized_json);
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+
+    #[bench]
+    pub fn deserialize_event(bh: &mut Bencher) {
+        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
+        bh.iter(|| {
+            black_box(Event::from_json(json)).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn serialize_event(bh: &mut Bencher) {
+        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
+        let event = Event::from_json(json).unwrap();
+        bh.iter(|| {
+            black_box(event.as_json());
+        });
     }
 }
