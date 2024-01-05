@@ -145,7 +145,7 @@ impl FromStr for Nip19Prefix {
 /// A representation any `NIP19` bech32 nostr object. Useful for decoding
 /// `NIP19` bech32 strings without necessarily knowing what you're decoding
 /// ahead of time.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Nip19 {
     /// nsec
     Secret(SecretKey),

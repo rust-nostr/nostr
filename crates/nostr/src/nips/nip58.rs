@@ -47,7 +47,7 @@ impl fmt::Display for Error {
 }
 
 /// Helper function to filter events for a specific [`Kind`]
-pub fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Event> {
+pub(crate) fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Event> {
     events
         .into_iter()
         .filter(|e| e.kind == *kind_needed)
@@ -55,7 +55,7 @@ pub fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Event> {
 }
 
 /// Helper function to extract the awarded public key from an array of PubKey tags
-pub fn extract_awarded_public_key(
+pub(crate) fn extract_awarded_public_key(
     tags: &[Tag],
     awarded_public_key: &XOnlyPublicKey,
 ) -> Option<(XOnlyPublicKey, Option<UncheckedUrl>)> {

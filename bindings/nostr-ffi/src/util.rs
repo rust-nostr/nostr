@@ -27,7 +27,7 @@ pub enum JsonValue {
     Str { s: String },
     Array { array: Vec<JsonValue> },
     Object { map: HashMap<String, JsonValue> },
-    Null(),
+    Null,
 }
 
 impl TryFrom<JsonValue> for Value {
@@ -56,7 +56,7 @@ impl TryFrom<JsonValue> for Value {
                     .filter_map(|(k, v)| Some((k, v.try_into().ok()?)))
                     .collect(),
             ),
-            JsonValue::Null() => Self::Null,
+            JsonValue::Null => Self::Null,
         })
     }
 }

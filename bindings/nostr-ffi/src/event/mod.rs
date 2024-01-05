@@ -168,8 +168,11 @@ impl Event {
     }
 
     /// Extract coordinates from tags (`a` tag)
-    pub fn coordinates(&self) -> Vec<Coordinate> {
-        self.inner.coordinates().map(|p| p.into()).collect()
+    pub fn coordinates(&self) -> Vec<Arc<Coordinate>> {
+        self.inner
+            .coordinates()
+            .map(|p| Arc::new(p.into()))
+            .collect()
     }
 
     #[uniffi::constructor]
