@@ -1,13 +1,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP98
-//!
-//! This NIP defines an ephemerial event used to authorize requests to HTTP servers using nostr events.
-//! This is useful for HTTP services which are build for Nostr and deal with Nostr user accounts.
-//!
-//! <https://github.com/nostr-protocol/nips/blob/master/98.md>
-
 use std::str::FromStr;
 
 use nostr::hashes::sha256::Hash as Sha256Hash;

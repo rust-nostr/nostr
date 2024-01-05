@@ -5,12 +5,12 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip01;
-use nostr::nips::nip19::ToBech32;
+use nostr::nips::nip19::{FromBech32, ToBech32};
 use nostr::nips::nip21::NostrURI;
-use nostr::FromBech32;
 use uniffi::Object;
 
-use crate::{error::Result, PublicKey};
+use crate::error::Result;
+use crate::PublicKey;
 
 /// Coordinate for event (`a` tag)
 #[derive(Object)]

@@ -6,8 +6,7 @@ use std::sync::Arc;
 
 use nostr::nips::nip19::{self, FromBech32, ToBech32};
 use nostr::nips::nip21::NostrURI;
-use uniffi::Enum;
-use uniffi::Object;
+use uniffi::{Enum, Object};
 
 use super::nip01::Coordinate;
 use crate::error::Result;

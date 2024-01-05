@@ -5,11 +5,11 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip47;
-use nostr::Url;
+use nostr::{JsonUtil, Url};
 use uniffi::{Enum, Record};
 
 use crate::error::Result;
-use crate::{JsonValue, PublicKey, SecretKey};
+use crate::{PublicKey, SecretKey};
 
 /// NIP47 Response Error codes
 #[derive(Enum)]
@@ -332,8 +332,8 @@ impl From<nip47::Request> for Request {
 #[uniffi::export]
 impl Request {
     #[uniffi::constructor]
-    pub fn from_value(value: JsonValue) -> Result<Self> {
-        Ok(nip47::Request::from_value(value.try_into()?)?.into())
+    pub fn parse(json: String) -> Result<Self> {
+        Ok(nip47::Request::from_json(json)?.into())
     }
 }
 
@@ -554,8 +554,8 @@ impl From<nip47::Response> for Response {
 impl Response {
     /// Deserialize from JSON string
     #[uniffi::constructor]
-    pub fn from_value(value: JsonValue) -> Result<Self> {
-        Ok(nip47::Response::from_value(value.try_into()?)?.into())
+    pub fn parse(json: String) -> Result<Self> {
+        Ok(nip47::Response::from_json(json)?.into())
     }
 }
 

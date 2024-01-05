@@ -7,9 +7,7 @@ use std::sync::Arc;
 
 use nostr::nips::nip11;
 use nostr::Url;
-use uniffi::Enum;
-use uniffi::Object;
-use uniffi::Record;
+use uniffi::{Enum, Object, Record};
 
 use crate::error::Result;
 use crate::Timestamp;

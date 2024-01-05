@@ -4,8 +4,7 @@
 use std::sync::Arc;
 
 use nostr::nips::nip21;
-use uniffi::Enum;
-use uniffi::Object;
+use uniffi::{Enum, Object};
 
 use crate::error::Result;
 use crate::nips::nip01::Coordinate;

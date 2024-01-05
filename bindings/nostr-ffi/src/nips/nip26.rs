@@ -63,13 +63,11 @@ pub fn verify_delegation_signature(
 ) -> Result<bool> {
     let conditions = Conditions::from_str(&conditions)?;
     let signature_struct = Signature::from_str(&signature)?;
-    match nip26::verify_delegation_signature(
+    Ok(nip26::verify_delegation_signature(
         **delegator_public_key,
         signature_struct,
         **delegatee_public_key,
         conditions,
-    ) {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
-    }
+    )
+    .is_ok())
 }
