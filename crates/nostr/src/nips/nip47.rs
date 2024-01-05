@@ -154,7 +154,7 @@ pub struct NIP47Error {
 }
 
 /// Method
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Method {
     /// Pay Invoice
     #[serde(rename = "pay_invoice")]
