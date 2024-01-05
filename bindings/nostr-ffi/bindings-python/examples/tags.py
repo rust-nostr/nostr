@@ -6,7 +6,9 @@ other_user_pk = PublicKey.from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8n
 
 tag = Tag.parse(["p", other_user_pk.to_hex()])
 # OR
-tag = Tag.from_enum(TagEnum.PUB_KEY(other_user_pk.to_hex(), None))
+tag = Tag.from_enum(TagEnum.PUBLIC_KEY_TAG(other_user_pk, None, None, False))
+# OR
+tag = Tag.public_key(other_user_pk)
 
 event = EventBuilder.new_text_note("New note from Rust Nostr python bindings", [tag]).to_event(keys)
 print(event.as_json())

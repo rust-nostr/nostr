@@ -901,17 +901,33 @@ impl Deref for Tag {
 #[uniffi::export]
 impl Tag {
     #[uniffi::constructor]
-    pub fn parse(data: Vec<String>) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
-            inner: tag::Tag::try_from(data)?,
-        }))
+    pub fn parse(data: Vec<String>) -> Result<Self> {
+        Ok(Self {
+            inner: tag::Tag::parse(data)?,
+        })
     }
 
     #[uniffi::constructor]
-    pub fn from_enum(e: TagEnum) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_enum(e: TagEnum) -> Result<Self> {
+        Ok(Self {
             inner: tag::Tag::try_from(e)?,
-        }))
+        })
+    }
+
+    /// Compose `["p", "<public-key>"]` tag
+    #[uniffi::constructor]
+    pub fn public_key(public_key: Arc<PublicKey>) -> Self {
+        Self {
+            inner: tag::Tag::public_key(**public_key),
+        }
+    }
+
+    /// Compose `["e", "<event-id>"]` tag
+    #[uniffi::constructor]
+    pub fn event(event_id: Arc<EventId>) -> Self {
+        Self {
+            inner: tag::Tag::event(**event_id),
+        }
     }
 
     pub fn as_enum(&self) -> TagEnum {
