@@ -102,13 +102,13 @@ impl Client {
         Ok(self.inner.add_relay(url)?)
     }
 
-    // TODO: add add_relay_with_opts
+    pub fn add_relays(&self, relays: Vec<String>) -> Result<()> {
+        Ok(self.inner.add_relays(relays)?)
+    }
 
     pub fn remove_relay(&self, url: String) -> Result<()> {
         Ok(self.inner.remove_relay(url)?)
     }
-
-    // TODO: add add_relays
 
     pub fn connect_relay(&self, url: String) -> Result<()> {
         Ok(self.inner.connect_relay(url)?)
