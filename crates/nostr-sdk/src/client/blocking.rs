@@ -11,7 +11,9 @@ use std::time::Duration;
 use nostr::key::XOnlyPublicKey;
 use nostr::nips::nip94::FileMetadata;
 use nostr::url::Url;
-use nostr::{ClientMessage, Contact, Event, EventId, Filter, Keys, Metadata, Result, Tag};
+use nostr::{
+    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, Keys, Metadata, Result, Tag,
+};
 use nostr_database::DynNostrDatabase;
 use tokio::sync::broadcast;
 
@@ -239,6 +241,18 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         RUNTIME.block_on(async { self.client.send_event_to(url, event).await })
+    }
+
+    pub fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
+        RUNTIME.block_on(async { self.client.send_event_builder(builder).await })
+    }
+
+    pub fn send_event_builder_to<U>(&self, url: U, builder: EventBuilder) -> Result<EventId, Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        RUNTIME.block_on(async { self.client.send_event_builder_to(url, builder).await })
     }
 
     pub fn set_metadata(&self, metadata: &Metadata) -> Result<EventId, Error> {

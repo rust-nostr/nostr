@@ -9,7 +9,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::{
-    ClientMessage, Event, EventId, FileMetadata, Filter, Metadata, PublicKey, RelayMessage,
+    ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
+    RelayMessage,
 };
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
@@ -174,13 +175,9 @@ impl Client {
         Ok(self.inner.send_msg(msg.into())?)
     }
 
-    // TODO: add send_msg_with_custom_wait
-
     pub fn send_msg_to(&self, url: String, msg: ClientMessage) -> Result<()> {
         Ok(self.inner.send_msg_to(url, msg.into())?)
     }
-
-    // TODO: add send_msg_to_with_custom_wait
 
     pub fn send_event(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
         Ok(Arc::new(
@@ -190,8 +187,6 @@ impl Client {
         ))
     }
 
-    // TODO: add send_event_with_custom_wait
-
     pub fn send_event_to(&self, url: String, event: Arc<Event>) -> Result<Arc<EventId>> {
         Ok(Arc::new(
             self.inner
@@ -200,7 +195,31 @@ impl Client {
         ))
     }
 
-    // TODO: add send_event_to_with_custom_wait
+    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
+    ///
+    /// Rise an error if the [`ClientSigner`] is not set.
+    pub fn send_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .send_event_builder(builder.as_ref().deref().clone())?
+                .into(),
+        ))
+    }
+
+    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
+    ///
+    /// Rise an error if the [`ClientSigner`] is not set.
+    pub fn send_event_builder_to(
+        &self,
+        url: String,
+        builder: Arc<EventBuilder>,
+    ) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .send_event_builder_to(url, builder.as_ref().deref().clone())?
+                .into(),
+        ))
+    }
 
     pub fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<Arc<EventId>> {
         Ok(Arc::new(
