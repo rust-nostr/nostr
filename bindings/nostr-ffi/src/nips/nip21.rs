@@ -20,12 +20,12 @@ pub enum Nip21Enum {
     Pubkey { public_key: Arc<PublicKey> },
     /// nostr::nprofile
     Profile { profile: Arc<Nip19Profile> },
-    /// nostr::note
-    EventId { event_id: Arc<EventId> },
+    /// nostr::note (EventId)
+    Note { event_id: Arc<EventId> },
     /// nostr::nevent
     Event { event: Arc<Nip19Event> },
     /// nostr::naddr
-    Coordinate { coordinate: Arc<Coordinate> },
+    Coord { coordinate: Arc<Coordinate> },
 }
 
 impl From<nip21::Nip21> for Nip21Enum {
@@ -37,13 +37,13 @@ impl From<nip21::Nip21> for Nip21Enum {
             nip21::Nip21::Profile(profile) => Self::Profile {
                 profile: Arc::new(profile.into()),
             },
-            nip21::Nip21::EventId(event_id) => Self::EventId {
+            nip21::Nip21::EventId(event_id) => Self::Note {
                 event_id: Arc::new(event_id.into()),
             },
             nip21::Nip21::Event(event) => Self::Event {
                 event: Arc::new(event.into()),
             },
-            nip21::Nip21::Coordinate(coordinate) => Self::Coordinate {
+            nip21::Nip21::Coordinate(coordinate) => Self::Coord {
                 coordinate: Arc::new(coordinate.into()),
             },
         }
