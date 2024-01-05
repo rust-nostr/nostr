@@ -3,7 +3,7 @@ from nostr_sdk import Keys, Client, ClientSigner, FileMetadata
 keys = Keys.generate()
 print(keys.public_key().to_bech32())
 
-signer = ClientSigner.KEYS(keys)
+signer = ClientSigner.keys(keys)
 client = Client(signer)
 
 client.add_relay("wss://relay.damus.io")

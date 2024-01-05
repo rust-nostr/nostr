@@ -13,7 +13,7 @@ sk = keys.secret_key()
 pk = keys.public_key()
 print(f"Bot public key: {pk.to_bech32()}")
 
-signer = ClientSigner.KEYS(keys)
+signer = ClientSigner.keys(keys)
 client = Client(signer)
 
 client.add_relay("wss://relay.damus.io")

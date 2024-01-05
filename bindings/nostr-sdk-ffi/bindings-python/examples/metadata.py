@@ -3,7 +3,7 @@ from datetime import timedelta
 
 keys = Keys.generate()
 
-signer = ClientSigner.KEYS(keys)
+signer = ClientSigner.keys(keys)
 client = Client(signer)
 
 client.add_relay("wss://relay.damus.io")

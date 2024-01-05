@@ -33,27 +33,27 @@ impl ClientBuilder {
         }
     }
 
-    pub fn signer(self: Arc<Self>, signer: ClientSigner) -> Self {
-        let signer: nostr_sdk::ClientSigner = signer.into();
+    pub fn signer(self: Arc<Self>, signer: Arc<ClientSigner>) -> Self {
+        let signer: nostr_sdk::ClientSigner = signer.as_ref().deref().clone();
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.signer(signer);
         builder
     }
 
-    pub fn database(self: Arc<Self>, database: Arc<NostrDatabase>) -> Arc<Self> {
+    pub fn database(self: Arc<Self>, database: Arc<NostrDatabase>) -> Self {
         let database: Arc<DynNostrDatabase> = database.as_ref().into();
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.database(database);
-        Arc::new(builder)
+        builder
     }
 
     /// Set opts
-    pub fn opts(self: Arc<Self>, opts: Arc<Options>) -> Arc<Self> {
+    pub fn opts(self: Arc<Self>, opts: Arc<Options>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder
             .inner
             .opts(opts.as_ref().deref().clone().shutdown_on_drop(true));
-        Arc::new(builder)
+        builder
     }
 
     /// Build [`Client`]

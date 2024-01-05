@@ -29,13 +29,13 @@ init_logger(LogLevel.INFO)
 
 # Or, initialize with Keys signer
 keys = Keys.generate()
-signer = ClientSigner.KEYS(keys)
+signer = ClientSigner.keys(keys)
 client = Client(signer)
 
 # Or, initialize with NIP46 signer
 # app_keys = Keys.generate()
 # nip46 = Nip46Signer("wss://relay.damus.io", app_keys, None)
-#signer = ClientSigner.NIP46(nip46)
+#signer = ClientSigner.nip46(nip46)
 # client = Client(signer)
 
 # Add a single relay

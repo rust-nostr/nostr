@@ -41,16 +41,16 @@ impl From<ClientSdk> for Client {
 #[uniffi::export]
 impl Client {
     #[uniffi::constructor]
-    pub fn new(signer: Option<ClientSigner>) -> Self {
+    pub fn new(signer: Option<Arc<ClientSigner>>) -> Self {
         Self::with_opts(signer, Arc::new(Options::new()))
     }
 
     #[uniffi::constructor]
-    pub fn with_opts(signer: Option<ClientSigner>, opts: Arc<Options>) -> Self {
+    pub fn with_opts(signer: Option<Arc<ClientSigner>>, opts: Arc<Options>) -> Self {
         let opts: OptionsSdk = opts.as_ref().deref().clone().shutdown_on_drop(true);
         let mut builder = nostr_sdk::ClientBuilder::new().opts(opts);
         if let Some(signer) = signer {
-            let signer: nostr_sdk::ClientSigner = signer.into();
+            let signer: nostr_sdk::ClientSigner = signer.as_ref().deref().clone();
             builder = builder.signer(signer);
         }
         Self {
