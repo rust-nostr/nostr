@@ -11,7 +11,7 @@ use std::time::Duration;
 use async_utility::thread;
 use js_sys::Array;
 use nostr_js::error::{into_err, Result};
-use nostr_js::event::{JsEvent, JsEventArray, JsEventId, JsTag};
+use nostr_js::event::{JsEvent, JsEventArray, JsEventBuilder, JsEventId, JsTag};
 use nostr_js::key::JsPublicKey;
 use nostr_js::message::{JsFilter, JsRelayMessage};
 use nostr_js::types::{JsContact, JsMetadata};
@@ -187,6 +187,34 @@ impl JsClient {
     pub async fn send_event_to(&self, url: String, event: &JsEvent) -> Result<JsEventId> {
         self.inner
             .send_event_to(url, event.deref().clone())
+            .await
+            .map_err(into_err)
+            .map(|id| id.into())
+    }
+
+    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
+    ///
+    /// Rise an error if the [`ClientSigner`] is not set.
+    #[wasm_bindgen(js_name = sendEvent)]
+    pub async fn send_event_builder(&self, builder: &JsEventBuilder) -> Result<JsEventId> {
+        self.inner
+            .send_event_builder(builder.deref().clone())
+            .await
+            .map_err(into_err)
+            .map(|id| id.into())
+    }
+
+    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
+    ///
+    /// Rise an error if the [`ClientSigner`] is not set.
+    #[wasm_bindgen(js_name = sendEventTo)]
+    pub async fn send_event_builder_to(
+        &self,
+        url: String,
+        builder: &JsEventBuilder,
+    ) -> Result<JsEventId> {
+        self.inner
+            .send_event_builder_to(url, builder.deref().clone())
             .await
             .map_err(into_err)
             .map(|id| id.into())
