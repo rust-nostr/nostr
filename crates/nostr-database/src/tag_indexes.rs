@@ -15,9 +15,16 @@ use nostr::{Alphabet, GenericTagValue};
 pub const TAG_INDEX_VALUE_SIZE: usize = 8;
 
 /// Tag Indexes
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct TagIndexes {
     inner: HashMap<Alphabet, TagIndexValues>,
+}
+
+impl TagIndexes {
+    #[allow(missing_docs)]
+    pub fn new(map: BTreeMap<Alphabet, TagIndexValues>) -> Self {
+        Self { inner: map }
+    }
 }
 
 impl Deref for TagIndexes {
@@ -70,7 +77,7 @@ where
 }
 
 /// Tag Index Values
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct TagIndexValues {
     inner: HashSet<[u8; TAG_INDEX_VALUE_SIZE]>,
 }
