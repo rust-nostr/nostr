@@ -4,6 +4,7 @@
 
 //! Kind
 
+use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::num::ParseIntError;
@@ -27,7 +28,7 @@ pub const EPHEMERAL_RANGE: Range<u64> = 20_000..30_000;
 pub const PARAMETERIZED_REPLACEABLE_RANGE: Range<u64> = 30_000..40_000;
 
 /// Event [`Kind`]
-#[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy)]
 pub enum Kind {
     /// Metadata (NIP01 and NIP05)
     Metadata,
@@ -133,6 +134,35 @@ pub enum Kind {
     ParameterizedReplaceable(u16),
     /// Custom
     Custom(u64),
+}
+
+impl PartialEq<Kind> for Kind {
+    fn eq(&self, other: &Kind) -> bool {
+        self.as_u64() == other.as_u64()
+    }
+}
+
+impl Eq for Kind {}
+
+impl PartialOrd for Kind {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Kind {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.as_u64().cmp(&other.as_u64())
+    }
+}
+
+impl Hash for Kind {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.as_u64().hash(state);
+    }
 }
 
 impl Kind {
@@ -326,21 +356,6 @@ impl FromStr for Kind {
     fn from_str(kind: &str) -> Result<Self, Self::Err> {
         let kind: u64 = kind.parse()?;
         Ok(Self::from(kind))
-    }
-}
-
-impl PartialEq<Kind> for Kind {
-    fn eq(&self, other: &Kind) -> bool {
-        self.as_u64() == other.as_u64()
-    }
-}
-
-impl Hash for Kind {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        self.as_u64().hash(state);
     }
 }
 
