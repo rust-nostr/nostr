@@ -16,7 +16,7 @@ use nostr::{
     event, ClientMessage, Event, EventId, Filter, JsonUtil, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
-use nostr_database::{DatabaseError, DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
+use nostr_database::{DatabaseError, DynNostrDatabase, IntoNostrDatabase, MemoryDatabase, Order};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, RwLock};
@@ -795,7 +795,7 @@ impl RelayPool {
         // Get stored events
         let stored_events: Vec<Event> = self
             .database
-            .query(filters.clone())
+            .query(filters.clone(), Order::Desc)
             .await
             .unwrap_or_default();
 

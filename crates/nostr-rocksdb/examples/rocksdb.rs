@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use nostr::prelude::*;
-use nostr_database::NostrDatabase;
+use nostr_database::{NostrDatabase, Order};
 use nostr_rocksdb::RocksDatabase;
 use tracing_subscriber::fmt::format::FmtSpan;
 
@@ -35,16 +35,16 @@ async fn main() {
     );
 
     /* for i in 0..100_000 {
-        let event = EventBuilder::new_text_note(format!("Event #{i}"), &[])
+        let event = EventBuilder::new_text_note(format!("Event #{i}"), [])
             .to_event(&keys_a)
             .unwrap();
         database.save_event(&event).await.unwrap();
 
         let event = EventBuilder::new_text_note(
             format!("Reply to event #{i}"),
-            &[
+            [
                 Tag::event(event.id),
-                Tag::PubKey(event.pubkey, None),
+                Tag::public_key(event.pubkey),
             ],
         )
         .to_event(&keys_b)
@@ -54,7 +54,7 @@ async fn main() {
 
     for i in 0..10 {
         let metadata = Metadata::new().name(format!("Name #{i}"));
-        let event = EventBuilder::set_metadata(metadata)
+        let event = EventBuilder::set_metadata(&metadata)
             .to_event(&keys_a)
             .unwrap();
         database.save_event(&event).await.unwrap();
@@ -64,14 +64,14 @@ async fn main() {
         let event = EventBuilder::new(
             Kind::Custom(123),
             "Custom with d tag",
-            &[Tag::Identifier(format!("myid{i}"))],
+            [Tag::Identifier(format!("myid{i}"))],
         )
         .to_event(&keys_a)
         .unwrap();
         database.save_event(&event).await.unwrap();
     } */
 
-    /* let event_id = EventId::all_zeros();
+    /*  let event_id = EventId::all_zeros();
     database.event_id_seen(event_id, Some(Url::parse("wss://relay.damus.io").unwrap())).await.unwrap();
     database.event_id_seen(event_id, Some(Url::parse("wss://relay.nostr.info").unwrap())).await.unwrap();
     database.event_id_seen(event_id, Some(Url::parse("wss://relay.damus.io").unwrap())).await.unwrap();
@@ -80,17 +80,20 @@ async fn main() {
     println!("Seen on: {relays:?}"); */
 
     let events = database
-        .query(vec![
-            Filter::new()
-                //.kinds(vec![Kind::Custom(123), Kind::TextNote])
-                .kind(Kind::Custom(123))
-                .identifier("myid5000")
-                .author(keys_a.public_key()),
-            Filter::new()
-                .limit(1)
-                .kind(Kind::Metadata)
-                .author(keys_a.public_key()),
-        ])
+        .query(
+            vec![
+                Filter::new()
+                    //.kinds(vec![Kind::Custom(123), Kind::TextNote])
+                    .kind(Kind::Custom(33333))
+                    .identifier("myid5")
+                    .author(keys_a.public_key()),
+                Filter::new()
+                    .limit(1)
+                    .kind(Kind::Metadata)
+                    .author(keys_a.public_key()),
+            ],
+            Order::Desc,
+        )
         .await
         .unwrap();
     println!("Events: {:?}", events);

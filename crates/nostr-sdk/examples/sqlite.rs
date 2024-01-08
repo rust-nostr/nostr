@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
 
     // Query events from database
     let filter = Filter::new().author(my_keys.public_key()).limit(10);
-    let events = client.database().query(vec![filter]).await?;
+    let events = client.database().query(vec![filter], Order::Desc).await?;
     println!("Events: {events:?}");
 
     Ok(())

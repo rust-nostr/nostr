@@ -19,7 +19,7 @@ use async_trait::async_trait;
 use nostr::{nips::nip01::Coordinate, Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
-    FlatBufferDecode, FlatBufferEncode, NostrDatabase, RawEvent,
+    FlatBufferDecode, FlatBufferEncode, NostrDatabase, Order, RawEvent,
 };
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, IteratorMode,
@@ -275,8 +275,8 @@ impl NostrDatabase for RocksDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        let ids: Vec<EventId> = self.indexes.query(filters).await;
+    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
+        let ids: Vec<EventId> = self.indexes.query(filters, order).await;
 
         let this = self.clone();
         tokio::task::spawn_blocking(move || {
@@ -301,15 +301,19 @@ impl NostrDatabase for RocksDatabase {
         .map_err(DatabaseError::backend)?
     }
 
-    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
-        Ok(self.indexes.query(filters).await)
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+        order: Order,
+    ) -> Result<Vec<EventId>, Self::Err> {
+        Ok(self.indexes.query(filters, order).await)
     }
 
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        let ids: Vec<EventId> = self.indexes.query(vec![filter]).await;
+        let ids: Vec<EventId> = self.indexes.query(vec![filter], Order::Desc).await;
 
         let this = self.clone();
         tokio::task::spawn_blocking(move || {

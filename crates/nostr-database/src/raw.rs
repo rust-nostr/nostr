@@ -108,6 +108,19 @@ impl RawEvent {
     }
 }
 
+impl From<&Event> for RawEvent {
+    fn from(event: &Event) -> Self {
+        Self {
+            id: event.id.to_bytes(),
+            pubkey: event.pubkey.serialize(),
+            created_at: event.created_at,
+            kind: event.kind,
+            tags: event.tags.iter().map(|t| t.as_vec()).collect(),
+            content: event.content.clone(),
+        }
+    }
+}
+
 impl From<Event> for RawEvent {
     fn from(event: Event) -> Self {
         Self {

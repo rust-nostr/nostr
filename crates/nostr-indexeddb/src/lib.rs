@@ -29,7 +29,7 @@ use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::NostrDatabase;
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
-    FlatBufferDecode, FlatBufferEncode, RawEvent,
+    FlatBufferDecode, FlatBufferEncode, Order, RawEvent,
 };
 use tokio::sync::Mutex;
 use wasm_bindgen::JsValue;
@@ -400,14 +400,17 @@ impl_nostr_database!({
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, IndexedDBError> {
-        let ids = self.indexes.query(filters).await;
-
+    async fn query(
+        &self,
+        filters: Vec<Filter>,
+        order: Order,
+    ) -> Result<Vec<Event>, IndexedDBError> {
         let tx = self
             .db
             .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
         let store = tx.object_store(EVENTS_CF)?;
 
+        let ids = self.indexes.query(filters, order).await;
         let mut events: Vec<Event> = Vec::with_capacity(ids.len());
 
         for event_id in ids.into_iter() {
@@ -426,22 +429,22 @@ impl_nostr_database!({
     async fn event_ids_by_filters(
         &self,
         filters: Vec<Filter>,
+        order: Order,
     ) -> Result<Vec<EventId>, IndexedDBError> {
-        Ok(self.indexes.query(filters).await)
+        Ok(self.indexes.query(filters, order).await)
     }
 
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, IndexedDBError> {
-        let ids = self.indexes.query(vec![filter]).await;
-
         let tx = self
             .db
             .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
         let store = tx.object_store(EVENTS_CF)?;
 
-        let mut events: Vec<(EventId, Timestamp)> = Vec::new();
+        let ids = self.indexes.query(vec![filter], Order::Desc).await;
+        let mut events: Vec<(EventId, Timestamp)> = Vec::with_capacity(ids.len());
 
         for event_id in ids.into_iter() {
             let key = JsValue::from(event_id.to_hex());

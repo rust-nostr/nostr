@@ -3,7 +3,7 @@
 // Distributed under the MIT software license
 
 use nostr::prelude::*;
-use nostr_database::DatabaseIndexes;
+use nostr_database::{DatabaseIndexes, Order};
 use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::main]
@@ -59,12 +59,15 @@ async fn main() {
     }
 
     let ids = index
-        .query(vec![Filter::new()
-            .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
-            .limit(20)
-            //.kind(Kind::Custom(123))
-            //.identifier("myid5000")
-            .author(keys_a.public_key())])
+        .query(
+            vec![Filter::new()
+                .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
+                .limit(20)
+                //.kind(Kind::Custom(123))
+                //.identifier("myid5000")
+                .author(keys_a.public_key())],
+            Order::Desc,
+        )
         .await;
     println!("Got {} ids", ids.len());
 

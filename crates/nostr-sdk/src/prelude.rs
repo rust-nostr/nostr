@@ -9,6 +9,7 @@
 
 // External crates
 pub use nostr::prelude::*;
+pub use nostr_database::*;
 
 // Internal modules
 pub use crate::client::*;

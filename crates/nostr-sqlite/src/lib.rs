@@ -21,7 +21,7 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
-    FlatBufferDecode, FlatBufferEncode, NostrDatabase, RawEvent,
+    FlatBufferDecode, FlatBufferEncode, NostrDatabase, Order, RawEvent,
 };
 use rusqlite::config::DbConfig;
 use tokio::sync::RwLock;
@@ -273,9 +273,9 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        let ids: Vec<EventId> = self.indexes.query(filters).await;
+    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
         let conn = self.acquire().await?;
+        let ids: Vec<EventId> = self.indexes.query(filters, order).await;
         conn.interact(move |conn| {
             let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
             let mut events = Vec::with_capacity(ids.len());
@@ -291,16 +291,20 @@ impl NostrDatabase for SQLiteDatabase {
         .await?
     }
 
-    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
-        Ok(self.indexes.query(filters).await)
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+        order: Order,
+    ) -> Result<Vec<EventId>, Self::Err> {
+        Ok(self.indexes.query(filters, order).await)
     }
 
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        let ids: Vec<EventId> = self.indexes.query(vec![filter]).await;
         let conn = self.acquire().await?;
+        let ids: Vec<EventId> = self.indexes.query(vec![filter], Order::Desc).await;
         conn.interact(move |conn| {
             let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
             let mut events = Vec::with_capacity(ids.len());
