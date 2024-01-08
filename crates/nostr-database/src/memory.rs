@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use nostr::nips::nip01::Coordinate;
-use nostr::{Event, EventId, Filter, FiltersMatchEvent, Timestamp, Url};
+use nostr::{Event, EventId, Filter, Timestamp, Url};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -167,15 +167,13 @@ impl NostrDatabase for MemoryDatabase {
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
         if self.opts.events {
-            let ids = self.indexes.query(filters.clone()).await;
+            let ids = self.indexes.query(filters).await;
             let events = self.events.read().await;
 
             let mut list: Vec<Event> = Vec::new();
             for event_id in ids.into_iter() {
-                if let Some(event) = events.get(&event_id) {
-                    if filters.match_event(event) {
-                        list.push(event.clone());
-                    }
+                if let Some(event) = events.get(&event_id).cloned() {
+                    list.push(event);
                 }
             }
             Ok(list)

@@ -12,9 +12,7 @@ pub mod subscription;
 
 pub use self::client::ClientMessage;
 pub use self::relay::{RawRelayMessage, RelayMessage};
-pub use self::subscription::{
-    Alphabet, Filter, FiltersMatchEvent, GenericTagValue, SubscriptionId,
-};
+pub use self::subscription::{Alphabet, Filter, GenericTagValue, SubscriptionId};
 use crate::event;
 
 /// Messages error

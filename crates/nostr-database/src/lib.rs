@@ -25,6 +25,7 @@ pub mod memory;
 mod options;
 pub mod profile;
 mod raw;
+mod tag_indexes;
 
 pub use self::error::DatabaseError;
 #[cfg(feature = "flatbuf")]

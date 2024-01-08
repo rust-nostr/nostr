@@ -28,7 +28,7 @@ pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::partial::{MissingPartialEvent, PartialEvent};
-pub use self::tag::{Marker, Tag, TagIndexValues, TagIndexes, TagKind};
+pub use self::tag::{Marker, Tag, TagKind};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::Coordinate;
 #[cfg(feature = "std")]
@@ -353,11 +353,6 @@ impl Event {
             }),
             _ => None,
         })
-    }
-
-    /// Build tags index
-    pub fn build_tags_index(&self) -> TagIndexes {
-        TagIndexes::from(self.tags.iter().map(|t| t.as_vec()))
     }
 }
 

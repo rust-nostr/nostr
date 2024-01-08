@@ -4,16 +4,12 @@
 
 //! Tag Indexes
 
-use alloc::string::{String, ToString};
-use alloc::vec::Vec;
+use std::collections::{HashMap, HashSet};
+use std::ops::{Deref, DerefMut};
 
-use alloc::collections::{BTreeMap, BTreeSet};
-use core::ops::{Deref, DerefMut};
-
-use bitcoin::hashes::siphash24::Hash as SipHash24;
-use bitcoin::hashes::Hash;
-
-use crate::{Alphabet, GenericTagValue};
+use nostr::hashes::siphash24::Hash as SipHash24;
+use nostr::hashes::Hash;
+use nostr::{Alphabet, GenericTagValue};
 
 /// Tag Index Value Size
 pub const TAG_INDEX_VALUE_SIZE: usize = 8;
@@ -21,11 +17,11 @@ pub const TAG_INDEX_VALUE_SIZE: usize = 8;
 /// Tag Indexes
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TagIndexes {
-    inner: BTreeMap<Alphabet, TagIndexValues>,
+    inner: HashMap<Alphabet, TagIndexValues>,
 }
 
 impl Deref for TagIndexes {
-    type Target = BTreeMap<Alphabet, TagIndexValues>;
+    type Target = HashMap<Alphabet, TagIndexValues>;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
@@ -76,11 +72,11 @@ where
 /// Tag Index Values
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TagIndexValues {
-    inner: BTreeSet<[u8; TAG_INDEX_VALUE_SIZE]>,
+    inner: HashSet<[u8; TAG_INDEX_VALUE_SIZE]>,
 }
 
 impl Deref for TagIndexValues {
-    type Target = BTreeSet<[u8; TAG_INDEX_VALUE_SIZE]>;
+    type Target = HashSet<[u8; TAG_INDEX_VALUE_SIZE]>;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
@@ -94,10 +90,11 @@ impl DerefMut for TagIndexValues {
 
 impl TagIndexValues {
     #[allow(missing_docs)]
-    pub fn iter(
-        set: &BTreeSet<GenericTagValue>,
-    ) -> impl Iterator<Item = [u8; TAG_INDEX_VALUE_SIZE]> + '_ {
-        set.iter().map(|value| {
+    pub fn iter<'a, I>(iter: I) -> impl Iterator<Item = [u8; TAG_INDEX_VALUE_SIZE]> + 'a
+    where
+        I: Iterator<Item = &'a GenericTagValue> + 'a,
+    {
+        iter.map(|value| {
             let s: String = value.to_string();
             hash(s)
         })

@@ -11,7 +11,7 @@ use uniffi::{Enum, Object};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::{Event, EventId, PublicKey, Timestamp};
+use crate::{EventId, PublicKey, Timestamp};
 
 #[derive(Enum)]
 pub enum Alphabet {
@@ -322,10 +322,6 @@ impl Filter {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.remove_custom_tag(tag.into(), content);
         Arc::new(builder)
-    }
-
-    pub fn match_event(&self, event: Arc<Event>) -> bool {
-        self.inner.match_event(event.as_ref().deref())
     }
 
     pub fn is_empty(&self) -> bool {

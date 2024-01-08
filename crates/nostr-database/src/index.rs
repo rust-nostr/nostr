@@ -5,21 +5,19 @@
 //! Nostr Database Indexes
 
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-//use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 use nostr::event::id;
 use nostr::nips::nip01::Coordinate;
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{
-    Alphabet, Event, EventId, Filter, GenericTagValue, Kind, TagIndexValues, TagIndexes, Timestamp,
-};
+use nostr::{Alphabet, Event, EventId, Filter, GenericTagValue, Kind, Timestamp};
 use rayon::prelude::*;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::raw::RawEvent;
+use crate::tag_indexes::{TagIndexValues, TagIndexes};
 
 /// Public Key Prefix Size
 const PUBLIC_KEY_PREFIX_SIZE: usize = 8;
@@ -81,29 +79,8 @@ impl From<&Event> for EventIndex {
             event_id: e.id,
             pubkey: PublicKeyPrefix::from(e.pubkey),
             kind: e.kind,
-            tags: e.build_tags_index(),
+            tags: TagIndexes::from(e.tags.iter().map(|t| t.as_vec())),
         }
-    }
-}
-
-impl EventIndex {
-    fn filter_tags_match(&self, filter: &FilterIndex) -> bool {
-        if filter.generic_tags.is_empty() {
-            return true;
-        }
-
-        if self.tags.is_empty() {
-            return false;
-        }
-
-        filter.generic_tags.iter().all(|(tagname, set)| {
-            self.tags.get(tagname).map_or(false, |valset| {
-                TagIndexValues::iter(set)
-                    .filter(|t| valset.contains(t))
-                    .count()
-                    > 0
-            })
-        })
     }
 }
 
@@ -134,12 +111,12 @@ impl From<[u8; 32]> for PublicKeyPrefix {
 
 #[derive(Default)]
 struct FilterIndex {
-    ids: BTreeSet<EventId>,
-    authors: BTreeSet<PublicKeyPrefix>,
-    kinds: BTreeSet<Kind>,
+    ids: HashSet<EventId>,
+    authors: HashSet<PublicKeyPrefix>,
+    kinds: HashSet<Kind>,
     since: Option<Timestamp>,
     until: Option<Timestamp>,
-    generic_tags: BTreeMap<Alphabet, BTreeSet<GenericTagValue>>,
+    generic_tags: HashMap<Alphabet, BTreeSet<GenericTagValue>>,
 }
 
 impl FilterIndex {
@@ -167,21 +144,60 @@ impl FilterIndex {
             .insert(identifier);
         self
     }
+
+    fn ids_match(&self, event: &EventIndex) -> bool {
+        self.ids.is_empty() || self.ids.contains(&event.event_id)
+    }
+
+    fn authors_match(&self, event: &EventIndex) -> bool {
+        self.authors.is_empty() || self.authors.contains(&event.pubkey)
+    }
+
+    fn tag_match(&self, event: &EventIndex) -> bool {
+        if self.generic_tags.is_empty() {
+            return true;
+        }
+        if event.tags.is_empty() {
+            return false;
+        }
+
+        self.generic_tags.iter().all(|(tagname, set)| {
+            event.tags.get(tagname).map_or(false, |valset| {
+                TagIndexValues::iter(set.iter())
+                    .filter(|t| valset.contains(t))
+                    .count()
+                    > 0
+            })
+        })
+    }
+
+    fn kind_match(&self, kind: &Kind) -> bool {
+        self.kinds.is_empty() || self.kinds.contains(kind)
+    }
+
+    pub fn match_event(&self, event: &EventIndex) -> bool {
+        self.ids_match(event)
+            && self.since.map_or(true, |t| event.created_at >= t)
+            && self.until.map_or(true, |t| event.created_at <= t)
+            && self.kind_match(&event.kind)
+            && self.authors_match(event)
+            && self.tag_match(event)
+    }
 }
 
 impl From<Filter> for FilterIndex {
     fn from(value: Filter) -> Self {
         Self {
-            ids: value.ids,
+            ids: value.ids.into_iter().collect(),
             authors: value
                 .authors
                 .into_iter()
                 .map(PublicKeyPrefix::from)
                 .collect(),
-            kinds: value.kinds,
+            kinds: value.kinds.into_iter().collect(),
             since: value.since,
             until: value.until,
-            generic_tags: value.generic_tags,
+            generic_tags: value.generic_tags.into_iter().collect(),
         }
     }
 }
@@ -468,60 +484,10 @@ impl DatabaseIndexes {
         T: Into<FilterIndex>,
     {
         let filter: FilterIndex = filter.into();
-        index.par_iter().filter(move |m| {
-            !deleted_ids.contains(&m.event_id)
-                && filter.until.map_or(true, |t| m.created_at <= t)
-                && filter.since.map_or(true, |t| m.created_at >= t)
-                && (filter.ids.is_empty() || filter.ids.contains(&m.event_id))
-                && (filter.authors.is_empty() || filter.authors.contains(&m.pubkey))
-                && (filter.kinds.is_empty() || filter.kinds.contains(&m.kind))
-                && m.filter_tags_match(&filter)
+        index.par_iter().filter(move |event| {
+            !deleted_ids.contains(&event.event_id) && filter.match_event(event)
         })
     }
-
-    /* fn internal_multi_parallel_query<'a, I, T>(
-        &self,
-        index: &'a BTreeSet<EventIndex>,
-        deleted: &'a HashSet<EventId>,
-        filters: I,
-    ) -> impl ParallelIterator<Item = &'a EventIndex>
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<FilterIndex>,
-    {
-        let filters: Vec<FilterIndex> = filters.into_iter().map(|f| f.into()).collect();
-        let limits: Vec<Option<usize>> = filters.iter().map(|f| f.limit).collect();
-        let counter: Vec<AtomicUsize> = filters.iter().map(|_| AtomicUsize::new(0)).collect();
-        index
-            .par_iter()
-            .filter(move |i| !deleted.contains(&i.event_id))
-            .filter(move |i| {
-                filters.par_iter().enumerate().any(|(index, filter)| {
-                    if let Some(Some(limit)) = limits.get(index) {
-                        if let Some(counter) = counter.get(index) {
-                            if counter.load(AtomicOrdering::SeqCst) >= *limit {
-                                return false;
-                            }
-                        }
-                    }
-
-                    let status: bool = filter.until.map_or(true, |t| i.created_at <= t)
-                        && filter.since.map_or(true, |t| i.created_at >= t)
-                        && (filter.ids.is_empty() || filter.ids.contains(&i.event_id))
-                        && (filter.authors.is_empty() || filter.authors.contains(&i.pubkey))
-                        && (filter.kinds.is_empty() || filter.kinds.contains(&i.kind))
-                        && i.filter_tags_match(&filter);
-
-                    if status {
-                        if let Some(counter) = counter.get(index) {
-                            counter.fetch_add(1, AtomicOrdering::SeqCst);
-                        }
-                    }
-
-                    status
-                })
-            })
-    } */
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]

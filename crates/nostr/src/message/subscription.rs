@@ -7,7 +7,6 @@
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
@@ -22,8 +21,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::event::{TagIndexValues, TagIndexes};
-use crate::{Event, EventId, JsonUtil, Kind, Timestamp};
+use crate::{EventId, JsonUtil, Kind, Timestamp};
 
 /// Alphabet Error
 #[derive(Debug)]
@@ -674,65 +672,10 @@ impl Filter {
         });
         self
     }
-}
-
-impl Filter {
-    fn ids_match(&self, event: &Event) -> bool {
-        self.ids.is_empty() || self.ids.contains(&event.id)
-    }
-
-    fn authors_match(&self, event: &Event) -> bool {
-        self.authors.is_empty() || self.authors.contains(&event.pubkey)
-    }
-
-    fn tag_match(&self, event: &Event) -> bool {
-        if self.generic_tags.is_empty() {
-            return true;
-        }
-        if event.tags.is_empty() {
-            return false;
-        }
-
-        let idx: TagIndexes = event.build_tags_index();
-        self.generic_tags.iter().all(|(tagname, set)| {
-            idx.get(tagname).map_or(false, |valset| {
-                TagIndexValues::iter(set)
-                    .filter(|t| valset.contains(t))
-                    .count()
-                    > 0
-            })
-        })
-    }
-
-    fn kind_match(&self, kind: &Kind) -> bool {
-        self.kinds.is_empty() || self.kinds.contains(kind)
-    }
-
-    /// Determine if [`Filter`] match the provided [`Event`].
-    pub fn match_event(&self, event: &Event) -> bool {
-        self.ids_match(event)
-            && self.since.map_or(true, |t| event.created_at >= t)
-            && self.until.map_or(true, |t| event.created_at <= t)
-            && self.kind_match(&event.kind)
-            && self.authors_match(event)
-            && self.tag_match(event)
-    }
 
     /// Check if [`Filter`] is empty
     pub fn is_empty(&self) -> bool {
         self == &Filter::default()
-    }
-}
-
-/// Filters match event trait
-pub trait FiltersMatchEvent {
-    /// Determine if [`Filter`] match the provided [`Event`].
-    fn match_event(&self, event: &Event) -> bool;
-}
-
-impl FiltersMatchEvent for Vec<Filter> {
-    fn match_event(&self, event: &Event) -> bool {
-        self.iter().any(|f| f.match_event(event))
     }
 }
 
@@ -801,10 +744,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use bitcoin::secp256k1::schnorr::Signature;
-
     use super::*;
-    use crate::Tag;
 
     #[test]
     fn test_kind_concatenation() {
@@ -901,125 +841,6 @@ mod test {
         let json = r##"{"aa":["..."],"search":"test"}"##;
         let filter = Filter::from_json(json).unwrap();
         assert_eq!(filter, Filter::new().search("test"));
-    }
-
-    #[test]
-    fn test_match_event() {
-        let event_id =
-            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
-                .unwrap();
-        let pubkey = XOnlyPublicKey::from_str(
-            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
-        )
-        .unwrap();
-        let event =
-            Event::new(
-                event_id,
-                pubkey,
-                Timestamp::from(1612809991),
-                Kind::TextNote,
-                [
-                    Tag::public_key(XOnlyPublicKey::from_str("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
-                    Tag::event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap()),
-                ],
-                "test",
-                Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
-            );
-
-        let event_with_empty_tags =
-            Event::new(
-                event_id,
-                pubkey,
-                Timestamp::from(1612809991),
-                Kind::TextNote,
-                [],
-                "test",
-                Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
-            );
-
-        // ID match
-        let filter = Filter::new().id(event_id);
-        assert!(filter.match_event(&event));
-
-        // Not match (kind)
-        let filter = Filter::new().id(event_id).kind(Kind::Metadata);
-        assert!(!filter.match_event(&event));
-
-        // Match (author, kind and since)
-        let filter = Filter::new()
-            .author(pubkey)
-            .kind(Kind::TextNote)
-            .since(Timestamp::from(1612808000));
-        assert!(filter.match_event(&event));
-
-        // Not match (since)
-        let filter = Filter::new()
-            .author(pubkey)
-            .kind(Kind::TextNote)
-            .since(Timestamp::from(1700000000));
-        assert!(!filter.match_event(&event));
-
-        // Match (#p tag and kind)
-        let filter = Filter::new()
-            .pubkey(
-                XOnlyPublicKey::from_str(
-                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
-                )
-                .unwrap(),
-            )
-            .kind(Kind::TextNote);
-        assert!(filter.match_event(&event));
-
-        // Match (tags)
-        let filter = Filter::new()
-            .pubkey(
-                XOnlyPublicKey::from_str(
-                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
-                )
-                .unwrap(),
-            )
-            .event(
-                EventId::from_hex(
-                    "7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96",
-                )
-                .unwrap(),
-            );
-        assert!(filter.match_event(&event));
-
-        // Match (tags)
-        let filter = Filter::new().events(vec![
-            EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")
-                .unwrap(),
-            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
-                .unwrap(),
-        ]);
-        assert!(filter.match_event(&event));
-
-        // Not match (tags)
-        let filter = Filter::new().events(vec![EventId::from_hex(
-            "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
-        )
-        .unwrap()]);
-        assert!(!filter.match_event(&event));
-
-        let filters: Vec<Filter> = vec![
-            // Filter that match
-            Filter::new()
-                .author(pubkey)
-                .kind(Kind::TextNote)
-                .since(Timestamp::from(1612808000)),
-            // Filter that not match
-            Filter::new().events(vec![EventId::from_hex(
-                "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
-            )
-            .unwrap()]),
-        ];
-        assert!(filters.match_event(&event));
-
-        // Not match (tags filter for events with empty tags)
-        let filter = Filter::new().hashtag("this-should-not-match");
-        assert!(!filter.match_event(&event));
-        assert!(!filter.match_event(&event_with_empty_tags));
     }
 
     #[test]
