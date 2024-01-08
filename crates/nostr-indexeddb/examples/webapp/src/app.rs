@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr_indexeddb::database::NostrDatabase;
+use nostr_indexeddb::database::{NostrDatabase, Order};
 use nostr_indexeddb::nostr::prelude::*;
 use nostr_indexeddb::WebDatabase;
 use wasm_bindgen_futures::spawn_local;
@@ -31,7 +31,7 @@ pub fn app() -> Html {
             .query(vec![Filter::new()
                 .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
                 .limit(20)
-                .author(keys_a.public_key())])
+                .author(keys_a.public_key())], Order::Desc)
             .await
             .unwrap();
         console::log_1(&format!("Events: {events:?}").into());

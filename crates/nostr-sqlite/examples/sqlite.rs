@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use nostr::prelude::*;
-use nostr_database::NostrDatabase;
+use nostr_database::{NostrDatabase, Order};
 use nostr_sqlite::SQLiteDatabase;
 use tracing_subscriber::fmt::format::FmtSpan;
 
@@ -89,12 +89,15 @@ async fn main() {
     println!("Seen on: {relays:?}");
 
     let events = database
-        .query(vec![Filter::new()
-            .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
-            .limit(20)
-            //.kind(Kind::Custom(123))
-            //.identifier("myid5000")
-            .author(keys_a.public_key())])
+        .query(
+            vec![Filter::new()
+                .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
+                .limit(20)
+                //.kind(Kind::Custom(123))
+                //.identifier("myid5000")
+                .author(keys_a.public_key())],
+            Order::Desc,
+        )
         .await
         .unwrap();
     println!("Got {} events", events.len());

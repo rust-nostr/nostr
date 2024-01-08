@@ -14,6 +14,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, NostrDatabase,
+    Order,
 };
 
 /// Memory Database (RAM)
@@ -165,9 +166,9 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
+    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
         if self.opts.events {
-            let ids = self.indexes.query(filters).await;
+            let ids = self.indexes.query(filters, order).await;
             let events = self.events.read().await;
 
             let mut list: Vec<Event> = Vec::new();
@@ -182,9 +183,13 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+        order: Order,
+    ) -> Result<Vec<EventId>, Self::Err> {
         if self.opts.events {
-            Ok(self.indexes.query(filters).await)
+            Ok(self.indexes.query(filters, order).await)
         } else {
             Err(DatabaseError::FeatureDisabled)
         }

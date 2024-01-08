@@ -9,7 +9,7 @@ use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventArray, JsEventId};
 use nostr_js::key::JsPublicKey;
 use nostr_js::message::JsFilter;
-use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
+use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt, Order};
 use nostr_sdk::WebDatabase;
 use wasm_bindgen::prelude::*;
 
@@ -94,7 +94,7 @@ impl JsNostrDatabase {
         let filters = filters.into_iter().map(|f| f.inner()).collect();
         Ok(self
             .inner
-            .query(filters)
+            .query(filters, Order::Desc)
             .await
             .map_err(into_err)?
             .into_iter()

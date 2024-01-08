@@ -4,7 +4,7 @@
 
 //! Tag Indexes
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::ops::{Deref, DerefMut};
 
 use nostr::hashes::siphash24::Hash as SipHash24;
@@ -15,13 +15,13 @@ use nostr::{Alphabet, GenericTagValue};
 pub const TAG_INDEX_VALUE_SIZE: usize = 8;
 
 /// Tag Indexes
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct TagIndexes {
-    inner: HashMap<Alphabet, TagIndexValues>,
+    inner: BTreeMap<Alphabet, TagIndexValues>,
 }
 
 impl Deref for TagIndexes {
-    type Target = HashMap<Alphabet, TagIndexValues>;
+    type Target = BTreeMap<Alphabet, TagIndexValues>;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
@@ -70,13 +70,13 @@ where
 }
 
 /// Tag Index Values
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct TagIndexValues {
-    inner: HashSet<[u8; TAG_INDEX_VALUE_SIZE]>,
+    inner: BTreeSet<[u8; TAG_INDEX_VALUE_SIZE]>,
 }
 
 impl Deref for TagIndexValues {
-    type Target = HashSet<[u8; TAG_INDEX_VALUE_SIZE]>;
+    type Target = BTreeSet<[u8; TAG_INDEX_VALUE_SIZE]>;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
@@ -89,7 +89,6 @@ impl DerefMut for TagIndexValues {
 }
 
 impl TagIndexValues {
-    #[allow(missing_docs)]
     pub fn iter<'a, I>(iter: I) -> impl Iterator<Item = [u8; TAG_INDEX_VALUE_SIZE]> + 'a
     where
         I: Iterator<Item = &'a GenericTagValue> + 'a,

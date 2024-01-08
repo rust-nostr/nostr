@@ -20,7 +20,6 @@ flatbuf = ["dep:flatbuffers"]
 async-trait.workspace = true
 flatbuffers = { version = "23.5", optional = true }
 nostr = { workspace = true, features = ["std"] }
-rayon = "1.8"
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }

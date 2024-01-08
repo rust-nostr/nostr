@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::{Event, EventId, Filter, PublicKey};
-use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
+use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt, Order};
 use nostr_sdk::{block_on, SQLiteDatabase};
 use uniffi::Object;
 
@@ -78,7 +78,7 @@ impl NostrDatabase {
                 .collect();
             Ok(self
                 .inner
-                .query(filters)
+                .query(filters, Order::Desc)
                 .await?
                 .into_iter()
                 .map(|e| Arc::new(e.into()))

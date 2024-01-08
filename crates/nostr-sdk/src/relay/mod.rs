@@ -26,7 +26,7 @@ use nostr::{
     ClientMessage, Event, EventId, Filter, JsonUtil, Keys, RawRelayMessage, RelayMessage,
     SubscriptionId, Timestamp, Url,
 };
-use nostr_database::{DatabaseError, DynNostrDatabase};
+use nostr_database::{DatabaseError, DynNostrDatabase, Order};
 use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
 use nostr_sdk_net::{self as net, WsMessage};
 use thiserror::Error;
@@ -1370,7 +1370,7 @@ impl Relay {
     ) -> Result<Vec<Event>, Error> {
         let stored_events: Vec<Event> = self
             .database
-            .query(filters.clone())
+            .query(filters.clone(), Order::Desc)
             .await
             .unwrap_or_default();
         let events: Mutex<Vec<Event>> = Mutex::new(stored_events);
@@ -1567,7 +1567,7 @@ impl Relay {
                                             .filter_map(|id| EventId::from_slice(&id).ok());
                                         let filter = Filter::new().ids(ids);
                                         let events: Vec<Event> =
-                                            self.database.query(vec![filter]).await?;
+                                            self.database.query(vec![filter], Order::Desc).await?;
                                         let msgs: Vec<ClientMessage> = events
                                             .into_iter()
                                             .map(ClientMessage::new_event)

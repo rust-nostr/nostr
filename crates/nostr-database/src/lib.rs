@@ -52,6 +52,16 @@ pub enum Backend {
     Custom(String),
 }
 
+/// Query result order
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Order {
+    /// Ascending
+    Asc,
+    /// Descending (default)
+    #[default]
+    Desc,
+}
+
 /// A type-erased [`NostrDatabase`].
 pub type DynNostrDatabase = dyn NostrDatabase<Err = DatabaseError>;
 
@@ -147,10 +157,14 @@ pub trait NostrDatabase: AsyncTraitDeps {
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err>;
 
     /// Query store with filters
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err>;
+    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err>;
 
     /// Get event IDs by filters
-    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err>;
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+        order: Order,
+    ) -> Result<Vec<EventId>, Self::Err>;
 
     /// Get `negentropy` items
     async fn negentropy_items(
@@ -167,12 +181,13 @@ pub trait NostrDatabase: AsyncTraitDeps {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrDatabaseExt: NostrDatabase {
     /// Get profile metadata
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn profile(&self, public_key: XOnlyPublicKey) -> Result<Profile, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter]).await?;
+        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
         match events.first() {
             Some(event) => match Metadata::from_json(&event.content) {
                 Ok(metadata) => Ok(Profile::new(public_key, metadata)),
@@ -186,6 +201,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     }
 
     /// Get contact list public keys
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn contacts_public_keys(
         &self,
         public_key: XOnlyPublicKey,
@@ -194,7 +210,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::ContactList)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter]).await?;
+        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
         match events.first() {
             Some(event) => Ok(event.public_keys().copied().collect()),
             None => Ok(Vec::new()),
@@ -208,7 +224,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::ContactList)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter]).await?;
+        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
         match events.first() {
             Some(event) => {
                 // Get contacts metadata
@@ -216,7 +232,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
                     .authors(event.public_keys().copied())
                     .kind(Kind::Metadata);
                 let mut contacts: HashSet<Profile> = self
-                    .query(vec![filter])
+                    .query(vec![filter], Order::Desc)
                     .await?
                     .into_iter()
                     .map(|e| {
@@ -323,13 +339,17 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
         self.0.count(filters).await.map_err(Into::into)
     }
 
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Self::Err> {
-        self.0.query(filters).await.map_err(Into::into)
+    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
+        self.0.query(filters, order).await.map_err(Into::into)
     }
 
-    async fn event_ids_by_filters(&self, filters: Vec<Filter>) -> Result<Vec<EventId>, Self::Err> {
+    async fn event_ids_by_filters(
+        &self,
+        filters: Vec<Filter>,
+        order: Order,
+    ) -> Result<Vec<EventId>, Self::Err> {
         self.0
-            .event_ids_by_filters(filters)
+            .event_ids_by_filters(filters, order)
             .await
             .map_err(Into::into)
     }
