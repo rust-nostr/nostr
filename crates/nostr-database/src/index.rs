@@ -116,7 +116,7 @@ struct FilterIndex {
     kinds: HashSet<Kind>,
     since: Option<Timestamp>,
     until: Option<Timestamp>,
-    generic_tags: HashMap<Alphabet, BTreeSet<GenericTagValue>>,
+    generic_tags: HashMap<Alphabet, HashSet<GenericTagValue>>,
 }
 
 impl FilterIndex {
@@ -157,6 +157,7 @@ impl FilterIndex {
         if self.generic_tags.is_empty() {
             return true;
         }
+
         if event.tags.is_empty() {
             return false;
         }
@@ -188,16 +189,16 @@ impl FilterIndex {
 impl From<Filter> for FilterIndex {
     fn from(value: Filter) -> Self {
         Self {
-            ids: value.ids.into_iter().collect(),
+            ids: value.ids,
             authors: value
                 .authors
                 .into_iter()
                 .map(PublicKeyPrefix::from)
                 .collect(),
-            kinds: value.kinds.into_iter().collect(),
+            kinds: value.kinds,
             since: value.since,
             until: value.until,
-            generic_tags: value.generic_tags.into_iter().collect(),
+            generic_tags: value.generic_tags,
         }
     }
 }

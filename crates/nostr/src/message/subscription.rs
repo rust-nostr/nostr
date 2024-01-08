@@ -5,10 +5,13 @@
 
 //! Subscription filters
 
-use alloc::collections::{BTreeMap, BTreeSet};
+#[cfg(not(feature = "std"))]
+use alloc::collections::{BTreeMap as AllocMap, BTreeSet as AllocSet};
 use alloc::string::{String, ToString};
 use core::fmt;
 use core::str::FromStr;
+#[cfg(feature = "std")]
+use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
@@ -316,17 +319,17 @@ impl IntoGenericTagValue for &str {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Filter {
     /// List of [`EventId`]
-    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    #[serde(skip_serializing_if = "AllocSet::is_empty")]
     #[serde(default)]
-    pub ids: BTreeSet<EventId>,
+    pub ids: AllocSet<EventId>,
     /// List of [`XOnlyPublicKey`]
-    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    #[serde(skip_serializing_if = "AllocSet::is_empty")]
     #[serde(default)]
-    pub authors: BTreeSet<XOnlyPublicKey>,
+    pub authors: AllocSet<XOnlyPublicKey>,
     /// List of a kind numbers
-    #[serde(skip_serializing_if = "BTreeSet::is_empty")]
+    #[serde(skip_serializing_if = "AllocSet::is_empty")]
     #[serde(default)]
-    pub kinds: BTreeSet<Kind>,
+    pub kinds: AllocSet<Kind>,
     /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
@@ -352,7 +355,7 @@ pub struct Filter {
         deserialize_with = "deserialize_generic_tags"
     )]
     #[serde(default)]
-    pub generic_tags: BTreeMap<Alphabet, BTreeSet<GenericTagValue>>,
+    pub generic_tags: AllocMap<Alphabet, AllocSet<GenericTagValue>>,
 }
 
 impl Filter {
@@ -644,7 +647,7 @@ impl Filter {
         I: IntoIterator<Item = T>,
         T: IntoGenericTagValue,
     {
-        let values: BTreeSet<GenericTagValue> = values
+        let values: AllocSet<GenericTagValue> = values
             .into_iter()
             .map(|v| v.into_generic_tag_value())
             .collect();
@@ -663,7 +666,7 @@ impl Filter {
         I: IntoIterator<Item = T>,
         T: IntoGenericTagValue,
     {
-        let values: BTreeSet<GenericTagValue> = values
+        let values: AllocSet<GenericTagValue> = values
             .into_iter()
             .map(|v| v.into_generic_tag_value())
             .collect();
@@ -684,7 +687,7 @@ impl JsonUtil for Filter {
 }
 
 fn serialize_generic_tags<S>(
-    generic_tags: &BTreeMap<Alphabet, BTreeSet<GenericTagValue>>,
+    generic_tags: &AllocMap<Alphabet, AllocSet<GenericTagValue>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -699,14 +702,14 @@ where
 
 fn deserialize_generic_tags<'de, D>(
     deserializer: D,
-) -> Result<BTreeMap<Alphabet, BTreeSet<GenericTagValue>>, D::Error>
+) -> Result<AllocMap<Alphabet, AllocSet<GenericTagValue>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = BTreeMap<Alphabet, BTreeSet<GenericTagValue>>;
+        type Value = AllocMap<Alphabet, AllocSet<GenericTagValue>>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("map in which the keys are \"#X\" for some character X")
@@ -716,13 +719,13 @@ where
         where
             M: MapAccess<'de>,
         {
-            let mut generic_tags = BTreeMap::new();
+            let mut generic_tags = AllocMap::new();
             while let Some(key) = map.next_key::<String>()? {
                 let mut chars = key.chars();
                 if let (Some('#'), Some(ch), None) = (chars.next(), chars.next(), chars.next()) {
                     let tag: Alphabet = Alphabet::from_str(ch.to_string().as_str())
                         .map_err(serde::de::Error::custom)?;
-                    let mut values: BTreeSet<GenericTagValue> = map.next_value()?;
+                    let mut values: AllocSet<GenericTagValue> = map.next_value()?;
 
                     match tag {
                         Alphabet::P => values.retain(|v| matches!(v, GenericTagValue::Pubkey(_))),
@@ -800,7 +803,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "std")]
+    #[cfg(not(feature = "std"))]
     fn test_filter_serialization() {
         let filter = Filter::new()
             .identifier("identifier")
