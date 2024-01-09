@@ -101,7 +101,7 @@
     Add the following to the dependencies array in your `Package.swift`:
 
     ``` swift
-    .package(url: "https://github.com/rust-nostr/nostr-swift.git", from: "0.7.0"),
+    .package(url: "https://github.com/rust-nostr/nostr-swift.git", from: "0.7.1"),
     ```
 
     Import the library in your code:
