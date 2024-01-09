@@ -25,7 +25,7 @@ use crate::raw::RawEvent;
 /// FlatBuffers Error
 #[derive(Debug, Error)]
 pub enum Error {
-    /// Invalud FlatBuffer
+    /// Invalid FlatBuffer
     #[error(transparent)]
     InvalidFlatbuffer(#[from] InvalidFlatbuffer),
     #[error(transparent)]

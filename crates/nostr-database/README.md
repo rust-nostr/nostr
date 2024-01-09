@@ -4,7 +4,7 @@ Database for Nostr apps
 
 ## Nostr Database Trait
 
-This library cointains the `NostrDatabase` and `NostrDatabaseExt` traits. You can use the [default backends](#default-backends) or implement your one (like PostgreSQL, ...).
+This library contains the `NostrDatabase` and `NostrDatabaseExt` traits. You can use the [default backends](#default-backends) or implement your one (like PostgreSQL, ...).
 
 ## Default backends
 

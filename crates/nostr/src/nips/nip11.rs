@@ -129,7 +129,7 @@ pub struct Limitation {
     pub created_at_upper_limit: Option<Timestamp>,
 }
 
-/// A retention shedule for the relay
+/// A retention schedule for the relay
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Retention {
     /// The event kinds this retention pertains to

@@ -34,7 +34,7 @@ pub enum Error {
     V2(v2::ErrorV2),
     /// Error while decoding from base64
     Base64Decode(base64::DecodeError),
-    /// Invalid lenght
+    /// Invalid length
     InvalidLength,
     /// Error while encoding to UTF-8
     Utf8Encode,

@@ -178,7 +178,7 @@ impl From<nip11::Limitation> for Limitation {
     }
 }
 
-/// A retention shedule for the relay
+/// A retention schedule for the relay
 #[derive(Record)]
 pub struct Retention {
     /// The event kinds this retention pertains to
