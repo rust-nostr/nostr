@@ -22,7 +22,6 @@ jobs:
     strategy:
       matrix:
         python: # Update this list whenever the docker image is updated (check /opt/python/)
-          - cp38-cp38
           - cp39-cp39
           - cp310-cp310
           - cp311-cp311
@@ -53,7 +52,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python: ["3.9", "3.10", "3.11", "3.12"]
     defaults:
       run:
         working-directory: bindings/nostr-ffi/bindings-python        
@@ -94,7 +93,7 @@ jobs:
         working-directory: bindings/nostr-ffi/bindings-python
     strategy:
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
@@ -128,7 +127,7 @@ jobs:
         working-directory: bindings/nostr-ffi/bindings-python
     strategy:
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
@@ -161,7 +160,7 @@ jobs:
         working-directory: bindings/nostr-ffi/bindings-python
     strategy:
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
