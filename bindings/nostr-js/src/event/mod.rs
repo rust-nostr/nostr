@@ -55,29 +55,29 @@ impl From<JsEvent> for Event {
 impl JsEvent {
     #[wasm_bindgen(getter)]
     pub fn id(&self) -> JsEventId {
-        self.inner.id.into()
+        self.inner.id().into()
     }
 
+    /// Get event author (`pubkey` field)
     #[wasm_bindgen(getter)]
-    pub fn pubkey(&self) -> JsPublicKey {
-        self.inner.pubkey.into()
+    pub fn author(&self) -> JsPublicKey {
+        self.inner.author().into()
     }
 
     #[wasm_bindgen(js_name = createdAt, getter)]
     pub fn created_at(&self) -> JsTimestamp {
-        self.inner.created_at.into()
+        self.inner.created_at().into()
     }
 
     #[wasm_bindgen(getter)]
     pub fn kind(&self) -> f64 {
-        self.inner.kind.as_f64()
+        self.inner.kind().as_f64()
     }
 
     #[wasm_bindgen(getter)]
     pub fn tags(&self) -> JsTagArray {
         self.inner
-            .tags
-            .iter()
+            .iter_tags()
             .cloned()
             .map(|t| {
                 let e: JsTag = t.into();
@@ -89,12 +89,12 @@ impl JsEvent {
 
     #[wasm_bindgen(getter)]
     pub fn content(&self) -> String {
-        self.inner.content.clone()
+        self.inner.content().to_string()
     }
 
     #[wasm_bindgen(getter)]
     pub fn signature(&self) -> String {
-        self.inner.sig.to_string()
+        self.inner.signature().to_string()
     }
 
     #[wasm_bindgen]

@@ -44,13 +44,13 @@ async fn main() -> Result<()> {
     client
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind == Kind::EncryptedDirectMessage {
+                if event.kind() == Kind::EncryptedDirectMessage {
                     if let Ok(msg) =
-                        nip04::decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content)
+                        nip04::decrypt(&my_keys.secret_key()?, event.author_ref(), event.content())
                     {
                         println!("New DM: {msg}");
                         client
-                            .send_direct_msg(event.pubkey, msg, Some(event.id))
+                            .send_direct_msg(event.author(), msg, Some(event.id()))
                             .await?;
                     } else {
                         tracing::error!("Impossible to decrypt direct message");

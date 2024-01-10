@@ -87,7 +87,7 @@ impl NostrDatabase for MemoryDatabase {
             if to_store {
                 let mut events = self.events.write().await;
 
-                events.insert(event.id, event.clone());
+                events.insert(event.id(), event.clone());
 
                 for event_id in to_discard.into_iter() {
                     events.remove(&event_id);
@@ -95,7 +95,7 @@ impl NostrDatabase for MemoryDatabase {
 
                 Ok(true)
             } else {
-                tracing::warn!("Event {} not saved: unknown", event.id);
+                tracing::warn!("Event {} not saved: unknown", event.id());
                 Ok(false)
             }
         } else {

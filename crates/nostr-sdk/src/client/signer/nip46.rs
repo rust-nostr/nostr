@@ -134,9 +134,9 @@ impl Client {
             time::timeout(timeout, async {
                 while let Ok(notification) = notifications.recv().await {
                     if let RelayPoolNotification::Event { event, .. } = notification {
-                        if event.kind == Kind::NostrConnect {
+                        if event.kind() == Kind::NostrConnect {
                             let msg: String =
-                                nip04::decrypt(&secret_key, &event.pubkey, &event.content)?;
+                                nip04::decrypt(&secret_key, event.author_ref(), event.content())?;
                             let msg = Message::from_json(msg)?;
                             if let Ok(Request::Connect(pk)) = msg.to_request() {
                                 signer.set_signer_public_key(pk).await;
@@ -202,8 +202,8 @@ impl Client {
         let future = async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind == Kind::NostrConnect {
-                        let msg = nip04::decrypt(&secret_key, &event.pubkey, &event.content)?;
+                    if event.kind() == Kind::NostrConnect {
+                        let msg = nip04::decrypt(&secret_key, event.author_ref(), event.content())?;
                         let msg = Message::from_json(msg)?;
 
                         tracing::debug!("New message received: {msg:?}");

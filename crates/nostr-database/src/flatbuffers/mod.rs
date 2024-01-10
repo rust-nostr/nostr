@@ -59,12 +59,11 @@ impl FlatBufferEncode for Event {
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
         fbb.reset();
 
-        let id = event_fbs::Fixed32Bytes::new(&self.id.to_bytes());
-        let pubkey = event_fbs::Fixed32Bytes::new(&self.pubkey.serialize());
-        let sig = event_fbs::Fixed64Bytes::new(self.sig.as_ref());
+        let id = event_fbs::Fixed32Bytes::new(&self.id().to_bytes());
+        let pubkey = event_fbs::Fixed32Bytes::new(&self.author().serialize());
+        let sig = event_fbs::Fixed64Bytes::new(self.signature().as_ref());
         let tags = self
-            .tags
-            .iter()
+            .iter_tags()
             .map(|t| {
                 let tags = t
                     .as_vec()
@@ -80,10 +79,10 @@ impl FlatBufferEncode for Event {
         let args = event_fbs::EventArgs {
             id: Some(&id),
             pubkey: Some(&pubkey),
-            created_at: self.created_at.as_u64(),
-            kind: self.kind.as_u64(),
+            created_at: self.created_at().as_u64(),
+            kind: self.kind().as_u64(),
             tags: Some(fbb.create_vector(&tags)),
-            content: Some(fbb.create_string(&self.content)),
+            content: Some(fbb.create_string(self.content())),
             sig: Some(&sig),
         };
 

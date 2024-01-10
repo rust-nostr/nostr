@@ -537,8 +537,8 @@ impl EventProperties {
     /// Create from an Event
     pub fn from_event(event: &Event) -> Self {
         Self {
-            kind: event.kind.as_u64(),
-            created_time: event.created_at.as_u64(),
+            kind: event.kind().as_u64(),
+            created_time: event.created_at().as_u64(),
         }
     }
 }

@@ -35,11 +35,11 @@ fn main() -> Result<()> {
 
     client.handle_notifications(|notification| {
         if let RelayPoolNotification::Event { event, .. } = notification {
-            if event.kind == Kind::EncryptedDirectMessage {
+            if event.kind() == Kind::EncryptedDirectMessage {
                 if let Ok(msg) = nip04::decrypt(
                     &my_keys.secret_key().unwrap(),
-                    &event.pubkey,
-                    &event.content,
+                    event.author_ref(),
+                    event.content(),
                 ) {
                     println!("New DM: {}", msg);
                     // return Ok(true);

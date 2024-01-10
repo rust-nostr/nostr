@@ -270,7 +270,7 @@ impl_nostr_database!({
                 .db
                 .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
             let store = tx.object_store(EVENTS_CF)?;
-            let key = JsValue::from(event.id.to_hex());
+            let key = JsValue::from(event.id().to_hex());
             let value = JsValue::from(hex::encode(event.encode(&mut fbb)));
             store.put_key_val(&key, &value)?;
 

@@ -50,7 +50,7 @@ impl fmt::Display for Error {
 pub(crate) fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Event> {
     events
         .into_iter()
-        .filter(|e| e.kind == *kind_needed)
+        .filter(|e| e.kind() == *kind_needed)
         .collect()
 }
 

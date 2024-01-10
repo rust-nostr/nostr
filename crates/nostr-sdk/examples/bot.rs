@@ -46,8 +46,8 @@ async fn main() -> Result<()> {
     client
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind == Kind::EncryptedDirectMessage {
-                    match nip04::decrypt(&keys.secret_key()?, &event.pubkey, &event.content) {
+                if event.kind() == Kind::EncryptedDirectMessage {
+                    match nip04::decrypt(&keys.secret_key()?, event.author_ref(), event.content()) {
                         Ok(msg) => {
                             let content: String = match msg.as_str() {
                                 "/rand" => rand::random::<u16>().to_string(),
@@ -57,7 +57,9 @@ async fn main() -> Result<()> {
                                 }
                             };
 
-                            client.send_direct_msg(event.pubkey, content, None).await?;
+                            client
+                                .send_direct_msg(event.author(), content, None)
+                                .await?;
                         }
                         Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
                     }

@@ -42,36 +42,36 @@ impl Deref for Event {
 #[uniffi::export]
 impl Event {
     pub fn id(&self) -> Arc<EventId> {
-        Arc::new(self.inner.id.into())
+        Arc::new(self.inner.id().into())
     }
 
-    pub fn pubkey(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.pubkey.into())
+    /// Get event author (`pubkey` field)
+    pub fn author(&self) -> Arc<PublicKey> {
+        Arc::new(self.inner.author().into())
     }
 
     pub fn created_at(&self) -> Arc<Timestamp> {
-        Arc::new(self.inner.created_at.into())
+        Arc::new(self.inner.created_at().into())
     }
 
     pub fn kind(&self) -> u64 {
-        self.inner.kind.into()
+        self.inner.kind().into()
     }
 
     pub fn tags(&self) -> Vec<Arc<Tag>> {
         self.inner
-            .tags
-            .clone()
-            .into_iter()
+            .iter_tags()
+            .cloned()
             .map(|t| Arc::new(t.into()))
             .collect()
     }
 
     pub fn content(&self) -> String {
-        self.inner.content.clone()
+        self.inner.content().to_string()
     }
 
     pub fn signature(&self) -> String {
-        self.inner.sig.to_string()
+        self.inner.signature().to_string()
     }
 
     /// Verify both `EventId` and `Signature`

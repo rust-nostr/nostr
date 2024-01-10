@@ -626,11 +626,11 @@ impl Filter {
     }
 
     /// Add limit
-    pub fn limit(self, limit: usize) -> Self {
-        Self {
-            limit: Some(limit),
-            ..self
-        }
+    ///
+    /// Maximum number of events to be returned in the initial query
+    pub fn limit(mut self, limit: usize) -> Self {
+        self.limit = Some(limit);
+        self
     }
 
     /// Remove limit

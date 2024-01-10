@@ -81,11 +81,11 @@ impl TryFrom<RawEvent> for EventIndex {
 impl From<&Event> for EventIndex {
     fn from(e: &Event) -> Self {
         Self {
-            created_at: e.created_at,
-            event_id: Arc::new(e.id),
-            pubkey: PublicKeyPrefix::from(e.pubkey),
-            kind: e.kind,
-            tags: Arc::new(TagIndexes::from(e.tags.iter().map(|t| t.as_vec()))),
+            created_at: e.created_at(),
+            event_id: Arc::new(e.id()),
+            pubkey: PublicKeyPrefix::from(e.author_ref()),
+            kind: e.kind(),
+            tags: Arc::new(TagIndexes::from(e.iter_tags().map(|t| t.as_vec()))),
         }
     }
 }
@@ -237,32 +237,32 @@ impl<'a> From<RawEvent> for EventOrRawEvent<'a> {
 impl<'a> EventOrRawEvent<'a> {
     fn pubkey(&self) -> PublicKeyPrefix {
         match self {
-            Self::Event(e) => PublicKeyPrefix::from(e.pubkey),
-            Self::EventOwned(e) => PublicKeyPrefix::from(e.pubkey),
+            Self::Event(e) => PublicKeyPrefix::from(e.author_ref()),
+            Self::EventOwned(e) => PublicKeyPrefix::from(e.author_ref()),
             Self::Raw(r) => PublicKeyPrefix::from(r.pubkey),
         }
     }
 
     fn created_at(&self) -> Timestamp {
         match self {
-            Self::Event(e) => e.created_at,
-            Self::EventOwned(e) => e.created_at,
+            Self::Event(e) => e.created_at(),
+            Self::EventOwned(e) => e.created_at(),
             Self::Raw(r) => r.created_at,
         }
     }
 
     fn kind(&self) -> Kind {
         match self {
-            Self::Event(e) => e.kind,
-            Self::EventOwned(e) => e.kind,
+            Self::Event(e) => e.kind(),
+            Self::EventOwned(e) => e.kind(),
             Self::Raw(r) => r.kind,
         }
     }
 
     fn tags(self) -> TagIndexes {
         match self {
-            Self::Event(e) => TagIndexes::from(e.tags.iter().map(|t| t.as_vec())),
-            Self::EventOwned(e) => TagIndexes::from(e.tags.iter().map(|t| t.as_vec())),
+            Self::Event(e) => TagIndexes::from(e.iter_tags().map(|t| t.as_vec())),
+            Self::EventOwned(e) => TagIndexes::from(e.iter_tags().map(|t| t.as_vec())),
             Self::Raw(r) => TagIndexes::from(r.tags.into_iter()),
         }
     }
@@ -412,8 +412,8 @@ impl DatabaseIndexes {
 
         // Parse event ID
         let event_id: ArcEventId = match &event {
-            EventOrRawEvent::Event(e) => Arc::new(e.id),
-            EventOrRawEvent::EventOwned(e) => Arc::new(e.id),
+            EventOrRawEvent::Event(e) => Arc::new(e.id()),
+            EventOrRawEvent::EventOwned(e) => Arc::new(e.id()),
             EventOrRawEvent::Raw(r) => Arc::new(EventId::from_slice(&r.id)?),
         };
 
@@ -889,19 +889,19 @@ mod tests {
 
         // Test expected output
         let expected_output = vec![
-            Event::from_json(EVENTS[12]).unwrap().id,
-            Event::from_json(EVENTS[11]).unwrap().id,
+            Event::from_json(EVENTS[12]).unwrap().id(),
+            Event::from_json(EVENTS[11]).unwrap().id(),
             // Event 10 deleted by event 12
             // Event 9 replaced by event 10
-            Event::from_json(EVENTS[8]).unwrap().id,
-            Event::from_json(EVENTS[7]).unwrap().id,
-            Event::from_json(EVENTS[6]).unwrap().id,
-            Event::from_json(EVENTS[5]).unwrap().id,
-            Event::from_json(EVENTS[4]).unwrap().id,
+            Event::from_json(EVENTS[8]).unwrap().id(),
+            Event::from_json(EVENTS[7]).unwrap().id(),
+            Event::from_json(EVENTS[6]).unwrap().id(),
+            Event::from_json(EVENTS[5]).unwrap().id(),
+            Event::from_json(EVENTS[4]).unwrap().id(),
             // Event 3 deleted by Event 8
             // Event 2 replaced by Event 6
-            Event::from_json(EVENTS[1]).unwrap().id,
-            Event::from_json(EVENTS[0]).unwrap().id,
+            Event::from_json(EVENTS[1]).unwrap().id(),
+            Event::from_json(EVENTS[0]).unwrap().id(),
         ];
         assert_eq!(
             indexes.query([Filter::new()], Order::Desc).await,
@@ -944,8 +944,8 @@ mod tests {
                 )
                 .await,
             vec![
-                Event::from_json(EVENTS[4]).unwrap().id,
-                Event::from_json(EVENTS[5]).unwrap().id,
+                Event::from_json(EVENTS[4]).unwrap().id(),
+                Event::from_json(EVENTS[5]).unwrap().id(),
             ]
         );
 
@@ -960,7 +960,7 @@ mod tests {
                     Order::Desc
                 )
                 .await,
-            vec![Event::from_json(EVENTS[4]).unwrap().id,]
+            vec![Event::from_json(EVENTS[4]).unwrap().id()]
         );
 
         assert_eq!(
@@ -968,11 +968,11 @@ mod tests {
                 .query([Filter::new().author(keys_a.public_key())], Order::Desc)
                 .await,
             vec![
-                Event::from_json(EVENTS[12]).unwrap().id,
-                Event::from_json(EVENTS[8]).unwrap().id,
-                Event::from_json(EVENTS[6]).unwrap().id,
-                Event::from_json(EVENTS[1]).unwrap().id,
-                Event::from_json(EVENTS[0]).unwrap().id,
+                Event::from_json(EVENTS[12]).unwrap().id(),
+                Event::from_json(EVENTS[8]).unwrap().id(),
+                Event::from_json(EVENTS[6]).unwrap().id(),
+                Event::from_json(EVENTS[1]).unwrap().id(),
+                Event::from_json(EVENTS[0]).unwrap().id(),
             ]
         );
 
@@ -986,8 +986,8 @@ mod tests {
                 )
                 .await,
             vec![
-                Event::from_json(EVENTS[1]).unwrap().id,
-                Event::from_json(EVENTS[0]).unwrap().id,
+                Event::from_json(EVENTS[1]).unwrap().id(),
+                Event::from_json(EVENTS[0]).unwrap().id(),
             ]
         );
 
@@ -1001,8 +1001,8 @@ mod tests {
                 )
                 .await,
             vec![
-                Event::from_json(EVENTS[1]).unwrap().id,
-                Event::from_json(EVENTS[0]).unwrap().id,
+                Event::from_json(EVENTS[1]).unwrap().id(),
+                Event::from_json(EVENTS[0]).unwrap().id(),
             ]
         );
 
@@ -1012,9 +1012,9 @@ mod tests {
                 .query([Filter::new().identifier("id-1")], Order::Desc)
                 .await,
             vec![
-                Event::from_json(EVENTS[6]).unwrap().id,
-                Event::from_json(EVENTS[5]).unwrap().id,
-                Event::from_json(EVENTS[1]).unwrap().id,
+                Event::from_json(EVENTS[6]).unwrap().id(),
+                Event::from_json(EVENTS[5]).unwrap().id(),
+                Event::from_json(EVENTS[1]).unwrap().id(),
             ]
         );
     }

@@ -900,7 +900,7 @@ impl Client {
         let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
-            for tag in event.tags.into_iter() {
+            for tag in event.into_iter_tags() {
                 if let Tag::PublicKey {
                     public_key,
                     relay_url,
@@ -956,8 +956,8 @@ impl Client {
             }
             let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
             for event in events.into_iter() {
-                let metadata = Metadata::from_json(&event.content)?;
-                if let Some(m) = contacts.get_mut(&event.pubkey) {
+                let metadata = Metadata::from_json(event.content())?;
+                if let Some(m) = contacts.get_mut(&event.author()) {
                     *m = metadata
                 };
             }

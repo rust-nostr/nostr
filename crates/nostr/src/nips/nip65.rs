@@ -12,11 +12,14 @@ use crate::{Event, RelayMetadata, Tag, UncheckedUrl};
 
 /// Extracts the relay info (url, optional read/write flag) from the event
 pub fn extract_relay_list(event: &Event) -> Vec<(UncheckedUrl, Option<RelayMetadata>)> {
-    let mut list = Vec::new();
-    for tag in event.tags.iter() {
-        if let Tag::RelayMetadata(url, metadata) = tag {
-            list.push((url.clone(), metadata.clone()))
-        }
-    }
-    list
+    event
+        .iter_tags()
+        .filter_map(|tag| {
+            if let Tag::RelayMetadata(url, metadata) = tag {
+                Some((url.clone(), metadata.clone()))
+            } else {
+                None
+            }
+        })
+        .collect()
 }

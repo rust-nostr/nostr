@@ -656,7 +656,7 @@ impl RelayPool {
         let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
 
-        let event_id = event.id;
+        let event_id: EventId = event.id();
 
         for (url, relay) in relays.into_iter() {
             let event = event.clone();
@@ -801,7 +801,7 @@ impl RelayPool {
 
         // Compose IDs and Events collections
         let ids: Arc<Mutex<HashSet<EventId>>> =
-            Arc::new(Mutex::new(stored_events.iter().map(|e| e.id).collect()));
+            Arc::new(Mutex::new(stored_events.iter().map(|e| e.id()).collect()));
         let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(stored_events));
 
         // Get relays and start query
@@ -815,9 +815,9 @@ impl RelayPool {
                 if let Err(e) = relay
                     .get_events_of_with_callback(filters, timeout, opts, |event| async {
                         let mut ids = ids.lock().await;
-                        if !ids.contains(&event.id) {
+                        if !ids.contains(&event.id()) {
                             let mut events = events.lock().await;
-                            ids.insert(event.id);
+                            ids.insert(event.id());
                             events.push(event);
                         }
                     })

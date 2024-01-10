@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     client
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind == Kind::RelayList {
+                if event.kind() == Kind::RelayList {
                     let list = nip65::extract_relay_list(&event);
                     println!("Found relay list metadata: {list:?}");
                     return Ok(true); // Exit from loop

@@ -89,33 +89,15 @@ impl From<bitcoin::hashes::hex::Error> for Error {
 /// [`Event`] struct
 #[derive(Debug, Clone)]
 pub struct Event {
-    /// Id
-    pub id: EventId,
-    /// Author
-    pub pubkey: XOnlyPublicKey,
-    /// Timestamp (seconds)
-    pub created_at: Timestamp,
-    /// Kind
-    pub kind: Kind,
-    /// Vector of [`Tag`]
-    pub tags: Vec<Tag>,
-    /// Content
-    pub content: String,
-    /// Signature
-    pub sig: Signature,
+    /// Event
+    inner: EventIntermediate,
     /// JSON deserialization key order
     deser_order: Vec<String>,
 }
 
 impl PartialEq for Event {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.pubkey == other.pubkey
-            && self.created_at == other.created_at
-            && self.kind == other.kind
-            && self.tags == other.tags
-            && self.content == other.content
-            && self.sig == other.sig
+        self.inner.eq(&other.inner)
     }
 }
 
@@ -129,20 +111,13 @@ impl PartialOrd for Event {
 
 impl Ord for Event {
     fn cmp(&self, other: &Self) -> Ordering {
-        // TODO: cmp all fields?
-        self.id.cmp(&other.id)
+        self.inner.cmp(&other.inner)
     }
 }
 
 impl Hash for Event {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-        self.pubkey.hash(state);
-        self.created_at.hash(state);
-        self.kind.hash(state);
-        self.tags.hash(state);
-        self.content.hash(state);
-        self.sig.hash(state);
+        self.inner.hash(state);
     }
 }
 
@@ -162,13 +137,15 @@ impl Event {
         S: Into<String>,
     {
         Self {
-            id,
-            pubkey: public_key,
-            created_at,
-            kind,
-            tags: tags.into_iter().collect(),
-            content: content.into(),
-            sig,
+            inner: EventIntermediate {
+                id,
+                pubkey: public_key,
+                created_at,
+                kind,
+                tags: tags.into_iter().collect(),
+                content: content.into(),
+                sig,
+            },
             deser_order: Vec::new(),
         }
     }
@@ -178,6 +155,56 @@ impl Event {
     /// **This method NOT verify the signature!**
     pub fn from_value(value: Value) -> Result<Self, Error> {
         Ok(serde_json::from_value(value)?)
+    }
+
+    /// Get event ID
+    pub fn id(&self) -> EventId {
+        self.inner.id
+    }
+
+    /// Get event author (`pubkey` field)
+    pub fn author(&self) -> XOnlyPublicKey {
+        self.inner.pubkey
+    }
+
+    /// Get event author reference (`pubkey` field)
+    pub fn author_ref(&self) -> &XOnlyPublicKey {
+        &self.inner.pubkey
+    }
+
+    /// Get [Timestamp] of when the event was created
+    pub fn created_at(&self) -> Timestamp {
+        self.inner.created_at
+    }
+
+    /// Get event [Kind]
+    pub fn kind(&self) -> Kind {
+        self.inner.kind
+    }
+
+    /// Get reference to event tags
+    pub fn tags(&self) -> &[Tag] {
+        &self.inner.tags
+    }
+
+    /// Iterate event tags
+    pub fn iter_tags(&self) -> impl Iterator<Item = &Tag> {
+        self.inner.tags.iter()
+    }
+
+    /// Iterate and consume event tags
+    pub fn into_iter_tags(self) -> impl Iterator<Item = Tag> {
+        self.inner.tags.into_iter()
+    }
+
+    /// Get reference to event content
+    pub fn content(&self) -> &str {
+        &self.inner.content
+    }
+
+    /// Get event signature
+    pub fn signature(&self) -> Signature {
+        self.inner.sig
     }
 
     /// Verify both [`EventId`] and [`Signature`]
@@ -201,13 +228,13 @@ impl Event {
     /// Verify if the [`EventId`] it's composed correctly
     pub fn verify_id(&self) -> Result<(), Error> {
         let id: EventId = EventId::new(
-            &self.pubkey,
-            self.created_at,
-            &self.kind,
-            &self.tags,
-            &self.content,
+            &self.inner.pubkey,
+            self.inner.created_at,
+            &self.inner.kind,
+            &self.inner.tags,
+            &self.inner.content,
         );
-        if id == self.id {
+        if id == self.inner.id {
             Ok(())
         } else {
             Err(Error::InvalidId)
@@ -225,14 +252,14 @@ impl Event {
     where
         C: Verification,
     {
-        let message = Message::from_slice(self.id.as_bytes())?;
-        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
+        let message = Message::from_slice(self.inner.id.as_bytes())?;
+        secp.verify_schnorr(&self.inner.sig, &message, &self.inner.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }
 
     /// Get [`Timestamp`] expiration if set
     pub fn expiration(&self) -> Option<&Timestamp> {
-        for tag in self.tags.iter() {
+        for tag in self.iter_tags() {
             if let Tag::Expiration(timestamp) = tag {
                 return Some(timestamp);
             }
@@ -269,47 +296,47 @@ impl Event {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     pub fn is_job_request(&self) -> bool {
-        self.kind.is_job_request()
+        self.inner.kind.is_job_request()
     }
 
     /// Check if [`Kind`] is a NIP90 job result
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     pub fn is_job_result(&self) -> bool {
-        self.kind.is_job_result()
+        self.inner.kind.is_job_result()
     }
 
     /// Check if event [`Kind`] is `Regular`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn is_regular(&self) -> bool {
-        self.kind.is_regular()
+        self.inner.kind.is_regular()
     }
 
     /// Check if event [`Kind`] is `Replaceable`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn is_replaceable(&self) -> bool {
-        self.kind.is_replaceable()
+        self.inner.kind.is_replaceable()
     }
 
     /// Check if event [`Kind`] is `Ephemeral`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn is_ephemeral(&self) -> bool {
-        self.kind.is_ephemeral()
+        self.inner.kind.is_ephemeral()
     }
 
     /// Check if event [`Kind`] is `Parameterized replaceable`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn is_parameterized_replaceable(&self) -> bool {
-        self.kind.is_parameterized_replaceable()
+        self.inner.kind.is_parameterized_replaceable()
     }
 
     /// Extract identifier (`d` tag), if exists.
     pub fn identifier(&self) -> Option<&str> {
-        for tag in self.tags.iter() {
+        for tag in self.iter_tags() {
             if let Tag::Identifier(id) = tag {
                 return Some(id);
             }
@@ -321,7 +348,7 @@ impl Event {
     ///
     /// **This method extract ONLY `Tag::PublicKey`**
     pub fn public_keys(&self) -> impl Iterator<Item = &XOnlyPublicKey> {
-        self.tags.iter().filter_map(|t| match t {
+        self.iter_tags().filter_map(|t| match t {
             Tag::PublicKey { public_key, .. } => Some(public_key),
             _ => None,
         })
@@ -331,7 +358,7 @@ impl Event {
     ///
     /// **This method extract ONLY `Tag::Event`**
     pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
-        self.tags.iter().filter_map(|t| match t {
+        self.iter_tags().filter_map(|t| match t {
             Tag::Event { event_id, .. } => Some(event_id),
             _ => None,
         })
@@ -339,7 +366,7 @@ impl Event {
 
     /// Extract coordinates from tags (`a` tag)
     pub fn coordinates(&self) -> impl Iterator<Item = Coordinate> + '_ {
-        self.tags.iter().filter_map(|t| match t {
+        self.iter_tags().filter_map(|t| match t {
             Tag::A {
                 kind,
                 public_key,
@@ -370,7 +397,7 @@ impl JsonUtil for Event {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 struct EventIntermediate {
     id: EventId,
     pubkey: XOnlyPublicKey,
@@ -381,39 +408,24 @@ struct EventIntermediate {
     sig: Signature,
 }
 
-impl From<Event> for EventIntermediate {
-    fn from(event: Event) -> Self {
-        Self {
-            id: event.id,
-            pubkey: event.pubkey,
-            created_at: event.created_at,
-            kind: event.kind,
-            tags: event.tags,
-            content: event.content,
-            sig: event.sig,
-        }
-    }
-}
-
 impl Serialize for Event {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         if self.deser_order.is_empty() {
-            let event: EventIntermediate = self.clone().into();
-            event.serialize(serializer)
+            self.inner.serialize(serializer)
         } else {
             let mut s = serializer.serialize_struct("Event", 7)?;
             for key in self.deser_order.iter() {
                 match key.as_str() {
-                    "id" => s.serialize_field("id", &self.id)?,
-                    "pubkey" => s.serialize_field("pubkey", &self.pubkey)?,
-                    "created_at" => s.serialize_field("created_at", &self.created_at)?,
-                    "kind" => s.serialize_field("kind", &self.kind)?,
-                    "tags" => s.serialize_field("tags", &self.tags)?,
-                    "content" => s.serialize_field("content", &self.content)?,
-                    "sig" => s.serialize_field("sig", &self.sig)?,
+                    "id" => s.serialize_field("id", &self.inner.id)?,
+                    "pubkey" => s.serialize_field("pubkey", &self.inner.pubkey)?,
+                    "created_at" => s.serialize_field("created_at", &self.inner.created_at)?,
+                    "kind" => s.serialize_field("kind", &self.inner.kind)?,
+                    "tags" => s.serialize_field("tags", &self.inner.tags)?,
+                    "content" => s.serialize_field("content", &self.inner.content)?,
+                    "sig" => s.serialize_field("sig", &self.inner.sig)?,
                     _ => return Err(serde::ser::Error::custom(format!("Unknown key: {}", key))),
                 }
             }
@@ -434,23 +446,8 @@ impl<'de> Deserialize<'de> for Event {
             deser_order = map.keys().cloned().collect();
         }
 
-        let EventIntermediate {
-            id,
-            pubkey,
-            created_at,
-            kind,
-            tags,
-            content,
-            sig,
-        } = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
         Ok(Self {
-            id,
-            pubkey,
-            created_at,
-            kind,
-            tags,
-            content,
-            sig,
+            inner: serde_json::from_value(value).map_err(serde::de::Error::custom)?,
             deser_order,
         })
     }
@@ -482,8 +479,8 @@ mod tests {
         let deserialized = Event::from_json(serialized).unwrap();
 
         assert_eq!(e, deserialized);
-        assert_eq!(Kind::Custom(123), e.kind);
-        assert_eq!(Kind::Custom(123), deserialized.kind);
+        assert_eq!(Kind::Custom(123), e.kind());
+        assert_eq!(Kind::Custom(123), deserialized.kind());
     }
 
     #[test]

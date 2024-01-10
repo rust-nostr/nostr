@@ -49,8 +49,8 @@ async fn main() -> Result<()> {
     client
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind == Kind::EncryptedDirectMessage {
-                    if nip04::decrypt(&secret_key, &event.pubkey, &event.content).is_ok() {
+                if event.kind() == Kind::EncryptedDirectMessage {
+                    if nip04::decrypt(&secret_key, event.author_ref(), event.content()).is_ok() {
                         // Overwrite subscrption with `other-id` internal ID
                         let relay = client.relay("wss://relay.damus.io").await?;
                         let other_filters = Filter::new()
@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
                     } else {
                         tracing::error!("Impossible to decrypt direct message");
                     }
-                } else if event.kind == Kind::TextNote {
+                } else if event.kind() == Kind::TextNote {
                     println!("TextNote: {:?}", event);
                     let relay = client.relay("wss://relay.damus.io").await?;
                     relay

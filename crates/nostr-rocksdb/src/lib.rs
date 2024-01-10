@@ -170,7 +170,8 @@ impl NostrDatabase for RocksDatabase {
                 let events_cf = self.cf_handle(EVENTS_CF)?;
 
                 // Serialize key and value
-                let key: &[u8] = event.id.as_bytes();
+                let id = event.id();
+                let key: &[u8] = id.as_bytes();
                 let value: &[u8] = event.encode(&mut fbb);
 
                 // Prepare write batch
@@ -329,7 +330,7 @@ impl NostrDatabase for RocksDatabase {
                 .flatten()
             {
                 let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
-                event_ids.push((event.id, event.created_at));
+                event_ids.push((event.id(), event.created_at()));
             }
 
             Ok(event_ids)

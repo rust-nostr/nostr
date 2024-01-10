@@ -737,26 +737,25 @@ impl EventBuilder {
 
         // add e tag
         if let Some(tag) = zap_request
-            .tags
-            .clone()
-            .into_iter()
+            .iter_tags()
             .find(|t| t.kind() == TagKind::E)
+            .cloned()
         {
             tags.push(tag);
         }
 
         // add p tag
         if let Some(tag) = zap_request
-            .tags
-            .into_iter()
+            .iter_tags()
             .find(|t| t.kind() == TagKind::P)
+            .cloned()
         {
             tags.push(tag);
         }
 
         // add P tag
         tags.push(Tag::PublicKey {
-            public_key: zap_request.pubkey,
+            public_key: zap_request.author(),
             relay_url: None,
             alias: None,
             uppercase: true,
@@ -845,8 +844,7 @@ impl EventBuilder {
         let mut tags = Vec::new();
 
         let badge_id = badge_definition
-            .tags
-            .iter()
+            .iter_tags()
             .find_map(|t| match t {
                 Tag::Identifier(id) => Some(id),
                 _ => None,
@@ -856,7 +854,7 @@ impl EventBuilder {
         // Add identity tag
         tags.push(Tag::A {
             kind: Kind::BadgeDefinition,
-            public_key: badge_definition.pubkey,
+            public_key: badge_definition.author(),
             identifier: badge_id.clone(),
             relay_url: None,
         });
@@ -889,7 +887,7 @@ impl EventBuilder {
         }
 
         for award in badge_awards.iter() {
-            if !award.tags.iter().any(|t| match t {
+            if !award.iter_tags().any(|t| match t {
                 Tag::PublicKey { public_key, .. } => public_key == pubkey_awarded,
                 _ => false,
             }) {
@@ -913,8 +911,8 @@ impl EventBuilder {
         });
 
         let badge_awards_identifiers = badge_awards.into_iter().filter_map(|event| {
-            let (_, relay_url) = nip58::extract_awarded_public_key(&event.tags, pubkey_awarded)?;
-            let (id, a_tag) = event.tags.iter().find_map(|t| match t {
+            let (_, relay_url) = nip58::extract_awarded_public_key(event.tags(), pubkey_awarded)?;
+            let (id, a_tag) = event.iter_tags().find_map(|t| match t {
                 Tag::A { identifier, .. } => Some((identifier.clone(), t.clone())),
                 _ => None,
             })?;
@@ -934,7 +932,7 @@ impl EventBuilder {
                 {
                     let badge_definition_event_tag: Tag = a_tag;
                     let badge_award_event_tag: Tag = Tag::Event {
-                        event_id: badge_award_event.id,
+                        event_id: badge_award_event.id(),
                         relay_url,
                         marker: None,
                     };
@@ -972,11 +970,10 @@ impl EventBuilder {
         amount_millisats: u64,
         bolt11: Option<String>,
     ) -> Result<Self, Error> {
-        let kind: Kind = job_request.kind + 1000;
+        let kind: Kind = job_request.kind() + 1000;
         if kind.is_job_result() {
             let mut tags: Vec<Tag> = job_request
-                .tags
-                .iter()
+                .iter_tags()
                 .filter_map(|t| {
                     if t.kind() == TagKind::I {
                         Some(t.clone())
@@ -986,8 +983,8 @@ impl EventBuilder {
                 })
                 .collect();
             tags.extend_from_slice(&[
-                Tag::event(job_request.id),
-                Tag::public_key(job_request.pubkey),
+                Tag::event(job_request.id()),
+                Tag::public_key(job_request.author()),
                 Tag::Request(job_request),
                 Tag::Amount {
                     millisats: amount_millisats,
@@ -1016,8 +1013,8 @@ impl EventBuilder {
     ) -> Self {
         let tags = [
             Tag::DataVendingMachineStatus { status, extra_info },
-            Tag::event(job_request.id),
-            Tag::public_key(job_request.pubkey),
+            Tag::event(job_request.id()),
+            Tag::public_key(job_request.author()),
             Tag::Amount {
                 millisats: amount_millisats,
                 bolt11,
@@ -1282,9 +1279,9 @@ mod tests {
                 .to_event(&keys)
                 .unwrap();
 
-        assert_eq!(event_builder.kind, Kind::BadgeAward);
-        assert_eq!(event_builder.content, "");
-        assert_eq!(event_builder.tags, example_event.tags);
+        assert_eq!(event_builder.kind(), Kind::BadgeAward);
+        assert_eq!(event_builder.content(), "");
+        assert_eq!(event_builder.tags(), example_event.tags());
     }
 
     #[test]
@@ -1358,9 +1355,9 @@ mod tests {
             }}"#,
             pub_key.to_string(),
             badge_one_pubkey.to_string(),
-            bravery_badge_award.id.to_string(),
+            bravery_badge_award.id().to_string(),
             badge_two_pubkey.to_string(),
-            honor_badge_award.id.to_string(),
+            honor_badge_award.id().to_string(),
         );
         let example_event: Event = serde_json::from_str(&example_event_json).unwrap();
 
@@ -1372,7 +1369,7 @@ mod tests {
                 .to_event(&keys)
                 .unwrap();
 
-        assert_eq!(profile_badges.kind, Kind::ProfileBadges);
-        assert_eq!(profile_badges.tags, example_event.tags);
+        assert_eq!(profile_badges.kind(), Kind::ProfileBadges);
+        assert_eq!(profile_badges.tags(), example_event.tags());
     }
 }

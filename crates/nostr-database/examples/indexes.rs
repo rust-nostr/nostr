@@ -32,7 +32,7 @@ async fn main() {
 
         let event = EventBuilder::new_text_note(
             format!("Reply to event #{i}"),
-            [Tag::event(event.id), Tag::public_key(event.pubkey)],
+            [Tag::event(event.id()), Tag::public_key(event.author())],
         )
         .to_event(&keys_b)
         .unwrap();

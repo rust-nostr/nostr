@@ -340,7 +340,7 @@ where
 }
 
 fn extract_anon_tag_message(event: &Event) -> Result<&String, Error> {
-    for tag in event.tags.iter() {
+    for tag in event.iter_tags() {
         if let Tag::Anon { msg } = tag {
             return msg.as_ref().ok_or(Error::InvalidPrivateZapMessage);
         }
@@ -355,7 +355,7 @@ pub fn decrypt_private_zap_message(
     private_zap_event: &Event,
 ) -> Result<Event, Error> {
     let secret_key: SecretKey =
-        create_encryption_key(secret_key, public_key, private_zap_event.created_at)?;
+        create_encryption_key(secret_key, public_key, private_zap_event.created_at())?;
     let key: [u8; 32] = util::generate_shared_key(&secret_key, public_key);
 
     let msg: &String = extract_anon_tag_message(private_zap_event)?;
@@ -415,6 +415,6 @@ mod tests {
         let private_zap_msg =
             decrypt_private_zap_message(&secret_key, &public_key, &private_zap).unwrap();
 
-        assert_eq!(msg, &private_zap_msg.content,)
+        assert_eq!(msg, private_zap_msg.content())
     }
 }

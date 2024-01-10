@@ -111,12 +111,12 @@ impl RawEvent {
 impl From<&Event> for RawEvent {
     fn from(event: &Event) -> Self {
         Self {
-            id: event.id.to_bytes(),
-            pubkey: event.pubkey.serialize(),
-            created_at: event.created_at,
-            kind: event.kind,
-            tags: event.tags.iter().map(|t| t.as_vec()).collect(),
-            content: event.content.clone(),
+            id: event.id().to_bytes(),
+            pubkey: event.author_ref().serialize(),
+            created_at: event.created_at(),
+            kind: event.kind(),
+            tags: event.iter_tags().map(|t| t.as_vec()).collect(),
+            content: event.content().to_string(),
         }
     }
 }
@@ -124,12 +124,12 @@ impl From<&Event> for RawEvent {
 impl From<Event> for RawEvent {
     fn from(event: Event) -> Self {
         Self {
-            id: event.id.to_bytes(),
-            pubkey: event.pubkey.serialize(),
-            created_at: event.created_at,
-            kind: event.kind,
-            tags: event.tags.into_iter().map(|t| t.to_vec()).collect(),
-            content: event.content,
+            id: event.id().to_bytes(),
+            pubkey: event.author_ref().serialize(),
+            created_at: event.created_at(),
+            kind: event.kind(),
+            content: event.content().to_string(),
+            tags: event.into_iter_tags().map(|t| t.to_vec()).collect(),
         }
     }
 }

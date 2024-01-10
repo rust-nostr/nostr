@@ -981,7 +981,7 @@ impl Relay {
 
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
-        let id: EventId = event.id;
+        let id: EventId = event.id();
 
         if opts.skip_disconnected
             && !self.is_connected().await
@@ -1060,7 +1060,7 @@ impl Relay {
         let mut missing: HashSet<EventId> = HashSet::new();
 
         for event in events.into_iter() {
-            missing.insert(event.id);
+            missing.insert(event.id());
             msgs.push(ClientMessage::new_event(event));
         }
 
