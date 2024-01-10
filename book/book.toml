@@ -7,6 +7,8 @@ multilingual = false
 src = "src"
 
 [output.html]
+default-theme = "ayu"
+preferred-dark-theme = "ayu"
 additional-js = ["./tabs.js"]
 additional-css = ["./mdbook-admonish.css"]
 git-repository-url = "https://github.com/rust-nostr/nostr"
