@@ -1,0 +1,12 @@
+test: rust python js
+
+rust:
+	cd rust && cargo build
+
+python:
+	cd python && just test
+
+js:
+	cd js && npm i
+	node js/index.js
+	

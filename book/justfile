@@ -1,0 +1,2 @@
+test:
+	cd snippets && just test

@@ -2,7 +2,8 @@
 members = [
     "bindings/*",
     "crates/*",
-    "crates/nostr-database/fuzz/perf"
+    "crates/nostr-database/fuzz/perf",
+    "book/snippets/nostr/rust",
 ]
 default-members = ["crates/*"]
 resolver = "2"

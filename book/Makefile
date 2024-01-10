@@ -1,9 +1,9 @@
 init:
-	pip install -U poetry
-	poetry install
+	cargo install mdbook --version 0.4.36
+	cargo install mdbook-admonish --version 1.15.0
 
 build:
-	poetry run mkdocs build --strict --clean --verbose
+	mdbook build
 
 serve:
-	mkdocs serve
+	mdbook serve
