@@ -41,7 +41,7 @@ alloc = [
     "serde_json/alloc",
 ]
 blocking = ["reqwest?/blocking"]
-all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46", "nip47", "nip57"]
+all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46", "nip47", "nip49", "nip57"]
 nip03 = ["dep:nostr-ots"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip05 = ["dep:reqwest"]
@@ -51,6 +51,7 @@ nip11 = ["dep:reqwest"]
 nip44 = ["dep:base64", "dep:chacha20"]
 nip46 = ["nip04"]
 nip47 = ["nip04"]
+nip49 = ["nip04", "dep:itertools"]
 nip57 = ["dep:aes", "dep:cbc"]
 
 [dependencies]
@@ -60,6 +61,7 @@ bip39 = { version = "2.0", default-features = false, optional = true }
 bitcoin = { version = "0.30", default-features = false, features = ["rand", "serde"] }
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
+itertools = { version = "0.12.0", optional = true }
 negentropy = { version = "0.3", default-features = false }
 nostr-ots = { version = "0.2", optional = true }
 once_cell = { workspace = true, optional = true }
