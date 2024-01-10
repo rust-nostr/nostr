@@ -149,6 +149,6 @@ impl Metadata {
     }
 
     pub fn get_custom_field(&self, key: String) -> Option<String> {
-        self.inner.custom.get(&key).cloned()
+        self.inner.custom.get(&key).cloned().map(|s| s.to_string())
     }
 }
