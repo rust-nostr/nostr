@@ -397,7 +397,7 @@ mod tests {
     use crate::FromBech32;
 
     #[test]
-    fn test_enrypt_decrypt_private_zap_message() {
+    fn test_encrypt_decrypt_private_zap_message() {
         let secret_key =
             SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap();

@@ -498,7 +498,7 @@ impl DatabaseIndexes {
 
                     let filter: Filter = coordinate.into();
                     let filter: Filter = filter.until(created_at);
-                    // Not check if ev.pubkey match the pubkey_prefix because asume that query
+                    // Not check if ev.pubkey match the pubkey_prefix because assume that query
                     // returned only the events owned by pubkey_prefix
                     to_discard.extend(
                         self.internal_generic_query(index, deleted_ids, filter)
