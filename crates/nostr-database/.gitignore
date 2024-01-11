@@ -1,3 +1,5 @@
 *.svg
+tracing.folded
 perf.data
 perf.data.old
+many-events.json*
