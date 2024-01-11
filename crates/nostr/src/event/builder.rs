@@ -443,7 +443,11 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::OpenTimestamps,
             ots,
-            [Tag::Event {event_id, relay_url, marker: None}],
+            [Tag::Event {
+                event_id,
+                relay_url,
+                marker: None,
+            }],
         ))
     }
 
