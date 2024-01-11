@@ -10,6 +10,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::ops::Deref;
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
@@ -118,6 +119,14 @@ impl Ord for Event {
 impl Hash for Event {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.inner.hash(state);
+    }
+}
+
+impl Deref for Event {
+    type Target = EventIntermediate;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
@@ -397,15 +406,23 @@ impl JsonUtil for Event {
     }
 }
 
+/// Event Intermediate used for de/serialization of [`Event`]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-struct EventIntermediate {
-    id: EventId,
-    pubkey: XOnlyPublicKey,
-    created_at: Timestamp,
-    kind: Kind,
-    tags: Vec<Tag>,
-    content: String,
-    sig: Signature,
+pub struct EventIntermediate {
+    /// Id
+    pub id: EventId,
+    /// Author
+    pub pubkey: XOnlyPublicKey,
+    /// Timestamp (seconds)
+    pub created_at: Timestamp,
+    /// Kind
+    pub kind: Kind,
+    /// Vector of [`Tag`]
+    pub tags: Vec<Tag>,
+    /// Content
+    pub content: String,
+    /// Signature
+    pub sig: Signature,
 }
 
 impl Serialize for Event {
