@@ -9,8 +9,6 @@ use nostr::secp256k1::XOnlyPublicKey;
 use nostr::Result;
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     let public_key = XOnlyPublicKey::from_str(
         "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
     )?;

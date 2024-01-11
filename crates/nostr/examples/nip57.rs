@@ -9,8 +9,6 @@ use nostr::prelude::*;
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     let secret_key = SecretKey::from_str(ALICE_SK)?;
     let alice_keys = Keys::new(secret_key);
 

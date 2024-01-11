@@ -5,8 +5,6 @@
 use nostr::prelude::*;
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     let relay_url = Url::parse("wss://relay.damus.io")?;
 
     let info = RelayInformationDocument::get_blocking(relay_url, None)?;
