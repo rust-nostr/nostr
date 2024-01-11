@@ -18,7 +18,7 @@ use bitcoin::secp256k1::{self, XOnlyPublicKey};
 use crate::event::id;
 use crate::{Filter, Kind, Tag, UncheckedUrl};
 
-/// [`RawEvent`] error
+/// Raw Event error
 #[derive(Debug)]
 pub enum Error {
     /// Secp256k1 error
