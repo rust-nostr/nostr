@@ -25,7 +25,7 @@ use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
 
 use super::Error;
-use crate::util;
+use crate::util::{self, hkdf};
 
 const MESSAGE_KEYS_SIZE: usize = 76;
 const MESSAGES_KEYS_ENCRYPTION_SIZE: usize = 32;
@@ -137,7 +137,7 @@ impl ConversationKey {
     /// Derive Conversation Key
     pub fn derive(secret_key: &SecretKey, public_key: &XOnlyPublicKey) -> Self {
         let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
-        Self(hkdf_extract(b"nip44-v2", &shared_key))
+        Self(hkdf::extract(b"nip44-v2", &shared_key))
     }
 
     /// Compose Conversation Key from bytes
@@ -287,7 +287,7 @@ fn get_message_keys(
     conversation_key: &ConversationKey,
     nonce: &[u8],
 ) -> Result<MessageKeys, ErrorV2> {
-    let expanded_key: Vec<u8> = hkdf_expand(conversation_key.as_bytes(), nonce, MESSAGE_KEYS_SIZE);
+    let expanded_key: Vec<u8> = hkdf::expand(conversation_key.as_bytes(), nonce, MESSAGE_KEYS_SIZE);
     MessageKeys::from_slice(&expanded_key).map_err(|_| ErrorV2::HkdfLength(expanded_key.len()))
 }
 
@@ -333,37 +333,6 @@ fn log2_round_down(x: usize) -> u32 {
         let x: f64 = x as f64;
         x.log2().floor() as u32
     }
-}
-
-fn hkdf_extract(salt: &[u8], input_key_material: &[u8]) -> Hmac<Sha256Hash> {
-    let mut engine: HmacEngine<Sha256Hash> = HmacEngine::new(salt);
-    engine.input(input_key_material);
-    Hmac::from_engine(engine)
-}
-
-fn hkdf_expand(prk: &[u8], info: &[u8], output_len: usize) -> Vec<u8> {
-    let mut output: Vec<u8> = Vec::with_capacity(output_len);
-    let mut t: Vec<u8> = Vec::with_capacity(32);
-
-    let mut i: u8 = 1u8;
-    while output.len() < output_len {
-        let mut engine: HmacEngine<Sha256Hash> = HmacEngine::new(prk);
-
-        if !t.is_empty() {
-            engine.input(&t);
-        }
-
-        engine.input(info);
-        engine.input(&[i]);
-
-        t = Hmac::from_engine(engine).to_byte_array().to_vec();
-        output.extend_from_slice(&t);
-
-        i += 1;
-    }
-
-    output.truncate(output_len);
-    output
 }
 
 #[cfg(test)]

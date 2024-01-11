@@ -14,6 +14,9 @@ use once_cell::sync::Lazy;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+#[cfg(feature = "nip44")]
+pub mod hkdf;
+
 use crate::nips::nip01::Coordinate;
 use crate::{EventId, Tag};
 
