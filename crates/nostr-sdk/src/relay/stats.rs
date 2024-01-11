@@ -85,7 +85,7 @@ impl PingStats {
     }
 }
 
-/// [`Relay`] connection stats
+/// Relay connection stats
 #[derive(Debug, Clone)]
 pub struct RelayConnectionStats {
     attempts: Arc<AtomicUsize>,

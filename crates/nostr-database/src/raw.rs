@@ -22,7 +22,7 @@ pub struct RawEvent {
     pub created_at: Timestamp,
     /// Kind
     pub kind: Kind,
-    /// Vector of [`Tag`]
+    /// Vector of string
     pub tags: Vec<Vec<String>>,
     /// Content
     pub content: String,

@@ -419,7 +419,7 @@ impl RelayPool {
         pool
     }
 
-    /// Start [`RelayPoolTask`]
+    /// Start Relay Pool Task
     pub fn start(&self) {
         self.pool_task.run();
     }

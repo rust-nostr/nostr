@@ -176,7 +176,7 @@ where
     verify_json(public_key, json, name)
 }
 
-/// Get [Profile] from NIP05 (public key and list of advertised relays)
+/// Get [Nip19Profile] from NIP05 (public key and list of advertised relays)
 ///
 /// **Proxy is ignored for WASM targets!**
 pub async fn get_profile<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
@@ -209,7 +209,7 @@ where
     Ok(Nip19Profile { public_key, relays })
 }
 
-/// Get [Profile] from NIP05 (public key and list of advertised relays)
+/// Get [Nip19Profile] from NIP05 (public key and list of advertised relays)
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "blocking")]
 pub fn get_profile_blocking<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>

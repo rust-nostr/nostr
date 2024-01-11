@@ -14,7 +14,8 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
       - run: cargo fmt --all -- --config format_code_in_doc_comments=true --check
 
   build:
@@ -186,3 +187,29 @@ jobs:
       run: cargo test ${{ matrix.build-args }}
     - name: Clippy
       run: cargo clippy ${{ matrix.build-args }} -- -D warnings
+
+  rustdoc:
+    name: Rust Docs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build-args:
+          [
+            -p nostr --all-features,
+            -p nostr-database,
+            -p nostr-sdk --all-features,
+          ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-doc-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
+      - name: Set profile
+        run: rustup set profile minimal && rustup component add rust-docs
+      - run: cargo doc ${{ matrix.build-args }}
