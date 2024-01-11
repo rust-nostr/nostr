@@ -5,11 +5,13 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
+use nostr::serde_json::Value;
 use nostr::{JsonUtil, Url};
 use uniffi::Object;
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
+use crate::JsonValue;
 
 #[derive(Clone, Object)]
 pub struct Metadata {
@@ -142,13 +144,17 @@ impl Metadata {
         self.inner.lud16.clone()
     }
 
-    pub fn set_custom_field(self: Arc<Self>, key: String, value: String) -> Self {
+    pub fn set_custom_field(self: Arc<Self>, key: String, value: JsonValue) -> Result<Self> {
+        let value: Value = value.try_into()?;
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.custom_field(key, value);
-        builder
+        Ok(builder)
     }
 
-    pub fn get_custom_field(&self, key: String) -> Option<String> {
-        self.inner.custom.get(&key).cloned().map(|s| s.to_string())
+    pub fn get_custom_field(&self, key: String) -> Result<Option<JsonValue>> {
+        match self.inner.custom.get(&key).cloned() {
+            Some(value) => Ok(Some(value.try_into()?)),
+            None => Ok(None),
+        }
     }
 }

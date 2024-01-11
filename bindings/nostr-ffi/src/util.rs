@@ -60,3 +60,41 @@ impl TryFrom<JsonValue> for Value {
         })
     }
 }
+
+impl TryFrom<Value> for JsonValue {
+    type Error = NostrError;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        Ok(match value {
+            Value::Bool(bool) => Self::Bool { bool },
+            Value::Number(number) => match number.as_u64() {
+                Some(number) => Self::NumberPosInt { number },
+                None => match number.as_i64() {
+                    Some(number) => Self::NumberNegInt { number },
+                    None => match number.as_f64() {
+                        Some(number) => Self::NumberFloat { number },
+                        None => {
+                            return Err(NostrError::Generic {
+                                err: String::from("Impossible to convert number"),
+                            })
+                        }
+                    },
+                },
+            },
+            Value::String(s) => Self::Str { s },
+            Value::Array(array) => Self::Array {
+                array: array
+                    .into_iter()
+                    .filter_map(|v| v.try_into().ok())
+                    .collect(),
+            },
+            Value::Object(map) => Self::Object {
+                map: map
+                    .into_iter()
+                    .filter_map(|(k, v)| Some((k, v.try_into().ok()?)))
+                    .collect(),
+            },
+            Value::Null => Self::Null,
+        })
+    }
+}
