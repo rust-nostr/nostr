@@ -65,7 +65,7 @@ nostr-ots = { version = "0.2", optional = true }
 once_cell = { workspace = true, optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls", "socks"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-serde_json = { version = "1.0", default-features = false }
+serde_json.workspace = true
 tracing.workspace = true
 url-fork = { workspace = true, features = ["serde"] }
 

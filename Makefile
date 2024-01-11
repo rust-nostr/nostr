@@ -1,5 +1,8 @@
 .PHONY: book
 
+cli:
+	cargo build -p nostr-cli --release
+
 precommit:
 	@bash .githooks/pre-push
 
