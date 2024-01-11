@@ -1441,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "nostr"
-version = "0.26.0"
+version = "0.26.1"
 dependencies = [
  "aes",
  "base64",
@@ -1551,7 +1551,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sdk"
-version = "0.26.0"
+version = "0.26.1"
 dependencies = [
  "async-utility",
  "nostr",
