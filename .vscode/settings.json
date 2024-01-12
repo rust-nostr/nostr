@@ -1,0 +1,5 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./book/snippets/nostr/rust/Cargo.toml"
+    ]
+}
