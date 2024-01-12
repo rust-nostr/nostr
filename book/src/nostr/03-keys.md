@@ -2,6 +2,8 @@
 
 ## Generate new random keys
 
+To generate a new key pair use the `generate()` method:
+
 <custom-tabs category="lang">
 
 <div slot="title">Rust</div>
