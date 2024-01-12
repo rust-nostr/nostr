@@ -2,12 +2,13 @@
 name = "nostr-cli"
 version = "0.1.0"
 edition = "2021"
+rust-version.workspace = true
 
 [dependencies]
 clap = { version = "4.3", features = ["derive"] }
 nostr-database.workspace = true
 once_cell.workspace = true
-regex = "1.10"
+regex = "=1.9.6" # PIN for MSRV 1.64.0
 rustyline = { version = "12.0", default-features = false }
 serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["full"] }
