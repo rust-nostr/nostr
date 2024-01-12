@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+#![deny(warnings)]
 #![allow(clippy::new_without_default)]
 
 nostr_ffi::uniffi_reexport_scaffolding!();

@@ -5,6 +5,7 @@
 //! RocksDB Storage backend for Nostr SDK
 
 #![forbid(unsafe_code)]
+#![deny(warnings)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 

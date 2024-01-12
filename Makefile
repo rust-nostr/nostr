@@ -3,8 +3,26 @@
 cli:
 	cargo build -p nostr-cli --release
 
-precommit:
-	@bash .githooks/pre-push
+fmt:
+	rustup install nightly-2024-01-11
+	rustup component add rustfmt --toolchain nightly-2024-01-11
+	cargo +nightly-2024-01-11 fmt --all -- --config format_code_in_doc_comments=true
+
+check: fmt check-crates check-bindings check-docs
+
+check-fmt:
+	rustup install nightly-2024-01-11
+	rustup component add rustfmt --toolchain nightly-2024-01-11
+	cargo +nightly-2024-01-11 fmt --all -- --config format_code_in_doc_comments=true --check
+
+check-bindings:
+	@bash contrib/check-bindings.sh
+
+check-crates:
+	@bash contrib/check-crates.sh
+
+check-docs:
+	@bash contrib/check-docs.sh
 
 bench:
 	RUSTFLAGS='--cfg=bench' cargo +nightly bench -p nostr

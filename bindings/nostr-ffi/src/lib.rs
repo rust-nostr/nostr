@@ -4,6 +4,7 @@
 
 //! Nostr FFI
 
+#![deny(warnings)]
 #![allow(clippy::new_without_default)]
 
 use std::sync::Arc;

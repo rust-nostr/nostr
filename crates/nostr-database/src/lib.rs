@@ -4,6 +4,7 @@
 
 //! Nostr Database
 
+#![deny(warnings)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 

@@ -16,34 +16,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Toolchain
-        run: |
-          rustup install nightly-2024-01-11
-          rustup component add rustfmt --toolchain nightly-2024-01-11
-      - name: Format
-        run: cargo +nightly-2024-01-11 fmt --all -- --config format_code_in_doc_comments=true --check
+      - name: Check
+        run: make check-fmt
 
-  build:
-    name: Build
+  check-crates:
+    name: Check crates
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust:
-          - version: stable # STABLE
-          - version: 1.64.0 # MSRV
-        build-args:
-          [
-            -p nostr,
-            -p nostr --no-default-features --features alloc,
-            -p nostr --no-default-features --features "alloc all-nips",
-            -p nostr --features blocking,
-            -p nostr-database,
-            -p nostr-sdk,
-            -p nostr-sdk --no-default-features,
-            -p nostr-sdk --features blocking,
-            -p nostr-sdk --features rocksdb
-            -p nostr-sdk --features sqlite,
-          ]
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -55,33 +33,12 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
-    - name: Set default toolchain
-      run: rustup default ${{ matrix.rust.version }}
-    - name: Set profile
-      run: rustup set profile minimal && rustup component add clippy
-    - name: Build
-      run: cargo build ${{ matrix.build-args }}
-    - name: Tests
-      run: cargo test ${{ matrix.build-args }}
-    - name: Clippy
-      run: cargo clippy ${{ matrix.build-args }} -- -D warnings
+    - name: Check
+      run: make check-crates
 
-  build-wasm:
-    name: Build WASM
+  check-bindings:
+    name: Check bindings
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust:
-          - version: stable # STABLE
-          - version: 1.64.0 # MSRV
-        build-args:
-          [
-            -p nostr,
-            -p nostr-sdk,
-            -p nostr-sdk --features indexeddb,
-            -p nostr-js,
-            -p nostr-sdk-js,
-          ]
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -92,85 +49,13 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-cargo-wasm32-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
-    - name: Set default toolchain
-      run: rustup default ${{ matrix.rust.version }}
-    - name: Add WASM
-      run: rustup target add wasm32-unknown-unknown
-    - name: Set profile
-      run: rustup set profile minimal && rustup component add clippy
-    - name: Build
-      run: cargo build ${{ matrix.build-args }} --target wasm32-unknown-unknown
-    - name: Clippy
-      run: cargo clippy ${{ matrix.build-args }} --target wasm32-unknown-unknown -- -D warnings
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
+    - name: Check
+      run: make check-bindings
 
-  build-no-std:
-    name: Build no_std
+  check-docs:
+    name: Check docs
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./crates/nostr/examples/embedded
-    strategy:
-      matrix:
-        rust:
-          - version: nightly
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-    - name: Set default toolchain
-      run: rustup default ${{ matrix.rust.version }}
-    - name: Set profile
-      run: rustup set profile minimal
-    - name: Init
-      run: sudo apt update && make init
-    - name: Build
-      run: make
-  
-  build-ffi:
-    name: Build FFI
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust:
-          - version: stable
-        build-args:
-          [
-            -p nostr-ffi,
-            -p nostr-sdk-ffi,
-          ]
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-    - name: Cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-ffi-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
-    - name: Set default toolchain
-      run: rustup default ${{ matrix.rust.version }}
-    - name: Set profile
-      run: rustup set profile minimal && rustup component add clippy
-    - name: Build
-      run: cargo build ${{ matrix.build-args }}
-    - name: Tests
-      run: cargo test ${{ matrix.build-args }}
-    - name: Clippy
-      run: cargo clippy ${{ matrix.build-args }} -- -D warnings
-
-  rustdoc:
-    name: Rust Docs
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        build-args:
-          [
-            -p nostr --all-features,
-            -p nostr-database,
-            -p nostr-sdk --all-features,
-          ]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -182,6 +67,23 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-doc-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
-      - name: Set profile
-        run: rustup set profile minimal && rustup component add rust-docs
-      - run: cargo doc ${{ matrix.build-args }}
+      - name: Check
+        run: make check-docs
+
+  build-no-std:
+    name: Build no_std
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./crates/nostr/examples/embedded
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Set default toolchain
+      run: rustup default nightly
+    - name: Set profile
+      run: rustup set profile minimal
+    - name: Init
+      run: sudo apt update && make init
+    - name: Build
+      run: make
