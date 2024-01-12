@@ -21,6 +21,9 @@ check-bindings:
 check-crates:
 	@bash contrib/check-crates.sh
 
+check-crates-msrv:
+	@bash contrib/check-crates.sh msrv
+
 check-docs:
 	@bash contrib/check-docs.sh
 
