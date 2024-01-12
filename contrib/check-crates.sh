@@ -21,7 +21,6 @@ buildargs=(
     "-p nostr-sdk --no-default-features"
     "-p nostr-sdk --features blocking"
     "-p nostr-sdk --features indexeddb --target wasm32-unknown-unknown"
-    #"-p nostr-sdk --features rocksdb"
     "-p nostr-sdk --features sqlite"
     "-p nostr-sdk --target wasm32-unknown-unknown"
 )

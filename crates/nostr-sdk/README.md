@@ -128,7 +128,6 @@ The following crate feature flags are available:
 | ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
 | `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                     |
 | `sqlite`            |   No    | Enable SQLite Storage backend                                                               |
-| `rocksdb`           |   No    | Enable RocksDB Storage backend                                                              |
 | `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                      |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                             |
 | `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                       |
