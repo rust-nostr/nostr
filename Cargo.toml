@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "bindings/*",
+    "bindings/*", "book/snippets/nostr-sdk/rust",
     "crates/*",
     "crates/nostr-database/fuzz/perf",
 ]
