@@ -1,5 +1,6 @@
-use nostr_sdk::prelude::*;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+
+use nostr_sdk::prelude::*;
 
 pub async fn quickstart() -> Result<()> {
     // Generate new keys

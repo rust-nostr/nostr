@@ -1,0 +1,26 @@
+## NIP-Specific Utilities
+
+The [Event](https://docs.rs/nostr/latest/nostr/event/struct.Event.html) struct represents the structure for an event in Nostr. Many of the NIPs define specific `content` and `tags` that are required to correctly represent a kind. The `nostr` crate ships with a set of NIP-specific utilities for working with certain event kinds.
+
+### Metadata (NIP-01)
+
+<custom-tabs category="lang">
+
+<div slot="title">Rust</div>
+<section>
+
+Use the `Metadata` struct to deserialize the content of an event into a struct.
+
+```rust,ignore
+{{#include ../../snippets/nostr/rust/src/nip_utilities.rs:18:20}}
+```
+
+If you have an existing metadata object, it can be used with the [EventBuilder](https://docs.rs/nostr-sdk/latest/nostr_sdk/struct.EventBuilder.html#method.set_metadata) struct to create an `EventBuilder` with the metadata already attached.
+
+```rust,ignore
+{{#include ../../snippets/nostr/rust/src/nip_utilities.rs:23}}
+```
+
+For documentation on the available struct attributes, check out [the Metadata documentation](https://docs.rs/nostr/latest/nostr/types/metadata/struct.Metadata.html).
+
+</section>
