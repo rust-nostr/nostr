@@ -191,6 +191,7 @@ impl From<u64> for Timestamp {
 
 impl FromStr for Timestamp {
     type Err = core::num::ParseIntError;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(s.parse::<i64>()?))
     }
@@ -204,6 +205,7 @@ impl fmt::Display for Timestamp {
 
 impl Add<Duration> for Timestamp {
     type Output = Self;
+
     fn add(self, rhs: Duration) -> Self::Output {
         Self(self.0.saturating_add(rhs.as_secs() as i64))
     }
@@ -211,6 +213,7 @@ impl Add<Duration> for Timestamp {
 
 impl Sub<Duration> for Timestamp {
     type Output = Self;
+
     fn sub(self, rhs: Duration) -> Self::Output {
         Self(self.0.saturating_sub(rhs.as_secs() as i64))
     }
@@ -218,6 +221,7 @@ impl Sub<Duration> for Timestamp {
 
 impl Add<u64> for Timestamp {
     type Output = Self;
+
     fn add(self, rhs: u64) -> Self::Output {
         self.add(rhs as i64)
     }
@@ -225,6 +229,7 @@ impl Add<u64> for Timestamp {
 
 impl Sub<u64> for Timestamp {
     type Output = Self;
+
     fn sub(self, rhs: u64) -> Self::Output {
         self.sub(rhs as i64)
     }
@@ -232,6 +237,7 @@ impl Sub<u64> for Timestamp {
 
 impl Add<i64> for Timestamp {
     type Output = Self;
+
     fn add(self, rhs: i64) -> Self::Output {
         Self(self.0.saturating_add(rhs))
     }
@@ -239,6 +245,7 @@ impl Add<i64> for Timestamp {
 
 impl Sub<i64> for Timestamp {
     type Output = Self;
+
     fn sub(self, rhs: i64) -> Self::Output {
         Self(self.0.saturating_sub(rhs))
     }

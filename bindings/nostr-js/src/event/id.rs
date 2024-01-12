@@ -19,6 +19,7 @@ pub struct JsEventId {
 
 impl Deref for JsEventId {
     type Target = EventId;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

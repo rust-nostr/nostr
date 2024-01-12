@@ -99,6 +99,7 @@ impl From<Nip46Signer> for ClientSigner {
 #[cfg(feature = "nip46")]
 impl TryFrom<ClientSigner> for Nip46Signer {
     type Error = Error;
+
     fn try_from(signer: ClientSigner) -> Result<Self, Self::Error> {
         if let ClientSigner::NIP46(nip46) = signer {
             Ok(nip46)

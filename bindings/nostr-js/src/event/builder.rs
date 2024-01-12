@@ -19,6 +19,7 @@ pub struct JsEventBuilder {
 
 impl Deref for JsEventBuilder {
     type Target = EventBuilder;
+
     fn deref(&self) -> &Self::Target {
         &self.builder
     }

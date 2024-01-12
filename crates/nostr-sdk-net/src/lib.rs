@@ -13,7 +13,8 @@ pub mod native;
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::native::Message as WsMessage;
 #[cfg(target_arch = "wasm32")]
 pub use wasm_ws::WsMessage;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::native::Message as WsMessage;

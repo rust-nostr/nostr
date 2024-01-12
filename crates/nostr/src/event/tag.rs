@@ -51,7 +51,7 @@ pub enum Error {
     EventId(id::Error),
     /// NIP26 error
     NIP26(Nip26Error),
-    ///NIP53 error
+    /// NIP53 error
     NIP53(nip53::Error),
     /// Event Error
     Event(crate::event::Error),
@@ -206,6 +206,7 @@ impl fmt::Display for Report {
 
 impl FromStr for Report {
     type Err = Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "nudity" => Ok(Self::Nudity),
@@ -236,6 +237,7 @@ impl ImageDimensions {
 
 impl FromStr for ImageDimensions {
     type Err = Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let dimensions: Vec<&str> = s.split('x').collect();
         if dimensions.len() == 2 {
@@ -279,6 +281,7 @@ impl fmt::Display for HttpMethod {
 
 impl FromStr for HttpMethod {
     type Err = Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "GET" => Ok(Self::GET),
@@ -310,6 +313,7 @@ impl fmt::Display for RelayMetadata {
 
 impl FromStr for RelayMetadata {
     type Err = Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "read" => Ok(Self::Read),

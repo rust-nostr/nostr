@@ -2,9 +2,10 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::HashMap;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{collections::HashMap, ops::Deref};
 
 use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument, Timestamp};
 use nostr_sdk::{block_on, relay, FilterOptions};

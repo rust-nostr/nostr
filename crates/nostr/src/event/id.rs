@@ -117,6 +117,7 @@ impl EventId {
 
 impl FromStr for EventId {
     type Err = Error;
+
     fn from_str(hex: &str) -> Result<Self, Self::Err> {
         Self::from_hex(hex)
     }

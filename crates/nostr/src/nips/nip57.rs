@@ -108,16 +108,16 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-/* /// Zap Type
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ZapType {
-    /// Public
-    Public,
-    /// Private
-    Private,
-    /// Anonymous
-    Anonymous,
-} */
+// /// Zap Type
+// #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+// pub enum ZapType {
+// Public
+// Public,
+// Private
+// Private,
+// Anonymous
+// Anonymous,
+// }
 
 /// Zap Request Data
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

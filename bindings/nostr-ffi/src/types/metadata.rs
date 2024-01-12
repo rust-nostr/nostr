@@ -20,6 +20,7 @@ pub struct Metadata {
 
 impl Deref for Metadata {
     type Target = nostr::Metadata;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

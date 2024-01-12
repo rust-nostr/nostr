@@ -17,6 +17,7 @@ pub struct Contact {
 
 impl Deref for Contact {
     type Target = nostr::Contact;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

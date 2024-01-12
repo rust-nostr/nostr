@@ -34,50 +34,50 @@ async fn main() {
         database.count(vec![Filter::new()]).await.unwrap()
     );
 
-    /* for i in 0..100_000 {
-        let event = EventBuilder::new_text_note(format!("Event #{i}"), [])
-            .to_event(&keys_a)
-            .unwrap();
-        database.save_event(&event).await.unwrap();
+    // for i in 0..100_000 {
+    // let event = EventBuilder::new_text_note(format!("Event #{i}"), [])
+    // .to_event(&keys_a)
+    // .unwrap();
+    // database.save_event(&event).await.unwrap();
+    //
+    // let event = EventBuilder::new_text_note(
+    // format!("Reply to event #{i}"),
+    // [
+    // Tag::event(event.id),
+    // Tag::public_key(event.pubkey),
+    // ],
+    // )
+    // .to_event(&keys_b)
+    // .unwrap();
+    // database.save_event(&event).await.unwrap();
+    // }
+    //
+    // for i in 0..10 {
+    // let metadata = Metadata::new().name(format!("Name #{i}"));
+    // let event = EventBuilder::set_metadata(&metadata)
+    // .to_event(&keys_a)
+    // .unwrap();
+    // database.save_event(&event).await.unwrap();
+    // }
+    //
+    // for i in 0..500_000 {
+    // let event = EventBuilder::new(
+    // Kind::Custom(123),
+    // "Custom with d tag",
+    // [Tag::Identifier(format!("myid{i}"))],
+    // )
+    // .to_event(&keys_a)
+    // .unwrap();
+    // database.save_event(&event).await.unwrap();
+    // }
 
-        let event = EventBuilder::new_text_note(
-            format!("Reply to event #{i}"),
-            [
-                Tag::event(event.id),
-                Tag::public_key(event.pubkey),
-            ],
-        )
-        .to_event(&keys_b)
-        .unwrap();
-        database.save_event(&event).await.unwrap();
-    }
-
-    for i in 0..10 {
-        let metadata = Metadata::new().name(format!("Name #{i}"));
-        let event = EventBuilder::set_metadata(&metadata)
-            .to_event(&keys_a)
-            .unwrap();
-        database.save_event(&event).await.unwrap();
-    }
-
-    for i in 0..500_000 {
-        let event = EventBuilder::new(
-            Kind::Custom(123),
-            "Custom with d tag",
-            [Tag::Identifier(format!("myid{i}"))],
-        )
-        .to_event(&keys_a)
-        .unwrap();
-        database.save_event(&event).await.unwrap();
-    } */
-
-    /*  let event_id = EventId::all_zeros();
-    database.event_id_seen(event_id, Some(Url::parse("wss://relay.damus.io").unwrap())).await.unwrap();
-    database.event_id_seen(event_id, Some(Url::parse("wss://relay.nostr.info").unwrap())).await.unwrap();
-    database.event_id_seen(event_id, Some(Url::parse("wss://relay.damus.io").unwrap())).await.unwrap();
-
-    let relays = database.event_seen_on_relays(event_id).await.unwrap();
-    println!("Seen on: {relays:?}"); */
+    //  let event_id = EventId::all_zeros();
+    // database.event_id_seen(event_id, Some(Url::parse("wss://relay.damus.io").unwrap())).await.unwrap();
+    // database.event_id_seen(event_id, Some(Url::parse("wss://relay.nostr.info").unwrap())).await.unwrap();
+    // database.event_id_seen(event_id, Some(Url::parse("wss://relay.damus.io").unwrap())).await.unwrap();
+    //
+    // let relays = database.event_seen_on_relays(event_id).await.unwrap();
+    // println!("Seen on: {relays:?}");
 
     let events = database
         .query(

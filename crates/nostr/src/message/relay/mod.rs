@@ -9,8 +9,7 @@ use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use core::fmt;
 
-use serde::{Deserialize, Deserializer};
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
 mod raw;

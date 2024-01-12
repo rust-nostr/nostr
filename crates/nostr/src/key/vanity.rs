@@ -12,8 +12,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, RecvError};
 use std::thread;
 
-use bitcoin::secp256k1::rand;
-use bitcoin::secp256k1::SecretKey;
+use bitcoin::secp256k1::{rand, SecretKey};
 
 use super::Keys;
 use crate::nips::nip19::{ToBech32, PREFIX_BECH32_PUBLIC_KEY};

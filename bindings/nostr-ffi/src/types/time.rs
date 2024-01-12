@@ -19,6 +19,7 @@ impl From<nostr::Timestamp> for Timestamp {
 
 impl Deref for Timestamp {
     type Target = nostr::Timestamp;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

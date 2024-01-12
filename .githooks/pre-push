@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cargo fmt --all -- --config format_code_in_doc_comments=true
+rustup install nightly-2024-01-11
+cargo +nightly-2024-01-11 fmt --all -- --config format_code_in_doc_comments=true
 
 buildargs=(
     "-p nostr"

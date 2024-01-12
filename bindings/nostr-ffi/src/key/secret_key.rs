@@ -24,6 +24,7 @@ impl From<Sk> for SecretKey {
 
 impl Deref for SecretKey {
     type Target = Sk;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

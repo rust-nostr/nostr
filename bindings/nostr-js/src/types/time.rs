@@ -20,6 +20,7 @@ impl From<Timestamp> for JsTimestamp {
 
 impl Deref for JsTimestamp {
     type Target = Timestamp;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

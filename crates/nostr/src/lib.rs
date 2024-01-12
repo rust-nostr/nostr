@@ -33,13 +33,9 @@ extern crate serde;
 
 #[cfg(feature = "nip06")]
 pub use bip39;
-pub use bitcoin;
-pub use bitcoin::bech32;
-pub use bitcoin::hashes;
-pub use bitcoin::secp256k1;
-pub use negentropy;
-pub use serde_json;
+pub use bitcoin::{bech32, hashes, secp256k1};
 pub use url_fork::{self as url, Url};
+pub use {bitcoin, negentropy, serde_json};
 
 pub mod event;
 pub mod key;

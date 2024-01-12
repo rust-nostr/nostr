@@ -16,6 +16,7 @@ pub struct Options {
 
 impl Deref for Options {
     type Target = nostr_sdk::Options;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

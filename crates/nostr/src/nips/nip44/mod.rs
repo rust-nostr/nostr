@@ -104,6 +104,7 @@ impl Version {
 
 impl TryFrom<u8> for Version {
     type Error = Error;
+
     fn try_from(version: u8) -> Result<Self, Self::Error> {
         match version {
             #[allow(deprecated)]

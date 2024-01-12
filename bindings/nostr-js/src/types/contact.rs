@@ -16,6 +16,7 @@ pub struct JsContact {
 
 impl Deref for JsContact {
     type Target = Contact;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

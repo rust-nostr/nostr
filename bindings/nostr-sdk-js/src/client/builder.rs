@@ -5,8 +5,8 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_sdk::ClientBuilder;
-use nostr_sdk::{database::DynNostrDatabase, Client};
+use nostr_sdk::database::DynNostrDatabase;
+use nostr_sdk::{Client, ClientBuilder};
 use wasm_bindgen::prelude::*;
 
 use super::{JsClient, JsClientSigner};

@@ -8,9 +8,7 @@
 
 #![allow(missing_docs)]
 
-use alloc::string::FromUtf8Error;
-use alloc::string::String;
-use alloc::string::ToString;
+use alloc::string::{FromUtf8Error, String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
@@ -129,6 +127,7 @@ enum Nip19Prefix {
 /// Convert NIP19 prefixes to [`Nip19Prefix`]
 impl FromStr for Nip19Prefix {
     type Err = Error;
+
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             PREFIX_BECH32_SECRET_KEY => Ok(Nip19Prefix::NSec),
@@ -170,6 +169,7 @@ pub trait FromBech32: Sized {
 
 impl FromBech32 for SecretKey {
     type Err = Error;
+
     fn from_bech32<S>(secret_key: S) -> Result<Self, Self::Err>
     where
         S: AsRef<str>,
@@ -187,6 +187,7 @@ impl FromBech32 for SecretKey {
 
 impl FromBech32 for XOnlyPublicKey {
     type Err = Error;
+
     fn from_bech32<S>(public_key: S) -> Result<Self, Self::Err>
     where
         S: AsRef<str>,
@@ -204,6 +205,7 @@ impl FromBech32 for XOnlyPublicKey {
 
 impl FromBech32 for Nip19 {
     type Err = Error;
+
     fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
     where
         S: AsRef<str>,
@@ -245,6 +247,7 @@ impl ToBech32 for Nip19 {
 
 impl FromBech32 for EventId {
     type Err = Error;
+
     fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
     where
         S: AsRef<str>,
@@ -369,6 +372,7 @@ impl Nip19Event {
 
 impl FromBech32 for Nip19Event {
     type Err = Error;
+
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
         S: AsRef<str>,
@@ -475,6 +479,7 @@ impl ToBech32 for Nip19Profile {
 
 impl FromBech32 for Nip19Profile {
     type Err = Error;
+
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
         S: AsRef<str>,
@@ -543,6 +548,7 @@ impl Coordinate {
 
 impl FromBech32 for Coordinate {
     type Err = Error;
+
     fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
     where
         S: AsRef<str>,

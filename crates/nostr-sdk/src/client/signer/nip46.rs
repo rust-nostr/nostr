@@ -13,8 +13,10 @@ use async_utility::time;
 use nostr::nips::nip04;
 use nostr::nips::nip46::{Message, NostrConnectMetadata, NostrConnectURI, Request, Response};
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{serde_json, JsonUtil, Keys};
-use nostr::{ClientMessage, EventBuilder, Filter, Kind, SubscriptionId, Timestamp, Url};
+use nostr::{
+    serde_json, ClientMessage, EventBuilder, Filter, JsonUtil, Keys, Kind, SubscriptionId,
+    Timestamp, Url,
+};
 use tokio::sync::Mutex;
 
 #[cfg(feature = "blocking")]

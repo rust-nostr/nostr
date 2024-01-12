@@ -22,6 +22,7 @@ pub struct TagIndexes {
 
 impl Deref for TagIndexes {
     type Target = BTreeMap<Alphabet, TagIndexValues>;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
@@ -77,6 +78,7 @@ pub struct TagIndexValues {
 
 impl Deref for TagIndexValues {
     type Target = BTreeSet<[u8; TAG_INDEX_VALUE_SIZE]>;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

@@ -31,6 +31,7 @@ impl From<&PublicKey> for XOnlyPublicKey {
 
 impl Deref for PublicKey {
     type Target = XOnlyPublicKey;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

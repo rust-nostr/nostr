@@ -20,6 +20,7 @@ pub struct EventId {
 
 impl Deref for EventId {
     type Target = nostr::EventId;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

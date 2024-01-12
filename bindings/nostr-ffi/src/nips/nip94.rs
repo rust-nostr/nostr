@@ -22,6 +22,7 @@ pub struct FileMetadata {
 
 impl Deref for FileMetadata {
     type Target = nip94::FileMetadata;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

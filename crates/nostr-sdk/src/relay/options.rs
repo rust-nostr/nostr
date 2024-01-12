@@ -264,10 +264,10 @@ impl RelayPoolOptions {
 pub struct NegentropyOptions {
     /// Timeout to check if negentropy it's supported (default: 10 secs)
     pub initial_timeout: Duration,
-    /* /// Timeout for messages from relay (default: 10)
-    ///
-    /// If relay reply only to first messages, this timeout will stop the loop.
-    pub recv_timeout: Duration, */
+    // /// Timeout for messages from relay (default: 10)
+    //
+    // If relay reply only to first messages, this timeout will stop the loop.
+    // pub recv_timeout: Duration,
     /// Static timeout to get needed events from relay (default: 10)
     ///
     /// This timeout is added to `relative_get_events_timeout`
@@ -288,7 +288,7 @@ impl Default for NegentropyOptions {
     fn default() -> Self {
         Self {
             initial_timeout: Duration::from_secs(10),
-            //recv_timeout: Duration::from_secs(600),
+            // recv_timeout: Duration::from_secs(600),
             static_get_events_timeout: Duration::from_secs(10),
             relative_get_events_timeout: Duration::from_millis(250),
             batch_send_timeout: Duration::from_secs(30),
@@ -309,13 +309,13 @@ impl NegentropyOptions {
         self
     }
 
-    /* /// Timeout for messages from relay (default: 10)
-    ///
-    /// If relay reply only to first messages, this timeout will stop the loop.
-    pub fn recv_timeout(mut self, recv_timeout: Duration) -> Self {
-        self.recv_timeout = recv_timeout;
-        self
-    } */
+    // /// Timeout for messages from relay (default: 10)
+    //
+    // If relay reply only to first messages, this timeout will stop the loop.
+    // pub fn recv_timeout(mut self, recv_timeout: Duration) -> Self {
+    // self.recv_timeout = recv_timeout;
+    // self
+    // }
 
     /// Static timeout to get needed events from relay (default: 10)
     ///

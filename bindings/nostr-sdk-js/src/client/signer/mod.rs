@@ -16,6 +16,7 @@ pub struct JsClientSigner {
 
 impl Deref for JsClientSigner {
     type Target = ClientSigner;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

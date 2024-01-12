@@ -18,6 +18,7 @@ pub struct Nip46Signer {
 
 impl Deref for Nip46Signer {
     type Target = client::Nip46Signer;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

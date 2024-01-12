@@ -26,6 +26,7 @@ pub mod event_seen_by_fbs {
 
     impl<'a> flatbuffers::Follow<'a> for EventSeenBy<'a> {
         type Inner = EventSeenBy<'a>;
+
         #[inline]
         unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
             Self {
@@ -41,6 +42,7 @@ pub mod event_seen_by_fbs {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             EventSeenBy { _tab: table }
         }
+
         #[allow(unused_mut)]
         pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
             _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
@@ -112,6 +114,7 @@ pub mod event_seen_by_fbs {
                 relay_urls,
             );
         }
+
         #[inline]
         pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> EventSeenByBuilder<'a, 'b> {
             let start = _fbb.start_table();
@@ -120,6 +123,7 @@ pub mod event_seen_by_fbs {
                 start_: start,
             }
         }
+
         #[inline]
         pub fn finish(self) -> flatbuffers::WIPOffset<EventSeenBy<'a>> {
             let o = self.fbb_.end_table(self.start_);

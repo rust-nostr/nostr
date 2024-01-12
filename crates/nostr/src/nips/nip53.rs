@@ -54,6 +54,7 @@ impl fmt::Display for LiveEventMarker {
 
 impl FromStr for LiveEventMarker {
     type Err = Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Host" => Ok(Self::Host),

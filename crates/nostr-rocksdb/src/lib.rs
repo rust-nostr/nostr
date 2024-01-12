@@ -16,7 +16,8 @@ pub extern crate nostr;
 pub extern crate nostr_database as database;
 
 use async_trait::async_trait;
-use nostr::{nips::nip01::Coordinate, Event, EventId, Filter, Timestamp, Url};
+use nostr::nips::nip01::Coordinate;
+use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
     FlatBufferDecode, FlatBufferEncode, NostrDatabase, Order, RawEvent,

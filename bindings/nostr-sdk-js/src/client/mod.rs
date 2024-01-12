@@ -75,16 +75,16 @@ impl JsClient {
         self.inner.shutdown().await.map_err(into_err)
     }
 
-    /* /// Get relays
-    #[wasm_bindgen]
-    pub async fn relays(&self) -> HashMap<String, JsRelay> {
-        self.inner
-            .relays()
-            .await
-            .into_iter()
-            .map(|(u, r)| (u.to_string(), r.into()))
-            .collect()
-    } */
+    // /// Get relays
+    // #[wasm_bindgen]
+    // pub async fn relays(&self) -> HashMap<String, JsRelay> {
+    // self.inner
+    // .relays()
+    // .await
+    // .into_iter()
+    // .map(|(u, r)| (u.to_string(), r.into()))
+    // .collect()
+    // }
 
     /// Add new relay
     #[wasm_bindgen(js_name = addRelay)]
@@ -269,48 +269,48 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /* /// Get contact list
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    #[wasm_bindgen(js_name = getContactList)]
-    pub async fn get_contact_list(&self, timeout: Option<u64>) -> Result<Vec<JsContact>> {
-        let timeout = timeout.map(|t| Duration::from_secs(t as u64));
-        self.inner
-            .get_contact_list(timeout)
-            .await
-            .map_err(into_err)
-            .map(|vec| vec.into_iter().map(|c| c.into()).collect())
-    }
+    // /// Get contact list
+    //
+    // <https://github.com/nostr-protocol/nips/blob/master/02.md>
+    // #[wasm_bindgen(js_name = getContactList)]
+    // pub async fn get_contact_list(&self, timeout: Option<u64>) -> Result<Vec<JsContact>> {
+    // let timeout = timeout.map(|t| Duration::from_secs(t as u64));
+    // self.inner
+    // .get_contact_list(timeout)
+    // .await
+    // .map_err(into_err)
+    // .map(|vec| vec.into_iter().map(|c| c.into()).collect())
+    // }
+    //
+    // Get contact list public keys
+    //
+    // <https://github.com/nostr-protocol/nips/blob/master/02.md>
+    // #[wasm_bindgen(js_name = getContactListPublicKeys)]
+    // pub async fn get_contact_list_public_keys(
+    // &self,
+    // timeout: Option<u64>,
+    // ) -> Result<Vec<JsPublicKey>> {
+    // let timeout = timeout.map(|t| Duration::from_secs(t as u64));
+    // self.inner
+    // .get_contact_list_public_keys(timeout)
+    // .await
+    // .map_err(into_err)
+    // .map(|vec| vec.into_iter().map(|c| c.into()).collect())
+    // }
 
-    /// Get contact list public keys
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    #[wasm_bindgen(js_name = getContactListPublicKeys)]
-    pub async fn get_contact_list_public_keys(
-        &self,
-        timeout: Option<u64>,
-    ) -> Result<Vec<JsPublicKey>> {
-        let timeout = timeout.map(|t| Duration::from_secs(t as u64));
-        self.inner
-            .get_contact_list_public_keys(timeout)
-            .await
-            .map_err(into_err)
-            .map(|vec| vec.into_iter().map(|c| c.into()).collect())
-    } */
-
-    /* /// Get contact list [`Metadata`]
-    #[wasm_bindgen(js_name = getContactListMetadata)]
-    pub async fn get_contact_list_metadata(
-        &self,
-        timeout: Option<u64>,
-    ) -> Result<HashMap<JsPublicKey, JsMetadata>> {
-        let timeout = timeout.map(|t| Duration::from_secs(t as u64));
-        self.inner
-            .get_contact_list_public_keys(timeout)
-            .await
-            .map_err(into_err)
-            .map(|vec| vec.into_iter().map(|c| c.into()).collect())
-    } */
+    // /// Get contact list [`Metadata`]
+    // #[wasm_bindgen(js_name = getContactListMetadata)]
+    // pub async fn get_contact_list_metadata(
+    // &self,
+    // timeout: Option<u64>,
+    // ) -> Result<HashMap<JsPublicKey, JsMetadata>> {
+    // let timeout = timeout.map(|t| Duration::from_secs(t as u64));
+    // self.inner
+    // .get_contact_list_public_keys(timeout)
+    // .await
+    // .map_err(into_err)
+    // .map(|vec| vec.into_iter().map(|c| c.into()).collect())
+    // }
 
     /// Send encrypted direct message
     ///

@@ -17,6 +17,7 @@ pub struct JsPublicKey {
 
 impl Deref for JsPublicKey {
     type Target = XOnlyPublicKey;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

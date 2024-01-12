@@ -37,6 +37,7 @@ impl From<nostr::EventBuilder> for EventBuilder {
 
 impl Deref for EventBuilder {
     type Target = nostr::EventBuilder;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

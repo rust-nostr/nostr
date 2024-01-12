@@ -10,7 +10,8 @@ use alloc::string::{String, ToString};
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin::secp256k1::{self, schnorr::Signature, XOnlyPublicKey};
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::secp256k1::{self, XOnlyPublicKey};
 use js_sys::{Array, Function, Object, Promise, Reflect};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;

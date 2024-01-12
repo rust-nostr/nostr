@@ -19,6 +19,7 @@ pub struct ZapRequestData {
 
 impl Deref for ZapRequestData {
     type Target = nip57::ZapRequestData;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

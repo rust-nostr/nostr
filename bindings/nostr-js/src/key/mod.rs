@@ -21,6 +21,7 @@ pub struct JsKeys {
 
 impl Deref for JsKeys {
     type Target = Keys;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

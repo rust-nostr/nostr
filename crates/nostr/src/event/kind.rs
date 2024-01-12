@@ -353,6 +353,7 @@ impl From<f64> for Kind {
 
 impl FromStr for Kind {
     type Err = ParseIntError;
+
     fn from_str(kind: &str) -> Result<Self, Self::Err> {
         let kind: u64 = kind.parse()?;
         Ok(Self::from(kind))
@@ -361,6 +362,7 @@ impl FromStr for Kind {
 
 impl Add<u64> for Kind {
     type Output = Self;
+
     fn add(self, rhs: u64) -> Self::Output {
         let kind = self.as_u64();
         Kind::from(kind + rhs)

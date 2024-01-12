@@ -12,8 +12,9 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::{HttpMethod, Tag, UncheckedUrl};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
+
+use crate::{HttpMethod, Tag, UncheckedUrl};
 
 /// [`HttpData`] required tags
 #[derive(Debug)]

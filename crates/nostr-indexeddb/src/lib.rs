@@ -110,12 +110,12 @@ impl WebDatabase {
                 self.apply_migration(CURRENT_DB_VERSION, migration).await?;
                 tracing::info!("Database schemas initialized.");
             } else {
-                /* if old_version < 3 {
-                    db = migrate_to_v3(db, store_cipher).await?;
-                }
-                if old_version < 4 {
-                    db = migrate_to_v4(db, store_cipher).await?;
-                } */
+                // if old_version < 3 {
+                // db = migrate_to_v3(db, store_cipher).await?;
+                // }
+                // if old_version < 4 {
+                // db = migrate_to_v4(db, store_cipher).await?;
+                // }
             }
 
             self.db.close();

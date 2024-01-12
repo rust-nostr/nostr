@@ -5,6 +5,7 @@
 //! Raw Relay messages
 
 use alloc::string::String;
+
 use serde_json::Value;
 
 use crate::message::MessageHandleError;

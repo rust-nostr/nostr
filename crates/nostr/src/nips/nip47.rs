@@ -6,9 +6,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/47.md>
 
-use alloc::string::String;
+use alloc::borrow::Cow;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use alloc::{borrow::Cow, string::ToString};
 use core::fmt;
 use core::str::FromStr;
 
@@ -18,9 +18,8 @@ use serde_json::Value;
 use url_fork::form_urlencoded::byte_serialize;
 use url_fork::{ParseError, Url};
 
-use crate::JsonUtil;
-
 use super::nip04;
+use crate::JsonUtil;
 
 /// NIP47 error
 #[derive(Debug)]
@@ -130,6 +129,7 @@ impl fmt::Display for Method {
 
 impl FromStr for Method {
     type Err = Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "pay_invoice" => Ok(Method::PayInvoice),
@@ -619,6 +619,7 @@ impl NostrWalletConnectURI {
 
 impl FromStr for NostrWalletConnectURI {
     type Err = Error;
+
     fn from_str(uri: &str) -> Result<Self, Self::Err> {
         let url = Url::parse(uri)?;
 

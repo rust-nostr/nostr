@@ -34,6 +34,7 @@ impl From<EventSdk> for Event {
 
 impl Deref for Event {
     type Target = EventSdk;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

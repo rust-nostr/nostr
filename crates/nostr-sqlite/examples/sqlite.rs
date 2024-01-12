@@ -34,23 +34,23 @@ async fn main() {
         database.count(vec![Filter::new()]).await.unwrap()
     );
 
-    /* for i in 0..100_000 {
-        let event = EventBuilder::new_text_note(format!("Event #{i}"), &[])
-            .to_event(&keys_a)
-            .unwrap();
-        database.save_event(&event).await.unwrap();
-
-        let event = EventBuilder::new_text_note(
-            format!("Reply to event #{i}"),
-            &[
-                Tag::event(event.id),
-                Tag::PubKey(event.pubkey, None),
-            ],
-        )
-        .to_event(&keys_b)
-        .unwrap();
-        database.save_event(&event).await.unwrap();
-    } */
+    // for i in 0..100_000 {
+    // let event = EventBuilder::new_text_note(format!("Event #{i}"), &[])
+    // .to_event(&keys_a)
+    // .unwrap();
+    // database.save_event(&event).await.unwrap();
+    //
+    // let event = EventBuilder::new_text_note(
+    // format!("Reply to event #{i}"),
+    // &[
+    // Tag::event(event.id),
+    // Tag::PubKey(event.pubkey, None),
+    // ],
+    // )
+    // .to_event(&keys_b)
+    // .unwrap();
+    // database.save_event(&event).await.unwrap();
+    // }
 
     for i in 0..10 {
         let metadata = Metadata::new().name(format!("Name #{i}"));
@@ -60,16 +60,16 @@ async fn main() {
         database.save_event(&event).await.unwrap();
     }
 
-    /* for i in 0..500_000 {
-        let event = EventBuilder::new(
-            Kind::Custom(123),
-            "Custom with d tag",
-            &[Tag::Identifier(format!("myid{i}"))],
-        )
-        .to_event(&keys_a)
-        .unwrap();
-        database.save_event(&event).await.unwrap();
-    } */
+    // for i in 0..500_000 {
+    // let event = EventBuilder::new(
+    // Kind::Custom(123),
+    // "Custom with d tag",
+    // &[Tag::Identifier(format!("myid{i}"))],
+    // )
+    // .to_event(&keys_a)
+    // .unwrap();
+    // database.save_event(&event).await.unwrap();
+    // }
 
     let event_id = EventId::all_zeros();
     database

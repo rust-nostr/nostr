@@ -145,6 +145,7 @@ impl fmt::Display for Alphabet {
 
 impl TryFrom<char> for Alphabet {
     type Error = AlphabetError;
+
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'a' => Ok(Self::A),
@@ -180,6 +181,7 @@ impl TryFrom<char> for Alphabet {
 
 impl FromStr for Alphabet {
     type Err = AlphabetError;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let c: char = s.chars().next().ok_or(AlphabetError::InvalidChar)?;
         Self::try_from(c)

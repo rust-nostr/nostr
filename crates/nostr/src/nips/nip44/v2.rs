@@ -128,6 +128,7 @@ impl fmt::Debug for ConversationKey {
 
 impl Deref for ConversationKey {
     type Target = Hmac<Sha256Hash>;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }

@@ -128,6 +128,7 @@ impl From<Coordinate> for Filter {
 
 impl FromStr for Coordinate {
     type Err = Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut kpi = s.split(':');
         if let (Some(kind_str), Some(pubkey_str), Some(identifier)) =

@@ -621,6 +621,7 @@ impl NostrConnectURI {
 
 impl FromStr for NostrConnectURI {
     type Err = Error;
+
     fn from_str(uri: &str) -> Result<Self, Self::Err> {
         let url = Url::parse(uri)?;
 

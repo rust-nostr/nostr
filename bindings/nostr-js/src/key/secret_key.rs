@@ -17,6 +17,7 @@ pub struct JsSecretKey {
 
 impl Deref for JsSecretKey {
     type Target = SecretKey;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

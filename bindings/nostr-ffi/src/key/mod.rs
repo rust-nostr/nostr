@@ -24,6 +24,7 @@ pub struct Keys {
 
 impl Deref for Keys {
     type Target = key::Keys;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

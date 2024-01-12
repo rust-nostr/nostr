@@ -16,6 +16,7 @@ pub trait TryIntoUrl {
 
 impl TryIntoUrl for Url {
     type Err = ParseError;
+
     fn try_into_url(&self) -> Result<Url, Self::Err> {
         Ok(self.clone())
     }
@@ -23,6 +24,7 @@ impl TryIntoUrl for Url {
 
 impl TryIntoUrl for &Url {
     type Err = ParseError;
+
     fn try_into_url(&self) -> Result<Url, Self::Err> {
         Ok(<&Url>::clone(self).clone())
     }
@@ -30,6 +32,7 @@ impl TryIntoUrl for &Url {
 
 impl TryIntoUrl for String {
     type Err = ParseError;
+
     fn try_into_url(&self) -> Result<Url, Self::Err> {
         Url::parse(self)
     }
@@ -37,6 +40,7 @@ impl TryIntoUrl for String {
 
 impl TryIntoUrl for &str {
     type Err = ParseError;
+
     fn try_into_url(&self) -> Result<Url, Self::Err> {
         Url::parse(self)
     }

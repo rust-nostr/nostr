@@ -83,6 +83,7 @@ pub struct Filter {
 
 impl Deref for Filter {
     type Target = nostr::Filter;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

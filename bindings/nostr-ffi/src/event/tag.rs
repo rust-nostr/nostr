@@ -19,8 +19,7 @@ use crate::error::{NostrError, Result};
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::LiveEventMarker;
 use crate::nips::nip90::DataVendingMachineStatus;
-use crate::Event;
-use crate::{EventId, ImageDimensions, LiveEventStatus, PublicKey, Timestamp};
+use crate::{Event, EventId, ImageDimensions, LiveEventStatus, PublicKey, Timestamp};
 
 /// Marker
 #[derive(Enum)]
@@ -739,6 +738,7 @@ impl From<tag::Tag> for TagEnum {
 
 impl TryFrom<TagEnum> for tag::Tag {
     type Error = NostrError;
+
     fn try_from(value: TagEnum) -> Result<Self, Self::Error> {
         match value {
             TagEnum::Unknown { kind, data } => Ok(Self::Generic(kind.into(), data)),
@@ -893,6 +893,7 @@ impl From<tag::Tag> for Tag {
 
 impl Deref for Tag {
     type Target = tag::Tag;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

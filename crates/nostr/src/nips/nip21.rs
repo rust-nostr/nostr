@@ -132,6 +132,7 @@ impl From<Nip21> for Nip19 {
 
 impl TryFrom<Nip19> for Nip21 {
     type Error = Error;
+
     fn try_from(value: Nip19) -> Result<Self, Self::Error> {
         match value {
             Nip19::Secret(..) => Err(Error::UnsupportedBech32Type(

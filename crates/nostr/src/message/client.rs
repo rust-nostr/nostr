@@ -10,8 +10,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use negentropy::{Bytes, Negentropy};
-use serde::{Deserialize, Deserializer};
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
 use super::{Filter, MessageHandleError, SubscriptionId};

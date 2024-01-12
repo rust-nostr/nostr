@@ -1320,7 +1320,7 @@ mod tests {
                 .to_event(&badge_one_keys)
                 .unwrap();
 
-        //Badge 2
+        // Badge 2
         let badge_two_keys = Keys::generate();
         let badge_two_pubkey = badge_two_keys.public_key();
 

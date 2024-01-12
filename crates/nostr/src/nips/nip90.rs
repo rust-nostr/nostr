@@ -53,6 +53,7 @@ impl fmt::Display for DataVendingMachineStatus {
 
 impl FromStr for DataVendingMachineStatus {
     type Err = Error;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "payment-required" => Ok(Self::PaymentRequired),

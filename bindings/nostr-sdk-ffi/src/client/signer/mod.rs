@@ -20,6 +20,7 @@ pub struct ClientSigner {
 
 impl Deref for ClientSigner {
     type Target = signer::ClientSigner;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

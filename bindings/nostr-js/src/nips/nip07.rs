@@ -22,6 +22,7 @@ pub struct JsNip07Signer {
 
 impl Deref for JsNip07Signer {
     type Target = Nip07Signer;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

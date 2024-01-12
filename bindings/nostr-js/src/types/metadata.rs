@@ -22,6 +22,7 @@ impl From<Metadata> for JsMetadata {
 
 impl Deref for JsMetadata {
     type Target = Metadata;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

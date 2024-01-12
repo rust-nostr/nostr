@@ -27,11 +27,6 @@ pub use crate::event::unsigned::*;
 pub use crate::event::*;
 pub use crate::key::*;
 pub use crate::message::*;
-pub use crate::types::*;
-pub use crate::util::*;
-#[cfg(feature = "std")]
-pub use crate::{Result, SECP256K1};
-
 // NIPs
 pub use crate::nips::nip01::{self, *};
 #[cfg(feature = "nip04")]
@@ -63,3 +58,7 @@ pub use crate::nips::nip65::{self, *};
 pub use crate::nips::nip90::{self, *};
 pub use crate::nips::nip94::{self, *};
 pub use crate::nips::nip98::{self, *};
+pub use crate::types::*;
+pub use crate::util::*;
+#[cfg(feature = "std")]
+pub use crate::{Result, SECP256K1};

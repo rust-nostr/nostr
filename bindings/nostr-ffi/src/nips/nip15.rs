@@ -92,6 +92,7 @@ pub struct ShippingMethod {
 
 impl Deref for ShippingMethod {
     type Target = nip15::ShippingMethod;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

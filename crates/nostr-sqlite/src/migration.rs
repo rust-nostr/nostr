@@ -55,29 +55,29 @@ pub(crate) async fn run(conn: &Object) -> Result<(), Error> {
 
                 // for initialized but out-of-date schemas, proceed to
                 // upgrade sequentially until we are current.
-                /* if curr_version == 1 {
-                    curr_version = mig_1_to_2(conn)?;
-                }
-
-                if curr_version == 2 {
-                    curr_version = mig_2_to_3(conn)?;
-                }
-
-                if curr_version == 3 {
-                    curr_version = mig_3_to_4(conn)?;
-                }
-
-                if curr_version == 4 {
-                    curr_version = mig_4_to_5(conn)?;
-                }
-
-                if curr_version == 5 {
-                    curr_version = mig_5_to_6(conn)?;
-                }
-
-                if curr_version == 6 {
-                    curr_version = mig_6_to_7(conn)?;
-                } */
+                // if curr_version == 1 {
+                // curr_version = mig_1_to_2(conn)?;
+                // }
+                //
+                // if curr_version == 2 {
+                // curr_version = mig_2_to_3(conn)?;
+                // }
+                //
+                // if curr_version == 3 {
+                // curr_version = mig_3_to_4(conn)?;
+                // }
+                //
+                // if curr_version == 4 {
+                // curr_version = mig_4_to_5(conn)?;
+                // }
+                //
+                // if curr_version == 5 {
+                // curr_version = mig_5_to_6(conn)?;
+                // }
+                //
+                // if curr_version == 6 {
+                // curr_version = mig_6_to_7(conn)?;
+                // }
 
                 if curr_version == DB_VERSION {
                     tracing::info!("All migration scripts completed successfully (v{DB_VERSION})");
@@ -109,8 +109,8 @@ fn mig_init(conn: &mut Connection) -> Result<usize, Error> {
     Ok(1)
 }
 
-/* fn mig_1_to_2(conn: &mut Connection) -> Result<usize, Error> {
-    conn.execute_batch(include_str!("../../migrations/002_notifications.sql"))?;
-    tracing::info!("database schema upgraded v1 -> v2");
-    Ok(2)
-} */
+// fn mig_1_to_2(conn: &mut Connection) -> Result<usize, Error> {
+// conn.execute_batch(include_str!("../../migrations/002_notifications.sql"))?;
+// tracing::info!("database schema upgraded v1 -> v2");
+// Ok(2)
+// }

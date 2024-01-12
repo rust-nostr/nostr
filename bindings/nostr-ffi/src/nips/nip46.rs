@@ -25,6 +25,7 @@ impl From<nip46::NostrConnectURI> for NostrConnectURI {
 
 impl Deref for NostrConnectURI {
     type Target = nip46::NostrConnectURI;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

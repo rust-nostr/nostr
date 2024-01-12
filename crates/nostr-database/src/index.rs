@@ -67,6 +67,7 @@ impl Ord for EventIndex {
 
 impl TryFrom<RawEvent> for EventIndex {
     type Error = nostr::event::id::Error;
+
     fn try_from(raw: RawEvent) -> Result<Self, Self::Error> {
         Ok(Self {
             created_at: raw.created_at,

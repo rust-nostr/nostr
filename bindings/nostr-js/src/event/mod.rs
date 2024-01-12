@@ -40,6 +40,7 @@ impl From<Event> for JsEvent {
 
 impl Deref for JsEvent {
     type Target = Event;
+
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
