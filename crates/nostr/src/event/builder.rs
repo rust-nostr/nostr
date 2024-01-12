@@ -1069,17 +1069,14 @@ mod tests {
     use core::str::FromStr;
 
     #[cfg(feature = "std")]
-    use bitcoin::secp256k1::{Secp256k1, SecretKey};
+    use bitcoin::secp256k1::SecretKey;
 
     use super::*;
 
     #[test]
     #[cfg(feature = "std")]
     fn round_trip() {
-        let secp = Secp256k1::new();
-
-        let keys = Keys::new_with_ctx(
-            &secp,
+        let keys = Keys::new(
             SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap(),
         );
@@ -1097,15 +1094,11 @@ mod tests {
     #[test]
     #[cfg(all(feature = "std", feature = "nip04"))]
     fn test_encrypted_direct_msg() {
-        let secp = Secp256k1::new();
-
-        let sender_keys = Keys::new_with_ctx(
-            &secp,
+        let sender_keys = Keys::new(
             SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap(),
         );
-        let receiver_keys = Keys::new_with_ctx(
-            &secp,
+        let receiver_keys = Keys::new(
             SecretKey::from_str("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap(),
         );
