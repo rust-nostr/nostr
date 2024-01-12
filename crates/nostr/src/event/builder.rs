@@ -303,10 +303,22 @@ impl EventBuilder {
         self.to_event_with_ctx(&SECP256K1, &mut rand::thread_rng(), &Instant::now(), keys)
     }
 
+    /// Build, sign, and return the [`Event`]
+    #[cfg(feature = "std")]
+    pub fn sign(self, keys: &Keys) -> Result<Event, Error> {
+        self.to_event(keys)
+    }
+
     /// Build [`UnsignedEvent`]
     #[cfg(feature = "std")]
     pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
         self.to_unsigned_event_with_supplier(&Instant::now(), pubkey)
+    }
+
+    /// Build [`UnsignedEvent`]
+    #[cfg(feature = "std")]
+    pub fn build(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
+        self.to_unsigned_event(pubkey)
     }
 
     /// Build POW [`Event`]
@@ -321,10 +333,22 @@ impl EventBuilder {
         )
     }
 
+    /// Build, sign and the [`Event`] with POW
+    #[cfg(feature = "std")]
+    pub fn sign_pow(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
+        self.to_pow_event(keys, difficulty)
+    }
+
     /// Build unsigned POW [`Event`]
     #[cfg(feature = "std")]
     pub fn to_unsigned_pow_event(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
         self.to_unsigned_pow_event_with_supplier(&Instant::now(), pubkey, difficulty)
+    }
+
+    /// Build unsigned POW [`Event`]
+    #[cfg(feature = "std")]
+    pub fn build_pow(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
+        self.to_unsigned_pow_event(pubkey, difficulty)
     }
 }
 

@@ -159,6 +159,15 @@ impl Event {
         }
     }
 
+    /// Create a new [EventBuilder] instance
+    pub fn builder<S, I>(kind: Kind, content: S, tags: I) -> EventBuilder
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = Tag>,
+    {
+        EventBuilder::new(kind, content, tags)
+    }
+
     /// Deserialize [`Event`] from [`Value`]
     ///
     /// **This method NOT verify the signature!**
