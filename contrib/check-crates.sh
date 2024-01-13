@@ -1,20 +1,23 @@
 #!/bin/bash
 
+# MSRV
+msrv="1.64.0"
+
 is_msrv=false
 version=""
 
 # Check if "msrv" is passed as an argument
 if [[ "$#" -gt 0 && "$1" == "msrv" ]]; then
     is_msrv=true
-    version="+1.64.0"
+    version="+$msrv"
 fi
 
 # Check if MSRV
 if [ "$is_msrv" == true ]; then
     # Install MSRV
-    rustup install 1.64.0
-    rustup component add clippy --toolchain 1.64.0
-    rustup target add wasm32-unknown-unknown --toolchain 1.64.0
+    rustup install $msrv
+    rustup component add clippy --toolchain $msrv
+    rustup target add wasm32-unknown-unknown --toolchain $msrv
 fi
 
 buildargs=(
