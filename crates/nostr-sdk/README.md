@@ -6,7 +6,6 @@
 [![Rustc Version 1.64.0+](https://img.shields.io/badge/rustc-1.64.0%2B-lightgrey.svg)](https://blog.rust-lang.org/2022/09/22/Rust-1.64.0.html)
 [![CI](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/crates/l/nostr-sdk.svg)](../../LICENSE)
-![Lines of code](https://img.shields.io/tokei/lines/github/rust-nostr/nostr)
 
 ## Description
 
@@ -128,7 +127,6 @@ The following crate feature flags are available:
 | ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
 | `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                     |
 | `sqlite`            |   No    | Enable SQLite Storage backend                                                               |
-| `rocksdb`           |   No    | Enable RocksDB Storage backend                                                              |
 | `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                      |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                             |
 | `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                       |

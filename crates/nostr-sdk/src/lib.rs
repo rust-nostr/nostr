@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 #![forbid(unsafe_code)]
+#![deny(warnings)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![allow(unknown_lints)]
@@ -22,8 +23,6 @@ pub use nostr::{self, *};
 pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
 #[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]
 pub use nostr_indexeddb::{IndexedDBError, WebDatabase};
-#[cfg(feature = "rocksdb")]
-pub use nostr_rocksdb::RocksDatabase;
 #[cfg(feature = "blocking")]
 use nostr_sdk_net::futures_util::Future;
 #[cfg(feature = "sqlite")]

@@ -4,6 +4,7 @@
 
 //! Nostr Database
 
+#![deny(warnings)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
@@ -40,8 +41,6 @@ pub use self::raw::RawEvent;
 pub enum Backend {
     /// Memory
     Memory,
-    /// RocksDB
-    RocksDB,
     /// Lightning Memory-Mapped Database
     LMDB,
     /// SQLite
@@ -108,7 +107,7 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Error
     type Err: From<DatabaseError> + Into<DatabaseError>;
 
-    /// Name of the backend database used (ex. rocksdb, lmdb, sqlite, indexeddb, ...)
+    /// Name of the backend database used (ex. lmdb, sqlite, indexeddb, ...)
     fn backend(&self) -> Backend;
 
     /// Database options

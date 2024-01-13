@@ -10,7 +10,6 @@ This library contains the `NostrDatabase` and `NostrDatabaseExt` traits. You can
 
 * Memory (RAM), available in this library
 * SQLite (desktop, server and mobile devices), available at [`nostr-sqlite`](https://crates.io/crates/nostr-sqlite)
-* RocksDB (desktop, server and mobile devices), available at [`nostr-rocksdb`](https://crates.io/crates/nostr-rocksdb)
 * IndexedDB (web), available at [`nostr-indexeddb`](https://crates.io/crates/nostr-indexeddb)
 
 ## Crate Feature Flags
