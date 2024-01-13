@@ -14,6 +14,30 @@ use url_fork::Url;
 
 use crate::{ImageDimensions, Tag};
 
+/// Potential errors returned when parsing tags into a [FileMetadata] struct
+#[derive(Debug, PartialEq, Eq)]
+pub enum FileMetadataError {
+    /// The URL of the file is missing (no `url` tag)
+    MissingUrl,
+    /// The mime type of the file is missing (no `m` tag)
+    MissingMimeType,
+    /// The SHA256 hash of the file is missing (no `x` tag)
+    MissingSha,
+}
+
+impl core::fmt::Display for FileMetadataError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::MissingUrl => write!(f, "missing url"),
+            Self::MissingMimeType => write!(f, "missing mime type"),
+            Self::MissingSha => write!(f, "missing file sha256"),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for FileMetadataError {}
+
 /// File Metadata
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileMetadata {
@@ -143,5 +167,132 @@ impl From<FileMetadata> for Vec<Tag> {
         }
 
         tags
+    }
+}
+
+impl TryFrom<Vec<Tag>> for FileMetadata {
+    type Error = FileMetadataError;
+
+    fn try_from(value: Vec<Tag>) -> Result<Self, Self::Error> {
+        let url = match value.iter().find(|t| matches!(t, Tag::Url(_))) {
+            Some(Tag::Url(url)) => Ok(url),
+            _ => Err(Self::Error::MissingUrl),
+        }?;
+        let mime = match value.iter().find(|t| matches!(t, Tag::MimeType(_))) {
+            Some(Tag::MimeType(mime)) => Ok(mime),
+            _ => Err(Self::Error::MissingMimeType),
+        }?;
+        let sha256 = match value.iter().find(|t| matches!(t, Tag::Sha256(_))) {
+            Some(Tag::Sha256(sha256)) => Ok(sha256),
+            _ => Err(Self::Error::MissingSha),
+        }?;
+        let mut metadata = FileMetadata::new(url.clone(), mime, *sha256);
+
+        if let Some(Tag::Aes256Gcm { key, iv }) =
+            value.iter().find(|t| matches!(t, Tag::Aes256Gcm { .. }))
+        {
+            metadata = metadata.aes_256_gcm(key, iv);
+        }
+
+        if let Some(Tag::Size(size)) = value.iter().find(|t| matches!(t, Tag::Size(_))) {
+            metadata = metadata.size(*size);
+        }
+
+        if let Some(Tag::Dim(dim)) = value.iter().find(|t| matches!(t, Tag::Dim(_))) {
+            metadata = metadata.dimensions(*dim);
+        }
+
+        if let Some(Tag::Magnet(magnet)) = value.iter().find(|t| matches!(t, Tag::Magnet(_))) {
+            metadata = metadata.magnet(magnet);
+        }
+
+        if let Some(Tag::Blurhash(bh)) = value.iter().find(|t| matches!(t, Tag::Blurhash(_))) {
+            metadata = metadata.blurhash(bh);
+        }
+
+        Ok(metadata)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use core::str::FromStr;
+
+    use super::*;
+    use crate::{ImageDimensions, Tag};
+
+    const IMAGE_URL: &str = "https://image.nostr.build/99a95fcb4b7a2591ad32467032c52a62d90a204d3b176bc2459ad7427a3f2b89.jpg";
+    const IMAGE_HASH: &str = "1aea8e98e0e5d969b7124f553b88dfae47d1f00472ea8c0dbf4ac4577d39ef02";
+
+    #[test]
+    fn parses_valid_tag_vector() {
+        let url = Url::parse(IMAGE_URL).unwrap();
+        let hash = Sha256Hash::from_str(IMAGE_HASH).unwrap();
+        let dim = ImageDimensions {
+            width: 640,
+            height: 640,
+        };
+        let tags = vec![
+            Tag::Dim(dim.clone()),
+            Tag::Sha256(hash),
+            Tag::Url(url.clone()),
+            Tag::MimeType(String::from("image/jpeg")),
+        ];
+        let got = FileMetadata::try_from(tags).unwrap();
+        let expected = FileMetadata::new(url, "image/jpeg", hash).dimensions(dim);
+
+        assert_eq!(expected, got);
+    }
+
+    #[test]
+    fn returns_error_with_url_missing() {
+        let hash = Sha256Hash::from_str(IMAGE_HASH).unwrap();
+        let dim = ImageDimensions {
+            width: 640,
+            height: 640,
+        };
+        let tags = vec![
+            Tag::Dim(dim.clone()),
+            Tag::Sha256(hash),
+            Tag::MimeType(String::from("image/jpeg")),
+        ];
+        let got = FileMetadata::try_from(tags).unwrap_err();
+
+        assert_eq!(FileMetadataError::MissingUrl, got);
+    }
+
+    #[test]
+    fn returns_error_with_mime_type_missing() {
+        let url = Url::parse(IMAGE_URL).unwrap();
+        let hash = Sha256Hash::from_str(IMAGE_HASH).unwrap();
+        let dim = ImageDimensions {
+            width: 640,
+            height: 640,
+        };
+        let tags = vec![
+            Tag::Dim(dim.clone()),
+            Tag::Sha256(hash),
+            Tag::Url(url.clone()),
+        ];
+        let got = FileMetadata::try_from(tags).unwrap_err();
+
+        assert_eq!(FileMetadataError::MissingMimeType, got);
+    }
+
+    #[test]
+    fn returns_error_with_sha_missing() {
+        let url = Url::parse(IMAGE_URL).unwrap();
+        let dim = ImageDimensions {
+            width: 640,
+            height: 640,
+        };
+        let tags = vec![
+            Tag::Dim(dim.clone()),
+            Tag::Url(url.clone()),
+            Tag::MimeType(String::from("image/jpeg")),
+        ];
+        let got = FileMetadata::try_from(tags).unwrap_err();
+
+        assert_eq!(FileMetadataError::MissingSha, got);
     }
 }
