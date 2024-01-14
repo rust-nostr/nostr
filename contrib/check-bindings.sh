@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Needed to exit from script on error
+set -e
+
 buildargs=(
     "-p nostr-ffi"
     "-p nostr-sdk-ffi"

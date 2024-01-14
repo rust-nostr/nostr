@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Needed to exit from script on error
+set -e
+
 # MSRV
 msrv="1.64.0"
 
