@@ -28,7 +28,7 @@ pub use crate::message::{Alphabet, ClientMessage, Filter, RelayMessage};
 pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
 pub use crate::nips::nip05::{get_nip05_profile, verify_nip05};
 pub use crate::nips::nip11::RelayInformationDocument;
-pub use crate::nips::nip46::{NostrConnectMessage, NostrConnectURI};
+pub use crate::nips::nip46::{NostrConnectMessage, NostrConnectMetadata, NostrConnectURI};
 pub use crate::nips::nip53::{Image, LiveEvent, LiveEventHost, LiveEventStatus, Person};
 pub use crate::nips::nip94::FileMetadata;
 pub use crate::types::{Contact, ImageDimensions, Metadata, Timestamp};
