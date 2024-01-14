@@ -34,6 +34,14 @@ impl DerefMut for TagIndexes {
     }
 }
 
+impl TagIndexes {
+    /// Get hashed `d` tag
+    pub fn identifier(&self) -> Option<[u8; TAG_INDEX_VALUE_SIZE]> {
+        let values = self.inner.get(&Alphabet::D)?;
+        values.iter().next().copied()
+    }
+}
+
 impl<I, S> From<I> for TagIndexes
 where
     I: Iterator<Item = Vec<S>>,
@@ -60,7 +68,7 @@ fn single_char_tagname(tagname: &str) -> Option<Alphabet> {
 }
 
 #[inline]
-fn hash<S>(value: S) -> [u8; TAG_INDEX_VALUE_SIZE]
+pub(crate) fn hash<S>(value: S) -> [u8; TAG_INDEX_VALUE_SIZE]
 where
     S: AsRef<str>,
 {

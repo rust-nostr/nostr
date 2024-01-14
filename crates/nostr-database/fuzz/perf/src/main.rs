@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 
 use nostr_database::nostr::RelayMessage;
 use nostr_database::{DatabaseIndexes, RawEvent};
+use tokio::fs::File;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::main]
@@ -14,8 +14,8 @@ async fn main() {
 
     // Load events
     // Open JSON file
-    let file = File::open("./many-events.json").unwrap();
-    let metadata = file.metadata().unwrap();
+    let file = File::open("./many-events.json").await.unwrap();
+    let metadata = file.metadata().await.unwrap();
     let reader = BufReader::new(file);
 
     println!("Size: {}", metadata.len());
@@ -23,14 +23,10 @@ async fn main() {
     // Deserialize events
     let mut events: BTreeSet<RawEvent> = BTreeSet::new();
 
-    for line in reader.lines() {
-        match line {
-            Ok(line_content) => {
-                if let Ok(RelayMessage::Event { event, .. }) = serde_json::from_str(&line_content) {
-                    events.insert(event.as_ref().into());
-                }
-            }
-            Err(e) => eprintln!("Error reading line: {}", e),
+    let mut lines = reader.lines();
+    while let Ok(Some(line)) = lines.next_line().await {
+        if let Ok(RelayMessage::Event { event, .. }) = serde_json::from_str(&line) {
+            events.insert(event.as_ref().into());
         }
     }
 

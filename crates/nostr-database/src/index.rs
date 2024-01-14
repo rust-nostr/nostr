@@ -16,7 +16,7 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::raw::RawEvent;
-use crate::tag_indexes::{TagIndexValues, TagIndexes};
+use crate::tag_indexes::{hash, TagIndexValues, TagIndexes, TAG_INDEX_VALUE_SIZE};
 use crate::Order;
 
 /// Public Key Prefix Size
@@ -32,7 +32,7 @@ type ArcEventId = Arc<EventId>;
 type ArcEventIndex = Arc<EventIndex>;
 type ArcTagIndexes = Arc<TagIndexes>;
 type ParameterizedReplaceableIndexes =
-    HashMap<(Kind, PublicKeyPrefix, ArcTagIndexes), ArcEventIndex>;
+    HashMap<(Kind, PublicKeyPrefix, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>;
 
 /// Event Index
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -465,7 +465,7 @@ impl DatabaseIndexes {
                         .author(pubkey_prefix)
                         .kind(kind)
                         .identifier(identifier);
-                    if let Some(ev) = self.internal_query_by_kind_author_tag(
+                    if let Some(ev) = self.internal_query_by_kind_author_identifier(
                         kind_author_tags_index,
                         deleted_ids,
                         filter,
@@ -518,7 +518,9 @@ impl DatabaseIndexes {
                 if ev.kind.is_replaceable() {
                     kind_author_index.remove(&(ev.kind, ev.pubkey));
                 } else if ev.kind.is_parameterized_replaceable() {
-                    kind_author_tags_index.remove(&(ev.kind, ev.pubkey, ev.tags.clone()));
+                    if let Some(identifier) = ev.tags.identifier() {
+                        kind_author_tags_index.remove(&(ev.kind, ev.pubkey, identifier));
+                    }
                 }
             }
 
@@ -541,7 +543,9 @@ impl DatabaseIndexes {
             if kind.is_replaceable() {
                 kind_author_index.insert((kind, pubkey_prefix), e);
             } else if kind.is_parameterized_replaceable() {
-                kind_author_tags_index.insert((kind, pubkey_prefix, e.tags.clone()), e);
+                if let Some(identifier) = e.tags.identifier() {
+                    kind_author_tags_index.insert((kind, pubkey_prefix, identifier), e);
+                }
             }
         }
 
@@ -630,8 +634,8 @@ impl DatabaseIndexes {
         Some(ev)
     }
 
-    /// Query by [`Kind`], [`PublicKeyPrefix`] and [`TagIndexes`] (param. replaceable)
-    fn internal_query_by_kind_author_tag<'a, T>(
+    /// Query by [`Kind`], [`PublicKeyPrefix`] and `d` tag (param. replaceable)
+    fn internal_query_by_kind_author_identifier<'a, T>(
         &self,
         kind_author_tag_index: &'a ParameterizedReplaceableIndexes,
         deleted_ids: &'a HashSet<ArcEventId>,
@@ -651,22 +655,17 @@ impl DatabaseIndexes {
 
         let kind = kinds.iter().next()?;
         let author = authors.iter().next()?;
+        let identifier = generic_tags
+            .get(&Alphabet::D)?
+            .iter()
+            .next()
+            .map(|v| hash(v.to_string()))?;
 
         if !kind.is_parameterized_replaceable() {
             return None;
         }
 
-        let tags = {
-            let mut tag_index: TagIndexes = TagIndexes::default();
-            for (tagnamechar, set) in generic_tags.into_iter() {
-                for inner in TagIndexValues::iter(set.iter()) {
-                    tag_index.entry(tagnamechar).or_default().insert(inner);
-                }
-            }
-            Arc::new(tag_index)
-        };
-
-        let ev = kind_author_tag_index.get(&(*kind, *author, tags))?;
+        let ev = kind_author_tag_index.get(&(*kind, *author, identifier))?;
 
         if deleted_ids.contains(&ev.event_id) {
             return None;
@@ -741,7 +740,7 @@ impl DatabaseIndexes {
                     };
                 }
                 QueryPattern::ParamReplaceable => {
-                    if let Some(ev) = self.internal_query_by_kind_author_tag(
+                    if let Some(ev) = self.internal_query_by_kind_author_identifier(
                         &kind_author_tags_index,
                         &deleted_ids,
                         filter,
@@ -855,7 +854,7 @@ mod tests {
     const SECRET_KEY_A: &str = "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99"; // aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4
     const SECRET_KEY_B: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85"; // 79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3
 
-    const EVENTS: [&str; 13] = [
+    const EVENTS: [&str; 14] = [
         r#"{"id":"b7b1fb52ad8461a03e949820ae29a9ea07e35bcd79c95c4b59b0254944f62805","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644581,"kind":1,"tags":[],"content":"Text note","sig":"ed73a8a4e7c26cd797a7b875c634d9ecb6958c57733305fed23b978109d0411d21b3e182cb67c8ad750884e30ca383b509382ae6187b36e76ee76e6a142c4284"}"#,
         r#"{"id":"7296747d91c53f1d71778ef3e12d18b66d494a41f688ef244d518abf37c959b6","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644586,"kind":32121,"tags":[["d","id-1"]],"content":"Empty 1","sig":"8848989a8e808f7315e950f871b231c1dff7752048f8957d4a541881d2005506c30e85c7dd74dab022b3e01329c88e69c9d5d55d961759272a738d150b7dbefc"}"#,
         r#"{"id":"ec6ea04ba483871062d79f78927df7979f67545b53f552e47626cb1105590442","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644591,"kind":32122,"tags":[["d","id-1"]],"content":"Empty 2","sig":"89946113a97484850fe35fefdb9120df847b305de1216dae566616fe453565e8707a4da7e68843b560fa22a932f81fc8db2b5a2acb4dcfd3caba9a91320aac92"}"#,
@@ -869,6 +868,7 @@ mod tests {
         r#"{"id":"90a761aec9b5b60b399a76826141f529db17466deac85696a17e4a243aa271f9","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704645606,"kind":0,"tags":[],"content":"{\"name\":\"key-a\",\"display_name\":\"Key A\",\"lud16\":\"keya@ln.address\"}","sig":"ec8f49d4c722b7ccae102d49befff08e62db775e5da43ef51b25c47dfdd6a09dc7519310a3a63cbdb6ec6b3250e6f19518eb47be604edeb598d16cdc071d3dbc"}"#,
         r#"{"id":"a295422c636d3532875b75739e8dae3cdb4dd2679c6e4994c9a39c7ebf8bc620","pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","created_at":1704646569,"kind":5,"tags":[["e","90a761aec9b5b60b399a76826141f529db17466deac85696a17e4a243aa271f9"]],"content":"","sig":"d4dc8368a4ad27eef63cacf667345aadd9617001537497108234fc1686d546c949cbb58e007a4d4b632c65ea135af4fbd7a089cc60ab89b6901f5c3fc6a47b29"}"#,
         r#"{"id":"999e3e270100d7e1eaa98fcfab4a98274872c1f2dfdab024f32e42a5a12d5b5e","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704646606,"kind":5,"tags":[["e","90a761aec9b5b60b399a76826141f529db17466deac85696a17e4a243aa271f9"]],"content":"","sig":"4f3a33fd52784cea7ca8428fd35d94d65049712e9aa11a70b1a16a1fcd761c7b7e27afac325728b1c00dfa11e33e78b2efd0430a7e4b28f4ede5b579b3f32614"}"#,
+        r#"{"id":"99a022e6d61c4e39c147d08a2be943b664e8030c0049325555ac1766429c2832","pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","created_at":1705241093,"kind":30333,"tags":[["d","multi-id"],["p","aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4"]],"content":"Multi-tags","sig":"0abfb2b696a7ed7c9e8e3bf7743686190f3f1b3d4045b72833ab6187c254f7ed278d289d52dfac3de28be861c1471421d9b1bfb5877413cbc81c84f63207a826"}"#,
     ];
 
     #[tokio::test]
@@ -890,6 +890,7 @@ mod tests {
 
         // Test expected output
         let expected_output = vec![
+            Event::from_json(EVENTS[13]).unwrap().id(),
             Event::from_json(EVENTS[12]).unwrap().id(),
             Event::from_json(EVENTS[11]).unwrap().id(),
             // Event 10 deleted by event 12
@@ -908,7 +909,7 @@ mod tests {
             indexes.query([Filter::new()], Order::Desc).await,
             expected_output
         );
-        assert_eq!(indexes.count([Filter::new()]).await, 9);
+        assert_eq!(indexes.count([Filter::new()]).await, 10);
 
         // Test get previously deleted replaceable event (check if was deleted by indexes)
         assert!(indexes
@@ -1017,6 +1018,27 @@ mod tests {
                 Event::from_json(EVENTS[5]).unwrap().id(),
                 Event::from_json(EVENTS[1]).unwrap().id(),
             ]
+        );
+
+        // Test get param replaceable events with multiple tags using identifier
+        assert_eq!(
+            indexes
+                .query([Filter::new().identifier("multi-id")], Order::Desc)
+                .await,
+            vec![Event::from_json(EVENTS[13]).unwrap().id(),]
+        );
+        // As above but by using kind and pubkey
+        assert_eq!(
+            indexes
+                .query(
+                    [Filter::new()
+                        .pubkey(keys_a.public_key())
+                        .kind(Kind::Custom(30333))
+                        .limit(1)],
+                    Order::Desc
+                )
+                .await,
+            vec![Event::from_json(EVENTS[13]).unwrap().id(),]
         );
     }
 }
