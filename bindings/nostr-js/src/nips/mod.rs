@@ -8,3 +8,4 @@ pub mod nip07;
 pub mod nip11;
 pub mod nip26;
 pub mod nip44;
+pub mod nip46;
