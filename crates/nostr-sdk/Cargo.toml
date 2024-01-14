@@ -95,4 +95,8 @@ required-features = ["all-nips"]
 name = "negentropy"
 
 [[example]]
+name = "nip47"
+required-features = ["nip47"]
+
+[[example]]
 name = "nip65"

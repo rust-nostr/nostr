@@ -36,11 +36,7 @@ async fn main() -> Result<()> {
     };
 
     let encrypted = nip04::encrypt(&nwc_uri.secret, &nwc_uri.public_key, req.as_json()).unwrap();
-    let p_tag = Tag::PublicKey {
-        public_key: nwc_uri.public_key,
-        relay_url: None,
-        alias: None,
-    };
+    let p_tag = Tag::public_key(nwc_uri.public_key);
 
     let req_event = EventBuilder::new(Kind::WalletConnectRequest, encrypted, [p_tag])
         .to_event(&Keys::new(nwc_uri.secret))
@@ -60,7 +56,7 @@ async fn main() -> Result<()> {
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 let decrypt_res =
-                    nip04::decrypt(&nwc_uri.secret, &nwc_uri.public_key, event.content).unwrap();
+                    nip04::decrypt(&nwc_uri.secret, &nwc_uri.public_key, &event.content).unwrap();
                 println!("{:?}", decrypt_res);
 
                 let nip47_res = nip47::Response::from_json(decrypt_res).unwrap();
