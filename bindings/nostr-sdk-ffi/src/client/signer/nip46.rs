@@ -5,6 +5,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
+use nostr_ffi::nips::nip46::{NostrConnectMetadata, NostrConnectURI};
 use nostr_ffi::{Keys, PublicKey};
 use nostr_sdk::{block_on, client, Url};
 use uniffi::Object;
@@ -64,5 +65,11 @@ impl Nip46Signer {
         })
     }
 
-    // TODO: add nostr_connect_uri
+    pub fn nostr_connect_uri(&self, metadata: Arc<NostrConnectMetadata>) -> Arc<NostrConnectURI> {
+        Arc::new(
+            self.inner
+                .nostr_connect_uri(metadata.as_ref().deref().clone())
+                .into(),
+        )
+    }
 }
