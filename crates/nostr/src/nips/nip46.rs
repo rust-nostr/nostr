@@ -579,15 +579,19 @@ impl NostrConnectURI {
     where
         S: Into<String>,
     {
+        Self::with_metadata(public_key, relay_url, NostrConnectMetadata::new(app_name))
+    }
+
+    /// Create new [`NostrConnectURI`]
+    pub fn with_metadata(
+        public_key: XOnlyPublicKey,
+        relay_url: Url,
+        metadata: NostrConnectMetadata,
+    ) -> Self {
         Self {
             public_key,
             relay_url,
-            metadata: NostrConnectMetadata {
-                name: app_name.into(),
-                url: None,
-                description: None,
-                icons: None,
-            },
+            metadata,
         }
     }
 

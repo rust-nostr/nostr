@@ -62,7 +62,7 @@ impl Nip46Signer {
 
     /// Compose Nostr Connect URI
     pub fn nostr_connect_uri(&self, metadata: NostrConnectMetadata) -> NostrConnectURI {
-        NostrConnectURI::new(self.app_keys.public_key(), self.relay_url(), metadata.name)
+        NostrConnectURI::with_metadata(self.app_keys.public_key(), self.relay_url(), metadata)
     }
 }
 
