@@ -44,6 +44,6 @@ for arg in "${buildargs[@]}"; do
     if [[ $arg != *"--target wasm32-unknown-unknown"* ]]; then
         cargo $version test $arg
     fi
-    cargo $version clippy $arg
+    cargo $version clippy $arg -- -D warnings
     echo
 done

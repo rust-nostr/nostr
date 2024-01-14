@@ -10,6 +10,6 @@ buildargs=(
 for arg in "${buildargs[@]}"; do
     echo  "Checking '$arg'"
     cargo build $arg
-    cargo clippy $arg
+    cargo clippy $arg -- -D warnings
     echo
 done

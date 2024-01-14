@@ -2,8 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-#![deny(warnings)]
-
 use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};

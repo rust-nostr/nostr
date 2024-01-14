@@ -5,7 +5,6 @@
 //! Nostr SDK Network
 
 #![forbid(unsafe_code)]
-#![deny(warnings)]
 
 pub extern crate futures_util;
 

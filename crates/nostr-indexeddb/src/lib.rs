@@ -5,7 +5,6 @@
 //! Web's IndexedDB Storage backend for Nostr SDK
 
 #![forbid(unsafe_code)]
-#![deny(warnings)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![allow(unknown_lints, clippy::arc_with_non_send_sync)]

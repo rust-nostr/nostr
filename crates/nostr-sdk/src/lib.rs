@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 #![forbid(unsafe_code)]
-#![deny(warnings)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![allow(unknown_lints)]
