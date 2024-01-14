@@ -223,11 +223,12 @@ impl ClientMessage {
         // Event
         // ["EVENT", <event JSON>]
         if v[0] == "EVENT" {
-            if v_len != 2 {
+            if v_len >= 2 {
+                let event = Event::from_value(v[1].clone())?;
+                return Ok(Self::new_event(event));
+            } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let event = Event::from_value(v[1].clone())?;
-            return Ok(Self::new_event(event));
         }
 
         // Req
@@ -262,67 +263,70 @@ impl ClientMessage {
         // Close
         // ["CLOSE", <subscription_id>]
         if v[0] == "CLOSE" {
-            if v_len != 2 {
+            if v_len >= 2 {
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                return Ok(Self::close(subscription_id));
+            } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-
-            return Ok(Self::close(subscription_id));
         }
 
         // Auth
         // ["AUTH", <event JSON>]
         if v[0] == "AUTH" {
-            if v_len != 2 {
+            if v_len >= 2 {
+                let event = Event::from_value(v[1].clone())?;
+                return Ok(Self::new_auth(event));
+            } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let event = Event::from_value(v[1].clone())?;
-            return Ok(Self::new_auth(event));
         }
 
         // Negentropy Open
         // ["NEG-OPEN", <subscription ID string>, <filter>, <idSize>, <initialMessage, lowercase hex-encoded>]
         if v[0] == "NEG-OPEN" {
-            if v_len != 5 {
+            if v_len >= 5 {
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let filter: Filter = Filter::from_json(v[2].to_string())?;
+                let id_size: u8 =
+                    v[3].as_u64()
+                        .ok_or(MessageHandleError::InvalidMessageFormat)? as u8;
+                let initial_message: String = serde_json::from_value(v[4].clone())?;
+                return Ok(Self::NegOpen {
+                    subscription_id,
+                    filter: Box::new(filter),
+                    id_size,
+                    initial_message,
+                });
+            } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-            let filter: Filter = Filter::from_json(v[2].to_string())?;
-            let id_size: u8 =
-                v[3].as_u64()
-                    .ok_or(MessageHandleError::InvalidMessageFormat)? as u8;
-            let initial_message: String = serde_json::from_value(v[4].clone())?;
-            return Ok(Self::NegOpen {
-                subscription_id,
-                filter: Box::new(filter),
-                id_size,
-                initial_message,
-            });
         }
 
         // Negentropy Message
         // ["NEG-MSG", <subscription ID string>, <message, lowercase hex-encoded>]
         if v[0] == "NEG-MSG" {
-            if v_len != 3 {
+            if v_len >= 3 {
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let message: String = serde_json::from_value(v[2].clone())?;
+                return Ok(Self::NegMsg {
+                    subscription_id,
+                    message,
+                });
+            } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-            let message: String = serde_json::from_value(v[2].clone())?;
-            return Ok(Self::NegMsg {
-                subscription_id,
-                message,
-            });
         }
 
         // Negentropy Close
         // ["NEG-CLOSE", <subscription ID string>]
         if v[0] == "NEG-CLOSE" {
-            if v_len != 2 {
+            if v_len >= 2 {
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                return Ok(Self::NegClose { subscription_id });
+            } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
-            let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-            return Ok(Self::NegClose { subscription_id });
         }
 
         Err(MessageHandleError::InvalidMessageFormat)
