@@ -16,6 +16,14 @@ pub struct JsClientMessage {
     inner: ClientMessage,
 }
 
+impl Deref for JsClientMessage {
+    type Target = ClientMessage;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 impl From<ClientMessage> for JsClientMessage {
     fn from(inner: ClientMessage) -> Self {
         Self { inner }

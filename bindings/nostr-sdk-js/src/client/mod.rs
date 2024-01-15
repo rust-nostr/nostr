@@ -12,7 +12,7 @@ use js_sys::Array;
 use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventArray, JsEventBuilder, JsEventId, JsTag};
 use nostr_js::key::JsPublicKey;
-use nostr_js::message::{JsFilter, JsRelayMessage};
+use nostr_js::message::{JsClientMessage, JsFilter, JsRelayMessage};
 use nostr_js::types::{JsContact, JsMetadata};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -99,12 +99,18 @@ impl JsClient {
     }
 
     /// Add new relay
+    ///
+    /// This method **NOT** automatically start connection with relay!
+    ///
+    /// Return `false` if the relay already exists.
     #[wasm_bindgen(js_name = addRelay)]
     pub async fn add_relay(&self, url: String) -> Result<bool> {
         self.inner.add_relay(url).await.map_err(into_err)
     }
 
-    /// Add new relays
+    /// Add multiple relays
+    ///
+    /// This method **NOT** automatically start connection with relays!
     #[wasm_bindgen(js_name = addRelays)]
     pub async fn add_relays(&self, urls: Vec<String>) -> Result<()> {
         self.inner.add_relays(urls).await.map_err(into_err)
@@ -150,6 +156,8 @@ impl JsClient {
     }
 
     /// Get events of filters
+    ///
+    /// If timeout is not set, the default one from Options will be used.
     #[wasm_bindgen(js_name = getEventsOf)]
     pub async fn get_events_of(
         &self,
@@ -184,7 +192,28 @@ impl JsClient {
         self.inner.req_events_of(filters, timeout).await;
     }
 
+    /// Send client message
+    #[wasm_bindgen(js_name = sendMsg)]
+    pub async fn send_msg(&self, msg: &JsClientMessage) -> Result<()> {
+        self.inner
+            .send_msg(msg.deref().clone())
+            .await
+            .map_err(into_err)
+    }
+
+    /// Send client message to a specific relay
+    #[wasm_bindgen(js_name = sendMsgTo)]
+    pub async fn send_msg_to(&self, url: String, msg: &JsClientMessage) -> Result<()> {
+        self.inner
+            .send_msg_to(url, msg.deref().clone())
+            .await
+            .map_err(into_err)
+    }
+
     /// Send event
+    ///
+    /// This method will wait for the `OK` message from the relay.
+    /// If you not want to wait for the `OK` message, use `sendMsg` method instead.
     #[wasm_bindgen(js_name = sendEvent)]
     pub async fn send_event(&self, event: &JsEvent) -> Result<JsEventId> {
         self.inner
@@ -195,6 +224,9 @@ impl JsClient {
     }
 
     /// Send event to specific relay
+    ///
+    /// This method will wait for the `OK` message from the relay.
+    /// If you not want to wait for the `OK` message, use `sendMsgTo` method instead.
     #[wasm_bindgen(js_name = sendEventTo)]
     pub async fn send_event_to(&self, url: String, event: &JsEvent) -> Result<JsEventId> {
         self.inner
