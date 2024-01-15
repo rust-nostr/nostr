@@ -12,6 +12,7 @@ pub use nostr_js;
 pub mod abortable;
 pub mod client;
 pub mod database;
+pub mod duration;
 pub mod logger;
 pub mod profile;
 pub mod relay;
