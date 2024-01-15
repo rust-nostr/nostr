@@ -57,7 +57,6 @@ impl JsClient {
     /// Get current client signer
     ///
     /// Rise error if it not set.
-    #[wasm_bindgen(getter)]
     pub async fn signer(&self) -> Result<JsClientSigner> {
         Ok(self.inner.signer().await.map_err(into_err)?.into())
     }
@@ -68,7 +67,6 @@ impl JsClient {
     }
 
     /// Completely shutdown `Client`
-    #[wasm_bindgen]
     pub async fn shutdown(self) -> Result<()> {
         self.inner.shutdown().await.map_err(into_err)
     }
@@ -112,19 +110,16 @@ impl JsClient {
     }
 
     /// Connect to all added relays
-    #[wasm_bindgen]
     pub async fn connect(&self) {
         self.inner.connect().await;
     }
 
     /// Disconnect from all relays
-    #[wasm_bindgen]
     pub async fn disconnect(&self) -> Result<()> {
         self.inner.disconnect().await.map_err(into_err)
     }
 
     /// Subscribe to filters
-    #[wasm_bindgen]
     pub async fn subscribe(&self, filters: Vec<JsFilter>) -> Result<()> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
         self.inner.subscribe(filters).await;
@@ -132,7 +127,6 @@ impl JsClient {
     }
 
     /// Unsubscribe
-    #[wasm_bindgen]
     pub async fn unsubscribe(&self) {
         self.inner.unsubscribe().await;
     }
@@ -359,7 +353,6 @@ impl JsClient {
     /// Like event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    #[wasm_bindgen]
     pub async fn like(&self, event_id: &JsEventId, public_key: &JsPublicKey) -> Result<JsEventId> {
         self.inner
             .like(event_id.into(), public_key.into())
@@ -371,7 +364,6 @@ impl JsClient {
     /// Disike event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    #[wasm_bindgen]
     pub async fn dislike(
         &self,
         event_id: &JsEventId,
@@ -387,7 +379,6 @@ impl JsClient {
     /// React to an [`Event`]
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    #[wasm_bindgen]
     pub async fn reaction(
         &self,
         event_id: &JsEventId,
