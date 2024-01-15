@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Client, ClientSigner, Nip07Signer, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
+import { Client, ClientSigner, LogLevel, Nip07Signer, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
 import './App.css';
 
 class App extends Component {
@@ -18,7 +18,7 @@ class App extends Component {
 
     // Try to initialize log
     try {
-      initLogger();
+      initLogger(LogLevel.debug());
     } catch (error) {}
   }
 
