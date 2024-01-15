@@ -14,3 +14,4 @@ pub mod client;
 pub mod database;
 pub mod logger;
 pub mod profile;
+pub mod relay;

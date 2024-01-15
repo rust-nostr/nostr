@@ -2,10 +2,16 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use wasm_bindgen::prelude::*;
 use nostr_js::nips::nip11::JsRelayInformationDocument;
 use nostr_sdk::prelude::*;
 use nostr_sdk::relay::Relay;
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "JsRelay[]")]
+    pub type JsRelayArray;
+}
 
 #[wasm_bindgen(js_name = Relay)]
 pub struct JsRelay {
@@ -22,12 +28,16 @@ impl From<Relay> for JsRelay {
 pub enum JsRelayStatus {
     /// Relay initialized
     Initialized,
-    /// Relay connected
-    Connected,
+    /// Pending
+    Pending,
     /// Connecting
     Connecting,
+    /// Relay connected
+    Connected,
     /// Relay disconnected, will retry to connect again
     Disconnected,
+    /// Stop
+    Stopped,
     /// Relay completely disconnected
     Terminated,
 }
@@ -36,9 +46,11 @@ impl From<RelayStatus> for JsRelayStatus {
     fn from(status: RelayStatus) -> Self {
         match status {
             RelayStatus::Initialized => Self::Initialized,
-            RelayStatus::Connected => Self::Connected,
+            RelayStatus::Pending => Self::Pending,
             RelayStatus::Connecting => Self::Connecting,
+            RelayStatus::Connected => Self::Connected,
             RelayStatus::Disconnected => Self::Disconnected,
+            RelayStatus::Stopped => Self::Stopped,
             RelayStatus::Terminated => Self::Terminated,
         }
     }
@@ -47,19 +59,21 @@ impl From<RelayStatus> for JsRelayStatus {
 #[wasm_bindgen(js_class = Relay)]
 impl JsRelay {
     /// Get relay url
-    #[wasm_bindgen(getter)]
     pub fn url(&self) -> String {
         self.inner.url().to_string()
     }
 
     // Get status
-    #[wasm_bindgen(getter)]
     pub async fn status(&self) -> JsRelayStatus {
         self.inner.status().await.into()
     }
 
+    /// Check if relay is connected
+    pub async fn is_connected(&self) -> bool {
+        self.inner.is_connected().await
+    }
+
     /// Get `RelayInformationDocument`
-    #[wasm_bindgen(getter)]
     pub async fn document(&self) -> JsRelayInformationDocument {
         self.inner.document().await.into()
     }
