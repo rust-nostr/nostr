@@ -168,8 +168,8 @@ impl Relay {
         self.inner.queue() as u64
     }
 
-    pub fn connect(&self, wait_for_connection: bool) {
-        block_on(self.inner.connect(wait_for_connection))
+    pub fn connect(&self, connection_timeout: Option<Duration>) {
+        block_on(self.inner.connect(connection_timeout))
     }
 
     pub fn stop(&self) -> Result<()> {

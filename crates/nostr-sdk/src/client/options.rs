@@ -17,8 +17,6 @@ pub(crate) const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
 /// Options
 #[derive(Debug, Clone)]
 pub struct Options {
-    /// Wait for connection (default: false)
-    pub wait_for_connection: bool,
     /// Wait for the msg to be sent (default: true)
     wait_for_send: Arc<AtomicBool>,
     /// Wait for the subscription msg to be sent (default: false)
@@ -35,6 +33,10 @@ pub struct Options {
     ///
     /// Used in `get_events_of`, `req_events_of` and similar as default timeout.
     pub timeout: Duration,
+    /// Relay connection timeout (default: None)
+    ///
+    /// If set to `None`, the client will try to connect to relay without waiting.
+    pub connection_timeout: Option<Duration>,
     /// Send timeout (default: 20 secs)
     pub send_timeout: Option<Duration>,
     /// NIP46 timeout (default: 180 secs)
@@ -52,13 +54,13 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Self {
         Self {
-            wait_for_connection: false,
             wait_for_send: Arc::new(AtomicBool::new(true)),
             wait_for_subscription: Arc::new(AtomicBool::new(false)),
             difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
             skip_disconnected_relays: Arc::new(AtomicBool::new(true)),
             timeout: Duration::from_secs(60),
+            connection_timeout: None,
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             #[cfg(feature = "nip46")]
             nip46_timeout: Some(Duration::from_secs(180)),
@@ -77,11 +79,9 @@ impl Options {
     }
 
     /// If set to `true`, `Client` wait that `Relay` try at least one time to enstablish a connection before continue.
-    pub fn wait_for_connection(self, wait: bool) -> Self {
-        Self {
-            wait_for_connection: wait,
-            ..self
-        }
+    #[deprecated(since = "0.27.0", note = "Use `connection_timeout` instead")]
+    pub fn wait_for_connection(self, _wait: bool) -> Self {
+        self
     }
 
     /// If set to `true`, `Client` wait that a message is sent before continue.
@@ -155,6 +155,14 @@ impl Options {
     /// Set default timeout
     pub fn timeout(self, timeout: Duration) -> Self {
         Self { timeout, ..self }
+    }
+
+    /// Connection timeout (default: None)
+    ///
+    /// If set to `None`, the client will try to connect to the relays without waiting.
+    pub fn connection_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.connection_timeout = timeout;
+        self
     }
 
     /// Set default send timeout
