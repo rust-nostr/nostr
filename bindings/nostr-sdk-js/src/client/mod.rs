@@ -18,8 +18,10 @@ use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 pub mod builder;
+pub mod options;
 pub mod signer;
 
+use self::options::JsOptions;
 pub use self::signer::JsClientSigner;
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
@@ -44,6 +46,17 @@ impl JsClient {
             inner: match signer {
                 Some(signer) => Client::new(signer.deref().clone()),
                 None => ClientBuilder::new().build(),
+            },
+        }
+    }
+
+    /// Create a new Client with Options
+    #[wasm_bindgen(js_name = withOpts)]
+    pub fn with_opts(signer: Option<JsClientSigner>, opts: &JsOptions) -> Self {
+        Self {
+            inner: match signer {
+                Some(signer) => Client::with_opts(signer.deref().clone(), opts.deref().clone()),
+                None => ClientBuilder::new().opts(opts.deref().clone()).build(),
             },
         }
     }

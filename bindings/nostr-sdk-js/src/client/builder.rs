@@ -9,6 +9,7 @@ use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{Client, ClientBuilder};
 use wasm_bindgen::prelude::*;
 
+use super::options::JsOptions;
 use super::{JsClient, JsClientSigner};
 use crate::database::JsNostrDatabase;
 
@@ -42,7 +43,9 @@ impl JsClientBuilder {
         self.inner.database(database).into()
     }
 
-    // TODO: add `opts`
+    pub fn opts(self, opts: &JsOptions) -> Self {
+        self.inner.opts(opts.deref().clone()).into()
+    }
 
     /// Build [`Client`]
     pub fn build(&self) -> JsClient {
