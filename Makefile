@@ -20,6 +20,9 @@ check-fmt:
 check-bindings:
 	@bash contrib/scripts/check-bindings.sh
 
+check-book:
+	@bash contrib/scripts/check-book.sh
+
 check-crates:
 	@bash contrib/scripts/check-crates.sh
 
