@@ -36,10 +36,17 @@ async function main() {
     let signer = ClientSigner.nip07(nip07_signer);
     let client = new Client(signer);
 
+    // Add relays
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nostr.oxtr.dev");
     await client.addRelay("wss://nostr.bitcoiner.social");
     await client.addRelay("wss://nostr.openchain.fr");
+
+    // Add multiple relays at once
+    await client.addRelays([
+        "wss://relay.damus.io",
+        "wss://nostr.oxtr.dev",
+    ]);
 
     await client.connect();
 
@@ -56,6 +63,10 @@ async function main() {
 
     // Publish text note
     await client.publishTextNote("My first text note from Nostr SDK!", []);
+
+    // Compose and publish custom event (automatically signed with `ClientSigner`)
+    let builder = new EventBuilder(1111, "My custom event signer with the ClientSigner", []);
+    await client.sendEventBuilder(builder);
 }
 
 main();
