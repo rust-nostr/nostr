@@ -18,16 +18,16 @@ check-fmt:
 	cargo +nightly-2024-01-11 fmt --all -- --config format_code_in_doc_comments=true --check
 
 check-bindings:
-	@bash contrib/check-bindings.sh
+	@bash contrib/scripts/check-bindings.sh
 
 check-crates:
-	@bash contrib/check-crates.sh
+	@bash contrib/scripts/check-crates.sh
 
 check-crates-msrv:
-	@bash contrib/check-crates.sh msrv
+	@bash contrib/scripts/check-crates.sh msrv
 
 check-docs:
-	@bash contrib/check-docs.sh
+	@bash contrib/scripts/check-docs.sh
 
 bench:
 	RUSTFLAGS='--cfg=bench' cargo +nightly bench -p nostr
