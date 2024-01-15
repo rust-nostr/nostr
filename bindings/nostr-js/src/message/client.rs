@@ -1,0 +1,82 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Copyright (c) 2023-2024 Rust Nostr Developers
+// Distributed under the MIT software license
+
+use core::ops::Deref;
+
+use nostr::{ClientMessage, JsonUtil, SubscriptionId};
+use wasm_bindgen::prelude::*;
+
+use super::JsFilter;
+use crate::error::{into_err, Result};
+use crate::event::JsEvent;
+
+#[wasm_bindgen(js_name = ClientMessage)]
+pub struct JsClientMessage {
+    inner: ClientMessage,
+}
+
+impl From<ClientMessage> for JsClientMessage {
+    fn from(inner: ClientMessage) -> Self {
+        Self { inner }
+    }
+}
+
+#[wasm_bindgen(js_class = ClientMessage)]
+impl JsClientMessage {
+    /// Create new `EVENT` message
+    pub fn event(event: &JsEvent) -> Self {
+        Self {
+            inner: ClientMessage::new_event(event.deref().clone()),
+        }
+    }
+
+    /// Create new `REQ` message
+    pub fn req(subscription_id: String, filters: Vec<JsFilter>) -> Self {
+        Self {
+            inner: ClientMessage::new_req(
+                SubscriptionId::new(subscription_id),
+                filters.into_iter().map(|f| f.inner()).collect(),
+            ),
+        }
+    }
+
+    /// Create new `COUNT` message
+    pub fn count(subscription_id: String, filters: Vec<JsFilter>) -> Self {
+        Self {
+            inner: ClientMessage::new_count(
+                SubscriptionId::new(subscription_id),
+                filters.into_iter().map(|f| f.inner()).collect(),
+            ),
+        }
+    }
+
+    /// Create new `CLOSE` message
+    pub fn close(subscription_id: String) -> Self {
+        Self {
+            inner: ClientMessage::close(SubscriptionId::new(subscription_id)),
+        }
+    }
+
+    /// Create new `AUTH` message
+    pub fn auth(event: &JsEvent) -> Self {
+        Self {
+            inner: ClientMessage::new_auth(event.deref().clone()),
+        }
+    }
+
+    /// Deserialize `ClientMessage` from JSON string
+    ///
+    /// **This method NOT verify the event signature!**
+    #[wasm_bindgen(js_name = fromJson)]
+    pub fn from_json(json: String) -> Result<JsClientMessage> {
+        Ok(Self {
+            inner: ClientMessage::from_json(json).map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = asJson)]
+    pub fn as_json(&self) -> String {
+        self.inner.as_json()
+    }
+}
