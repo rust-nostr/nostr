@@ -87,7 +87,7 @@ Alternatively, you can manually add the dependency in your `package.json` file:
 ```json
 {
     "dependencies": {
-        "@rust-nostr/nostr": "0.6.1"
+        "@rust-nostr/nostr": "0.7.0"
     }
 }
 ```
