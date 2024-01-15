@@ -69,6 +69,7 @@ impl JsRelay {
     }
 
     /// Check if relay is connected
+    #[wasm_bindgen(js_name = isConnected)]
     pub async fn is_connected(&self) -> bool {
         self.inner.is_connected().await
     }
