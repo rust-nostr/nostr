@@ -133,10 +133,9 @@ impl JsClient {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&self, filters: Vec<JsFilter>) -> Result<()> {
+    pub async fn subscribe(&self, filters: Vec<JsFilter>) {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
         self.inner.subscribe(filters).await;
-        Ok(())
     }
 
     /// Unsubscribe
@@ -173,11 +172,10 @@ impl JsClient {
     /// All events will be received on notification listener
     /// until the EOSE "end of stored events" message is received from the relay.
     #[wasm_bindgen(js_name = reqEventsOf)]
-    pub async fn req_events_of(&self, filters: Vec<JsFilter>, timeout: Option<f64>) -> Result<()> {
+    pub async fn req_events_of(&self, filters: Vec<JsFilter>, timeout: Option<f64>) {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.inner()).collect();
         let timeout = timeout.map(Duration::from_secs_f64);
         self.inner.req_events_of(filters, timeout).await;
-        Ok(())
     }
 
     /// Send event
