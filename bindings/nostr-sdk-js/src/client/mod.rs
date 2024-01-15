@@ -4,7 +4,6 @@
 
 #![allow(non_snake_case)]
 
-// use std::collections::HashMap;
 use std::ops::Deref;
 use std::time::Duration;
 
@@ -24,8 +23,7 @@ pub mod signer;
 pub use self::signer::JsClientSigner;
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
-
-// use crate::relay::JsRelay;
+use crate::relay::{JsRelay, JsRelayArray};
 
 #[wasm_bindgen(js_name = Client)]
 pub struct JsClient {
@@ -75,16 +73,19 @@ impl JsClient {
         self.inner.shutdown().await.map_err(into_err)
     }
 
-    // /// Get relays
-    // #[wasm_bindgen]
-    // pub async fn relays(&self) -> HashMap<String, JsRelay> {
-    // self.inner
-    // .relays()
-    // .await
-    // .into_iter()
-    // .map(|(u, r)| (u.to_string(), r.into()))
-    // .collect()
-    // }
+    /// Get relays
+    pub async fn relays(&self) -> JsRelayArray {
+        self.inner
+            .relays()
+            .await
+            .into_values()
+            .map(|relay| {
+                let e: JsRelay = relay.into();
+                JsValue::from(e)
+            })
+            .collect::<Array>()
+            .unchecked_into()
+    }
 
     /// Add new relay
     #[wasm_bindgen(js_name = addRelay)]
