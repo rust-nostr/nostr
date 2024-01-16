@@ -4,6 +4,7 @@ members = [
     "crates/*",
     "crates/nostr-database/fuzz/perf",
 ]
+exclude = ["book/*"]
 default-members = ["crates/*"]
 resolver = "2"
 
