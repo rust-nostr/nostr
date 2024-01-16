@@ -87,23 +87,6 @@ jobs:
       - name: Check
         run: make check-docs
 
-  check-book:
-    name: Check book
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-    - name: Cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-book-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
-    - name: Check
-      run: make check-book
-
   build-no-std:
     name: Build no_std
     runs-on: ubuntu-latest
