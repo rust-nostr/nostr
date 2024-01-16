@@ -57,7 +57,7 @@ fn main() -> Result<()> {
     let event: Event = EventBuilder::text_note("My first POW text note from Nostr SDK", []).to_pow_event(&my_keys, 20)?;
 
     // Convert client nessage to JSON
-    let json = ClientMessage::new_event(event).as_json();
+    let json = ClientMessage::event(event).as_json();
     println!("{json}");
 
     Ok(())

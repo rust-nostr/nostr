@@ -1003,7 +1003,7 @@ impl Relay {
         }
 
         time::timeout(Some(opts.timeout), async {
-            self.send_msg(ClientMessage::new_event(event), None).await?;
+            self.send_msg(ClientMessage::event(event), None).await?;
             let mut notifications = self.notification_sender.subscribe();
             while let Ok(notification) = notifications.recv().await {
                 match notification {
@@ -1070,7 +1070,7 @@ impl Relay {
 
         for event in events.into_iter() {
             missing.insert(event.id());
-            msgs.push(ClientMessage::new_event(event));
+            msgs.push(ClientMessage::event(event));
         }
 
         time::timeout(Some(opts.timeout), async {
@@ -1142,7 +1142,7 @@ impl Relay {
 
         for (internal_id, sub) in subscriptions.into_iter() {
             if !sub.filters.is_empty() {
-                self.send_msg(ClientMessage::new_req(sub.id.clone(), sub.filters), wait)
+                self.send_msg(ClientMessage::req(sub.id.clone(), sub.filters), wait)
                     .await?;
             } else {
                 tracing::warn!("Subscription '{internal_id}' has empty filters");
@@ -1165,7 +1165,7 @@ impl Relay {
             .subscription(&internal_id)
             .await
             .ok_or(Error::InternalIdNotFound)?;
-        self.send_msg(ClientMessage::new_req(sub.id, sub.filters), wait)
+        self.send_msg(ClientMessage::req(sub.id, sub.filters), wait)
             .await?;
 
         Ok(())
@@ -1356,7 +1356,7 @@ impl Relay {
 
         let id = SubscriptionId::generate();
 
-        self.send_msg(ClientMessage::new_req(id.clone(), filters), None)
+        self.send_msg(ClientMessage::req(id.clone(), filters), None)
             .await?;
 
         self.handle_events_of(id.clone(), timeout, opts, callback)
@@ -1404,7 +1404,7 @@ impl Relay {
 
             // Subscribe
             if let Err(e) = relay
-                .send_msg(ClientMessage::new_req(id.clone(), filters), None)
+                .send_msg(ClientMessage::req(id.clone(), filters), None)
                 .await
             {
                 tracing::error!(
@@ -1439,7 +1439,7 @@ impl Relay {
         timeout: Duration,
     ) -> Result<usize, Error> {
         let id = SubscriptionId::generate();
-        self.send_msg(ClientMessage::new_count(id.clone(), filters), None)
+        self.send_msg(ClientMessage::count(id.clone(), filters), None)
             .await?;
 
         let mut count = 0;
@@ -1577,10 +1577,8 @@ impl Relay {
                                         let filter = Filter::new().ids(ids);
                                         let events: Vec<Event> =
                                             self.database.query(vec![filter], Order::Desc).await?;
-                                        let msgs: Vec<ClientMessage> = events
-                                            .into_iter()
-                                            .map(ClientMessage::new_event)
-                                            .collect();
+                                        let msgs: Vec<ClientMessage> =
+                                            events.into_iter().map(ClientMessage::event).collect();
                                         if let Err(e) = self
                                             .batch_msg(msgs, Some(opts.batch_send_timeout))
                                             .await

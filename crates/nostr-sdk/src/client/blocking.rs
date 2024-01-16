@@ -422,9 +422,7 @@ impl Client {
     where
         S: Into<String>,
     {
-        RUNTIME.block_on(async {
-            self.client.zap_receipt(bolt11, preimage, zap_request).await
-        })
+        RUNTIME.block_on(async { self.client.zap_receipt(bolt11, preimage, zap_request).await })
     }
 
     /// Create zap receipt event

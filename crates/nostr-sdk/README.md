@@ -89,7 +89,7 @@ async fn main() -> Result<()> {
     // Send custom event
     let event_id = EventId::from_bech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r")?;
     let public_key = XOnlyPublicKey::from_bech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz")?;
-    let event: Event = EventBuilder::new_reaction(event_id, public_key, "🧡").to_event(&my_keys)?;
+    let event: Event = EventBuilder::reaction(event_id, public_key, "🧡").to_event(&my_keys)?;
 
     // Send custom event to all relays
     // client.send_event(event).await?;

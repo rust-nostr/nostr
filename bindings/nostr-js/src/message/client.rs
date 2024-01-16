@@ -35,14 +35,14 @@ impl JsClientMessage {
     /// Create new `EVENT` message
     pub fn event(event: &JsEvent) -> Self {
         Self {
-            inner: ClientMessage::new_event(event.deref().clone()),
+            inner: ClientMessage::event(event.deref().clone()),
         }
     }
 
     /// Create new `REQ` message
     pub fn req(subscription_id: String, filters: Vec<JsFilter>) -> Self {
         Self {
-            inner: ClientMessage::new_req(
+            inner: ClientMessage::req(
                 SubscriptionId::new(subscription_id),
                 filters.into_iter().map(|f| f.inner()).collect(),
             ),
@@ -52,7 +52,7 @@ impl JsClientMessage {
     /// Create new `COUNT` message
     pub fn count(subscription_id: String, filters: Vec<JsFilter>) -> Self {
         Self {
-            inner: ClientMessage::new_count(
+            inner: ClientMessage::count(
                 SubscriptionId::new(subscription_id),
                 filters.into_iter().map(|f| f.inner()).collect(),
             ),
@@ -69,7 +69,7 @@ impl JsClientMessage {
     /// Create new `AUTH` message
     pub fn auth(event: &JsEvent) -> Self {
         Self {
-            inner: ClientMessage::new_auth(event.deref().clone()),
+            inner: ClientMessage::auth(event.deref().clone()),
         }
     }
 

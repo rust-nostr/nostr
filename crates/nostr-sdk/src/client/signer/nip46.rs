@@ -128,7 +128,7 @@ impl Client {
             // Subscribe
             self.send_msg_to(
                 signer.relay_url(),
-                ClientMessage::new_req(id.clone(), vec![filter]),
+                ClientMessage::req(id.clone(), vec![filter]),
             )
             .await?;
 
@@ -196,7 +196,7 @@ impl Client {
         // Subscribe
         self.send_msg_to(
             signer.relay_url(),
-            ClientMessage::new_req(sub_id.clone(), vec![filter]),
+            ClientMessage::req(sub_id.clone(), vec![filter]),
         )
         .await?;
 

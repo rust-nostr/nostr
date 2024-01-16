@@ -26,52 +26,49 @@ impl JsRelayMessage {
     /// Create new `EVENT` message
     pub fn event(subscription_id: String, event: &JsEvent) -> Self {
         Self {
-            inner: RelayMessage::new_event(
-                SubscriptionId::new(subscription_id),
-                event.deref().clone(),
-            ),
+            inner: RelayMessage::event(SubscriptionId::new(subscription_id), event.deref().clone()),
         }
     }
 
     /// Create new `NOTICE` message
     pub fn notice(message: String) -> Self {
         Self {
-            inner: RelayMessage::new_notice(message),
+            inner: RelayMessage::notice(message),
         }
     }
 
     /// Create new `CLOSED` message
     pub fn closed(subscription_id: String, message: String) -> Self {
         Self {
-            inner: RelayMessage::new_closed(SubscriptionId::new(subscription_id), message),
+            inner: RelayMessage::closed(SubscriptionId::new(subscription_id), message),
         }
     }
 
     /// Create new `EOSE` message
     pub fn eose(subscription_id: String) -> Self {
         Self {
-            inner: RelayMessage::new_eose(SubscriptionId::new(subscription_id)),
+            inner: RelayMessage::eose(SubscriptionId::new(subscription_id)),
         }
     }
 
     /// Create new `OK` message
     pub fn ok(event_id: &JsEventId, status: bool, message: String) -> Self {
         Self {
-            inner: RelayMessage::new_ok(**event_id, status, message),
+            inner: RelayMessage::ok(**event_id, status, message),
         }
     }
 
     /// Create new `AUTH` message
     pub fn auth(challenge: String) -> Self {
         Self {
-            inner: RelayMessage::new_auth(challenge),
+            inner: RelayMessage::auth(challenge),
         }
     }
 
     /// Create new `EVENT` message
     pub fn count(subscription_id: String, count: f64) -> Self {
         Self {
-            inner: RelayMessage::new_count(SubscriptionId::new(subscription_id), count as usize),
+            inner: RelayMessage::count(SubscriptionId::new(subscription_id), count as usize),
         }
     }
 

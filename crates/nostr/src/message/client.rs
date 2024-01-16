@@ -87,25 +87,43 @@ impl<'de> Deserialize<'de> for ClientMessage {
 }
 
 impl ClientMessage {
-    /// Create new `EVENT` message
-    pub fn new_event(event: Event) -> Self {
+    /// Create `EVENT` message
+    pub fn event(event: Event) -> Self {
         Self::Event(Box::new(event))
     }
 
-    /// Create new `REQ` message
-    pub fn new_req(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
+    /// Create new `EVENT` message
+    #[deprecated(since = "0.27.0", note = "Use `event` instead")]
+    pub fn new_event(event: Event) -> Self {
+        Self::event(event)
+    }
+
+    /// Create `REQ` message
+    pub fn req(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
         Self::Req {
             subscription_id,
             filters,
         }
     }
 
-    /// Create new `COUNT` message
-    pub fn new_count(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
+    /// Create new `REQ` message
+    #[deprecated(since = "0.27.0", note = "Use `req` instead")]
+    pub fn new_req(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
+        Self::req(subscription_id, filters)
+    }
+
+    /// Create `COUNT` message
+    pub fn count(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
         Self::Count {
             subscription_id,
             filters,
         }
+    }
+
+    /// Create new `COUNT` message
+    #[deprecated(since = "0.27.0", note = "Use `count` instead")]
+    pub fn new_count(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
+        Self::count(subscription_id, filters)
     }
 
     /// Create new `CLOSE` message
@@ -113,9 +131,15 @@ impl ClientMessage {
         Self::Close(subscription_id)
     }
 
-    /// Create new `AUTH` message
-    pub fn new_auth(event: Event) -> Self {
+    /// Create `AUTH` message
+    pub fn auth(event: Event) -> Self {
         Self::Auth(Box::new(event))
+    }
+
+    /// Create new `AUTH` message
+    #[deprecated(since = "0.27.0", note = "Use `auth` instead")]
+    pub fn new_auth(event: Event) -> Self {
+        Self::auth(event)
     }
 
     /// Create new `NEG-OPEN` message
@@ -225,7 +249,7 @@ impl ClientMessage {
         if v[0] == "EVENT" {
             if v_len >= 2 {
                 let event = Event::from_value(v[1].clone())?;
-                return Ok(Self::new_event(event));
+                return Ok(Self::event(event));
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
@@ -236,11 +260,11 @@ impl ClientMessage {
         if v[0] == "REQ" {
             if v_len == 2 {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-                return Ok(Self::new_req(subscription_id, Vec::new()));
+                return Ok(Self::req(subscription_id, Vec::new()));
             } else if v_len >= 3 {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))?;
-                return Ok(Self::new_req(subscription_id, filters));
+                return Ok(Self::req(subscription_id, filters));
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
@@ -250,11 +274,11 @@ impl ClientMessage {
         if v[0] == "COUNT" {
             if v_len == 2 {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-                return Ok(Self::new_count(subscription_id, Vec::new()));
+                return Ok(Self::count(subscription_id, Vec::new()));
             } else if v_len >= 3 {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))?;
-                return Ok(Self::new_count(subscription_id, filters));
+                return Ok(Self::count(subscription_id, filters));
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
@@ -276,7 +300,7 @@ impl ClientMessage {
         if v[0] == "AUTH" {
             if v_len >= 2 {
                 let event = Event::from_value(v[1].clone())?;
-                return Ok(Self::new_auth(event));
+                return Ok(Self::auth(event));
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
@@ -375,7 +399,7 @@ mod tests {
             Filter::new().pubkey(pk),
         ];
 
-        let client_req = ClientMessage::new_req(SubscriptionId::new("test"), filters);
+        let client_req = ClientMessage::req(SubscriptionId::new("test"), filters);
         assert_eq!(
             client_req.as_json(),
             r##"["REQ","test",{"kinds":[4]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
@@ -393,7 +417,7 @@ mod tests {
             Filter::new().pubkey(pk),
         ];
 
-        let client_req = ClientMessage::new_req(SubscriptionId::new("test"), filters);
+        let client_req = ClientMessage::req(SubscriptionId::new("test"), filters);
         assert_eq!(
             client_req.as_json(),
             r##"["REQ","test",{"kinds":[22]},{"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}]"##
