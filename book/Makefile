@@ -1,9 +1,0 @@
-init:
-	cargo install mdbook --version 0.4.36
-	cargo install mdbook-admonish --version 1.15.0
-
-build:
-	mdbook build
-
-serve:
-	mdbook serve

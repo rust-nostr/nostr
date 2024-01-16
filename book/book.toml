@@ -12,7 +12,6 @@ preferred-dark-theme = "ayu"
 additional-js = ["./tabs.js"]
 additional-css = ["./mdbook-admonish.css"]
 git-repository-url = "https://github.com/rust-nostr/nostr"
-edit-url-template = "https://github.com/rust-nostr/nostr/edit/master/{path}"
 
 [preprocessor]
 
