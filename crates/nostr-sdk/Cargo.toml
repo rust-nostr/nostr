@@ -34,9 +34,9 @@ nip57 = ["nostr/nip57"]
 
 [dependencies]
 async-utility.workspace = true
+async-wsocket = "0.1"
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
-nostr-sdk-net = { version = "0.26", path = "../nostr-sdk-net" }
 once_cell.workspace = true
 thiserror.workspace = true
 tracing = { workspace = true, features = ["std", "attributes"] }

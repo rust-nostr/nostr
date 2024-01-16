@@ -29,7 +29,6 @@ buildargs=(
     "-p nostr --no-default-features --features alloc,all-nips"
     "-p nostr --features blocking"
     "-p nostr-database"
-    "-p nostr-sdk-net"
     "-p nostr-sdk"
     "-p nostr-sdk --no-default-features"
     "-p nostr-sdk --features blocking"

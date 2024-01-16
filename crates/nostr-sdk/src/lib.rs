@@ -22,8 +22,6 @@ pub use nostr::{self, *};
 pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
 #[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]
 pub use nostr_indexeddb::{IndexedDBError, WebDatabase};
-#[cfg(feature = "blocking")]
-use nostr_sdk_net::futures_util::Future;
 #[cfg(feature = "sqlite")]
 pub use nostr_sqlite::{Error as SQLiteError, SQLiteDatabase};
 #[cfg(feature = "blocking")]
@@ -50,6 +48,9 @@ static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start 
 
 #[allow(missing_docs)]
 #[cfg(feature = "blocking")]
-pub fn block_on<F: Future>(future: F) -> F::Output {
+pub fn block_on<F>(future: F) -> F::Output
+where
+    F: core::future::Future,
+{
     RUNTIME.block_on(future)
 }

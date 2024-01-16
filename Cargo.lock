@@ -186,6 +186,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-wsocket"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82d55992e9155e571208dc012c2a5c056572d1ab167bc299a63810ebf910226c"
+dependencies = [
+ "async-utility",
+ "futures-util",
+ "thiserror",
+ "tokio",
+ "tokio-rustls",
+ "tokio-socks",
+ "tokio-tungstenite",
+ "url-fork",
+ "wasm-ws",
+ "webpki-roots",
+]
+
+[[package]]
 name = "async_io_stream"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1438,10 +1456,10 @@ name = "nostr-sdk"
 version = "0.26.0"
 dependencies = [
  "async-utility",
+ "async-wsocket",
  "nostr",
  "nostr-database",
  "nostr-indexeddb",
- "nostr-sdk-net",
  "nostr-sqlite",
  "once_cell",
  "thiserror",
@@ -1473,21 +1491,6 @@ dependencies = [
  "tracing-subscriber",
  "wasm-bindgen",
  "wasm-bindgen-futures",
-]
-
-[[package]]
-name = "nostr-sdk-net"
-version = "0.26.0"
-dependencies = [
- "futures-util",
- "thiserror",
- "tokio",
- "tokio-rustls",
- "tokio-socks",
- "tokio-tungstenite",
- "url-fork",
- "wasm-ws",
- "webpki-roots",
 ]
 
 [[package]]
@@ -2779,9 +2782,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-ws"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "601c6f6340b473083c38e6cdda1f39dfc35d67b0e4b54fa56624d6189c2aa366"
+checksum = "f5b3a482e27ff54809c0848629d9033179705c5ea2f58e26cf45dc77c34c4984"
 dependencies = [
  "async_io_stream",
  "futures",

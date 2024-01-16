@@ -5,6 +5,7 @@
 //! Client
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -23,7 +24,6 @@ use nostr::{
     Result, Tag, Timestamp,
 };
 use nostr_database::DynNostrDatabase;
-use nostr_sdk_net::futures_util::Future;
 use tokio::sync::{broadcast, RwLock};
 
 #[cfg(feature = "blocking")]

@@ -16,6 +16,8 @@ use std::{cmp, fmt};
 #[cfg(not(target_arch = "wasm32"))]
 use async_utility::futures_util::stream::AbortHandle;
 use async_utility::{futures_util, thread, time};
+use async_wsocket::futures_util::{Future, SinkExt, StreamExt};
+use async_wsocket::WsMessage;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
 use nostr::negentropy::{self, Bytes, Negentropy};
@@ -27,8 +29,6 @@ use nostr::{
     SubscriptionId, Timestamp, Url,
 };
 use nostr_database::{DatabaseError, DynNostrDatabase, Order};
-use nostr_sdk_net::futures_util::{Future, SinkExt, StreamExt};
-use nostr_sdk_net::{self as net, WsMessage};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
@@ -557,9 +557,9 @@ impl Relay {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        let connection = net::native::connect(&self.url, self.proxy(), None).await;
+        let connection = async_wsocket::native::connect(&self.url, self.proxy(), None).await;
         #[cfg(target_arch = "wasm32")]
-        let connection = net::wasm::connect(&self.url).await;
+        let connection = async_wsocket::wasm::connect(&self.url, None).await;
 
         // Connect
         match connection {
