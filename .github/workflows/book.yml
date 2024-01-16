@@ -1,4 +1,4 @@
-name: Deploy Book
+name: Book
 
 on:
   push:
