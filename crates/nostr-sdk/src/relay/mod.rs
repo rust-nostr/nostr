@@ -436,7 +436,7 @@ impl Relay {
     }
 
     /// Connect to relay and keep alive connection
-    pub async fn connect(&self, wait_for_connection: bool) {
+    pub async fn connect(&self, connection_timeout: Option<Duration>) {
         self.schedule_for_stop(false);
         self.schedule_for_termination(false);
 
@@ -444,13 +444,13 @@ impl Relay {
             self.status().await
         {
             if self.opts.get_reconnect() {
-                if wait_for_connection {
-                    self.try_connect().await
+                if connection_timeout.is_some() {
+                    self.try_connect(connection_timeout).await
                 }
 
                 tracing::debug!("Auto connect loop started for {}", self.url);
 
-                if !wait_for_connection {
+                if connection_timeout.is_none() {
                     self.set_status(RelayStatus::Pending).await;
                 }
 
@@ -491,7 +491,9 @@ impl Relay {
                         match relay.status().await {
                             RelayStatus::Initialized
                             | RelayStatus::Pending
-                            | RelayStatus::Disconnected => relay.try_connect().await,
+                            | RelayStatus::Disconnected => {
+                                relay.try_connect(connection_timeout).await
+                            }
                             RelayStatus::Stopped | RelayStatus::Terminated => {
                                 tracing::debug!("Auto connect loop terminated for {}", relay.url);
                                 break;
@@ -518,16 +520,16 @@ impl Relay {
                         thread::sleep(Duration::from_secs(retry_sec)).await;
                     }
                 });
-            } else if wait_for_connection {
-                self.try_connect().await
+            } else if connection_timeout.is_some() {
+                self.try_connect(connection_timeout).await
             } else {
                 let relay = self.clone();
-                thread::spawn(async move { relay.try_connect().await });
+                thread::spawn(async move { relay.try_connect(connection_timeout).await });
             }
         }
     }
 
-    async fn try_connect(&self) {
+    async fn try_connect(&self, connection_timeout: Option<Duration>) {
         self.stats.new_attempt();
 
         let url: String = self.url.to_string();
@@ -556,10 +558,17 @@ impl Relay {
             });
         }
 
+        let timeout: Option<Duration> = if self.stats.attempts() > 1 {
+            // Many attempts, use the default timeout
+            Some(Duration::from_secs(60))
+        } else {
+            // First attempt, use external timeout
+            connection_timeout
+        };
         #[cfg(not(target_arch = "wasm32"))]
-        let connection = async_wsocket::native::connect(&self.url, self.proxy(), None).await;
+        let connection = async_wsocket::native::connect(&self.url, self.proxy(), timeout).await;
         #[cfg(target_arch = "wasm32")]
-        let connection = async_wsocket::wasm::connect(&self.url, None).await;
+        let connection = async_wsocket::wasm::connect(&self.url, timeout).await;
 
         // Connect
         match connection {

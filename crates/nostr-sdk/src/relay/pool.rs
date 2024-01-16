@@ -854,16 +854,16 @@ impl RelayPool {
     }
 
     /// Connect to all added relays and keep connection alive
-    pub async fn connect(&self, wait_for_connection: bool) {
+    pub async fn connect(&self, connection_timeout: Option<Duration>) {
         let relays: HashMap<Url, Relay> = self.relays().await;
 
-        if wait_for_connection {
-            let mut handles = Vec::new();
+        if connection_timeout.is_some() {
+            let mut handles = Vec::with_capacity(relays.len());
 
             for relay in relays.into_values() {
                 let pool = self.clone();
                 let handle = thread::spawn(async move {
-                    pool.connect_relay(&relay, wait_for_connection).await;
+                    pool.connect_relay(&relay, connection_timeout).await;
                 });
                 handles.push(handle);
             }
@@ -873,7 +873,7 @@ impl RelayPool {
             }
         } else {
             for relay in relays.values() {
-                self.connect_relay(relay, wait_for_connection).await;
+                self.connect_relay(relay, None).await;
             }
         }
     }
@@ -890,12 +890,12 @@ impl RelayPool {
     /// Connect to relay
     ///
     /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
-    pub async fn connect_relay(&self, relay: &Relay, wait_for_connection: bool) {
+    pub async fn connect_relay(&self, relay: &Relay, connection_timeout: Option<Duration>) {
         let filters: Vec<Filter> = self.subscription_filters().await;
         relay
             .update_subscription_filters(InternalSubscriptionId::Pool, filters)
             .await;
-        relay.connect(wait_for_connection).await;
+        relay.connect(connection_timeout).await;
     }
 
     /// Disconnect from relay

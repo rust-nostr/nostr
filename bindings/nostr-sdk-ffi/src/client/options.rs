@@ -37,12 +37,6 @@ impl Options {
         }
     }
 
-    pub fn wait_for_connection(self: Arc<Self>, wait: bool) -> Arc<Self> {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.wait_for_connection(wait);
-        Arc::new(builder)
-    }
-
     pub fn wait_for_send(self: Arc<Self>, wait: bool) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.wait_for_send(wait);
@@ -76,6 +70,15 @@ impl Options {
     pub fn timeout(self: Arc<Self>, timeout: Duration) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.timeout(timeout);
+        Arc::new(builder)
+    }
+
+    /// Connection timeout (default: None)
+    ///
+    /// If set to `None`, the client will try to connect to the relays without waiting.
+    pub fn connection_timeout(self: Arc<Self>, timeout: Option<Duration>) -> Arc<Self> {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.connection_timeout(timeout);
         Arc::new(builder)
     }
 

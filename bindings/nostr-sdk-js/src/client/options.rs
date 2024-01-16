@@ -37,11 +37,6 @@ impl JsOptions {
         }
     }
 
-    #[wasm_bindgen(js_name = waitForConnection)]
-    pub fn wait_for_connection(self, wait: bool) -> Self {
-        self.inner.wait_for_connection(wait).into()
-    }
-
     #[wasm_bindgen(js_name = waitForSend)]
     pub fn wait_for_send(self, wait: bool) -> Self {
         self.inner.wait_for_send(wait).into()
@@ -70,6 +65,16 @@ impl JsOptions {
 
     pub fn timeout(self, timeout: &JsDuration) -> Self {
         self.inner.timeout(**timeout).into()
+    }
+
+    /// Connection timeout (default: None)
+    ///
+    /// If set to `None`, the client will try to connect to the relays without waiting.
+    #[wasm_bindgen(js_name = connectionTimeout)]
+    pub fn connection_timeout(self, connection_timeout: Option<JsDuration>) -> Self {
+        self.inner
+            .connection_timeout(connection_timeout.map(|d| *d))
+            .into()
     }
 
     #[wasm_bindgen(js_name = sendTimeout)]

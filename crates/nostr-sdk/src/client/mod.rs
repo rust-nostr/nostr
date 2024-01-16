@@ -424,7 +424,7 @@ impl Client {
     {
         let relay: Relay = self.relay(url).await?;
         self.pool
-            .connect_relay(&relay, self.opts.wait_for_connection)
+            .connect_relay(&relay, self.opts.connection_timeout)
             .await;
         Ok(())
     }
@@ -469,7 +469,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn connect(&self) {
-        self.pool.connect(self.opts.wait_for_connection).await;
+        self.pool.connect(self.opts.connection_timeout).await;
     }
 
     /// Disconnect from all relays
