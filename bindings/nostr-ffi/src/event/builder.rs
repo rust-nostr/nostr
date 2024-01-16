@@ -90,18 +90,10 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn set_metadata(metadata: Arc<Metadata>) -> Arc<Self> {
+    pub fn metadata(metadata: Arc<Metadata>) -> Arc<Self> {
         Arc::new(Self {
-            inner: nostr::EventBuilder::set_metadata(metadata.as_ref().deref()),
+            inner: nostr::EventBuilder::metadata(metadata.as_ref().deref()),
         })
-    }
-
-    #[uniffi::constructor]
-    pub fn add_recommended_relay(url: String) -> Result<Arc<Self>> {
-        let url = Url::parse(&url)?;
-        Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::add_recommended_relay(&url),
-        }))
     }
 
     #[uniffi::constructor]
@@ -115,10 +107,10 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn new_text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
+    pub fn text_note(content: String, tags: Vec<Arc<Tag>>) -> Result<Arc<Self>> {
         let tags = tags.into_iter().map(|t| t.as_ref().deref().clone());
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::new_text_note(content, tags),
+            inner: nostr::EventBuilder::text_note(content, tags),
         }))
     }
 
@@ -131,27 +123,27 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn set_contact_list(list: Vec<Arc<Contact>>) -> Arc<Self> {
+    pub fn contact_list(list: Vec<Arc<Contact>>) -> Arc<Self> {
         let list: Vec<ContactSdk> = list
             .into_iter()
             .map(|c| c.as_ref().deref().clone())
             .collect();
 
         Arc::new(Self {
-            inner: nostr::EventBuilder::set_contact_list(list),
+            inner: nostr::EventBuilder::contact_list(list),
         })
     }
 
     /// Create encrypted direct msg event
     #[uniffi::constructor]
-    pub fn new_encrypted_direct_msg(
+    pub fn encrypted_direct_msg(
         sender_keys: Arc<Keys>,
         receiver_pubkey: Arc<PublicKey>,
         content: String,
         reply_to: Option<Arc<EventId>>,
     ) -> Result<Arc<Self>> {
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::new_encrypted_direct_msg(
+            inner: nostr::EventBuilder::encrypted_direct_msg(
                 sender_keys.deref(),
                 *receiver_pubkey.as_ref().deref(),
                 content,
@@ -183,13 +175,13 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn new_reaction(
+    pub fn reaction(
         event_id: Arc<EventId>,
         public_key: Arc<PublicKey>,
         content: String,
     ) -> Arc<Self> {
         Arc::new(Self {
-            inner: nostr::EventBuilder::new_reaction(
+            inner: nostr::EventBuilder::reaction(
                 event_id.as_ref().into(),
                 *public_key.as_ref().deref(),
                 content,
@@ -198,14 +190,14 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn new_channel(metadata: Arc<Metadata>) -> Arc<Self> {
+    pub fn channel(metadata: Arc<Metadata>) -> Arc<Self> {
         Arc::new(Self {
-            inner: nostr::EventBuilder::new_channel(metadata.as_ref().deref()),
+            inner: nostr::EventBuilder::channel(metadata.as_ref().deref()),
         })
     }
 
     #[uniffi::constructor]
-    pub fn set_channel_metadata(
+    pub fn channel_metadata(
         channel_id: Arc<EventId>,
         relay_url: Option<String>,
         metadata: Arc<Metadata>,
@@ -215,7 +207,7 @@ impl EventBuilder {
             None => None,
         };
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::set_channel_metadata(
+            inner: nostr::EventBuilder::channel_metadata(
                 **channel_id,
                 relay_url,
                 metadata.as_ref().deref(),
@@ -224,17 +216,13 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn new_channel_msg(
+    pub fn channel_msg(
         channel_id: Arc<EventId>,
         relay_url: String,
         content: String,
     ) -> Result<Arc<Self>> {
         Ok(Arc::new(Self {
-            inner: nostr::EventBuilder::new_channel_msg(
-                **channel_id,
-                Url::parse(&relay_url)?,
-                content,
-            ),
+            inner: nostr::EventBuilder::channel_msg(**channel_id, Url::parse(&relay_url)?, content),
         }))
     }
 
@@ -331,13 +319,13 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn new_zap_receipt(
+    pub fn zap_receipt(
         bolt11: String,
         preimage: Option<String>,
         zap_request: Arc<Event>,
     ) -> Arc<Self> {
         Arc::new(Self {
-            inner: nostr::EventBuilder::new_zap_receipt(
+            inner: nostr::EventBuilder::zap_receipt(
                 bolt11,
                 preimage,
                 zap_request.as_ref().deref().clone(),
@@ -477,16 +465,16 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn new_stall_data(data: StallData) -> Self {
+    pub fn stall_data(data: StallData) -> Self {
         Self {
-            inner: nostr::EventBuilder::new_stall_data(data.into()),
+            inner: nostr::EventBuilder::stall_data(data.into()),
         }
     }
 
     #[uniffi::constructor]
-    pub fn new_product_data(data: ProductData) -> Self {
+    pub fn product_data(data: ProductData) -> Self {
         Self {
-            inner: nostr::EventBuilder::new_product_data(data.into()),
+            inner: nostr::EventBuilder::product_data(data.into()),
         }
     }
 }

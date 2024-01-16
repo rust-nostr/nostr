@@ -780,7 +780,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn set_metadata(&self, metadata: &Metadata) -> Result<EventId, Error> {
-        let builder = EventBuilder::set_metadata(metadata);
+        let builder = EventBuilder::metadata(metadata);
         self.send_event_builder(builder).await
     }
 
@@ -807,34 +807,21 @@ impl Client {
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
-        let builder = EventBuilder::new_text_note(content, tags);
+        let builder = EventBuilder::text_note(content, tags);
         self.send_event_builder(builder).await
     }
 
     /// Add recommended relay
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client
-    ///     .add_recommended_relay("wss://relay.damus.io")
-    ///     .await
-    ///     .unwrap();
-    /// # }
-    /// ```
+    #[deprecated(since = "0.27.0")]
     pub async fn add_recommended_relay<U>(&self, url: U) -> Result<EventId, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
+        #[allow(deprecated)]
         let builder = EventBuilder::add_recommended_relay(&url);
         self.send_event_builder(builder).await
     }
@@ -846,7 +833,7 @@ impl Client {
     where
         I: IntoIterator<Item = Contact>,
     {
-        let builder = EventBuilder::set_contact_list(list);
+        let builder = EventBuilder::contact_list(list);
         self.send_event_builder(builder).await
     }
 
@@ -1001,7 +988,7 @@ impl Client {
     {
         let builder: EventBuilder = match self.signer().await? {
             ClientSigner::Keys(keys) => {
-                EventBuilder::new_encrypted_direct_msg(&keys, receiver, msg, reply_to)?
+                EventBuilder::encrypted_direct_msg(&keys, receiver, msg, reply_to)?
             }
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             ClientSigner::NIP07(nip07) => {
@@ -1087,7 +1074,7 @@ impl Client {
         event_id: EventId,
         public_key: XOnlyPublicKey,
     ) -> Result<EventId, Error> {
-        let builder = EventBuilder::new_reaction(event_id, public_key, "+");
+        let builder = EventBuilder::reaction(event_id, public_key, "+");
         self.send_event_builder(builder).await
     }
 
@@ -1121,7 +1108,7 @@ impl Client {
         event_id: EventId,
         public_key: XOnlyPublicKey,
     ) -> Result<EventId, Error> {
-        let builder = EventBuilder::new_reaction(event_id, public_key, "-");
+        let builder = EventBuilder::reaction(event_id, public_key, "-");
         self.send_event_builder(builder).await
     }
 
@@ -1159,7 +1146,7 @@ impl Client {
     where
         S: Into<String>,
     {
-        let builder = EventBuilder::new_reaction(event_id, public_key, content);
+        let builder = EventBuilder::reaction(event_id, public_key, content);
         self.send_event_builder(builder).await
     }
 
@@ -1167,7 +1154,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn new_channel(&self, metadata: &Metadata) -> Result<EventId, Error> {
-        let builder = EventBuilder::new_channel(metadata);
+        let builder = EventBuilder::channel(metadata);
         self.send_event_builder(builder).await
     }
 
@@ -1180,7 +1167,7 @@ impl Client {
         relay_url: Option<Url>,
         metadata: &Metadata,
     ) -> Result<EventId, Error> {
-        let builder = EventBuilder::set_channel_metadata(channel_id, relay_url, metadata);
+        let builder = EventBuilder::channel_metadata(channel_id, relay_url, metadata);
         self.send_event_builder(builder).await
     }
 
@@ -1196,7 +1183,7 @@ impl Client {
     where
         S: Into<String>,
     {
-        let builder = EventBuilder::new_channel_msg(channel_id, relay_url, msg);
+        let builder = EventBuilder::channel_msg(channel_id, relay_url, msg);
         self.send_event_builder(builder).await
     }
 
@@ -1245,6 +1232,24 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     #[cfg(feature = "nip57")]
+    pub async fn zap_receipt<S>(
+        &self,
+        bolt11: S,
+        preimage: Option<S>,
+        zap_request: Event,
+    ) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        let builder = EventBuilder::zap_receipt(bolt11, preimage, zap_request);
+        self.send_event_builder(builder).await
+    }
+
+    /// Create zap receipt event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    #[cfg(feature = "nip57")]
+    #[deprecated(since = "0.27.0", note = "Use `zap_receipt` instead")]
     pub async fn new_zap_receipt<S>(
         &self,
         bolt11: S,
@@ -1254,7 +1259,7 @@ impl Client {
     where
         S: Into<String>,
     {
-        let builder = EventBuilder::new_zap_receipt(bolt11, preimage, zap_request);
+        let builder = EventBuilder::zap_receipt(bolt11, preimage, zap_request);
         self.send_event_builder(builder).await
     }
 

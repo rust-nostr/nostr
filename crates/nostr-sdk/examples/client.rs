@@ -23,14 +23,14 @@ async fn main() -> Result<()> {
     client.publish_text_note("Hello world", []).await?;
 
     // Create a text note POW event
-    let event: Event = EventBuilder::new_text_note("POW text note from nostr-sdk", [])
-        .to_pow_event(&my_keys, 20)?;
+    let event: Event =
+        EventBuilder::text_note("POW text note from nostr-sdk", []).to_pow_event(&my_keys, 20)?;
     client.send_event(event).await?;
 
     // Send multiple events at once
     let mut events: Vec<Event> = Vec::new();
     for i in 0..10 {
-        events.push(EventBuilder::new_text_note(format!("Event #{i}"), []).to_event(&my_keys)?);
+        events.push(EventBuilder::text_note(format!("Event #{i}"), []).to_event(&my_keys)?);
     }
     let opts = RelaySendOptions::default();
     client.batch_event(events, opts).await?;

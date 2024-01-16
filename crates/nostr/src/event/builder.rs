@@ -329,7 +329,7 @@ impl EventBuilder {
 }
 
 impl EventBuilder {
-    /// Set metadata
+    /// Profile metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     ///
@@ -346,13 +346,22 @@ impl EventBuilder {
     ///     .nip05("username@example.com")
     ///     .lud16("yuki@getalby.com");
     ///
-    /// let builder = EventBuilder::set_metadata(&metadata);
+    /// let builder = EventBuilder::metadata(&metadata);
     /// ```
-    pub fn set_metadata(metadata: &Metadata) -> Self {
+    pub fn metadata(metadata: &Metadata) -> Self {
         Self::new(Kind::Metadata, metadata.as_json(), [])
     }
 
+    /// Set metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[deprecated(since = "0.27.0", note = "Use `metadata` instead")]
+    pub fn set_metadata(metadata: &Metadata) -> Self {
+        Self::metadata(metadata)
+    }
+
     /// Add recommended relay
+    #[deprecated(since = "0.27.0")]
     pub fn add_recommended_relay(url: &Url) -> Self {
         Self::new(Kind::RecommendRelay, url.as_ref(), [])
     }
@@ -378,14 +387,26 @@ impl EventBuilder {
     /// ```rust,no_run
     /// use nostr::EventBuilder;
     ///
-    /// let builder = EventBuilder::new_text_note("My first text note from Nostr SDK!", []);
+    /// let builder = EventBuilder::text_note("My first text note from Nostr SDK!", []);
     /// ```
-    pub fn new_text_note<S, I>(content: S, tags: I) -> Self
+    pub fn text_note<S, I>(content: S, tags: I) -> Self
     where
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
         Self::new(Kind::TextNote, content, tags)
+    }
+
+    /// Text note
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[deprecated(since = "0.27.0", note = "Use `text_note` instead")]
+    pub fn new_text_note<S, I>(content: S, tags: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = Tag>,
+    {
+        Self::text_note(content, tags)
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
@@ -417,8 +438,8 @@ impl EventBuilder {
         Self::new(Kind::LongFormTextNote, content, tags)
     }
 
-    /// Set contact list
-    pub fn set_contact_list<I>(contacts: I) -> Self
+    /// Contact list
+    pub fn contact_list<I>(contacts: I) -> Self
     where
         I: IntoIterator<Item = Contact>,
     {
@@ -429,6 +450,15 @@ impl EventBuilder {
             uppercase: false,
         });
         Self::new(Kind::ContactList, "", tags)
+    }
+
+    /// Set contact list
+    #[deprecated(since = "0.27.0", note = "Use `contact_list` instead")]
+    pub fn set_contact_list<I>(contacts: I) -> Self
+    where
+        I: IntoIterator<Item = Contact>,
+    {
+        Self::contact_list(contacts)
     }
 
     /// OpenTimestamps Attestations for Events
@@ -452,8 +482,10 @@ impl EventBuilder {
     }
 
     /// Create encrypted direct msg event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
     #[cfg(all(feature = "std", feature = "nip04"))]
-    pub fn new_encrypted_direct_msg<S>(
+    pub fn encrypted_direct_msg<S>(
         sender_keys: &Keys,
         receiver_pubkey: XOnlyPublicKey,
         content: S,
@@ -471,6 +503,21 @@ impl EventBuilder {
             nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, content.into())?,
             tags,
         ))
+    }
+
+    /// Create encrypted direct msg event
+    #[cfg(all(feature = "std", feature = "nip04"))]
+    #[deprecated(since = "0.27.0", note = "Use `encrypted_direct_msg` instead")]
+    pub fn new_encrypted_direct_msg<S>(
+        sender_keys: &Keys,
+        receiver_pubkey: XOnlyPublicKey,
+        content: S,
+        reply_to: Option<EventId>,
+    ) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        Self::encrypted_direct_msg(sender_keys, receiver_pubkey, content, reply_to)
     }
 
     /// Repost event
@@ -506,7 +553,7 @@ impl EventBuilder {
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
-    pub fn new_reaction<S>(event_id: EventId, public_key: XOnlyPublicKey, content: S) -> Self
+    pub fn reaction<S>(event_id: EventId, public_key: XOnlyPublicKey, content: S) -> Self
     where
         S: Into<String>,
     {
@@ -517,17 +564,34 @@ impl EventBuilder {
         )
     }
 
+    /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    #[deprecated(since = "0.27.0", note = "Use `reaction` instead")]
+    pub fn new_reaction<S>(event_id: EventId, public_key: XOnlyPublicKey, content: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::reaction(event_id, public_key, content)
+    }
+
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel(metadata: &Metadata) -> Self {
+    pub fn channel(metadata: &Metadata) -> Self {
         Self::new(Kind::ChannelCreation, metadata.as_json(), [])
     }
 
-    /// Set channel metadata
+    /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn set_channel_metadata(
+    #[deprecated(since = "0.27.0", note = "Use `channel` instead")]
+    pub fn new_channel(metadata: &Metadata) -> Self {
+        Self::channel(metadata)
+    }
+
+    /// Channel metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    pub fn channel_metadata(
         channel_id: EventId,
         relay_url: Option<Url>,
         metadata: &Metadata,
@@ -543,10 +607,22 @@ impl EventBuilder {
         )
     }
 
-    /// New channel message
+    /// Set channel metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn new_channel_msg<S>(channel_id: EventId, relay_url: Url, content: S) -> Self
+    #[deprecated(since = "0.27.0", note = "Use `channel_metadata` instead")]
+    pub fn set_channel_metadata(
+        channel_id: EventId,
+        relay_url: Option<Url>,
+        metadata: &Metadata,
+    ) -> Self {
+        Self::channel_metadata(channel_id, relay_url, metadata)
+    }
+
+    /// Channel message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    pub fn channel_msg<S>(channel_id: EventId, relay_url: Url, content: S) -> Self
     where
         S: Into<String>,
     {
@@ -559,6 +635,17 @@ impl EventBuilder {
                 marker: Some(Marker::Root),
             }],
         )
+    }
+
+    /// Channel message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[deprecated(since = "0.27.0", note = "Use `channel_msg` instead")]
+    pub fn new_channel_msg<S>(channel_id: EventId, relay_url: Url, content: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::channel_msg(channel_id, relay_url, content)
     }
 
     /// Hide message
@@ -725,7 +812,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     #[cfg(feature = "nip57")]
-    pub fn new_zap_receipt<S>(bolt11: S, preimage: Option<S>, zap_request: Event) -> Self
+    pub fn zap_receipt<S>(bolt11: S, preimage: Option<S>, zap_request: Event) -> Self
     where
         S: Into<String>,
     {
@@ -766,6 +853,18 @@ impl EventBuilder {
         });
 
         Self::new(Kind::ZapReceipt, "", tags)
+    }
+
+    /// Create zap receipt event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    #[cfg(feature = "nip57")]
+    #[deprecated(since = "0.27.0", note = "Use `zap_receipt` instead")]
+    pub fn new_zap_receipt<S>(bolt11: S, preimage: Option<S>, zap_request: Event) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::zap_receipt(bolt11, preimage, zap_request)
     }
 
     /// Create a badge definition event
@@ -1049,17 +1148,33 @@ impl EventBuilder {
     /// Set stall data
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
-    pub fn new_stall_data(data: StallData) -> Self {
+    pub fn stall_data(data: StallData) -> Self {
         let tags: Vec<Tag> = data.clone().into();
         Self::new(Kind::SetStall, data, tags)
+    }
+
+    /// Set stall data
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
+    #[deprecated(since = "0.27.0", note = "Use `stall_data` instead")]
+    pub fn new_stall_data(data: StallData) -> Self {
+        Self::stall_data(data)
     }
 
     /// Set product data
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
-    pub fn new_product_data(data: ProductData) -> Self {
+    pub fn product_data(data: ProductData) -> Self {
         let tags: Vec<Tag> = data.clone().into();
         Self::new(Kind::SetProduct, data, tags)
+    }
+
+    /// Set product data
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
+    #[deprecated(since = "0.27.0", note = "Use `product_data` instead")]
+    pub fn new_product_data(data: ProductData) -> Self {
+        Self::product_data(data)
     }
 }
 
@@ -1081,7 +1196,7 @@ mod tests {
                 .unwrap(),
         );
 
-        let event = EventBuilder::new_text_note("hello", [])
+        let event = EventBuilder::text_note("hello", [])
             .to_event(&keys)
             .unwrap();
 
@@ -1104,7 +1219,7 @@ mod tests {
         );
 
         let content = "Mercury, the Winged Messenger";
-        let event = EventBuilder::new_encrypted_direct_msg(
+        let event = EventBuilder::encrypted_direct_msg(
             &sender_keys,
             receiver_keys.public_key(),
             content,
@@ -1126,7 +1241,7 @@ mod tests {
         ));
         let zap_request_json = String::from("{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}");
         let zap_request_event: Event = Event::from_json(zap_request_json).unwrap();
-        let event_builder = EventBuilder::new_zap_receipt(bolt11, preimage, zap_request_event);
+        let event_builder = EventBuilder::zap_receipt(bolt11, preimage, zap_request_event);
 
         assert_eq!(6, event_builder.tags.len());
 
@@ -1147,7 +1262,7 @@ mod tests {
         let preimage = None;
         let zap_request_json = String::from("{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}");
         let zap_request_event = Event::from_json(zap_request_json).unwrap();
-        let event_builder = EventBuilder::new_zap_receipt(bolt11, preimage, zap_request_event);
+        let event_builder = EventBuilder::zap_receipt(bolt11, preimage, zap_request_event);
 
         assert_eq!(5, event_builder.tags.len());
         let has_preimage_tag = event_builder

@@ -11,7 +11,7 @@ fn main() -> Result<()> {
     let alice_keys = Keys::from_sk_str(ALICE_SK)?;
     let bob_keys = Keys::from_sk_str(BOB_SK)?;
 
-    let alice_encrypted_msg = EventBuilder::new_encrypted_direct_msg(
+    let alice_encrypted_msg = EventBuilder::encrypted_direct_msg(
         &alice_keys,
         bob_keys.public_key(),
         "Hey bob this is alice",

@@ -25,12 +25,12 @@ async fn main() {
     let index = DatabaseIndexes::new();
 
     for i in 0..100_000 {
-        let event = EventBuilder::new_text_note(format!("Event #{i}"), [])
+        let event = EventBuilder::text_note(format!("Event #{i}"), [])
             .to_event(&keys_a)
             .unwrap();
         index.index_event(&event).await;
 
-        let event = EventBuilder::new_text_note(
+        let event = EventBuilder::text_note(
             format!("Reply to event #{i}"),
             [Tag::event(event.id()), Tag::public_key(event.author())],
         )
@@ -41,9 +41,7 @@ async fn main() {
 
     for i in 0..1000 {
         let metadata = Metadata::new().name(format!("Name #{i}"));
-        let event = EventBuilder::set_metadata(&metadata)
-            .to_event(&keys_a)
-            .unwrap();
+        let event = EventBuilder::metadata(&metadata).to_event(&keys_a).unwrap();
         index.index_event(&event).await;
     }
 

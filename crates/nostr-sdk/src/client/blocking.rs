@@ -267,11 +267,13 @@ impl Client {
         RUNTIME.block_on(async { self.client.publish_text_note(content, tags).await })
     }
 
+    #[deprecated(since = "0.27.0")]
     pub fn add_recommended_relay<U>(&self, url: U) -> Result<EventId, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
+        #[allow(deprecated)]
         RUNTIME.block_on(async { self.client.add_recommended_relay(url).await })
     }
 
@@ -411,7 +413,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     #[cfg(feature = "nip57")]
-    pub fn new_zap_receipt<S>(
+    pub fn zap_receipt<S>(
         &self,
         bolt11: S,
         preimage: Option<S>,
@@ -421,10 +423,25 @@ impl Client {
         S: Into<String>,
     {
         RUNTIME.block_on(async {
-            self.client
-                .new_zap_receipt(bolt11, preimage, zap_request)
-                .await
+            self.client.zap_receipt(bolt11, preimage, zap_request).await
         })
+    }
+
+    /// Create zap receipt event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    #[cfg(feature = "nip57")]
+    #[deprecated(since = "0.27.0", note = "Use `zap_receipt` instead")]
+    pub fn new_zap_receipt<S>(
+        &self,
+        bolt11: S,
+        preimage: Option<S>,
+        zap_request: Event,
+    ) -> Result<EventId, Error>
+    where
+        S: Into<String>,
+    {
+        self.zap_receipt(bolt11, preimage, zap_request)
     }
 
     /// File metadata

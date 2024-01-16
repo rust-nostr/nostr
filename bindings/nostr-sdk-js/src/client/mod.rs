@@ -288,18 +288,6 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Add recommended relay
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[wasm_bindgen(js_name = addRecommendedRelay)]
-    pub async fn add_recommended_relay(&self, url: String) -> Result<JsEventId> {
-        self.inner
-            .add_recommended_relay(url)
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
     /// Set contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>

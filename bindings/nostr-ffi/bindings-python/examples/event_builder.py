@@ -3,12 +3,12 @@ from nostr_protocol import Keys, PublicKey, EventBuilder, Event, Tag
 keys = Keys.generate()
 
 # Build a text note
-event = EventBuilder.new_text_note("New note from Rust Nostr python bindings", []).to_event(keys)
+event = EventBuilder.text_note("New note from Rust Nostr python bindings", []).to_event(keys)
 print(event.as_json())
 
 # Build a DM
 receiver_pk = PublicKey.from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
-event = EventBuilder.new_encrypted_direct_msg(keys, receiver_pk, "New note from Rust Nostr python bindings", None).to_event(keys)
+event = EventBuilder.encrypted_direct_msg(keys, receiver_pk, "New note from Rust Nostr python bindings", None).to_event(keys)
 print(event.as_json())
 
 # Build a custom event

@@ -34,7 +34,7 @@ pub enum Kind {
     Metadata,
     /// Short Text Note (NIP01)
     TextNote,
-    /// Recommend Relay (NIP01)
+    /// Recommend Relay (NIP01 - deprecated)
     RecommendRelay,
     /// Contacts (NIP02)
     ContactList,

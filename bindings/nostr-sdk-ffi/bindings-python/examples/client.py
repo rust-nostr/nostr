@@ -29,14 +29,14 @@ client.add_relays(["wss://relay.damus.io", "wss://nos.lol"])
 client.connect()
 
 # Send an event using the Client Signer
-builder = EventBuilder.new_text_note("Test from Rust Nostr Python!", [])
+builder = EventBuilder.text_note("Test from Rust Nostr Python!", [])
 client.send_event_builder(builder)
 client.set_metadata(Metadata().set_name("Testing Rust Nostr"))
 
 # Mine a POW event and sign it with custom keys
 custom_keys = Keys.generate() 
 print("Mining a POW text note...")
-event = EventBuilder.new_text_note("Hello from Rust Nostr Python bindings!", []).to_pow_event(custom_keys, 20)
+event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).to_pow_event(custom_keys, 20)
 event_id = client.send_event(event)
 print("Event sent:")
 print(f" hex:    {event_id.to_hex()}")

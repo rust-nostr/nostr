@@ -11,7 +11,7 @@ client = Client.with_opts(None, opts)
 client.add_relay("wss://relay.damus.io")
 client.connect()
 
-event = EventBuilder.new_text_note("Hello from Rust Nostr Python bindings!", []).to_event(keys)
+event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).to_event(keys)
 event_id = client.send_event(event)
 print("Event sent:")
 print(f" hex:    {event_id.to_hex()}")

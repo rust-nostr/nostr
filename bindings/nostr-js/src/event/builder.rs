@@ -71,45 +71,36 @@ impl JsEventBuilder {
             .into()
     }
 
-    #[wasm_bindgen(js_name = setMetadata)]
-    pub fn set_metadata(metadata: &JsMetadata) -> Self {
+    pub fn metadata(metadata: &JsMetadata) -> Self {
         Self {
-            builder: EventBuilder::set_metadata(metadata.deref()),
+            builder: EventBuilder::metadata(metadata.deref()),
         }
     }
 
-    #[wasm_bindgen(js_name = addRecommendedRelay)]
-    pub fn add_recommended_relay(url: String) -> Result<JsEventBuilder> {
-        let url = Url::parse(&url).map_err(into_err)?;
-        Ok(Self {
-            builder: EventBuilder::add_recommended_relay(&url),
-        })
-    }
-
-    #[wasm_bindgen(js_name = newTextNote)]
-    pub fn new_text_note(content: String, tags: Vec<JsTag>) -> Self {
+    #[wasm_bindgen(js_name = textNote)]
+    pub fn text_note(content: String, tags: Vec<JsTag>) -> Self {
         Self {
-            builder: EventBuilder::new_text_note(content, tags.into_iter().map(|t| t.into())),
+            builder: EventBuilder::text_note(content, tags.into_iter().map(|t| t.into())),
         }
     }
 
-    #[wasm_bindgen(js_name = setContactList)]
-    pub fn set_contact_list(list: Vec<JsContact>) -> Self {
+    #[wasm_bindgen(js_name = contactList)]
+    pub fn contact_list(list: Vec<JsContact>) -> Self {
         let list = list.into_iter().map(|c| c.inner());
         Self {
-            builder: EventBuilder::set_contact_list(list),
+            builder: EventBuilder::contact_list(list),
         }
     }
 
-    #[wasm_bindgen(js_name = newEncryptedDirectMsg)]
-    pub fn new_encrypted_direct_msg(
+    #[wasm_bindgen(js_name = encryptedDirectMsg)]
+    pub fn encrypted_direct_msg(
         sender_keys: &JsKeys,
         receiver_pubkey: &JsPublicKey,
         content: String,
         reply_to: Option<JsEventId>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
-            builder: EventBuilder::new_encrypted_direct_msg(
+            builder: EventBuilder::encrypted_direct_msg(
                 sender_keys.deref(),
                 receiver_pubkey.into(),
                 content,
@@ -137,22 +128,20 @@ impl JsEventBuilder {
         }
     }
 
-    #[wasm_bindgen(js_name = newReaction)]
-    pub fn new_reaction(event_id: &JsEventId, public_key: &JsPublicKey, content: String) -> Self {
+    pub fn reaction(event_id: &JsEventId, public_key: &JsPublicKey, content: String) -> Self {
         Self {
-            builder: EventBuilder::new_reaction(event_id.into(), public_key.into(), content),
+            builder: EventBuilder::reaction(event_id.into(), public_key.into(), content),
         }
     }
 
-    #[wasm_bindgen(js_name = newChannel)]
-    pub fn new_channel(metadata: &JsMetadata) -> Self {
+    pub fn channel(metadata: &JsMetadata) -> Self {
         Self {
-            builder: EventBuilder::new_channel(metadata.deref()),
+            builder: EventBuilder::channel(metadata.deref()),
         }
     }
 
-    #[wasm_bindgen(js_name = setChannelMetadata)]
-    pub fn set_channel_metadata(
+    #[wasm_bindgen(js_name = channelMetadata)]
+    pub fn channel_metadata(
         channel_id: &JsEventId,
         relay_url: Option<String>,
         metadata: &JsMetadata,
@@ -162,23 +151,19 @@ impl JsEventBuilder {
             None => None,
         };
         Ok(Self {
-            builder: EventBuilder::set_channel_metadata(
-                channel_id.into(),
-                relay_url,
-                metadata.deref(),
-            ),
+            builder: EventBuilder::channel_metadata(channel_id.into(), relay_url, metadata.deref()),
         })
     }
 
-    #[wasm_bindgen(js_name = newChannelMsg)]
-    pub fn new_channel_msg(
+    #[wasm_bindgen(js_name = channelMsg)]
+    pub fn channel_msg(
         channel_id: &JsEventId,
         relay_url: String,
         content: String,
     ) -> Result<JsEventBuilder> {
         let relay_url: Url = Url::parse(&relay_url).map_err(into_err)?;
         Ok(Self {
-            builder: EventBuilder::new_channel_msg(channel_id.into(), relay_url, content),
+            builder: EventBuilder::channel_msg(channel_id.into(), relay_url, content),
         })
     }
 

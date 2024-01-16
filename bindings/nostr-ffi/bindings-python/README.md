@@ -20,7 +20,7 @@ print(keys.secret_key().to_bech32())
 print(keys.public_key().to_bech32())
 
 print("Mining a POW text note...")
-event = EventBuilder.new_text_note("Hello from Rust Nostr Python bindings!", []).to_pow_event(keys, 20)
+event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).to_pow_event(keys, 20)
 print(event.as_json())
 ```
 
