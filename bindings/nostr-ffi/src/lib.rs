@@ -44,8 +44,8 @@ impl NostrLibrary {
         Arc::new(Self)
     }
 
-    pub fn git_hash_version(&self) -> String {
-        nostr::git_hash_version().to_string()
+    pub fn git_hash_version(&self) -> Option<String> {
+        std::env::var("GIT_HASH").ok()
     }
 }
 

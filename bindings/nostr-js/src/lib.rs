@@ -24,3 +24,19 @@ pub mod types;
 pub fn start() {
     console_error_panic_hook::set_once();
 }
+
+#[wasm_bindgen(js_name = NostrLibrary)]
+pub struct JsNostrLibrary;
+
+#[wasm_bindgen(js_class = NostrLibrary)]
+impl JsNostrLibrary {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self
+    }
+
+    #[wasm_bindgen(js_name = gitHashVersion)]
+    pub fn git_hash_version(&self) -> Option<String> {
+        std::env::var("GIT_HASH").ok()
+    }
+}

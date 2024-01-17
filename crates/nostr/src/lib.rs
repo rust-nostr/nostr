@@ -65,9 +65,3 @@ pub use self::util::SECP256K1;
 /// Result
 #[cfg(feature = "std")]
 pub type Result<T, E = alloc::boxed::Box<dyn std::error::Error>> = std::result::Result<T, E>;
-
-/// Git Hash
-#[cfg(feature = "std")]
-pub fn git_hash_version() -> &'static str {
-    env!("GIT_HASH")
-}
