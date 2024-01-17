@@ -42,7 +42,7 @@ clean:
 	cargo clean
 
 book:
-	cd book && make serve
+	cd book && just serve
 
 flatbuf:
 	cd crates/nostr-database && make flatbuf
