@@ -73,7 +73,7 @@ NACK - Disagree with the code changes/concept. Should be accompanied by an expla
 
 ## Coding Conventions
 
-Use `cargo fmt` and `cargo clippy` with the default settings to format code before committing.
+Use `make check` to format code and check the code before committing.
 This is also enforced by the CI.
 
 ## Going further
