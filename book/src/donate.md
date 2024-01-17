@@ -1,12 +1,12 @@
 # Donate to Rust Nostr 💜
 
-Your donation directly supports the continued development of Rust Nostr.
+Your donation directly supports the continued development of `rust-nostr`.
 
 ## Give a one-time donation
 
 ### Bitcoin
 
-* 🔗 Onchain: `TODO`
+* 🔗 Onchain: `bc1quk478kpm45744q5pt3p9j42fnv72ykytmt3z0j`
 * ⚡ Lightning: `yuki@getalby.com` (<https://getalby.com/p/yuki>)
 * 🕸️ Fedimint: `TODO`
 * 🥜 Cashu: `TODO`
@@ -28,5 +28,5 @@ Not currenlty available
 
 ## Verify donation details
 
-TODO
+The donation details can be verified via the `rust-nostr/nostr` repository, specifically in the [fund directory](https://github.com/rust-nostr/nostr/tree/master/contrib/fund).
 

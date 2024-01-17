@@ -1,1 +1,4 @@
-custom: ['https://getalby.com/p/yuki']
+custom: [
+  'https://rust-nostr.org/donate',
+  'https://getalby.com/p/yuki',
+]

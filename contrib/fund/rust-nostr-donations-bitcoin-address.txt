@@ -1,0 +1,5 @@
+The Rust Nostr Project has one official bitcoin (BTC) donation address:
+
+bc1quk478kpm45744q5pt3p9j42fnv72ykytmt3z0j
+
+Last updated: 2024-01-17

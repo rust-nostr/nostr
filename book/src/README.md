@@ -22,7 +22,7 @@ Build **fast**, **stable** and **efficient** nostr apps for **any environment**:
 
 ## Donations
 
-`rust-nostr` is free and open-source. This means we do not earn any revenue by selling it. Instead, we rely on your financial support. If you actively use any of the `rust-nostr` libs/software/services, then please [donate](./donate.md) 💜.
+`rust-nostr` is free and open-source. This means we do not earn any revenue by selling it. Instead, we rely on your financial support. If you actively use any of the `rust-nostr` libs/software/services, then please [donate](./donate.md).
 
 ## License
 
