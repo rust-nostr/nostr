@@ -1,6 +1,6 @@
 {
   "name": "@rust-nostr/nostr-sdk",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "High level Nostr client library.",
   "keywords": [
     "nostr",
