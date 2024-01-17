@@ -73,6 +73,7 @@ pub type Result<T, E = alloc::boxed::Box<dyn std::error::Error>> = std::result::
 
 /// Git Hash
 #[cfg(feature = "std")]
+#[deprecated(since = "0.27.0")]
 pub fn git_hash_version() -> &'static str {
-    env!("GIT_HASH")
+    ""
 }
