@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use core::ops::Deref;
+
 use js_sys::JsString;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -44,9 +46,17 @@ pub struct JsFilter {
     inner: Filter,
 }
 
-impl From<&JsFilter> for Filter {
-    fn from(filter: &JsFilter) -> Self {
-        filter.inner.clone()
+impl Deref for JsFilter {
+    type Target = Filter;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl From<JsFilter> for Filter {
+    fn from(filter: JsFilter) -> Self {
+        filter.inner
     }
 }
 
@@ -198,11 +208,5 @@ impl JsFilter {
     #[wasm_bindgen]
     pub fn limit(self, limit: f64) -> Self {
         self.inner.limit(limit as usize).into()
-    }
-}
-
-impl JsFilter {
-    pub fn inner(&self) -> Filter {
-        self.inner.clone()
     }
 }

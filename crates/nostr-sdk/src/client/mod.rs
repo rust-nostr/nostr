@@ -1279,6 +1279,8 @@ impl Client {
     }
 
     /// Negentropy reconciliation
+    ///
+    /// <https://github.com/hoytech/negentropy>
     pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
         Ok(self.pool.reconcile(filter, opts).await?)
     }

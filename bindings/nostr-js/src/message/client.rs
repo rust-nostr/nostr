@@ -44,7 +44,7 @@ impl JsClientMessage {
         Self {
             inner: ClientMessage::req(
                 SubscriptionId::new(subscription_id),
-                filters.into_iter().map(|f| f.inner()).collect(),
+                filters.into_iter().map(|f| f.into()).collect(),
             ),
         }
     }
@@ -54,7 +54,7 @@ impl JsClientMessage {
         Self {
             inner: ClientMessage::count(
                 SubscriptionId::new(subscription_id),
-                filters.into_iter().map(|f| f.inner()).collect(),
+                filters.into_iter().map(|f| f.into()).collect(),
             ),
         }
     }
