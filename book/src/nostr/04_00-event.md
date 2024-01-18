@@ -1,7 +1,5 @@
 # Event
 
-
-
 ## Serialize/deserialize to/from JSON
 
 <custom-tabs category="lang">
@@ -78,48 +76,6 @@ A convenient way to compose events is by using the `EventBuilder`. It allow to c
 ```javascript,ignore
 {{#include ../../snippets/nostr/js/src/event/builder.js}}
 ```
-
-</section>
-
-<div slot="title">Kotlin</div>
-<section>
-
-TODO
-
-</section>
-
-<div slot="title">Swift</div>
-<section>
-
-TODO
-
-</section>
-</custom-tabs>
-
-## Compose manually
-
-TODO
-
-<custom-tabs category="lang">
-
-<div slot="title">Rust</div>
-<section>
-
-TODO
-
-</section>
-
-<div slot="title">Python</div>
-<section>
-
-TODO
-
-</section>
-
-<div slot="title">JavaScript</div>
-<section>
-
-TODO
 
 </section>
 

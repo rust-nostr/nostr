@@ -12,8 +12,6 @@
     </h1>
 </div>
 
-
-
 ## Why rust-nostr?
 
 * **Multi-Language Support**: We support native API's including `Rust`, `Python`, `JavaScript`, `Kotlin` and `Swift` so you can build `nostr` apps in your preferred programming language.
