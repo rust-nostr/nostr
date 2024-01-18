@@ -9,14 +9,14 @@ Add the `nostr` dependency in your `Cargo.toml` file:
 
 ```toml,ignore
 [dependencies]
-nostr = "0.26"
+nostr = "0.27"
 ```
 
 Alternatively, you can add it directly from `git` source:
 
 ```toml,ignore
 [dependencies]
-nostr = { git = "https://github.com/rust-nostr/nostr", tag = "v0.26.0" }
+nostr = { git = "https://github.com/rust-nostr/nostr", tag = "v0.27.0" }
 ```
 
 ```admonish info
@@ -43,7 +43,7 @@ pip install nostr-protocol
 Alternatively, you can manually add the dependency in your `requrements.txt`, `setup.py`, etc.:
 
 ```
-nostr-protocol==0.7.1
+nostr-protocol==0.8.0
 ```
 
 Import the library in your code:
@@ -139,7 +139,7 @@ repositories {
 }
 
 dependencies { 
-    implementation("io.github.rust-nostr:nostr:<version>")
+    implementation("io.github.rust-nostr:nostr:0.8.0")
 }
 ```
 
@@ -188,7 +188,7 @@ as a package dependency in Xcode.
 Add the following to the dependencies array in your `Package.swift`:
 
 ``` swift
-.package(url: "https://github.com/rust-nostr/nostr-swift.git", from: "0.7.1"),
+.package(url: "https://github.com/rust-nostr/nostr-swift.git", from: "0.8.0"),
 ```
 
 Import the library in your code:
