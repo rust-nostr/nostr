@@ -1321,7 +1321,7 @@ dependencies = [
 
 [[package]]
 name = "nostr"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "aes",
  "base64",
@@ -1361,7 +1361,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-database"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "async-trait",
  "flatbuffers",
@@ -1392,7 +1392,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-indexeddb"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "async-trait",
  "indexed_db_futures",
@@ -1431,7 +1431,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sdk"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "async-utility",
  "async-wsocket",
@@ -1473,7 +1473,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sqlite"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "async-trait",
  "deadpool-sqlite",

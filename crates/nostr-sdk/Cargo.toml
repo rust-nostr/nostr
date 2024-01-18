@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk"
-version = "0.26.0"
+version = "0.27.0"
 edition = "2021"
 description = "High level Nostr client library."
 authors.workspace = true
@@ -42,11 +42,11 @@ thiserror.workspace = true
 tracing = { workspace = true, features = ["std", "attributes"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-nostr-sqlite = { version = "0.26", path = "../nostr-sqlite", optional = true }
+nostr-sqlite = { version = "0.27", path = "../nostr-sqlite", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "time", "macros", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-nostr-indexeddb = { version = "0.26", path = "../nostr-indexeddb", optional = true }
+nostr-indexeddb = { version = "0.27", path = "../nostr-indexeddb", optional = true }
 tokio = { workspace = true, features = ["rt", "macros", "sync"] }
 
 [dev-dependencies]
