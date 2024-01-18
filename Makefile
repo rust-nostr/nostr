@@ -32,6 +32,10 @@ check-crates-msrv:
 check-docs:
 	@bash contrib/scripts/check-docs.sh
 
+# Release rust crates
+release:
+	@bash contrib/scripts/release.sh
+
 bench:
 	RUSTFLAGS='--cfg=bench' cargo +nightly bench -p nostr
 
