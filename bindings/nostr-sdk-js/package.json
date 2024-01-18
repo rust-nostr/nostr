@@ -25,7 +25,7 @@
   "funding": [
     {
       "type": "individual",
-      "url": "https://getalby.com/p/yuki"
+      "url": "https://rust-nostr.org/donate"
     }
   ],
   "main": "pkg/nostr_sdk_js.js",
