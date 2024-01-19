@@ -87,6 +87,22 @@ pub struct UnsignedEvent {
 }
 
 impl UnsignedEvent {
+    /// Verify if the [`EventId`] it's composed correctly
+    pub fn verify_id(&self) -> Result<(), Error> {
+        let id: EventId = EventId::new(
+            &self.pubkey,
+            self.created_at,
+            &self.kind,
+            &self.tags,
+            &self.content,
+        );
+        if id == self.id {
+            Ok(())
+        } else {
+            Err(Error::Event(super::Error::InvalidId))
+        }
+    }
+
     /// Sign an [`UnsignedEvent`]
     #[cfg(feature = "std")]
     pub fn sign(self, keys: &Keys) -> Result<Event, Error> {
