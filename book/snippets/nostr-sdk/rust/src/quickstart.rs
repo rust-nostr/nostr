@@ -3,7 +3,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use nostr_sdk::prelude::*;
 
 pub async fn quickstart() -> Result<()> {
-    // Generate new keys
+    // ANCHOR: create-client
     let my_keys: Keys = Keys::generate();
 
     let client = Client::new(&my_keys);
@@ -23,10 +23,10 @@ pub async fn quickstart() -> Result<()> {
         )
         .await?;
 
-    // Connect to relays
     client.connect().await;
+    // ANCHOR_END: create-client
 
-    // Set metadata
+    // ANCHOR: create-metadata
     let metadata = Metadata::new()
         .name("username")
         .display_name("My Username")
@@ -37,13 +37,15 @@ pub async fn quickstart() -> Result<()> {
         .lud16("yuki@getalby.com")
         .custom_field("custom_field", "my value");
 
-    // Update metadata
     client.set_metadata(&metadata).await?;
+    // ANCHOR_END: create-metadata
 
+    // ANCHOR: create-filter
     let filter = Filter::new().kind(Kind::Metadata);
     client.subscribe(vec![filter]).await;
+    // ANCHOR_END: create-filter
 
-    // Handle the notifications and exit when you receive the needed event
+    // ANCHOR: notifications
     let mut notifications = client.notifications();
     while let Ok(notification) = notifications.recv().await {
         if let RelayPoolNotification::Event { event, .. } = notification {
@@ -53,6 +55,7 @@ pub async fn quickstart() -> Result<()> {
             }
         }
     }
+    // ANCHOR_END: notifications
 
     Ok(())
 }

@@ -8,19 +8,19 @@
 Create a client and connect to some relays.
 
 ```rust,ignore
-{{#include ../../snippets/nostr-sdk/rust/src/quickstart.rs:5:26}}
+{{#include ../../snippets/nostr-sdk/rust/src/quickstart.rs:create-client}}
 ```
 
 Add metadata for the keys in the existing client.
 
 ```rust,ignore
-{{#include ../../snippets/nostr-sdk/rust/src/quickstart.rs:28:40}}
+{{#include ../../snippets/nostr-sdk/rust/src/quickstart.rs:create-metadata}}
 ```
 
 Create a filter and notify the relays of the subscription.
 
 ```rust,ignore
-{{#include ../../snippets/nostr-sdk/rust/src/quickstart.rs:42:43}}
+{{#include ../../snippets/nostr-sdk/rust/src/quickstart.rs:create-filter}}
 ```
 
 For more supported filters, view [the documentation](https://docs.rs/nostr-sdk/latest/nostr_sdk/struct.Filter.html).
@@ -28,7 +28,7 @@ For more supported filters, view [the documentation](https://docs.rs/nostr-sdk/l
 Listen for notifications from the relays based on the subscribed filters and process them some way.
 
 ```rust, ignore
-{{#include ../../snippets/nostr-sdk/rust/src/quickstart.rs:45:54}}
+{{#include ../../snippets/nostr-sdk/rust/src/quickstart.rs:notifications}}
 ```
 
 </section>

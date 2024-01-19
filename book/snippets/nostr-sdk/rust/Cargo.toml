@@ -1,14 +1,12 @@
 [package]
-authors.workspace = true
-edition = "2021"
-homepage.workspace = true
-license.workspace = true
-name = "rust"
-repository.workspace = true
+name = "snippets-nostr-sdk-rust"
 version = "0.1.0"
+edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
 
 [dependencies]
-nostr-sdk = "0.26"
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+nostr-sdk = "0.27"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
