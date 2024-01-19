@@ -31,12 +31,16 @@ pub mod blocking;
 pub mod builder;
 pub mod options;
 pub mod signer;
+#[cfg(feature = "nip57")]
+pub mod zapper;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 #[cfg(feature = "nip46")]
 pub use self::signer::nip46::Nip46Signer;
 pub use self::signer::{ClientSigner, ClientSignerType};
+#[cfg(feature = "nip57")]
+use self::zapper::ClientZapper;
 use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
 use crate::relay::{
     FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
@@ -84,6 +88,10 @@ pub enum Error {
         /// Found client signer type
         found: ClientSignerType,
     },
+    /// Zapper not configured
+    #[cfg(feature = "nip57")]
+    #[error("zapper not configured")]
+    ZapperNotConfigured,
     /// NIP04 error
     #[cfg(feature = "nip04")]
     #[error(transparent)]
@@ -100,6 +108,13 @@ pub enum Error {
     #[cfg(feature = "nip46")]
     #[error(transparent)]
     JSON(#[from] nostr::serde_json::Error),
+    /// LNURL Pay
+    #[cfg(feature = "nip57")]
+    #[error(transparent)]
+    LnUrlPay(#[from] lnurl_pay::Error),
+    #[cfg(all(feature = "webln", target_arch = "wasm32"))]
+    #[error(transparent)]
+    WebLN(#[from] webln::Error),
     /// Generic NIP46 error
     #[cfg(feature = "nip46")]
     #[error("generic error")]
@@ -120,6 +135,12 @@ pub enum Error {
     #[cfg(feature = "nip46")]
     #[error("response not match to the request")]
     ResponseNotMatchRequest,
+    /// Event not found
+    #[error("event not found: {0}")]
+    EventNotFound(EventId),
+    /// Impossible to zap
+    #[error("impossible to send zap: {0}")]
+    ImpossibleToZap(String),
 }
 
 /// Nostr client
@@ -127,6 +148,8 @@ pub enum Error {
 pub struct Client {
     pool: RelayPool,
     signer: Arc<RwLock<Option<ClientSigner>>>,
+    #[cfg(feature = "nip57")]
+    zapper: Arc<RwLock<Option<ClientZapper>>>,
     opts: Options,
     dropped: Arc<AtomicBool>,
 }
@@ -202,6 +225,8 @@ impl Client {
         Self {
             pool: RelayPool::with_database(builder.opts.pool, builder.database),
             signer: Arc::new(RwLock::new(builder.signer)),
+            #[cfg(feature = "nip57")]
+            zapper: Arc::new(RwLock::new(builder.zapper)),
             opts: builder.opts,
             dropped: Arc::new(AtomicBool::new(false)),
         }
@@ -224,6 +249,22 @@ impl Client {
     pub async fn set_signer(&self, signer: Option<ClientSigner>) {
         let mut s = self.signer.write().await;
         *s = signer;
+    }
+
+    /// Get current client zapper
+    ///
+    /// Rise error if it not set.
+    #[cfg(feature = "nip57")]
+    pub async fn zapper(&self) -> Result<ClientZapper, Error> {
+        let zapper = self.zapper.read().await;
+        zapper.clone().ok_or(Error::ZapperNotConfigured)
+    }
+
+    /// Set client zapper
+    #[cfg(feature = "nip57")]
+    pub async fn set_zapper(&self, zapper: Option<ClientZapper>) {
+        let mut s = self.zapper.write().await;
+        *s = zapper;
     }
 
     /// Get current [`Keys`]
@@ -755,6 +796,21 @@ impl Client {
     {
         let event: Event = self.internal_sign_event_builder(builder).await?;
         self.send_event_to(url, event).await
+    }
+
+    /// Get public key metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub async fn metadata(&self, public_key: XOnlyPublicKey) -> Result<Metadata, Error> {
+        let filter: Filter = Filter::new()
+            .author(public_key)
+            .kind(Kind::Metadata)
+            .limit(1);
+        let events: Vec<Event> = self.get_events_of(vec![filter], None).await?;
+        match events.first() {
+            Some(event) => Ok(Metadata::from_json(event.content())?),
+            None => Ok(Metadata::default()),
+        }
     }
 
     /// Update metadata

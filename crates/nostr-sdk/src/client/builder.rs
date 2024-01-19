@@ -10,12 +10,16 @@ use nostr_database::memory::MemoryDatabase;
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
 
 use super::signer::ClientSigner;
+#[cfg(feature = "nip57")]
+use super::zapper::ClientZapper;
 use crate::{Client, Options};
 
 /// Client builder
 #[derive(Debug, Clone)]
 pub struct ClientBuilder {
     pub(super) signer: Option<ClientSigner>,
+    #[cfg(feature = "nip57")]
+    pub(super) zapper: Option<ClientZapper>,
     pub(super) database: Arc<DynNostrDatabase>,
     pub(super) opts: Options,
 }
@@ -24,6 +28,8 @@ impl Default for ClientBuilder {
     fn default() -> Self {
         Self {
             signer: None,
+            #[cfg(feature = "nip57")]
+            zapper: None,
             database: Arc::new(MemoryDatabase::default()),
             opts: Options::default(),
         }
@@ -53,6 +59,16 @@ impl ClientBuilder {
         S: Into<ClientSigner>,
     {
         self.signer = Some(signer.into());
+        self
+    }
+
+    /// Set zapper
+    #[cfg(feature = "nip57")]
+    pub fn zapper<S>(mut self, zapper: S) -> Self
+    where
+        S: Into<ClientZapper>,
+    {
+        self.zapper = Some(zapper.into());
         self
     }
 

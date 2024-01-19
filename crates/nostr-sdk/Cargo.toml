@@ -30,11 +30,12 @@ nip11 = ["nostr/nip11"]
 nip44 = ["nostr/nip44"]
 nip46 = ["nostr/nip46"]
 nip47 = ["nostr/nip47"]
-nip57 = ["nostr/nip57"]
+nip57 = ["nostr/nip57", "dep:lnurl-pay"]
 
 [dependencies]
 async-utility.workspace = true
 async-wsocket = "0.1"
+lnurl-pay = { version = "0.2", features = ["api"], optional = true }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 once_cell.workspace = true
@@ -48,6 +49,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "time", "macros", "sy
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 nostr-indexeddb = { version = "0.27", path = "../nostr-indexeddb", optional = true }
 tokio = { workspace = true, features = ["rt", "macros", "sync"] }
+webln = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
