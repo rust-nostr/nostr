@@ -4,10 +4,10 @@ use nostr::Result;
 
 pub mod event;
 pub mod keys;
-mod nip_utilities;
+mod nip_01;
 
 fn main() -> Result<()> {
     keys::keys()?;
-    nip_utilities::nip_utilities()?;
+    nip_01::nip_01()?;
     Ok(())
 }
