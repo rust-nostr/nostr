@@ -17,6 +17,7 @@
             * [Filter](./nostr/05_01_01-filter.md)
         * [Relay Message](./nostr/05_02-relay-message.md)
     * [NIPs](./nostr/06-nips.md)
+        * [NIP-01](./nostr/06-nip01.md)
         * [NIP-05](./nostr/06-nip05.md)
         * [NIP-06](./nostr/06-nip06.md)
         * [NIP-07](./nostr/06-nip07.md)
@@ -26,5 +27,5 @@
         * [NIP-65](./nostr/06-nip65.md)
 * [Nostr SDK](./nostr-sdk/01-index.md)
     * [Installation](./nostr-sdk/02-installation.md)
-
+    * [Quickstart](./nostr-sdk/03-quickstart.md)
 [Donate](./donate.md)
