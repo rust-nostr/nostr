@@ -25,7 +25,9 @@
         * [NIP-21](./nostr/06-nip21.md)
         * [NIP-44](./nostr/06-nip44.md)
         * [NIP-65](./nostr/06-nip65.md)
+        
 * [Nostr SDK](./nostr-sdk/01-index.md)
     * [Installation](./nostr-sdk/02-installation.md)
     * [Quickstart](./nostr-sdk/03-quickstart.md)
+
 [Donate](./donate.md)
