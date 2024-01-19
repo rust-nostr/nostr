@@ -32,3 +32,32 @@ Listen for notifications from the relays based on the subscribed filters and pro
 ```
 
 </section>
+
+<div slot="title">Python</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">JavaScript</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">Kotlin</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">Swift</div>
+<section>
+
+TODO
+
+</section>
+</custom-tabs>
