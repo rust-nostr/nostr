@@ -141,7 +141,7 @@ impl Client {
 
         // Get entity metadata
         let to: ZapEntity = to.into();
-        let (public_key, lud): (XOnlyPublicKey, Lud06OrLud16) = match to {
+        let (public_key, metadata): (XOnlyPublicKey, Metadata) = match to {
             ZapEntity::Event(event_id) => {
                 // Get event
                 let filter: Filter = Filter::new().id(event_id);
@@ -149,26 +149,21 @@ impl Client {
                 let event: &Event = events.first().ok_or(Error::EventNotFound(event_id))?;
                 let public_key: XOnlyPublicKey = event.author();
                 let metadata: Metadata = self.metadata(public_key).await?;
-
-                if let Some(lud16) = &metadata.lud16 {
-                    (public_key, LightningAddress::parse(lud16)?.into())
-                } else if let Some(lud06) = &metadata.lud06 {
-                    (public_key, LnUrl::from_str(lud06)?.into())
-                } else {
-                    return Err(Error::ImpossibleToZap(String::from("LUD06/LUD16 not set")));
-                }
+                (public_key, metadata)
             }
             ZapEntity::PublicKey(public_key) => {
                 let metadata: Metadata = self.metadata(public_key).await?;
-
-                if let Some(lud16) = &metadata.lud16 {
-                    (public_key, LightningAddress::parse(lud16)?.into())
-                } else if let Some(lud06) = &metadata.lud06 {
-                    (public_key, LnUrl::from_str(lud06)?.into())
-                } else {
-                    return Err(Error::ImpossibleToZap(String::from("LUD06/LUD16 not set")));
-                }
+                (public_key, metadata)
             }
+        };
+
+        // Parse lud
+        let lud: Lud06OrLud16 = if let Some(lud16) = &metadata.lud16 {
+            LightningAddress::parse(lud16)?.into()
+        } else if let Some(lud06) = &metadata.lud06 {
+            LnUrl::from_str(lud06)?.into()
+        } else {
+            return Err(Error::ImpossibleToZap(String::from("LUD06/LUD16 not set")));
         };
 
         // Compose zap request
