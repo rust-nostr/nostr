@@ -26,6 +26,7 @@ use nostr::{Event, EventBuilder, EventId, Filter, JsonUtil, Metadata, UncheckedU
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 use webln::WebLN;
 
+use super::options::SUPPORT_RUST_NOSTR_LUD16;
 use super::{Client, Error};
 use crate::FilterOptions;
 
@@ -192,15 +193,34 @@ impl Client {
             None => None,
         };
 
+        let mut _invoices: Vec<String> = Vec::with_capacity(2);
+
+        let msats: u64 = match self.opts.get_support_rust_nostr_percentage() {
+            Some(percentage) => {
+                let rust_nostr_msats = (satoshi as f64 * percentage * 1000.0) as u64;
+                let rust_nostr_lud = LightningAddress::parse(SUPPORT_RUST_NOSTR_LUD16)?;
+                match lnurl_pay::api::get_invoice(rust_nostr_lud, rust_nostr_msats, None, None)
+                    .await
+                {
+                    Ok(invoice) => _invoices.push(invoice),
+                    Err(e) => tracing::error!("Impossible to get invoice: {e}"),
+                };
+                satoshi * 1000 - rust_nostr_msats
+            }
+            None => satoshi * 1000,
+        };
+
         // Get invoice
-        let _invoice: String =
-            lnurl_pay::api::get_invoice(lud, satoshi * 1000, zap_request, None).await?;
+        let invoice: String = lnurl_pay::api::get_invoice(lud, msats, zap_request, None).await?;
+        _invoices.push(invoice);
 
         match zapper {
             #[cfg(all(feature = "webln", target_arch = "wasm32"))]
             ClientZapper::WebLN(webln) => {
                 webln.enable().await?;
-                webln.send_payment(_invoice).await?;
+                for invoice in _invoices.into_iter() {
+                    webln.send_payment(invoice).await?;
+                }
                 Ok(())
             }
             #[cfg(feature = "nip47")]
@@ -210,52 +230,61 @@ impl Client {
                     self.connect_relay(uri.relay_url.clone()).await?;
                 }
 
-                // Compose NWC request event
-                let req = Request {
-                    method: Method::PayInvoice,
-                    params: RequestParams::PayInvoice(PayInvoiceRequestParams {
-                        invoice: _invoice,
-                    }),
-                };
-                let event = req.to_event(&uri)?;
-                let event_id = event.id;
+                for invoice in _invoices.into_iter() {
+                    // Compose NWC request event
+                    let req = Request {
+                        method: Method::PayInvoice,
+                        params: RequestParams::PayInvoice(PayInvoiceRequestParams { invoice }),
+                    };
+                    let event = req.to_event(&uri)?;
+                    let event_id = event.id;
 
-                // Send request
-                self.send_event_to(uri.relay_url.clone(), event).await?;
+                    // Send request
+                    self.send_event_to(uri.relay_url.clone(), event).await?;
 
-                // Get response
-                let relay = self.relay(uri.relay_url.clone()).await?;
-                let filter = Filter::new()
-                    .author(uri.public_key)
-                    .kind(Kind::WalletConnectResponse)
-                    .event(event_id)
-                    .limit(1);
-                let events = relay
-                    .get_events_of(
-                        vec![filter],
-                        Duration::from_secs(10),
-                        FilterOptions::ExitOnEOSE,
-                    )
-                    .await
-                    .map_err(|e| Error::RelayPool(crate::relay::pool::Error::Relay(e)))?;
-                match events.first() {
-                    Some(event) => {
-                        let decrypt_res =
-                            nip04::decrypt(&uri.secret, &uri.public_key, &event.content)?;
-                        let nip47_res = Response::from_json(decrypt_res)?;
-                        if let Some(ResponseResult::PayInvoice(pay_invoice_result)) =
-                            nip47_res.result
-                        {
-                            tracing::info!("Zap sent! Preimage: {}", pay_invoice_result.preimage);
-                        } else {
-                            tracing::warn!("Unexpected NIP47 result: {}", nip47_res.as_json());
-                            return Err(Error::ResponseNotMatchRequest);
+                    // Get response
+                    let relay = self.relay(uri.relay_url.clone()).await?;
+                    let filter = Filter::new()
+                        .author(uri.public_key)
+                        .kind(Kind::WalletConnectResponse)
+                        .event(event_id)
+                        .limit(1);
+                    match relay
+                        .get_events_of(
+                            vec![filter],
+                            Duration::from_secs(10),
+                            FilterOptions::ExitOnEOSE,
+                        )
+                        .await
+                    {
+                        Ok(events) => match events.first() {
+                            Some(event) => {
+                                let decrypt_res =
+                                    nip04::decrypt(&uri.secret, &uri.public_key, &event.content)?;
+                                let nip47_res = Response::from_json(decrypt_res)?;
+                                if let Some(ResponseResult::PayInvoice(pay_invoice_result)) =
+                                    nip47_res.result
+                                {
+                                    tracing::info!(
+                                        "Zap sent! Preimage: {}",
+                                        pay_invoice_result.preimage
+                                    );
+                                } else {
+                                    tracing::warn!(
+                                        "Unexpected NIP47 result: {}",
+                                        nip47_res.as_json()
+                                    );
+                                }
+                            }
+                            None => {
+                                tracing::warn!(
+                                    "Zap [apparently] sent (`PayInvoice` response not received)."
+                                );
+                            }
+                        },
+                        Err(e) => {
+                            tracing::error!("Impossible to get NWC response event: {e}");
                         }
-                    }
-                    None => {
-                        tracing::warn!(
-                            "Zap [apparently] sent (`PayInvoice` response not received)."
-                        );
                     }
                 }
 
