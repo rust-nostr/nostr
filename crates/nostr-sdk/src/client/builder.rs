@@ -64,6 +64,7 @@ impl ClientBuilder {
 
     /// Set zapper
     #[cfg(feature = "nip57")]
+    #[allow(unused_mut, unreachable_code)]
     pub fn zapper<S>(mut self, zapper: S) -> Self
     where
         S: Into<ClientZapper>,

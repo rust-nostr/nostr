@@ -5,16 +5,28 @@
 //! Client Zapper
 
 use std::str::FromStr;
+#[cfg(feature = "nip47")]
+use std::time::Duration;
 
 use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
+#[cfg(feature = "nip47")]
+use nostr::nips::nip04;
+#[cfg(feature = "nip47")]
+use nostr::nips::nip47::{
+    Method, NostrWalletConnectURI, PayInvoiceRequestParams, Request, RequestParams, Response,
+    ResponseResult,
+};
 use nostr::nips::nip57::ZapType;
 use nostr::secp256k1::XOnlyPublicKey;
 use nostr::{Event, EventId, Filter, Metadata};
+#[cfg(feature = "nip47")]
+use nostr::{JsonUtil, Kind};
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 use webln::WebLN;
 
 use super::{Client, Error};
+use crate::FilterOptions;
 
 /// Zap entity
 pub enum ZapEntity {
@@ -46,14 +58,22 @@ pub enum ClientZapper {
     /// WebLN
     #[cfg(all(feature = "webln", target_arch = "wasm32"))]
     WebLN(WebLN),
-    /// NWC (TODO)
-    NWC,
+    /// NWC
+    #[cfg(feature = "nip47")]
+    NWC(NostrWalletConnectURI),
 }
 
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 impl From<WebLN> for ClientZapper {
     fn from(value: WebLN) -> Self {
         Self::WebLN(value)
+    }
+}
+
+#[cfg(feature = "nip47")]
+impl From<NostrWalletConnectURI> for ClientZapper {
+    fn from(value: NostrWalletConnectURI) -> Self {
+        Self::NWC(value)
     }
 }
 
@@ -114,10 +134,64 @@ impl Client {
             ClientZapper::WebLN(webln) => {
                 webln.enable().await?;
                 webln.send_payment(_invoice).await?;
+                Ok(())
             }
-            ClientZapper::NWC => {}
-        };
+            #[cfg(feature = "nip47")]
+            ClientZapper::NWC(uri) => {
+                // Add relay and connect if not exists
+                if self.add_relay(uri.relay_url.clone()).await? {
+                    self.connect_relay(uri.relay_url.clone()).await?;
+                }
 
-        Ok(())
+                // Compose NWC request event
+                let req = Request {
+                    method: Method::PayInvoice,
+                    params: RequestParams::PayInvoice(PayInvoiceRequestParams {
+                        invoice: _invoice,
+                    }),
+                };
+                let event = req.to_event(&uri)?;
+                let event_id = event.id;
+
+                // Send request
+                self.send_event_to(uri.relay_url.clone(), event).await?;
+
+                // Get response
+                let relay = self.relay(uri.relay_url.clone()).await?;
+                let filter = Filter::new()
+                    .author(uri.public_key)
+                    .kind(Kind::WalletConnectResponse)
+                    .event(event_id)
+                    .limit(1);
+                let events = relay
+                    .get_events_of(
+                        vec![filter],
+                        Duration::from_secs(10),
+                        FilterOptions::ExitOnEOSE,
+                    )
+                    .await
+                    .map_err(|e| Error::RelayPool(crate::relay::pool::Error::Relay(e)))?;
+                match events.first() {
+                    Some(event) => {
+                        let decrypt_res =
+                            nip04::decrypt(&uri.secret, &uri.public_key, &event.content)?;
+                        let nip47_res = Response::from_json(decrypt_res)?;
+                        if let Some(ResponseResult::PayInvoice(pay_invoice_result)) =
+                            nip47_res.result
+                        {
+                            tracing::info!("Zap sent! Preimage: {}", pay_invoice_result.preimage);
+                        } else {
+                            tracing::warn!("Unexpected NIP47 result: {}", nip47_res.as_json());
+                            return Err(Error::ResponseNotMatchRequest);
+                        }
+                    }
+                    None => {
+                        tracing::warn!("Zap [apparently] sent (`PayInvoice` response not received).");
+                    }
+                }
+
+                Ok(())
+            }
+        }
     }
 }

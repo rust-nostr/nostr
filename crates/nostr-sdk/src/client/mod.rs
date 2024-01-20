@@ -100,14 +100,18 @@ pub enum Error {
     #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
     #[error(transparent)]
     NIP07(#[from] nostr::nips::nip07::Error),
-    /// NIP46 error
-    #[cfg(feature = "nip46")]
-    #[error(transparent)]
-    NIP46(#[from] nostr::nips::nip46::Error),
     /// JSON error
     #[cfg(feature = "nip46")]
     #[error(transparent)]
     JSON(#[from] nostr::serde_json::Error),
+    /// NIP46 error
+    #[cfg(feature = "nip46")]
+    #[error(transparent)]
+    NIP46(#[from] nostr::nips::nip46::Error),
+    /// NIP47 error
+    #[cfg(feature = "nip47")]
+    #[error(transparent)]
+    NIP47(#[from] nostr::nips::nip47::Error),
     /// LNURL Pay
     #[cfg(feature = "nip57")]
     #[error(transparent)]
@@ -132,12 +136,14 @@ pub enum Error {
     #[error("timeout")]
     Timeout,
     /// Response not match to the request
-    #[cfg(feature = "nip46")]
     #[error("response not match to the request")]
     ResponseNotMatchRequest,
     /// Event not found
     #[error("event not found: {0}")]
     EventNotFound(EventId),
+    /// Event not found
+    #[error("event not found")]
+    GenericEventNotFound,
     /// Impossible to zap
     #[error("impossible to send zap: {0}")]
     ImpossibleToZap(String),
