@@ -30,6 +30,7 @@ use super::{Client, Error};
 use crate::FilterOptions;
 
 /// Zap entity
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ZapEntity {
     /// Zap to event
     Event(EventId),

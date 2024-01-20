@@ -10,6 +10,7 @@ use nostr_sdk::{Client, ClientBuilder};
 use wasm_bindgen::prelude::*;
 
 use super::options::JsOptions;
+use super::zapper::JsClientZapper;
 use super::{JsClient, JsClientSigner};
 use crate::database::JsNostrDatabase;
 
@@ -36,6 +37,10 @@ impl JsClientBuilder {
 
     pub fn signer(self, signer: &JsClientSigner) -> Self {
         self.inner.signer(signer.deref().clone()).into()
+    }
+
+    pub fn zapper(self, zapper: &JsClientZapper) -> Self {
+        self.inner.zapper(zapper.deref().clone()).into()
     }
 
     pub fn database(self, database: &JsNostrDatabase) -> Self {

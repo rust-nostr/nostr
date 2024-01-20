@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use core::ops::Deref;
 use core::str::FromStr;
 
 use nostr::nips::nip47::NostrWalletConnectURI;
@@ -14,6 +15,14 @@ use crate::key::{JsPublicKey, JsSecretKey};
 #[wasm_bindgen(js_name = NostrWalletConnectURI)]
 pub struct JsNostrWalletConnectURI {
     inner: NostrWalletConnectURI,
+}
+
+impl Deref for JsNostrWalletConnectURI {
+    type Target = NostrWalletConnectURI;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 #[wasm_bindgen(js_class = NostrWalletConnectURI)]
