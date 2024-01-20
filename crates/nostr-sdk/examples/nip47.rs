@@ -1,9 +1,14 @@
+// Copyright (c) 2023-2024 Rust Nostr Developers
+// Distributed under the MIT software license
+
 use std::str::FromStr;
 
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let mut nwc_uri_string = String::new();
     let mut invoice = String::new();
 
@@ -22,9 +27,7 @@ async fn main() -> Result<()> {
     let nwc_uri =
         NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
 
-    let my_keys = Keys::new(nwc_uri.secret);
-
-    let client = Client::new(&my_keys);
+    let client = Client::default();
     client.add_relay(nwc_uri.relay_url.clone()).await?;
 
     client.connect().await;
@@ -34,13 +37,7 @@ async fn main() -> Result<()> {
         method: Method::PayInvoice,
         params: RequestParams::PayInvoice(PayInvoiceRequestParams { invoice }),
     };
-
-    let encrypted = nip04::encrypt(&nwc_uri.secret, &nwc_uri.public_key, req.as_json()).unwrap();
-    let p_tag = Tag::public_key(nwc_uri.public_key);
-
-    let req_event = EventBuilder::new(Kind::WalletConnectRequest, encrypted, [p_tag])
-        .to_event(&Keys::new(nwc_uri.secret))
-        .unwrap();
+    let req_event = req.to_event(&nwc_uri).unwrap();
 
     let subscription = Filter::new()
         .author(nwc_uri.public_key)

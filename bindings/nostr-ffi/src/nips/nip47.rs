@@ -830,7 +830,7 @@ impl NostrWalletConnectURI {
             Url::parse(&relay_url)?,
             **random_secret_key,
             lud16,
-        )?
+        )
         .into())
     }
 
