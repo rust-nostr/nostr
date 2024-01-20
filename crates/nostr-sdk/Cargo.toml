@@ -102,3 +102,7 @@ required-features = ["nip47"]
 
 [[example]]
 name = "nip65"
+
+[[example]]
+name = "zapper"
+required-features = ["nip47", "nip57"]
