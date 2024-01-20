@@ -120,6 +120,7 @@ pub enum Error {
     #[cfg(feature = "nip57")]
     #[error(transparent)]
     LnUrlPay(#[from] lnurl_pay::Error),
+    /// WebLN error
     #[cfg(all(feature = "webln", target_arch = "wasm32"))]
     #[error(transparent)]
     WebLN(#[from] webln::Error),
