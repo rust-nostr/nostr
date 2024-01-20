@@ -40,7 +40,7 @@ pub use self::options::Options;
 pub use self::signer::nip46::Nip46Signer;
 pub use self::signer::{ClientSigner, ClientSignerType};
 #[cfg(feature = "nip57")]
-use self::zapper::ClientZapper;
+pub use self::zapper::{ClientZapper, ZapDetails, ZapEntity};
 use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
 use crate::relay::{
     FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
@@ -112,6 +112,10 @@ pub enum Error {
     #[cfg(feature = "nip47")]
     #[error(transparent)]
     NIP47(#[from] nostr::nips::nip47::Error),
+    /// NIP57 error
+    #[cfg(feature = "nip57")]
+    #[error(transparent)]
+    NIP57(#[from] nostr::nips::nip57::Error),
     /// LNURL Pay
     #[cfg(feature = "nip57")]
     #[error(transparent)]

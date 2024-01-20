@@ -12,16 +12,17 @@ use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
 #[cfg(feature = "nip47")]
 use nostr::nips::nip04;
+use nostr::nips::nip19::Nip19Event;
 #[cfg(feature = "nip47")]
 use nostr::nips::nip47::{
     Method, NostrWalletConnectURI, PayInvoiceRequestParams, Request, RequestParams, Response,
     ResponseResult,
 };
-use nostr::nips::nip57::ZapType;
+use nostr::nips::nip57::{self, ZapRequestData, ZapType};
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{Event, EventId, Filter, Metadata};
 #[cfg(feature = "nip47")]
-use nostr::{JsonUtil, Kind};
+use nostr::Kind;
+use nostr::{Event, EventBuilder, EventId, Filter, JsonUtil, Metadata, UncheckedUrl};
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 use webln::WebLN;
 
@@ -34,10 +35,6 @@ pub enum ZapEntity {
     Event(EventId),
     /// Zap to public key
     PublicKey(XOnlyPublicKey),
-    /// Lightning Address
-    LUD16(LightningAddress),
-    /// LUD06
-    LUD06(LnUrl),
 }
 
 impl From<EventId> for ZapEntity {
@@ -46,9 +43,24 @@ impl From<EventId> for ZapEntity {
     }
 }
 
+impl From<Nip19Event> for ZapEntity {
+    fn from(value: Nip19Event) -> Self {
+        Self::Event(value.event_id)
+    }
+}
+
 impl From<XOnlyPublicKey> for ZapEntity {
     fn from(value: XOnlyPublicKey) -> Self {
         Self::PublicKey(value)
+    }
+}
+
+impl ZapEntity {
+    fn event_id(&self) -> Option<EventId> {
+        match self {
+            Self::Event(id) => Some(*id),
+            _ => None,
+        }
     }
 }
 
@@ -77,9 +89,42 @@ impl From<NostrWalletConnectURI> for ClientZapper {
     }
 }
 
+/// Zap Details
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ZapDetails {
+    r#type: ZapType,
+    message: String,
+}
+
+impl ZapDetails {
+    /// Create new Zap Details
+    ///
+    /// **Note: `private` zaps are not currently supported here!**
+    pub fn new(zap_type: ZapType) -> Self {
+        Self {
+            r#type: zap_type,
+            message: String::new(),
+        }
+    }
+
+    /// Add message
+    pub fn message<S>(mut self, message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.message = message.into();
+        self
+    }
+}
+
 impl Client {
     /// Send a Zap!
-    pub async fn zap<T>(&self, to: T, satoshi: u64, r#_type: Option<ZapType>) -> Result<(), Error>
+    pub async fn zap<T>(
+        &self,
+        to: T,
+        satoshi: u64,
+        details: Option<ZapDetails>,
+    ) -> Result<(), Error>
     where
         T: Into<ZapEntity>,
     {
@@ -94,7 +139,7 @@ impl Client {
 
         // Get entity metadata
         let to: ZapEntity = to.into();
-        let lud: Lud06OrLud16 = match to {
+        let (public_key, lud): (XOnlyPublicKey, Lud06OrLud16) = match to {
             ZapEntity::Event(event_id) => {
                 // Get event
                 let filter: Filter = Filter::new().id(event_id);
@@ -104,9 +149,9 @@ impl Client {
                 let metadata: Metadata = self.metadata(public_key).await?;
 
                 if let Some(lud16) = &metadata.lud16 {
-                    LightningAddress::parse(lud16)?.into()
+                    (public_key, LightningAddress::parse(lud16)?.into())
                 } else if let Some(lud06) = &metadata.lud06 {
-                    LnUrl::from_str(lud06)?.into()
+                    (public_key, LnUrl::from_str(lud06)?.into())
                 } else {
                     return Err(Error::ImpossibleToZap(String::from("LUD06/LUD16 not set")));
                 }
@@ -115,19 +160,40 @@ impl Client {
                 let metadata: Metadata = self.metadata(public_key).await?;
 
                 if let Some(lud16) = &metadata.lud16 {
-                    LightningAddress::parse(lud16)?.into()
+                    (public_key, LightningAddress::parse(lud16)?.into())
                 } else if let Some(lud06) = &metadata.lud06 {
-                    LnUrl::from_str(lud06)?.into()
+                    (public_key, LnUrl::from_str(lud06)?.into())
                 } else {
                     return Err(Error::ImpossibleToZap(String::from("LUD06/LUD16 not set")));
                 }
             }
-            ZapEntity::LUD16(lnaddr) => lnaddr.into(),
-            ZapEntity::LUD06(lud06) => lud06.into(),
+        };
+
+        // Compose zap request
+        let zap_request: Option<String> = match details {
+            Some(details) => {
+                let mut data = ZapRequestData::new(
+                    public_key,
+                    [UncheckedUrl::from("wss://nostr.mutinywallet.com")],
+                )
+                .amount(satoshi * 1000)
+                .message(details.message);
+                data.event_id = to.event_id();
+                match details.r#type {
+                    ZapType::Public => {
+                        let builder = EventBuilder::public_zap_request(data);
+                        Some(self.internal_sign_event_builder(builder).await?.as_json())
+                    }
+                    ZapType::Private => None,
+                    ZapType::Anonymous => Some(nip57::anonymous_zap_request(data)?.as_json()),
+                }
+            }
+            None => None,
         };
 
         // Get invoice
-        let _invoice: String = lnurl_pay::api::get_invoice(lud, satoshi * 1000, None, None).await?;
+        let _invoice: String =
+            lnurl_pay::api::get_invoice(lud, satoshi * 1000, zap_request, None).await?;
 
         match zapper {
             #[cfg(all(feature = "webln", target_arch = "wasm32"))]
@@ -186,7 +252,9 @@ impl Client {
                         }
                     }
                     None => {
-                        tracing::warn!("Zap [apparently] sent (`PayInvoice` response not received).");
+                        tracing::warn!(
+                            "Zap [apparently] sent (`PayInvoice` response not received)."
+                        );
                     }
                 }
 
