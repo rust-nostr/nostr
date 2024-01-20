@@ -37,6 +37,6 @@ impl JsNostrLibrary {
 
     #[wasm_bindgen(js_name = gitHashVersion)]
     pub fn git_hash_version(&self) -> Option<String> {
-        std::env::var("GIT_HASH").ok()
+        option_env!("GIT_HASH").map(|v| v.to_string())
     }
 }
