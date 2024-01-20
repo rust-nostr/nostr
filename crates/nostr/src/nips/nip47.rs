@@ -18,8 +18,11 @@ use serde_json::Value;
 use url_fork::form_urlencoded::byte_serialize;
 use url_fork::{ParseError, Url};
 
+#[cfg(feature = "std")]
 use super::nip04;
 use crate::JsonUtil;
+#[cfg(feature = "std")]
+use crate::{Event, EventBuilder, Keys, Kind, Tag};
 
 /// NIP47 error
 #[derive(Debug)]
@@ -31,7 +34,11 @@ pub enum Error {
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// NIP04 error
+    #[cfg(feature = "std")]
     NIP04(nip04::Error),
+    /// Event Builder error
+    #[cfg(feature = "std")]
+    EventBuilder(crate::event::builder::Error),
     /// Unsigned event error
     UnsignedEvent(crate::event::unsigned::Error),
     /// Invalid request
@@ -55,7 +62,10 @@ impl fmt::Display for Error {
             Self::JSON(e) => write!(f, "Json: {e}"),
             Self::Url(e) => write!(f, "Url: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            #[cfg(feature = "std")]
             Self::NIP04(e) => write!(f, "NIP04: {e}"),
+            #[cfg(feature = "std")]
+            Self::EventBuilder(e) => write!(f, "Event Builder: {e}"),
             Self::UnsignedEvent(e) => write!(f, "Unsigned event: {e}"),
             Self::InvalidRequest => write!(f, "Invalid NIP47 Request"),
             Self::InvalidParamsLength => write!(f, "Invalid NIP47 Params length"),
@@ -81,6 +91,20 @@ impl From<ParseError> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+#[cfg(feature = "std")]
+impl From<nip04::Error> for Error {
+    fn from(e: nip04::Error) -> Self {
+        Self::NIP04(e)
+    }
+}
+
+#[cfg(feature = "std")]
+impl From<crate::event::builder::Error> for Error {
+    fn from(e: crate::event::builder::Error) -> Self {
+        Self::EventBuilder(e)
     }
 }
 
@@ -366,6 +390,19 @@ impl Request {
             method: template.method,
             params,
         })
+    }
+
+    /// Create request [Event]
+    #[cfg(feature = "std")]
+    pub fn to_event(self, uri: &NostrWalletConnectURI) -> Result<Event, Error> {
+        let encrypted = nip04::encrypt(&uri.secret, &uri.public_key, self.as_json())?;
+        let keys: Keys = Keys::new(uri.secret);
+        Ok(EventBuilder::new(
+            Kind::WalletConnectRequest,
+            encrypted,
+            [Tag::public_key(uri.public_key)],
+        )
+        .to_event(&keys)?)
     }
 }
 
