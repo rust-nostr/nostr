@@ -12,7 +12,7 @@ crate-type = ["lib", "cdylib"]
 [dependencies]
 console_error_panic_hook = "0.1"
 js-sys.workspace = true
-nostr = { workspace = true, features = ["std", "nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46"] }
+nostr = { workspace = true, features = ["std", "all-nips"] }
 wasm-bindgen = { workspace = true, features = ["std"] }
 wasm-bindgen-futures.workspace = true
 
