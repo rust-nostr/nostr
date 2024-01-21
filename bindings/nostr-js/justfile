@@ -7,3 +7,8 @@ publish: pack
 pack:
 	rm -rf ./pkg
 	npm run package
+
+twiggy:
+	cargo install twiggy --version 0.7.0
+	npm run build:dev
+	twiggy top pkg/nostr_js_bg.wasm
