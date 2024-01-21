@@ -10,30 +10,6 @@ use core::str::FromStr;
 
 use url_fork::{ParseError, Url};
 
-/// Url Error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Url error
-    Url(ParseError),
-}
-
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Url(e) => write!(f, "Url: {e}"),
-        }
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(e: ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
 /// Unchecked Url
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct UncheckedUrl(String);
@@ -63,7 +39,7 @@ where
 }
 
 impl FromStr for UncheckedUrl {
-    type Err = Error;
+    type Err = ParseError;
 
     fn from_str(url: &str) -> Result<Self, Self::Err> {
         Ok(Self::from(url))
@@ -71,10 +47,10 @@ impl FromStr for UncheckedUrl {
 }
 
 impl TryFrom<UncheckedUrl> for Url {
-    type Error = Error;
+    type Error = ParseError;
 
     fn try_from(unchecked_url: UncheckedUrl) -> Result<Url, Self::Error> {
-        Ok(Self::parse(&unchecked_url.0)?)
+        Self::parse(&unchecked_url.0)
     }
 }
 
