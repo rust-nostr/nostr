@@ -4,7 +4,6 @@
 
 use core::ops::Deref;
 
-use js_sys::JsString;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -21,7 +20,7 @@ pub struct JsSubscriptionId {
 #[wasm_bindgen(js_class = SubscriptionId)]
 impl JsSubscriptionId {
     #[wasm_bindgen(constructor)]
-    pub fn new(id: String) -> Self {
+    pub fn new(id: &str) -> Self {
         Self {
             inner: SubscriptionId::new(id),
         }
@@ -76,7 +75,7 @@ impl JsFilter {
     }
 
     #[wasm_bindgen(js_name = fromJson)]
-    pub fn from_json(json: String) -> Result<JsFilter> {
+    pub fn from_json(json: &str) -> Result<JsFilter> {
         Ok(Self {
             inner: Filter::from_json(json).map_err(into_err)?,
         })
@@ -156,7 +155,7 @@ impl JsFilter {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
-    pub fn hashtag(self, hashtag: String) -> Self {
+    pub fn hashtag(self, hashtag: &str) -> Self {
         self.inner.hashtag(hashtag).into()
     }
 
@@ -164,8 +163,7 @@ impl JsFilter {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
-    pub fn hashtags(self, hashtags: Vec<JsString>) -> Self {
-        let hashtags = hashtags.into_iter().filter_map(|t| t.as_string());
+    pub fn hashtags(self, hashtags: Vec<String>) -> Self {
         self.inner.hashtags(hashtags).into()
     }
 
@@ -173,7 +171,7 @@ impl JsFilter {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
-    pub fn reference(self, v: String) -> Self {
+    pub fn reference(self, v: &str) -> Self {
         self.inner.reference(v).into()
     }
 
@@ -181,14 +179,13 @@ impl JsFilter {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     #[wasm_bindgen]
-    pub fn references(self, v: Vec<JsString>) -> Self {
-        let v = v.into_iter().filter_map(|v| v.as_string());
+    pub fn references(self, v: Vec<String>) -> Self {
         self.inner.references(v).into()
     }
 
     /// Set search field
     #[wasm_bindgen]
-    pub fn search(self, value: String) -> Self {
+    pub fn search(self, value: &str) -> Self {
         self.inner.search(value).into()
     }
 

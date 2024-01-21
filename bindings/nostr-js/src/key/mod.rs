@@ -53,17 +53,17 @@ impl JsKeys {
 
     /// Init [`Keys`] from `hex` or `bech32` secret key string
     #[wasm_bindgen(js_name = fromSkStr)]
-    pub fn from_sk_str(secret_key: String) -> Result<JsKeys> {
+    pub fn from_sk_str(secret_key: &str) -> Result<JsKeys> {
         Ok(Self {
-            inner: Keys::from_sk_str(&secret_key).map_err(into_err)?,
+            inner: Keys::from_sk_str(secret_key).map_err(into_err)?,
         })
     }
 
     /// Init [`Keys`] from `hex` or `bech32` public key string
     #[wasm_bindgen(js_name = fromPkStr)]
-    pub fn from_pk_str(public_key: String) -> Result<JsKeys> {
+    pub fn from_pk_str(public_key: &str) -> Result<JsKeys> {
         Ok(Self {
-            inner: Keys::from_pk_str(&public_key).map_err(into_err)?,
+            inner: Keys::from_pk_str(public_key).map_err(into_err)?,
         })
     }
 
@@ -77,9 +77,9 @@ impl JsKeys {
 
     /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
     #[wasm_bindgen(js_name = fromMnemonic)]
-    pub fn from_mnemonic(mnemonic: String, passphrase: Option<String>) -> Result<JsKeys> {
+    pub fn from_mnemonic(mnemonic: &str, passphrase: Option<String>) -> Result<JsKeys> {
         Ok(Self {
-            inner: Keys::from_mnemonic(mnemonic, passphrase).map_err(into_err)?,
+            inner: Keys::from_mnemonic(mnemonic, passphrase.as_deref()).map_err(into_err)?,
         })
     }
 

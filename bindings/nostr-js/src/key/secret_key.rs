@@ -38,14 +38,14 @@ impl From<&JsSecretKey> for SecretKey {
 #[wasm_bindgen(js_class = SecretKey)]
 impl JsSecretKey {
     #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: String) -> Result<JsSecretKey> {
+    pub fn from_hex(hex: &str) -> Result<JsSecretKey> {
         Ok(Self {
-            inner: SecretKey::from_str(&hex).map_err(into_err)?,
+            inner: SecretKey::from_str(hex).map_err(into_err)?,
         })
     }
 
     #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(sk: String) -> Result<JsSecretKey> {
+    pub fn from_bech32(sk: &str) -> Result<JsSecretKey> {
         Ok(Self {
             inner: SecretKey::from_bech32(sk).map_err(into_err)?,
         })

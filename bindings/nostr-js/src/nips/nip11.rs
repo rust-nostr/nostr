@@ -28,8 +28,8 @@ impl JsRelayInformationDocument {
     }
 
     #[wasm_bindgen]
-    pub async fn get(url: String) -> Result<JsRelayInformationDocument> {
-        let url = Url::parse(&url).map_err(into_err)?;
+    pub async fn get(url: &str) -> Result<JsRelayInformationDocument> {
+        let url = Url::parse(url).map_err(into_err)?;
         Ok(Self {
             inner: RelayInformationDocument::get(url, None)
                 .await

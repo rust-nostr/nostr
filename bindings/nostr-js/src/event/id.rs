@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::ops::Deref;
+use core::ops::Deref;
 
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -51,31 +51,31 @@ impl JsEventId {
         created_at: &JsTimestamp,
         kind: f64,
         tags: Vec<JsTag>,
-        content: String,
+        content: &str,
     ) -> Self {
         let kind = Kind::from(kind);
         let tags: Vec<Tag> = tags.into_iter().map(|t| t.into()).collect();
         Self {
-            inner: EventId::new(&pubkey.into(), **created_at, &kind, &tags, &content),
+            inner: EventId::new(&pubkey.into(), **created_at, &kind, &tags, content),
         }
     }
 
     #[wasm_bindgen(js_name = fromSlice)]
-    pub fn from_slice(bytes: Vec<u8>) -> Result<JsEventId> {
+    pub fn from_slice(bytes: &[u8]) -> Result<JsEventId> {
         Ok(Self {
-            inner: EventId::from_slice(&bytes).map_err(into_err)?,
+            inner: EventId::from_slice(bytes).map_err(into_err)?,
         })
     }
 
     #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: String) -> Result<JsEventId> {
+    pub fn from_hex(hex: &str) -> Result<JsEventId> {
         Ok(Self {
             inner: EventId::from_hex(hex).map_err(into_err)?,
         })
     }
 
     #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(id: String) -> Result<JsEventId> {
+    pub fn from_bech32(id: &str) -> Result<JsEventId> {
         Ok(Self {
             inner: EventId::from_bech32(id).map_err(into_err)?,
         })

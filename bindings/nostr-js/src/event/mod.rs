@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::ops::Deref;
+use core::ops::Deref;
 
 use js_sys::Array;
 use nostr::prelude::*;
@@ -104,7 +104,7 @@ impl JsEvent {
     }
 
     #[wasm_bindgen(js_name = fromJson)]
-    pub fn from_json(json: String) -> Result<JsEvent> {
+    pub fn from_json(json: &str) -> Result<JsEvent> {
         Ok(Self {
             inner: Event::from_json(json).map_err(into_err)?,
         })

@@ -42,7 +42,7 @@ impl From<JsNIP44Version> for Version {
 pub fn nip44_encrypt(
     sk: &JsSecretKey,
     pk: &JsPublicKey,
-    content: String,
+    content: &str,
     version: JsNIP44Version,
 ) -> Result<String> {
     nip44::encrypt(sk.deref(), pk.deref(), content, version.into()).map_err(into_err)
@@ -50,6 +50,6 @@ pub fn nip44_encrypt(
 
 /// Decrypt (NIP44)
 #[wasm_bindgen]
-pub fn nip44_decrypt(sk: &JsSecretKey, pk: &JsPublicKey, payload: String) -> Result<String> {
+pub fn nip44_decrypt(sk: &JsSecretKey, pk: &JsPublicKey, payload: &str) -> Result<String> {
     nip44::decrypt(sk.deref(), pk.deref(), payload).map_err(into_err)
 }

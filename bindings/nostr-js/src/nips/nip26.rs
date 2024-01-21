@@ -19,9 +19,9 @@ use crate::types::JsTimestamp;
 pub fn create_delegation_tag(
     delegator_keys: &JsKeys,
     delegatee_pubkey: &JsPublicKey,
-    conditions: String,
+    conditions: &str,
 ) -> Result<String> {
-    let conditions = Conditions::from_str(&conditions).map_err(into_err)?;
+    let conditions = Conditions::from_str(conditions).map_err(into_err)?;
     let tag = DelegationTag::new(delegator_keys.deref(), delegatee_pubkey.into(), conditions)
         .map_err(into_err)?;
     Ok(tag.to_string())
@@ -30,12 +30,12 @@ pub fn create_delegation_tag(
 /// Validate a NIP-26 delegation tag, check signature and conditions.
 #[wasm_bindgen(js_name = validateDelegationTag)]
 pub fn validate_delegation_tag(
-    delegation_tag: String,
+    delegation_tag: &str,
     delegatee_pubkey: &JsPublicKey,
     event_kind: f64,
     created_at: &JsTimestamp,
 ) -> bool {
-    match DelegationTag::from_str(&delegation_tag) {
+    match DelegationTag::from_str(delegation_tag) {
         Ok(tag) => {
             let event_properties = EventProperties::new(event_kind as u64, created_at.as_u64());
             tag.validate(delegatee_pubkey.into(), &event_properties)

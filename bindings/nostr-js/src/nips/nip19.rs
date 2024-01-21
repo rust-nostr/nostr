@@ -31,14 +31,14 @@ impl JsNip19Event {
     }
 
     #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(bech32: String) -> Result<JsNip19Event> {
+    pub fn from_bech32(bech32: &str) -> Result<JsNip19Event> {
         Ok(Self {
             inner: Nip19Event::from_bech32(bech32).map_err(into_err)?,
         })
     }
 
     #[wasm_bindgen(js_name = fromNostrUri)]
-    pub fn from_nostr_uri(uri: String) -> Result<JsNip19Event> {
+    pub fn from_nostr_uri(uri: &str) -> Result<JsNip19Event> {
         Ok(Self {
             inner: Nip19Event::from_nostr_uri(uri).map_err(into_err)?,
         })
@@ -90,14 +90,14 @@ impl JsNip19Profile {
     }
 
     #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(bech32: String) -> Result<JsNip19Profile> {
+    pub fn from_bech32(bech32: &str) -> Result<JsNip19Profile> {
         Ok(Self {
             inner: Nip19Profile::from_bech32(bech32).map_err(into_err)?,
         })
     }
 
     #[wasm_bindgen(js_name = fromNostrUri)]
-    pub fn from_nostr_uri(uri: String) -> Result<JsNip19Profile> {
+    pub fn from_nostr_uri(uri: &str) -> Result<JsNip19Profile> {
         Ok(Self {
             inner: Nip19Profile::from_nostr_uri(uri).map_err(into_err)?,
         })

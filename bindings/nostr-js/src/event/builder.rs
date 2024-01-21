@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::ops::Deref;
+use core::ops::Deref;
 
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -28,7 +28,7 @@ impl Deref for JsEventBuilder {
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
-    pub fn new(kind: f64, content: String, tags: Vec<JsTag>) -> Self {
+    pub fn new(kind: f64, content: &str, tags: Vec<JsTag>) -> Self {
         Self {
             builder: EventBuilder::new(kind.into(), content, tags.into_iter().map(|t| t.into())),
         }
@@ -78,7 +78,7 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = textNote)]
-    pub fn text_note(content: String, tags: Vec<JsTag>) -> Self {
+    pub fn text_note(content: &str, tags: Vec<JsTag>) -> Self {
         Self {
             builder: EventBuilder::text_note(content, tags.into_iter().map(|t| t.into())),
         }
@@ -96,7 +96,7 @@ impl JsEventBuilder {
     pub fn encrypted_direct_msg(
         sender_keys: &JsKeys,
         receiver_pubkey: &JsPublicKey,
-        content: String,
+        content: &str,
         reply_to: Option<JsEventId>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
@@ -128,7 +128,7 @@ impl JsEventBuilder {
         }
     }
 
-    pub fn reaction(event_id: &JsEventId, public_key: &JsPublicKey, content: String) -> Self {
+    pub fn reaction(event_id: &JsEventId, public_key: &JsPublicKey, content: &str) -> Self {
         Self {
             builder: EventBuilder::reaction(event_id.into(), public_key.into(), content),
         }
@@ -158,10 +158,10 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = channelMsg)]
     pub fn channel_msg(
         channel_id: &JsEventId,
-        relay_url: String,
-        content: String,
+        relay_url: &str,
+        content: &str,
     ) -> Result<JsEventBuilder> {
-        let relay_url: Url = Url::parse(&relay_url).map_err(into_err)?;
+        let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
         Ok(Self {
             builder: EventBuilder::channel_msg(channel_id.into(), relay_url, content),
         })
@@ -182,8 +182,8 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn auth(challenge: String, relay: String) -> Result<JsEventBuilder> {
-        let url = Url::parse(&relay).map_err(into_err)?;
+    pub fn auth(challenge: &str, relay: &str) -> Result<JsEventBuilder> {
+        let url = Url::parse(relay).map_err(into_err)?;
         Ok(Self {
             builder: EventBuilder::auth(challenge, url),
         })

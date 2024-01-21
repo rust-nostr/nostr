@@ -2,8 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::ops::Deref;
-use std::str::FromStr;
+use core::ops::Deref;
+use core::str::FromStr;
 
 use js_sys::Array;
 use nostr::bitcoin::secp256k1::schnorr::Signature;
@@ -75,7 +75,7 @@ impl JsUnsignedEvent {
     }
 
     #[wasm_bindgen(js_name = fromJson)]
-    pub fn from_json(json: String) -> Result<JsUnsignedEvent> {
+    pub fn from_json(json: &str) -> Result<JsUnsignedEvent> {
         Ok(Self {
             inner: UnsignedEvent::from_json(json).map_err(into_err)?,
         })
@@ -92,8 +92,8 @@ impl JsUnsignedEvent {
     }
 
     /// Add signature
-    pub fn add_signature(self, sig: String) -> Result<JsEvent> {
-        let sig: Signature = Signature::from_str(&sig).map_err(into_err)?;
+    pub fn add_signature(self, sig: &str) -> Result<JsEvent> {
+        let sig: Signature = Signature::from_str(sig).map_err(into_err)?;
         Ok(self.inner.add_signature(sig).map_err(into_err)?.into())
     }
 }

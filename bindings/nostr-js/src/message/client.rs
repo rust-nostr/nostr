@@ -40,7 +40,7 @@ impl JsClientMessage {
     }
 
     /// Create new `REQ` message
-    pub fn req(subscription_id: String, filters: Vec<JsFilter>) -> Self {
+    pub fn req(subscription_id: &str, filters: Vec<JsFilter>) -> Self {
         Self {
             inner: ClientMessage::req(
                 SubscriptionId::new(subscription_id),
@@ -50,7 +50,7 @@ impl JsClientMessage {
     }
 
     /// Create new `COUNT` message
-    pub fn count(subscription_id: String, filters: Vec<JsFilter>) -> Self {
+    pub fn count(subscription_id: &str, filters: Vec<JsFilter>) -> Self {
         Self {
             inner: ClientMessage::count(
                 SubscriptionId::new(subscription_id),
@@ -60,7 +60,7 @@ impl JsClientMessage {
     }
 
     /// Create new `CLOSE` message
-    pub fn close(subscription_id: String) -> Self {
+    pub fn close(subscription_id: &str) -> Self {
         Self {
             inner: ClientMessage::close(SubscriptionId::new(subscription_id)),
         }
@@ -77,7 +77,7 @@ impl JsClientMessage {
     ///
     /// **This method NOT verify the event signature!**
     #[wasm_bindgen(js_name = fromJson)]
-    pub fn from_json(json: String) -> Result<JsClientMessage> {
+    pub fn from_json(json: &str) -> Result<JsClientMessage> {
         Ok(Self {
             inner: ClientMessage::from_json(json).map_err(into_err)?,
         })

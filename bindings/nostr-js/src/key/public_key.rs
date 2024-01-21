@@ -44,14 +44,14 @@ impl From<&JsPublicKey> for XOnlyPublicKey {
 #[wasm_bindgen(js_class = PublicKey)]
 impl JsPublicKey {
     #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: String) -> Result<JsPublicKey> {
+    pub fn from_hex(hex: &str) -> Result<JsPublicKey> {
         Ok(Self {
-            inner: XOnlyPublicKey::from_str(&hex).map_err(into_err)?,
+            inner: XOnlyPublicKey::from_str(hex).map_err(into_err)?,
         })
     }
 
     #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(pk: String) -> Result<JsPublicKey> {
+    pub fn from_bech32(pk: &str) -> Result<JsPublicKey> {
         Ok(Self {
             inner: XOnlyPublicKey::from_bech32(pk).map_err(into_err)?,
         })

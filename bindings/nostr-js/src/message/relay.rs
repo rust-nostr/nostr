@@ -24,49 +24,49 @@ impl From<RelayMessage> for JsRelayMessage {
 #[wasm_bindgen(js_class = RelayMessage)]
 impl JsRelayMessage {
     /// Create new `EVENT` message
-    pub fn event(subscription_id: String, event: &JsEvent) -> Self {
+    pub fn event(subscription_id: &str, event: &JsEvent) -> Self {
         Self {
             inner: RelayMessage::event(SubscriptionId::new(subscription_id), event.deref().clone()),
         }
     }
 
     /// Create new `NOTICE` message
-    pub fn notice(message: String) -> Self {
+    pub fn notice(message: &str) -> Self {
         Self {
             inner: RelayMessage::notice(message),
         }
     }
 
     /// Create new `CLOSED` message
-    pub fn closed(subscription_id: String, message: String) -> Self {
+    pub fn closed(subscription_id: &str, message: &str) -> Self {
         Self {
             inner: RelayMessage::closed(SubscriptionId::new(subscription_id), message),
         }
     }
 
     /// Create new `EOSE` message
-    pub fn eose(subscription_id: String) -> Self {
+    pub fn eose(subscription_id: &str) -> Self {
         Self {
             inner: RelayMessage::eose(SubscriptionId::new(subscription_id)),
         }
     }
 
     /// Create new `OK` message
-    pub fn ok(event_id: &JsEventId, status: bool, message: String) -> Self {
+    pub fn ok(event_id: &JsEventId, status: bool, message: &str) -> Self {
         Self {
             inner: RelayMessage::ok(**event_id, status, message),
         }
     }
 
     /// Create new `AUTH` message
-    pub fn auth(challenge: String) -> Self {
+    pub fn auth(challenge: &str) -> Self {
         Self {
             inner: RelayMessage::auth(challenge),
         }
     }
 
     /// Create new `EVENT` message
-    pub fn count(subscription_id: String, count: f64) -> Self {
+    pub fn count(subscription_id: &str, count: f64) -> Self {
         Self {
             inner: RelayMessage::count(SubscriptionId::new(subscription_id), count as usize),
         }
@@ -76,7 +76,7 @@ impl JsRelayMessage {
     ///
     /// **This method NOT verify the event signature!**
     #[wasm_bindgen(js_name = fromJson)]
-    pub fn from_json(json: String) -> Result<JsRelayMessage> {
+    pub fn from_json(json: &str) -> Result<JsRelayMessage> {
         Ok(Self {
             inner: RelayMessage::from_json(json).map_err(into_err)?,
         })

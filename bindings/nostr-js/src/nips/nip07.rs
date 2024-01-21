@@ -54,11 +54,7 @@ impl JsNip07Signer {
     }
 
     #[wasm_bindgen(js_name = nip04Encrypt)]
-    pub async fn nip04_encrypt(
-        &self,
-        public_key: &JsPublicKey,
-        plaintext: String,
-    ) -> Result<String> {
+    pub async fn nip04_encrypt(&self, public_key: &JsPublicKey, plaintext: &str) -> Result<String> {
         self.inner
             .nip04_encrypt(**public_key, plaintext)
             .await
@@ -69,7 +65,7 @@ impl JsNip07Signer {
     pub async fn nip04_decrypt(
         &self,
         public_key: &JsPublicKey,
-        ciphertext: String,
+        ciphertext: &str,
     ) -> Result<String> {
         self.inner
             .nip04_encrypt(**public_key, ciphertext)

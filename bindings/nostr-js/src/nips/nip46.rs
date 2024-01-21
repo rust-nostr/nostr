@@ -35,20 +35,20 @@ impl From<NostrConnectMetadata> for JsNostrConnectMetadata {
 impl JsNostrConnectMetadata {
     /// New Nostr Connect Metadata
     #[wasm_bindgen(constructor)]
-    pub fn new(name: String) -> Self {
+    pub fn new(name: &str) -> Self {
         Self {
             inner: NostrConnectMetadata::new(name),
         }
     }
 
     /// URL of the website requesting the connection
-    pub fn url(self, url: String) -> Result<JsNostrConnectMetadata> {
-        let url: Url = Url::parse(&url).map_err(into_err)?;
+    pub fn url(self, url: &str) -> Result<JsNostrConnectMetadata> {
+        let url: Url = Url::parse(url).map_err(into_err)?;
         Ok(self.inner.url(url).into())
     }
 
     /// Description of the `App`
-    pub fn description(self, description: String) -> Self {
+    pub fn description(self, description: &str) -> Self {
         self.inner.description(description).into()
     }
 
