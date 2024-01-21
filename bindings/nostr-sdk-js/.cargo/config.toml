@@ -8,3 +8,8 @@ codegen-units = 1
 panic = "abort"
 strip = true
 debug = false
+
+[unstable]
+unstable-options = true
+build-std = ["panic_abort", "std"]
+build-std-features = ["panic_immediate_abort"]
