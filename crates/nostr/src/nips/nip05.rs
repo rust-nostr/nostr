@@ -69,9 +69,9 @@ impl From<secp256k1::Error> for Error {
 
 fn compose_url<S>(nip05: S) -> Result<(String, String), Error>
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
-    let nip05: String = nip05.into();
+    let nip05: &str = nip05.as_ref();
     let data: Vec<&str> = nip05.split('@').collect();
     if data.len() != 2 {
         return Err(Error::InvalidFormat);
@@ -84,9 +84,9 @@ where
 
 fn get_key_from_json<S>(json: Value, name: S) -> Option<XOnlyPublicKey>
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
-    let name: String = name.into();
+    let name: &str = name.as_ref();
     json.get("names")
         .and_then(|names| names.get(name))
         .and_then(|value| value.as_str())
@@ -107,7 +107,7 @@ fn get_relays_from_json(json: Value, pk: XOnlyPublicKey) -> Vec<String> {
 
 fn verify_json<S>(public_key: XOnlyPublicKey, json: Value, name: S) -> Result<(), Error>
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
     if let Some(pubkey) = get_key_from_json(json, name) {
         if pubkey == public_key {
@@ -127,7 +127,7 @@ pub async fn verify<S>(
     _proxy: Option<SocketAddr>,
 ) -> Result<(), Error>
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
     use reqwest::Client;
 
@@ -160,7 +160,7 @@ pub fn verify_blocking<S>(
     proxy: Option<SocketAddr>,
 ) -> Result<(), Error>
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
     use reqwest::blocking::Client;
 
@@ -181,7 +181,7 @@ where
 /// **Proxy is ignored for WASM targets!**
 pub async fn get_profile<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
     use reqwest::Client;
 
@@ -214,7 +214,7 @@ where
 #[cfg(feature = "blocking")]
 pub fn get_profile_blocking<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
     use reqwest::blocking::Client;
 
