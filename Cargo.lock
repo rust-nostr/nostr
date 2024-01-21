@@ -2606,25 +2606,20 @@ dependencies = [
 [[package]]
 name = "url"
 version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31e6302e3bb753d46e83516cae55ae196fc0c309407cf11ab35cc51a4c2a4633"
+source = "git+https://github.com/yukibtc/rust-url?rev=233f5ceffcd053b93b7f98f4ec86cd9d68dcde2d#233f5ceffcd053b93b7f98f4ec86cd9d68dcde2d"
 dependencies = [
- "form_urlencoded",
- "idna",
- "percent-encoding",
+ "url-fork",
 ]
 
 [[package]]
 name = "url-fork"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "956afc9d7e101f0b718a6776489cd7998d0b17fc79f4cdb6ee6761fb72d1c2ce"
+version = "3.0.1"
+source = "git+https://github.com/yukibtc/rust-url?rev=233f5ceffcd053b93b7f98f4ec86cd9d68dcde2d#233f5ceffcd053b93b7f98f4ec86cd9d68dcde2d"
 dependencies = [
  "form_urlencoded",
+ "idna",
  "percent-encoding",
  "serde",
- "unicode-bidi",
- "unicode-normalization",
 ]
 
 [[package]]
