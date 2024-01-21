@@ -17,13 +17,13 @@ use bitcoin::secp256k1::{self, XOnlyPublicKey};
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use url_fork::{ParseError, Url};
 
 use super::id::{self, EventId};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
 use crate::nips::nip90::DataVendingMachineStatus;
+use crate::types::url::{ParseError, Url};
 use crate::{Event, JsonUtil, Kind, Timestamp, UncheckedUrl};
 
 /// [`Tag`] error

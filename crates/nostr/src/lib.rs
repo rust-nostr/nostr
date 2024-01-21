@@ -34,7 +34,6 @@ extern crate serde;
 #[cfg(feature = "nip06")]
 pub use bip39;
 pub use bitcoin::{bech32, hashes, secp256k1};
-pub use url_fork::{self as url, Url};
 pub use {bitcoin, negentropy, serde_json};
 
 pub mod event;
@@ -57,7 +56,7 @@ pub use self::message::{
     Alphabet, ClientMessage, Filter, GenericTagValue, RawRelayMessage, RelayMessage, SubscriptionId,
 };
 pub use self::nips::nip19::{FromBech32, ToBech32};
-pub use self::types::{Contact, Metadata, Timestamp, UncheckedUrl};
+pub use self::types::{Contact, Metadata, Timestamp, UncheckedUrl, Url};
 pub use self::util::JsonUtil;
 #[cfg(feature = "std")]
 pub use self::util::SECP256K1;

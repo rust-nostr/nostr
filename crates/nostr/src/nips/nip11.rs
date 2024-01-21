@@ -14,9 +14,8 @@ use std::net::SocketAddr;
 
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
-use url_fork::Url;
 
-use crate::types::time::Timestamp;
+use crate::{Timestamp, Url};
 
 /// `NIP11` error
 #[derive(Debug)]

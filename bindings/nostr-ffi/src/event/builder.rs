@@ -6,8 +6,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::url::Url;
-use nostr::{Contact as ContactSdk, UncheckedUrl};
+use nostr::{Contact as ContactSdk, UncheckedUrl, Url};
 use uniffi::Object;
 
 use super::{Event, EventId};

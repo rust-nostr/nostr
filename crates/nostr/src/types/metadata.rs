@@ -15,9 +15,8 @@ use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use url_fork::Url;
 
-use crate::JsonUtil;
+use crate::{JsonUtil, Url};
 
 /// [`Metadata`] error
 #[derive(Debug)]

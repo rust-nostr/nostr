@@ -16,7 +16,6 @@ pub use bitcoin::secp256k1::*;
 pub use bitcoin::*;
 pub use negentropy::*;
 pub use serde_json::*;
-pub use url_fork::*;
 
 // Internal modules
 pub use crate::event::builder::*;

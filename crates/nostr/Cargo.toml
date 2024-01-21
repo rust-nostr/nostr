@@ -19,6 +19,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["std", "all-nips"]
 std = [
     "dep:once_cell",
+    "dep:url",
     "cbc?/std",
     "base64?/std",
     "bitcoin/std",
@@ -30,10 +31,10 @@ std = [
     "serde_json/std",
     "serde_json/preserve_order",
     "tracing/std",
-    "url-fork/std",
     "wasm-bindgen?/std",
 ]
 alloc = [
+    "dep:url-fork",
     "cbc?/alloc",
     "base64?/alloc",
     "bitcoin/no-std",
@@ -67,7 +68,8 @@ reqwest = { version = "0.11", default-features = false, features = ["json", "rus
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json.workspace = true
 tracing.workspace = true
-url-fork = { workspace = true, features = ["serde"] }
+url = { version = "2.5", default-features = false, features = ["serde"], optional = true } # Used in std
+url-fork = { version = "3.0", default-features = false, features = ["serde"], optional = true } # Used for no_std
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

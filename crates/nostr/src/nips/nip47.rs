@@ -15,11 +15,11 @@ use core::str::FromStr;
 use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
-use url_fork::form_urlencoded::byte_serialize;
-use url_fork::{ParseError, Url};
 
 #[cfg(feature = "std")]
 use super::nip04;
+use crate::types::url::form_urlencoded::byte_serialize;
+use crate::types::url::{ParseError, Url};
 use crate::JsonUtil;
 #[cfg(feature = "std")]
 use crate::{Event, EventBuilder, Keys, Kind, Tag};

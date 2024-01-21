@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip94;
-use nostr::url::Url;
+use nostr::Url;
 use uniffi::Object;
 
 use crate::error::Result;

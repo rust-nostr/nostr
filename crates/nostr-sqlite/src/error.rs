@@ -34,7 +34,7 @@ pub enum Error {
     Flatbuffers(#[from] flatbuffers::Error),
     /// Url error
     #[error(transparent)]
-    Url(#[from] nostr::url::ParseError),
+    Url(#[from] nostr::types::url::ParseError),
     /// Not found
     #[error("sqlite: {0} not found")]
     NotFound(String),

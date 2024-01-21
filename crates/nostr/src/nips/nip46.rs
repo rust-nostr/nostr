@@ -21,13 +21,13 @@ use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message as Secp256k1Message, Secp256k1, Signing, XOnlyPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use url_fork::form_urlencoded::byte_serialize;
-use url_fork::{ParseError, Url};
 
 use super::nip04;
 use super::nip26::{self, sign_delegation_with_ctx, Conditions};
 use crate::event::unsigned::{self, UnsignedEvent};
 use crate::key::{self, Keys};
+use crate::types::url::form_urlencoded::byte_serialize;
+use crate::types::url::{ParseError, Url};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{Event, JsonUtil};

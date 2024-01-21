@@ -14,7 +14,6 @@ use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::{self, Secp256k1, Signing, XOnlyPublicKey};
 use serde_json::{json, Value};
-use url_fork::Url;
 
 use super::kind::{Kind, NIP90_JOB_REQUEST_RANGE, NIP90_JOB_RESULT_RANGE};
 use super::tag::ImageDimensions;
@@ -40,7 +39,7 @@ use crate::types::{Contact, Metadata, Timestamp};
 use crate::util::EventIdOrCoordinate;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{JsonUtil, RelayMetadata, UncheckedUrl};
+use crate::{JsonUtil, RelayMetadata, UncheckedUrl, Url};
 
 /// Wrong kind error
 #[derive(Debug)]
@@ -335,8 +334,7 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::url::Url;
-    /// use nostr::{EventBuilder, Metadata};
+    /// use nostr::{EventBuilder, Metadata, Url};
     ///
     /// let metadata = Metadata::new()
     ///     .name("username")

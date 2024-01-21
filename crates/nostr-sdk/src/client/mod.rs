@@ -17,11 +17,10 @@ use nostr::key::XOnlyPublicKey;
 use nostr::nips::nip46::{Request, Response};
 use nostr::nips::nip94::FileMetadata;
 use nostr::types::metadata::Error as MetadataError;
-use nostr::url::Url;
 use nostr::util::EventIdOrCoordinate;
 use nostr::{
     ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind, Metadata,
-    Result, Tag, Timestamp,
+    Result, Tag, Timestamp, Url,
 };
 use nostr_database::DynNostrDatabase;
 use tokio::sync::{broadcast, RwLock};
@@ -55,7 +54,7 @@ pub enum Error {
     Keys(#[from] nostr::key::Error),
     /// Url parse error
     #[error("impossible to parse URL: {0}")]
-    Url(#[from] nostr::url::ParseError),
+    Url(#[from] nostr::types::url::ParseError),
     /// [`RelayPool`] error
     #[error("relay pool error: {0}")]
     RelayPool(#[from] RelayPoolError),

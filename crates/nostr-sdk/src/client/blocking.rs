@@ -10,9 +10,8 @@ use std::time::Duration;
 
 use nostr::key::XOnlyPublicKey;
 use nostr::nips::nip94::FileMetadata;
-use nostr::url::Url;
 use nostr::{
-    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, Keys, Metadata, Result, Tag,
+    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, Keys, Metadata, Result, Tag, Url,
 };
 use nostr_database::DynNostrDatabase;
 use tokio::sync::broadcast;

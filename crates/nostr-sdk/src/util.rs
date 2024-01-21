@@ -4,7 +4,7 @@
 
 //! Util
 
-use nostr::url::{ParseError, Url};
+use nostr::types::url::{ParseError, Url};
 
 /// Try into [`Url`]
 pub trait TryIntoUrl {

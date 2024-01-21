@@ -34,7 +34,7 @@ nip57 = ["nostr/nip57", "dep:lnurl-pay"]
 
 [dependencies]
 async-utility.workspace = true
-async-wsocket = "0.1"
+async-wsocket = "0.2"
 lnurl-pay = { version = "0.2", features = ["api"], optional = true }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true

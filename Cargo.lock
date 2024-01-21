@@ -187,9 +187,9 @@ dependencies = [
 
 [[package]]
 name = "async-wsocket"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82d55992e9155e571208dc012c2a5c056572d1ab167bc299a63810ebf910226c"
+checksum = "a2d9504eb5213e3dde775ccb10994d0c17edbf72f4b008307778c66f5b4c40f0"
 dependencies = [
  "async-utility",
  "futures-util",
@@ -198,7 +198,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-socks",
  "tokio-tungstenite",
- "url-fork",
+ "url",
  "wasm-ws",
  "webpki-roots",
 ]
@@ -1352,6 +1352,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "url",
  "url-fork",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2606,15 +2607,20 @@ dependencies = [
 [[package]]
 name = "url"
 version = "2.5.0"
-source = "git+https://github.com/yukibtc/rust-url?rev=233f5ceffcd053b93b7f98f4ec86cd9d68dcde2d#233f5ceffcd053b93b7f98f4ec86cd9d68dcde2d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31e6302e3bb753d46e83516cae55ae196fc0c309407cf11ab35cc51a4c2a4633"
 dependencies = [
- "url-fork",
+ "form_urlencoded",
+ "idna",
+ "percent-encoding",
+ "serde",
 ]
 
 [[package]]
 name = "url-fork"
 version = "3.0.1"
-source = "git+https://github.com/yukibtc/rust-url?rev=233f5ceffcd053b93b7f98f4ec86cd9d68dcde2d#233f5ceffcd053b93b7f98f4ec86cd9d68dcde2d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fa3323c39b8e786154d3000b70ae9af0e9bd746c9791456da0d4a1f68ad89d6"
 dependencies = [
  "form_urlencoded",
  "idna",

@@ -10,9 +10,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use url_fork::Url;
 
-use crate::{ImageDimensions, Tag};
+use crate::{ImageDimensions, Tag, Url};
 
 /// Potential errors returned when parsing tags into a [FileMetadata] struct
 #[derive(Debug, PartialEq, Eq)]

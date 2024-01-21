@@ -33,7 +33,7 @@ use crate::util::TryIntoUrl;
 pub enum Error {
     /// Url parse error
     #[error("impossible to parse URL: {0}")]
-    Url(#[from] nostr::url::ParseError),
+    Url(#[from] nostr::types::url::ParseError),
     /// Relay error
     #[error(transparent)]
     Relay(#[from] RelayError),

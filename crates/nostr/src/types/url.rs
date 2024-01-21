@@ -8,7 +8,10 @@ use alloc::string::String;
 use core::fmt;
 use core::str::FromStr;
 
-use url_fork::{ParseError, Url};
+#[cfg(feature = "std")]
+pub use url::*;
+#[cfg(not(feature = "std"))]
+pub use url_fork::*;
 
 /// Unchecked Url
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
