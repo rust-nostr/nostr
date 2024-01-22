@@ -130,6 +130,8 @@ impl ZapDetails {
 
 impl Client {
     /// Send a Zap!
+    ///
+    /// This method automatically create a split zap to support Rust Nostr development.
     pub async fn zap<T>(
         &self,
         to: T,
