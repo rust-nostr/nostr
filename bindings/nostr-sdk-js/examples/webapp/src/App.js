@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Client, ClientSigner, LogLevel, Nip07Signer, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
+import { ClientBuilder, ClientSigner, ClientZapper, LogLevel, Nip07Signer, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
 import './App.css';
 
 class App extends Component {
@@ -27,7 +27,8 @@ class App extends Component {
       // Get NIP07 signer and compose Client with ClientSigner
       let nip07_signer = new Nip07Signer();
       let signer = ClientSigner.nip07(nip07_signer);
-      let client = new Client(signer);
+      let zapper = ClientZapper.webln();
+      let client = new ClientBuilder().signer(signer).zapper(zapper).build();
 
       let public_key = await nip07_signer.getPublicKey();
   
@@ -49,6 +50,17 @@ class App extends Component {
   handlePublishTextNote = async () => {
     try {
       await this.state.client.publishTextNote("Test from Rust Nostr SDK JavaScript bindings with NIP07 signer!", []);
+    } catch (error) {
+        console.log(error) 
+    }
+  };
+
+  handleZap = async () => {
+    try {
+      let pk = PublicKey.fromBech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet");
+      let entity = ZapEntity.publicKey(pk);
+      let details = new ZapDetails(ZapType.Public).message("Zap for Rust Nostr!");
+      await this.state.client.zap(entity, 1000, details);
     } catch (error) {
         console.log(error) 
     }
@@ -84,6 +96,9 @@ class App extends Component {
             <p>Public key: {this.state.public_key.toBech32()}</p>
             <button className="btn btn-primary" onClick={this.handlePublishTextNote}>
               Publish text note
+            </button>
+            <button className="btn btn-primary" onClick={this.handleZap}>
+              Zap!
             </button>
             <button className="btn btn-primary" onClick={this.handleLogout}>
               Logout

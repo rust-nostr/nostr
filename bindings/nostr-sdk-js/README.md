@@ -74,7 +74,7 @@ async function main() {
     // Send public zap
     let entity = ZapEntity.publicKey(publicKey);
     let details = new ZapDetails(ZapType.Public).message("Zap for Rust Nostr!");
-    await this.state.client.zap(entity, 1000, details);
+    await client.zap(entity, 1000, details);
 }
 
 main();
