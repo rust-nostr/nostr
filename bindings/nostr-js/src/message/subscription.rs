@@ -12,6 +12,69 @@ use crate::event::JsEventId;
 use crate::key::JsPublicKey;
 use crate::types::JsTimestamp;
 
+#[wasm_bindgen(js_name = "Alphabet")]
+pub enum JsAlphabet {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+}
+
+impl From<JsAlphabet> for Alphabet {
+    fn from(value: JsAlphabet) -> Self {
+        match value {
+            JsAlphabet::A => Self::A,
+            JsAlphabet::B => Self::B,
+            JsAlphabet::C => Self::C,
+            JsAlphabet::D => Self::D,
+            JsAlphabet::E => Self::E,
+            JsAlphabet::F => Self::F,
+            JsAlphabet::G => Self::G,
+            JsAlphabet::H => Self::H,
+            JsAlphabet::I => Self::I,
+            JsAlphabet::J => Self::J,
+            JsAlphabet::K => Self::K,
+            JsAlphabet::L => Self::L,
+            JsAlphabet::M => Self::M,
+            JsAlphabet::N => Self::N,
+            JsAlphabet::O => Self::O,
+            JsAlphabet::P => Self::P,
+            JsAlphabet::Q => Self::Q,
+            JsAlphabet::R => Self::R,
+            JsAlphabet::S => Self::S,
+            JsAlphabet::T => Self::T,
+            JsAlphabet::U => Self::U,
+            JsAlphabet::V => Self::V,
+            JsAlphabet::W => Self::W,
+            JsAlphabet::X => Self::X,
+            JsAlphabet::Y => Self::Y,
+            JsAlphabet::Z => Self::Z,
+        }
+    }
+}
+
 #[wasm_bindgen(js_name = SubscriptionId)]
 pub struct JsSubscriptionId {
     inner: SubscriptionId,
@@ -87,65 +150,55 @@ impl JsFilter {
     }
 
     /// Set subscription id
-    #[wasm_bindgen]
     pub fn id(self, id: &JsEventId) -> Self {
         self.inner.id(**id).into()
     }
 
     /// Set subscription ids
-    #[wasm_bindgen]
     pub fn ids(self, ids: Vec<JsEventId>) -> Self {
         let ids = ids.into_iter().map(|id| id.inner);
         self.inner.ids(ids).into()
     }
 
     /// Set author
-    #[wasm_bindgen]
     pub fn author(self, author: &JsPublicKey) -> Self {
         self.inner.author(author.into()).into()
     }
 
     /// Set authors
-    #[wasm_bindgen]
     pub fn authors(self, authors: Vec<JsPublicKey>) -> Self {
         let authors = authors.into_iter().map(|p| p.inner);
         self.inner.authors(authors).into()
     }
 
     /// Set kind
-    #[wasm_bindgen]
     pub fn kind(self, kind: f64) -> Self {
         self.inner.kind(Kind::from(kind)).into()
     }
 
     /// Set kinds
-    #[wasm_bindgen]
     pub fn kinds(self, kinds: Vec<f64>) -> Self {
         let kinds = kinds.into_iter().map(Kind::from);
         self.inner.kinds(kinds).into()
     }
 
     /// Set event
-    #[wasm_bindgen]
     pub fn event(self, id: &JsEventId) -> Self {
         self.inner.event(id.into()).into()
     }
 
     /// Set events
-    #[wasm_bindgen]
     pub fn events(self, ids: Vec<JsEventId>) -> Self {
         let ids = ids.into_iter().map(|id| id.inner);
         self.inner.events(ids).into()
     }
 
     /// Set pubkey
-    #[wasm_bindgen]
     pub fn pubkey(self, pubkey: &JsPublicKey) -> Self {
         self.inner.pubkey(pubkey.into()).into()
     }
 
     /// Set pubkeys
-    #[wasm_bindgen]
     pub fn pubkeys(self, pubkeys: Vec<JsPublicKey>) -> Self {
         let pubkeys = pubkeys.into_iter().map(|p| p.inner);
         self.inner.pubkeys(pubkeys).into()
@@ -154,7 +207,6 @@ impl JsFilter {
     /// Set hashtag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    #[wasm_bindgen]
     pub fn hashtag(self, hashtag: &str) -> Self {
         self.inner.hashtag(hashtag).into()
     }
@@ -162,7 +214,6 @@ impl JsFilter {
     /// Set hashtags
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    #[wasm_bindgen]
     pub fn hashtags(self, hashtags: Vec<String>) -> Self {
         self.inner.hashtags(hashtags).into()
     }
@@ -170,7 +221,6 @@ impl JsFilter {
     /// Set reference
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    #[wasm_bindgen]
     pub fn reference(self, v: &str) -> Self {
         self.inner.reference(v).into()
     }
@@ -178,32 +228,37 @@ impl JsFilter {
     /// Set references
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
-    #[wasm_bindgen]
     pub fn references(self, v: Vec<String>) -> Self {
         self.inner.references(v).into()
     }
 
     /// Set search field
-    #[wasm_bindgen]
     pub fn search(self, value: &str) -> Self {
         self.inner.search(value).into()
     }
 
     /// Set since unix timestamp
-    #[wasm_bindgen]
     pub fn since(self, since: &JsTimestamp) -> Self {
         self.inner.since(**since).into()
     }
 
     /// Set until unix timestamp
-    #[wasm_bindgen]
     pub fn until(self, until: &JsTimestamp) -> Self {
         self.inner.until(**until).into()
     }
 
     /// Set limit
-    #[wasm_bindgen]
     pub fn limit(self, limit: f64) -> Self {
         self.inner.limit(limit as usize).into()
+    }
+
+    #[wasm_bindgen(js_name = customTag)]
+    pub fn custom_tag(self, tag: JsAlphabet, values: Vec<String>) -> Self {
+        self.inner.custom_tag(tag.into(), values).into()
+    }
+
+    #[wasm_bindgen(js_name = removeCustomTag)]
+    pub fn remove_custom_tag(self, tag: JsAlphabet, values: Vec<String>) -> Self {
+        self.inner.remove_custom_tag(tag.into(), values).into()
     }
 }

@@ -662,7 +662,7 @@ impl Filter {
         self
     }
 
-    /// Remove identifiers
+    /// Remove custom tag
     pub fn remove_custom_tag<I, T>(mut self, tag: Alphabet, values: I) -> Self
     where
         I: IntoIterator<Item = T>,
