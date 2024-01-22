@@ -19,8 +19,8 @@ use nostr::nips::nip94::FileMetadata;
 use nostr::types::metadata::Error as MetadataError;
 use nostr::util::EventIdOrCoordinate;
 use nostr::{
-    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, Kind, Metadata,
-    Result, Tag, Timestamp, Url,
+    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Kind, Metadata, Result,
+    Tag, Timestamp, Url,
 };
 use nostr_database::DynNostrDatabase;
 use tokio::sync::{broadcast, RwLock};
@@ -275,24 +275,6 @@ impl Client {
     pub async fn set_zapper(&self, zapper: Option<ClientZapper>) {
         let mut s = self.zapper.write().await;
         *s = zapper;
-    }
-
-    /// Get current [`Keys`]
-    #[deprecated(since = "0.27.0", note = "Use `client.signer().await` instead.")]
-    pub async fn keys(&self) -> Keys {
-        let signer = self.signer.read().await;
-        if let Some(ClientSigner::Keys(keys)) = &*signer {
-            keys.clone()
-        } else {
-            Keys::generate()
-        }
-    }
-
-    /// Change [`Keys`]
-    #[deprecated(since = "0.27.0", note = "Use `client.set_signer(...).await` instead.")]
-    pub async fn set_keys(&self, keys: &Keys) {
-        self.set_signer(Some(ClientSigner::Keys(keys.clone())))
-            .await;
     }
 
     /// Get [`RelayPool`]
@@ -877,21 +859,6 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /// Add recommended relay
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[deprecated(since = "0.27.0")]
-    pub async fn add_recommended_relay<U>(&self, url: U) -> Result<EventId, Error>
-    where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        let url: Url = url.try_into_url()?;
-        #[allow(deprecated)]
-        let builder = EventBuilder::add_recommended_relay(&url);
-        self.send_event_builder(builder).await
-    }
-
     /// Set contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
@@ -1311,24 +1278,6 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /// Create zap receipt event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    #[cfg(feature = "nip57")]
-    #[deprecated(since = "0.27.0", note = "Use `zap_receipt` instead")]
-    pub async fn new_zap_receipt<S>(
-        &self,
-        bolt11: S,
-        preimage: Option<S>,
-        zap_request: Event,
-    ) -> Result<EventId, Error>
-    where
-        S: Into<String>,
-    {
-        let builder = EventBuilder::zap_receipt(bolt11, preimage, zap_request);
-        self.send_event_builder(builder).await
-    }
-
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
@@ -1359,13 +1308,6 @@ impl Client {
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
         Ok(self.pool.reconcile_with_items(filter, items, opts).await?)
-    }
-
-    /// Get a list of channels
-    #[deprecated(since = "0.27.0")]
-    pub async fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
-        self.get_events_of(vec![Filter::new().kind(Kind::ChannelCreation)], timeout)
-            .await
     }
 
     /// Handle notifications

@@ -350,20 +350,6 @@ impl EventBuilder {
         Self::new(Kind::Metadata, metadata.as_json(), [])
     }
 
-    /// Set metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[deprecated(since = "0.27.0", note = "Use `metadata` instead")]
-    pub fn set_metadata(metadata: &Metadata) -> Self {
-        Self::metadata(metadata)
-    }
-
-    /// Add recommended relay
-    #[deprecated(since = "0.27.0")]
-    pub fn add_recommended_relay(url: &Url) -> Self {
-        Self::new(Kind::RecommendRelay, url.as_ref(), [])
-    }
-
     /// Relay list metadata (NIP65)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
@@ -393,18 +379,6 @@ impl EventBuilder {
         I: IntoIterator<Item = Tag>,
     {
         Self::new(Kind::TextNote, content, tags)
-    }
-
-    /// Text note
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[deprecated(since = "0.27.0", note = "Use `text_note` instead")]
-    pub fn new_text_note<S, I>(content: S, tags: I) -> Self
-    where
-        S: Into<String>,
-        I: IntoIterator<Item = Tag>,
-    {
-        Self::text_note(content, tags)
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
@@ -448,15 +422,6 @@ impl EventBuilder {
             uppercase: false,
         });
         Self::new(Kind::ContactList, "", tags)
-    }
-
-    /// Set contact list
-    #[deprecated(since = "0.27.0", note = "Use `contact_list` instead")]
-    pub fn set_contact_list<I>(contacts: I) -> Self
-    where
-        I: IntoIterator<Item = Contact>,
-    {
-        Self::contact_list(contacts)
     }
 
     /// OpenTimestamps Attestations for Events
@@ -503,21 +468,6 @@ impl EventBuilder {
         ))
     }
 
-    /// Create encrypted direct msg event
-    #[cfg(all(feature = "std", feature = "nip04"))]
-    #[deprecated(since = "0.27.0", note = "Use `encrypted_direct_msg` instead")]
-    pub fn new_encrypted_direct_msg<S>(
-        sender_keys: &Keys,
-        receiver_pubkey: XOnlyPublicKey,
-        content: S,
-        reply_to: Option<EventId>,
-    ) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        Self::encrypted_direct_msg(sender_keys, receiver_pubkey, content, reply_to)
-    }
-
     /// Repost event
     pub fn repost(event_id: EventId, public_key: XOnlyPublicKey) -> Self {
         Self::new(
@@ -562,28 +512,11 @@ impl EventBuilder {
         )
     }
 
-    /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
-    #[deprecated(since = "0.27.0", note = "Use `reaction` instead")]
-    pub fn new_reaction<S>(event_id: EventId, public_key: XOnlyPublicKey, content: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::reaction(event_id, public_key, content)
-    }
-
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn channel(metadata: &Metadata) -> Self {
         Self::new(Kind::ChannelCreation, metadata.as_json(), [])
-    }
-
-    /// Create new channel
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated(since = "0.27.0", note = "Use `channel` instead")]
-    pub fn new_channel(metadata: &Metadata) -> Self {
-        Self::channel(metadata)
     }
 
     /// Channel metadata
@@ -605,18 +538,6 @@ impl EventBuilder {
         )
     }
 
-    /// Set channel metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated(since = "0.27.0", note = "Use `channel_metadata` instead")]
-    pub fn set_channel_metadata(
-        channel_id: EventId,
-        relay_url: Option<Url>,
-        metadata: &Metadata,
-    ) -> Self {
-        Self::channel_metadata(channel_id, relay_url, metadata)
-    }
-
     /// Channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
@@ -633,17 +554,6 @@ impl EventBuilder {
                 marker: Some(Marker::Root),
             }],
         )
-    }
-
-    /// Channel message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated(since = "0.27.0", note = "Use `channel_msg` instead")]
-    pub fn new_channel_msg<S>(channel_id: EventId, relay_url: Url, content: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::channel_msg(channel_id, relay_url, content)
     }
 
     /// Hide message
@@ -756,19 +666,6 @@ impl EventBuilder {
         Self::new(Kind::Reporting, content, tags)
     }
 
-    /// Create public zap request event
-    ///
-    /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    #[cfg(feature = "nip57")]
-    #[deprecated(since = "0.27.0", note = "Use `public_zap_request` instead")]
-    pub fn new_zap_request(data: ZapRequestData) -> Self {
-        let message: String = data.message.clone();
-        let tags: Vec<Tag> = data.into();
-        Self::new(Kind::ZapRequest, message, tags)
-    }
-
     /// Create **public** zap request event
     ///
     /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
@@ -851,18 +748,6 @@ impl EventBuilder {
         });
 
         Self::new(Kind::ZapReceipt, "", tags)
-    }
-
-    /// Create zap receipt event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    #[cfg(feature = "nip57")]
-    #[deprecated(since = "0.27.0", note = "Use `zap_receipt` instead")]
-    pub fn new_zap_receipt<S>(bolt11: S, preimage: Option<S>, zap_request: Event) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::zap_receipt(bolt11, preimage, zap_request)
     }
 
     /// Create a badge definition event
@@ -1151,28 +1036,12 @@ impl EventBuilder {
         Self::new(Kind::SetStall, data, tags)
     }
 
-    /// Set stall data
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
-    #[deprecated(since = "0.27.0", note = "Use `stall_data` instead")]
-    pub fn new_stall_data(data: StallData) -> Self {
-        Self::stall_data(data)
-    }
-
     /// Set product data
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
     pub fn product_data(data: ProductData) -> Self {
         let tags: Vec<Tag> = data.clone().into();
         Self::new(Kind::SetProduct, data, tags)
-    }
-
-    /// Set product data
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
-    #[deprecated(since = "0.27.0", note = "Use `product_data` instead")]
-    pub fn new_product_data(data: ProductData) -> Self {
-        Self::product_data(data)
     }
 }
 

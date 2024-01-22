@@ -11,7 +11,7 @@ use std::time::Duration;
 use nostr::key::XOnlyPublicKey;
 use nostr::nips::nip94::FileMetadata;
 use nostr::{
-    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, Keys, Metadata, Result, Tag, Url,
+    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, Metadata, Result, Tag, Url,
 };
 use nostr_database::DynNostrDatabase;
 use tokio::sync::broadcast;
@@ -72,20 +72,6 @@ impl Client {
     /// Set client signer
     pub fn set_signer(&self, signer: Option<ClientSigner>) {
         RUNTIME.block_on(async { self.client.set_signer(signer).await })
-    }
-
-    /// Get current [`Keys`]
-    #[deprecated(since = "0.27.0", note = "Use `client.signer()` instead.")]
-    pub fn keys(&self) -> Keys {
-        #[allow(deprecated)]
-        RUNTIME.block_on(async { self.client.keys().await })
-    }
-
-    /// Change [`Keys`]
-    #[deprecated(since = "0.27.0", note = "Use `client.set_signer(...)` instead.")]
-    pub fn set_keys(&self, keys: &Keys) {
-        #[allow(deprecated)]
-        RUNTIME.block_on(async { self.client.set_keys(keys).await })
     }
 
     /// Get database
@@ -266,16 +252,6 @@ impl Client {
         RUNTIME.block_on(async { self.client.publish_text_note(content, tags).await })
     }
 
-    #[deprecated(since = "0.27.0")]
-    pub fn add_recommended_relay<U>(&self, url: U) -> Result<EventId, Error>
-    where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        #[allow(deprecated)]
-        RUNTIME.block_on(async { self.client.add_recommended_relay(url).await })
-    }
-
     pub fn set_contact_list(&self, list: Vec<Contact>) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.set_contact_list(list).await })
     }
@@ -424,23 +400,6 @@ impl Client {
         RUNTIME.block_on(async { self.client.zap_receipt(bolt11, preimage, zap_request).await })
     }
 
-    /// Create zap receipt event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    #[cfg(feature = "nip57")]
-    #[deprecated(since = "0.27.0", note = "Use `zap_receipt` instead")]
-    pub fn new_zap_receipt<S>(
-        &self,
-        bolt11: S,
-        preimage: Option<S>,
-        zap_request: Event,
-    ) -> Result<EventId, Error>
-    where
-        S: Into<String>,
-    {
-        self.zap_receipt(bolt11, preimage, zap_request)
-    }
-
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
@@ -454,12 +413,6 @@ impl Client {
     /// Negentropy reconciliation
     pub fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
         RUNTIME.block_on(async move { self.client.reconcile(filter, opts).await })
-    }
-
-    #[deprecated(since = "0.27.0")]
-    pub fn get_channels(&self, timeout: Option<Duration>) -> Result<Vec<Event>, Error> {
-        #[allow(deprecated)]
-        RUNTIME.block_on(async { self.client.get_channels(timeout).await })
     }
 
     pub fn handle_notifications<F>(&self, func: F) -> Result<(), Error>

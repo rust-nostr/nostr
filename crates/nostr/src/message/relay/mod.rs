@@ -172,12 +172,6 @@ impl RelayMessage {
         }
     }
 
-    /// Create new `EVENT` message
-    #[deprecated(since = "0.27.0", note = "Use `event` instead")]
-    pub fn new_event(subscription_id: SubscriptionId, event: Event) -> Self {
-        Self::event(subscription_id, event)
-    }
-
     /// Create `NOTICE` message
     pub fn notice<S>(message: S) -> Self
     where
@@ -186,15 +180,6 @@ impl RelayMessage {
         Self::Notice {
             message: message.into(),
         }
-    }
-
-    /// Create new `NOTICE` message
-    #[deprecated(since = "0.27.0", note = "Use `notice` instead")]
-    pub fn new_notice<S>(message: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::notice(message)
     }
 
     /// Create `CLOSED` message
@@ -208,24 +193,9 @@ impl RelayMessage {
         }
     }
 
-    /// Create new `CLOSED` message
-    #[deprecated(since = "0.27.0", note = "Use `closed` instead")]
-    pub fn new_closed<S>(subscription_id: SubscriptionId, message: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::closed(subscription_id, message)
-    }
-
     /// Create `EOSE` message
     pub fn eose(subscription_id: SubscriptionId) -> Self {
         Self::EndOfStoredEvents(subscription_id)
-    }
-
-    /// Create new `EOSE` message
-    #[deprecated(since = "0.27.0", note = "Use `eose` instead")]
-    pub fn new_eose(subscription_id: SubscriptionId) -> Self {
-        Self::eose(subscription_id)
     }
 
     /// Create `OK` message
@@ -240,15 +210,6 @@ impl RelayMessage {
         }
     }
 
-    /// Create new `OK` message
-    #[deprecated(since = "0.27.0", note = "Use `ok` instead")]
-    pub fn new_ok<S>(event_id: EventId, status: bool, message: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::ok(event_id, status, message)
-    }
-
     /// Create `AUTH` message
     pub fn auth<S>(challenge: S) -> Self
     where
@@ -259,27 +220,12 @@ impl RelayMessage {
         }
     }
 
-    /// Create new `AUTH` message
-    #[deprecated(since = "0.27.0", note = "Use `auth` instead")]
-    pub fn new_auth<S>(challenge: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::auth(challenge)
-    }
-
     /// Create  `EVENT` message
     pub fn count(subscription_id: SubscriptionId, count: usize) -> Self {
         Self::Count {
             subscription_id,
             count,
         }
-    }
-
-    /// Create new `EVENT` message
-    #[deprecated(since = "0.27.0", note = "Use `count` instead")]
-    pub fn new_count(subscription_id: SubscriptionId, count: usize) -> Self {
-        Self::count(subscription_id, count)
     }
 
     fn as_value(&self) -> Value {

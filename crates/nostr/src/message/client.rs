@@ -92,24 +92,12 @@ impl ClientMessage {
         Self::Event(Box::new(event))
     }
 
-    /// Create new `EVENT` message
-    #[deprecated(since = "0.27.0", note = "Use `event` instead")]
-    pub fn new_event(event: Event) -> Self {
-        Self::event(event)
-    }
-
     /// Create `REQ` message
     pub fn req(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
         Self::Req {
             subscription_id,
             filters,
         }
-    }
-
-    /// Create new `REQ` message
-    #[deprecated(since = "0.27.0", note = "Use `req` instead")]
-    pub fn new_req(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
-        Self::req(subscription_id, filters)
     }
 
     /// Create `COUNT` message
@@ -120,12 +108,6 @@ impl ClientMessage {
         }
     }
 
-    /// Create new `COUNT` message
-    #[deprecated(since = "0.27.0", note = "Use `count` instead")]
-    pub fn new_count(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
-        Self::count(subscription_id, filters)
-    }
-
     /// Create new `CLOSE` message
     pub fn close(subscription_id: SubscriptionId) -> Self {
         Self::Close(subscription_id)
@@ -134,12 +116,6 @@ impl ClientMessage {
     /// Create `AUTH` message
     pub fn auth(event: Event) -> Self {
         Self::Auth(Box::new(event))
-    }
-
-    /// Create new `AUTH` message
-    #[deprecated(since = "0.27.0", note = "Use `auth` instead")]
-    pub fn new_auth(event: Event) -> Self {
-        Self::auth(event)
     }
 
     /// Create new `NEG-OPEN` message

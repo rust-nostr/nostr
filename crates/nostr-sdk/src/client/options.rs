@@ -87,12 +87,6 @@ impl Options {
         Self::default()
     }
 
-    /// If set to `true`, `Client` wait that `Relay` try at least one time to enstablish a connection before continue.
-    #[deprecated(since = "0.27.0", note = "Use `connection_timeout` instead")]
-    pub fn wait_for_connection(self, _wait: bool) -> Self {
-        self
-    }
-
     /// If set to `true`, `Client` wait that a message is sent before continue.
     pub fn wait_for_send(self, wait: bool) -> Self {
         Self {
