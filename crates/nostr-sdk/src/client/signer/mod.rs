@@ -58,6 +58,13 @@ pub enum ClientSigner {
 }
 
 impl ClientSigner {
+    /// Create a new [NIP07] instance and compose [ClientSigner]
+    #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
+    pub fn nip07() -> Result<Self, Error> {
+        let instance = Nip07Signer::new()?;
+        Ok(Self::NIP07(instance))
+    }
+
     /// Get Client Signer Type
     pub fn r#type(&self) -> ClientSignerType {
         match self {
