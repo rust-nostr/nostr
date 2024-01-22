@@ -19,7 +19,7 @@ npm i @rust-nostr/nostr-sdk
 ```
     
 ```javascript
-const { Client, ClientSigner, Keys, Nip07Signer, Metadata, loadWasmAsync } = require("@rust-nostr/nostr-sdk");
+const { Client, ClientBuilder, ClientSigner, Keys, Nip07Signer, Metadata, ZapDetails, ZapEntity, ZapType, PublicKey, loadWasmAsync } = require("@rust-nostr/nostr-sdk");
 
 async function main() {
     // Load WASM 
@@ -31,21 +31,19 @@ async function main() {
     let signer = ClientSigner.keys(keys);
     let client = new Client(signer);
 
-    // Compose client with NIP07 signer
+    // Compose client with NIP07 signer and WebLN zapper
     let nip07_signer = new Nip07Signer();
     let signer = ClientSigner.nip07(nip07_signer);
-    let client = new Client(signer);
+    let zapper = ClientZapper.webln(); // To use NWC: ClientZapper.nwc(uri); 
+    let client = new ClientBuilder().signer(signer).zapper(zapper).build();
 
     // Add relays
     await client.addRelay("wss://relay.damus.io");
-    await client.addRelay("wss://nostr.oxtr.dev");
-    await client.addRelay("wss://nostr.bitcoiner.social");
-    await client.addRelay("wss://nostr.openchain.fr");
 
     // Add multiple relays at once
     await client.addRelays([
-        "wss://relay.damus.io",
         "wss://nostr.oxtr.dev",
+        "wss://relay.nostr.band",
     ]);
 
     await client.connect();
@@ -67,6 +65,16 @@ async function main() {
     // Compose and publish custom event (automatically signed with `ClientSigner`)
     let builder = new EventBuilder(1111, "My custom event signer with the ClientSigner", []);
     await client.sendEventBuilder(builder);
+
+    // Send a Zap non-zap (no zap recepit created)
+    let publicKey = PublicKey.fromBech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet");
+    let entity = ZapEntity.publicKey(publicKey);
+    await client.zap(entity, 1000);
+
+    // Send public zap
+    let entity = ZapEntity.publicKey(publicKey);
+    let details = new ZapDetails(ZapType.Public).message("Zap for Rust Nostr!");
+    await this.state.client.zap(entity, 1000, details);
 }
 
 main();
