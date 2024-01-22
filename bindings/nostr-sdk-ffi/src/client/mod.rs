@@ -14,7 +14,7 @@ use nostr_ffi::{
 };
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
-use nostr_sdk::{NegentropyOptions, Options as OptionsSdk};
+use nostr_sdk::NegentropyOptions;
 use uniffi::Object;
 
 mod builder;
@@ -47,14 +47,17 @@ impl Client {
 
     #[uniffi::constructor]
     pub fn with_opts(signer: Option<Arc<ClientSigner>>, opts: Arc<Options>) -> Self {
-        let opts: OptionsSdk = opts.as_ref().deref().clone().shutdown_on_drop(true);
-        let mut builder = nostr_sdk::ClientBuilder::new().opts(opts);
-        if let Some(signer) = signer {
-            let signer: nostr_sdk::ClientSigner = signer.as_ref().deref().clone();
-            builder = builder.signer(signer);
-        }
         Self {
-            inner: builder.build().into(),
+            inner: match signer {
+                Some(signer) => ClientSdk::with_opts(
+                    signer.as_ref().deref().clone(),
+                    opts.as_ref().deref().clone(),
+                ),
+                None => nostr_sdk::ClientBuilder::new()
+                    .opts(opts.as_ref().deref().clone())
+                    .build()
+                    .into(),
+            },
         }
     }
 

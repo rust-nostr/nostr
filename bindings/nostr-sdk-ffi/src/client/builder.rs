@@ -50,14 +50,14 @@ impl ClientBuilder {
     /// Set opts
     pub fn opts(self: Arc<Self>, opts: Arc<Options>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder
-            .inner
-            .opts(opts.as_ref().deref().clone().shutdown_on_drop(true));
+        builder.inner = builder.inner.opts(opts.as_ref().deref().clone());
         builder
     }
 
     /// Build [`Client`]
     pub fn build(&self) -> Arc<Client> {
-        Arc::new(ClientSdk::from_builder(self.inner.clone()).into())
+        let mut inner = self.inner.clone();
+        inner.opts = inner.opts.shutdown_on_drop(true);
+        Arc::new(ClientSdk::from_builder(inner).into())
     }
 }
