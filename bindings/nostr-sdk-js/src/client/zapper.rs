@@ -4,13 +4,13 @@
 
 use core::ops::Deref;
 
+use nostr_js::error::{into_err, Result};
 use nostr_js::event::JsEventId;
 use nostr_js::key::JsPublicKey;
 use nostr_js::nips::nip47::JsNostrWalletConnectURI;
 use nostr_js::nips::nip57::JsZapType;
 use nostr_sdk::client::{ClientZapper, ZapDetails, ZapEntity};
 use wasm_bindgen::prelude::*;
-use webln_js::JsWebLN;
 
 /// Zap entity
 #[wasm_bindgen(js_name = ZapEntity)]
@@ -58,10 +58,11 @@ impl Deref for JsClientZapper {
 
 #[wasm_bindgen(js_class = ClientZapper)]
 impl JsClientZapper {
-    pub fn webln(instance: &JsWebLN) -> Self {
-        Self {
-            inner: ClientZapper::WebLN(instance.deref().clone()),
-        }
+    /// Create new `WebLN` instance and compose `ClientZapper`
+    pub fn webln() -> Result<JsClientZapper> {
+        Ok(Self {
+            inner: ClientZapper::webln().map_err(into_err)?,
+        })
     }
 
     pub fn nwc(uri: &JsNostrWalletConnectURI) -> Self {

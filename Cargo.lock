@@ -1484,7 +1484,6 @@ dependencies = [
  "tracing-subscriber",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "webln-js",
 ]
 
 [[package]]
@@ -2812,18 +2811,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
-]
-
-[[package]]
-name = "webln-js"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd0017c99ae6460e29dd6a55166a3fa024340235c27c66743d7707934f0c5217"
-dependencies = [
- "js-sys",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "webln",
 ]
 
 [[package]]
