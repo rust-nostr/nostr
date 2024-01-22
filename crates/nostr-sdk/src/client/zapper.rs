@@ -203,17 +203,24 @@ impl Client {
             Some(percentage) => {
                 let rust_nostr_msats = (satoshi as f64 * percentage * 1000.0) as u64;
                 let rust_nostr_lud = LightningAddress::parse(SUPPORT_RUST_NOSTR_LUD16)?;
-                match lnurl_pay::api::get_invoice(rust_nostr_lud, rust_nostr_msats, None, None)
-                    .await
-                {
-                    Ok(invoice) => {
-                        _invoices.push(invoice);
-                        satoshi * 1000 - rust_nostr_msats
+                let rust_nostr_lud = Lud06OrLud16::Lud16(rust_nostr_lud);
+
+                // Check if LUD is equal to Rust Nostr LUD
+                if rust_nostr_lud != lud {
+                    match lnurl_pay::api::get_invoice(rust_nostr_lud, rust_nostr_msats, None, None)
+                        .await
+                    {
+                        Ok(invoice) => {
+                            _invoices.push(invoice);
+                            satoshi * 1000 - rust_nostr_msats
+                        }
+                        Err(e) => {
+                            tracing::error!("Impossible to get invoice: {e}");
+                            satoshi * 1000
+                        }
                     }
-                    Err(e) => {
-                        tracing::error!("Impossible to get invoice: {e}");
-                        satoshi * 1000
-                    }
+                } else {
+                    satoshi * 1000
                 }
             }
             None => satoshi * 1000,

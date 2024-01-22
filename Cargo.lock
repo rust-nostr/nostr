@@ -1160,9 +1160,9 @@ checksum = "c4cd1a83af159aa67994778be9070f0ae1bd732942279cabb14f86f986a21456"
 
 [[package]]
 name = "lnurl-pay"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93e9935b3a9f0da5f652ee07fa74df726455d7bd78e7e1ff1d859965c64d38ba"
+checksum = "c431656cb68529cf82635b4ac142014c1942f75ac476499cb44bd3962271a4da"
 dependencies = [
  "bech32",
  "reqwest",
