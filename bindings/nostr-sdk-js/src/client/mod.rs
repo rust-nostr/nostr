@@ -42,12 +42,7 @@ impl From<Client> for JsClient {
 impl JsClient {
     #[wasm_bindgen(constructor)]
     pub fn new(signer: Option<JsClientSigner>) -> Self {
-        Self {
-            inner: match signer {
-                Some(signer) => Client::new(signer.deref().clone()),
-                None => ClientBuilder::new().build(),
-            },
-        }
+        Self::with_opts(signer, &JsOptions::new())
     }
 
     /// Create a new Client with Options

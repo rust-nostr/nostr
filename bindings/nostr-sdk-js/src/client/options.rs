@@ -33,7 +33,7 @@ impl JsOptions {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
-            inner: Options::new(),
+            inner: Options::new().shutdown_on_drop(true),
         }
     }
 
