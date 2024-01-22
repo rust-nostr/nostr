@@ -52,8 +52,11 @@ impl JsClientBuilder {
         self.inner.opts(opts.deref().clone()).into()
     }
 
-    /// Build [`Client`]
-    pub fn build(&self) -> JsClient {
-        Client::from_builder(self.inner.clone()).into()
+    /// Build `Client`
+    ///
+    /// This method **consume** the `ClientBuilder`!
+    pub fn build(mut self) -> JsClient {
+        self.inner.opts = self.inner.opts.shutdown_on_drop(true);
+        Client::from_builder(self.inner).into()
     }
 }
