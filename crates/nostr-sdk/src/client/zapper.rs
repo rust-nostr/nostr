@@ -77,6 +77,15 @@ pub enum ClientZapper {
     NWC(NostrWalletConnectURI),
 }
 
+impl ClientZapper {
+    /// Create a new [WebLN] instance and compose [ClientZapper]
+    #[cfg(all(feature = "webln", target_arch = "wasm32"))]
+    pub fn webln() -> Result<Self, Error> {
+        let instance = WebLN::new()?;
+        Ok(Self::WebLN(instance))
+    }
+}
+
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 impl From<WebLN> for ClientZapper {
     fn from(value: WebLN) -> Self {
