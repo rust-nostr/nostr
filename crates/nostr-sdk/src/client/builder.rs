@@ -17,11 +17,15 @@ use crate::{Client, Options};
 /// Client builder
 #[derive(Debug, Clone)]
 pub struct ClientBuilder {
-    pub(super) signer: Option<ClientSigner>,
+    /// Client Signer
+    pub signer: Option<ClientSigner>,
+    /// Client Zapper
     #[cfg(feature = "nip57")]
-    pub(super) zapper: Option<ClientZapper>,
-    pub(super) database: Arc<DynNostrDatabase>,
-    pub(super) opts: Options,
+    pub zapper: Option<ClientZapper>,
+    /// Database
+    pub database: Arc<DynNostrDatabase>,
+    /// Client options
+    pub opts: Options,
 }
 
 impl Default for ClientBuilder {
