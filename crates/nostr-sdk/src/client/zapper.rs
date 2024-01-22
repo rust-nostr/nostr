@@ -30,6 +30,8 @@ use super::options::SUPPORT_RUST_NOSTR_LUD16;
 use super::{Client, Error};
 use crate::FilterOptions;
 
+const SUPPORT_RUST_NOSTR_MSG: &str = "Zap split to support Rust Nostr development!";
+
 /// Zap entity
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ZapEntity {
@@ -177,60 +179,10 @@ impl Client {
             return Err(Error::ImpossibleToZap(String::from("LUD06/LUD16 not set")));
         };
 
-        // Compose zap request
-        let zap_request: Option<String> = match details {
-            Some(details) => {
-                let mut data = ZapRequestData::new(
-                    public_key,
-                    [UncheckedUrl::from("wss://nostr.mutinywallet.com")],
-                )
-                .amount(satoshi * 1000)
-                .message(details.message);
-                data.event_id = to.event_id();
-                match details.r#type {
-                    ZapType::Public => {
-                        let builder = EventBuilder::public_zap_request(data);
-                        Some(self.internal_sign_event_builder(builder).await?.as_json())
-                    }
-                    ZapType::Private => None,
-                    ZapType::Anonymous => Some(nip57::anonymous_zap_request(data)?.as_json()),
-                }
-            }
-            None => None,
-        };
-
-        let mut _invoices: Vec<String> = Vec::with_capacity(2);
-
-        let msats: u64 = match self.opts.get_support_rust_nostr_percentage() {
-            Some(percentage) => {
-                let rust_nostr_msats = (satoshi as f64 * percentage * 1000.0) as u64;
-                let rust_nostr_lud = LightningAddress::parse(SUPPORT_RUST_NOSTR_LUD16)?;
-                let rust_nostr_lud = Lud06OrLud16::Lud16(rust_nostr_lud);
-
-                // Check if LUD is equal to Rust Nostr LUD
-                if rust_nostr_lud != lud {
-                    match lnurl_pay::api::get_invoice(rust_nostr_lud, rust_nostr_msats, None, None)
-                        .await
-                    {
-                        Ok(invoice) => {
-                            _invoices.push(invoice);
-                            satoshi * 1000 - rust_nostr_msats
-                        }
-                        Err(e) => {
-                            tracing::error!("Impossible to get invoice: {e}");
-                            satoshi * 1000
-                        }
-                    }
-                } else {
-                    satoshi * 1000
-                }
-            }
-            None => satoshi * 1000,
-        };
-
-        // Get invoice
-        let invoice: String = lnurl_pay::api::get_invoice(lud, msats, zap_request, None).await?;
-        _invoices.push(invoice);
+        // Compose zap split and get invoices
+        let _invoices: Vec<String> = self
+            .zap_split(public_key, lud, satoshi, details, to.event_id())
+            .await?;
 
         match zapper {
             #[cfg(all(feature = "webln", target_arch = "wasm32"))]
@@ -309,5 +261,75 @@ impl Client {
                 Ok(())
             }
         }
+    }
+
+    /// Split zap to support Rust Nostr development
+    async fn zap_split(
+        &self,
+        public_key: XOnlyPublicKey,
+        lud: Lud06OrLud16,
+        satoshi: u64,
+        details: Option<ZapDetails>,
+        event_id: Option<EventId>,
+    ) -> Result<Vec<String>, Error> {
+        let mut invoices: Vec<String> = Vec::with_capacity(2);
+        let mut msats: u64 = satoshi * 1000;
+
+        // Check if is set a percentage
+        if let Some(percentage) = self.opts.get_support_rust_nostr_percentage() {
+            let rust_nostr_msats = (satoshi as f64 * percentage * 1000.0) as u64;
+            let rust_nostr_lud = LightningAddress::parse(SUPPORT_RUST_NOSTR_LUD16)?;
+            let rust_nostr_lud = Lud06OrLud16::Lud16(rust_nostr_lud);
+
+            // Check if LUD is equal to Rust Nostr LUD
+            if rust_nostr_lud != lud {
+                match lnurl_pay::api::get_invoice(
+                    rust_nostr_lud,
+                    rust_nostr_msats,
+                    Some(SUPPORT_RUST_NOSTR_MSG.to_string()),
+                    None,
+                    None,
+                )
+                .await
+                {
+                    Ok(invoice) => {
+                        invoices.push(invoice);
+                        msats = satoshi * 1000 - rust_nostr_msats;
+                    }
+                    Err(e) => {
+                        tracing::error!("Impossible to get invoice for Rust Nostr: {e}");
+                    }
+                }
+            }
+        };
+
+        // Compose zap request
+        let zap_request: Option<String> = match details {
+            Some(details) => {
+                let mut data = ZapRequestData::new(
+                    public_key,
+                    [UncheckedUrl::from("wss://nostr.mutinywallet.com")],
+                )
+                .amount(msats)
+                .message(details.message);
+                data.event_id = event_id;
+                match details.r#type {
+                    ZapType::Public => {
+                        let builder = EventBuilder::public_zap_request(data);
+                        Some(self.internal_sign_event_builder(builder).await?.as_json())
+                    }
+                    ZapType::Private => None,
+                    ZapType::Anonymous => Some(nip57::anonymous_zap_request(data)?.as_json()),
+                }
+            }
+            None => None,
+        };
+
+        // Get invoice
+        let invoice: String =
+            lnurl_pay::api::get_invoice(lud, msats, None, zap_request, None).await?;
+        invoices.push(invoice);
+
+        Ok(invoices)
     }
 }
