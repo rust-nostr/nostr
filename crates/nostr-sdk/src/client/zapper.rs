@@ -206,10 +206,15 @@ impl Client {
                 match lnurl_pay::api::get_invoice(rust_nostr_lud, rust_nostr_msats, None, None)
                     .await
                 {
-                    Ok(invoice) => _invoices.push(invoice),
-                    Err(e) => tracing::error!("Impossible to get invoice: {e}"),
-                };
-                satoshi * 1000 - rust_nostr_msats
+                    Ok(invoice) => {
+                        _invoices.push(invoice);
+                        satoshi * 1000 - rust_nostr_msats
+                    }
+                    Err(e) => {
+                        tracing::error!("Impossible to get invoice: {e}");
+                        satoshi * 1000
+                    }
+                }
             }
             None => satoshi * 1000,
         };
