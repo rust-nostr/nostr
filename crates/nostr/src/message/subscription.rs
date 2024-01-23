@@ -9,7 +9,6 @@
 use alloc::collections::{BTreeMap as AllocMap, BTreeSet as AllocSet};
 use alloc::string::{String, ToString};
 use core::fmt;
-use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 
@@ -22,21 +21,22 @@ use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{EventId, JsonUtil, Kind, Timestamp};
 
+type GenericTags = AllocMap<SingleLetterTag, AllocSet<GenericTagValue>>;
+
 /// Alphabet Error
 #[derive(Debug)]
-pub enum AlphabetError {
+pub enum SingleLetterTagError {
     /// Invalid char
     InvalidChar,
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for AlphabetError {}
+impl std::error::Error for SingleLetterTagError {}
 
-impl fmt::Display for AlphabetError {
+impl fmt::Display for SingleLetterTagError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidChar => write!(f, "invalid alphabet char"),
@@ -76,135 +76,166 @@ pub enum Alphabet {
     Z,
 }
 
-impl Alphabet {
+/// Single-Letter Tag (a-zA-Z)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SingleLetterTag {
+    /// Single-letter char
+    pub character: Alphabet,
+    /// Is the `character` uppercase?
+    pub uppercase: bool,
+}
+
+impl SingleLetterTag {
+    /// Compose new `lowercase` single-letter tag
+    pub fn lowercase(character: Alphabet) -> Self {
+        Self {
+            character,
+            uppercase: false,
+        }
+    }
+
+    /// Compose new `uppercase` single-letter tag
+    pub fn uppercase(character: Alphabet) -> Self {
+        Self {
+            character,
+            uppercase: true,
+        }
+    }
+
+    /// Parse single-letter tag from [char]
+    pub fn from_char(c: char) -> Result<Self, SingleLetterTagError> {
+        let character = match c {
+            'a' | 'A' => Alphabet::A,
+            'b' | 'B' => Alphabet::B,
+            'c' | 'C' => Alphabet::C,
+            'd' | 'D' => Alphabet::D,
+            'e' | 'E' => Alphabet::E,
+            'f' | 'F' => Alphabet::F,
+            'g' | 'G' => Alphabet::G,
+            'h' | 'H' => Alphabet::H,
+            'i' | 'I' => Alphabet::I,
+            'j' | 'J' => Alphabet::J,
+            'k' | 'K' => Alphabet::K,
+            'l' | 'L' => Alphabet::L,
+            'm' | 'M' => Alphabet::M,
+            'n' | 'N' => Alphabet::N,
+            'o' | 'O' => Alphabet::O,
+            'p' | 'P' => Alphabet::P,
+            'q' | 'Q' => Alphabet::Q,
+            'r' | 'R' => Alphabet::R,
+            's' | 'S' => Alphabet::S,
+            't' | 'T' => Alphabet::T,
+            'u' | 'U' => Alphabet::U,
+            'v' | 'V' => Alphabet::V,
+            'w' | 'W' => Alphabet::W,
+            'x' | 'X' => Alphabet::X,
+            'y' | 'Y' => Alphabet::Y,
+            'z' | 'Z' => Alphabet::Z,
+            _ => return Err(SingleLetterTagError::InvalidChar),
+        };
+
+        Ok(Self {
+            character,
+            uppercase: c.is_uppercase(),
+        })
+    }
+
     /// Get as char
     pub fn as_char(&self) -> char {
-        match self {
-            Self::A => 'a',
-            Self::B => 'b',
-            Self::C => 'c',
-            Self::D => 'd',
-            Self::E => 'e',
-            Self::F => 'f',
-            Self::G => 'g',
-            Self::H => 'h',
-            Self::I => 'i',
-            Self::J => 'j',
-            Self::K => 'k',
-            Self::L => 'l',
-            Self::M => 'm',
-            Self::N => 'n',
-            Self::O => 'o',
-            Self::P => 'p',
-            Self::Q => 'q',
-            Self::R => 'r',
-            Self::S => 's',
-            Self::T => 't',
-            Self::U => 'u',
-            Self::V => 'v',
-            Self::W => 'w',
-            Self::X => 'x',
-            Self::Y => 'y',
-            Self::Z => 'z',
+        if self.uppercase {
+            match self.character {
+                Alphabet::A => 'A',
+                Alphabet::B => 'B',
+                Alphabet::C => 'C',
+                Alphabet::D => 'D',
+                Alphabet::E => 'E',
+                Alphabet::F => 'F',
+                Alphabet::G => 'G',
+                Alphabet::H => 'H',
+                Alphabet::I => 'I',
+                Alphabet::J => 'J',
+                Alphabet::K => 'K',
+                Alphabet::L => 'L',
+                Alphabet::M => 'M',
+                Alphabet::N => 'N',
+                Alphabet::O => 'O',
+                Alphabet::P => 'P',
+                Alphabet::Q => 'Q',
+                Alphabet::R => 'R',
+                Alphabet::S => 'S',
+                Alphabet::T => 'T',
+                Alphabet::U => 'U',
+                Alphabet::V => 'V',
+                Alphabet::W => 'W',
+                Alphabet::X => 'X',
+                Alphabet::Y => 'Y',
+                Alphabet::Z => 'Z',
+            }
+        } else {
+            match self.character {
+                Alphabet::A => 'a',
+                Alphabet::B => 'b',
+                Alphabet::C => 'c',
+                Alphabet::D => 'd',
+                Alphabet::E => 'e',
+                Alphabet::F => 'f',
+                Alphabet::G => 'g',
+                Alphabet::H => 'h',
+                Alphabet::I => 'i',
+                Alphabet::J => 'j',
+                Alphabet::K => 'k',
+                Alphabet::L => 'l',
+                Alphabet::M => 'm',
+                Alphabet::N => 'n',
+                Alphabet::O => 'o',
+                Alphabet::P => 'p',
+                Alphabet::Q => 'q',
+                Alphabet::R => 'r',
+                Alphabet::S => 's',
+                Alphabet::T => 't',
+                Alphabet::U => 'u',
+                Alphabet::V => 'v',
+                Alphabet::W => 'w',
+                Alphabet::X => 'x',
+                Alphabet::Y => 'y',
+                Alphabet::Z => 'z',
+            }
         }
+    }
+
+    /// Check if single-letter tag is `lowercase`
+    pub fn is_lowercase(&self) -> bool {
+        !self.uppercase
+    }
+
+    /// Check if single-letter tag is `uppercase`
+    pub fn is_uppercase(&self) -> bool {
+        self.uppercase
     }
 }
 
-impl fmt::Display for Alphabet {
+impl fmt::Display for SingleLetterTag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::A => write!(f, "a"),
-            Self::B => write!(f, "b"),
-            Self::C => write!(f, "c"),
-            Self::D => write!(f, "d"),
-            Self::E => write!(f, "e"),
-            Self::F => write!(f, "f"),
-            Self::G => write!(f, "g"),
-            Self::H => write!(f, "h"),
-            Self::I => write!(f, "i"),
-            Self::J => write!(f, "j"),
-            Self::K => write!(f, "k"),
-            Self::L => write!(f, "l"),
-            Self::M => write!(f, "m"),
-            Self::N => write!(f, "n"),
-            Self::O => write!(f, "o"),
-            Self::P => write!(f, "p"),
-            Self::Q => write!(f, "q"),
-            Self::R => write!(f, "r"),
-            Self::S => write!(f, "s"),
-            Self::T => write!(f, "t"),
-            Self::U => write!(f, "u"),
-            Self::V => write!(f, "v"),
-            Self::W => write!(f, "w"),
-            Self::X => write!(f, "x"),
-            Self::Y => write!(f, "y"),
-            Self::Z => write!(f, "z"),
-        }
+        write!(f, "#{}", self.as_char())
     }
 }
 
-impl TryFrom<char> for Alphabet {
-    type Error = AlphabetError;
-
-    fn try_from(c: char) -> Result<Self, Self::Error> {
-        match c {
-            'a' => Ok(Self::A),
-            'b' => Ok(Self::B),
-            'c' => Ok(Self::C),
-            'd' => Ok(Self::D),
-            'e' => Ok(Self::E),
-            'f' => Ok(Self::F),
-            'g' => Ok(Self::G),
-            'h' => Ok(Self::H),
-            'i' => Ok(Self::I),
-            'j' => Ok(Self::J),
-            'k' => Ok(Self::K),
-            'l' => Ok(Self::L),
-            'm' => Ok(Self::M),
-            'n' => Ok(Self::N),
-            'o' => Ok(Self::O),
-            'p' => Ok(Self::P),
-            'q' => Ok(Self::Q),
-            'r' => Ok(Self::R),
-            's' => Ok(Self::S),
-            't' => Ok(Self::T),
-            'u' => Ok(Self::U),
-            'v' => Ok(Self::V),
-            'w' => Ok(Self::W),
-            'x' => Ok(Self::X),
-            'y' => Ok(Self::Y),
-            'z' => Ok(Self::Z),
-            _ => Err(AlphabetError::InvalidChar),
-        }
-    }
-}
-
-impl FromStr for Alphabet {
-    type Err = AlphabetError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let c: char = s.chars().next().ok_or(AlphabetError::InvalidChar)?;
-        Self::try_from(c)
-    }
-}
-
-impl Serialize for Alphabet {
+impl Serialize for SingleLetterTag {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.to_string())
+        serializer.serialize_char(self.as_char())
     }
 }
 
-impl<'de> Deserialize<'de> for Alphabet {
+impl<'de> Deserialize<'de> for SingleLetterTag {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let value = Value::deserialize(deserializer)?;
-        let alphaber: String = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
-        Self::from_str(&alphaber).map_err(serde::de::Error::custom)
+        let character: char = char::deserialize(deserializer)?;
+        Self::from_char(character).map_err(serde::de::Error::custom)
     }
 }
 
@@ -260,8 +291,7 @@ impl<'de> Deserialize<'de> for SubscriptionId {
     where
         D: Deserializer<'de>,
     {
-        let value = Value::deserialize(deserializer)?;
-        let id: String = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        let id: String = String::deserialize(deserializer)?;
         Ok(Self::new(id))
     }
 }
@@ -357,7 +387,7 @@ pub struct Filter {
         deserialize_with = "deserialize_generic_tags"
     )]
     #[serde(default)]
-    pub generic_tags: AllocMap<Alphabet, AllocSet<GenericTagValue>>,
+    pub generic_tags: GenericTags,
 }
 
 impl Filter {
@@ -386,7 +416,7 @@ impl Filter {
     where
         I: IntoIterator<Item = EventId>,
     {
-        for id in ids {
+        for id in ids.into_iter() {
             self.ids.remove(&id);
         }
         self
@@ -412,7 +442,7 @@ impl Filter {
     where
         I: IntoIterator<Item = XOnlyPublicKey>,
     {
-        for author in authors {
+        for author in authors.into_iter() {
             self.authors.remove(&author);
         }
         self
@@ -438,7 +468,7 @@ impl Filter {
     where
         I: IntoIterator<Item = Kind>,
     {
-        for kind in kinds {
+        for kind in kinds.into_iter() {
             self.kinds.remove(&kind);
         }
         self
@@ -446,7 +476,7 @@ impl Filter {
 
     /// Add event
     pub fn event(self, id: EventId) -> Self {
-        self.custom_tag(Alphabet::E, vec![id])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::E), [id])
     }
 
     /// Add events
@@ -454,7 +484,7 @@ impl Filter {
     where
         I: IntoIterator<Item = EventId>,
     {
-        self.custom_tag(Alphabet::E, events)
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::E), events)
     }
 
     /// Remove events
@@ -462,12 +492,12 @@ impl Filter {
     where
         I: IntoIterator<Item = EventId>,
     {
-        self.remove_custom_tag(Alphabet::E, events)
+        self.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::E), events)
     }
 
     /// Add pubkey
     pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
-        self.custom_tag(Alphabet::P, vec![pubkey])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), [pubkey])
     }
 
     /// Add pubkeys
@@ -475,7 +505,7 @@ impl Filter {
     where
         I: IntoIterator<Item = XOnlyPublicKey>,
     {
-        self.custom_tag(Alphabet::P, pubkeys)
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
     }
 
     /// Remove pubkeys
@@ -483,7 +513,7 @@ impl Filter {
     where
         I: IntoIterator<Item = XOnlyPublicKey>,
     {
-        self.remove_custom_tag(Alphabet::P, pubkeys)
+        self.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
     }
 
     /// Add hashtag
@@ -493,7 +523,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::T, vec![hashtag.into()])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::T), [hashtag.into()])
     }
 
     /// Add hashtags
@@ -504,7 +534,10 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::T, hashtags.into_iter().map(|s| s.into()))
+        self.custom_tag(
+            SingleLetterTag::lowercase(Alphabet::T),
+            hashtags.into_iter().map(|s| s.into()),
+        )
     }
 
     /// Remove hashtags
@@ -513,7 +546,10 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.remove_custom_tag(Alphabet::T, hashtags.into_iter().map(|s| s.into()))
+        self.remove_custom_tag(
+            SingleLetterTag::lowercase(Alphabet::T),
+            hashtags.into_iter().map(|s| s.into()),
+        )
     }
 
     /// Add reference
@@ -523,7 +559,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::R, vec![reference.into()])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::R), [reference.into()])
     }
 
     /// Add references
@@ -534,7 +570,10 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::R, references.into_iter().map(|s| s.into()))
+        self.custom_tag(
+            SingleLetterTag::lowercase(Alphabet::R),
+            references.into_iter().map(|s| s.into()),
+        )
     }
 
     /// Remove references
@@ -543,7 +582,10 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.remove_custom_tag(Alphabet::R, references.into_iter().map(|s| s.into()))
+        self.remove_custom_tag(
+            SingleLetterTag::lowercase(Alphabet::R),
+            references.into_iter().map(|s| s.into()),
+        )
     }
 
     /// Add identifier
@@ -553,7 +595,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::D, vec![identifier.into()])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::D), [identifier.into()])
     }
 
     /// Add identifiers
@@ -564,7 +606,10 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.custom_tag(Alphabet::D, identifiers.into_iter().map(|s| s.into()))
+        self.custom_tag(
+            SingleLetterTag::lowercase(Alphabet::D),
+            identifiers.into_iter().map(|s| s.into()),
+        )
     }
 
     /// Remove identifiers
@@ -573,7 +618,10 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.remove_custom_tag(Alphabet::D, identifiers.into_iter().map(|s| s.into()))
+        self.remove_custom_tag(
+            SingleLetterTag::lowercase(Alphabet::D),
+            identifiers.into_iter().map(|s| s.into()),
+        )
     }
 
     /// Add search field
@@ -644,7 +692,7 @@ impl Filter {
     }
 
     /// Add custom tag
-    pub fn custom_tag<I, T>(mut self, tag: Alphabet, values: I) -> Self
+    pub fn custom_tag<I, T>(mut self, tag: SingleLetterTag, values: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: IntoGenericTagValue,
@@ -663,7 +711,7 @@ impl Filter {
     }
 
     /// Remove custom tag
-    pub fn remove_custom_tag<I, T>(mut self, tag: Alphabet, values: I) -> Self
+    pub fn remove_custom_tag<I, T>(mut self, tag: SingleLetterTag, values: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: IntoGenericTagValue,
@@ -688,30 +736,25 @@ impl JsonUtil for Filter {
     type Err = serde_json::Error;
 }
 
-fn serialize_generic_tags<S>(
-    generic_tags: &AllocMap<Alphabet, AllocSet<GenericTagValue>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
+fn serialize_generic_tags<S>(generic_tags: &GenericTags, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let mut map = serializer.serialize_map(Some(generic_tags.len()))?;
     for (tag, values) in generic_tags.iter() {
-        map.serialize_entry(&format!("#{tag}"), values)?;
+        map.serialize_entry(&tag.to_string(), values)?;
     }
     map.end()
 }
 
-fn deserialize_generic_tags<'de, D>(
-    deserializer: D,
-) -> Result<AllocMap<Alphabet, AllocSet<GenericTagValue>>, D::Error>
+fn deserialize_generic_tags<'de, D>(deserializer: D) -> Result<GenericTags, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = AllocMap<Alphabet, AllocSet<GenericTagValue>>;
+        type Value = GenericTags;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("map in which the keys are \"#X\" for some character X")
@@ -725,14 +768,23 @@ where
             while let Some(key) = map.next_key::<String>()? {
                 let mut chars = key.chars();
                 if let (Some('#'), Some(ch), None) = (chars.next(), chars.next(), chars.next()) {
-                    let tag: Alphabet = Alphabet::from_str(ch.to_string().as_str())
-                        .map_err(serde::de::Error::custom)?;
+                    let tag: SingleLetterTag =
+                        SingleLetterTag::from_char(ch).map_err(serde::de::Error::custom)?;
                     let mut values: AllocSet<GenericTagValue> = map.next_value()?;
 
-                    match tag {
-                        Alphabet::P => values.retain(|v| matches!(v, GenericTagValue::Pubkey(_))),
-                        Alphabet::E => values.retain(|v| matches!(v, GenericTagValue::EventId(_))),
-                        _ => {}
+                    // Check if char is lowercase
+                    if tag.is_lowercase() {
+                        match tag.character {
+                            Alphabet::P => {
+                                values.retain(|v| matches!(v, GenericTagValue::Pubkey(_)))
+                            }
+                            Alphabet::E => {
+                                values.retain(|v| matches!(v, GenericTagValue::EventId(_)))
+                            }
+                            _ => {}
+                        }
+                    } else if tag.character == Alphabet::P {
+                        values.retain(|v| matches!(v, GenericTagValue::Pubkey(_)))
                     }
 
                     generic_tags.insert(tag, values);
@@ -749,6 +801,8 @@ where
 
 #[cfg(test)]
 mod test {
+    use core::str::FromStr;
+
     use super::*;
 
     #[test]
@@ -757,14 +811,14 @@ mod test {
             .kind(Kind::Metadata)
             .kind(Kind::TextNote)
             .kind(Kind::ContactList)
-            .kinds(vec![
+            .kinds([
                 Kind::EncryptedDirectMessage,
                 Kind::Metadata,
                 Kind::LongFormTextNote,
             ]);
         assert_eq!(
             filter,
-            Filter::new().kinds(vec![
+            Filter::new().kinds([
                 Kind::Metadata,
                 Kind::TextNote,
                 Kind::ContactList,
@@ -780,28 +834,29 @@ mod test {
             EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
                 .unwrap();
         let filter = Filter::new().id(EventId::all_zeros()).id(event_id);
-        let filter = filter.remove_ids(vec![EventId::all_zeros()]);
+        let filter = filter.remove_ids([EventId::all_zeros()]);
         assert_eq!(filter, Filter::new().id(event_id));
     }
 
     #[test]
     fn test_remove_custom_tag() {
-        let filter = Filter::new().custom_tag(Alphabet::C, vec!["test", "test2"]);
-        let filter = filter.remove_custom_tag(Alphabet::C, vec!["test2"]);
-        assert_eq!(filter, Filter::new().custom_tag(Alphabet::C, vec!["test"]));
+        let filter =
+            Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::C), ["test", "test2"]);
+        let filter = filter.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::C), ["test2"]);
+        assert_eq!(
+            filter,
+            Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::C), ["test"])
+        );
     }
 
     #[test]
     fn test_add_remove_event_tag() {
         let mut filter = Filter::new().identifier("myidentifier");
-        filter = filter.custom_tag(Alphabet::D, vec!["mysecondid"]);
-        filter = filter.identifiers(vec!["test", "test2"]);
-        filter = filter.remove_custom_tag(Alphabet::D, vec!["test2"]);
-        filter = filter.remove_identifiers(vec!["mysecondid"]);
-        assert_eq!(
-            filter,
-            Filter::new().identifiers(vec!["myidentifier", "test"])
-        );
+        filter = filter.custom_tag(SingleLetterTag::lowercase(Alphabet::D), ["mysecondid"]);
+        filter = filter.identifiers(["test", "test2"]);
+        filter = filter.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::D), ["test2"]);
+        filter = filter.remove_identifiers(["mysecondid"]);
+        assert_eq!(filter, Filter::new().identifiers(["myidentifier", "test"]));
     }
 
     #[test]
@@ -810,13 +865,24 @@ mod test {
         let filter = Filter::new()
             .identifier("identifier")
             .search("test")
-            .custom_tag(Alphabet::J, vec!["test1"])
+            .custom_tag(SingleLetterTag::lowercase(Alphabet::J), ["test1"])
             .custom_tag(
-                Alphabet::P,
-                vec!["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],
+                SingleLetterTag::lowercase(Alphabet::P),
+                ["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],
             );
         let json = r##"{"search":"test","#d":["identifier"],"#j":["test1"],"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}"##;
         assert_eq!(filter.as_json(), json.to_string());
+    }
+
+    #[test]
+    fn test_filter_serialization_with_uppercase_tag() {
+        let filter = Filter::new().custom_tag(
+            SingleLetterTag::uppercase(Alphabet::P),
+            ["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],
+        );
+        let json =
+            r##"{"#P":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}"##;
+        assert_eq!(filter.as_json(), json);
     }
 
     #[test]
@@ -833,9 +899,12 @@ mod test {
         assert_eq!(
             filter,
             Filter::new()
-                .ids(vec![event_id])
+                .ids([event_id])
                 .search("test")
-                .custom_tag(Alphabet::A, vec!["...".to_string(), "test".to_string()])
+                .custom_tag(
+                    SingleLetterTag::lowercase(Alphabet::A),
+                    ["...".to_string(), "test".to_string()]
+                )
                 .pubkey(pubkey)
         );
 

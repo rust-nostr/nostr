@@ -76,6 +76,44 @@ impl From<Alphabet> for subscription::Alphabet {
     }
 }
 
+#[derive(Object)]
+pub struct SingleLetterTag {
+    inner: subscription::SingleLetterTag,
+}
+
+impl Deref for SingleLetterTag {
+    type Target = subscription::SingleLetterTag;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+#[uniffi::export]
+impl SingleLetterTag {
+    #[uniffi::constructor]
+    pub fn lowercase(character: Alphabet) -> Self {
+        Self {
+            inner: subscription::SingleLetterTag::lowercase(character.into()),
+        }
+    }
+
+    #[uniffi::constructor]
+    pub fn uppercase(character: Alphabet) -> Self {
+        Self {
+            inner: subscription::SingleLetterTag::uppercase(character.into()),
+        }
+    }
+
+    pub fn is_lowercase(&self) -> bool {
+        self.inner.is_lowercase()
+    }
+
+    pub fn is_uppercase(&self) -> bool {
+        self.inner.is_uppercase()
+    }
+}
+
 #[derive(Clone, Object)]
 pub struct Filter {
     inner: nostr::Filter,
@@ -313,16 +351,20 @@ impl Filter {
         Arc::new(builder)
     }
 
-    pub fn custom_tag(self: Arc<Self>, tag: Alphabet, content: Vec<String>) -> Arc<Self> {
+    pub fn custom_tag(self: Arc<Self>, tag: Arc<SingleLetterTag>, content: Vec<String>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.custom_tag(tag.into(), content);
-        Arc::new(builder)
+        builder.inner = builder.inner.custom_tag(**tag, content);
+        builder
     }
 
-    pub fn remove_custom_tag(self: Arc<Self>, tag: Alphabet, content: Vec<String>) -> Arc<Self> {
+    pub fn remove_custom_tag(
+        self: Arc<Self>,
+        tag: Arc<SingleLetterTag>,
+        content: Vec<String>,
+    ) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.remove_custom_tag(tag.into(), content);
-        Arc::new(builder)
+        builder.inner = builder.inner.remove_custom_tag(**tag, content);
+        builder
     }
 
     pub fn is_empty(&self) -> bool {

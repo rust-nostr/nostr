@@ -75,6 +75,44 @@ impl From<JsAlphabet> for Alphabet {
     }
 }
 
+#[wasm_bindgen(js_name = SingleLetterTag)]
+pub struct JsSingleLetterTag {
+    inner: SingleLetterTag,
+}
+
+impl Deref for JsSingleLetterTag {
+    type Target = SingleLetterTag;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+#[wasm_bindgen(js_class = SingleLetterTag)]
+impl JsSingleLetterTag {
+    pub fn lowercase(character: JsAlphabet) -> Self {
+        Self {
+            inner: SingleLetterTag::lowercase(character.into()),
+        }
+    }
+
+    pub fn uppercase(character: JsAlphabet) -> Self {
+        Self {
+            inner: SingleLetterTag::uppercase(character.into()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = isLowercase)]
+    pub fn is_lowercase(&self) -> bool {
+        self.inner.is_lowercase()
+    }
+
+    #[wasm_bindgen(js_name = isUppercase)]
+    pub fn is_uppercase(&self) -> bool {
+        self.inner.is_uppercase()
+    }
+}
+
 #[wasm_bindgen(js_name = SubscriptionId)]
 pub struct JsSubscriptionId {
     inner: SubscriptionId,
@@ -253,12 +291,12 @@ impl JsFilter {
     }
 
     #[wasm_bindgen(js_name = customTag)]
-    pub fn custom_tag(self, tag: JsAlphabet, values: Vec<String>) -> Self {
-        self.inner.custom_tag(tag.into(), values).into()
+    pub fn custom_tag(self, tag: &JsSingleLetterTag, values: Vec<String>) -> Self {
+        self.inner.custom_tag(**tag, values).into()
     }
 
     #[wasm_bindgen(js_name = removeCustomTag)]
-    pub fn remove_custom_tag(self, tag: JsAlphabet, values: Vec<String>) -> Self {
-        self.inner.remove_custom_tag(tag.into(), values).into()
+    pub fn remove_custom_tag(self, tag: &JsSingleLetterTag, values: Vec<String>) -> Self {
+        self.inner.remove_custom_tag(**tag, values).into()
     }
 }

@@ -11,7 +11,7 @@ use std::sync::Arc;
 use nostr::event::id;
 use nostr::nips::nip01::Coordinate;
 use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{Alphabet, Event, EventId, Filter, GenericTagValue, Kind, Timestamp};
+use nostr::{Alphabet, Event, EventId, Filter, GenericTagValue, Kind, SingleLetterTag, Timestamp};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -123,7 +123,7 @@ struct FilterIndex {
     kinds: HashSet<Kind>,
     since: Option<Timestamp>,
     until: Option<Timestamp>,
-    generic_tags: HashMap<Alphabet, HashSet<GenericTagValue>>,
+    generic_tags: HashMap<SingleLetterTag, HashSet<GenericTagValue>>,
 }
 
 impl FilterIndex {
@@ -143,7 +143,7 @@ impl FilterIndex {
     {
         let identifier: GenericTagValue = GenericTagValue::String(identifier.into());
         self.generic_tags
-            .entry(Alphabet::D)
+            .entry(SingleLetterTag::lowercase(Alphabet::D))
             .and_modify(|list| {
                 list.insert(identifier.clone());
             })
@@ -656,7 +656,7 @@ impl DatabaseIndexes {
         let kind = kinds.iter().next()?;
         let author = authors.iter().next()?;
         let identifier = generic_tags
-            .get(&Alphabet::D)?
+            .get(&SingleLetterTag::lowercase(Alphabet::D))?
             .iter()
             .next()
             .map(|v| hash(v.to_string()))?;
