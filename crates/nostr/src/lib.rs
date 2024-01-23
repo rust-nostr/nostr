@@ -53,7 +53,8 @@ pub use self::event::{
 };
 pub use self::key::Keys;
 pub use self::message::{
-    Alphabet, ClientMessage, Filter, GenericTagValue, RawRelayMessage, RelayMessage, SubscriptionId,
+    Alphabet, ClientMessage, Filter, GenericTagValue, RawRelayMessage, RelayMessage,
+    SingleLetterTag, SubscriptionId,
 };
 pub use self::nips::nip19::{FromBech32, ToBech32};
 pub use self::types::{Contact, Metadata, Timestamp, UncheckedUrl, Url};

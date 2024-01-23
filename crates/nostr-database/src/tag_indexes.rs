@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 
 use nostr::hashes::siphash24::Hash as SipHash24;
 use nostr::hashes::Hash;
-use nostr::{Alphabet, GenericTagValue};
+use nostr::{Alphabet, GenericTagValue, SingleLetterTag};
 
 /// Tag Index Value Size
 pub const TAG_INDEX_VALUE_SIZE: usize = 8;
@@ -17,11 +17,11 @@ pub const TAG_INDEX_VALUE_SIZE: usize = 8;
 /// Tag Indexes
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct TagIndexes {
-    inner: BTreeMap<Alphabet, TagIndexValues>,
+    inner: BTreeMap<SingleLetterTag, TagIndexValues>,
 }
 
 impl Deref for TagIndexes {
-    type Target = BTreeMap<Alphabet, TagIndexValues>;
+    type Target = BTreeMap<SingleLetterTag, TagIndexValues>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -37,7 +37,7 @@ impl DerefMut for TagIndexes {
 impl TagIndexes {
     /// Get hashed `d` tag
     pub fn identifier(&self) -> Option<[u8; TAG_INDEX_VALUE_SIZE]> {
-        let values = self.inner.get(&Alphabet::D)?;
+        let values = self.inner.get(&SingleLetterTag::lowercase(Alphabet::D))?;
         values.iter().next().copied()
     }
 }
@@ -50,9 +50,12 @@ where
     fn from(iter: I) -> Self {
         let mut tag_index: TagIndexes = TagIndexes::default();
         for t in iter.filter(|t| t.len() > 1) {
-            if let Some(tagnamechar) = single_char_tagname(t[0].as_ref()) {
+            if let Some(single_letter_tag) = single_char_tagname(t[0].as_ref()) {
                 let inner = hash(t[1].as_ref());
-                tag_index.entry(tagnamechar).or_default().insert(inner);
+                tag_index
+                    .entry(single_letter_tag)
+                    .or_default()
+                    .insert(inner);
             }
         }
         tag_index
@@ -60,11 +63,11 @@ where
 }
 
 #[inline]
-fn single_char_tagname(tagname: &str) -> Option<Alphabet> {
+fn single_char_tagname(tagname: &str) -> Option<SingleLetterTag> {
     tagname
         .chars()
         .next()
-        .and_then(|first| Alphabet::try_from(first).ok())
+        .and_then(|first| SingleLetterTag::from_char(first).ok())
 }
 
 #[inline]
