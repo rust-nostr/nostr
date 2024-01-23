@@ -7,9 +7,9 @@
         <span> | </span>
         <a href="https://github.com/rust-nostr/nostr">Repository</a>
     </h4>
-    <h1 style="font-size: 16px; font-weight: normal;">
+    <h2 style="font-size: 16px; font-weight: normal;">
         The <code>nostr</code> development kit to build <strong>fast</strong>, <strong>stable</strong> and <strong>efficient</strong> apps for <strong>any environment</strong>!
-    </h1>
+    </h2>
 </div>
 
 ## Why rust-nostr?
