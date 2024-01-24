@@ -195,7 +195,20 @@ impl Nip07Signer {
         Ok(event)
     }
 
-    // TODO: add `signSchnorr`
+    /// Signature of arbitrary text signed with the private key of the active nostr account
+    pub async fn sign_schnorr<S>(&self, message: S) -> Result<Signature, Error>
+    where
+        S: AsRef<str>,
+    {
+        let func: Function = self.get_func(&self.nostr_obj, "signSchnorr")?;
+        let promise: Promise =
+            Promise::resolve(&func.call1(&self.nostr_obj, &JsValue::from_str(message.as_ref()))?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        let sig: String = result
+            .as_string()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string")))?;
+        Ok(Signature::from_str(&sig)?)
+    }
 
     // TODO: add `getRelays`
 

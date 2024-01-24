@@ -53,6 +53,17 @@ impl JsNip07Signer {
             .into())
     }
 
+    /// Signature of arbitrary text signed with the private key of the active nostr account
+    #[wasm_bindgen(js_name = signSchnorr)]
+    pub async fn sign_schnorr(&self, message: &str) -> Result<String> {
+        Ok(self
+            .inner
+            .sign_schnorr(message)
+            .await
+            .map_err(into_err)?
+            .to_string())
+    }
+
     #[wasm_bindgen(js_name = nip04Encrypt)]
     pub async fn nip04_encrypt(&self, public_key: &JsPublicKey, plaintext: &str) -> Result<String> {
         self.inner
