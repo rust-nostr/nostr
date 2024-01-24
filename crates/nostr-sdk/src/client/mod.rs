@@ -717,7 +717,8 @@ impl Client {
         Ok(self.pool.send_event_to(url, event, opts).await?)
     }
 
-    async fn internal_sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
+    /// Signs the [`EventBuilder`] into an [`Event`] using the [`ClientSigner`]
+    pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
         match self.signer().await? {
             ClientSigner::Keys(keys) => {
                 let difficulty: u8 = self.opts.get_difficulty();
@@ -770,7 +771,7 @@ impl Client {
     ///
     /// Rise an error if the [`ClientSigner`] is not set.
     pub async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
-        let event: Event = self.internal_sign_event_builder(builder).await?;
+        let event: Event = self.sign_event_builder(builder).await?;
         self.send_event(event).await
     }
 
@@ -786,7 +787,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let event: Event = self.internal_sign_event_builder(builder).await?;
+        let event: Event = self.sign_event_builder(builder).await?;
         self.send_event_to(url, event).await
     }
 
