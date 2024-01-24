@@ -316,7 +316,7 @@ impl Client {
                 match details.r#type {
                     ZapType::Public => {
                         let builder = EventBuilder::public_zap_request(data);
-                        Some(self.internal_sign_event_builder(builder).await?.as_json())
+                        Some(self.sign_event_builder(builder).await?.as_json())
                     }
                     ZapType::Private => None,
                     ZapType::Anonymous => Some(nip57::anonymous_zap_request(data)?.as_json()),
