@@ -9,6 +9,8 @@ fmt:
 	@rustup install nightly-2024-01-11
 	@rustup component add rustfmt --toolchain nightly-2024-01-11
 	cargo +nightly-2024-01-11 fmt --all -- --config format_code_in_doc_comments=true
+	cd bindings/nostr-js && make fmt
+	cd bindings/nostr-sdk-js && make fmt
 
 check: fmt check-crates check-crates-msrv check-bindings check-docs
 
@@ -16,6 +18,8 @@ check-fmt:
 	@rustup install nightly-2024-01-11
 	@rustup component add rustfmt --toolchain nightly-2024-01-11
 	cargo +nightly-2024-01-11 fmt --all -- --config format_code_in_doc_comments=true --check
+	cd bindings/nostr-js && make check-fmt
+	cd bindings/nostr-sdk-js && make check-fmt
 
 check-bindings:
 	@bash contrib/scripts/check-bindings.sh

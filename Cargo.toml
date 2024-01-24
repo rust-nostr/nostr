@@ -1,10 +1,16 @@
 [workspace]
 members = [
-    "bindings/*",
+    "bindings/nostr-ffi",
+    "bindings/nostr-sdk-ffi",
+    "bindings/uniffi-bindgen",
     "crates/*",
     "crates/nostr-database/fuzz/perf",
 ]
-exclude = ["book/*"]
+exclude = [
+    "bindings/nostr-js", # rust-analyzer not work well with multiple different targets in workspace
+    "bindings/nostr-sdk-js",
+    "book/*"
+]
 default-members = ["crates/*"]
 resolver = "2"
 
