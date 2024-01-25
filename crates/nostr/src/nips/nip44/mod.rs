@@ -169,7 +169,8 @@ where
         }
         Version::V2 => {
             let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
-            v2::encrypt_with_rng(rng, &conversation_key, content)
+            let payload: Vec<u8> = v2::encrypt_to_bytes_with_rng(rng, &conversation_key, content)?;
+            Ok(general_purpose::STANDARD.encode(payload))
         }
     }
 }

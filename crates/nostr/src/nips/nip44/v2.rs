@@ -13,7 +13,6 @@ use core::array::TryFromSliceError;
 use core::ops::{Deref, Range};
 use core::{fmt, iter};
 
-use base64::engine::{general_purpose, Engine};
 use bitcoin::hashes::hmac::{Hmac, HmacEngine};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::{self, Hash, HashEngine};
@@ -155,33 +154,40 @@ impl ConversationKey {
 }
 
 /// Encrypt with NIP44 (v2)
+///
+/// **The result is NOT encoded in base64!**
 #[cfg(feature = "std")]
-pub fn encrypt<T>(conversation_key: &ConversationKey, plaintext: T) -> Result<String, Error>
+pub fn encrypt_to_bytes<T>(
+    conversation_key: &ConversationKey,
+    plaintext: T,
+) -> Result<Vec<u8>, Error>
 where
     T: AsRef<[u8]>,
 {
-    encrypt_with_rng(&mut OsRng, conversation_key, plaintext)
+    encrypt_to_bytes_with_rng(&mut OsRng, conversation_key, plaintext)
 }
 
 /// Encrypt with NIP44 (v2) using custom Rng
-pub fn encrypt_with_rng<R, T>(
+///
+/// **The result is NOT encoded in base64!**
+pub fn encrypt_to_bytes_with_rng<R, T>(
     rng: &mut R,
     conversation_key: &ConversationKey,
     plaintext: T,
-) -> Result<String, Error>
+) -> Result<Vec<u8>, Error>
 where
     R: RngCore,
     T: AsRef<[u8]>,
 {
-    internal_encrypt_with_rng(rng, conversation_key, plaintext, None)
+    internal_encrypt_to_bytes_with_rng(rng, conversation_key, plaintext, None)
 }
 
-fn internal_encrypt_with_rng<R, T>(
+fn internal_encrypt_to_bytes_with_rng<R, T>(
     rng: &mut R,
     conversation_key: &ConversationKey,
     plaintext: T,
     override_random_nonce: Option<&[u8; 32]>,
-) -> Result<String, Error>
+) -> Result<Vec<u8>, Error>
 where
     R: RngCore,
     T: AsRef<[u8]>,
@@ -218,14 +224,24 @@ where
     payload.extend_from_slice(&buffer);
     payload.extend_from_slice(&hmac);
 
-    // Encode payload to base64
-    Ok(general_purpose::STANDARD.encode(payload))
+    Ok(payload)
 }
 
 /// Decrypt with NIP44 (v2)
 ///
-/// The payload MUST be already decoded from base64
+/// **The payload MUST be already decoded from base64**
 pub fn decrypt<T>(conversation_key: &ConversationKey, payload: T) -> Result<String, Error>
+where
+    T: AsRef<[u8]>,
+{
+    let bytes: Vec<u8> = decrypt_to_bytes(conversation_key, payload)?;
+    String::from_utf8(bytes).map_err(|e| Error::V2(ErrorV2::from(e)))
+}
+
+/// Decrypt with NIP44 (v2)
+///
+/// **The payload MUST be already decoded from base64**
+pub fn decrypt_to_bytes<T>(conversation_key: &ConversationKey, payload: T) -> Result<Vec<u8>, Error>
 where
     T: AsRef<[u8]>,
 {
@@ -281,7 +297,7 @@ where
         return Err(ErrorV2::InvalidPadding.into());
     }
 
-    String::from_utf8(unpadded.to_vec()).map_err(|e| Error::V2(ErrorV2::from(e)))
+    Ok(unpadded.to_vec())
 }
 
 fn get_message_keys(
@@ -343,6 +359,7 @@ mod tests {
 
     use core::str::FromStr;
 
+    use base64::engine::{general_purpose, Engine};
     use bitcoin::secp256k1::{Secp256k1, SecretKey, XOnlyPublicKey};
 
     use super::*;
@@ -510,9 +527,14 @@ mod tests {
             );
 
             // Test encryption with an overridden nonce
-            let computed_ciphertext =
-                internal_encrypt_with_rng(&mut OsRng, &conversation_key, &plaintext, Some(&nonce))
-                    .unwrap();
+            let computed_ciphertext = internal_encrypt_to_bytes_with_rng(
+                &mut OsRng,
+                &conversation_key,
+                &plaintext,
+                Some(&nonce),
+            )
+            .unwrap();
+            let computed_ciphertext = general_purpose::STANDARD.encode(computed_ciphertext);
             assert_eq!(
                 computed_ciphertext, ciphertext,
                 "Encryption does not match on ValidSec #{}",
