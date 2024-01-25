@@ -29,7 +29,7 @@ pub use crate::message::*;
 // NIPs
 pub use crate::nips::nip01::{self, *};
 #[cfg(feature = "nip04")]
-pub use crate::nips::nip04::{self, *};
+pub use crate::nips::nip04;
 #[cfg(all(feature = "std", feature = "nip05"))]
 pub use crate::nips::nip05::{self, *};
 #[cfg(feature = "nip06")]

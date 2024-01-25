@@ -184,6 +184,19 @@ pub fn decrypt<T>(
 where
     T: AsRef<[u8]>,
 {
+    let bytes: Vec<u8> = decrypt_to_bytes(secret_key, public_key, payload)?;
+    String::from_utf8(bytes.to_vec()).map_err(|_| Error::Utf8Encode)
+}
+
+/// Decrypt **without** converting bytes to UTF-8 string
+pub fn decrypt_to_bytes<T>(
+    secret_key: &SecretKey,
+    public_key: &XOnlyPublicKey,
+    payload: T,
+) -> Result<Vec<u8>, Error>
+where
+    T: AsRef<[u8]>,
+{
     // Decode base64 payload
     let payload: Vec<u8> = general_purpose::STANDARD.decode(payload)?;
 
@@ -212,12 +225,11 @@ where
             let mut buffer: Vec<u8> = ciphertext.to_vec();
             cipher.apply_keystream(&mut buffer);
 
-            // Convert bytes to string
-            String::from_utf8(buffer.to_vec()).map_err(|_| Error::Utf8Encode)
+            Ok(buffer)
         }
         Version::V2 => {
             let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
-            v2::decrypt(&conversation_key, &payload)
+            v2::decrypt_to_bytes(&conversation_key, &payload)
         }
     }
 }

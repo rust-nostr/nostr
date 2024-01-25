@@ -230,17 +230,6 @@ where
 /// Decrypt with NIP44 (v2)
 ///
 /// **The payload MUST be already decoded from base64**
-pub fn decrypt<T>(conversation_key: &ConversationKey, payload: T) -> Result<String, Error>
-where
-    T: AsRef<[u8]>,
-{
-    let bytes: Vec<u8> = decrypt_to_bytes(conversation_key, payload)?;
-    String::from_utf8(bytes).map_err(|e| Error::V2(ErrorV2::from(e)))
-}
-
-/// Decrypt with NIP44 (v2)
-///
-/// **The payload MUST be already decoded from base64**
 pub fn decrypt_to_bytes<T>(conversation_key: &ConversationKey, payload: T) -> Result<Vec<u8>, Error>
 where
     T: AsRef<[u8]>,
@@ -631,7 +620,7 @@ mod tests {
             let note = vector.get("note").unwrap().as_str().unwrap();
 
             let payload: Vec<u8> = general_purpose::STANDARD.decode(ciphertext).unwrap();
-            let result = decrypt(&conversation_key, &payload);
+            let result = decrypt_to_bytes(&conversation_key, &payload);
             assert!(result.is_err(), "Should not have decrypted: {}", note);
 
             let err = result.unwrap_err();
