@@ -31,6 +31,8 @@ pub extern crate alloc;
 #[macro_use]
 extern crate serde;
 
+#[cfg(any(feature = "nip04", feature = "nip44"))]
+pub use base64;
 #[cfg(feature = "nip06")]
 pub use bip39;
 pub use bitcoin::{bech32, hashes, secp256k1};
