@@ -1,4 +1,4 @@
-const { Keys, loadWasmSync, EventBuilder, Tag } = require("@rust-nostr/nostr");
+const { Keys, loadWasmSync, EventBuilder, Tag, Timestamp } = require("@rust-nostr/nostr");
 
 function eventBuilder() {
     // Load WASM
@@ -21,6 +21,12 @@ function eventBuilder() {
     let powEvent =
         EventBuilder.textNote("Another reply with POW", [Tag.parse(["e", textnoteEvent.id.toHex()])])
             .toPowEvent(keys, 20);
+
+    // Compose note with custom timestamp
+    let customTimestamp =
+        EventBuilder.textNote("Note with custom timestamp", [])
+            .customCreatedAt(Timestamp.fromSecs(12345678))
+            .toEvent(keys);
 }
 
 module.exports.eventBuilder = eventBuilder;

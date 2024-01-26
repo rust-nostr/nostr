@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { ClientBuilder, ClientSigner, ClientZapper, LogLevel, Nip07Signer, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
+import { ClientBuilder, ClientSigner, ClientZapper, Filter, LogLevel, NegentropyOptions, Nip07Signer, NostrDatabase, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
 import './App.css';
 
 class App extends Component {
@@ -18,7 +18,7 @@ class App extends Component {
 
     // Try to initialize log
     try {
-      initLogger(LogLevel.debug());
+      initLogger(LogLevel.info());
     } catch (error) {}
   }
 
@@ -28,7 +28,8 @@ class App extends Component {
       let nip07_signer = new Nip07Signer();
       let signer = ClientSigner.nip07(nip07_signer);
       let zapper = ClientZapper.webln();
-      let client = new ClientBuilder().signer(signer).zapper(zapper).build();
+      let db = await NostrDatabase.indexeddb("nostr-sdk-webapp-example");
+      let client = new ClientBuilder().signer(signer).zapper(zapper).database(db).build();
 
       let public_key = await nip07_signer.getPublicKey();
   
@@ -46,6 +47,16 @@ class App extends Component {
         console.log(error) 
     }
   };
+
+  handleReconcile = async () => {
+    try {
+      let filter = new Filter().author(this.state.public_key);
+      let opts = new NegentropyOptions();
+      await this.state.client.reconcile(filter, opts);
+    } catch (error) {
+        console.log(error) 
+    }
+  }
 
   handlePublishTextNote = async () => {
     try {
@@ -94,6 +105,9 @@ class App extends Component {
         <div className="App">
           <header className="App-header">
             <p>Public key: {this.state.public_key.toBech32()}</p>
+            <button className="btn btn-primary" onClick={this.handleReconcile}>
+              Negentropy reconciliation
+            </button>
             <button className="btn btn-primary" onClick={this.handlePublishTextNote}>
               Publish text note
             </button>
