@@ -57,6 +57,9 @@ const PING_INTERVAL: u64 = 55;
 /// [`Relay`] error
 #[derive(Debug, Error)]
 pub enum Error {
+    /// MessageHandle error
+    #[error(transparent)]
+    MessageHandle(#[from] MessageHandleError),
     /// Negentropy error
     #[error(transparent)]
     Negentropy(#[from] negentropy::Error),
@@ -122,6 +125,22 @@ pub enum Error {
     /// Unknown negentropy error
     #[error("unknown negentropy error")]
     UnknownNegentropyError,
+    /// Relay message too large
+    #[error("Received message too large: size={size}, max_size={max_size}")]
+    RelayMessageTooLarge {
+        /// Message size
+        size: usize,
+        /// Max message size
+        max_size: usize,
+    },
+    /// Event too large
+    #[error("Received event too large: size={size}, max_size={max_size}")]
+    EventTooLarge {
+        /// Event size
+        size: usize,
+        /// Max event size
+        max_size: usize,
+    },
 }
 
 /// Relay connection status
@@ -760,43 +779,39 @@ impl Relay {
                 thread::spawn(async move {
                     tracing::debug!("Relay Message Thread Started");
 
-                    async fn func(relay: &Relay, data: Vec<u8>) -> bool {
+                    async fn func(relay: &Relay, data: Vec<u8>) -> Result<bool, Error> {
                         let size: usize = data.len();
                         let max_size: usize = relay.limits.messages.max_size as usize;
                         relay.stats.add_bytes_received(size);
-                        if size <= max_size {
-                            match RawRelayMessage::from_json(&data) {
-                                Ok(msg) => {
-                                    tracing::trace!(
-                                        "Received message from {}: {:?}",
-                                        relay.url,
-                                        msg
-                                    );
-                                    if let Err(err) = relay
-                                        .pool_sender
-                                        .send(RelayPoolMessage::ReceivedMsg {
-                                            relay_url: relay.url(),
-                                            msg,
-                                        })
-                                        .await
-                                    {
-                                        tracing::error!(
-                                            "Impossible to send ReceivedMsg to pool: {}",
-                                            &err
-                                        );
-                                        return true; // Exit
-                                    };
-                                }
-                                Err(e) => match e {
-                                    MessageHandleError::EmptyMsg => (),
-                                    _ => tracing::error!("{e}: {}", String::from_utf8_lossy(&data)),
-                                },
-                            };
-                        } else {
-                            tracing::error!("Received message too large from {}: size={size}, max_size={max_size}", relay.url);
+
+                        if size > max_size {
+                            return Err(Error::RelayMessageTooLarge { size, max_size });
                         }
 
-                        false
+                        let msg = RawRelayMessage::from_json(&data)?;
+                        tracing::trace!("Received message from {}: {:?}", relay.url, msg);
+
+                        if let RawRelayMessage::Event { event, .. } = &msg {
+                            let size: usize = event.to_string().as_bytes().len();
+                            let max_size: usize = relay.limits.events.max_size as usize;
+                            if size > max_size {
+                                return Err(Error::EventTooLarge { size, max_size });
+                            }
+                        }
+
+                        if let Err(err) = relay
+                            .pool_sender
+                            .send(RelayPoolMessage::ReceivedMsg {
+                                relay_url: relay.url(),
+                                msg,
+                            })
+                            .await
+                        {
+                            tracing::error!("Impossible to send ReceivedMsg to pool: {}", &err);
+                            return Ok(true); // Exit
+                        };
+
+                        Ok(false)
                     }
 
                     #[cfg(not(target_arch = "wasm32"))]
@@ -825,9 +840,16 @@ impl Relay {
                                 },
                                 _ => {
                                     let data: Vec<u8> = msg.into_data();
-                                    let exit: bool = func(&relay, data).await;
-                                    if exit {
-                                        break;
+                                    match func(&relay, data).await {
+                                        Ok(exit) => {
+                                            if exit {
+                                                break;
+                                            }
+                                        }
+                                        Err(e) => tracing::error!(
+                                            "Impossible to handle relay message from {}: {e}",
+                                            relay.url
+                                        ),
                                     }
                                 }
                             }
@@ -837,9 +859,16 @@ impl Relay {
                     #[cfg(target_arch = "wasm32")]
                     while let Some(msg) = ws_rx.next().await {
                         let data: Vec<u8> = msg.as_ref().to_vec();
-                        let exit: bool = func(&relay, data).await;
-                        if exit {
-                            break;
+                        match func(&relay, data).await {
+                            Ok(exit) => {
+                                if exit {
+                                    break;
+                                }
+                            }
+                            Err(e) => tracing::error!(
+                                "Impossible to handle relay message from {}: {e}",
+                                relay.url
+                            ),
                         }
                     }
 
