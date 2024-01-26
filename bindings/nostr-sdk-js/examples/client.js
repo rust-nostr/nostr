@@ -40,7 +40,7 @@ async function main() {
     // Send custom event
     let event_id = EventId.fromBech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r");
     let public_key = PublicKey.fromBech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz");
-    let event = EventBuilder.newReaction(event_id, public_key, "🧡").toEvent(keys);
+    let event = EventBuilder.reaction(event_id, public_key, "🧡").toEvent(keys);
 
     // Send custom event to all relays
     await client.sendEvent(event);

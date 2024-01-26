@@ -1,4 +1,4 @@
-const { Keys, EventBuilder, EventId, PublicKey, Tag, loadWasmSync } = require("../");
+const { Keys, EventBuilder, EventId, PublicKey, Tag, loadWasmSync, Timestamp } = require("../");
 
 function main() {
     loadWasmSync();
@@ -13,8 +13,13 @@ function main() {
     // Reaction event
     let event_id = EventId.fromBech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r");
     let public_key = PublicKey.fromBech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz");
-    let reaction = EventBuilder.newReaction(event_id, public_key, "🧡").toEvent(keys);
+    let reaction = EventBuilder.reaction(event_id, public_key, "🧡").toEvent(keys);
     console.log(reaction.asJson());
+
+    // Custom created at
+    let customTimestamp = Timestamp.fromSecs(12345);
+    let e = EventBuilder.textNote("Event with custom timestamp", []).customCreatedAt(customTimestamp).toEvent(keys);
+    console.log(e.asJson());
 }
 
 main();

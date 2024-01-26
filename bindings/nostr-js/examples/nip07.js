@@ -14,7 +14,7 @@ async function main() {
         let ciphertext = await signer.nip04Encrypt(public_key, "Test"); 
         console.log("NIP04: " + ciphertext);
 
-        let unsigned = EventBuilder.newTextNote("Test", []).toUnsignedEvent(public_key);
+        let unsigned = EventBuilder.textNote("Test", []).toUnsignedEvent(public_key);
         let event = await signer.signEvent(unsigned);
         console.log(event.asJson());
     } catch (error) {

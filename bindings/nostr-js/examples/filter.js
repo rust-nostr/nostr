@@ -1,4 +1,4 @@
-const { Filter, loadWasmAsync, Timestamp, Alphabet } = require("../");
+const { Filter, loadWasmAsync, Timestamp, Alphabet, SingleLetterTag } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -7,7 +7,8 @@ async function main() {
     console.log('filter', filter.asJson());
 
     // Custom tag
-    const fisterCustom = new Filter().customTag(Alphabet.J, ["custom-value"]);
+    let letter = SingleLetterTag.lowercase(Alphabet.J);
+    const fisterCustom = new Filter().customTag(letter, ["custom-value"]);
     console.log('Custom filter', fisterCustom.asJson());
 }
 
