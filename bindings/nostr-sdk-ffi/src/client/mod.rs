@@ -14,7 +14,6 @@ use nostr_ffi::{
 };
 use nostr_sdk::client::blocking::Client as ClientSdk;
 use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
-use nostr_sdk::NegentropyOptions;
 use uniffi::Object;
 
 mod builder;
@@ -25,6 +24,7 @@ pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 pub use self::signer::ClientSigner;
 use crate::error::Result;
+use crate::relay::options::NegentropyOptions;
 use crate::{NostrDatabase, Relay};
 
 #[derive(Object)]
@@ -255,11 +255,10 @@ impl Client {
         ))
     }
 
-    pub fn reconcile(&self, filter: Arc<Filter>) -> Result<()> {
-        Ok(self.inner.reconcile(
-            filter.as_ref().deref().clone(),
-            NegentropyOptions::default(),
-        )?)
+    pub fn reconcile(&self, filter: Arc<Filter>, opts: Arc<NegentropyOptions>) -> Result<()> {
+        Ok(self
+            .inner
+            .reconcile(filter.as_ref().deref().clone(), **opts)?)
     }
 
     pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {

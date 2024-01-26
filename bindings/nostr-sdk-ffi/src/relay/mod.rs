@@ -11,6 +11,8 @@ use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument, Timestam
 use nostr_sdk::{block_on, relay, FilterOptions};
 use uniffi::{Enum, Object};
 
+pub mod options;
+
 use crate::error::Result;
 
 #[derive(Object)]
