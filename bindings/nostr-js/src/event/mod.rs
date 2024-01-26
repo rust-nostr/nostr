@@ -4,7 +4,6 @@
 
 use core::ops::Deref;
 
-use js_sys::Array;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -15,7 +14,7 @@ mod unsigned;
 
 pub use self::builder::JsEventBuilder;
 pub use self::id::JsEventId;
-pub use self::tag::{JsTag, JsTagArray};
+pub use self::tag::JsTag;
 pub use self::unsigned::JsUnsignedEvent;
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
@@ -76,16 +75,8 @@ impl JsEvent {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn tags(&self) -> JsTagArray {
-        self.inner
-            .iter_tags()
-            .cloned()
-            .map(|t| {
-                let e: JsTag = t.into();
-                JsValue::from(e)
-            })
-            .collect::<Array>()
-            .unchecked_into()
+    pub fn tags(&self) -> Vec<JsTag> {
+        self.inner.tags.iter().cloned().map(JsTag::from).collect()
     }
 
     #[wasm_bindgen(getter)]

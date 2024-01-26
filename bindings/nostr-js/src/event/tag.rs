@@ -7,12 +7,6 @@ use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(typescript_type = "Tag[]")]
-    pub type JsTagArray;
-}
-
 #[wasm_bindgen(js_name = Tag)]
 pub struct JsTag {
     inner: Tag,

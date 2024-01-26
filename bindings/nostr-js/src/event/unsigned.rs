@@ -5,12 +5,11 @@
 use core::ops::Deref;
 use core::str::FromStr;
 
-use js_sys::Array;
 use nostr::bitcoin::secp256k1::schnorr::Signature;
 use nostr::{JsonUtil, UnsignedEvent};
 use wasm_bindgen::prelude::*;
 
-use super::tag::{JsTag, JsTagArray};
+use super::tag::JsTag;
 use crate::error::{into_err, Result};
 use crate::event::{JsEvent, JsEventId};
 use crate::key::{JsKeys, JsPublicKey};
@@ -56,17 +55,8 @@ impl JsUnsignedEvent {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn tags(&self) -> JsTagArray {
-        self.inner
-            .tags
-            .iter()
-            .cloned()
-            .map(|t| {
-                let e: JsTag = t.into();
-                JsValue::from(e)
-            })
-            .collect::<Array>()
-            .unchecked_into()
+    pub fn tags(&self) -> Vec<JsTag> {
+        self.inner.tags.iter().cloned().map(JsTag::from).collect()
     }
 
     #[wasm_bindgen(getter)]
