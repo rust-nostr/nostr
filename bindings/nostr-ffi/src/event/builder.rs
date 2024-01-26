@@ -11,6 +11,7 @@ use uniffi::Object;
 
 use super::{Event, EventId};
 use crate::error::Result;
+use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip15::{ProductData, StallData};
 use crate::nips::nip53::LiveEvent;
@@ -20,10 +21,10 @@ use crate::nips::nip98::HttpData;
 use crate::types::{Contact, Metadata};
 use crate::{
     FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
-    UnsignedEvent,
+    Timestamp, UnsignedEvent,
 };
 
-#[derive(Object)]
+#[derive(Clone, Object)]
 pub struct EventBuilder {
     inner: nostr::EventBuilder,
 }
@@ -50,6 +51,13 @@ impl EventBuilder {
         Ok(Arc::new(Self {
             inner: nostr::EventBuilder::new(kind.into(), content, tags),
         }))
+    }
+
+    /// Set a custom `created_at` UNIX timestamp
+    pub fn custom_created_at(self: Arc<Self>, created_at: Arc<Timestamp>) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.custom_created_at(**created_at);
+        builder
     }
 
     pub fn to_event(&self, keys: Arc<Keys>) -> Result<Arc<Event>> {
