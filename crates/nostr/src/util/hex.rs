@@ -4,9 +4,9 @@
 
 //! Hex
 
-use std::fmt;
-use std::string::String;
-use std::vec::Vec;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::fmt;
 
 /// Hex error
 #[derive(Debug, PartialEq, Eq)]
@@ -23,6 +23,7 @@ pub enum Error {
     OddLength,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {

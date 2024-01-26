@@ -24,6 +24,7 @@ use indexed_db_futures::request::{IdbOpenDbRequestLike, OpenDbRequest};
 use indexed_db_futures::web_sys::IdbTransactionMode;
 use indexed_db_futures::{IdbDatabase, IdbQuerySource, IdbVersionChangeEvent};
 use nostr::nips::nip01::Coordinate;
+use nostr::util::hex;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 #[cfg(target_arch = "wasm32")]
 use nostr_database::NostrDatabase;
@@ -35,7 +36,6 @@ use tokio::sync::Mutex;
 use wasm_bindgen::JsValue;
 
 mod error;
-mod hex;
 
 pub use self::error::IndexedDBError;
 
@@ -443,7 +443,7 @@ impl_nostr_database!({
             .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
         let store = tx.object_store(EVENTS_CF)?;
 
-        let ids = self.indexes.query(vec![filter], Order::Desc).await;
+        let ids = self.indexes.query([filter], Order::Desc).await;
         let mut events: Vec<(EventId, Timestamp)> = Vec::with_capacity(ids.len());
 
         for event_id in ids.into_iter() {

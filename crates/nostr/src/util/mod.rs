@@ -14,6 +14,7 @@ use once_cell::sync::Lazy;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+pub mod hex;
 #[cfg(feature = "nip44")]
 pub mod hkdf;
 
