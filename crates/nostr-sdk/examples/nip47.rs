@@ -35,7 +35,11 @@ async fn main() -> Result<()> {
 
     let req = nip47::Request {
         method: Method::PayInvoice,
-        params: RequestParams::PayInvoice(PayInvoiceRequestParams { invoice }),
+        params: RequestParams::PayInvoice(PayInvoiceRequestParams {
+            id: None,
+            invoice,
+            amount: None,
+        }),
     };
     let req_event = req.to_event(&nwc_uri).unwrap();
 

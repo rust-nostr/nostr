@@ -20,6 +20,10 @@ pub enum ErrorCode {
     NotImplemented,
     /// The wallet does not have enough funds to cover a fee reserve or the payment amount
     InsufficientBalance,
+    /// The payment failed. This may be due to a timeout, exhausting all routes, insufficient capacity or similar.
+    PaymentFailed,
+    /// The invoice could not be found by the given parameters.
+    NotFound,
     /// The wallet has exceeded its spending quota
     QuotaExceeded,
     /// This public key is not allowed to do this operation
@@ -38,6 +42,8 @@ impl From<nip47::ErrorCode> for ErrorCode {
             nip47::ErrorCode::RateLimited => Self::RateLimited,
             nip47::ErrorCode::NotImplemented => Self::NotImplemented,
             nip47::ErrorCode::InsufficientBalance => Self::InsufficientBalance,
+            nip47::ErrorCode::PaymentFailed => Self::PaymentFailed,
+            nip47::ErrorCode::NotFound => Self::NotFound,
             nip47::ErrorCode::QuotaExceeded => Self::QuotaExceeded,
             nip47::ErrorCode::Restricted => Self::Restricted,
             nip47::ErrorCode::Unauthorized => Self::Unauthorized,
@@ -53,6 +59,8 @@ impl From<ErrorCode> for nip47::ErrorCode {
             ErrorCode::RateLimited => Self::RateLimited,
             ErrorCode::NotImplemented => Self::NotImplemented,
             ErrorCode::InsufficientBalance => Self::InsufficientBalance,
+            ErrorCode::PaymentFailed => Self::PaymentFailed,
+            ErrorCode::NotFound => Self::NotFound,
             ErrorCode::QuotaExceeded => Self::QuotaExceeded,
             ErrorCode::Restricted => Self::Restricted,
             ErrorCode::Unauthorized => Self::Unauthorized,
@@ -94,30 +102,36 @@ impl From<NIP47Error> for nip47::NIP47Error {
 pub enum Method {
     /// Pay Invoice
     PayInvoice,
+    /// Multi Pay Invoice
+    MultiPayInvoice,
     /// Pay Keysend
     PayKeysend,
+    /// Multi Pay Keysend
+    MultiPayKeysend,
     /// Make Invoice
     MakeInvoice,
     /// Lookup Invoice
     LookupInvoice,
-    /// List Invoices
-    ListInvoices,
-    /// List Payments
-    ListPayments,
+    /// List transactions
+    ListTransactions,
     /// Get Balance
     GetBalance,
+    /// Get Info
+    GetInfo,
 }
 
 impl From<nip47::Method> for Method {
     fn from(value: nip47::Method) -> Self {
         match value {
             nip47::Method::PayInvoice => Self::PayInvoice,
+            nip47::Method::MultiPayInvoice => Self::MultiPayInvoice,
             nip47::Method::PayKeysend => Self::PayKeysend,
+            nip47::Method::MultiPayKeysend => Self::MultiPayKeysend,
             nip47::Method::MakeInvoice => Self::MakeInvoice,
             nip47::Method::LookupInvoice => Self::LookupInvoice,
-            nip47::Method::ListInvoices => Self::ListInvoices,
-            nip47::Method::ListPayments => Self::ListPayments,
+            nip47::Method::ListTransactions => Self::ListTransactions,
             nip47::Method::GetBalance => Self::GetBalance,
+            nip47::Method::GetInfo => Self::GetInfo,
         }
     }
 }
@@ -126,12 +140,14 @@ impl From<Method> for nip47::Method {
     fn from(value: Method) -> Self {
         match value {
             Method::PayInvoice => Self::PayInvoice,
+            Method::MultiPayInvoice => Self::MultiPayInvoice,
             Method::PayKeysend => Self::PayKeysend,
+            Method::MultiPayKeysend => Self::MultiPayKeysend,
             Method::MakeInvoice => Self::MakeInvoice,
             Method::LookupInvoice => Self::LookupInvoice,
-            Method::ListInvoices => Self::ListInvoices,
-            Method::ListPayments => Self::ListPayments,
+            Method::ListTransactions => Self::ListTransactions,
             Method::GetBalance => Self::GetBalance,
+            Method::GetInfo => Self::GetInfo,
         }
     }
 }
@@ -143,9 +159,17 @@ pub enum RequestParams {
     PayInvoice {
         pay_invoice: PayInvoiceRequestParams,
     },
+    /// Multi Pay Invoice
+    MultiPayInvoice {
+        multi_pay_invoice: MultiPayInvoiceRequestParams,
+    },
     /// Pay Keysend
     PayKeysend {
         pay_keysend: PayKeysendRequestParams,
+    },
+    /// Multi Pay Keysend
+    MultiPayKeysend {
+        multi_pay_keysend: MultiPayKeysendRequestParams,
     },
     /// Make Invoice
     MakeInvoice {
@@ -155,16 +179,14 @@ pub enum RequestParams {
     LookupInvoice {
         lookup_invoice: LookupInvoiceRequestParams,
     },
-    /// List Invoices
-    ListInvoices {
-        list_invoice: ListInvoicesRequestParams,
-    },
-    /// List Payments
-    ListPayments {
-        list_payments: ListPaymentsRequestParams,
+    /// List Transactions
+    ListTransactions {
+        list_transactions: ListTransactionsRequestParams,
     },
     /// Get Balance
     GetBalance,
+    /// Get Info
+    GetInfo,
 }
 
 impl From<nip47::RequestParams> for RequestParams {
@@ -173,8 +195,14 @@ impl From<nip47::RequestParams> for RequestParams {
             nip47::RequestParams::PayInvoice(pay_invoice) => Self::PayInvoice {
                 pay_invoice: pay_invoice.into(),
             },
+            nip47::RequestParams::MultiPayInvoice(multi_pay_invoice) => Self::MultiPayInvoice {
+                multi_pay_invoice: multi_pay_invoice.into(),
+            },
             nip47::RequestParams::PayKeysend(pay_keysend) => Self::PayKeysend {
                 pay_keysend: pay_keysend.into(),
+            },
+            nip47::RequestParams::MultiPayKeysend(multi_pay_keysend) => Self::MultiPayKeysend {
+                multi_pay_keysend: multi_pay_keysend.into(),
             },
             nip47::RequestParams::MakeInvoice(make_invoice) => Self::MakeInvoice {
                 make_invoice: make_invoice.into(),
@@ -182,13 +210,11 @@ impl From<nip47::RequestParams> for RequestParams {
             nip47::RequestParams::LookupInvoice(lookup_invoice) => Self::LookupInvoice {
                 lookup_invoice: lookup_invoice.into(),
             },
-            nip47::RequestParams::ListInvoices(list_invoice) => Self::ListInvoices {
-                list_invoice: list_invoice.into(),
-            },
-            nip47::RequestParams::ListPayments(list_payments) => Self::ListPayments {
-                list_payments: list_payments.into(),
+            nip47::RequestParams::ListTransactions(list_transactions) => Self::ListTransactions {
+                list_transactions: list_transactions.into(),
             },
             nip47::RequestParams::GetBalance => Self::GetBalance,
+            nip47::RequestParams::GetInfo => Self::GetInfo,
         }
     }
 }
@@ -197,16 +223,22 @@ impl From<RequestParams> for nip47::RequestParams {
     fn from(value: RequestParams) -> Self {
         match value {
             RequestParams::PayInvoice { pay_invoice } => Self::PayInvoice(pay_invoice.into()),
+            RequestParams::MultiPayInvoice { multi_pay_invoice } => {
+                Self::MultiPayInvoice(multi_pay_invoice.into())
+            }
             RequestParams::PayKeysend { pay_keysend } => Self::PayKeysend(pay_keysend.into()),
+            RequestParams::MultiPayKeysend { multi_pay_keysend } => {
+                Self::MultiPayKeysend(multi_pay_keysend.into())
+            }
             RequestParams::MakeInvoice { make_invoice } => Self::MakeInvoice(make_invoice.into()),
             RequestParams::LookupInvoice { lookup_invoice } => {
                 Self::LookupInvoice(lookup_invoice.into())
             }
-            RequestParams::ListInvoices { list_invoice } => Self::ListInvoices(list_invoice.into()),
-            RequestParams::ListPayments { list_payments } => {
-                Self::ListPayments(list_payments.into())
+            RequestParams::ListTransactions { list_transactions } => {
+                Self::ListTransactions(list_transactions.into())
             }
             RequestParams::GetBalance => Self::GetBalance,
+            RequestParams::GetInfo => Self::GetInfo,
         }
     }
 }
@@ -214,14 +246,20 @@ impl From<RequestParams> for nip47::RequestParams {
 /// Pay Invoice Request Params
 #[derive(Record)]
 pub struct PayInvoiceRequestParams {
+    /// Optional id
+    pub id: Option<String>,
     /// Request invoice
     pub invoice: String,
+    /// Optional amount in millisatoshis
+    pub amount: Option<u64>,
 }
 
 impl From<nip47::PayInvoiceRequestParams> for PayInvoiceRequestParams {
     fn from(value: nip47::PayInvoiceRequestParams) -> Self {
         Self {
+            id: value.id,
             invoice: value.invoice,
+            amount: value.amount,
         }
     }
 }
@@ -229,7 +267,32 @@ impl From<nip47::PayInvoiceRequestParams> for PayInvoiceRequestParams {
 impl From<PayInvoiceRequestParams> for nip47::PayInvoiceRequestParams {
     fn from(value: PayInvoiceRequestParams) -> Self {
         Self {
+            id: value.id,
             invoice: value.invoice,
+            amount: value.amount,
+        }
+    }
+}
+
+/// Multi Pay Invoice Request Params
+#[derive(Record)]
+pub struct MultiPayInvoiceRequestParams {
+    /// Invoices to pay
+    pub invoices: Vec<PayInvoiceRequestParams>,
+}
+
+impl From<nip47::MultiPayInvoiceRequestParams> for MultiPayInvoiceRequestParams {
+    fn from(value: nip47::MultiPayInvoiceRequestParams) -> Self {
+        Self {
+            invoices: value.invoices.into_iter().map(|i| i.into()).collect(),
+        }
+    }
+}
+
+impl From<MultiPayInvoiceRequestParams> for nip47::MultiPayInvoiceRequestParams {
+    fn from(value: MultiPayInvoiceRequestParams) -> Self {
+        Self {
+            invoices: value.invoices.into_iter().map(|i| i.into()).collect(),
         }
     }
 }
@@ -238,7 +301,7 @@ impl From<PayInvoiceRequestParams> for nip47::PayInvoiceRequestParams {
 #[derive(Record)]
 pub struct KeysendTLVRecord {
     /// TLV type
-    pub type_: u64,
+    pub tlv_type: u64,
     /// TLV value
     pub value: String,
 }
@@ -246,7 +309,7 @@ pub struct KeysendTLVRecord {
 impl From<nip47::KeysendTLVRecord> for KeysendTLVRecord {
     fn from(value: nip47::KeysendTLVRecord) -> Self {
         Self {
-            type_: value.type_,
+            tlv_type: value.tlv_type,
             value: value.value,
         }
     }
@@ -255,7 +318,7 @@ impl From<nip47::KeysendTLVRecord> for KeysendTLVRecord {
 impl From<KeysendTLVRecord> for nip47::KeysendTLVRecord {
     fn from(value: KeysendTLVRecord) -> Self {
         Self {
-            type_: value.type_,
+            tlv_type: value.tlv_type,
             value: value.value,
         }
     }
@@ -264,12 +327,12 @@ impl From<KeysendTLVRecord> for nip47::KeysendTLVRecord {
 /// Pay Invoice Request Params
 #[derive(Record)]
 pub struct PayKeysendRequestParams {
+    /// Optional id
+    pub id: Option<String>,
     /// Amount in millisatoshis
     pub amount: i64,
     /// Receiver's node id
     pub pubkey: String,
-    /// Optional message
-    pub message: Option<String>,
     /// Optional preimage
     pub preimage: Option<String>,
     /// Optional TLVs to be added to the keysend payment
@@ -279,9 +342,9 @@ pub struct PayKeysendRequestParams {
 impl From<nip47::PayKeysendRequestParams> for PayKeysendRequestParams {
     fn from(value: nip47::PayKeysendRequestParams) -> Self {
         Self {
+            id: value.id,
             amount: value.amount,
             pubkey: value.pubkey,
-            message: value.message,
             preimage: value.preimage,
             tlv_records: value.tlv_records.into_iter().map(|t| t.into()).collect(),
         }
@@ -291,11 +354,61 @@ impl From<nip47::PayKeysendRequestParams> for PayKeysendRequestParams {
 impl From<PayKeysendRequestParams> for nip47::PayKeysendRequestParams {
     fn from(value: PayKeysendRequestParams) -> Self {
         Self {
+            id: value.id,
             amount: value.amount,
             pubkey: value.pubkey,
-            message: value.message,
             preimage: value.preimage,
             tlv_records: value.tlv_records.into_iter().map(|t| t.into()).collect(),
+        }
+    }
+}
+
+/// Multi Pay Keysend Request Params
+#[derive(Record)]
+pub struct MultiPayKeysendRequestParams {
+    /// Keysends
+    pub keysends: Vec<PayKeysendRequestParams>,
+}
+
+impl From<nip47::MultiPayKeysendRequestParams> for MultiPayKeysendRequestParams {
+    fn from(value: nip47::MultiPayKeysendRequestParams) -> Self {
+        Self {
+            keysends: value.keysends.into_iter().map(|i| i.into()).collect(),
+        }
+    }
+}
+
+impl From<MultiPayKeysendRequestParams> for nip47::MultiPayKeysendRequestParams {
+    fn from(value: MultiPayKeysendRequestParams) -> Self {
+        Self {
+            keysends: value.keysends.into_iter().map(|i| i.into()).collect(),
+        }
+    }
+}
+
+/// Transaction Type
+#[derive(Enum)]
+pub enum TransactionType {
+    /// Incoming payments
+    Incoming,
+    /// Outgoing payments
+    Outgoing,
+}
+
+impl From<TransactionType> for nip47::TransactionType {
+    fn from(value: TransactionType) -> Self {
+        match value {
+            TransactionType::Incoming => Self::Incoming,
+            TransactionType::Outgoing => Self::Outgoing,
+        }
+    }
+}
+
+impl From<nip47::TransactionType> for TransactionType {
+    fn from(value: nip47::TransactionType) -> Self {
+        match value {
+            nip47::TransactionType::Incoming => Self::Incoming,
+            nip47::TransactionType::Outgoing => Self::Outgoing,
         }
     }
 }
@@ -309,8 +422,6 @@ pub struct MakeInvoiceRequestParams {
     pub description: Option<String>,
     /// Invoice description hash
     pub description_hash: Option<String>,
-    /// Preimage to be used for the invoice
-    pub preimage: Option<String>,
     /// Invoice expiry in seconds
     pub expiry: Option<i64>,
 }
@@ -321,7 +432,6 @@ impl From<nip47::MakeInvoiceRequestParams> for MakeInvoiceRequestParams {
             amount: value.amount,
             description: value.description,
             description_hash: value.description_hash,
-            preimage: value.preimage,
             expiry: value.expiry,
         }
     }
@@ -333,7 +443,6 @@ impl From<MakeInvoiceRequestParams> for nip47::MakeInvoiceRequestParams {
             amount: value.amount,
             description: value.description,
             description_hash: value.description_hash,
-            preimage: value.preimage,
             expiry: value.expiry,
         }
     }
@@ -368,7 +477,7 @@ impl From<LookupInvoiceRequestParams> for nip47::LookupInvoiceRequestParams {
 
 /// List Invoice Request Params
 #[derive(Record)]
-pub struct ListInvoicesRequestParams {
+pub struct ListTransactionsRequestParams {
     /// Starting timestamp in seconds since epoch
     pub from: Option<u64>,
     /// Ending timestamp in seconds since epoch
@@ -379,63 +488,32 @@ pub struct ListInvoicesRequestParams {
     pub offset: Option<u64>,
     /// If true, include unpaid invoices
     pub unpaid: Option<bool>,
+    /// [`TransactionType::Incoming`] for invoices, [`TransactionType::Outgoing`] for payments, [`None`] for both
+    pub transaction_type: Option<TransactionType>,
 }
 
-impl From<nip47::ListInvoicesRequestParams> for ListInvoicesRequestParams {
-    fn from(value: nip47::ListInvoicesRequestParams) -> Self {
+impl From<nip47::ListTransactionsRequestParams> for ListTransactionsRequestParams {
+    fn from(value: nip47::ListTransactionsRequestParams) -> Self {
         Self {
             from: value.from,
             until: value.until,
             limit: value.limit,
             offset: value.offset,
             unpaid: value.unpaid,
+            transaction_type: value.transaction_type.map(|t| t.into()),
         }
     }
 }
 
-impl From<ListInvoicesRequestParams> for nip47::ListInvoicesRequestParams {
-    fn from(value: ListInvoicesRequestParams) -> Self {
+impl From<ListTransactionsRequestParams> for nip47::ListTransactionsRequestParams {
+    fn from(value: ListTransactionsRequestParams) -> Self {
         Self {
             from: value.from,
             until: value.until,
             limit: value.limit,
             offset: value.offset,
             unpaid: value.unpaid,
-        }
-    }
-}
-
-/// List Payments Request Params
-#[derive(Record)]
-pub struct ListPaymentsRequestParams {
-    /// Starting timestamp in seconds since epoch
-    pub from: Option<u64>,
-    /// Ending timestamp in seconds since epoch
-    pub until: Option<u64>,
-    /// Number of invoices to return
-    pub limit: Option<u64>,
-    /// Offset of the first invoice to return
-    pub offset: Option<u64>,
-}
-
-impl From<nip47::ListPaymentsRequestParams> for ListPaymentsRequestParams {
-    fn from(value: nip47::ListPaymentsRequestParams) -> Self {
-        Self {
-            from: value.from,
-            until: value.until,
-            limit: value.limit,
-            offset: value.offset,
-        }
-    }
-}
-
-impl From<ListPaymentsRequestParams> for nip47::ListPaymentsRequestParams {
-    fn from(value: ListPaymentsRequestParams) -> Self {
-        Self {
-            from: value.from,
-            until: value.until,
-            limit: value.limit,
-            offset: value.offset,
+            transaction_type: value.transaction_type.map(|t| t.into()),
         }
     }
 }
@@ -506,15 +584,12 @@ impl From<PayInvoiceResponseResult> for nip47::PayInvoiceResponseResult {
 pub struct PayKeysendResponseResult {
     /// Response preimage
     pub preimage: String,
-    /// Payment hash
-    pub payment_hash: String,
 }
 
 impl From<nip47::PayKeysendResponseResult> for PayKeysendResponseResult {
     fn from(value: nip47::PayKeysendResponseResult) -> Self {
         Self {
             preimage: value.preimage,
-            payment_hash: value.payment_hash,
         }
     }
 }
@@ -523,7 +598,6 @@ impl From<PayKeysendResponseResult> for nip47::PayKeysendResponseResult {
     fn from(value: PayKeysendResponseResult) -> Self {
         Self {
             preimage: value.preimage,
-            payment_hash: value.payment_hash,
         }
     }
 }
@@ -558,17 +632,47 @@ impl From<MakeInvoiceResponseResult> for nip47::MakeInvoiceResponseResult {
 /// NIP47 Response Result
 #[derive(Record)]
 pub struct LookupInvoiceResponseResult {
+    /// Transaction type
+    pub transaction_type: Option<TransactionType>,
     /// Bolt11 invoice
-    pub invoice: String,
-    /// If the invoice has been paid
-    pub paid: bool,
+    pub invoice: Option<String>,
+    /// Invoice's description
+    pub description: Option<String>,
+    /// Invoice's description hash
+    pub description_hash: Option<String>,
+    /// Payment preimage
+    pub preimage: Option<String>,
+    /// Payment hash
+    pub payment_hash: String,
+    /// Amount in millisatoshis
+    pub amount: u64,
+    /// Fees paid in millisatoshis
+    pub fees_paid: u64,
+    /// Creation timestamp in seconds since epoch
+    pub created_at: u64,
+    /// Expiration timestamp in seconds since epoch
+    pub expires_at: u64,
+    /// Settled timestamp in seconds since epoch
+    pub settled_at: Option<u64>,
+    /// Optional metadata about the payment
+    pub metadata: String,
 }
 
 impl From<nip47::LookupInvoiceResponseResult> for LookupInvoiceResponseResult {
     fn from(value: nip47::LookupInvoiceResponseResult) -> Self {
         Self {
+            transaction_type: value.transaction_type.map(|t| t.into()),
             invoice: value.invoice,
-            paid: value.paid,
+            description: value.description,
+            description_hash: value.description_hash,
+            preimage: value.preimage,
+            payment_hash: value.payment_hash,
+            amount: value.amount,
+            fees_paid: value.fees_paid,
+            created_at: value.created_at,
+            expires_at: value.expires_at,
+            settled_at: value.settled_at,
+            metadata: value.metadata.to_string(),
         }
     }
 }
@@ -576,70 +680,18 @@ impl From<nip47::LookupInvoiceResponseResult> for LookupInvoiceResponseResult {
 impl From<LookupInvoiceResponseResult> for nip47::LookupInvoiceResponseResult {
     fn from(value: LookupInvoiceResponseResult) -> Self {
         Self {
+            transaction_type: value.transaction_type.map(|t| t.into()),
             invoice: value.invoice,
-            paid: value.paid,
-        }
-    }
-}
-
-/// NIP47 Response Result
-#[derive(Record)]
-pub struct ListPaymentResponseResult {
-    /// Bolt11 invoice
-    pub invoice: String,
-    /// Preimage for the payment
-    pub preimage: Option<String>,
-}
-
-impl From<nip47::ListPaymentResponseResult> for ListPaymentResponseResult {
-    fn from(value: nip47::ListPaymentResponseResult) -> Self {
-        Self {
-            invoice: value.invoice,
+            description: value.description,
+            description_hash: value.description_hash,
             preimage: value.preimage,
-        }
-    }
-}
-
-impl From<ListPaymentResponseResult> for nip47::ListPaymentResponseResult {
-    fn from(value: ListPaymentResponseResult) -> Self {
-        Self {
-            invoice: value.invoice,
-            preimage: value.preimage,
-        }
-    }
-}
-
-/// Budget renewal type
-#[derive(Enum)]
-pub enum BudgetType {
-    /// Daily
-    Daily,
-    /// Weekly
-    Weekly,
-    /// Monthly
-    Monthly,
-    /// Yearly
-    Yearly,
-}
-
-impl From<nip47::BudgetType> for BudgetType {
-    fn from(value: nip47::BudgetType) -> Self {
-        match value {
-            nip47::BudgetType::Daily => Self::Daily,
-            nip47::BudgetType::Weekly => Self::Weekly,
-            nip47::BudgetType::Monthly => Self::Monthly,
-            nip47::BudgetType::Yearly => Self::Yearly,
-        }
-    }
-}
-
-impl From<BudgetType> for nip47::BudgetType {
-    fn from(value: BudgetType) -> Self {
-        match value {
-            BudgetType::Daily => Self::Daily,
-            BudgetType::Weekly => Self::Weekly,
-            BudgetType::Monthly => Self::Monthly,
-            BudgetType::Yearly => Self::Yearly,
+            payment_hash: value.payment_hash,
+            amount: value.amount,
+            fees_paid: value.fees_paid,
+            created_at: value.created_at,
+            expires_at: value.expires_at,
+            settled_at: value.settled_at,
+            metadata: value.metadata.into(),
         }
     }
 }
@@ -647,20 +699,14 @@ impl From<BudgetType> for nip47::BudgetType {
 /// NIP47 Response Result
 #[derive(Record)]
 pub struct GetBalanceResponseResult {
-    /// Balance amount in sats
+    /// Balance amount in msats
     pub balance: u64,
-    /// Max amount payable within current budget
-    pub max_amount: Option<u64>,
-    /// Budget renewal type
-    pub budget_renewal: Option<BudgetType>,
 }
 
 impl From<nip47::GetBalanceResponseResult> for GetBalanceResponseResult {
     fn from(value: nip47::GetBalanceResponseResult) -> Self {
         Self {
             balance: value.balance,
-            max_amount: value.max_amount,
-            budget_renewal: value.budget_renewal.map(|b| b.into()),
         }
     }
 }
@@ -669,8 +715,53 @@ impl From<GetBalanceResponseResult> for nip47::GetBalanceResponseResult {
     fn from(value: GetBalanceResponseResult) -> Self {
         Self {
             balance: value.balance,
-            max_amount: value.max_amount,
-            budget_renewal: value.budget_renewal.map(|b| b.into()),
+        }
+    }
+}
+
+/// NIP47 Response Result
+#[derive(Record)]
+pub struct GetInfoResponseResult {
+    /// The alias of the lightning node
+    pub alias: String,
+    /// The color of the current node in hex code format
+    pub color: String,
+    /// Lightning Node's public key
+    pub pubkey: String,
+    /// Active network
+    pub network: String,
+    /// Current block height
+    pub block_height: u32,
+    /// Most Recent Block Hash
+    pub block_hash: String,
+    /// Available methods for this connection
+    pub methods: Vec<String>,
+}
+
+impl From<nip47::GetInfoResponseResult> for GetInfoResponseResult {
+    fn from(value: nip47::GetInfoResponseResult) -> Self {
+        Self {
+            alias: value.alias,
+            color: value.color,
+            pubkey: value.pubkey,
+            network: value.network,
+            block_height: value.block_height,
+            block_hash: value.block_hash,
+            methods: value.methods,
+        }
+    }
+}
+
+impl From<GetInfoResponseResult> for nip47::GetInfoResponseResult {
+    fn from(value: GetInfoResponseResult) -> Self {
+        Self {
+            alias: value.alias,
+            color: value.color,
+            pubkey: value.pubkey,
+            network: value.network,
+            block_height: value.block_height,
+            block_hash: value.block_hash,
+            methods: value.methods,
         }
     }
 }
@@ -682,8 +773,16 @@ pub enum ResponseResult {
     PayInvoice {
         pay_invoice: PayInvoiceResponseResult,
     },
+    /// Multi Pay Invoice
+    MultiPayInvoice {
+        pay_invoice: PayInvoiceResponseResult,
+    },
     /// Pay Keysend
     PayKeysend {
+        pay_keysend: PayKeysendResponseResult,
+    },
+    /// Multi Pay Keysend
+    MultiPayKeysend {
         pay_keysend: PayKeysendResponseResult,
     },
     /// Make Invoice
@@ -694,18 +793,16 @@ pub enum ResponseResult {
     LookupInvoice {
         lookup_invoice: LookupInvoiceResponseResult,
     },
-    /// List Invoices
-    ListInvoices {
-        list_invoices: Vec<LookupInvoiceResponseResult>,
-    },
-    /// List Payments
-    ListPayments {
-        list_payments: Vec<ListPaymentResponseResult>,
+    /// List Transactions
+    ListTransactions {
+        list_transactions: Vec<LookupInvoiceResponseResult>,
     },
     /// Get Balance
     GetBalance {
         get_balance: GetBalanceResponseResult,
     },
+    /// Get Info
+    GetInfo { get_info: GetInfoResponseResult },
 }
 
 impl From<nip47::ResponseResult> for ResponseResult {
@@ -714,8 +811,14 @@ impl From<nip47::ResponseResult> for ResponseResult {
             nip47::ResponseResult::PayInvoice(pay_invoice) => Self::PayInvoice {
                 pay_invoice: pay_invoice.into(),
             },
+            nip47::ResponseResult::MultiPayInvoice(multi_pay_invoice) => Self::MultiPayInvoice {
+                pay_invoice: multi_pay_invoice.into(),
+            },
             nip47::ResponseResult::PayKeysend(pay_keysend) => Self::PayKeysend {
                 pay_keysend: pay_keysend.into(),
+            },
+            nip47::ResponseResult::MultiPayKeysend(multi_pay_keysend) => Self::MultiPayKeysend {
+                pay_keysend: multi_pay_keysend.into(),
             },
             nip47::ResponseResult::MakeInvoice(make_invoice) => Self::MakeInvoice {
                 make_invoice: make_invoice.into(),
@@ -723,14 +826,14 @@ impl From<nip47::ResponseResult> for ResponseResult {
             nip47::ResponseResult::LookupInvoice(lookup_invoice) => Self::LookupInvoice {
                 lookup_invoice: lookup_invoice.into(),
             },
-            nip47::ResponseResult::ListInvoices(list_invoices) => Self::ListInvoices {
-                list_invoices: list_invoices.into_iter().map(|i| i.into()).collect(),
-            },
-            nip47::ResponseResult::ListPayments(list_payments) => Self::ListPayments {
-                list_payments: list_payments.into_iter().map(|p| p.into()).collect(),
+            nip47::ResponseResult::ListTransactions(list_transactions) => Self::ListTransactions {
+                list_transactions: list_transactions.into_iter().map(|i| i.into()).collect(),
             },
             nip47::ResponseResult::GetBalance(get_balance) => Self::GetBalance {
                 get_balance: get_balance.into(),
+            },
+            nip47::ResponseResult::GetInfo(get_info) => Self::GetInfo {
+                get_info: get_info.into(),
             },
         }
     }
@@ -740,18 +843,22 @@ impl From<ResponseResult> for nip47::ResponseResult {
     fn from(value: ResponseResult) -> Self {
         match value {
             ResponseResult::PayInvoice { pay_invoice } => Self::PayInvoice(pay_invoice.into()),
+            ResponseResult::MultiPayInvoice { pay_invoice } => {
+                Self::MultiPayInvoice(pay_invoice.into())
+            }
             ResponseResult::PayKeysend { pay_keysend } => Self::PayKeysend(pay_keysend.into()),
+            ResponseResult::MultiPayKeysend { pay_keysend } => {
+                Self::MultiPayKeysend(pay_keysend.into())
+            }
             ResponseResult::MakeInvoice { make_invoice } => Self::MakeInvoice(make_invoice.into()),
             ResponseResult::LookupInvoice { lookup_invoice } => {
                 Self::LookupInvoice(lookup_invoice.into())
             }
-            ResponseResult::ListInvoices { list_invoices } => {
-                Self::ListInvoices(list_invoices.into_iter().map(|i| i.into()).collect())
-            }
-            ResponseResult::ListPayments { list_payments } => {
-                Self::ListPayments(list_payments.into_iter().map(|p| p.into()).collect())
+            ResponseResult::ListTransactions { list_transactions } => {
+                Self::ListTransactions(list_transactions.into_iter().map(|i| i.into()).collect())
             }
             ResponseResult::GetBalance { get_balance } => Self::GetBalance(get_balance.into()),
+            ResponseResult::GetInfo { get_info } => Self::GetInfo(get_info.into()),
         }
     }
 }

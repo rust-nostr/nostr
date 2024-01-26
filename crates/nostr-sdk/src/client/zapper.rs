@@ -204,7 +204,11 @@ impl Client {
                     // Compose NWC request event
                     let req = Request {
                         method: Method::PayInvoice,
-                        params: RequestParams::PayInvoice(PayInvoiceRequestParams { invoice }),
+                        params: RequestParams::PayInvoice(PayInvoiceRequestParams {
+                            id: None,
+                            invoice,
+                            amount: None,
+                        }),
                     };
                     let event = req.to_event(&uri)?;
                     let event_id = event.id;
