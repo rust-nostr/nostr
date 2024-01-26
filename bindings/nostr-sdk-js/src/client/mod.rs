@@ -232,6 +232,16 @@ impl JsClient {
             .map(|id| id.into())
     }
 
+    /// Signs the `EventBuilder` into an `Event` using the `ClientSigner`
+    #[wasm_bindgen(js_name = signEventBuilder)]
+    pub async fn sign_event_builder(&self, builder: &JsEventBuilder) -> Result<JsEvent> {
+        self.inner
+            .sign_event_builder(builder.deref().clone())
+            .await
+            .map_err(into_err)
+            .map(|id| id.into())
+    }
+
     /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
     ///
     /// Rise an error if the [`ClientSigner`] is not set.
