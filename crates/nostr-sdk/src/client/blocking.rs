@@ -228,6 +228,10 @@ impl Client {
         RUNTIME.block_on(async { self.client.send_event_to(url, event).await })
     }
 
+    pub fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
+        RUNTIME.block_on(async { self.client.sign_event_builder(builder).await })
+    }
+
     pub fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
         RUNTIME.block_on(async { self.client.send_event_builder(builder).await })
     }
