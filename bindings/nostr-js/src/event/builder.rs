@@ -10,7 +10,7 @@ use wasm_bindgen::prelude::*;
 use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
-use crate::types::{JsContact, JsMetadata};
+use crate::types::{JsContact, JsMetadata, JsTimestamp};
 
 #[wasm_bindgen(js_name = EventBuilder)]
 pub struct JsEventBuilder {
@@ -25,6 +25,12 @@ impl Deref for JsEventBuilder {
     }
 }
 
+impl From<EventBuilder> for JsEventBuilder {
+    fn from(builder: EventBuilder) -> Self {
+        Self { builder }
+    }
+}
+
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
@@ -32,6 +38,12 @@ impl JsEventBuilder {
         Self {
             builder: EventBuilder::new(kind.into(), content, tags.into_iter().map(|t| t.into())),
         }
+    }
+
+    /// Set a custom `created_at` UNIX timestamp
+    #[wasm_bindgen(js_name = customCreatedAt)]
+    pub fn custom_created_at(self, created_at: JsTimestamp) -> Self {
+        self.builder.custom_created_at(*created_at).into()
     }
 
     #[wasm_bindgen(js_name = toEvent)]
