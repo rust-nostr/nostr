@@ -171,7 +171,7 @@ impl NostrDatabase for MemoryDatabase {
             let ids = self.indexes.query(filters, order).await;
             let events = self.events.read().await;
 
-            let mut list: Vec<Event> = Vec::new();
+            let mut list: Vec<Event> = Vec::with_capacity(ids.len());
             for event_id in ids.into_iter() {
                 if let Some(event) = events.get(&event_id).cloned() {
                     list.push(event);
@@ -197,9 +197,22 @@ impl NostrDatabase for MemoryDatabase {
 
     async fn negentropy_items(
         &self,
-        _filter: Filter,
+        filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        Err(DatabaseError::NotSupported)
+        if self.opts.events {
+            let ids = self.indexes.query([filter], Order::Desc).await;
+            let events = self.events.read().await;
+
+            let mut list: Vec<(EventId, Timestamp)> = Vec::with_capacity(ids.len());
+            for event_id in ids.into_iter() {
+                if let Some(event) = events.get(&event_id).cloned() {
+                    list.push((event.id, event.created_at));
+                }
+            }
+            Ok(list)
+        } else {
+            Err(DatabaseError::FeatureDisabled)
+        }
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {
