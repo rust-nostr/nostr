@@ -7,7 +7,6 @@
 use std::collections::{HashMap, HashSet};
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-use std::ops::Mul;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,9 +39,13 @@ mod stats;
 
 pub use self::limits::Limits;
 pub use self::options::{
-    FilterOptions, NegentropyOptions, RelayOptions, RelayPoolOptions, RelaySendOptions,
+    FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelayPoolOptions,
+    RelaySendOptions,
 };
-use self::options::{MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC};
+use self::options::{
+    MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_HIGH_WATER_UP,
+    NEGENTROPY_LOW_WATER_UP,
+};
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
 pub use self::stats::RelayConnectionStats;
 #[cfg(feature = "blocking")]
@@ -1508,10 +1511,12 @@ impl Relay {
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
+        // Check if read option is disabled
         if !self.opts.get_read() {
             return Err(Error::ReadDisabled);
         }
 
+        // Check if relay is connected
         if !self.is_connected().await
             && self.stats.attempts() > 1
             && self.stats.uptime() < MIN_UPTIME
@@ -1519,20 +1524,17 @@ impl Relay {
             return Err(Error::NotConnected);
         }
 
-        let id_size: usize = 32;
-
-        let mut negentropy = Negentropy::new(id_size, Some(4_096))?;
-
+        // Compose negentropy struct, add items and seal
+        let mut negentropy = Negentropy::new(32, Some(20_000))?;
         for (id, timestamp) in items.into_iter() {
             let id = Bytes::from_slice(id.as_bytes());
             negentropy.add_item(timestamp.as_u64(), id)?;
         }
-
         negentropy.seal()?;
 
+        // Send initial negentropy message
         let sub_id = SubscriptionId::generate();
         let open_msg = ClientMessage::neg_open(&mut negentropy, &sub_id, filter)?;
-
         self.send_msg(open_msg, Some(Duration::from_secs(10)))
             .await?;
 
@@ -1580,6 +1582,16 @@ impl Relay {
         .await
         .ok_or(Error::Timeout)??;
 
+        let do_up: bool = opts.direction.do_up();
+        let do_down: bool = opts.direction.do_down();
+        let mut in_flight_up: HashSet<EventId> = HashSet::new();
+        let mut in_flight_down = false;
+        let mut sync_done = false;
+        let mut have_ids: Vec<Bytes> = Vec::new();
+        let mut need_ids: Vec<Bytes> = Vec::new();
+        let down_sub_id: SubscriptionId = SubscriptionId::generate();
+
+        // Start reconciliation
         while let Ok(notification) = notifications.recv().await {
             match notification {
                 RelayPoolNotification::Message { relay_url, message } => {
@@ -1591,56 +1603,18 @@ impl Relay {
                             } => {
                                 if subscription_id == sub_id {
                                     let query: Bytes = Bytes::from_hex(message)?;
-                                    let mut have_ids: Vec<Bytes> = Vec::new();
-                                    let mut need_ids: Vec<Bytes> = Vec::new();
                                     let msg: Option<Bytes> = negentropy.reconcile_with_ids(
                                         &query,
                                         &mut have_ids,
                                         &mut need_ids,
                                     )?;
 
-                                    if opts.bidirectional {
-                                        let ids = have_ids
-                                            .into_iter()
-                                            .filter_map(|id| EventId::from_slice(&id).ok());
-                                        let filter = Filter::new().ids(ids);
-                                        let events: Vec<Event> =
-                                            self.database.query(vec![filter], Order::Desc).await?;
-                                        let msgs: Vec<ClientMessage> =
-                                            events.into_iter().map(ClientMessage::event).collect();
-                                        if let Err(e) = self
-                                            .batch_msg(msgs, Some(opts.batch_send_timeout))
-                                            .await
-                                        {
-                                            tracing::error!("negentropy reconciliation: impossible to batch events to {}: {e}", self.url);
-                                        }
+                                    if !do_up {
+                                        have_ids.clear();
                                     }
 
-                                    if need_ids.is_empty() {
-                                        tracing::info!(
-                                            "Negentropy reconciliation terminated for {}",
-                                            self.url
-                                        );
-                                        break;
-                                    }
-
-                                    let ids = need_ids
-                                        .into_iter()
-                                        .filter_map(|id| EventId::from_slice(&id).ok());
-                                    let filter = Filter::new().ids(ids);
-                                    if !filter.ids.is_empty() {
-                                        let timeout: Duration = opts.static_get_events_timeout
-                                            + opts
-                                                .relative_get_events_timeout
-                                                .mul(filter.ids.len() as u32);
-                                        self.get_events_of(
-                                            vec![filter],
-                                            timeout,
-                                            FilterOptions::ExitOnEOSE,
-                                        )
-                                        .await?;
-                                    } else {
-                                        tracing::warn!("negentropy reconciliation: tried to send empty filters to {}", self.url);
+                                    if !do_down {
+                                        need_ids.clear();
                                     }
 
                                     match msg {
@@ -1658,13 +1632,7 @@ impl Relay {
                                             )
                                             .await?;
                                         }
-                                        None => {
-                                            tracing::info!(
-                                                "Negentropy reconciliation terminated for {}",
-                                                self.url
-                                            );
-                                            break;
-                                        }
+                                        None => sync_done = true,
                                     }
                                 }
                             }
@@ -1676,7 +1644,86 @@ impl Relay {
                                     return Err(Error::NegentropyReconciliation(code));
                                 }
                             }
+                            RelayMessage::Ok {
+                                event_id,
+                                status,
+                                message,
+                            } => {
+                                if in_flight_up.remove(&event_id) && !status {
+                                    tracing::error!(
+                                        "Unable to upload event {event_id} to {}: {message}",
+                                        self.url
+                                    );
+                                }
+                            }
+                            RelayMessage::EndOfStoredEvents(id) => {
+                                if id == down_sub_id {
+                                    in_flight_down = false;
+                                }
+                            }
                             _ => (),
+                        }
+
+                        // Get/Send events
+                        if do_up
+                            && !have_ids.is_empty()
+                            && in_flight_up.len() <= NEGENTROPY_LOW_WATER_UP
+                        {
+                            let mut num_sent = 0;
+
+                            while !have_ids.is_empty()
+                                && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
+                            {
+                                if let Some(id) = have_ids.pop() {
+                                    if let Ok(event_id) = EventId::from_slice(&id) {
+                                        match self.database.event_by_id(event_id).await {
+                                            Ok(event) => {
+                                                in_flight_up.insert(event_id);
+                                                self.send_msg(ClientMessage::event(event), None)
+                                                    .await?;
+                                                num_sent += 1;
+                                            }
+                                            Err(e) => tracing::error!("Couldn't upload event: {e}"),
+                                        }
+                                    }
+                                }
+                            }
+
+                            if num_sent > 0 {
+                                tracing::info!(
+                                    "Negentropy UP: {} events ({} remaining)",
+                                    num_sent,
+                                    have_ids.len()
+                                );
+                            }
+                        }
+
+                        if do_down && !need_ids.is_empty() && !in_flight_down {
+                            let mut ids: Vec<EventId> =
+                                Vec::with_capacity(NEGENTROPY_BATCH_SIZE_DOWN);
+
+                            while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
+                                if let Some(id) = need_ids.pop() {
+                                    if let Ok(event_id) = EventId::from_slice(&id) {
+                                        ids.push(event_id);
+                                    }
+                                }
+                            }
+
+                            tracing::info!(
+                                "Negentropy DOWN: {} events ({} remaining)",
+                                ids.len(),
+                                need_ids.len()
+                            );
+
+                            let filter = Filter::new().ids(ids);
+                            self.send_msg(
+                                ClientMessage::req(down_sub_id.clone(), vec![filter]),
+                                None,
+                            )
+                            .await?;
+
+                            in_flight_down = true
                         }
                     }
                 }
@@ -1688,8 +1735,20 @@ impl Relay {
                 RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => break,
                 _ => (),
             };
+
+            if sync_done
+                && have_ids.is_empty()
+                && need_ids.is_empty()
+                && in_flight_up.is_empty()
+                && !in_flight_down
+            {
+                break;
+            }
         }
 
+        tracing::info!("Negentropy reconciliation terminated for {}", self.url);
+
+        // Close negentropy
         let close_msg = ClientMessage::NegClose {
             subscription_id: sub_id,
         };

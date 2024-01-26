@@ -13,6 +13,9 @@ use crate::client::options::DEFAULT_SEND_TIMEOUT;
 pub const DEFAULT_RETRY_SEC: u64 = 10;
 pub const MIN_RETRY_SEC: u64 = 5;
 pub const MAX_ADJ_RETRY_SEC: u64 = 60;
+pub const NEGENTROPY_HIGH_WATER_UP: usize = 100;
+pub const NEGENTROPY_LOW_WATER_UP: usize = 50;
+pub const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
 
 /// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
@@ -259,40 +262,39 @@ impl RelayPoolOptions {
     }
 }
 
+/// Negentropy Sync direction
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NegentropyDirection {
+    /// Send events to relay
+    Up,
+    /// Get events from relay
+    Down,
+    /// Both send and get events from relay (bidirectional sync)
+    Both,
+}
+
+impl NegentropyDirection {
+    pub(super) fn do_up(&self) -> bool {
+        matches!(self, Self::Up | Self::Both)
+    }
+
+    pub(super) fn do_down(&self) -> bool {
+        matches!(self, Self::Down | Self::Both)
+    }
+}
+
 /// Negentropy reconciliation options
 #[derive(Debug, Clone, Copy)]
 pub struct NegentropyOptions {
-    /// Timeout to check if negentropy it's supported (default: 10 secs)
-    pub initial_timeout: Duration,
-    // /// Timeout for messages from relay (default: 10)
-    //
-    // If relay reply only to first messages, this timeout will stop the loop.
-    // pub recv_timeout: Duration,
-    /// Static timeout to get needed events from relay (default: 10)
-    ///
-    /// This timeout is added to `relative_get_events_timeout`
-    pub static_get_events_timeout: Duration,
-    /// Relative timeout to get needed events from relay (default: 250 ms per event)
-    ///
-    /// This timeout is added to `static_get_events_timeout`
-    pub relative_get_events_timeout: Duration,
-    /// Timeout for sending events to relay (default: 30 secs)
-    pub batch_send_timeout: Duration,
-    /// Bidirectional Sync (default: false)
-    ///
-    /// If `true`, perform the set reconciliation on each side.
-    pub bidirectional: bool,
+    pub(super) initial_timeout: Duration,
+    pub(super) direction: NegentropyDirection,
 }
 
 impl Default for NegentropyOptions {
     fn default() -> Self {
         Self {
             initial_timeout: Duration::from_secs(10),
-            // recv_timeout: Duration::from_secs(600),
-            static_get_events_timeout: Duration::from_secs(10),
-            relative_get_events_timeout: Duration::from_millis(250),
-            batch_send_timeout: Duration::from_secs(30),
-            bidirectional: false,
+            direction: NegentropyDirection::Down,
         }
     }
 }
@@ -309,41 +311,11 @@ impl NegentropyOptions {
         self
     }
 
-    // /// Timeout for messages from relay (default: 10)
-    //
-    // If relay reply only to first messages, this timeout will stop the loop.
-    // pub fn recv_timeout(mut self, recv_timeout: Duration) -> Self {
-    // self.recv_timeout = recv_timeout;
-    // self
-    // }
-
-    /// Static timeout to get needed events from relay (default: 10)
-    ///
-    /// This timeout is added to `relative_get_events_timeout`
-    pub fn static_get_events_timeout(mut self, static_get_events_timeout: Duration) -> Self {
-        self.static_get_events_timeout = static_get_events_timeout;
-        self
-    }
-
-    /// Relative timeout to get needed events from relay (default: 250 ms per event)
-    ///
-    /// This timeout is added to `static_get_events_timeout`
-    pub fn relative_get_events_timeout(mut self, relative_get_events_timeout: Duration) -> Self {
-        self.relative_get_events_timeout = relative_get_events_timeout;
-        self
-    }
-
-    /// Timeout for sending events to relay (default: 30 secs)
-    pub fn batch_send_timeout(mut self, batch_send_timeout: Duration) -> Self {
-        self.batch_send_timeout = batch_send_timeout;
-        self
-    }
-
-    /// Bidirectional Sync (default: false)
+    /// Negentropy Sync direction (default: down)
     ///
     /// If `true`, perform the set reconciliation on each side.
-    pub fn bidirectional(mut self, bidirectional: bool) -> Self {
-        self.bidirectional = bidirectional;
+    pub fn direction(mut self, direction: NegentropyDirection) -> Self {
+        self.direction = direction;
         self
     }
 }

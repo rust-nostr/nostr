@@ -16,8 +16,10 @@ pub struct Limits {
 impl Default for Limits {
     fn default() -> Self {
         Self {
-            messages: MessagesLimits { max_size: 128_000 },
-            events: EventsLimits { max_size: 65_536 },
+            messages: MessagesLimits {
+                max_size: 5_250_000,
+            },
+            events: EventsLimits { max_size: 70_000 },
         }
     }
 }
