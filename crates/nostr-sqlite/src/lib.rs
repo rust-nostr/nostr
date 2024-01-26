@@ -304,7 +304,7 @@ impl NostrDatabase for SQLiteDatabase {
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
         let conn = self.acquire().await?;
-        let ids: Vec<EventId> = self.indexes.query(vec![filter], Order::Desc).await;
+        let ids: Vec<EventId> = self.indexes.query([filter], Order::Desc).await;
         conn.interact(move |conn| {
             let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
             let mut events = Vec::with_capacity(ids.len());

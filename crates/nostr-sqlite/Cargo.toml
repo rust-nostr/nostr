@@ -18,7 +18,7 @@ nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 rusqlite = { version = "0.28", features = ["bundled"] }
 thiserror.workspace = true
-tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
+tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
 
 [dev-dependencies]
