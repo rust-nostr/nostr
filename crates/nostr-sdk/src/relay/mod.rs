@@ -1563,7 +1563,11 @@ impl Relay {
                                 }
                             }
                             RelayMessage::Notice { message } => {
-                                if message.contains("bad msg: unknown cmd") {
+                                if message.contains("bad msg")
+                                    && (message.contains("unknown cmd")
+                                        || message.contains("negentropy")
+                                        || message.contains("NEG-"))
+                                {
                                     return Err(Error::NegentropyNotSupported);
                                 } else if message.contains("bad msg: invalid message")
                                     && message.contains("NEG-OPEN")
