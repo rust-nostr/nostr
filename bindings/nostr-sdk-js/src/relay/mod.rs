@@ -7,6 +7,8 @@ use nostr_sdk::prelude::*;
 use nostr_sdk::relay::Relay;
 use wasm_bindgen::prelude::*;
 
+pub mod options;
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(typescript_type = "JsRelay[]")]

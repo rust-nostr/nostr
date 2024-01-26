@@ -25,6 +25,7 @@ pub use self::signer::JsClientSigner;
 use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
+use crate::relay::options::JsNegentropyOptions;
 use crate::relay::{JsRelay, JsRelayArray};
 
 #[wasm_bindgen(js_name = Client)]
@@ -525,9 +526,9 @@ impl JsClient {
     /// Negentropy reconciliation
     ///
     /// <https://github.com/hoytech/negentropy>
-    pub async fn reconcile(&self, filter: &JsFilter) -> Result<()> {
+    pub async fn reconcile(&self, filter: &JsFilter, opts: &JsNegentropyOptions) -> Result<()> {
         self.inner
-            .reconcile(filter.deref().clone(), NegentropyOptions::default())
+            .reconcile(filter.deref().clone(), **opts)
             .await
             .map_err(into_err)
     }
