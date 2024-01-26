@@ -37,6 +37,7 @@ pub use self::profile::Profile;
 pub use self::raw::RawEvent;
 
 /// Backend
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Backend {
     /// Memory
     Memory,
