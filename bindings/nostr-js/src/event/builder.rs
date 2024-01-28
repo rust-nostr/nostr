@@ -96,6 +96,13 @@ impl JsEventBuilder {
         }
     }
 
+    #[wasm_bindgen(js_name = longFormTextNote)]
+    pub fn long_form_text_note(content: &str, tags: Vec<JsTag>) -> Self {
+        Self {
+            builder: EventBuilder::long_form_text_note(content, tags.into_iter().map(|t| t.into())),
+        }
+    }
+
     #[wasm_bindgen(js_name = contactList)]
     pub fn contact_list(list: Vec<JsContact>) -> Self {
         let list = list.into_iter().map(|c| c.inner());
