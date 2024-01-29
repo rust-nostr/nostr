@@ -1301,8 +1301,8 @@ impl Relay {
         let mut notifications = self.notification_sender.subscribe();
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message { message, .. } = notification {
-                    match message {
+                match notification {
+                    RelayPoolNotification::Message { message, .. } => match message {
                         RelayMessage::Event {
                             subscription_id,
                             event,
@@ -1334,36 +1334,50 @@ impl Relay {
                             }
                         }
                         RelayMessage::Ok { .. } => (),
-                        _ => {
-                            tracing::debug!(
-                                "Receive unhandled message {message:?} from {}",
-                                self.url
-                            )
+                        _ => (),
+                    },
+                    RelayPoolNotification::RelayStatus { relay_url, status } => {
+                        if relay_url == self.url && status != RelayStatus::Connected {
+                            return Err(Error::NotConnected);
                         }
-                    };
+                    }
+                    RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => break,
+                    _ => (),
                 }
             }
+
+            Ok(())
         })
         .await
-        .ok_or(Error::Timeout)?;
+        .ok_or(Error::Timeout)??;
 
         if let FilterOptions::WaitDurationAfterEOSE(duration) = opts {
             time::timeout(Some(duration), async {
                 while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotification::Message {
-                        message:
-                            RelayMessage::Event {
-                                subscription_id,
-                                event,
-                            },
-                        ..
-                    } = notification
-                    {
-                        if subscription_id.eq(&id) {
-                            callback(*event).await;
+                    match notification {
+                        RelayPoolNotification::Message {
+                            message:
+                                RelayMessage::Event {
+                                    subscription_id,
+                                    event,
+                                },
+                            ..
+                        } => {
+                            if subscription_id.eq(&id) {
+                                callback(*event).await;
+                            }
                         }
+                        RelayPoolNotification::RelayStatus { relay_url, status } => {
+                            if relay_url == self.url && status != RelayStatus::Connected {
+                                return Err(Error::NotConnected);
+                            }
+                        }
+                        RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => break,
+                        _ => (),
                     }
                 }
+
+                Ok(())
             })
             .await;
         }
