@@ -19,7 +19,10 @@ impl Default for Limits {
             messages: MessagesLimits {
                 max_size: 5_250_000,
             },
-            events: EventsLimits { max_size: 70_000 },
+            events: EventsLimits {
+                max_size: 70_000,
+                max_num_tags: 2_000,
+            },
         }
     }
 }
@@ -36,8 +39,8 @@ pub struct MessagesLimits {
 pub struct EventsLimits {
     /// Maximum size of normalised JSON, in bytes
     pub max_size: u32,
-    // /// Maximum number of tags allowed
-    // pub max_num_tags: u16,
+    /// Maximum number of tags allowed
+    pub max_num_tags: u16,
     // Maximum size for tag values, in bytes
     // pub max_tag_val_size: u16,
 }

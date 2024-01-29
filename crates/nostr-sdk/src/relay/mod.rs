@@ -144,6 +144,14 @@ pub enum Error {
         /// Max event size
         max_size: usize,
     },
+    /// Too many tags
+    #[error("Received event with too many tags: tags={size}, max_tags={max_size}")]
+    TooManyTags {
+        /// Tags num
+        size: usize,
+        /// Max tags num
+        max_size: usize,
+    },
 }
 
 /// Relay connection status
@@ -795,10 +803,26 @@ impl Relay {
                         tracing::trace!("Received message from {}: {:?}", relay.url, msg);
 
                         if let RawRelayMessage::Event { event, .. } = &msg {
+                            // Check event size
                             let size: usize = event.to_string().as_bytes().len();
                             let max_size: usize = relay.limits.events.max_size as usize;
                             if size > max_size {
                                 return Err(Error::EventTooLarge { size, max_size });
+                            }
+
+                            // Check tags limit
+                            if let Some(tags) = event.get("tags") {
+                                if let Some(tags) = tags.as_array() {
+                                    let size: usize = tags.len();
+                                    let max_num_tags: usize =
+                                        relay.limits.events.max_num_tags as usize;
+                                    if size > max_num_tags {
+                                        return Err(Error::TooManyTags {
+                                            size,
+                                            max_size: max_num_tags,
+                                        });
+                                    }
+                                }
                             }
                         }
 
