@@ -848,10 +848,11 @@ impl DatabaseIndexes {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use nostr::secp256k1::schnorr::Signature;
     use nostr::secp256k1::SecretKey;
     use nostr::{FromBech32, JsonUtil, Keys, Tag};
-    use std::str::FromStr;
 
     use super::*;
 
