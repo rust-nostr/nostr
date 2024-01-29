@@ -94,6 +94,11 @@ impl JsClient {
             .unchecked_into()
     }
 
+    /// Get a previously added `Relay`
+    pub async fn relay(&self, url: &str) -> Result<JsRelay> {
+        Ok(self.inner.relay(url).await.map_err(into_err)?.into())
+    }
+
     /// Add new relay
     ///
     /// This method **NOT** automatically start connection with relay!
