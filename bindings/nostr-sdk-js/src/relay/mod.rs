@@ -7,7 +7,10 @@ use nostr_sdk::prelude::*;
 use nostr_sdk::relay::Relay;
 use wasm_bindgen::prelude::*;
 
+pub mod flags;
 pub mod options;
+
+use self::flags::JsAtomicRelayServiceFlags;
 
 #[wasm_bindgen]
 extern "C" {
@@ -21,8 +24,8 @@ pub struct JsRelay {
 }
 
 impl From<Relay> for JsRelay {
-    fn from(relay: Relay) -> Self {
-        Self { inner: relay }
+    fn from(inner: Relay) -> Self {
+        Self { inner }
     }
 }
 
@@ -68,6 +71,11 @@ impl JsRelay {
     // Get status
     pub async fn status(&self) -> JsRelayStatus {
         self.inner.status().await.into()
+    }
+
+    /// Get Relay Service Flags
+    pub fn flags(&self) -> JsAtomicRelayServiceFlags {
+        self.inner.flags().into()
     }
 
     /// Check if relay is connected
