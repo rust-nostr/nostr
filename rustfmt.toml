@@ -3,7 +3,6 @@ newline_style = "Auto"
 reorder_imports = true
 reorder_modules = true
 indent_style = "Block"
-normalize_comments = true
 imports_granularity = "Module"
 reorder_impl_items = true
 group_imports = "StdExternalCrate"
