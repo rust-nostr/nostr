@@ -19,12 +19,18 @@ async fn main() -> Result<()> {
 
     let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
 
+    // Add relays
     client.add_relay("wss://nostr.oxtr.dev").await?;
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nostr.openchain.fr").await?;
-    client
-        .add_relay_with_opts("wss://nostr.mom", RelayOptions::new().write(false))
-        .await?;
+
+    // Add relay with custom flags
+    let flags = RelayServiceFlags::default().remove(RelayServiceFlags::WRITE); // Use default flags and remove one
+    let _flags = RelayServiceFlags::READ | RelayServiceFlags::PING; // Or, explicit set the flags to use
+    let opts = RelayOptions::new().flags(flags);
+    client.add_relay_with_opts("wss://nostr.mom", opts).await?;
+
+    // Add relay with proxy
     client
         .add_relay_with_opts(
             "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",

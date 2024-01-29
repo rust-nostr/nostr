@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use super::{AtomicRelayServiceFlags, RelayServiceFlags};
 use crate::client::options::DEFAULT_SEND_TIMEOUT;
 
 pub const DEFAULT_RETRY_SEC: u64 = 10;
@@ -22,11 +23,9 @@ pub const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
 pub struct RelayOptions {
     /// Proxy
     #[cfg(not(target_arch = "wasm32"))]
-    pub proxy: Option<SocketAddr>,
-    /// Allow/disallow read actions (default: true)
-    read: Arc<AtomicBool>,
-    /// Allow/disallow write actions (default: true)
-    write: Arc<AtomicBool>,
+    pub(super) proxy: Option<SocketAddr>,
+    /// Relay Service Flags
+    pub(super) flags: AtomicRelayServiceFlags,
     /// Enable/disable auto reconnection (default: true)
     reconnect: Arc<AtomicBool>,
     /// Retry connection time (default: 10 sec)
@@ -42,8 +41,7 @@ impl Default for RelayOptions {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
             proxy: None,
-            read: Arc::new(AtomicBool::new(true)),
-            write: Arc::new(AtomicBool::new(true)),
+            flags: AtomicRelayServiceFlags::new(RelayServiceFlags::READ | RelayServiceFlags::WRITE),
             reconnect: Arc::new(AtomicBool::new(true)),
             retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),
             adjust_retry_sec: Arc::new(AtomicBool::new(true)),
@@ -64,42 +62,32 @@ impl RelayOptions {
         self
     }
 
+    /// Set Relay Service Flags
+    pub fn flags(mut self, flags: RelayServiceFlags) -> Self {
+        self.flags = AtomicRelayServiceFlags::new(flags);
+        self
+    }
+
     /// Set read option
+    #[deprecated(since = "0.28.0", note = "use `flags` instead")]
     pub fn read(self, read: bool) -> Self {
-        Self {
-            read: Arc::new(AtomicBool::new(read)),
-            ..self
+        if read {
+            self.flags.add(RelayServiceFlags::READ);
+        } else {
+            self.flags.remove(RelayServiceFlags::READ);
         }
-    }
-
-    pub(crate) fn get_read(&self) -> bool {
-        self.read.load(Ordering::SeqCst)
-    }
-
-    /// Update read option
-    pub fn update_read(&self, read: bool) {
-        let _ = self
-            .read
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(read));
+        self
     }
 
     /// Set write option
+    #[deprecated(since = "0.28.0", note = "use `flags` instead")]
     pub fn write(self, write: bool) -> Self {
-        Self {
-            write: Arc::new(AtomicBool::new(write)),
-            ..self
+        if write {
+            self.flags.add(RelayServiceFlags::WRITE);
+        } else {
+            self.flags.remove(RelayServiceFlags::WRITE);
         }
-    }
-
-    pub(crate) fn get_write(&self) -> bool {
-        self.write.load(Ordering::SeqCst)
-    }
-
-    /// Update write option
-    pub fn update_write(&self, write: bool) {
-        let _ = self
-            .write
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(write));
+        self
     }
 
     /// Set reconnect option

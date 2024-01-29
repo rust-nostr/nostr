@@ -40,9 +40,9 @@ pub mod util;
 pub use self::client::blocking;
 pub use self::client::{Client, ClientBuilder, ClientSigner, Options};
 pub use self::relay::{
-    ActiveSubscription, FilterOptions, InternalSubscriptionId, NegentropyDirection,
-    NegentropyOptions, Relay, RelayConnectionStats, RelayOptions, RelayPoolNotification,
-    RelayPoolOptions, RelaySendOptions, RelayStatus,
+    ActiveSubscription, AtomicRelayServiceFlags, FilterOptions, InternalSubscriptionId,
+    NegentropyDirection, NegentropyOptions, Relay, RelayConnectionStats, RelayOptions,
+    RelayPoolNotification, RelayPoolOptions, RelaySendOptions, RelayServiceFlags, RelayStatus,
 };
 
 #[cfg(feature = "blocking")]

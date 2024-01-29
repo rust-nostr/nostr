@@ -32,11 +32,13 @@ use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
+mod flags;
 pub mod limits;
 mod options;
 pub mod pool;
 mod stats;
 
+pub use self::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 pub use self::limits::Limits;
 pub use self::options::{
     FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelayPoolOptions,
@@ -380,6 +382,11 @@ impl Relay {
         }
     }
 
+    /// Get Relay Service Flags
+    pub fn flags(&self) -> AtomicRelayServiceFlags {
+        self.opts.flags.clone()
+    }
+
     /// Check if [`Relay`] is connected
     pub async fn is_connected(&self) -> bool {
         self.status().await == RelayStatus::Connected
@@ -612,39 +619,42 @@ impl Relay {
                 let ping_abort_handle: AbortHandle = {
                     let relay = self.clone();
                     thread::abortable(async move {
-                        tracing::debug!("Relay Ping Thread Started");
+                        if relay.opts.flags.has_ping() {
+                            tracing::debug!("Relay Ping Thread Started");
 
-                        loop {
-                            if relay.stats.ping.last_nonce() != 0 && !relay.stats.ping.replied() {
-                                tracing::warn!("{} not replied to ping", relay.url);
-                                relay.stats.ping.reset();
-                                break;
-                            }
-
-                            let nonce: u64 = rand::thread_rng().gen();
-                            if relay.stats.ping.set_last_nonce(nonce)
-                                && relay.stats.ping.set_replied(false)
-                            {
-                                if let Err(e) =
-                                    relay.send_relay_event(RelayEvent::Ping { nonce }, None)
+                            loop {
+                                if relay.stats.ping.last_nonce() != 0 && !relay.stats.ping.replied()
                                 {
-                                    tracing::error!("Impossible to ping {}: {e}", relay.url);
+                                    tracing::warn!("{} not replied to ping", relay.url);
+                                    relay.stats.ping.reset();
                                     break;
-                                };
-                            } else {
-                                tracing::warn!(
-                                    "`last_nonce` or `replied` not updated for {}!",
-                                    relay.url
-                                );
+                                }
+
+                                let nonce: u64 = rand::thread_rng().gen();
+                                if relay.stats.ping.set_last_nonce(nonce)
+                                    && relay.stats.ping.set_replied(false)
+                                {
+                                    if let Err(e) =
+                                        relay.send_relay_event(RelayEvent::Ping { nonce }, None)
+                                    {
+                                        tracing::error!("Impossible to ping {}: {e}", relay.url);
+                                        break;
+                                    };
+                                } else {
+                                    tracing::warn!(
+                                        "`last_nonce` or `replied` not updated for {}!",
+                                        relay.url
+                                    );
+                                }
+
+                                thread::sleep(Duration::from_secs(PING_INTERVAL)).await;
                             }
 
-                            thread::sleep(Duration::from_secs(PING_INTERVAL)).await;
-                        }
+                            tracing::debug!("Exited from Ping Thread of {}", relay.url);
 
-                        tracing::debug!("Exited from Ping Thread of {}", relay.url);
-
-                        if let Err(err) = relay.disconnect().await {
-                            tracing::error!("Impossible to disconnect {}: {}", relay.url, err);
+                            if let Err(err) = relay.disconnect().await {
+                                tracing::error!("Impossible to disconnect {}: {}", relay.url, err);
+                            }
                         }
                     })
                 };
@@ -736,20 +746,24 @@ impl Relay {
                             }
                             #[cfg(not(target_arch = "wasm32"))]
                             RelayEvent::Ping { nonce } => {
-                                match ws_tx
-                                    .send(WsMessage::Ping(nonce.to_string().as_bytes().to_vec()))
-                                    .await
-                                {
-                                    Ok(_) => {
-                                        relay.stats.ping.just_sent().await;
-                                        tracing::debug!("Ping {} (nonce {})", relay.url, nonce);
-                                    }
-                                    Err(e) => {
-                                        tracing::error!(
-                                            "Impossible to ping {}: {}",
-                                            relay.url(),
-                                            e.to_string()
-                                        );
+                                if relay.opts.flags.has_ping() {
+                                    match ws_tx
+                                        .send(WsMessage::Ping(
+                                            nonce.to_string().as_bytes().to_vec(),
+                                        ))
+                                        .await
+                                    {
+                                        Ok(_) => {
+                                            relay.stats.ping.just_sent().await;
+                                            tracing::debug!("Ping {} (nonce {})", relay.url, nonce);
+                                        }
+                                        Err(e) => {
+                                            tracing::error!(
+                                                "Impossible to ping {}: {}",
+                                                relay.url(),
+                                                e.to_string()
+                                            );
+                                        }
                                     }
                                 }
                             }
@@ -845,26 +859,34 @@ impl Relay {
                     while let Some(msg_res) = ws_rx.next().await {
                         if let Ok(msg) = msg_res {
                             match msg {
-                                WsMessage::Pong(bytes) => match String::from_utf8(bytes) {
-                                    Ok(nonce) => match nonce.parse::<u64>() {
-                                        Ok(nonce) => {
-                                            if relay.stats.ping.last_nonce() == nonce {
-                                                tracing::debug!(
-                                                    "Pong from {} match nonce: {}",
-                                                    relay.url,
-                                                    nonce
-                                                );
-                                                relay.stats.ping.set_replied(true);
-                                                let sent_at = relay.stats.ping.sent_at().await;
-                                                relay.stats.save_latency(sent_at.elapsed()).await;
-                                            } else {
-                                                tracing::error!("Pong nonce not match: received={nonce}, expected={}", relay.stats.ping.last_nonce());
-                                            }
+                                WsMessage::Pong(bytes) => {
+                                    if relay.opts.flags.has_ping() {
+                                        match String::from_utf8(bytes) {
+                                            Ok(nonce) => match nonce.parse::<u64>() {
+                                                Ok(nonce) => {
+                                                    if relay.stats.ping.last_nonce() == nonce {
+                                                        tracing::debug!(
+                                                            "Pong from {} match nonce: {}",
+                                                            relay.url,
+                                                            nonce
+                                                        );
+                                                        relay.stats.ping.set_replied(true);
+                                                        let sent_at =
+                                                            relay.stats.ping.sent_at().await;
+                                                        relay
+                                                            .stats
+                                                            .save_latency(sent_at.elapsed())
+                                                            .await;
+                                                    } else {
+                                                        tracing::error!("Pong nonce not match: received={nonce}, expected={}", relay.stats.ping.last_nonce());
+                                                    }
+                                                }
+                                                Err(e) => tracing::error!("{e}"),
+                                            },
+                                            Err(e) => tracing::error!("{e}"),
                                         }
-                                        Err(e) => tracing::error!("{e}"),
-                                    },
-                                    Err(e) => tracing::error!("{e}"),
-                                },
+                                    }
+                                }
                                 _ => {
                                     let data: Vec<u8> = msg.into_data();
                                     match func(&relay, data).await {
@@ -907,7 +929,7 @@ impl Relay {
                 });
 
                 // Subscribe to relay
-                if self.opts.get_read() {
+                if self.opts.flags.has_read() {
                     if let Err(e) = self.resubscribe_all(None).await {
                         tracing::error!(
                             "Impossible to subscribe to {}: {}",
@@ -974,13 +996,13 @@ impl Relay {
 
     /// Send msg to relay
     pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
-        if !self.opts.get_write() {
+        if !self.opts.flags.has_write() {
             if let ClientMessage::Event(_) = msg {
                 return Err(Error::WriteDisabled);
             }
         }
 
-        if !self.opts.get_read() {
+        if !self.opts.flags.has_read() {
             if let ClientMessage::Req { .. } | ClientMessage::Close(_) = msg {
                 return Err(Error::ReadDisabled);
             }
@@ -1014,11 +1036,11 @@ impl Relay {
         msgs: Vec<ClientMessage>,
         wait: Option<Duration>,
     ) -> Result<(), Error> {
-        if !self.opts.get_write() && msgs.iter().any(|msg| msg.is_event()) {
+        if !self.opts.flags.has_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
         }
 
-        if !self.opts.get_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
+        if !self.opts.flags.has_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
             return Err(Error::ReadDisabled);
         }
 
@@ -1190,7 +1212,7 @@ impl Relay {
 
     /// Subscribes relay with existing filter
     async fn resubscribe_all(&self, wait: Option<Duration>) -> Result<(), Error> {
-        if !self.opts.get_read() {
+        if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1213,7 +1235,7 @@ impl Relay {
         internal_id: InternalSubscriptionId,
         wait: Option<Duration>,
     ) -> Result<(), Error> {
-        if !self.opts.get_read() {
+        if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1246,7 +1268,7 @@ impl Relay {
         filters: Vec<Filter>,
         wait: Option<Duration>,
     ) -> Result<(), Error> {
-        if !self.opts.get_read() {
+        if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1273,7 +1295,7 @@ impl Relay {
         internal_id: InternalSubscriptionId,
         wait: Option<Duration>,
     ) -> Result<(), Error> {
-        if !self.opts.get_read() {
+        if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1288,7 +1310,7 @@ impl Relay {
 
     /// Unsubscribe from all subscriptions
     pub async fn unsubscribe_all(&self, wait: Option<Duration>) -> Result<(), Error> {
-        if !self.opts.get_read() {
+        if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1420,7 +1442,7 @@ impl Relay {
     where
         F: Future<Output = ()>,
     {
-        if !self.opts.get_read() {
+        if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1464,7 +1486,7 @@ impl Relay {
     /// Request events of filter. All events will be sent to notification listener,
     /// until the EOSE "end of stored events" message is received from the relay.
     pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Duration, opts: FilterOptions) {
-        if !self.opts.get_read() {
+        if !self.opts.flags.has_read() {
             tracing::error!("{}", Error::ReadDisabled);
         }
 
@@ -1550,7 +1572,7 @@ impl Relay {
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
         // Check if read option is disabled
-        if !self.opts.get_read() {
+        if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
 
