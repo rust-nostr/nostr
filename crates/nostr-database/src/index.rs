@@ -36,7 +36,7 @@ type ParameterizedReplaceableIndexes =
 
 /// Event Index
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct EventIndex {
+pub struct EventIndex {
     /// Timestamp (seconds)
     created_at: Timestamp,
     /// Event ID
@@ -116,8 +116,9 @@ impl From<[u8; 32]> for PublicKeyPrefix {
     }
 }
 
+/// Filter Index
 #[derive(Default)]
-struct FilterIndex {
+pub struct FilterIndex {
     ids: HashSet<EventId>,
     authors: HashSet<PublicKeyPrefix>,
     kinds: HashSet<Kind>,
@@ -183,6 +184,7 @@ impl FilterIndex {
         self.kinds.is_empty() || self.kinds.contains(kind)
     }
 
+    /// Determine if [`FilterIndex`] match given [`EventIndex`].
     pub fn match_event(&self, event: &EventIndex) -> bool {
         self.ids_match(event)
             && self.since.map_or(true, |t| event.created_at >= t)
@@ -846,8 +848,11 @@ impl DatabaseIndexes {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
+    use nostr::secp256k1::schnorr::Signature;
     use nostr::secp256k1::SecretKey;
-    use nostr::{FromBech32, JsonUtil, Keys};
+    use nostr::{FromBech32, JsonUtil, Keys, Tag};
 
     use super::*;
 
@@ -1040,5 +1045,124 @@ mod tests {
                 .await,
             vec![Event::from_json(EVENTS[13]).unwrap().id(),]
         );
+    }
+
+    #[test]
+    fn test_match_event() {
+        let event_id =
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap();
+        let pubkey = XOnlyPublicKey::from_str(
+            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
+        )
+        .unwrap();
+        let event =
+            Event::new(
+                event_id,
+                pubkey,
+                Timestamp::from(1612809991),
+                Kind::TextNote,
+                [
+                    Tag::public_key(XOnlyPublicKey::from_str("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
+                    Tag::event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap()),
+                ],
+                "test",
+                Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
+            );
+        let event: EventIndex = EventIndex::from(&event);
+        let event_with_empty_tags: EventIndex = EventIndex::from(
+
+          &Event::new(
+            event_id,
+            pubkey,
+            Timestamp::from(1612809991),
+            Kind::TextNote,
+            [],
+            "test",
+            Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
+          )
+        );
+
+        // ID match
+        let filter: FilterIndex = Filter::new().id(event_id).into();
+        assert!(filter.match_event(&event));
+
+        // Not match (kind)
+        let filter: FilterIndex = Filter::new().id(event_id).kind(Kind::Metadata).into();
+        assert!(!filter.match_event(&event));
+
+        // Match (author, kind and since)
+        let filter: FilterIndex = Filter::new()
+            .author(pubkey)
+            .kind(Kind::TextNote)
+            .since(Timestamp::from(1612808000))
+            .into();
+        assert!(filter.match_event(&event));
+
+        // Not match (since)
+        let filter: FilterIndex = Filter::new()
+            .author(pubkey)
+            .kind(Kind::TextNote)
+            .since(Timestamp::from(1700000000))
+            .into();
+        assert!(!filter.match_event(&event));
+
+        // Match (#p tag and kind)
+        let filter: FilterIndex = Filter::new()
+            .pubkey(
+                XOnlyPublicKey::from_str(
+                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
+                )
+                .unwrap(),
+            )
+            .kind(Kind::TextNote)
+            .into();
+        assert!(filter.match_event(&event));
+
+        // Match (tags)
+        let filter: FilterIndex = Filter::new()
+            .pubkey(
+                XOnlyPublicKey::from_str(
+                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
+                )
+                .unwrap(),
+            )
+            .event(
+                EventId::from_hex(
+                    "7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96",
+                )
+                .unwrap(),
+            )
+            .into();
+        assert!(filter.match_event(&event));
+
+        // Match (tags)
+        let filter: FilterIndex = Filter::new()
+            .events(vec![
+                EventId::from_hex(
+                    "7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96",
+                )
+                .unwrap(),
+                EventId::from_hex(
+                    "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
+                )
+                .unwrap(),
+            ])
+            .into();
+        assert!(filter.match_event(&event));
+
+        // Not match (tags)
+        let filter: FilterIndex = Filter::new()
+            .events(vec![EventId::from_hex(
+                "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
+            )
+            .unwrap()])
+            .into();
+        assert!(!filter.match_event(&event));
+
+        // Not match (tags filter for events with empty tags)
+        let filter: FilterIndex = Filter::new().hashtag("this-should-not-match").into();
+        assert!(!filter.match_event(&event));
+        assert!(!filter.match_event(&event_with_empty_tags));
     }
 }

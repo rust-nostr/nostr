@@ -30,7 +30,7 @@ mod tag_indexes;
 pub use self::error::DatabaseError;
 #[cfg(feature = "flatbuf")]
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
-pub use self::index::{DatabaseIndexes, EventIndexResult};
+pub use self::index::{DatabaseIndexes, EventIndex, EventIndexResult, FilterIndex};
 pub use self::memory::MemoryDatabase;
 pub use self::options::DatabaseOptions;
 pub use self::profile::Profile;
