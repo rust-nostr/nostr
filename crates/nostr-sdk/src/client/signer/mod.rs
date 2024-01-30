@@ -8,6 +8,7 @@ use std::fmt;
 
 #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
 use nostr::nips::nip07::Nip07Signer;
+use nostr::secp256k1::XOnlyPublicKey;
 use nostr::Keys;
 
 #[cfg(feature = "nip46")]
@@ -15,7 +16,6 @@ pub mod nip46;
 
 #[cfg(feature = "nip46")]
 use self::nip46::Nip46Signer;
-#[cfg(feature = "nip46")]
 use super::Error;
 
 /// Client Signer Type
@@ -73,6 +73,20 @@ impl ClientSigner {
             Self::NIP07(..) => ClientSignerType::NIP07,
             #[cfg(feature = "nip46")]
             Self::NIP46(..) => ClientSignerType::NIP46,
+        }
+    }
+
+    /// Get signer public key
+    pub async fn public_key(&self) -> Result<XOnlyPublicKey, Error> {
+        match self {
+            Self::Keys(keys) => Ok(keys.public_key()),
+            #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
+            Self::NIP07(s) => Ok(s.get_public_key().await?),
+            #[cfg(feature = "nip46")]
+            Self::NIP46(s) => s
+                .signer_public_key()
+                .await
+                .ok_or(Error::SignerPublicKeyNotFound),
         }
     }
 }
