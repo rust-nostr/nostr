@@ -1071,7 +1071,7 @@ impl EventBuilder {
             &sender_keys.secret_key()?,
             receiver_pubkey,
             rumor.as_json(),
-            Version::V2,
+            Version::default(),
         )?;
         Ok(Self::new(Kind::Seal, content, []))
     }
@@ -1091,7 +1091,7 @@ impl EventBuilder {
             &keys.secret_key()?,
             receiver_pubkey,
             seal.as_json(),
-            Version::V2,
+            Version::default(),
         )?;
         Self::new(Kind::GiftWrap, content, [Tag::public_key(*receiver_pubkey)])
             .custom_created_at(Timestamp::tweaked())

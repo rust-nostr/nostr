@@ -83,7 +83,7 @@ impl From<base64::DecodeError> for Error {
 }
 
 /// Payload version
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum Version {
     /// Reserved
@@ -92,6 +92,7 @@ pub enum Version {
     #[deprecated]
     V1 = 0x01,
     /// V2 - Secp256k1 ECDH, HKDF, padding, ChaCha20, HMAC-SHA256 and base64
+    #[default]
     V2 = 0x02,
 }
 
