@@ -217,9 +217,9 @@ pub enum FilterOptions {
 /// Relay Pool Options
 #[derive(Debug, Clone, Copy)]
 pub struct RelayPoolOptions {
-    /// Notification channel size (default: 1024)
+    /// Notification channel size (default: 4096)
     pub notification_channel_size: usize,
-    /// Task channel size (default: 1024)
+    /// Task channel size (default: 4096)
     pub task_channel_size: usize,
     /// Shutdown on [RelayPool](super::pool::RelayPool) drop
     pub shutdown_on_drop: bool,
@@ -228,8 +228,8 @@ pub struct RelayPoolOptions {
 impl Default for RelayPoolOptions {
     fn default() -> Self {
         Self {
-            notification_channel_size: 1024,
-            task_channel_size: 1024,
+            notification_channel_size: 4096,
+            task_channel_size: 4096,
             shutdown_on_drop: false,
         }
     }
