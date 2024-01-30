@@ -158,8 +158,18 @@ pub enum Error {
     #[error("impossible to send zap: {0}")]
     ImpossibleToZap(String),
     /// Not supported yet
-    #[error("not supported yet")]
-    Unsupported,
+    #[error("{0}")]
+    Unsupported(String),
+}
+
+#[cfg(feature = "nip44")]
+impl Error {
+    fn unsupported<S>(message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::Unsupported(message.into())
+    }
 }
 
 /// Nostr client
@@ -818,9 +828,13 @@ impl Client {
                 Nip44Version::default(),
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(..) => Err(Error::Unsupported),
+            ClientSigner::NIP07(..) => Err(Error::unsupported(
+                "NIP44 encryption not supported with NIP07 signer yet!",
+            )),
             #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(..) => Err(Error::Unsupported),
+            ClientSigner::NIP46(..) => Err(Error::unsupported(
+                "NIP44 encryption not supported with NIP46 signer yet!",
+            )),
         }
     }
 
@@ -839,9 +853,13 @@ impl Client {
                 Ok(nip44::decrypt(&keys.secret_key()?, &public_key, payload)?)
             }
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(..) => Err(Error::Unsupported),
+            ClientSigner::NIP07(..) => Err(Error::unsupported(
+                "NIP44 decryption not supported with NIP07 signer yet!",
+            )),
             #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(..) => Err(Error::Unsupported),
+            ClientSigner::NIP46(..) => Err(Error::unsupported(
+                "NIP44 decryption not supported with NIP46 signer yet!",
+            )),
         }
     }
 
