@@ -110,6 +110,8 @@ pub enum Kind {
     Seal,
     /// Gift Wrap (NIP59)
     GiftWrap,
+    /// GiftWrapped Sealed Direct message
+    SealedDirect,
     /// Long-form Text Note (NIP23)
     LongFormTextNote,
     /// Application-specific Data (NIP78)
@@ -272,6 +274,7 @@ impl From<u64> for Kind {
             30009 => Self::BadgeDefinition,
             13 => Self::Seal,
             1059 => Self::GiftWrap,
+            14 => Self::SealedDirect,
             30017 => Self::SetStall,
             30018 => Self::SetProduct,
             30023 => Self::LongFormTextNote,
@@ -335,6 +338,7 @@ impl From<Kind> for u64 {
             Kind::BadgeDefinition => 30009,
             Kind::Seal => 13,
             Kind::GiftWrap => 1059,
+            Kind::SealedDirect => 14,
             Kind::SetStall => 30017,
             Kind::SetProduct => 30018,
             Kind::LongFormTextNote => 30023,

@@ -500,4 +500,12 @@ impl EventBuilder {
             .into(),
         ))
     }
+
+    /// GiftWrapped Sealed Direct message
+    #[uniffi::constructor]
+    pub fn sealed_direct(receiver: Arc<PublicKey>, message: String) -> Self {
+        Self {
+            inner: nostr::EventBuilder::sealed_direct(**receiver, message),
+        }
+    }
 }

@@ -200,4 +200,12 @@ impl JsEventBuilder {
             builder: EventBuilder::auth(challenge, url),
         })
     }
+
+    /// GiftWrapped Sealed Direct message
+    #[wasm_bindgen(js_name = sealedDirect)]
+    pub fn sealed_direct(receiver: &JsPublicKey, message: &str) -> Self {
+        Self {
+            inner: EventBuilder::sealed_direct(**receiver, message),
+        }
+    }
 }

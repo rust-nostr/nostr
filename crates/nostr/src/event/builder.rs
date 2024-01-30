@@ -1097,6 +1097,15 @@ impl EventBuilder {
             .custom_created_at(Timestamp::tweaked())
             .to_event(&keys)
     }
+
+    /// GiftWrapped Sealed Direct message
+    #[cfg(feature = "nip59")]
+    pub fn sealed_direct<S>(receiver: XOnlyPublicKey, message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(Kind::SealedDirect, message, [Tag::public_key(receiver)])
+    }
 }
 
 #[cfg(test)]
