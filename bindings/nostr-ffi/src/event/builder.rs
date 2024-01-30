@@ -484,4 +484,20 @@ impl EventBuilder {
             inner: nostr::EventBuilder::product_data(data.into()),
         }
     }
+
+    #[uniffi::constructor]
+    pub fn gift_wrap(
+        sender_keys: Arc<Keys>,
+        receiver_pubkey: Arc<PublicKey>,
+        rumor: Arc<UnsignedEvent>,
+    ) -> Result<Arc<Event>> {
+        Ok(Arc::new(
+            nostr::EventBuilder::gift_wrap(
+                sender_keys.as_ref().deref(),
+                receiver_pubkey.as_ref().deref(),
+                rumor.as_ref().deref().clone(),
+            )?
+            .into(),
+        ))
+    }
 }

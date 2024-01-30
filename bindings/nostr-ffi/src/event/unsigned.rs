@@ -19,6 +19,13 @@ pub struct UnsignedEvent {
     inner: nostr::UnsignedEvent,
 }
 
+impl Deref for UnsignedEvent {
+    type Target = nostr::UnsignedEvent;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 impl From<nostr::UnsignedEvent> for UnsignedEvent {
     fn from(inner: nostr::UnsignedEvent) -> Self {
         Self { inner }

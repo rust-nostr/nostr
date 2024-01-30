@@ -22,6 +22,8 @@ use crate::key::{self, Keys};
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
 use crate::nips::nip15::{ProductData, StallData};
+#[cfg(all(feature = "std", feature = "nip44"))]
+use crate::nips::nip44::{self, Version};
 #[cfg(all(feature = "std", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip53::LiveEvent;
@@ -76,6 +78,9 @@ pub enum Error {
     /// NIP04 error
     #[cfg(feature = "nip04")]
     NIP04(nip04::Error),
+    /// NIP44 error
+    #[cfg(all(feature = "std", feature = "nip44"))]
+    NIP44(nip44::Error),
     /// NIP58 error
     NIP58(nip58::Error),
     /// Wrong kind
@@ -101,6 +106,8 @@ impl fmt::Display for Error {
             Self::OpenTimestamps(e) => write!(f, "NIP03: {e}"),
             #[cfg(feature = "nip04")]
             Self::NIP04(e) => write!(f, "NIP04: {e}"),
+            #[cfg(all(feature = "std", feature = "nip44"))]
+            Self::NIP44(e) => write!(f, "NIP44: {e}"),
             Self::NIP58(e) => write!(f, "NIP58: {e}"),
             Self::WrongKind { received, expected } => {
                 write!(f, "Wrong kind: received={received}, expected={expected}")
@@ -144,6 +151,13 @@ impl From<nostr_ots::Error> for Error {
 impl From<nip04::Error> for Error {
     fn from(e: nip04::Error) -> Self {
         Self::NIP04(e)
+    }
+}
+
+#[cfg(all(feature = "std", feature = "nip44"))]
+impl From<nip44::Error> for Error {
+    fn from(e: nip44::Error) -> Self {
+        Self::NIP44(e)
     }
 }
 
@@ -1042,6 +1056,46 @@ impl EventBuilder {
     pub fn product_data(data: ProductData) -> Self {
         let tags: Vec<Tag> = data.clone().into();
         Self::new(Kind::SetProduct, data, tags)
+    }
+
+    /// Seal
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[cfg(all(feature = "std", feature = "nip59"))]
+    pub fn seal(
+        sender_keys: &Keys,
+        receiver_pubkey: &XOnlyPublicKey,
+        rumor: UnsignedEvent,
+    ) -> Result<Self, Error> {
+        let content = nip44::encrypt(
+            &sender_keys.secret_key()?,
+            receiver_pubkey,
+            rumor.as_json(),
+            Version::V2,
+        )?;
+        Ok(Self::new(Kind::Seal, content, []))
+    }
+
+    /// Gift Wrap
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[cfg(all(feature = "std", feature = "nip59"))]
+    pub fn gift_wrap(
+        sender_keys: &Keys,
+        receiver_pubkey: &XOnlyPublicKey,
+        rumor: UnsignedEvent,
+    ) -> Result<Event, Error> {
+        let seal: Event = Self::seal(sender_keys, receiver_pubkey, rumor)?.to_event(sender_keys)?;
+        let keys: Keys = Keys::generate();
+        let content: String = nip44::encrypt(
+            &keys.secret_key()?,
+            receiver_pubkey,
+            seal.as_json(),
+            Version::V2,
+        )?;
+        Self::new(Kind::GiftWrap, content, [Tag::public_key(*receiver_pubkey)])
+            .custom_created_at(Timestamp::tweaked())
+            .to_event(&keys)
     }
 }
 

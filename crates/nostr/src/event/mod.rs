@@ -5,7 +5,7 @@
 
 //! Event
 
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
@@ -40,14 +40,14 @@ use crate::SECP256K1;
 use crate::{JsonUtil, Timestamp};
 
 /// [`Event`] error
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Invalid signature
     InvalidSignature,
     /// Invalid event id
     InvalidId,
     /// Error serializing or deserializing JSON data
-    Json(serde_json::Error),
+    Json(String),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// Hex decoding error
@@ -71,7 +71,7 @@ impl fmt::Display for Error {
 
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
+        Self::Json(e.to_string())
     }
 }
 

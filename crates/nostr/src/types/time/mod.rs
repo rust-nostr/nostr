@@ -203,6 +203,20 @@ impl fmt::Display for Timestamp {
     }
 }
 
+impl Add<Timestamp> for Timestamp {
+    type Output = Self;
+    fn add(self, rhs: Timestamp) -> Self::Output {
+        Self(self.0.saturating_add(rhs.as_i64()))
+    }
+}
+
+impl Sub<Timestamp> for Timestamp {
+    type Output = Self;
+    fn sub(self, rhs: Timestamp) -> Self::Output {
+        Self(self.0.saturating_sub(rhs.as_i64()))
+    }
+}
+
 impl Add<Duration> for Timestamp {
     type Output = Self;
 
