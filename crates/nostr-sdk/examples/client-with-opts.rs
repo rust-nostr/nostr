@@ -61,6 +61,9 @@ async fn main() -> Result<()> {
                     } else {
                         tracing::error!("Impossible to decrypt direct message");
                     }
+                } else if event.kind() == Kind::GiftWrap {
+                    let rumor = nip59::extract_rumor(&my_keys, &event)?;
+                    println!("Rumor: {}", rumor.as_json());
                 } else {
                     println!("{:?}", event);
                 }
@@ -70,21 +73,21 @@ async fn main() -> Result<()> {
         .await?;
 
     // Handle subscription notifications with `notifications` channel receiver
-    // let mut notifications = client.notifications();
-    // while let Ok(notification) = notifications.recv().await {
-    // if let RelayPoolNotification::Event(_url, event) = notification {
-    // if event.kind == Kind::EncryptedDirectMessage {
-    // if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content) {
-    // println!("New DM: {msg}");
-    // client.send_direct_msg(event.pubkey, msg).await?;
-    // } else {
-    // tracing::error!("Impossible to decrypt direct message");
-    // }
-    // } else {
-    // println!("{:?}", event);
-    // }
-    // }
-    // }
+    /* let mut notifications = client.notifications();
+    while let Ok(notification) = notifications.recv().await {
+        if let RelayPoolNotification::Event { event, .. } = notification {
+            if event.kind == Kind::EncryptedDirectMessage {
+                if let Ok(msg) = decrypt(&my_keys.secret_key()?, &event.pubkey, &event.content) {
+                    println!("New DM: {msg}");
+                    client.send_direct_msg(event.pubkey, msg, None).await?;
+                } else {
+                    tracing::error!("Impossible to decrypt direct message");
+                }
+            } else {
+                println!("{:?}", event);
+            }
+        }
+    } */
 
     Ok(())
 }
