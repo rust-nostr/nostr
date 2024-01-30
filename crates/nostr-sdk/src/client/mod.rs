@@ -13,6 +13,8 @@ use std::time::Duration;
 use async_utility::thread;
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::key::XOnlyPublicKey;
+#[cfg(feature = "nip44")]
+use nostr::nips::nip44::{self, Version as Nip44Version};
 #[cfg(feature = "nip46")]
 use nostr::nips::nip46::{Request, Response};
 use nostr::nips::nip94::FileMetadata;
@@ -103,6 +105,10 @@ pub enum Error {
     #[cfg(feature = "nip46")]
     #[error(transparent)]
     JSON(#[from] nostr::serde_json::Error),
+    /// NIP44 error
+    #[cfg(feature = "nip44")]
+    #[error(transparent)]
+    NIP44(#[from] nip44::Error),
     /// NIP46 error
     #[cfg(feature = "nip46")]
     #[error(transparent)]
@@ -151,6 +157,9 @@ pub enum Error {
     /// Impossible to zap
     #[error("impossible to send zap: {0}")]
     ImpossibleToZap(String),
+    /// Not supported yet
+    #[error("not supported yet")]
+    Unsupported,
 }
 
 /// Nostr client
@@ -789,6 +798,51 @@ impl Client {
     {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event_to(url, event).await
+    }
+
+    /// NIP44 encryption with [ClientSigner]
+    #[cfg(feature = "nip44")]
+    pub async fn nip44_encrypt<T>(
+        &self,
+        public_key: XOnlyPublicKey,
+        content: T,
+    ) -> Result<String, Error>
+    where
+        T: AsRef<[u8]>,
+    {
+        match self.signer().await? {
+            ClientSigner::Keys(keys) => Ok(nip44::encrypt(
+                &keys.secret_key()?,
+                &public_key,
+                content,
+                Nip44Version::default(),
+            )?),
+            #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
+            ClientSigner::NIP07(..) => Err(Error::Unsupported),
+            #[cfg(feature = "nip46")]
+            ClientSigner::NIP46(..) => Err(Error::Unsupported),
+        }
+    }
+
+    /// NIP44 decryption with [ClientSigner]
+    #[cfg(feature = "nip44")]
+    pub async fn nip44_decrypt<T>(
+        &self,
+        public_key: XOnlyPublicKey,
+        payload: T,
+    ) -> Result<String, Error>
+    where
+        T: AsRef<[u8]>,
+    {
+        match self.signer().await? {
+            ClientSigner::Keys(keys) => {
+                Ok(nip44::decrypt(&keys.secret_key()?, &public_key, payload)?)
+            }
+            #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
+            ClientSigner::NIP07(..) => Err(Error::Unsupported),
+            #[cfg(feature = "nip46")]
+            ClientSigner::NIP46(..) => Err(Error::Unsupported),
+        }
     }
 
     /// Get public key metadata
