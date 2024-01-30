@@ -1361,6 +1361,16 @@ impl Client {
         Ok(())
     }
 
+    /// Send GiftWrapper Sealed Direct message
+    #[cfg(feature = "nip59")]
+    pub async fn sealed_direct<S>(&self, receiver: XOnlyPublicKey, message: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        let rumor: EventBuilder = EventBuilder::sealed_direct(receiver, message);
+        self.gift_wrap(receiver, rumor).await
+    }
+
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>

@@ -548,6 +548,14 @@ impl JsClient {
             .map_err(into_err)
     }
 
+    /// Send GiftWrapper Sealed Direct message
+    pub async fn sealed_direct(&self, receiver: &JsPublicKey, message: &str) -> Result<()> {
+        self.inner
+            .sealed_direct(**receiver, message)
+            .await
+            .map_err(into_err)
+    }
+
     /// Negentropy reconciliation
     ///
     /// <https://github.com/hoytech/negentropy>

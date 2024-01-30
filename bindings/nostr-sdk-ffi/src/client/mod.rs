@@ -261,6 +261,11 @@ impl Client {
             .gift_wrap(**receiver, rumor.as_ref().deref().clone())?)
     }
 
+    /// Send GiftWrapper Sealed Direct message
+    pub fn sealed_direct(&self, receiver: Arc<PublicKey>, message: String) -> Result<()> {
+        Ok(self.inner.sealed_direct(**receiver, message)?)
+    }
+
     pub fn file_metadata(
         &self,
         description: String,

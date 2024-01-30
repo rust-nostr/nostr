@@ -409,6 +409,15 @@ impl Client {
         RUNTIME.block_on(async move { self.client.gift_wrap(receiver, rumor).await })
     }
 
+    /// Send GiftWrapper Sealed Direct message
+    #[cfg(feature = "nip59")]
+    pub fn sealed_direct<S>(&self, receiver: XOnlyPublicKey, message: S) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        RUNTIME.block_on(async move { self.client.sealed_direct(receiver, message).await })
+    }
+
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
