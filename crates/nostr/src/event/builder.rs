@@ -1076,26 +1076,41 @@ impl EventBuilder {
         Ok(Self::new(Kind::Seal, content, []))
     }
 
+    /// Gift Wrap from seal
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[cfg(all(feature = "std", feature = "nip59"))]
+    pub fn gift_wrap_from_seal(receiver: &XOnlyPublicKey, seal: &Event) -> Result<Event, Error> {
+        if seal.kind != Kind::Seal {
+            return Err(Error::WrongKind {
+                received: seal.kind,
+                expected: WrongKindError::Single(Kind::Seal),
+            });
+        }
+
+        let keys: Keys = Keys::generate();
+        let content: String = nip44::encrypt(
+            &keys.secret_key()?,
+            receiver,
+            seal.as_json(),
+            Version::default(),
+        )?;
+        Self::new(Kind::GiftWrap, content, [Tag::public_key(*receiver)])
+            .custom_created_at(Timestamp::tweaked())
+            .to_event(&keys)
+    }
+
     /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[cfg(all(feature = "std", feature = "nip59"))]
     pub fn gift_wrap(
         sender_keys: &Keys,
-        receiver_pubkey: &XOnlyPublicKey,
+        receiver: &XOnlyPublicKey,
         rumor: UnsignedEvent,
     ) -> Result<Event, Error> {
-        let seal: Event = Self::seal(sender_keys, receiver_pubkey, rumor)?.to_event(sender_keys)?;
-        let keys: Keys = Keys::generate();
-        let content: String = nip44::encrypt(
-            &keys.secret_key()?,
-            receiver_pubkey,
-            seal.as_json(),
-            Version::default(),
-        )?;
-        Self::new(Kind::GiftWrap, content, [Tag::public_key(*receiver_pubkey)])
-            .custom_created_at(Timestamp::tweaked())
-            .to_event(&keys)
+        let seal: Event = Self::seal(sender_keys, receiver, rumor)?.to_event(sender_keys)?;
+        Self::gift_wrap_from_seal(receiver, &seal)
     }
 
     /// GiftWrapped Sealed Direct message
