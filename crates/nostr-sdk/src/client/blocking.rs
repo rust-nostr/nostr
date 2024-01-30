@@ -404,6 +404,11 @@ impl Client {
         RUNTIME.block_on(async { self.client.zap_receipt(bolt11, preimage, zap_request).await })
     }
 
+    #[cfg(feature = "nip59")]
+    pub fn gift_wrap(&self, receiver: XOnlyPublicKey, rumor: EventBuilder) -> Result<(), Error> {
+        RUNTIME.block_on(async move { self.client.gift_wrap(receiver, rumor).await })
+    }
+
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>

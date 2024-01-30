@@ -538,6 +538,16 @@ impl JsClient {
             .map_err(into_err)
     }
 
+    /// Gift Wrap
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    pub async fn gift_wrap(&self, receiver: &JsPublicKey, rumor: &JsEventBuilder) -> Result<()> {
+        self.inner
+            .gift_wrap(**receiver, rumor.deref().clone())
+            .await
+            .map_err(into_err)
+    }
+
     /// Negentropy reconciliation
     ///
     /// <https://github.com/hoytech/negentropy>

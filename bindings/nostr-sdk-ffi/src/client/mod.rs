@@ -252,6 +252,15 @@ impl Client {
         ))
     }
 
+    /// Gift Wrap
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    pub fn gift_wrap(&self, receiver: Arc<PublicKey>, rumor: Arc<EventBuilder>) -> Result<()> {
+        Ok(self
+            .inner
+            .gift_wrap(**receiver, rumor.as_ref().deref().clone())?)
+    }
+
     pub fn file_metadata(
         &self,
         description: String,

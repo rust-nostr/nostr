@@ -1333,6 +1333,34 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
+    /// Gift Wrap
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[cfg(feature = "nip59")]
+    pub async fn gift_wrap(
+        &self,
+        receiver: XOnlyPublicKey,
+        rumor: EventBuilder,
+    ) -> Result<(), Error> {
+        // Compose rumor
+        let signer: ClientSigner = self.signer().await?;
+        let public_key: XOnlyPublicKey = signer.public_key().await?;
+        let rumor = rumor.to_unsigned_event(public_key);
+
+        // Compose seal
+        let content: String = self.nip44_encrypt(receiver, rumor.as_json()).await?;
+        let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, []);
+        let seal: Event = self.sign_event_builder(seal).await?;
+
+        // Compose gift wrap
+        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal)?;
+
+        // Send event
+        self.send_event(gift_wrap).await?;
+
+        Ok(())
+    }
+
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
