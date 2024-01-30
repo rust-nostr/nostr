@@ -110,12 +110,11 @@ impl WebDatabase {
                 self.apply_migration(CURRENT_DB_VERSION, migration).await?;
                 tracing::info!("Database schemas initialized.");
             } else {
-                // if old_version < 3 {
-                // db = migrate_to_v3(db, store_cipher).await?;
-                // }
-                // if old_version < 4 {
-                // db = migrate_to_v4(db, store_cipher).await?;
-                // }
+                /* if old_version < 3 {
+                    self.migrate_to_v3().await?;
+                }
+
+                if old_version < 4 {} */
             }
 
             self.db.close();
@@ -168,7 +167,7 @@ impl WebDatabase {
 
         // Finally, we can add data to the newly created tables if needed.
         if !migration.data.is_empty() {
-            let stores: Vec<_> = migration.data.keys().copied().collect();
+            let stores: Vec<&str> = migration.data.keys().copied().collect();
             let tx = self
                 .db
                 .transaction_on_multi_with_mode(&stores, IdbTransactionMode::Readwrite)?;
@@ -452,7 +451,6 @@ impl_nostr_database!({
                 let event_hex = jsvalue.as_string().ok_or(DatabaseError::NotFound)?;
                 let bytes = hex::decode(event_hex).map_err(DatabaseError::backend)?;
                 let raw = RawEvent::decode(&bytes).map_err(DatabaseError::backend)?;
-                let event_id = EventId::from_slice(&raw.id).map_err(DatabaseError::nostr)?;
                 events.push((event_id, raw.created_at));
             }
         }
@@ -461,6 +459,14 @@ impl_nostr_database!({
     }
 
     async fn wipe(&self) -> Result<(), IndexedDBError> {
-        Err(DatabaseError::NotSupported.into())
+        for store in ALL_STORES.iter() {
+            let tx = self
+                .db
+                .transaction_on_one_with_mode(store, IdbTransactionMode::Readwrite)?;
+            let store = tx.object_store(store)?;
+            store.clear()?.await?;
+        }
+
+        Ok(())
     }
 });
