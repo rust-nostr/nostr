@@ -208,6 +208,13 @@ impl JsEventBuilder {
         })
     }
 
+    #[wasm_bindgen]
+    pub fn report(tags: Vec<JsTag>, content: String) -> Self {
+        Self {
+            builder: EventBuilder::report(tags.into_iter().map(|t| t.into()), content),
+        }
+    }
+
     /// Gift Wrap from seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
