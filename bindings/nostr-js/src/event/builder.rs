@@ -274,6 +274,22 @@ impl JsEventBuilder {
         })
     }
 
+    #[wasm_bindgen(js_name = profileBadges)]
+    pub fn profile_badges(
+        badge_definitions: Vec<JsEvent>,
+        badge_awards: Vec<JsEvent>,
+        pubkey_awarded: &JsPublicKey,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::profile_badges(
+                badge_definitions.into_iter().map(|e| e.into()).collect(),
+                badge_awards.into_iter().map(|e| e.into()).collect(),
+                pubkey_awarded.deref(),
+            )
+            .map_err(into_err)?,
+        })
+    }
+
     /// Gift Wrap from seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
