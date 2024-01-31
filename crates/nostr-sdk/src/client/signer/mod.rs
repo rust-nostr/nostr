@@ -6,10 +6,7 @@
 
 use std::fmt;
 
-#[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-use nostr::nips::nip07::Nip07Signer;
-use nostr::secp256k1::XOnlyPublicKey;
-use nostr::Keys;
+use nostr::prelude::*;
 
 #[cfg(feature = "nip46")]
 pub mod nip46;

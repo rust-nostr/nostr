@@ -12,18 +12,8 @@ use std::time::Duration;
 
 use async_utility::thread;
 use nostr::event::builder::Error as EventBuilderError;
-use nostr::key::XOnlyPublicKey;
-#[cfg(feature = "nip44")]
-use nostr::nips::nip44::{self, Version as Nip44Version};
-#[cfg(feature = "nip46")]
-use nostr::nips::nip46::{Request, Response};
-use nostr::nips::nip94::FileMetadata;
+use nostr::prelude::*;
 use nostr::types::metadata::Error as MetadataError;
-use nostr::util::EventIdOrCoordinate;
-use nostr::{
-    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, JsonUtil, Kind, Metadata, Result,
-    Tag, Timestamp, Url,
-};
 use nostr_database::DynNostrDatabase;
 use tokio::sync::{broadcast, RwLock};
 
@@ -774,10 +764,13 @@ impl Client {
                         builder.to_unsigned_event(signer_public_key)
                     }
                 };
-                let res: Response = self
-                    .send_req_to_signer(Request::SignEvent(unsigned), self.opts.nip46_timeout)
+                let res: nip46::Response = self
+                    .send_req_to_signer(
+                        nip46::Request::SignEvent(unsigned),
+                        self.opts.nip46_timeout,
+                    )
                     .await?;
-                if let Response::SignEvent(event) = res {
+                if let nip46::Response::SignEvent(event) = res {
                     Ok(event)
                 } else {
                     Err(Error::ResponseNotMatchRequest)
@@ -825,7 +818,7 @@ impl Client {
                 &keys.secret_key()?,
                 &public_key,
                 content,
-                Nip44Version::default(),
+                nip44::Version::default(),
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             ClientSigner::NIP07(..) => Err(Error::unsupported(
@@ -1107,14 +1100,14 @@ impl Client {
             }
             #[cfg(feature = "nip46")]
             ClientSigner::NIP46(..) => {
-                let req = Request::Nip04Encrypt {
+                let req = nip46::Request::Nip04Encrypt {
                     public_key: receiver,
                     text: msg.into(),
                 };
-                let res: Response = self
+                let res: nip46::Response = self
                     .send_req_to_signer(req, self.opts.nip46_timeout)
                     .await?;
-                if let Response::Nip04Encrypt(content) = res {
+                if let nip46::Response::Nip04Encrypt(content) = res {
                     EventBuilder::new(
                         Kind::EncryptedDirectMessage,
                         content,

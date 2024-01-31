@@ -10,13 +10,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::time;
-use nostr::nips::nip04;
 use nostr::nips::nip46::{Message, NostrConnectMetadata, NostrConnectURI, Request, Response};
-use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{
-    serde_json, ClientMessage, EventBuilder, Filter, JsonUtil, Keys, Kind, SubscriptionId,
-    Timestamp, Url,
-};
+use nostr::prelude::*;
+use nostr::serde_json;
 use tokio::sync::Mutex;
 
 #[cfg(feature = "blocking")]

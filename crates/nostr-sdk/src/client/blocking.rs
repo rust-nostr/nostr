@@ -8,11 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr::key::XOnlyPublicKey;
-use nostr::nips::nip94::FileMetadata;
-use nostr::{
-    ClientMessage, Contact, Event, EventBuilder, EventId, Filter, Metadata, Result, Tag, Url,
-};
+use nostr::prelude::*;
 use nostr_database::DynNostrDatabase;
 use tokio::sync::broadcast;
 

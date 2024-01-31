@@ -10,19 +10,7 @@ use std::time::Duration;
 
 use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
-#[cfg(feature = "nip47")]
-use nostr::nips::nip04;
-use nostr::nips::nip19::Nip19Event;
-#[cfg(feature = "nip47")]
-use nostr::nips::nip47::{
-    Method, NostrWalletConnectURI, PayInvoiceRequestParams, Request, RequestParams, Response,
-    ResponseResult,
-};
-use nostr::nips::nip57::{self, ZapRequestData, ZapType};
-use nostr::secp256k1::XOnlyPublicKey;
-#[cfg(feature = "nip47")]
-use nostr::Kind;
-use nostr::{Event, EventBuilder, EventId, Filter, JsonUtil, Metadata, UncheckedUrl};
+use nostr::prelude::*;
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 use webln::WebLN;
 
@@ -202,7 +190,7 @@ impl Client {
 
                 for invoice in _invoices.into_iter() {
                     // Compose NWC request event
-                    let req = Request {
+                    let req = nip47::Request {
                         method: Method::PayInvoice,
                         params: RequestParams::PayInvoice(PayInvoiceRequestParams {
                             id: None,
@@ -235,7 +223,7 @@ impl Client {
                             Some(event) => {
                                 let decrypt_res =
                                     nip04::decrypt(&uri.secret, &uri.public_key, &event.content)?;
-                                let nip47_res = Response::from_json(decrypt_res)?;
+                                let nip47_res = nip47::Response::from_json(decrypt_res)?;
                                 if let Some(ResponseResult::PayInvoice(pay_invoice_result)) =
                                     nip47_res.result
                                 {
