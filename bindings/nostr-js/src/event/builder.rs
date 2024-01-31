@@ -13,6 +13,7 @@ use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
+use crate::nips::nip90::JsDataVendingMachineStatus;
 use crate::types::{JsContact, JsMetadata, JsTimestamp};
 
 #[wasm_bindgen(js_name = EventBuilder)]
@@ -312,6 +313,27 @@ impl JsEventBuilder {
             )
             .map_err(into_err)?,
         })
+    }
+
+    #[wasm_bindgen(js_name = jobFeedback)]
+    pub fn job_feedback(
+        job_request: &JsEvent,
+        status: JsDataVendingMachineStatus,
+        extra_info: Option<String>,
+        amount_millisats: u64,
+        bolt11: Option<String>,
+        payload: Option<String>,
+    ) -> Self {
+        Self {
+            builder: EventBuilder::job_feedback(
+                job_request.deref(),
+                status.into(),
+                extra_info,
+                amount_millisats,
+                bolt11,
+                payload,
+            ),
+        }
     }
 
     /// Gift Wrap from seal
