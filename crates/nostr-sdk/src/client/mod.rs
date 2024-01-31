@@ -1381,7 +1381,11 @@ impl Client {
 
     /// Send GiftWrapper Sealed Direct message
     #[cfg(feature = "nip59")]
-    pub async fn sealed_direct<S>(&self, receiver: XOnlyPublicKey, message: S) -> Result<(), Error>
+    pub async fn send_sealed_msg<S>(
+        &self,
+        receiver: XOnlyPublicKey,
+        message: S,
+    ) -> Result<(), Error>
     where
         S: Into<String>,
     {

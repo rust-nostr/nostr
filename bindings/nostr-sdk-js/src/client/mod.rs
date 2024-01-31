@@ -541,6 +541,7 @@ impl JsClient {
     /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[wasm_bindgen(js_name = giftWrap)]
     pub async fn gift_wrap(&self, receiver: &JsPublicKey, rumor: &JsEventBuilder) -> Result<()> {
         self.inner
             .gift_wrap(**receiver, rumor.deref().clone())
@@ -549,9 +550,10 @@ impl JsClient {
     }
 
     /// Send GiftWrapper Sealed Direct message
-    pub async fn sealed_direct(&self, receiver: &JsPublicKey, message: &str) -> Result<()> {
+    #[wasm_bindgen(js_name = sendSealedMsg)]
+    pub async fn send_sealed_msg(&self, receiver: &JsPublicKey, message: &str) -> Result<()> {
         self.inner
-            .sealed_direct(**receiver, message)
+            .send_sealed_msg(**receiver, message)
             .await
             .map_err(into_err)
     }

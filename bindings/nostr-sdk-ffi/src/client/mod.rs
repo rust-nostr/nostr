@@ -262,8 +262,8 @@ impl Client {
     }
 
     /// Send GiftWrapper Sealed Direct message
-    pub fn sealed_direct(&self, receiver: Arc<PublicKey>, message: String) -> Result<()> {
-        Ok(self.inner.sealed_direct(**receiver, message)?)
+    pub fn send_sealed_msg(&self, receiver: Arc<PublicKey>, message: String) -> Result<()> {
+        Ok(self.inner.send_sealed_msg(**receiver, message)?)
     }
 
     pub fn file_metadata(

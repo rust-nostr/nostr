@@ -411,11 +411,11 @@ impl Client {
 
     /// Send GiftWrapper Sealed Direct message
     #[cfg(feature = "nip59")]
-    pub fn sealed_direct<S>(&self, receiver: XOnlyPublicKey, message: S) -> Result<(), Error>
+    pub fn send_sealed_msg<S>(&self, receiver: XOnlyPublicKey, message: S) -> Result<(), Error>
     where
         S: Into<String>,
     {
-        RUNTIME.block_on(async move { self.client.sealed_direct(receiver, message).await })
+        RUNTIME.block_on(async move { self.client.send_sealed_msg(receiver, message).await })
     }
 
     /// File metadata
