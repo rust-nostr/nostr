@@ -48,6 +48,8 @@ indexes-perf:
 
 clean:
 	cargo clean
+	cd bindings/nostr-js && cargo clean
+	cd bindings/nostr-sdk-js && cargo clean
 
 book:
 	cd book && just serve
