@@ -181,7 +181,7 @@ impl Client {
             .to_event(&signer.app_keys)?;
 
         // Send request to signer
-        self.send_event_to(signer.relay_url(), event).await?;
+        self.send_event_to([signer.relay_url()], event).await?;
 
         let sub_id = SubscriptionId::generate();
         let filter = Filter::new()

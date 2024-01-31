@@ -630,7 +630,7 @@ impl RelayPool {
             }
 
             let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-            let mut handles = Vec::new();
+            let mut handles = Vec::with_capacity(urls.len());
 
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
                 let msg = msg.clone();
@@ -660,43 +660,8 @@ impl RelayPool {
 
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
-        let relays = self.relays().await;
-
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
-        self.database.save_event(&event).await?;
-
-        let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-        let mut handles = Vec::new();
-
-        let event_id: EventId = event.id();
-
-        for (url, relay) in relays.into_iter() {
-            let event = event.clone();
-            let sent = sent_to_at_least_one_relay.clone();
-            let handle = thread::spawn(async move {
-                match relay.send_event(event, opts).await {
-                    Ok(_) => {
-                        let _ =
-                            sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
-                    }
-                    Err(e) => tracing::error!("Impossible to send event to {url}: {e}"),
-                }
-            });
-            handles.push(handle);
-        }
-
-        for handle in handles.into_iter().flatten() {
-            handle.join().await?;
-        }
-
-        if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
-            return Err(Error::EventNotPublished(event_id));
-        }
-
-        Ok(event_id)
+        let relays: HashMap<Url, Relay> = self.relays().await;
+        self.send_event_to(relays.into_keys(), event, opts).await
     }
 
     /// Send multiple [`Event`] at once
@@ -746,25 +711,75 @@ impl RelayPool {
         Ok(())
     }
 
-    /// Send event to a single relay
-    pub async fn send_event_to<U>(
+    /// Send event to a specific relays
+    pub async fn send_event_to<I, U>(
         &self,
-        url: U,
+        urls: I,
         event: Event,
         opts: RelaySendOptions,
     ) -> Result<EventId, Error>
     where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
-        self.database.save_event(&event).await?;
-        let relays = self.relays().await;
-        if let Some(relay) = relays.get(&url) {
-            Ok(relay.send_event(event, opts).await?)
-        } else {
-            Err(Error::RelayNotFound)
+        // Compose URLs
+        let urls: HashSet<Url> = urls
+            .into_iter()
+            .map(|u| u.try_into_url())
+            .collect::<Result<_, _>>()?;
+
+        // Check if urls set isn't empty
+        if urls.is_empty() {
+            return Err(Error::NoRelaysSpecified);
         }
+
+        // Save into database
+        self.database.save_event(&event).await?;
+
+        let event_id: EventId = event.id();
+
+        // Get relays
+        let relays: HashMap<Url, Relay> = self.relays().await;
+
+        // If passed only 1 url, not use threads
+        if urls.len() == 1 {
+            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            relay.send_event(event, opts).await?;
+        } else {
+            // Check if urls set contains ONLY already added relays
+            if !urls.iter().all(|url| relays.contains_key(url)) {
+                return Err(Error::RelayNotFound);
+            }
+
+            let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+            let mut handles = Vec::with_capacity(urls.len());
+
+            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+                let event = event.clone();
+                let sent = sent_to_at_least_one_relay.clone();
+                let handle = thread::spawn(async move {
+                    match relay.send_event(event, opts).await {
+                        Ok(_) => {
+                            sent.store(true, Ordering::SeqCst);
+                        }
+                        Err(e) => tracing::error!("Impossible to send event to {url}: {e}"),
+                    }
+                });
+                handles.push(handle);
+            }
+
+            for handle in handles.into_iter().flatten() {
+                handle.join().await?;
+            }
+
+            if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
+                return Err(Error::EventNotPublished(event_id));
+            }
+        }
+
+        Ok(event_id)
     }
 
     /// Subscribe to filters

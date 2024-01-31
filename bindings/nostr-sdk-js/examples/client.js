@@ -46,7 +46,7 @@ async function main() {
     await client.sendEvent(event);
 
     // Send custom event to a specific previously added relay
-    // await client.sendEventTo("wss://relay.damus.io", event);
+    // await client.sendEventTo(["wss://relay.damus.io"], event);
 
     let builder = new EventBuilder(1111, "My custom event signer with the ClientSigner", []);
     await client.sendEventBuilder(builder);

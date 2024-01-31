@@ -217,12 +217,13 @@ impl Client {
         RUNTIME.block_on(async { self.client.send_event(event).await })
     }
 
-    pub fn send_event_to<U>(&self, url: U, event: Event) -> Result<EventId, Error>
+    pub fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<EventId, Error>
     where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        RUNTIME.block_on(async { self.client.send_event_to(url, event).await })
+        RUNTIME.block_on(async { self.client.send_event_to(urls, event).await })
     }
 
     pub fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
@@ -233,12 +234,17 @@ impl Client {
         RUNTIME.block_on(async { self.client.send_event_builder(builder).await })
     }
 
-    pub fn send_event_builder_to<U>(&self, url: U, builder: EventBuilder) -> Result<EventId, Error>
+    pub fn send_event_builder_to<I, U>(
+        &self,
+        urls: I,
+        builder: EventBuilder,
+    ) -> Result<EventId, Error>
     where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        RUNTIME.block_on(async { self.client.send_event_builder_to(url, builder).await })
+        RUNTIME.block_on(async { self.client.send_event_builder_to(urls, builder).await })
     }
 
     pub fn set_metadata(&self, metadata: &Metadata) -> Result<EventId, Error> {

@@ -190,10 +190,10 @@ impl Client {
         ))
     }
 
-    pub fn send_event_to(&self, url: String, event: Arc<Event>) -> Result<Arc<EventId>> {
+    pub fn send_event_to(&self, urls: Vec<String>, event: Arc<Event>) -> Result<Arc<EventId>> {
         Ok(Arc::new(
             self.inner
-                .send_event_to(url, event.as_ref().deref().clone())?
+                .send_event_to(urls, event.as_ref().deref().clone())?
                 .into(),
         ))
     }
@@ -223,12 +223,12 @@ impl Client {
     /// Rise an error if the [`ClientSigner`] is not set.
     pub fn send_event_builder_to(
         &self,
-        url: String,
+        urls: Vec<String>,
         builder: Arc<EventBuilder>,
     ) -> Result<Arc<EventId>> {
         Ok(Arc::new(
             self.inner
-                .send_event_builder_to(url, builder.as_ref().deref().clone())?
+                .send_event_builder_to(urls, builder.as_ref().deref().clone())?
                 .into(),
         ))
     }

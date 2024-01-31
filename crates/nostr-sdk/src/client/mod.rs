@@ -715,8 +715,9 @@ impl Client {
     ///
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
-    pub async fn send_event_to<U>(&self, url: U, event: Event) -> Result<EventId, Error>
+    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<EventId, Error>
     where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
@@ -724,7 +725,7 @@ impl Client {
         let opts = RelaySendOptions::new()
             .skip_disconnected(self.opts.get_skip_disconnected_relays())
             .timeout(timeout);
-        Ok(self.pool.send_event_to(url, event, opts).await?)
+        Ok(self.pool.send_event_to(urls, event, opts).await?)
     }
 
     /// Signs the [`EventBuilder`] into an [`Event`] using the [`ClientSigner`]
@@ -791,17 +792,18 @@ impl Client {
     /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
     ///
     /// Rise an error if the [`ClientSigner`] is not set.
-    pub async fn send_event_builder_to<U>(
+    pub async fn send_event_builder_to<I, U>(
         &self,
-        url: U,
+        urls: I,
         builder: EventBuilder,
     ) -> Result<EventId, Error>
     where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let event: Event = self.sign_event_builder(builder).await?;
-        self.send_event_to(url, event).await
+        self.send_event_to(urls, event).await
     }
 
     /// NIP44 encryption with [ClientSigner]

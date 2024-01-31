@@ -202,7 +202,7 @@ impl Client {
                     let event_id = event.id;
 
                     // Send request
-                    self.send_event_to(uri.relay_url.clone(), event).await?;
+                    self.send_event_to([uri.relay_url.clone()], event).await?;
 
                     // Get response
                     let relay = self.relay(uri.relay_url.clone()).await?;

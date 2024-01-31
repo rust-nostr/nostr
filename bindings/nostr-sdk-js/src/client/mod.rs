@@ -229,9 +229,9 @@ impl JsClient {
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `sendMsgTo` method instead.
     #[wasm_bindgen(js_name = sendEventTo)]
-    pub async fn send_event_to(&self, url: String, event: &JsEvent) -> Result<JsEventId> {
+    pub async fn send_event_to(&self, urls: Vec<String>, event: &JsEvent) -> Result<JsEventId> {
         self.inner
-            .send_event_to(url, event.deref().clone())
+            .send_event_to(urls, event.deref().clone())
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -265,11 +265,11 @@ impl JsClient {
     #[wasm_bindgen(js_name = sendEventBuilderTo)]
     pub async fn send_event_builder_to(
         &self,
-        url: String,
+        urls: Vec<String>,
         builder: &JsEventBuilder,
     ) -> Result<JsEventId> {
         self.inner
-            .send_event_builder_to(url, builder.deref().clone())
+            .send_event_builder_to(urls, builder.deref().clone())
             .await
             .map_err(into_err)
             .map(|id| id.into())

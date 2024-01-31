@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
     // client.send_event(event).await?;
 
     // Send custom event to a specific previously added relay
-    client.send_event_to("wss://relay.damus.io", event).await?;
+    client.send_event_to(["wss://relay.damus.io"], event).await?;
 
     Ok(())
 }
