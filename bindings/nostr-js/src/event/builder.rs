@@ -260,6 +260,20 @@ impl JsEventBuilder {
         }
     }
 
+    #[wasm_bindgen(js_name = awardBadge)]
+    pub fn award_badge(
+        badge_definition: &JsEvent,
+        awarded_pubkeys: Vec<JsTag>,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::award_badge(
+                badge_definition.deref(),
+                awarded_pubkeys.into_iter().map(|t| t.into()),
+            )
+            .map_err(into_err)?,
+        })
+    }
+
     /// Gift Wrap from seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
