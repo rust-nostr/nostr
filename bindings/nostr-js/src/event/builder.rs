@@ -10,6 +10,7 @@ use wasm_bindgen::prelude::*;
 use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
+use crate::nips::nip57::JsZapRequestData;
 use crate::types::{JsContact, JsMetadata, JsTimestamp};
 
 #[wasm_bindgen(js_name = EventBuilder)]
@@ -212,6 +213,13 @@ impl JsEventBuilder {
     pub fn report(tags: Vec<JsTag>, content: String) -> Self {
         Self {
             builder: EventBuilder::report(tags.into_iter().map(|t| t.into()), content),
+        }
+    }
+
+    #[wasm_bindgen(js_name = publicZapRequest)]
+    pub fn public_zap_request(data: JsZapRequestData) -> Self {
+        Self {
+            builder: EventBuilder::public_zap_request(data.deref().clone()),
         }
     }
 
