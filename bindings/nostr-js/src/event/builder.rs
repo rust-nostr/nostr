@@ -290,6 +290,14 @@ impl JsEventBuilder {
         })
     }
 
+    #[wasm_bindgen(js_name = jobRequest)]
+    pub fn job_request(kind: f64, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::job_request(kind.into(), tags.into_iter().map(|t| t.into()))
+                .map_err(into_err)?,
+        })
+    }
+
     /// Gift Wrap from seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
