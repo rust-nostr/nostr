@@ -996,38 +996,7 @@ impl Relay {
 
     /// Send msg to relay
     pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
-        if !self.opts.flags.has_write() {
-            if let ClientMessage::Event(_) = msg {
-                return Err(Error::WriteDisabled);
-            }
-        }
-
-        if !self.opts.flags.has_read() {
-            if let ClientMessage::Req { .. } | ClientMessage::Close(_) = msg {
-                return Err(Error::ReadDisabled);
-            }
-        }
-
-        match wait {
-            Some(timeout) => {
-                let (tx, rx) = oneshot::channel::<bool>();
-                self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)), Some(tx))?;
-                match time::timeout(Some(timeout), rx).await {
-                    Some(result) => match result {
-                        Ok(val) => {
-                            if val {
-                                Ok(())
-                            } else {
-                                Err(Error::MessageNotSent)
-                            }
-                        }
-                        Err(_) => Err(Error::OneShotRecvError),
-                    },
-                    _ => Err(Error::RecvTimeout),
-                }
-            }
-            None => self.send_relay_event(RelayEvent::SendMsg(Box::new(msg)), None),
-        }
+        self.batch_msg(vec![msg], wait).await
     }
 
     /// Send multiple [`ClientMessage`] at once
