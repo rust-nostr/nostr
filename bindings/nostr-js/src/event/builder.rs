@@ -11,6 +11,7 @@ use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip57::JsZapRequestData;
+use crate::nips::nip65::JsRelayListItem;
 use crate::types::{JsContact, JsMetadata, JsTimestamp};
 
 #[wasm_bindgen(js_name = EventBuilder)]
@@ -87,6 +88,13 @@ impl JsEventBuilder {
     pub fn metadata(metadata: &JsMetadata) -> Self {
         Self {
             builder: EventBuilder::metadata(metadata.deref()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = relayList)]
+    pub fn relay_list(relays: Vec<JsRelayListItem>) -> Self {
+        Self {
+            builder: EventBuilder::relay_list(relays.into_iter().map(|r| r.into())),
         }
     }
 

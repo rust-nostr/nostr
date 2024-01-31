@@ -2,10 +2,35 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr::Tag;
+use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
+
+#[derive(Clone, Copy)]
+#[wasm_bindgen(js_name = RelayMetadata)]
+pub enum JsRelayMetadata {
+    Read,
+    Write,
+}
+
+impl From<RelayMetadata> for JsRelayMetadata {
+    fn from(value: RelayMetadata) -> Self {
+        match value {
+            RelayMetadata::Read => Self::Read,
+            RelayMetadata::Write => Self::Write,
+        }
+    }
+}
+
+impl From<JsRelayMetadata> for RelayMetadata {
+    fn from(value: JsRelayMetadata) -> Self {
+        match value {
+            JsRelayMetadata::Read => Self::Read,
+            JsRelayMetadata::Write => Self::Write,
+        }
+    }
+}
 
 #[wasm_bindgen(js_name = Tag)]
 pub struct JsTag {
@@ -31,6 +56,10 @@ impl JsTag {
         Ok(Self {
             inner: Tag::parse(tag).map_err(into_err)?,
         })
+    }
+
+    pub fn kind(&self) -> String {
+        self.inner.kind().to_string()
     }
 
     /// Get tag as vector of string
