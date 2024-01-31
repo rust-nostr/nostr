@@ -298,6 +298,22 @@ impl JsEventBuilder {
         })
     }
 
+    #[wasm_bindgen(js_name = jobResult)]
+    pub fn job_result(
+        job_request: &JsEvent,
+        amount_millisats: f64,
+        bolt11: Option<String>,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::job_result(
+                job_request.deref().clone(),
+                amount_millisats as u64,
+                bolt11,
+            )
+            .map_err(into_err)?,
+        })
+    }
+
     /// Gift Wrap from seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
