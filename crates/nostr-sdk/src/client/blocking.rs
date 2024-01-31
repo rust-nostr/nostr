@@ -203,12 +203,13 @@ impl Client {
         RUNTIME.block_on(async { self.client.send_msg(msg).await })
     }
 
-    pub fn send_msg_to<U>(&self, url: U, msg: ClientMessage) -> Result<(), Error>
+    pub fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<(), Error>
     where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        RUNTIME.block_on(async { self.client.send_msg_to(url, msg).await })
+        RUNTIME.block_on(async { self.client.send_msg_to(urls, msg).await })
     }
 
     /// Send event

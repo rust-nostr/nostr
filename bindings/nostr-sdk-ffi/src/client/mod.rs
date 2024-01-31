@@ -178,8 +178,8 @@ impl Client {
         Ok(self.inner.send_msg(msg.into())?)
     }
 
-    pub fn send_msg_to(&self, url: String, msg: ClientMessage) -> Result<()> {
-        Ok(self.inner.send_msg_to(url, msg.into())?)
+    pub fn send_msg_to(&self, urls: Vec<String>, msg: ClientMessage) -> Result<()> {
+        Ok(self.inner.send_msg_to(urls, msg.into())?)
     }
 
     pub fn send_event(&self, event: Arc<Event>) -> Result<Arc<EventId>> {

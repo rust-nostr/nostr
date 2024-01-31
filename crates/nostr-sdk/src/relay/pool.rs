@@ -55,6 +55,9 @@ pub enum Error {
     /// No relays
     #[error("no relays")]
     NoRelays,
+    /// No relays specified
+    #[error("no relays sepcified")]
+    NoRelaysSpecified,
     /// Msg not sent
     #[error("message not sent")]
     MsgNotSent,
@@ -530,42 +533,7 @@ impl RelayPool {
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
         let relays = self.relays().await;
-
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
-        if let ClientMessage::Event(event) = &msg {
-            self.database.save_event(event).await?;
-        }
-
-        let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-        let mut handles = Vec::new();
-
-        for (url, relay) in relays.into_iter() {
-            let msg = msg.clone();
-            let sent = sent_to_at_least_one_relay.clone();
-            let handle = thread::spawn(async move {
-                match relay.send_msg(msg, wait).await {
-                    Ok(_) => {
-                        let _ =
-                            sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
-                    }
-                    Err(e) => tracing::error!("Impossible to send msg to {url}: {e}"),
-                }
-            });
-            handles.push(handle);
-        }
-
-        for handle in handles.into_iter().flatten() {
-            handle.join().await?;
-        }
-
-        if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
-            return Err(Error::MsgNotSent);
-        }
-
-        Ok(())
+        self.send_msg_to(relays.into_keys(), msg, wait).await
     }
 
     /// Send multiple client messages at once
@@ -617,30 +585,77 @@ impl RelayPool {
         Ok(())
     }
 
-    /// Send client message to a single relay
-    pub async fn send_msg_to<U>(
+    /// Send client message to specific relays
+    ///
+    /// Note: **the relays must already be added!**
+    pub async fn send_msg_to<I, U>(
         &self,
-        url: U,
+        urls: I,
         msg: ClientMessage,
         wait: Option<Duration>,
     ) -> Result<(), Error>
     where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
+        // Compose URLs
+        let urls: HashSet<Url> = urls
+            .into_iter()
+            .map(|u| u.try_into_url())
+            .collect::<Result<_, _>>()?;
 
+        // Check if urls set isn't empty
+        if urls.is_empty() {
+            return Err(Error::NoRelaysSpecified);
+        }
+
+        // If message event, save into database
         if let ClientMessage::Event(event) = &msg {
             self.database.save_event(event).await?;
         }
 
-        let relays = self.relays().await;
-        if let Some(relay) = relays.get(&url) {
+        // Get relays
+        let relays: HashMap<Url, Relay> = self.relays().await;
+
+        // If passed only 1 url, not use threads
+        if urls.len() == 1 {
+            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             relay.send_msg(msg, wait).await?;
-            Ok(())
         } else {
-            Err(Error::RelayNotFound)
+            // Check if urls set contains ONLY already added relays
+            if !urls.iter().all(|url| relays.contains_key(url)) {
+                return Err(Error::RelayNotFound);
+            }
+
+            let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+            let mut handles = Vec::new();
+
+            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+                let msg = msg.clone();
+                let sent = sent_to_at_least_one_relay.clone();
+                let handle = thread::spawn(async move {
+                    match relay.send_msg(msg, wait).await {
+                        Ok(_) => {
+                            sent.store(true, Ordering::SeqCst);
+                        }
+                        Err(e) => tracing::error!("Impossible to send msg to {url}: {e}"),
+                    }
+                });
+                handles.push(handle);
+            }
+
+            for handle in handles.into_iter().flatten() {
+                handle.join().await?;
+            }
+
+            if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
+                return Err(Error::MsgNotSent);
+            }
         }
+
+        Ok(())
     }
 
     /// Send event and wait for `OK` relay msg

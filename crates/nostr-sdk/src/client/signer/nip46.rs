@@ -123,7 +123,7 @@ impl Client {
 
             // Subscribe
             self.send_msg_to(
-                signer.relay_url(),
+                [signer.relay_url()],
                 ClientMessage::req(id.clone(), vec![filter]),
             )
             .await?;
@@ -150,7 +150,7 @@ impl Client {
             .ok_or(Error::Timeout)??;
 
             // Unsubscribe
-            self.send_msg_to(signer.relay_url(), ClientMessage::close(id))
+            self.send_msg_to([signer.relay_url()], ClientMessage::close(id))
                 .await?;
         }
 
@@ -191,7 +191,7 @@ impl Client {
 
         // Subscribe
         self.send_msg_to(
-            signer.relay_url(),
+            [signer.relay_url()],
             ClientMessage::req(sub_id.clone(), vec![filter]),
         )
         .await?;
@@ -238,7 +238,7 @@ impl Client {
 
                                     // Unsubscribe
                                     self.send_msg_to(
-                                        signer.relay_url(),
+                                        [signer.relay_url()],
                                         ClientMessage::close(sub_id.clone()),
                                     )
                                     .await?;
@@ -248,7 +248,7 @@ impl Client {
                                 if let Some(error) = error {
                                     // Unsubscribe
                                     self.send_msg_to(
-                                        signer.relay_url(),
+                                        [signer.relay_url()],
                                         ClientMessage::close(sub_id.clone()),
                                     )
                                     .await?;
@@ -269,7 +269,7 @@ impl Client {
             time::timeout(timeout, future).await.ok_or(Error::Timeout)?;
 
         // Unsubscribe
-        self.send_msg_to(signer.relay_url(), ClientMessage::close(sub_id))
+        self.send_msg_to([signer.relay_url()], ClientMessage::close(sub_id))
             .await?;
 
         res

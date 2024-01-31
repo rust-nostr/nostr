@@ -674,9 +674,10 @@ impl Client {
         Ok(())
     }
 
-    /// Send client message to a specific relay
-    pub async fn send_msg_to<U>(&self, url: U, msg: ClientMessage) -> Result<(), Error>
+    /// Send client message to a specific relays
+    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<(), Error>
     where
+        I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
@@ -685,7 +686,7 @@ impl Client {
         } else {
             None
         };
-        Ok(self.pool.send_msg_to(url, msg, wait).await?)
+        Ok(self.pool.send_msg_to(urls, msg, wait).await?)
     }
 
     /// Send event
