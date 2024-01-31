@@ -7,6 +7,7 @@ use core::ops::Deref;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use super::tag::{JsImageDimensions, JsThumbnails};
 use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
@@ -235,6 +236,27 @@ impl JsEventBuilder {
     pub fn zap_receipt(bolt11: String, preimage: Option<String>, zap_request: JsEvent) -> Self {
         Self {
             builder: EventBuilder::zap_receipt(bolt11, preimage, zap_request.deref().to_owned()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = defineBadge)]
+    pub fn define_badge(
+        badge_id: String,
+        name: Option<String>,
+        description: Option<String>,
+        image: Option<String>,
+        image_dimensions: Option<JsImageDimensions>,
+        thumbnails: Vec<JsThumbnails>,
+    ) -> Self {
+        Self {
+            builder: EventBuilder::define_badge(
+                badge_id,
+                name,
+                description,
+                image.map(|url| UncheckedUrl::from(url)),
+                image_dimensions.map(|i| i.into()),
+                thumbnails.into_iter().map(|t| t.into()).collect(),
+            ),
         }
     }
 

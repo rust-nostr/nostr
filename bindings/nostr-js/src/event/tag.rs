@@ -7,6 +7,45 @@ use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 
+#[wasm_bindgen(js_name = Thumbnails)]
+pub struct JsThumbnails {
+    url: String,
+    dimensions: Option<JsImageDimensions>,
+}
+
+impl From<JsThumbnails> for (UncheckedUrl, Option<ImageDimensions>) {
+    fn from(value: JsThumbnails) -> Self {
+        (
+            UncheckedUrl::from(value.url),
+            value.dimensions.map(|r| r.into()),
+        )
+    }
+}
+
+#[wasm_bindgen(js_name = ImageDimensions)]
+pub struct JsImageDimensions {
+    pub width: u64,
+    pub height: u64,
+}
+
+impl From<ImageDimensions> for JsImageDimensions {
+    fn from(value: ImageDimensions) -> Self {
+        Self {
+            width: value.width,
+            height: value.height,
+        }
+    }
+}
+
+impl From<JsImageDimensions> for ImageDimensions {
+    fn from(value: JsImageDimensions) -> Self {
+        Self {
+            width: value.width,
+            height: value.height,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 #[wasm_bindgen(js_name = RelayMetadata)]
 pub enum JsRelayMetadata {
