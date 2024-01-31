@@ -201,9 +201,22 @@ impl JsEventBuilder {
         })
     }
 
+    /// Gift Wrap from seal
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[wasm_bindgen(js_name = giftWrapFromSeal)]
+    pub fn gift_wrap_from_seal(receiver: &JsPublicKey, seal: &JsEvent) -> Result<JsEvent> {
+        Ok(
+            EventBuilder::gift_wrap_from_seal(receiver.deref(), seal.deref())
+                .map_err(into_err)?
+                .into(),
+        )
+    }
+
     /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[wasm_bindgen(js_name = giftWrap)]
     pub fn gift_wrap(
         sender_keys: &JsKeys,
         receiver: &JsPublicKey,
