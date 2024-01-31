@@ -20,6 +20,14 @@ pub struct JsUnsignedEvent {
     inner: UnsignedEvent,
 }
 
+impl Deref for JsUnsignedEvent {
+    type Target = UnsignedEvent;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 impl From<UnsignedEvent> for JsUnsignedEvent {
     fn from(inner: UnsignedEvent) -> Self {
         Self { inner }

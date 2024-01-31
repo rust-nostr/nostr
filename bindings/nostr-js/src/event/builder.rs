@@ -201,6 +201,21 @@ impl JsEventBuilder {
         })
     }
 
+    /// Gift Wrap
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    pub fn gift_wrap(
+        sender_keys: &JsKeys,
+        receiver: &JsPublicKey,
+        rumor: &JsUnsignedEvent,
+    ) -> Result<JsEvent> {
+        Ok(
+            EventBuilder::gift_wrap(sender_keys.deref(), receiver.deref(), rumor.deref().clone())
+                .map_err(into_err)?
+                .into(),
+        )
+    }
+
     /// GiftWrapped Sealed Direct message
     #[wasm_bindgen(js_name = sealedDirect)]
     pub fn sealed_direct(receiver: &JsPublicKey, message: &str) -> Self {
