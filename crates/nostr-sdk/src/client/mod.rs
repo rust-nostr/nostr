@@ -628,6 +628,7 @@ impl Client {
     }
 
     /// Request events of filters
+    ///
     /// All events will be received on notification listener (`client.notifications()`)
     /// until the EOSE "end of stored events" message is received from the relay.
     ///
@@ -651,6 +652,33 @@ impl Client {
             None => self.opts.timeout,
         };
         self.pool.req_events_of(filters, timeout, opts).await;
+    }
+
+    /// Request events of filters from specific relays
+    ///
+    /// All events will be received on notification listener (`client.notifications()`)
+    /// until the EOSE "end of stored events" message is received from the relay.
+    ///
+    /// If timeout is set to `None`, the default from [`Options`] will be used.
+    pub async fn req_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let timeout: Duration = match timeout {
+            Some(t) => t,
+            None => self.opts.timeout,
+        };
+        self.pool
+            .req_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
+            .await?;
+        Ok(())
     }
 
     /// Send client message

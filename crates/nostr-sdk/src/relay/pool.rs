@@ -883,6 +883,33 @@ impl RelayPool {
         }
     }
 
+    /// Request events of filter from specific relays.
+    ///
+    /// If the events aren't already stored in the database, will be sent to notification listener
+    /// until the EOSE "end of stored events" message is received from the relay.
+    pub async fn req_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let urls: HashSet<Url> = urls
+            .into_iter()
+            .map(|u| u.try_into_url())
+            .collect::<Result<_, _>>()?;
+        let relays: HashMap<Url, Relay> = self.relays().await;
+        for (_, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+            relay.req_events_of(filters.clone(), timeout, opts);
+        }
+        Ok(())
+    }
+
     /// Connect to all added relays and keep connection alive
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
         let relays: HashMap<Url, Relay> = self.relays().await;
