@@ -192,9 +192,7 @@ impl fmt::Display for RelayStatus {
 /// Relay event
 #[derive(Debug)]
 pub enum RelayEvent {
-    /// Send [`ClientMessage`]
-    SendMsg(Box<ClientMessage>),
-    /// Send multiple messages at once
+    /// Send messages
     Batch(Vec<ClientMessage>),
     /// Ping
     #[cfg(not(target_arch = "wasm32"))]
@@ -665,54 +663,27 @@ impl Relay {
                     let mut rx = relay.relay_receiver.lock().await;
                     while let Some((relay_event, oneshot_sender)) = rx.recv().await {
                         match relay_event {
-                            RelayEvent::SendMsg(msg) => {
-                                let json = msg.as_json();
-                                let size: usize = json.as_bytes().len();
-                                tracing::debug!(
-                                    "Sending {json} to {} (size: {size} bytes)",
-                                    relay.url
-                                );
-                                match ws_tx.send(WsMessage::Text(json)).await {
-                                    Ok(_) => {
-                                        relay.stats.add_bytes_sent(size);
-                                        if let Some(sender) = oneshot_sender {
-                                            if let Err(e) = sender.send(true) {
-                                                tracing::error!(
-                                                    "Impossible to send oneshot msg: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
-                                    }
-                                    Err(e) => {
-                                        tracing::error!(
-                                            "Impossible to send msg to {}: {}",
-                                            relay.url(),
-                                            e.to_string()
-                                        );
-                                        if let Some(sender) = oneshot_sender {
-                                            if let Err(e) = sender.send(false) {
-                                                tracing::error!(
-                                                    "Impossible to send oneshot msg: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
                             RelayEvent::Batch(msgs) => {
+                                let msgs: Vec<String> =
+                                    msgs.into_iter().map(|msg| msg.as_json()).collect();
+                                let size: usize = msgs.iter().map(|msg| msg.as_bytes().len()).sum();
                                 let len = msgs.len();
-                                let size: usize =
-                                    msgs.iter().map(|msg| msg.as_json().as_bytes().len()).sum();
-                                tracing::debug!(
-                                    "Sending {len} messages to {} (size: {size} bytes)",
-                                    relay.url
-                                );
-                                let msgs = msgs
-                                    .into_iter()
-                                    .map(|msg| Ok(WsMessage::Text(msg.as_json())));
+
+                                if len == 1 {
+                                    if let Some(json) = msgs.first() {
+                                        tracing::debug!(
+                                            "Sending {json} to {} (size: {size} bytes)",
+                                            relay.url
+                                        );
+                                    }
+                                } else {
+                                    tracing::debug!(
+                                        "Sending {len} messages to {} (size: {size} bytes)",
+                                        relay.url
+                                    );
+                                }
+
+                                let msgs = msgs.into_iter().map(|msg| Ok(WsMessage::Text(msg)));
                                 let mut stream = futures_util::stream::iter(msgs);
                                 match ws_tx.send_all(&mut stream).await {
                                     Ok(_) => {
@@ -930,7 +901,10 @@ impl Relay {
 
                 // Subscribe to relay
                 if self.opts.flags.has_read() {
-                    if let Err(e) = self.resubscribe_all(None).await {
+                    if let Err(e) = self
+                        .resubscribe_all(RelaySendOptions::default().skip_send_confirmation(true))
+                        .await
+                    {
                         tracing::error!(
                             "Impossible to subscribe to {}: {}",
                             self.url(),
@@ -995,15 +969,15 @@ impl Relay {
     }
 
     /// Send msg to relay
-    pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
-        self.batch_msg(vec![msg], wait).await
+    pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
+        self.batch_msg(vec![msg], opts).await
     }
 
     /// Send multiple [`ClientMessage`] at once
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
         if !self.opts.flags.has_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
@@ -1013,83 +987,40 @@ impl Relay {
             return Err(Error::ReadDisabled);
         }
 
-        match wait {
-            Some(timeout) => {
-                let (tx, rx) = oneshot::channel::<bool>();
-                self.send_relay_event(RelayEvent::Batch(msgs), Some(tx))?;
-                match time::timeout(Some(timeout), rx).await {
-                    Some(result) => match result {
-                        Ok(val) => {
-                            if val {
-                                Ok(())
-                            } else {
-                                Err(Error::MessageNotSent)
-                            }
+        if opts.skip_disconnected
+            && !self.is_connected().await
+            && self.stats.attempts() > 1
+            && self.stats.uptime() < MIN_UPTIME
+        {
+            return Err(Error::NotConnected);
+        }
+
+        if opts.skip_send_confirmation {
+            self.send_relay_event(RelayEvent::Batch(msgs), None)
+        } else {
+            let (tx, rx) = oneshot::channel::<bool>();
+            self.send_relay_event(RelayEvent::Batch(msgs), Some(tx))?;
+            match time::timeout(Some(opts.timeout), rx).await {
+                Some(result) => match result {
+                    Ok(val) => {
+                        if val {
+                            Ok(())
+                        } else {
+                            Err(Error::MessageNotSent)
                         }
-                        Err(_) => Err(Error::OneShotRecvError),
-                    },
-                    _ => Err(Error::RecvTimeout),
-                }
+                    }
+                    Err(_) => Err(Error::OneShotRecvError),
+                },
+                _ => Err(Error::RecvTimeout),
             }
-            None => self.send_relay_event(RelayEvent::Batch(msgs), None),
         }
     }
 
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         let id: EventId = event.id();
-
-        if opts.skip_disconnected
-            && !self.is_connected().await
-            && self.stats.attempts() > 1
-            && self.stats.uptime() < MIN_UPTIME
-        {
-            return Err(Error::EventNotPublished(String::from(
-                "relay not connected",
-            )));
-        }
-
-        time::timeout(Some(opts.timeout), async {
-            self.send_msg(ClientMessage::event(event), None).await?;
-            let mut notifications = self.notification_sender.subscribe();
-            while let Ok(notification) = notifications.recv().await {
-                match notification {
-                    RelayPoolNotification::Message {
-                        relay_url,
-                        message:
-                            RelayMessage::Ok {
-                                event_id,
-                                status,
-                                message,
-                            },
-                    } => {
-                        if self.url == relay_url && id == event_id {
-                            if status {
-                                return Ok(event_id);
-                            } else {
-                                return Err(Error::EventNotPublished(message));
-                            }
-                        }
-                    }
-                    RelayPoolNotification::RelayStatus { relay_url, status } => {
-                        if opts.skip_disconnected && relay_url == self.url {
-                            if let RelayStatus::Disconnected
-                            | RelayStatus::Stopped
-                            | RelayStatus::Terminated = status
-                            {
-                                return Err(Error::EventNotPublished(String::from(
-                                    "relay not connected (status changed)",
-                                )));
-                            }
-                        }
-                    }
-                    _ => (),
-                }
-            }
-            Err(Error::LoopTerminated)
-        })
-        .await
-        .ok_or(Error::Timeout)?
+        self.batch_event(vec![event], opts).await?;
+        Ok(id)
     }
 
     /// Send multiple [`Event`] at once
@@ -1102,26 +1033,20 @@ impl Relay {
             return Err(Error::BatchEventEmpty);
         }
 
-        if opts.skip_disconnected
-            && !self.is_connected().await
-            && self.stats.attempts() > 1
-            && self.stats.uptime() < MIN_UPTIME
-        {
-            return Err(Error::EventNotPublished(String::from(
-                "relay not connected",
-            )));
-        }
-
-        let mut msgs: Vec<ClientMessage> = Vec::with_capacity(events.len());
-        let mut missing: HashSet<EventId> = HashSet::new();
+        let events_len: usize = events.len();
+        let mut msgs: Vec<ClientMessage> = Vec::with_capacity(events_len);
+        let mut missing: HashSet<EventId> = HashSet::with_capacity(events_len);
 
         for event in events.into_iter() {
             missing.insert(event.id());
             msgs.push(ClientMessage::event(event));
         }
 
+        // Batch send messages
+        self.batch_msg(msgs, opts).await?;
+
+        // Hanlde responses
         time::timeout(Some(opts.timeout), async {
-            self.batch_msg(msgs, None).await?;
             let mut published: HashSet<EventId> = HashSet::new();
             let mut not_published: HashMap<EventId, String> = HashMap::new();
             let mut notifications = self.notification_sender.subscribe();
@@ -1137,6 +1062,14 @@ impl Relay {
                             },
                     } => {
                         if self.url == relay_url && missing.remove(&event_id) {
+                            if events_len == 1 {
+                                if status {
+                                    return Ok(());
+                                } else {
+                                    return Err(Error::EventNotPublished(message));
+                                }
+                            }
+
                             if status {
                                 published.insert(event_id);
                             } else {
@@ -1180,7 +1113,7 @@ impl Relay {
     }
 
     /// Subscribes relay with existing filter
-    async fn resubscribe_all(&self, wait: Option<Duration>) -> Result<(), Error> {
+    async fn resubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
@@ -1189,7 +1122,7 @@ impl Relay {
 
         for (internal_id, sub) in subscriptions.into_iter() {
             if !sub.filters.is_empty() {
-                self.send_msg(ClientMessage::req(sub.id.clone(), sub.filters), wait)
+                self.send_msg(ClientMessage::req(sub.id.clone(), sub.filters), opts)
                     .await?;
             } else {
                 tracing::warn!("Subscription '{internal_id}' has empty filters");
@@ -1202,7 +1135,7 @@ impl Relay {
     async fn resubscribe(
         &self,
         internal_id: InternalSubscriptionId,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
@@ -1212,7 +1145,7 @@ impl Relay {
             .subscription(&internal_id)
             .await
             .ok_or(Error::InternalIdNotFound)?;
-        self.send_msg(ClientMessage::req(sub.id, sub.filters), wait)
+        self.send_msg(ClientMessage::req(sub.id, sub.filters), opts)
             .await?;
 
         Ok(())
@@ -1224,9 +1157,9 @@ impl Relay {
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.subscribe_with_internal_id(InternalSubscriptionId::Default, filters, wait)
+        self.subscribe_with_internal_id(InternalSubscriptionId::Default, filters, opts)
             .await
     }
 
@@ -1235,7 +1168,7 @@ impl Relay {
         &self,
         internal_id: InternalSubscriptionId,
         filters: Vec<Filter>,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
@@ -1247,14 +1180,14 @@ impl Relay {
 
         self.update_subscription_filters(internal_id.clone(), filters)
             .await;
-        self.resubscribe(internal_id, wait).await
+        self.resubscribe(internal_id, opts).await
     }
 
     /// Unsubscribe
     ///
     /// Internal Subscription ID set to `InternalSubscriptionId::Default`
-    pub async fn unsubscribe(&self, wait: Option<Duration>) -> Result<(), Error> {
-        self.unsubscribe_with_internal_id(InternalSubscriptionId::Default, wait)
+    pub async fn unsubscribe(&self, opts: RelaySendOptions) -> Result<(), Error> {
+        self.unsubscribe_with_internal_id(InternalSubscriptionId::Default, opts)
             .await
     }
 
@@ -1262,7 +1195,7 @@ impl Relay {
     pub async fn unsubscribe_with_internal_id(
         &self,
         internal_id: InternalSubscriptionId,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
@@ -1272,13 +1205,13 @@ impl Relay {
         let subscription = subscriptions
             .remove(&internal_id)
             .ok_or(Error::InternalIdNotFound)?;
-        self.send_msg(ClientMessage::close(subscription.id), wait)
+        self.send_msg(ClientMessage::close(subscription.id), opts)
             .await?;
         Ok(())
     }
 
     /// Unsubscribe from all subscriptions
-    pub async fn unsubscribe_all(&self, wait: Option<Duration>) -> Result<(), Error> {
+    pub async fn unsubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
@@ -1286,7 +1219,7 @@ impl Relay {
         let subscriptions = self.subscriptions().await;
 
         for sub in subscriptions.into_values() {
-            self.send_msg(ClientMessage::close(sub.id.clone()), wait)
+            self.send_msg(ClientMessage::close(sub.id.clone()), opts)
                 .await?;
         }
 
@@ -1416,15 +1349,16 @@ impl Relay {
         }
 
         let id = SubscriptionId::generate();
+        let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
 
-        self.send_msg(ClientMessage::req(id.clone(), filters), None)
+        self.send_msg(ClientMessage::req(id.clone(), filters), send_opts)
             .await?;
 
         self.handle_events_of(id.clone(), timeout, opts, callback)
             .await?;
 
         // Unsubscribe
-        self.send_msg(ClientMessage::close(id), None).await?;
+        self.send_msg(ClientMessage::close(id), send_opts).await?;
 
         Ok(())
     }
@@ -1462,10 +1396,11 @@ impl Relay {
         let relay = self.clone();
         thread::spawn(async move {
             let id = SubscriptionId::generate();
+            let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
 
             // Subscribe
             if let Err(e) = relay
-                .send_msg(ClientMessage::req(id.clone(), filters), None)
+                .send_msg(ClientMessage::req(id.clone(), filters), send_opts)
                 .await
             {
                 tracing::error!(
@@ -1483,7 +1418,7 @@ impl Relay {
             }
 
             // Unsubscribe
-            if let Err(e) = relay.send_msg(ClientMessage::close(id), None).await {
+            if let Err(e) = relay.send_msg(ClientMessage::close(id), send_opts).await {
                 tracing::error!(
                     "Impossible to close subscription with {}: {}",
                     relay.url(),
@@ -1500,7 +1435,8 @@ impl Relay {
         timeout: Duration,
     ) -> Result<usize, Error> {
         let id = SubscriptionId::generate();
-        self.send_msg(ClientMessage::count(id.clone(), filters), None)
+        let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
+        self.send_msg(ClientMessage::count(id.clone(), filters), send_opts)
             .await?;
 
         let mut count = 0;
@@ -1528,7 +1464,7 @@ impl Relay {
         .ok_or(Error::Timeout)?;
 
         // Unsubscribe
-        self.send_msg(ClientMessage::close(id), None).await?;
+        self.send_msg(ClientMessage::close(id), send_opts).await?;
 
         Ok(count)
     }
@@ -1563,9 +1499,9 @@ impl Relay {
 
         // Send initial negentropy message
         let sub_id = SubscriptionId::generate();
+        let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
         let open_msg = ClientMessage::neg_open(&mut negentropy, &sub_id, filter)?;
-        self.send_msg(open_msg, Some(Duration::from_secs(10)))
-            .await?;
+        self.send_msg(open_msg, send_opts).await?;
 
         let mut notifications = self.notification_sender.subscribe();
         let mut temp_notifications = self.notification_sender.subscribe();
@@ -1661,7 +1597,7 @@ impl Relay {
                                                     subscription_id: sub_id.clone(),
                                                     message: query.to_hex(),
                                                 },
-                                                None,
+                                                send_opts,
                                             )
                                             .await?;
                                         }
@@ -1712,8 +1648,11 @@ impl Relay {
                                         match self.database.event_by_id(event_id).await {
                                             Ok(event) => {
                                                 in_flight_up.insert(event_id);
-                                                self.send_msg(ClientMessage::event(event), None)
-                                                    .await?;
+                                                self.send_msg(
+                                                    ClientMessage::event(event),
+                                                    send_opts,
+                                                )
+                                                .await?;
                                                 num_sent += 1;
                                             }
                                             Err(e) => tracing::error!("Couldn't upload event: {e}"),
@@ -1752,7 +1691,7 @@ impl Relay {
                             let filter = Filter::new().ids(ids);
                             self.send_msg(
                                 ClientMessage::req(down_sub_id.clone(), vec![filter]),
-                                None,
+                                send_opts,
                             )
                             .await?;
 
@@ -1785,7 +1724,7 @@ impl Relay {
         let close_msg = ClientMessage::NegClose {
             subscription_id: sub_id,
         };
-        self.send_msg(close_msg, None).await?;
+        self.send_msg(close_msg, send_opts).await?;
 
         Ok(())
     }

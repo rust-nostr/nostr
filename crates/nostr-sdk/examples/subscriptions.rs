@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
         .subscribe_with_internal_id(
             InternalSubscriptionId::Custom(String::from("other-id")),
             vec![other_filters],
-            None,
+            RelaySendOptions::default(),
         )
         .await?;
 
@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
                             .subscribe_with_internal_id(
                                 InternalSubscriptionId::Custom(String::from("other-id")),
                                 vec![other_filters],
-                                None,
+                                RelaySendOptions::default(),
                             )
                             .await?;
                     } else {
@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
                     relay
                         .unsubscribe_with_internal_id(
                             InternalSubscriptionId::Custom(String::from("other-id")),
-                            None,
+                            RelaySendOptions::default(),
                         )
                         .await?;
                     // OR

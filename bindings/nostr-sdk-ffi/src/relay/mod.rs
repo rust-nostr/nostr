@@ -13,6 +13,7 @@ use uniffi::{Enum, Object};
 
 pub mod options;
 
+use self::options::RelaySendOptions;
 use crate::error::Result;
 
 #[derive(Object)]
@@ -182,11 +183,11 @@ impl Relay {
         block_on(async move { Ok(self.inner.terminate().await?) })
     }
 
-    pub fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<()> {
-        block_on(async move { Ok(self.inner.send_msg(msg.into(), wait).await?) })
+    pub fn send_msg(&self, msg: ClientMessage, opts: Arc<RelaySendOptions>) -> Result<()> {
+        block_on(async move { Ok(self.inner.send_msg(msg.into(), **opts).await?) })
     }
 
-    pub fn subscribe(&self, filters: Vec<Arc<Filter>>, wait: Option<Duration>) -> Result<()> {
+    pub fn subscribe(&self, filters: Vec<Arc<Filter>>, opts: Arc<RelaySendOptions>) -> Result<()> {
         block_on(async move {
             Ok(self
                 .inner
@@ -195,14 +196,14 @@ impl Relay {
                         .into_iter()
                         .map(|f| f.as_ref().deref().clone())
                         .collect(),
-                    wait,
+                    **opts,
                 )
                 .await?)
         })
     }
 
-    pub fn unsubscribe(&self, wait: Option<Duration>) -> Result<()> {
-        block_on(async move { Ok(self.inner.unsubscribe(wait).await?) })
+    pub fn unsubscribe(&self, opts: Arc<RelaySendOptions>) -> Result<()> {
+        block_on(async move { Ok(self.inner.unsubscribe(**opts).await?) })
     }
 
     pub fn get_events_of(

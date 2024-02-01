@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::relay::RelayPoolOptions;
+use crate::RelaySendOptions;
 
 pub(crate) const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
 /// Default Support Rust Nostr LUD16
@@ -95,8 +96,13 @@ impl Options {
         }
     }
 
-    pub(crate) fn get_wait_for_send(&self) -> bool {
-        self.wait_for_send.load(Ordering::SeqCst)
+    pub(crate) fn get_wait_for_send(&self) -> RelaySendOptions {
+        let skip_disconnected = self.get_skip_disconnected_relays();
+        let wait_for_send = self.wait_for_send.load(Ordering::SeqCst);
+        RelaySendOptions::new()
+            .timeout(self.send_timeout)
+            .skip_send_confirmation(!wait_for_send)
+            .skip_disconnected(skip_disconnected)
     }
 
     /// If set to `true`, `Client` wait that a subscription msg is sent before continue (`subscribe` and `unsubscribe` methods)
@@ -107,8 +113,13 @@ impl Options {
         }
     }
 
-    pub(crate) fn get_wait_for_subscription(&self) -> bool {
-        self.wait_for_subscription.load(Ordering::SeqCst)
+    pub(crate) fn get_wait_for_subscription(&self) -> RelaySendOptions {
+        let skip_disconnected = self.get_skip_disconnected_relays();
+        let wait_for_subscription = self.wait_for_subscription.load(Ordering::SeqCst);
+        RelaySendOptions::new()
+            .timeout(self.send_timeout)
+            .skip_send_confirmation(!wait_for_subscription)
+            .skip_disconnected(skip_disconnected)
     }
 
     /// Set default POW diffficulty for `Event`

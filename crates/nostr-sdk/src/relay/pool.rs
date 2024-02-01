@@ -535,16 +535,16 @@ impl RelayPool {
     }
 
     /// Send client message
-    pub async fn send_msg(&self, msg: ClientMessage, wait: Option<Duration>) -> Result<(), Error> {
+    pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
         let relays = self.relays().await;
-        self.send_msg_to(relays.into_keys(), msg, wait).await
+        self.send_msg_to(relays.into_keys(), msg, opts).await
     }
 
     /// Send multiple client messages at once
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
         let relays = self.relays().await;
 
@@ -567,10 +567,9 @@ impl RelayPool {
             let msgs = msgs.clone();
             let sent = sent_to_at_least_one_relay.clone();
             let handle = thread::spawn(async move {
-                match relay.batch_msg(msgs, wait).await {
+                match relay.batch_msg(msgs, opts).await {
                     Ok(_) => {
-                        let _ =
-                            sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                        sent.store(true, Ordering::SeqCst);
                     }
                     Err(e) => tracing::error!("Impossible to send {len} messages to {url}: {e}"),
                 }
@@ -596,7 +595,7 @@ impl RelayPool {
         &self,
         urls: I,
         msg: ClientMessage,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error>
     where
         I: IntoIterator<Item = U>,
@@ -626,7 +625,7 @@ impl RelayPool {
         if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
-            relay.send_msg(msg, wait).await?;
+            relay.send_msg(msg, opts).await?;
         } else {
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
@@ -640,7 +639,7 @@ impl RelayPool {
                 let msg = msg.clone();
                 let sent = sent_to_at_least_one_relay.clone();
                 let handle = thread::spawn(async move {
-                    match relay.send_msg(msg, wait).await {
+                    match relay.send_msg(msg, opts).await {
                         Ok(_) => {
                             sent.store(true, Ordering::SeqCst);
                         }
@@ -789,12 +788,12 @@ impl RelayPool {
     /// Subscribe to filters
     ///
     /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
-    pub async fn subscribe(&self, filters: Vec<Filter>, wait: Option<Duration>) {
+    pub async fn subscribe(&self, filters: Vec<Filter>, opts: RelaySendOptions) {
         let relays = self.relays().await;
         self.update_subscription_filters(filters.clone()).await;
         for relay in relays.values() {
             if let Err(e) = relay
-                .subscribe_with_internal_id(InternalSubscriptionId::Pool, filters.clone(), wait)
+                .subscribe_with_internal_id(InternalSubscriptionId::Pool, filters.clone(), opts)
                 .await
             {
                 tracing::error!("{e}");
@@ -805,11 +804,11 @@ impl RelayPool {
     /// Unsubscribe from filters
     ///
     /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
-    pub async fn unsubscribe(&self, wait: Option<Duration>) {
+    pub async fn unsubscribe(&self, opts: RelaySendOptions) {
         let relays = self.relays().await;
         for relay in relays.values() {
             if let Err(e) = relay
-                .unsubscribe_with_internal_id(InternalSubscriptionId::Pool, wait)
+                .unsubscribe_with_internal_id(InternalSubscriptionId::Pool, opts)
                 .await
             {
                 tracing::error!("{e}");

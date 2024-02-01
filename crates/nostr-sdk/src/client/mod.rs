@@ -549,32 +549,14 @@ impl Client {
     /// # }
     /// ```
     pub async fn subscribe(&self, filters: Vec<Filter>) {
-        let wait: Option<Duration> = if self.opts.get_wait_for_subscription() {
-            self.opts.send_timeout
-        } else {
-            None
-        };
-        self.pool.subscribe(filters, wait).await;
-    }
-
-    /// Subscribe to filters with custom wait
-    pub async fn subscribe_with_custom_wait(&self, filters: Vec<Filter>, wait: Option<Duration>) {
-        self.pool.subscribe(filters, wait).await;
+        let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+        self.pool.subscribe(filters, opts).await;
     }
 
     /// Unsubscribe from filters
     pub async fn unsubscribe(&self) {
-        let wait: Option<Duration> = if self.opts.get_wait_for_subscription() {
-            self.opts.send_timeout
-        } else {
-            None
-        };
-        self.pool.unsubscribe(wait).await;
-    }
-
-    /// Unsubscribe from filters with custom wait
-    pub async fn unsubscribe_with_custom_wait(&self, wait: Option<Duration>) {
-        self.pool.unsubscribe(wait).await;
+        let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+        self.pool.unsubscribe(opts).await;
     }
 
     /// Get events of filters
@@ -709,23 +691,17 @@ impl Client {
 
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
-        let wait: Option<Duration> = if self.opts.get_wait_for_send() {
-            self.opts.send_timeout
-        } else {
-            None
-        };
-        self.pool.send_msg(msg, wait).await?;
-        Ok(())
+        let opts: RelaySendOptions = self.opts.get_wait_for_send();
+        Ok(self.pool.send_msg(msg, opts).await?)
     }
 
     /// Batch send client messages
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
-        wait: Option<Duration>,
+        opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.pool.batch_msg(msgs, wait).await?;
-        Ok(())
+        Ok(self.pool.batch_msg(msgs, opts).await?)
     }
 
     /// Send client message to a specific relays
@@ -735,12 +711,8 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let wait: Option<Duration> = if self.opts.get_wait_for_send() {
-            self.opts.send_timeout
-        } else {
-            None
-        };
-        Ok(self.pool.send_msg_to(urls, msg, wait).await?)
+        let opts: RelaySendOptions = self.opts.get_wait_for_send();
+        Ok(self.pool.send_msg_to(urls, msg, opts).await?)
     }
 
     /// Send event
@@ -748,10 +720,7 @@ impl Client {
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
-        let timeout: Option<Duration> = self.opts.send_timeout;
-        let opts = RelaySendOptions::new()
-            .skip_disconnected(self.opts.get_skip_disconnected_relays())
-            .timeout(timeout);
+        let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_event(event, opts).await?)
     }
 
@@ -761,8 +730,7 @@ impl Client {
         events: Vec<Event>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.pool.batch_event(events, opts).await?;
-        Ok(())
+        Ok(self.pool.batch_event(events, opts).await?)
     }
 
     /// Send event to specific relay
