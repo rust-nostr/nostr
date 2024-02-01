@@ -14,6 +14,7 @@ use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
 use crate::nips::nip90::JsDataVendingMachineStatus;
+use crate::nips::nip94::JsFileMetadata;
 use crate::types::{JsContact, JsMetadata, JsTimestamp};
 
 #[wasm_bindgen(js_name = EventBuilder)]
@@ -333,6 +334,13 @@ impl JsEventBuilder {
                 bolt11,
                 payload,
             ),
+        }
+    }
+
+    #[wasm_bindgen(js_name = fileMetadata)]
+    pub fn file_metadata(description: String, metadata: JsFileMetadata) -> Self {
+        Self {
+            builder: EventBuilder::file_metadata(description, metadata.deref().clone()),
         }
     }
 
