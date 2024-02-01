@@ -193,6 +193,20 @@ impl Client {
         RUNTIME.block_on(async { self.client.get_events_of(filters, timeout).await })
     }
 
+    pub fn get_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<Event>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        RUNTIME.block_on(async { self.client.get_events_from(urls, filters, timeout).await })
+    }
+
     pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
         RUNTIME.block_on(async {
             self.client.req_events_of(filters, timeout).await;

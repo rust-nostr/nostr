@@ -627,6 +627,32 @@ impl Client {
         Ok(self.pool.get_events_of(filters, timeout, opts).await?)
     }
 
+    /// Get events of filters from specific relays
+    ///
+    /// Get events both from **local database** and **relays**
+    ///
+    /// If no relay is specified, will be queried only the database.
+    pub async fn get_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<Event>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let timeout: Duration = match timeout {
+            Some(t) => t,
+            None => self.opts.timeout,
+        };
+        Ok(self
+            .pool
+            .get_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
+            .await?)
+    }
+
     /// Request events of filters
     ///
     /// All events will be received on notification listener (`client.notifications()`)

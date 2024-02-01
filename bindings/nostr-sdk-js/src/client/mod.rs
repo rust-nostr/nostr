@@ -25,6 +25,7 @@ pub use self::signer::JsClientSigner;
 use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
+use crate::duration::JsDuration;
 use crate::relay::options::JsNegentropyOptions;
 use crate::relay::{JsRelay, JsRelayArray};
 
@@ -163,13 +164,43 @@ impl JsClient {
     pub async fn get_events_of(
         &self,
         filters: Vec<JsFilter>,
-        timeout: Option<f64>,
+        timeout: Option<JsDuration>,
     ) -> Result<JsEventArray> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        let timeout: Option<Duration> = timeout.map(Duration::from_secs_f64);
+        let timeout: Option<Duration> = timeout.map(|d| *d);
         let events: Vec<Event> = self
             .inner
             .get_events_of(filters, timeout)
+            .await
+            .map_err(into_err)?;
+        let events: JsEventArray = events
+            .into_iter()
+            .map(|e| {
+                let e: JsEvent = e.into();
+                JsValue::from(e)
+            })
+            .collect::<Array>()
+            .unchecked_into();
+        Ok(events)
+    }
+
+    /// Get events of filters from specific relays
+    ///
+    /// Get events both from **local database** and **relays**
+    ///
+    /// If no relay is specified, will be queried only the database.
+    #[wasm_bindgen(js_name = getEventsFrom)]
+    pub async fn get_events_from(
+        &self,
+        urls: Vec<String>,
+        filters: Vec<JsFilter>,
+        timeout: Option<JsDuration>,
+    ) -> Result<JsEventArray> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+        let timeout: Option<Duration> = timeout.map(|d| *d);
+        let events: Vec<Event> = self
+            .inner
+            .get_events_from(urls, filters, timeout)
             .await
             .map_err(into_err)?;
         let events: JsEventArray = events

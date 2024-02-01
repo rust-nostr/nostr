@@ -164,6 +164,29 @@ impl Client {
 
     // TODO: add get_events_of_with_opts
 
+    /// Get events of filters from specific relays
+    ///
+    /// Get events both from **local database** and **relays**
+    ///
+    /// If no relay is specified, will be queried only the database.
+    pub fn get_events_from(
+        &self,
+        urls: Vec<String>,
+        filters: Vec<Arc<Filter>>,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<Arc<Event>>> {
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        Ok(self
+            .inner
+            .get_events_from(urls, filters, timeout)?
+            .into_iter()
+            .map(|e| Arc::new(e.into()))
+            .collect())
+    }
+
     pub fn req_events_of(&self, filters: Vec<Arc<Filter>>, timeout: Option<Duration>) {
         let filters = filters
             .into_iter()

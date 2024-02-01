@@ -470,6 +470,11 @@ impl RelayPool {
         relays.clone()
     }
 
+    async fn internal_relay(&self, url: &Url) -> Result<Relay, Error> {
+        let relays = self.relays.read().await;
+        relays.get(url).cloned().ok_or(Error::RelayNotFound)
+    }
+
     /// Get [`Relay`]
     pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
@@ -477,8 +482,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
-        let relays = self.relays.read().await;
-        relays.get(&url).cloned().ok_or(Error::RelayNotFound)
+        self.internal_relay(&url).await
     }
 
     /// Get subscription filters
@@ -815,56 +819,96 @@ impl RelayPool {
 
     /// Get events of filters
     ///
-    /// Get events from local database and relays
+    /// Get events both from **local database** and **relays**
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        // Get stored events
-        let stored_events: Vec<Event> = self
-            .database
-            .query(filters.clone(), Order::Desc)
-            .await
-            .unwrap_or_default();
-
-        // Compose IDs and Events collections
-        let ids: Arc<Mutex<HashSet<EventId>>> =
-            Arc::new(Mutex::new(stored_events.iter().map(|e| e.id()).collect()));
-        let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(stored_events));
-
-        // Get relays and start query
-        let mut handles = Vec::new();
         let relays = self.relays().await;
-        for (url, relay) in relays.into_iter() {
-            let filters = filters.clone();
-            let ids = ids.clone();
-            let events = events.clone();
-            let handle = thread::spawn(async move {
-                if let Err(e) = relay
-                    .get_events_of_with_callback(filters, timeout, opts, |event| async {
-                        let mut ids = ids.lock().await;
-                        if !ids.contains(&event.id()) {
-                            let mut events = events.lock().await;
-                            ids.insert(event.id());
-                            events.push(event);
-                        }
-                    })
-                    .await
-                {
-                    tracing::error!("Failed to get events from {url}: {e}");
-                }
-            });
-            handles.push(handle);
-        }
+        self.get_events_from(relays.into_keys(), filters, timeout, opts)
+            .await
+    }
 
-        // Join threads
-        for handle in handles.into_iter().flatten() {
-            handle.join().await?;
-        }
+    /// Get events of filters from specific relays
+    ///
+    /// Get events both from **local database** and **relays**
+    ///
+    /// If no relay is specified, will be queried only the database.
+    pub async fn get_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<Vec<Event>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let urls: HashSet<Url> = urls
+            .into_iter()
+            .map(|u| u.try_into_url())
+            .collect::<Result<_, _>>()?;
 
-        Ok(events.lock_owned().await.clone())
+        if urls.is_empty() {
+            Ok(self.database.query(filters, Order::Desc).await?)
+        } else if urls.len() == 1 {
+            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
+            let relay: Relay = self.internal_relay(&url).await?;
+            Ok(relay.get_events_of(filters, timeout, opts).await?)
+        } else {
+            let relays: HashMap<Url, Relay> = self.relays().await;
+
+            // Check if urls set contains ONLY already added relays
+            if !urls.iter().all(|url| relays.contains_key(url)) {
+                return Err(Error::RelayNotFound);
+            }
+
+            let stored_events: Vec<Event> = self
+                .database
+                .query(filters.clone(), Order::Desc)
+                .await
+                .unwrap_or_default();
+
+            // Compose IDs and Events collections
+            let ids: Arc<Mutex<HashSet<EventId>>> =
+                Arc::new(Mutex::new(stored_events.iter().map(|e| e.id()).collect()));
+            let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(stored_events));
+
+            // Filter relays and start query
+            let mut handles = Vec::with_capacity(urls.len());
+            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+                let filters = filters.clone();
+                let ids = ids.clone();
+                let events = events.clone();
+                let handle = thread::spawn(async move {
+                    if let Err(e) = relay
+                        .get_events_of_with_callback(filters, timeout, opts, |event| async {
+                            let mut ids = ids.lock().await;
+                            if !ids.contains(&event.id()) {
+                                let mut events = events.lock().await;
+                                ids.insert(event.id());
+                                events.push(event);
+                            }
+                        })
+                        .await
+                    {
+                        tracing::error!("Failed to get events from {url}: {e}");
+                    }
+                });
+                handles.push(handle);
+            }
+
+            // Join threads
+            for handle in handles.into_iter().flatten() {
+                handle.join().await?;
+            }
+
+            Ok(events.lock_owned().await.clone())
+        }
     }
 
     /// Request events of filter.
