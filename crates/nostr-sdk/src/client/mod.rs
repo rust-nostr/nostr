@@ -186,9 +186,7 @@ impl Drop for Client {
                 tracing::warn!("Client already dropped");
             } else {
                 tracing::debug!("Dropping the Client...");
-                let _ = self
-                    .dropped
-                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                self.dropped.store(true, Ordering::SeqCst);
                 let client: Client = self.clone();
                 thread::spawn(async move {
                     client
@@ -625,10 +623,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Duration = match timeout {
-            Some(t) => t,
-            None => self.opts.timeout,
-        };
+        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         Ok(self
             .pool
             .get_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
@@ -655,10 +650,7 @@ impl Client {
         timeout: Option<Duration>,
         opts: FilterOptions,
     ) {
-        let timeout: Duration = match timeout {
-            Some(t) => t,
-            None => self.opts.timeout,
-        };
+        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         self.pool.req_events_of(filters, timeout, opts).await;
     }
 
@@ -679,23 +671,20 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Duration = match timeout {
-            Some(t) => t,
-            None => self.opts.timeout,
-        };
+        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         self.pool
             .req_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
             .await?;
         Ok(())
     }
 
-    /// Send client message
+    /// Send client message to **all relays**
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_msg(msg, opts).await?)
     }
 
-    /// Batch send client messages
+    /// Batch send client messages to **all relays**
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
@@ -704,7 +693,7 @@ impl Client {
         Ok(self.pool.batch_msg(msgs, opts).await?)
     }
 
-    /// Send client message to a specific relays
+    /// Send client message to a **specific relays**
     pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<(), Error>
     where
         I: IntoIterator<Item = U>,
@@ -715,7 +704,22 @@ impl Client {
         Ok(self.pool.send_msg_to(urls, msg, opts).await?)
     }
 
-    /// Send event
+    /// Batch send client messages to **specific relays**
+    pub async fn batch_msg_to<I, U>(
+        &self,
+        urls: I,
+        msgs: Vec<ClientMessage>,
+        opts: RelaySendOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        Ok(self.pool.batch_msg_to(urls, msgs, opts).await?)
+    }
+
+    /// Send event to **all relays**
     ///
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
@@ -724,7 +728,7 @@ impl Client {
         Ok(self.pool.send_event(event, opts).await?)
     }
 
-    /// Send multiple [`Event`] at once
+    /// Send multiple [`Event`] at once to **all relays**.
     pub async fn batch_event(
         &self,
         events: Vec<Event>,
@@ -733,7 +737,7 @@ impl Client {
         Ok(self.pool.batch_event(events, opts).await?)
     }
 
-    /// Send event to specific relay
+    /// Send event to **specific relays**.
     ///
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
@@ -743,11 +747,23 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Option<Duration> = self.opts.send_timeout;
-        let opts = RelaySendOptions::new()
-            .skip_disconnected(self.opts.get_skip_disconnected_relays())
-            .timeout(timeout);
+        let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_event_to(urls, event, opts).await?)
+    }
+
+    /// Send multiple [`Event`] at once to **specific relays**.
+    pub async fn batch_event_to<I, U>(
+        &self,
+        urls: I,
+        events: Vec<Event>,
+        opts: RelaySendOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        Ok(self.pool.batch_event_to(urls, events, opts).await?)
     }
 
     /// Signs the [`EventBuilder`] into an [`Event`] using the [`ClientSigner`]
@@ -803,7 +819,7 @@ impl Client {
         }
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
+    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to **all relays**.
     ///
     /// Rise an error if the [`ClientSigner`] is not set.
     pub async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
@@ -811,7 +827,7 @@ impl Client {
         self.send_event(event).await
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
+    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to **specific relays**.
     ///
     /// Rise an error if the [`ClientSigner`] is not set.
     pub async fn send_event_builder_to<I, U>(
