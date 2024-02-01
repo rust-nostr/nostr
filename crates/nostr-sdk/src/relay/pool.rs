@@ -64,12 +64,9 @@ pub enum Error {
     /// Msgs not sent
     #[error("messages not sent")]
     MsgsNotSent,
-    /// Event not published
-    #[error("event not published")]
-    EventNotPublished(EventId),
-    /// Events not published
-    #[error("events not published")]
-    EventsNotPublished,
+    /// Event/s not published
+    #[error("event/s not published")]
+    EventNotPublished,
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
@@ -158,9 +155,7 @@ impl RelayPoolTask {
     }
 
     fn set_running_to(&self, value: bool) {
-        let _ = self
-            .running
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
+        self.running.store(value, Ordering::SeqCst);
     }
 
     pub fn run(&self) {
@@ -370,9 +365,7 @@ impl Drop for RelayPool {
                 tracing::warn!("Relay Pool already dropped");
             } else {
                 tracing::debug!("Dropping the Relay Pool...");
-                let _ = self
-                    .dropped
-                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                self.dropped.store(true, Ordering::SeqCst);
                 let pool = self.clone();
                 thread::spawn(async move {
                     pool.shutdown()
@@ -547,45 +540,7 @@ impl RelayPool {
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
         let relays = self.relays().await;
-
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
-        // Save events into database
-        for msg in msgs.iter() {
-            if let ClientMessage::Event(event) = msg {
-                self.database.save_event(event).await?;
-            }
-        }
-
-        let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-        let mut handles = Vec::new();
-
-        for (url, relay) in relays.into_iter() {
-            let len = msgs.len();
-            let msgs = msgs.clone();
-            let sent = sent_to_at_least_one_relay.clone();
-            let handle = thread::spawn(async move {
-                match relay.batch_msg(msgs, opts).await {
-                    Ok(_) => {
-                        sent.store(true, Ordering::SeqCst);
-                    }
-                    Err(e) => tracing::error!("Impossible to send {len} messages to {url}: {e}"),
-                }
-            });
-            handles.push(handle);
-        }
-
-        for handle in handles.into_iter().flatten() {
-            handle.join().await?;
-        }
-
-        if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
-            return Err(Error::MsgNotSent);
-        }
-
-        Ok(())
+        self.batch_msg_to(relays.into_keys(), msgs, opts).await
     }
 
     /// Send client message to specific relays
@@ -595,6 +550,23 @@ impl RelayPool {
         &self,
         urls: I,
         msg: ClientMessage,
+        opts: RelaySendOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.batch_msg_to(urls, vec![msg], opts).await
+    }
+
+    /// Send multiple client messages at once to specific relays
+    ///
+    /// Note: **the relays must already be added!**
+    pub async fn batch_msg_to<I, U>(
+        &self,
+        urls: I,
+        msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
     ) -> Result<(), Error>
     where
@@ -613,19 +585,25 @@ impl RelayPool {
             return Err(Error::NoRelaysSpecified);
         }
 
-        // If message event, save into database
-        if let ClientMessage::Event(event) = &msg {
-            self.database.save_event(event).await?;
+        // Save events into database
+        for msg in msgs.iter() {
+            if let ClientMessage::Event(event) = msg {
+                self.database.save_event(event).await?;
+            }
         }
 
         // Get relays
         let relays: HashMap<Url, Relay> = self.relays().await;
 
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
         // If passed only 1 url, not use threads
         if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
-            relay.send_msg(msg, opts).await?;
+            relay.batch_msg(msgs, opts).await?;
         } else {
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
@@ -636,10 +614,10 @@ impl RelayPool {
             let mut handles = Vec::with_capacity(urls.len());
 
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
-                let msg = msg.clone();
+                let msgs = msgs.clone();
                 let sent = sent_to_at_least_one_relay.clone();
                 let handle = thread::spawn(async move {
-                    match relay.send_msg(msg, opts).await {
+                    match relay.batch_msg(msgs, opts).await {
                         Ok(_) => {
                             sent.store(true, Ordering::SeqCst);
                         }
@@ -674,44 +652,7 @@ impl RelayPool {
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
         let relays = self.relays().await;
-
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
-        // Save events into database
-        for event in events.iter() {
-            self.database.save_event(event).await?;
-        }
-
-        let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-        let mut handles = Vec::new();
-
-        for (url, relay) in relays.into_iter() {
-            let len = events.len();
-            let events = events.clone();
-            let sent = sent_to_at_least_one_relay.clone();
-            let handle = thread::spawn(async move {
-                match relay.batch_event(events, opts).await {
-                    Ok(_) => {
-                        let _ =
-                            sent.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
-                    }
-                    Err(e) => tracing::error!("Impossible to send {len} events to {url}: {e}"),
-                }
-            });
-            handles.push(handle);
-        }
-
-        for handle in handles.into_iter().flatten() {
-            handle.join().await?;
-        }
-
-        if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
-            return Err(Error::EventsNotPublished);
-        }
-
-        Ok(())
+        self.batch_event_to(relays.into_keys(), events, opts).await
     }
 
     /// Send event to a specific relays
@@ -721,6 +662,23 @@ impl RelayPool {
         event: Event,
         opts: RelaySendOptions,
     ) -> Result<EventId, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let event_id: EventId = event.id;
+        self.batch_event_to(urls, vec![event], opts).await?;
+        Ok(event_id)
+    }
+
+    /// Send event to a specific relays
+    pub async fn batch_event_to<I, U>(
+        &self,
+        urls: I,
+        events: Vec<Event>,
+        opts: RelaySendOptions,
+    ) -> Result<(), Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -737,19 +695,23 @@ impl RelayPool {
             return Err(Error::NoRelaysSpecified);
         }
 
-        // Save into database
-        self.database.save_event(&event).await?;
-
-        let event_id: EventId = event.id();
+        // Save events into database
+        for event in events.iter() {
+            self.database.save_event(event).await?;
+        }
 
         // Get relays
         let relays: HashMap<Url, Relay> = self.relays().await;
+
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
 
         // If passed only 1 url, not use threads
         if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
-            relay.send_event(event, opts).await?;
+            relay.batch_event(events, opts).await?;
         } else {
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
@@ -760,10 +722,10 @@ impl RelayPool {
             let mut handles = Vec::with_capacity(urls.len());
 
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
-                let event = event.clone();
+                let events = events.clone();
                 let sent = sent_to_at_least_one_relay.clone();
                 let handle = thread::spawn(async move {
-                    match relay.send_event(event, opts).await {
+                    match relay.batch_event(events, opts).await {
                         Ok(_) => {
                             sent.store(true, Ordering::SeqCst);
                         }
@@ -778,11 +740,11 @@ impl RelayPool {
             }
 
             if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
-                return Err(Error::EventNotPublished(event_id));
+                return Err(Error::EventNotPublished);
             }
         }
 
-        Ok(event_id)
+        Ok(())
     }
 
     /// Subscribe to filters
