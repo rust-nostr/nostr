@@ -55,6 +55,7 @@ use crate::RUNTIME;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 
+const MIN_ATTEMPTS: usize = 1;
 const MIN_UPTIME: f64 = 0.90;
 #[cfg(not(target_arch = "wasm32"))]
 const PING_INTERVAL: u64 = 55;
@@ -71,9 +72,6 @@ pub enum Error {
     /// Database error
     #[error(transparent)]
     Database(#[from] DatabaseError),
-    /// Channel timeout
-    #[error("channel timeout")]
-    ChannelTimeout,
     /// Message response timeout
     #[error("recv message response timeout")]
     RecvTimeout,
@@ -86,6 +84,9 @@ pub enum Error {
     /// Relay not connected
     #[error("relay not connected")]
     NotConnected,
+    /// Relay not connected
+    #[error("relay not connected (status changed)")]
+    NotConnectedStatusChanged,
     /// Event not published
     #[error("event not published: {0}")]
     EventNotPublished(String),
@@ -100,9 +101,6 @@ pub enum Error {
         /// Not published events
         not_published: HashMap<EventId, String>,
     },
-    /// Loop terminated
-    #[error("loop terminated")]
-    LoopTerminated,
     /// Batch event empty
     #[error("batch event cannot be empty")]
     BatchEventEmpty,
@@ -186,6 +184,13 @@ impl fmt::Display for RelayStatus {
             Self::Stopped => write!(f, "Stopped"),
             Self::Terminated => write!(f, "Terminated"),
         }
+    }
+}
+
+impl RelayStatus {
+    /// Check if is `disconnected`, `stopped` or `terminated`
+    fn is_disconnected(&self) -> bool {
+        matches!(self, Self::Disconnected | Self::Stopped | Self::Terminated)
     }
 }
 
@@ -455,9 +460,7 @@ impl Relay {
     }
 
     fn schedule_for_stop(&self, value: bool) {
-        let _ = self
-            .scheduled_for_stop
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
+        self.scheduled_for_stop.store(value, Ordering::SeqCst);
     }
 
     fn is_scheduled_for_termination(&self) -> bool {
@@ -465,9 +468,8 @@ impl Relay {
     }
 
     fn schedule_for_termination(&self, value: bool) {
-        let _ =
-            self.scheduled_for_termination
-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(value));
+        self.scheduled_for_termination
+            .store(value, Ordering::SeqCst);
     }
 
     /// Connect to relay and keep alive connection
@@ -629,21 +631,15 @@ impl Relay {
                                 }
 
                                 let nonce: u64 = rand::thread_rng().gen();
-                                if relay.stats.ping.set_last_nonce(nonce)
-                                    && relay.stats.ping.set_replied(false)
+                                relay.stats.ping.set_last_nonce(nonce);
+                                relay.stats.ping.set_replied(false);
+
+                                if let Err(e) =
+                                    relay.send_relay_event(RelayEvent::Ping { nonce }, None)
                                 {
-                                    if let Err(e) =
-                                        relay.send_relay_event(RelayEvent::Ping { nonce }, None)
-                                    {
-                                        tracing::error!("Impossible to ping {}: {e}", relay.url);
-                                        break;
-                                    };
-                                } else {
-                                    tracing::warn!(
-                                        "`last_nonce` or `replied` not updated for {}!",
-                                        relay.url
-                                    );
-                                }
+                                    tracing::error!("Impossible to ping {}: {e}", relay.url);
+                                    break;
+                                };
 
                                 thread::sleep(Duration::from_secs(PING_INTERVAL)).await;
                             }
@@ -866,6 +862,8 @@ impl Relay {
                                                 break;
                                             }
                                         }
+                                        Err(Error::MessageHandle(MessageHandleError::EmptyMsg)) => {
+                                        }
                                         Err(e) => tracing::error!(
                                             "Impossible to handle relay message from {}: {e}",
                                             relay.url
@@ -933,10 +931,7 @@ impl Relay {
     /// Disconnect from relay and set status to 'Disconnected'
     async fn disconnect(&self) -> Result<(), Error> {
         let status = self.status().await;
-        if status.ne(&RelayStatus::Disconnected)
-            && status.ne(&RelayStatus::Stopped)
-            && status.ne(&RelayStatus::Terminated)
-        {
+        if !status.is_disconnected() {
             self.send_relay_event(RelayEvent::Close, None)?;
         }
         Ok(())
@@ -946,10 +941,7 @@ impl Relay {
     pub async fn stop(&self) -> Result<(), Error> {
         self.schedule_for_stop(true);
         let status = self.status().await;
-        if status.ne(&RelayStatus::Disconnected)
-            && status.ne(&RelayStatus::Stopped)
-            && status.ne(&RelayStatus::Terminated)
-        {
+        if !status.is_disconnected() {
             self.send_relay_event(RelayEvent::Stop, None)?;
         }
         Ok(())
@@ -959,10 +951,7 @@ impl Relay {
     pub async fn terminate(&self) -> Result<(), Error> {
         self.schedule_for_termination(true);
         let status = self.status().await;
-        if status.ne(&RelayStatus::Disconnected)
-            && status.ne(&RelayStatus::Stopped)
-            && status.ne(&RelayStatus::Terminated)
-        {
+        if !status.is_disconnected() {
             self.send_relay_event(RelayEvent::Terminate, None)?;
         }
         Ok(())
@@ -989,7 +978,7 @@ impl Relay {
 
         if opts.skip_disconnected
             && !self.is_connected().await
-            && self.stats.attempts() > 1
+            && self.stats.attempts() > MIN_ATTEMPTS
             && self.stats.uptime() < MIN_UPTIME
         {
             return Err(Error::NotConnected);
@@ -1078,15 +1067,13 @@ impl Relay {
                         }
                     }
                     RelayPoolNotification::RelayStatus { relay_url, status } => {
-                        if opts.skip_disconnected && relay_url == self.url {
-                            if let RelayStatus::Disconnected
-                            | RelayStatus::Stopped
-                            | RelayStatus::Terminated = status
-                            {
-                                return Err(Error::EventNotPublished(String::from(
-                                    "relay not connected (status changed)",
-                                )));
-                            }
+                        if opts.skip_disconnected
+                            && relay_url == self.url
+                            && status.is_disconnected()
+                        {
+                            return Err(Error::EventNotPublished(String::from(
+                                "relay not connected (status changed)",
+                            )));
                         }
                     }
                     _ => (),
@@ -1125,7 +1112,7 @@ impl Relay {
                 self.send_msg(ClientMessage::req(sub.id.clone(), sub.filters), opts)
                     .await?;
             } else {
-                tracing::warn!("Subscription '{internal_id}' has empty filters");
+                tracing::debug!("Subscription '{internal_id}' has empty filters");
             }
         }
 
@@ -1237,7 +1224,7 @@ impl Relay {
         F: Future<Output = ()>,
     {
         if !self.is_connected().await
-            && self.stats.attempts() > 1
+            && self.stats.attempts() > MIN_ATTEMPTS
             && self.stats.uptime() < MIN_UPTIME
         {
             return Err(Error::NotConnected);
@@ -1285,8 +1272,8 @@ impl Relay {
                         _ => (),
                     },
                     RelayPoolNotification::RelayStatus { relay_url, status } => {
-                        if relay_url == self.url && status != RelayStatus::Connected {
-                            return Err(Error::NotConnected);
+                        if relay_url == self.url && status.is_disconnected() {
+                            return Err(Error::NotConnectedStatusChanged);
                         }
                     }
                     RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => break,
@@ -1483,7 +1470,7 @@ impl Relay {
 
         // Check if relay is connected
         if !self.is_connected().await
-            && self.stats.attempts() > 1
+            && self.stats.attempts() > MIN_ATTEMPTS
             && self.stats.uptime() < MIN_UPTIME
         {
             return Err(Error::NotConnected);
@@ -1700,8 +1687,8 @@ impl Relay {
                     }
                 }
                 RelayPoolNotification::RelayStatus { relay_url, status } => {
-                    if relay_url == self.url && status != RelayStatus::Connected {
-                        return Err(Error::NotConnected);
+                    if relay_url == self.url && status.is_disconnected() {
+                        return Err(Error::NotConnectedStatusChanged);
                     }
                 }
                 RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => break,

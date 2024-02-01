@@ -72,16 +72,12 @@ impl PingStats {
         *sent_at = Instant::now();
     }
 
-    pub(crate) fn set_last_nonce(&self, nonce: u64) -> bool {
-        self.last_nonce
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(nonce))
-            .is_ok()
+    pub(crate) fn set_last_nonce(&self, nonce: u64) {
+        self.last_nonce.store(nonce, Ordering::SeqCst)
     }
 
-    pub(crate) fn set_replied(&self, replied: bool) -> bool {
-        self.replied
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(replied))
-            .is_ok()
+    pub(crate) fn set_replied(&self, replied: bool) {
+        self.replied.store(replied, Ordering::SeqCst);
     }
 }
 
@@ -187,16 +183,10 @@ impl RelayConnectionStats {
 
         let now: u64 = Timestamp::now().as_u64();
 
-        let _ = self
-            .connected_at
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(now));
+        self.connected_at.store(now, Ordering::SeqCst);
 
         if self.first_connection_timestamp() == Timestamp::from(0) {
-            let _ = self.first_connection_timestamp.fetch_update(
-                Ordering::SeqCst,
-                Ordering::SeqCst,
-                |_| Some(now),
-            );
+            self.first_connection_timestamp.store(now, Ordering::SeqCst);
         }
     }
 
