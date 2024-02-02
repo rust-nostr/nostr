@@ -187,6 +187,12 @@ pub struct NIP47Error {
     pub message: String,
 }
 
+impl fmt::Display for NIP47Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} [{:?}]", self.message, self.code)
+    }
+}
+
 /// Method
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Method {
