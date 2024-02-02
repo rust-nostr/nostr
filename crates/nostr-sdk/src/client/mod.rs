@@ -71,14 +71,6 @@ pub enum Error {
     /// Signer not configured
     #[error("signer not configured")]
     SignerNotConfigured,
-    /// Signer not configured
-    #[error("wrong signer: expected={expected}, found={found}")]
-    WrongSigner {
-        /// Expected client signer type
-        expected: ClientSignerType,
-        /// Found client signer type
-        found: ClientSignerType,
-    },
     /// Zapper not configured
     #[cfg(feature = "nip57")]
     #[error("zapper not configured")]
@@ -768,55 +760,17 @@ impl Client {
 
     /// Signs the [`EventBuilder`] into an [`Event`] using the [`ClientSigner`]
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
-        match self.signer().await? {
-            ClientSigner::Keys(keys) => {
-                let difficulty: u8 = self.opts.get_difficulty();
-                if difficulty > 0 {
-                    Ok(builder.to_pow_event(&keys, difficulty)?)
-                } else {
-                    Ok(builder.to_event(&keys)?)
-                }
-            }
-            #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(nip07) => {
-                let public_key: XOnlyPublicKey = nip07.get_public_key().await?;
-                let unsigned = {
-                    let difficulty: u8 = self.opts.get_difficulty();
-                    if difficulty > 0 {
-                        builder.to_unsigned_pow_event(public_key, difficulty)
-                    } else {
-                        builder.to_unsigned_event(public_key)
-                    }
-                };
-                Ok(nip07.sign_event(unsigned).await?)
-            }
-            #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(nip46) => {
-                let signer_public_key: XOnlyPublicKey = nip46
-                    .signer_public_key()
-                    .await
-                    .ok_or(Error::SignerPublicKeyNotFound)?;
-                let unsigned = {
-                    let difficulty: u8 = self.opts.get_difficulty();
-                    if difficulty > 0 {
-                        builder.to_unsigned_pow_event(signer_public_key, difficulty)
-                    } else {
-                        builder.to_unsigned_event(signer_public_key)
-                    }
-                };
-                let res: nip46::Response = self
-                    .send_req_to_signer(
-                        nip46::Request::SignEvent(unsigned),
-                        self.opts.nip46_timeout,
-                    )
-                    .await?;
-                if let nip46::Response::SignEvent(event) = res {
-                    Ok(event)
-                } else {
-                    Err(Error::ResponseNotMatchRequest)
-                }
-            }
-        }
+        let signer = self.signer().await?;
+
+        let public_key = signer.public_key().await?;
+        let difficulty: u8 = self.opts.get_difficulty();
+        let unsigned = if difficulty > 0 {
+            builder.to_unsigned_pow_event(public_key, difficulty)
+        } else {
+            builder.to_unsigned_event(public_key)
+        };
+
+        signer.sign_event(unsigned).await
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to **all relays**.
@@ -842,59 +796,6 @@ impl Client {
     {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event_to(urls, event).await
-    }
-
-    /// NIP44 encryption with [ClientSigner]
-    #[cfg(feature = "nip44")]
-    pub async fn nip44_encrypt<T>(
-        &self,
-        public_key: XOnlyPublicKey,
-        content: T,
-    ) -> Result<String, Error>
-    where
-        T: AsRef<[u8]>,
-    {
-        match self.signer().await? {
-            ClientSigner::Keys(keys) => Ok(nip44::encrypt(
-                &keys.secret_key()?,
-                &public_key,
-                content,
-                nip44::Version::default(),
-            )?),
-            #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(..) => Err(Error::unsupported(
-                "NIP44 encryption not supported with NIP07 signer yet!",
-            )),
-            #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(..) => Err(Error::unsupported(
-                "NIP44 encryption not supported with NIP46 signer yet!",
-            )),
-        }
-    }
-
-    /// NIP44 decryption with [ClientSigner]
-    #[cfg(feature = "nip44")]
-    pub async fn nip44_decrypt<T>(
-        &self,
-        public_key: XOnlyPublicKey,
-        payload: T,
-    ) -> Result<String, Error>
-    where
-        T: AsRef<[u8]>,
-    {
-        match self.signer().await? {
-            ClientSigner::Keys(keys) => {
-                Ok(nip44::decrypt(&keys.secret_key()?, &public_key, payload)?)
-            }
-            #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(..) => Err(Error::unsupported(
-                "NIP44 decryption not supported with NIP07 signer yet!",
-            )),
-            #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(..) => Err(Error::unsupported(
-                "NIP44 decryption not supported with NIP46 signer yet!",
-            )),
-        }
     }
 
     /// Get public key metadata
@@ -978,28 +879,12 @@ impl Client {
     }
 
     async fn get_contact_list_filters(&self) -> Result<Vec<Filter>, Error> {
-        let mut filter: Filter = Filter::new().kind(Kind::ContactList).limit(1);
-
-        match self.signer().await? {
-            ClientSigner::Keys(keys) => {
-                filter = filter.author(keys.public_key());
-            }
-            #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(nip07) => {
-                let public_key: XOnlyPublicKey = nip07.get_public_key().await?;
-                filter = filter.author(public_key);
-            }
-            #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(nip46) => {
-                let signer_public_key = nip46
-                    .signer_public_key()
-                    .await
-                    .ok_or(Error::SignerPublicKeyNotFound)?;
-
-                filter = filter.author(signer_public_key);
-            }
-        };
-
+        let signer = self.signer().await?;
+        let public_key = signer.public_key().await?;
+        let filter: Filter = Filter::new()
+            .author(public_key)
+            .kind(Kind::ContactList)
+            .limit(1);
         Ok(vec![filter])
     }
 
@@ -1126,39 +1011,16 @@ impl Client {
     where
         S: Into<String>,
     {
-        let builder: EventBuilder = match self.signer().await? {
-            ClientSigner::Keys(keys) => {
-                EventBuilder::encrypted_direct_msg(&keys, receiver, msg, reply_to)?
-            }
-            #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(nip07) => {
-                let content: String = nip07.nip04_encrypt(receiver, msg.into()).await?;
-                EventBuilder::new(
-                    Kind::EncryptedDirectMessage,
-                    content,
-                    [Tag::public_key(receiver)],
-                )
-            }
-            #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(..) => {
-                let req = nip46::Request::Nip04Encrypt {
-                    public_key: receiver,
-                    text: msg.into(),
-                };
-                let res: nip46::Response = self
-                    .send_req_to_signer(req, self.opts.nip46_timeout)
-                    .await?;
-                if let nip46::Response::Nip04Encrypt(content) = res {
-                    EventBuilder::new(
-                        Kind::EncryptedDirectMessage,
-                        content,
-                        [Tag::public_key(receiver)],
-                    )
-                } else {
-                    return Err(Error::ResponseNotMatchRequest);
-                }
-            }
-        };
+        let signer = self.signer().await?;
+        let content: String = signer.nip04_encrypt(receiver, msg.into()).await?;
+
+        let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(reply_to.is_some()));
+        tags.push(Tag::public_key(receiver));
+        if let Some(id) = reply_to {
+            tags.push(Tag::event(id));
+        }
+
+        let builder: EventBuilder = EventBuilder::new(Kind::EncryptedDirectMessage, content, tags);
 
         self.send_event_builder(builder).await
     }
@@ -1400,7 +1262,7 @@ impl Client {
         let rumor = rumor.to_unsigned_event(public_key);
 
         // Compose seal
-        let content: String = self.nip44_encrypt(receiver, rumor.as_json()).await?;
+        let content: String = signer.nip44_encrypt(receiver, rumor.as_json()).await?;
         let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, []);
         let seal: Event = self.sign_event_builder(seal).await?;
 

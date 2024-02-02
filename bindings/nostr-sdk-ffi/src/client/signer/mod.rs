@@ -44,7 +44,7 @@ impl ClientSigner {
     #[uniffi::constructor]
     pub fn nip46(nip46: Arc<Nip46Signer>) -> Self {
         Self {
-            inner: signer::ClientSigner::NIP46(nip46.as_ref().deref().clone()),
+            inner: signer::ClientSigner::NIP46(Box::new(nip46.as_ref().deref().clone())),
         }
     }
 }

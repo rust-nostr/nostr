@@ -81,9 +81,4 @@ impl JsOptions {
     pub fn send_timeout(self, send_timeout: Option<JsDuration>) -> Self {
         self.inner.send_timeout(send_timeout.map(|d| *d)).into()
     }
-
-    #[wasm_bindgen(js_name = nip46Timeout)]
-    pub fn nip46_timeout(self, nip46_timeout: Option<JsDuration>) -> Self {
-        self.inner.nip46_timeout(nip46_timeout.map(|d| *d)).into()
-    }
 }

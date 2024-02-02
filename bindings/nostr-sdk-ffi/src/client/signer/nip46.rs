@@ -4,6 +4,7 @@
 
 use std::ops::Deref;
 use std::sync::Arc;
+use std::time::Duration;
 
 use nostr_ffi::nips::nip46::{NostrConnectMetadata, NostrConnectURI};
 use nostr_ffi::{Keys, PublicKey};
@@ -39,14 +40,19 @@ impl Nip46Signer {
         relay_url: String,
         app_keys: Arc<Keys>,
         signer_public_key: Option<Arc<PublicKey>>,
+        timeout: Duration,
     ) -> Result<Self> {
-        let relay_url: Url = Url::parse(&relay_url)?;
-        Ok(Self {
-            inner: client::Nip46Signer::new(
-                relay_url,
-                app_keys.as_ref().deref().clone(),
-                signer_public_key.map(|p| **p),
-            ),
+        block_on(async move {
+            let relay_url: Url = Url::parse(&relay_url)?;
+            Ok(Self {
+                inner: client::Nip46Signer::new(
+                    relay_url,
+                    app_keys.as_ref().deref().clone(),
+                    signer_public_key.map(|p| **p),
+                    timeout,
+                )
+                .await?,
+            })
         })
     }
 
@@ -56,13 +62,8 @@ impl Nip46Signer {
     }
 
     /// Get signer [`XOnlyPublicKey`]
-    pub fn signer_public_key(&self) -> Option<Arc<PublicKey>> {
-        block_on(async move {
-            self.inner
-                .signer_public_key()
-                .await
-                .map(|p| Arc::new(p.into()))
-        })
+    pub fn signer_public_key(&self) -> Arc<PublicKey> {
+        Arc::new(self.inner.signer_public_key().into())
     }
 
     pub fn nostr_connect_uri(&self, metadata: Arc<NostrConnectMetadata>) -> Arc<NostrConnectURI> {

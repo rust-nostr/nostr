@@ -51,7 +51,7 @@ impl JsClientSigner {
     /// NIP46 Client Signer
     pub fn nip46(signer: &JsNip46Signer) -> Self {
         Self {
-            inner: ClientSigner::NIP46(signer.deref().clone()),
+            inner: ClientSigner::NIP46(Box::new(signer.deref().clone())),
         }
     }
 }

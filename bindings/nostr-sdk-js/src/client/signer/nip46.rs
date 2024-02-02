@@ -11,6 +11,8 @@ use nostr_sdk::client::Nip46Signer;
 use nostr_sdk::Url;
 use wasm_bindgen::prelude::*;
 
+use crate::duration::JsDuration;
+
 #[wasm_bindgen(js_name = Nip46Signer)]
 pub struct JsNip46Signer {
     inner: Nip46Signer,
@@ -34,10 +36,11 @@ impl From<Nip46Signer> for JsNip46Signer {
 impl JsNip46Signer {
     /// New NIP46 remote signer
     #[wasm_bindgen(constructor)]
-    pub fn new(
+    pub async fn new(
         relay_url: String,
         app_keys: &JsKeys,
         signer_public_key: Option<JsPublicKey>,
+        timeout: JsDuration,
     ) -> Result<JsNip46Signer> {
         let relay_url: Url = Url::parse(&relay_url).map_err(into_err)?;
         Ok(Self {
@@ -45,7 +48,10 @@ impl JsNip46Signer {
                 relay_url,
                 app_keys.deref().clone(),
                 signer_public_key.map(|p| *p),
-            ),
+                *timeout,
+            )
+            .await
+            .map_err(into_err)?,
         })
     }
 
@@ -57,8 +63,8 @@ impl JsNip46Signer {
 
     /// Get signer [`XOnlyPublicKey`]
     #[wasm_bindgen(js_name = signerPublicKey)]
-    pub async fn signer_public_key(&self) -> Option<JsPublicKey> {
-        self.inner.signer_public_key().await.map(|p| p.into())
+    pub fn signer_public_key(&self) -> JsPublicKey {
+        self.inner.signer_public_key().into()
     }
 
     #[wasm_bindgen(js_name = nostrConnectUri)]
