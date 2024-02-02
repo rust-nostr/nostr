@@ -192,84 +192,91 @@ impl Client {
                 Ok(())
             }
             #[cfg(feature = "nip47")]
-            ClientZapper::NWC(uri) => {
-                // Add relay and connect if not exists
-                if self.add_relay(uri.relay_url.clone()).await? {
-                    self.connect_relay(uri.relay_url.clone()).await?;
-                }
-
-                for invoice in _invoices.into_iter() {
-                    // Compose NWC request event
-                    let req = nip47::Request {
-                        method: Method::PayInvoice,
-                        params: RequestParams::PayInvoice(PayInvoiceRequestParams {
-                            id: None,
-                            invoice: invoice.into(),
-                            amount: None,
-                        }),
-                    };
-                    let event = req.to_event(&uri)?;
-                    let event_id = event.id;
-
-                    // Subscribe
-                    let relay = self.relay(uri.relay_url.clone()).await?;
-                    let filter = Filter::new()
-                        .author(uri.public_key)
-                        .kind(Kind::WalletConnectResponse)
-                        .event(event_id)
-                        .since(Timestamp::now())
-                        .limit(1);
-                    relay.req_events_of(
-                        vec![filter],
-                        Duration::from_secs(20),
-                        FilterOptions::WaitForEventsAfterEOSE(1),
-                    );
-                    let mut notifications = self.notifications();
-
-                    // Send request
-                    self.send_event_to([uri.relay_url.clone()], event).await?;
-
-                    time::timeout(Some(Duration::from_secs(10)), async {
-                        while let Ok(notification) = notifications.recv().await {
-                            if let RelayPoolNotification::Event { event, .. } = notification {
-                                if event.kind() == Kind::WalletConnectResponse
-                                    && event.event_ids().next().copied() == Some(event_id)
-                                {
-                                    let decrypt_res = nip04::decrypt(
-                                        &uri.secret,
-                                        event.author_ref(),
-                                        event.content(),
-                                    )?;
-                                    let nip47_res = nip47::Response::from_json(decrypt_res)?;
-
-                                    if let Some(e) = &nip47_res.error {
-                                        return Err(Error::NIP47ErrorCode(e.clone()));
-                                    } else if let Some(ResponseResult::PayInvoice(
-                                        pay_invoice_result,
-                                    )) = nip47_res.result
-                                    {
-                                        tracing::info!(
-                                            "Invoice paid! Preimage: {}",
-                                            pay_invoice_result.preimage
-                                        );
-                                    } else {
-                                        return Err(Error::NIP47Unexpected(nip47_res.as_json()));
-                                    }
-
-                                    break;
-                                }
-                            }
-                        }
-
-                        Ok::<(), Error>(())
-                    })
-                    .await
-                    .ok_or(Error::Timeout)??;
-                }
-
-                Ok(())
-            }
+            ClientZapper::NWC(uri) => self.pay_invoices_with_nwc(&uri, _invoices).await,
         }
+    }
+
+    /// Pay invoices with [NostrWalletConnectURI]
+    pub async fn pay_invoices_with_nwc<I, S>(
+        &self,
+        uri: &NostrWalletConnectURI,
+        invoices: I,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        // Add relay and connect if not exists
+        if self.add_relay(uri.relay_url.clone()).await? {
+            self.connect_relay(uri.relay_url.clone()).await?;
+        }
+
+        for invoice in invoices.into_iter() {
+            // Compose NWC request event
+            let req = nip47::Request {
+                method: Method::PayInvoice,
+                params: RequestParams::PayInvoice(PayInvoiceRequestParams {
+                    id: None,
+                    invoice: invoice.into(),
+                    amount: None,
+                }),
+            };
+            let event = req.to_event(uri)?;
+            let event_id = event.id;
+
+            // Subscribe
+            let relay = self.relay(uri.relay_url.clone()).await?;
+            let filter = Filter::new()
+                .author(uri.public_key)
+                .kind(Kind::WalletConnectResponse)
+                .event(event_id)
+                .since(Timestamp::now())
+                .limit(1);
+            relay.req_events_of(
+                vec![filter],
+                Duration::from_secs(20),
+                FilterOptions::WaitForEventsAfterEOSE(1),
+            );
+            let mut notifications = self.notifications();
+
+            // Send request
+            self.send_event_to([uri.relay_url.clone()], event).await?;
+
+            time::timeout(Some(Duration::from_secs(10)), async {
+                while let Ok(notification) = notifications.recv().await {
+                    if let RelayPoolNotification::Event { event, .. } = notification {
+                        if event.kind() == Kind::WalletConnectResponse
+                            && event.event_ids().next().copied() == Some(event_id)
+                        {
+                            let decrypt_res =
+                                nip04::decrypt(&uri.secret, event.author_ref(), event.content())?;
+                            let nip47_res = nip47::Response::from_json(decrypt_res)?;
+
+                            if let Some(e) = &nip47_res.error {
+                                return Err(Error::NIP47ErrorCode(e.clone()));
+                            } else if let Some(ResponseResult::PayInvoice(pay_invoice_result)) =
+                                nip47_res.result
+                            {
+                                tracing::info!(
+                                    "Invoice paid! Preimage: {}",
+                                    pay_invoice_result.preimage
+                                );
+                            } else {
+                                return Err(Error::NIP47Unexpected(nip47_res.as_json()));
+                            }
+
+                            break;
+                        }
+                    }
+                }
+
+                Ok::<(), Error>(())
+            })
+            .await
+            .ok_or(Error::Timeout)??;
+        }
+
+        Ok(())
     }
 
     /// Split zap to support Rust Nostr development
