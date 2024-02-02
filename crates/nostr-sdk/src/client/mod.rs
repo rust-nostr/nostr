@@ -34,7 +34,8 @@ pub use self::signer::{ClientSigner, ClientSignerType};
 pub use self::zapper::{ClientZapper, ZapDetails, ZapEntity};
 use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
 use crate::relay::{
-    FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
+    Error as RelayError, FilterOptions, NegentropyOptions, Relay, RelayOptions,
+    RelayPoolNotification, RelaySendOptions,
 };
 use crate::util::TryIntoUrl;
 
@@ -50,6 +51,9 @@ pub enum Error {
     /// [`RelayPool`] error
     #[error("relay pool error: {0}")]
     RelayPool(#[from] RelayPoolError),
+    /// [`Relay`] error
+    #[error("relay error: {0}")]
+    Relay(#[from] RelayError),
     /// [`EventBuilder`] error
     #[error("event builder error: {0}")]
     EventBuilder(#[from] EventBuilderError),

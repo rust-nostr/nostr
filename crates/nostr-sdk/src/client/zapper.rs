@@ -17,7 +17,7 @@ use webln::WebLN;
 
 use super::options::SUPPORT_RUST_NOSTR_LUD16;
 use super::{Client, Error};
-use crate::{FilterOptions, RelayPoolNotification};
+use crate::{RelayPoolNotification, RelaySendOptions};
 
 const SUPPORT_RUST_NOSTR_MSG: &str = "Zap split to support Rust Nostr development!";
 
@@ -226,16 +226,21 @@ impl Client {
 
             // Subscribe
             let relay = self.relay(uri.relay_url.clone()).await?;
+            let id = SubscriptionId::generate();
             let filter = Filter::new()
                 .author(uri.public_key)
                 .kind(Kind::WalletConnectResponse)
                 .event(event_id)
                 .limit(1);
-            relay.req_events_of(
-                vec![filter],
-                Duration::from_secs(20),
-                FilterOptions::WaitForEventsAfterEOSE(1),
-            );
+
+            // Subscribe
+            relay
+                .send_msg(
+                    ClientMessage::req(id.clone(), vec![filter]),
+                    RelaySendOptions::new().skip_send_confirmation(false),
+                )
+                .await?;
+
             let mut notifications = self.notifications();
 
             // Send request
@@ -273,6 +278,10 @@ impl Client {
             })
             .await
             .ok_or(Error::Timeout)??;
+
+            // Unsubscribe
+            self.send_msg_to([uri.relay_url.clone()], ClientMessage::close(id))
+                .await?;
         }
 
         Ok(())
