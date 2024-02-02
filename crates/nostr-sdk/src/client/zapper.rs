@@ -8,6 +8,7 @@ use std::str::FromStr;
 #[cfg(feature = "nip47")]
 use std::time::Duration;
 
+use async_utility::time;
 use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
 use nostr::prelude::*;
@@ -16,7 +17,7 @@ use webln::WebLN;
 
 use super::options::SUPPORT_RUST_NOSTR_LUD16;
 use super::{Client, Error};
-use crate::FilterOptions;
+use crate::{FilterOptions, RelayPoolNotification};
 
 const SUPPORT_RUST_NOSTR_MSG: &str = "Zap split to support Rust Nostr development!";
 
@@ -137,8 +138,8 @@ impl Client {
         // 3. Get invoice
         // 4. Send payment
 
-        // Check zapper
-        let zapper: ClientZapper = self.zapper().await?;
+        // Check if zapper is set
+        self.zapper().await?;
 
         // Get entity metadata
         let to: ZapEntity = to.into();
@@ -168,16 +169,25 @@ impl Client {
         };
 
         // Compose zap split and get invoices
-        let _invoices: Vec<String> = self
+        let invoices: Vec<String> = self
             .zap_split(public_key, lud, satoshi, details, to.event_id())
             .await?;
 
-        match zapper {
+        self.pay_invoices(invoices).await
+    }
+
+    /// Pay invoices with [ClientZapper]
+    pub async fn pay_invoices<I, S>(&self, _invoices: I) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        match self.zapper().await? {
             #[cfg(all(feature = "webln", target_arch = "wasm32"))]
             ClientZapper::WebLN(webln) => {
                 webln.enable().await?;
                 for invoice in _invoices.into_iter() {
-                    webln.send_payment(invoice).await?;
+                    webln.send_payment(invoice.into()).await?;
                 }
                 Ok(())
             }
@@ -194,60 +204,67 @@ impl Client {
                         method: Method::PayInvoice,
                         params: RequestParams::PayInvoice(PayInvoiceRequestParams {
                             id: None,
-                            invoice,
+                            invoice: invoice.into(),
                             amount: None,
                         }),
                     };
                     let event = req.to_event(&uri)?;
                     let event_id = event.id;
 
-                    // Send request
-                    self.send_event_to([uri.relay_url.clone()], event).await?;
-
-                    // Get response
+                    // Subscribe
                     let relay = self.relay(uri.relay_url.clone()).await?;
                     let filter = Filter::new()
                         .author(uri.public_key)
                         .kind(Kind::WalletConnectResponse)
                         .event(event_id)
+                        .since(Timestamp::now())
                         .limit(1);
-                    match relay
-                        .get_events_of(
-                            vec![filter],
-                            Duration::from_secs(10),
-                            FilterOptions::ExitOnEOSE,
-                        )
-                        .await
-                    {
-                        Ok(events) => match events.first() {
-                            Some(event) => {
-                                let decrypt_res =
-                                    nip04::decrypt(&uri.secret, &uri.public_key, &event.content)?;
-                                let nip47_res = nip47::Response::from_json(decrypt_res)?;
-                                if let Some(ResponseResult::PayInvoice(pay_invoice_result)) =
-                                    nip47_res.result
+                    relay.req_events_of(
+                        vec![filter],
+                        Duration::from_secs(20),
+                        FilterOptions::WaitForEventsAfterEOSE(1),
+                    );
+                    let mut notifications = self.notifications();
+
+                    // Send request
+                    self.send_event_to([uri.relay_url.clone()], event).await?;
+
+                    time::timeout(Some(Duration::from_secs(10)), async {
+                        while let Ok(notification) = notifications.recv().await {
+                            if let RelayPoolNotification::Event { event, .. } = notification {
+                                if event.kind() == Kind::WalletConnectResponse
+                                    && event.event_ids().next().copied() == Some(event_id)
                                 {
-                                    tracing::info!(
-                                        "Zap sent! Preimage: {}",
-                                        pay_invoice_result.preimage
-                                    );
-                                } else {
-                                    tracing::warn!(
-                                        "Unexpected NIP47 result: {}",
-                                        nip47_res.as_json()
-                                    );
+                                    let decrypt_res = nip04::decrypt(
+                                        &uri.secret,
+                                        event.author_ref(),
+                                        event.content(),
+                                    )?;
+                                    let nip47_res = nip47::Response::from_json(decrypt_res)?;
+
+                                    if let Some(e) = &nip47_res.error {
+                                        return Err(Error::NIP47ErrorCode(e.clone()));
+                                    } else if let Some(ResponseResult::PayInvoice(
+                                        pay_invoice_result,
+                                    )) = nip47_res.result
+                                    {
+                                        tracing::info!(
+                                            "Invoice paid! Preimage: {}",
+                                            pay_invoice_result.preimage
+                                        );
+                                    } else {
+                                        return Err(Error::NIP47Unexpected(nip47_res.as_json()));
+                                    }
+
+                                    break;
                                 }
                             }
-                            None => {
-                                tracing::warn!(
-                                    "Zap [apparently] sent (`PayInvoice` response not received)."
-                                );
-                            }
-                        },
-                        Err(e) => {
-                            tracing::error!("Impossible to get NWC response event: {e}");
                         }
-                    }
+
+                        Ok::<(), Error>(())
+                    })
+                    .await
+                    .ok_or(Error::Timeout)??;
                 }
 
                 Ok(())
