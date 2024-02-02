@@ -15,6 +15,7 @@ use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
 use crate::nips::nip90::JsDataVendingMachineStatus;
 use crate::nips::nip94::JsFileMetadata;
+use crate::nips::nip98::JsHttpData;
 use crate::types::{JsContact, JsMetadata, JsTimestamp};
 
 #[wasm_bindgen(js_name = EventBuilder)]
@@ -341,6 +342,13 @@ impl JsEventBuilder {
     pub fn file_metadata(description: String, metadata: JsFileMetadata) -> Self {
         Self {
             builder: EventBuilder::file_metadata(description, metadata.deref().clone()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = httpAuth)]
+    pub fn http_auth(data: JsHttpData) -> Self {
+        Self {
+            builder: EventBuilder::http_auth(data.into()),
         }
     }
 
