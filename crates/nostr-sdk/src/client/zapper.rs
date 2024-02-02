@@ -230,7 +230,6 @@ impl Client {
                 .author(uri.public_key)
                 .kind(Kind::WalletConnectResponse)
                 .event(event_id)
-                .since(Timestamp::now())
                 .limit(1);
             relay.req_events_of(
                 vec![filter],
