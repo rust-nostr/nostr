@@ -11,6 +11,7 @@ use super::tag::{JsImageDimensions, JsThumbnails};
 use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
+use crate::nips::nip15::JsStallData;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
 use crate::nips::nip90::JsDataVendingMachineStatus;
@@ -349,6 +350,13 @@ impl JsEventBuilder {
     pub fn http_auth(data: JsHttpData) -> Self {
         Self {
             builder: EventBuilder::http_auth(data.into()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = stallData)]
+    pub fn stall_data(data: JsStallData) -> Self {
+        Self {
+            builder: EventBuilder::stall_data(data.deref().clone()),
         }
     }
 
