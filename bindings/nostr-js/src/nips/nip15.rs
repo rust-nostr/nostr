@@ -3,8 +3,15 @@
 
 use std::ops::Deref;
 
-use nostr::nips::nip15::{ShippingCost, ShippingMethod, StallData};
+use js_sys::Array;
+use nostr::nips::nip15::{ProductData, ShippingCost, ShippingMethod, StallData};
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "string[]")]
+    pub type JsStringArray;
+}
 
 #[wasm_bindgen(js_name = ShippingCost)]
 pub struct JsShippingCost {
@@ -133,5 +140,98 @@ impl JsStallData {
             .into_iter()
             .map(|s| s.into())
             .collect()
+    }
+}
+
+#[wasm_bindgen(js_name = ProductData)]
+pub struct JsProductData {
+    inner: ProductData,
+}
+
+impl From<ProductData> for JsProductData {
+    fn from(inner: ProductData) -> Self {
+        Self { inner }
+    }
+}
+
+impl From<JsProductData> for ProductData {
+    fn from(value: JsProductData) -> Self {
+        value.inner
+    }
+}
+
+#[wasm_bindgen(js_class = ProductData)]
+impl JsProductData {
+    pub fn new(id: &str, stall_id: &str, name: &str, currency: &str) -> Self {
+        ProductData::new(id, stall_id, name, currency).into()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn id(&self) -> String {
+        self.inner.id.clone()
+    }
+
+    #[wasm_bindgen(getter, js_name = stallId)]
+    pub fn stall_id(&self) -> String {
+        self.inner.stall_id.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn name(&self) -> String {
+        self.inner.name.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn description(&self) -> Option<String> {
+        self.inner.description.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn images(&self) -> Option<Vec<String>> {
+        self.inner.images.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn currency(&self) -> String {
+        self.inner.currency.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn price(&self) -> f64 {
+        self.inner.price
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn quantity(&self) -> f64 {
+        self.inner.quantity as f64
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn specs(&self) -> Option<Vec<JsStringArray>> {
+        self.inner.specs.clone().map(|v| {
+            v.into_iter()
+                .map(|s| {
+                    s.into_iter()
+                        .map(JsValue::from)
+                        .collect::<Array>()
+                        .unchecked_into()
+                })
+                .collect()
+        })
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn shipping(&self) -> Vec<JsShippingCost> {
+        self.inner
+            .shipping
+            .clone()
+            .into_iter()
+            .map(|s| s.into())
+            .collect()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn categories(&self) -> Option<Vec<String>> {
+        self.inner.categories.clone()
     }
 }

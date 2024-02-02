@@ -11,7 +11,7 @@ use super::tag::{JsImageDimensions, JsThumbnails};
 use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
-use crate::nips::nip15::JsStallData;
+use crate::nips::nip15::{JsProductData, JsStallData};
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
 use crate::nips::nip90::JsDataVendingMachineStatus;
@@ -357,6 +357,13 @@ impl JsEventBuilder {
     pub fn stall_data(data: JsStallData) -> Self {
         Self {
             builder: EventBuilder::stall_data(data.deref().clone()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = productData)]
+    pub fn product_data(data: JsProductData) -> Self {
+        Self {
+            builder: EventBuilder::product_data(data.into()),
         }
     }
 
