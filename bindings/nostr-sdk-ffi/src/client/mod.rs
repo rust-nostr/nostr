@@ -13,7 +13,7 @@ use nostr_ffi::{
     RelayMessage,
 };
 use nostr_sdk::client::blocking::Client as ClientSdk;
-use nostr_sdk::relay::RelayPoolNotification as RelayPoolNotificationSdk;
+use nostr_sdk::pool::RelayPoolNotification as RelayPoolNotificationSdk;
 use uniffi::Object;
 
 mod builder;

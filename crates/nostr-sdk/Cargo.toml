@@ -17,7 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["all-nips"]
-blocking = ["dep:once_cell", "async-utility/blocking", "nostr/blocking"]
+blocking = ["dep:once_cell", "async-utility/blocking", "nostr/blocking", "nostr-sdk-pool/blocking"]
 sqlite = ["dep:nostr-sqlite"]
 indexeddb = ["dep:nostr-indexeddb"]
 all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46", "nip47", "nip57", "nip59"]
@@ -26,7 +26,7 @@ nip04 = ["nostr/nip04"]
 nip05 = ["nostr/nip05"]
 nip06 = ["nostr/nip06"]
 nip07 = ["nostr/nip07"]
-nip11 = ["nostr/nip11"]
+nip11 = ["nostr/nip11", "nostr-sdk-pool/nip11"]
 nip44 = ["nostr/nip44"]
 nip46 = ["nostr/nip46"]
 nip47 = ["nostr/nip47"]
@@ -35,17 +35,17 @@ nip59 = ["nostr/nip59"]
 
 [dependencies]
 async-utility.workspace = true
-async-wsocket = "0.2"
 lnurl-pay = { version = "0.3", features = ["api"], optional = true }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
+nostr-sdk-pool.workspace = true
 once_cell = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["std", "attributes"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 nostr-sqlite = { version = "0.27", path = "../nostr-sqlite", optional = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "time", "macros", "sync"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 nostr-indexeddb = { version = "0.27", path = "../nostr-indexeddb", optional = true }

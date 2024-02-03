@@ -1436,11 +1436,11 @@ name = "nostr-sdk"
 version = "0.27.0"
 dependencies = [
  "async-utility",
- "async-wsocket",
  "lnurl-pay",
  "nostr",
  "nostr-database",
  "nostr-indexeddb",
+ "nostr-sdk-pool",
  "nostr-sqlite",
  "once_cell",
  "thiserror",
@@ -1459,6 +1459,19 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uniffi",
+]
+
+[[package]]
+name = "nostr-sdk-pool"
+version = "0.27.0"
+dependencies = [
+ "async-utility",
+ "async-wsocket",
+ "nostr",
+ "nostr-database",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

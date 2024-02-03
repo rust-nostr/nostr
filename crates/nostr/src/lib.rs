@@ -59,7 +59,7 @@ pub use self::message::{
     SingleLetterTag, SubscriptionId,
 };
 pub use self::nips::nip19::{FromBech32, ToBech32};
-pub use self::types::{Contact, Metadata, Timestamp, UncheckedUrl, Url};
+pub use self::types::{Contact, Metadata, Timestamp, TryIntoUrl, UncheckedUrl, Url};
 pub use self::util::JsonUtil;
 #[cfg(feature = "std")]
 pub use self::util::SECP256K1;

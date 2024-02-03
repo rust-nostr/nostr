@@ -27,6 +27,7 @@ async-utility = "0.1"
 js-sys = "0.3"
 nostr = { version = "0.27", path = "./crates/nostr", default-features = false }
 nostr-database = { version = "0.27", path = "./crates/nostr-database", default-features = false }
+nostr-sdk-pool = { version = "0.27", path = "./crates/nostr-sdk-pool" }
 once_cell = "1.19"
 serde_json = { version = "1.0", default-features = false }
 thiserror = "1.0"

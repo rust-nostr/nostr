@@ -10,12 +10,12 @@ use std::time::Duration;
 
 use nostr::prelude::*;
 use nostr_database::DynNostrDatabase;
+use nostr_sdk_pool::{pool, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification};
 use tokio::sync::broadcast;
 
 use super::signer::ClientSigner;
 use super::{Error, Options, TryIntoUrl};
-use crate::relay::{pool, Relay, RelayOptions, RelayPoolNotification};
-use crate::{ClientBuilder, NegentropyOptions, RUNTIME};
+use crate::{ClientBuilder, RUNTIME};
 
 #[derive(Debug, Clone)]
 pub struct Client {

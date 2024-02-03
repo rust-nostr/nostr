@@ -1,0 +1,23 @@
+[package]
+name = "nostr-sdk-pool"
+version = "0.27.0"
+edition = "2021"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+nip11 = ["nostr/nip11"]
+blocking = ["async-utility/blocking", "nostr/blocking"]
+
+[dependencies]
+async-utility.workspace = true
+async-wsocket = "0.2"
+nostr = { workspace = true, features = ["std"] }
+nostr-database.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true, features = ["std", "attributes"] }

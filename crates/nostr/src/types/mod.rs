@@ -12,4 +12,4 @@ pub mod url;
 pub use self::contact::Contact;
 pub use self::metadata::Metadata;
 pub use self::time::Timestamp;
-pub use self::url::{UncheckedUrl, Url};
+pub use self::url::{TryIntoUrl, UncheckedUrl, Url};

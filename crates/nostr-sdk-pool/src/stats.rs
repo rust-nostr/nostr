@@ -17,9 +17,6 @@ use nostr::Timestamp;
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::sync::RwLock;
 
-#[cfg(feature = "blocking")]
-use crate::RUNTIME;
-
 /// Ping Stats
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Clone)]
@@ -166,12 +163,6 @@ impl RelayConnectionStats {
         let latencies = self.latencies.read().await;
         let sum: Duration = latencies.iter().sum();
         sum.checked_div(latencies.len() as u32)
-    }
-
-    /// Calculate latency
-    #[cfg(all(not(target_arch = "wasm32"), feature = "blocking"))]
-    pub fn latency_blocking(&self) -> Option<Duration> {
-        RUNTIME.block_on(async { self.latency().await })
     }
 
     pub(crate) fn new_attempt(&self) {

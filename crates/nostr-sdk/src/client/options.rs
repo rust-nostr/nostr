@@ -10,10 +10,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::relay::RelayPoolOptions;
-use crate::RelaySendOptions;
+use nostr_sdk_pool::options::DEFAULT_SEND_TIMEOUT;
+use nostr_sdk_pool::{RelayPoolOptions, RelaySendOptions};
 
-pub(crate) const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
 /// Default Support Rust Nostr LUD16
 pub const SUPPORT_RUST_NOSTR_LUD16: &str = "yuki@getalby.com"; // TODO: use a rust-nostr dedicated LUD16
 /// Default Support Rust Nostr basis points

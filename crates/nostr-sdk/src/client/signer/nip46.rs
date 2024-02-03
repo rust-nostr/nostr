@@ -13,12 +13,12 @@ use async_utility::time;
 use nostr::nips::nip46::{Message, NostrConnectMetadata, NostrConnectURI, Request, Response};
 use nostr::prelude::*;
 use nostr::serde_json;
+use nostr_sdk_pool::RelayPoolNotification;
 use tokio::sync::Mutex;
 
 #[cfg(feature = "blocking")]
 use crate::client::blocking::Client as BlockingClient;
 use crate::client::{Client, Error};
-use crate::relay::RelayPoolNotification;
 #[cfg(feature = "blocking")]
 use crate::RUNTIME;
 

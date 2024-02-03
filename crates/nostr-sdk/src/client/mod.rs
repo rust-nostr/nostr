@@ -15,6 +15,11 @@ use nostr::event::builder::Error as EventBuilderError;
 use nostr::prelude::*;
 use nostr::types::metadata::Error as MetadataError;
 use nostr_database::DynNostrDatabase;
+use nostr_sdk_pool::pool::{self, Error as RelayPoolError, RelayPool};
+use nostr_sdk_pool::{
+    Error as RelayError, FilterOptions, NegentropyOptions, Relay, RelayOptions,
+    RelayPoolNotification, RelaySendOptions,
+};
 use tokio::sync::{broadcast, RwLock};
 
 #[cfg(feature = "blocking")]
@@ -32,12 +37,6 @@ pub use self::signer::nip46::Nip46Signer;
 pub use self::signer::{ClientSigner, ClientSignerType};
 #[cfg(feature = "nip57")]
 pub use self::zapper::{ClientZapper, ZapDetails, ZapEntity};
-use crate::relay::pool::{self, Error as RelayPoolError, RelayPool};
-use crate::relay::{
-    Error as RelayError, FilterOptions, NegentropyOptions, Relay, RelayOptions,
-    RelayPoolNotification, RelaySendOptions,
-};
-use crate::util::TryIntoUrl;
 
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]

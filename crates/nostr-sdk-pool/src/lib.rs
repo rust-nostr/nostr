@@ -2,7 +2,13 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Relay
+//! Nostr SDK Pool
+
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+#![warn(rustdoc::bare_urls)]
+#![allow(unknown_lints)]
+#![allow(clippy::arc_with_non_send_sync)]
 
 use std::collections::{HashMap, HashSet};
 #[cfg(not(target_arch = "wasm32"))]
@@ -34,7 +40,7 @@ use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
 mod flags;
 pub mod limits;
-mod options;
+pub mod options;
 pub mod pool;
 mod stats;
 
@@ -50,8 +56,6 @@ use self::options::{
 };
 pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
 pub use self::stats::RelayConnectionStats;
-#[cfg(feature = "blocking")]
-use crate::RUNTIME;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 
@@ -365,12 +369,6 @@ impl Relay {
         *status
     }
 
-    /// Get [`RelayStatus`]
-    #[cfg(feature = "blocking")]
-    pub fn status_blocking(&self) -> RelayStatus {
-        RUNTIME.block_on(async { self.status().await })
-    }
-
     async fn set_status(&self, status: RelayStatus) {
         // Change status
         let mut s = self.status.write().await;
@@ -400,12 +398,6 @@ impl Relay {
     pub async fn document(&self) -> RelayInformationDocument {
         let document = self.document.read().await;
         document.clone()
-    }
-
-    /// Get [`RelayInformationDocument`]
-    #[cfg(all(feature = "nip11", feature = "blocking"))]
-    pub fn document_blocking(&self) -> RelayInformationDocument {
-        RUNTIME.block_on(async { self.document().await })
     }
 
     #[cfg(feature = "nip11")]

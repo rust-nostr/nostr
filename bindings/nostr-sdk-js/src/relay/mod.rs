@@ -4,7 +4,6 @@
 
 use nostr_js::nips::nip11::JsRelayInformationDocument;
 use nostr_sdk::prelude::*;
-use nostr_sdk::relay::Relay;
 use wasm_bindgen::prelude::*;
 
 pub mod flags;

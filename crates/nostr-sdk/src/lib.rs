@@ -22,6 +22,12 @@ pub use nostr::{self, *};
 pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
 #[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]
 pub use nostr_indexeddb::{IndexedDBError, WebDatabase};
+pub use nostr_sdk_pool::{
+    self as pool, ActiveSubscription, AtomicRelayServiceFlags, FilterOptions,
+    InternalSubscriptionId, NegentropyDirection, NegentropyOptions, Relay, RelayConnectionStats,
+    RelayOptions, RelayPoolNotification, RelayPoolOptions, RelaySendOptions, RelayServiceFlags,
+    RelayStatus,
+};
 #[cfg(feature = "sqlite")]
 pub use nostr_sqlite::{Error as SQLiteError, SQLiteDatabase};
 #[cfg(feature = "blocking")]
@@ -33,17 +39,10 @@ pub use webln;
 
 pub mod client;
 pub mod prelude;
-pub mod relay;
-pub mod util;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;
 pub use self::client::{Client, ClientBuilder, ClientSigner, Options};
-pub use self::relay::{
-    ActiveSubscription, AtomicRelayServiceFlags, FilterOptions, InternalSubscriptionId,
-    NegentropyDirection, NegentropyOptions, Relay, RelayConnectionStats, RelayOptions,
-    RelayPoolNotification, RelayPoolOptions, RelaySendOptions, RelayServiceFlags, RelayStatus,
-};
 
 #[cfg(feature = "blocking")]
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument, Timestamp};
-use nostr_sdk::{block_on, relay, FilterOptions};
+use nostr_sdk::{block_on, pool, FilterOptions};
 use uniffi::{Enum, Object};
 
 pub mod options;
@@ -18,11 +18,11 @@ use crate::error::Result;
 
 #[derive(Object)]
 pub struct RelayConnectionStats {
-    inner: relay::RelayConnectionStats,
+    inner: pool::RelayConnectionStats,
 }
 
-impl From<relay::RelayConnectionStats> for RelayConnectionStats {
-    fn from(inner: relay::RelayConnectionStats) -> Self {
+impl From<pool::RelayConnectionStats> for RelayConnectionStats {
+    fn from(inner: pool::RelayConnectionStats) -> Self {
         Self { inner }
     }
 }
@@ -55,17 +55,17 @@ impl RelayConnectionStats {
     }
 
     pub fn latency(&self) -> Option<Duration> {
-        self.inner.latency_blocking()
+        block_on(async move { self.inner.latency().await })
     }
 }
 
 #[derive(Object)]
 pub struct ActiveSubscription {
-    inner: relay::ActiveSubscription,
+    inner: pool::ActiveSubscription,
 }
 
-impl From<relay::ActiveSubscription> for ActiveSubscription {
-    fn from(inner: relay::ActiveSubscription) -> Self {
+impl From<pool::ActiveSubscription> for ActiveSubscription {
+    fn from(inner: pool::ActiveSubscription) -> Self {
         Self { inner }
     }
 }
@@ -119,11 +119,11 @@ impl From<nostr_sdk::RelayStatus> for RelayStatus {
 
 #[derive(Object)]
 pub struct Relay {
-    inner: relay::Relay,
+    inner: pool::Relay,
 }
 
-impl From<relay::Relay> for Relay {
-    fn from(inner: relay::Relay) -> Self {
+impl From<pool::Relay> for Relay {
+    fn from(inner: pool::Relay) -> Self {
         Self { inner }
     }
 }
@@ -139,7 +139,7 @@ impl Relay {
     }
 
     pub fn status(&self) -> RelayStatus {
-        self.inner.status_blocking().into()
+        block_on(async move { self.inner.status().await.into() })
     }
 
     pub fn is_connected(&self) -> bool {
@@ -147,7 +147,7 @@ impl Relay {
     }
 
     pub fn document(&self) -> Arc<RelayInformationDocument> {
-        Arc::new(self.inner.document_blocking().into())
+        block_on(async move { Arc::new(self.inner.document().await.into()) })
     }
 
     pub fn subscriptions(&self) -> HashMap<String, Arc<ActiveSubscription>> {

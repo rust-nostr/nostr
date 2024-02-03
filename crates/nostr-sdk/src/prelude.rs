@@ -10,8 +10,8 @@
 // External crates
 pub use nostr::prelude::*;
 pub use nostr_database::*;
+pub use nostr_sdk_pool::*;
 
 // Internal modules
 pub use crate::client::*;
-pub use crate::relay::*;
 pub use crate::*;

@@ -12,12 +12,12 @@ use async_utility::time;
 use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
 use nostr::prelude::*;
+use nostr_sdk_pool::{RelayPoolNotification, RelaySendOptions};
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 use webln::WebLN;
 
 use super::options::SUPPORT_RUST_NOSTR_LUD16;
 use super::{Client, Error};
-use crate::{RelayPoolNotification, RelaySendOptions};
 
 const SUPPORT_RUST_NOSTR_MSG: &str = "Zap split to support Rust Nostr development!";
 

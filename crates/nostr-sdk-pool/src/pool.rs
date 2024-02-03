@@ -14,7 +14,7 @@ use nostr::message::MessageHandleError;
 use nostr::nips::nip01::Coordinate;
 use nostr::{
     event, ClientMessage, Event, EventId, Filter, JsonUtil, MissingPartialEvent, PartialEvent,
-    RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
+    RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, TryIntoUrl, Url,
 };
 use nostr_database::{DatabaseError, DynNostrDatabase, IntoNostrDatabase, MemoryDatabase, Order};
 use thiserror::Error;
@@ -26,7 +26,6 @@ use super::{
     Error as RelayError, FilterOptions, InternalSubscriptionId, Limits, NegentropyOptions, Relay,
     RelayOptions, RelaySendOptions, RelayStatus,
 };
-use crate::util::TryIntoUrl;
 
 /// [`RelayPool`] error
 #[derive(Debug, Error)]

@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+//! Relay and Pool options
+
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -9,14 +11,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::{AtomicRelayServiceFlags, RelayServiceFlags};
-use crate::client::options::DEFAULT_SEND_TIMEOUT;
 
-pub const DEFAULT_RETRY_SEC: u64 = 10;
-pub const MIN_RETRY_SEC: u64 = 5;
-pub const MAX_ADJ_RETRY_SEC: u64 = 60;
-pub const NEGENTROPY_HIGH_WATER_UP: usize = 100;
-pub const NEGENTROPY_LOW_WATER_UP: usize = 50;
-pub const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
+/// Default send timeout
+pub const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
+pub(super) const DEFAULT_RETRY_SEC: u64 = 10;
+pub(super) const MIN_RETRY_SEC: u64 = 5;
+pub(super) const MAX_ADJ_RETRY_SEC: u64 = 60;
+pub(super) const NEGENTROPY_HIGH_WATER_UP: usize = 100;
+pub(super) const NEGENTROPY_LOW_WATER_UP: usize = 50;
+pub(super) const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
 
 /// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
