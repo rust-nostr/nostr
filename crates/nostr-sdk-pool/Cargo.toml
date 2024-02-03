@@ -2,11 +2,14 @@
 name = "nostr-sdk-pool"
 version = "0.27.0"
 edition = "2021"
+description = "Nostr Relay Pool"
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
+readme = "README.md"
 rust-version.workspace = true
+keywords = ["nostr", "sdk", "pool"]
 
 [features]
 default = []
