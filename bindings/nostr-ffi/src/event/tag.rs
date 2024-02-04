@@ -246,6 +246,8 @@ pub enum TagKind {
     Anon,
     Proxy,
     Emoji,
+    /// Encrypted
+    Encrypted,
     Request,
     Unknown {
         unknown: String,
@@ -304,6 +306,7 @@ impl From<tag::TagKind> for TagKind {
             tag::TagKind::Anon => Self::Anon,
             tag::TagKind::Proxy => Self::Proxy,
             tag::TagKind::Emoji => Self::Emoji,
+            tag::TagKind::Encrypted => Self::Encrypted,
             tag::TagKind::Request => Self::Request,
             tag::TagKind::Custom(unknown) => Self::Unknown { unknown },
         }
@@ -362,6 +365,7 @@ impl From<TagKind> for tag::TagKind {
             TagKind::Anon => Self::Anon,
             TagKind::Proxy => Self::Proxy,
             TagKind::Emoji => Self::Emoji,
+            TagKind::Encrypted => Self::Encrypted,
             TagKind::Request => Self::Request,
             TagKind::Unknown { unknown } => Self::Custom(unknown),
         }
@@ -555,6 +559,7 @@ pub enum TagEnum {
         shortcode: String,
         url: String,
     },
+    Encrypted,
     Request {
         event: Arc<Event>,
     },
@@ -723,6 +728,7 @@ impl From<tag::Tag> for TagEnum {
                 shortcode,
                 url: url.to_string(),
             },
+            tag::Tag::Encrypted => Self::Encrypted,
             tag::Tag::Request(event) => Self::Request {
                 event: Arc::new(event.into()),
             },
@@ -869,6 +875,7 @@ impl TryFrom<TagEnum> for tag::Tag {
                 shortcode,
                 url: UncheckedUrl::from(url),
             }),
+            TagEnum::Encrypted => Ok(Self::Encrypted),
             TagEnum::Request { event } => Ok(Self::Request(event.as_ref().deref().clone())),
             TagEnum::DataVendingMachineStatusTag { status, extra_info } => {
                 Ok(Self::DataVendingMachineStatus {

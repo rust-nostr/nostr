@@ -424,6 +424,8 @@ pub enum TagKind {
     Proxy,
     /// Emoji
     Emoji,
+    /// Encrypted
+    Encrypted,
     /// Request (NIP90)
     Request,
     /// Custom tag kind
@@ -482,6 +484,7 @@ impl fmt::Display for TagKind {
             Self::Anon => write!(f, "anon"),
             Self::Proxy => write!(f, "proxy"),
             Self::Emoji => write!(f, "emoji"),
+            Self::Encrypted => write!(f, "encrypted"),
             Self::Request => write!(f, "request"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
@@ -543,6 +546,7 @@ where
             "anon" => Self::Anon,
             "proxy" => Self::Proxy,
             "emoji" => Self::Emoji,
+            "encrypted" => Self::Encrypted,
             "request" => Self::Request,
             t => Self::Custom(t.to_owned()),
         }
@@ -650,6 +654,7 @@ pub enum Tag {
         /// URL to the corresponding image file of the emoji
         url: UncheckedUrl,
     },
+    Encrypted,
     Request(Event),
     DataVendingMachineStatus {
         status: DataVendingMachineStatus,
@@ -760,6 +765,7 @@ impl Tag {
             Self::Anon { .. } => TagKind::Anon,
             Self::Proxy { .. } => TagKind::Proxy,
             Self::Emoji { .. } => TagKind::Emoji,
+            Self::Encrypted => TagKind::Encrypted,
             Self::Request(..) => TagKind::Request,
         }
     }
@@ -790,6 +796,7 @@ where
             match tag_kind {
                 TagKind::ContentWarning => Ok(Self::ContentWarning { reason: None }),
                 TagKind::Anon => Ok(Self::Anon { msg: None }),
+                TagKind::Encrypted => Ok(Self::Encrypted),
                 _ => Ok(Self::Generic(tag_kind, Vec::new())),
             }
         } else if tag_len == 2 {
@@ -1266,6 +1273,7 @@ impl From<Tag> for Vec<String> {
             Tag::Emoji { shortcode, url } => {
                 vec![TagKind::Emoji.to_string(), shortcode, url.to_string()]
             }
+            Tag::Encrypted => vec![TagKind::Encrypted.to_string()],
             Tag::Request(event) => vec![TagKind::Request.to_string(), event.as_json()],
             Tag::DataVendingMachineStatus { status, extra_info } => {
                 let mut tag = vec![TagKind::Status.to_string(), status.to_string()];
