@@ -69,10 +69,6 @@ name = "get-events-of"
 required-features = ["all-nips"]
 
 [[example]]
-name = "blocking"
-required-features = ["all-nips", "blocking"]
-
-[[example]]
 name = "nostr-connect"
 required-features = ["nip46"]
 

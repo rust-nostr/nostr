@@ -125,7 +125,6 @@ The following crate feature flags are available:
 
 | Feature             | Default | Description                                                                                 |
 | ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
-| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                     |
 | `sqlite`            |   No    | Enable SQLite Storage backend                                                               |
 | `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                      |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                             |

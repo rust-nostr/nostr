@@ -9,6 +9,7 @@ name = "nostr_sdk_ffi"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
+async-utility.workspace = true
 nostr-ffi  = { path = "../nostr-ffi" }
 nostr-sdk  = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "blocking", "sqlite"] }
 tracing = { workspace = true, features = ["std"] }

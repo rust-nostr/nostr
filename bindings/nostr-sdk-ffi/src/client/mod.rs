@@ -8,12 +8,14 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_utility::thread;
 use nostr_ffi::{
     ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
     RelayMessage,
 };
-use nostr_sdk::client::blocking::Client as ClientSdk;
+use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::pool::RelayPoolNotification as RelayPoolNotificationSdk;
+use nostr_sdk::{block_on, spawn_blocking};
 use uniffi::Object;
 
 mod builder;
@@ -55,8 +57,7 @@ impl Client {
                 ),
                 None => nostr_sdk::ClientBuilder::new()
                     .opts(opts.as_ref().deref().clone())
-                    .build()
-                    .into(),
+                    .build(),
             },
         }
     }
@@ -66,7 +67,7 @@ impl Client {
     }
 
     pub fn signer(&self) -> Result<ClientSigner> {
-        Ok(self.inner.signer()?.into())
+        block_on(async move { Ok(self.inner.signer().await?.into()) })
     }
 
     pub fn database(&self) -> Arc<NostrDatabase> {
@@ -74,11 +75,11 @@ impl Client {
     }
 
     pub fn start(&self) {
-        self.inner.start();
+        block_on(async move { self.inner.start().await })
     }
 
     pub fn stop(&self) -> Result<()> {
-        Ok(self.inner.stop()?)
+        block_on(async move { Ok(self.inner.stop().await?) })
     }
 
     pub fn is_running(&self) -> bool {
@@ -86,47 +87,50 @@ impl Client {
     }
 
     pub fn shutdown(&self) -> Result<()> {
-        Ok(self.inner.clone().shutdown()?)
+        block_on(async move { Ok(self.inner.clone().shutdown().await?) })
     }
 
     pub fn relays(&self) -> HashMap<String, Arc<Relay>> {
-        self.inner
-            .relays()
-            .into_iter()
-            .map(|(u, r)| (u.to_string(), Arc::new(r.into())))
-            .collect()
+        block_on(async move {
+            self.inner
+                .relays()
+                .await
+                .into_iter()
+                .map(|(u, r)| (u.to_string(), Arc::new(r.into())))
+                .collect()
+        })
     }
 
     pub fn relay(&self, url: String) -> Result<Arc<Relay>> {
-        Ok(Arc::new(self.inner.relay(url)?.into()))
+        block_on(async move { Ok(Arc::new(self.inner.relay(url).await?.into())) })
     }
 
     pub fn add_relay(&self, url: String) -> Result<bool> {
-        Ok(self.inner.add_relay(url)?)
+        block_on(async move { Ok(self.inner.add_relay(url).await?) })
     }
 
     pub fn add_relays(&self, relays: Vec<String>) -> Result<()> {
-        Ok(self.inner.add_relays(relays)?)
+        block_on(async move { Ok(self.inner.add_relays(relays).await?) })
     }
 
     pub fn remove_relay(&self, url: String) -> Result<()> {
-        Ok(self.inner.remove_relay(url)?)
+        block_on(async move { Ok(self.inner.remove_relay(url).await?) })
     }
 
     pub fn connect_relay(&self, url: String) -> Result<()> {
-        Ok(self.inner.connect_relay(url)?)
+        block_on(async move { Ok(self.inner.connect_relay(url).await?) })
     }
 
     pub fn disconnect_relay(&self, url: String) -> Result<()> {
-        Ok(self.inner.disconnect_relay(url)?)
+        block_on(async move { Ok(self.inner.disconnect_relay(url).await?) })
     }
 
     pub fn connect(&self) {
-        self.inner.connect()
+        block_on(async move { self.inner.connect().await })
     }
 
     pub fn disconnect(&self) -> Result<()> {
-        Ok(self.inner.disconnect()?)
+        block_on(async move { Ok(self.inner.disconnect().await?) })
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<Filter>>) {
@@ -134,13 +138,13 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        self.inner.subscribe(filters);
+        block_on(async move { self.inner.subscribe(filters).await })
     }
 
     // TODO: add subscribe_with_custom_wait
 
     pub fn unsubscribe(&self) {
-        self.inner.unsubscribe();
+        block_on(async move { self.inner.unsubscribe().await })
     }
 
     // TODO: add unsubscribe_with_custom_wait
@@ -154,12 +158,15 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        Ok(self
-            .inner
-            .get_events_of(filters, timeout)?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+        block_on(async move {
+            Ok(self
+                .inner
+                .get_events_of(filters, timeout)
+                .await?
+                .into_iter()
+                .map(|e| Arc::new(e.into()))
+                .collect())
+        })
     }
 
     // TODO: add get_events_of_with_opts
@@ -179,12 +186,15 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        Ok(self
-            .inner
-            .get_events_from(urls, filters, timeout)?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+        block_on(async move {
+            Ok(self
+                .inner
+                .get_events_from(urls, filters, timeout)
+                .await?
+                .into_iter()
+                .map(|e| Arc::new(e.into()))
+                .collect())
+        })
     }
 
     pub fn req_events_of(&self, filters: Vec<Arc<Filter>>, timeout: Option<Duration>) {
@@ -192,53 +202,65 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        self.inner.req_events_of(filters, timeout);
+        block_on(async move { self.inner.req_events_of(filters, timeout).await })
     }
 
     // TODO: add req_events_of_with_opts
 
     pub fn send_msg(&self, msg: ClientMessage) -> Result<()> {
-        Ok(self.inner.send_msg(msg.into())?)
+        block_on(async move { Ok(self.inner.send_msg(msg.into()).await?) })
     }
 
     pub fn send_msg_to(&self, urls: Vec<String>, msg: ClientMessage) -> Result<()> {
-        Ok(self.inner.send_msg_to(urls, msg.into())?)
+        block_on(async move { Ok(self.inner.send_msg_to(urls, msg.into()).await?) })
     }
 
     pub fn send_event(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event(event.as_ref().deref().clone())?
-                .into(),
-        ))
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .send_event(event.as_ref().deref().clone())
+                    .await?
+                    .into(),
+            ))
+        })
     }
 
     pub fn send_event_to(&self, urls: Vec<String>, event: Arc<Event>) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event_to(urls, event.as_ref().deref().clone())?
-                .into(),
-        ))
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .send_event_to(urls, event.as_ref().deref().clone())
+                    .await?
+                    .into(),
+            ))
+        })
     }
 
     /// Signs the `EventBuilder` into an `Event` using the `ClientSigner`
     pub async fn sign_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<Event>> {
-        Ok(Arc::new(
-            self.inner
-                .sign_event_builder(builder.as_ref().deref().clone())?
-                .into(),
-        ))
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .sign_event_builder(builder.as_ref().deref().clone())
+                    .await?
+                    .into(),
+            ))
+        })
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
     ///
     /// Rise an error if the [`ClientSigner`] is not set.
     pub fn send_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event_builder(builder.as_ref().deref().clone())?
-                .into(),
-        ))
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .send_event_builder(builder.as_ref().deref().clone())
+                    .await?
+                    .into(),
+            ))
+        })
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
@@ -249,17 +271,25 @@ impl Client {
         urls: Vec<String>,
         builder: Arc<EventBuilder>,
     ) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event_builder_to(urls, builder.as_ref().deref().clone())?
-                .into(),
-        ))
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .send_event_builder_to(urls, builder.as_ref().deref().clone())
+                    .await?
+                    .into(),
+            ))
+        })
     }
 
     pub fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner.set_metadata(metadata.as_ref().deref())?.into(),
-        ))
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .set_metadata(metadata.as_ref().deref())
+                    .await?
+                    .into(),
+            ))
+        })
     }
 
     pub fn send_direct_msg(
@@ -268,25 +298,31 @@ impl Client {
         msg: String,
         reply: Option<Arc<EventId>>,
     ) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_direct_msg(**receiver, msg, reply.map(|r| **r))?
-                .into(),
-        ))
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .send_direct_msg(**receiver, msg, reply.map(|r| **r))
+                    .await?
+                    .into(),
+            ))
+        })
     }
 
     /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     pub fn gift_wrap(&self, receiver: Arc<PublicKey>, rumor: Arc<EventBuilder>) -> Result<()> {
-        Ok(self
-            .inner
-            .gift_wrap(**receiver, rumor.as_ref().deref().clone())?)
+        block_on(async move {
+            Ok(self
+                .inner
+                .gift_wrap(**receiver, rumor.as_ref().deref().clone())
+                .await?)
+        })
     }
 
     /// Send GiftWrapper Sealed Direct message
     pub fn send_sealed_msg(&self, receiver: Arc<PublicKey>, message: String) -> Result<()> {
-        Ok(self.inner.send_sealed_msg(**receiver, message)?)
+        block_on(async move { Ok(self.inner.send_sealed_msg(**receiver, message).await?) })
     }
 
     pub fn file_metadata(
@@ -294,35 +330,50 @@ impl Client {
         description: String,
         metadata: Arc<FileMetadata>,
     ) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .file_metadata(description, metadata.as_ref().deref().clone())?
-                .into(),
-        ))
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .file_metadata(description, metadata.as_ref().deref().clone())
+                    .await?
+                    .into(),
+            ))
+        })
     }
 
     pub fn reconcile(&self, filter: Arc<Filter>, opts: Arc<NegentropyOptions>) -> Result<()> {
-        Ok(self
-            .inner
-            .reconcile(filter.as_ref().deref().clone(), **opts)?)
+        block_on(async move {
+            Ok(self
+                .inner
+                .reconcile(filter.as_ref().deref().clone(), **opts)
+                .await?)
+        })
     }
 
     pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
-        crate::thread::spawn("client", move || {
-            tracing::debug!("Client Thread Started");
-            Ok(self.inner.handle_notifications(|notification| {
-                match notification {
-                    RelayPoolNotificationSdk::Message { relay_url, message } => {
-                        handler.handle_msg(relay_url.to_string(), message.into())
+        thread::spawn(async move {
+            let handler = Arc::new(handler);
+            self.inner
+                .handle_notifications(|notification| async {
+                    match notification {
+                        RelayPoolNotificationSdk::Message { relay_url, message } => {
+                            let h = handler.clone();
+                            let _ = spawn_blocking(move || {
+                                h.handle_msg(relay_url.to_string(), message.into())
+                            })
+                            .await;
+                        }
+                        RelayPoolNotificationSdk::Event { relay_url, event } => {
+                            let h = handler.clone();
+                            let _ = spawn_blocking(move || {
+                                h.handle(relay_url.to_string(), Arc::new(event.into()))
+                            })
+                            .await;
+                        }
+                        _ => (),
                     }
-                    RelayPoolNotificationSdk::Event { relay_url, event } => {
-                        handler.handle(relay_url.to_string(), Arc::new(event.into()))
-                    }
-                    _ => (),
-                }
-
-                Ok(false)
-            })?)
+                    Ok(false)
+                })
+                .await
         });
     }
 }

@@ -35,14 +35,14 @@ pub use nostr_sqlite::{Error as SQLiteError, SQLiteDatabase};
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
 use tokio::runtime::Runtime;
+#[cfg(feature = "blocking")]
+pub use tokio::task::spawn_blocking;
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 pub use webln;
 
 pub mod client;
 pub mod prelude;
 
-#[cfg(feature = "blocking")]
-pub use self::client::blocking;
 pub use self::client::{Client, ClientBuilder, Options};
 
 #[cfg(feature = "blocking")]

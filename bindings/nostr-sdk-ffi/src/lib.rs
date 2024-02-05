@@ -12,7 +12,6 @@ mod error;
 mod logger;
 pub mod profile;
 mod relay;
-mod thread;
 
 trait FromResult<T>: Sized {
     fn from_result(_: T) -> error::Result<Self>;

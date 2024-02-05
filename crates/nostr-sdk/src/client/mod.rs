@@ -23,8 +23,6 @@ use nostr_sdk_pool::{
 use nostr_sdk_signer::prelude::*;
 use tokio::sync::{broadcast, RwLock};
 
-#[cfg(feature = "blocking")]
-pub mod blocking;
 pub mod builder;
 pub mod options;
 #[cfg(feature = "nip57")]
