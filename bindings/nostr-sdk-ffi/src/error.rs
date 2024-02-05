@@ -11,8 +11,9 @@ use uniffi::Error;
 pub type Result<T, E = NostrSdkError> = std::result::Result<T, E>;
 
 #[derive(Debug, Error)]
+#[uniffi(flat_error)]
 pub enum NostrSdkError {
-    Generic { err: String },
+    Generic(String),
 }
 
 impl std::error::Error for NostrSdkError {}
@@ -20,67 +21,67 @@ impl std::error::Error for NostrSdkError {}
 impl fmt::Display for NostrSdkError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Generic { err } => write!(f, "{err}"),
+            Self::Generic(e) => write!(f, "{e}"),
         }
     }
 }
 
 impl From<nostr_ffi::NostrError> for NostrSdkError {
     fn from(e: nostr_ffi::NostrError) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }
 
 impl From<SetGlobalDefaultError> for NostrSdkError {
     fn from(e: SetGlobalDefaultError) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }
 
 impl From<nostr_sdk::client::Error> for NostrSdkError {
     fn from(e: nostr_sdk::client::Error) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }
 
 impl From<nostr_sdk::pool::Error> for NostrSdkError {
     fn from(e: nostr_sdk::pool::Error) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }
 
 impl From<AddrParseError> for NostrSdkError {
     fn from(e: AddrParseError) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }
 
 impl From<nostr_sdk::types::url::ParseError> for NostrSdkError {
     fn from(e: nostr_sdk::types::url::ParseError) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }
 
 impl From<nostr_sdk::database::DatabaseError> for NostrSdkError {
     fn from(e: nostr_sdk::database::DatabaseError) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }
 
 impl From<nostr_sdk::SQLiteError> for NostrSdkError {
     fn from(e: nostr_sdk::SQLiteError) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }
 
 impl From<nostr_sdk::signer::Error> for NostrSdkError {
     fn from(e: nostr_sdk::signer::Error) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }
 
 impl From<nostr_sdk::signer::nip46::Error> for NostrSdkError {
     fn from(e: nostr_sdk::signer::nip46::Error) -> NostrSdkError {
-        Self::Generic { err: e.to_string() }
+        Self::Generic(e.to_string())
     }
 }

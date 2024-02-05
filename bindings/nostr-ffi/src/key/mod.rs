@@ -93,7 +93,7 @@ impl Keys {
     ) -> Result<Self> {
         Ok(Self {
             inner: key::Keys::from_mnemonic_with_account(mnemonic, passphrase, account)
-                .map_err(|e| NostrError::Generic { err: e.to_string() })?,
+                .map_err(|e| NostrError::Generic(e.to_string()))?,
         })
     }
 

@@ -39,9 +39,9 @@ impl TryFrom<JsonValue> for Value {
             JsonValue::NumberPosInt { number } => Self::Number(Number::from(number)),
             JsonValue::NumberNegInt { number } => Self::Number(Number::from(number)),
             JsonValue::NumberFloat { number } => {
-                let float = Number::from_f64(number).ok_or(NostrError::Generic {
-                    err: String::from("Impossible to convert finite f64 to number"),
-                })?;
+                let float = Number::from_f64(number).ok_or(NostrError::Generic(String::from(
+                    "Impossible to convert finite f64 to number",
+                )))?;
                 Self::Number(float)
             }
             JsonValue::Str { s } => Self::String(s),
@@ -74,9 +74,9 @@ impl TryFrom<Value> for JsonValue {
                     None => match number.as_f64() {
                         Some(number) => Self::NumberFloat { number },
                         None => {
-                            return Err(NostrError::Generic {
-                                err: String::from("Impossible to convert number"),
-                            })
+                            return Err(NostrError::Generic(String::from(
+                                "Impossible to convert number",
+                            )))
                         }
                     },
                 },
