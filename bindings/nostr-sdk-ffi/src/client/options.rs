@@ -87,10 +87,4 @@ impl Options {
         builder.inner = builder.inner.send_timeout(send_timeout);
         Arc::new(builder)
     }
-
-    pub fn nip46_timeout(self: Arc<Self>, nip46_timeout: Option<Duration>) -> Arc<Self> {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.nip46_timeout(nip46_timeout);
-        Arc::new(builder)
-    }
 }

@@ -43,9 +43,6 @@ pub struct Options {
     pub connection_timeout: Option<Duration>,
     /// Send timeout (default: 20 secs)
     pub send_timeout: Option<Duration>,
-    /// NIP46 timeout (default: 180 secs)
-    #[cfg(feature = "nip46")]
-    pub nip46_timeout: Option<Duration>,
     /// Proxy
     #[cfg(not(target_arch = "wasm32"))]
     pub proxy: Option<SocketAddr>,
@@ -70,8 +67,6 @@ impl Default for Options {
             timeout: Duration::from_secs(60),
             connection_timeout: None,
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
-            #[cfg(feature = "nip46")]
-            nip46_timeout: Some(Duration::from_secs(180)),
             #[cfg(not(target_arch = "wasm32"))]
             proxy: None,
             shutdown_on_drop: false,
@@ -182,15 +177,6 @@ impl Options {
     pub fn send_timeout(self, timeout: Option<Duration>) -> Self {
         Self {
             send_timeout: timeout,
-            ..self
-        }
-    }
-
-    /// Set NIP46 timeout
-    #[cfg(feature = "nip46")]
-    pub fn nip46_timeout(self, timeout: Option<Duration>) -> Self {
-        Self {
-            nip46_timeout: timeout,
             ..self
         }
     }

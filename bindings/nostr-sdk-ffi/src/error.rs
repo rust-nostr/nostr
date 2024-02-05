@@ -72,3 +72,15 @@ impl From<nostr_sdk::SQLiteError> for NostrSdkError {
         Self::Generic { err: e.to_string() }
     }
 }
+
+impl From<nostr_sdk::signer::Error> for NostrSdkError {
+    fn from(e: nostr_sdk::signer::Error) -> NostrSdkError {
+        Self::Generic { err: e.to_string() }
+    }
+}
+
+impl From<nostr_sdk::signer::nip46::Error> for NostrSdkError {
+    fn from(e: nostr_sdk::signer::nip46::Error) -> NostrSdkError {
+        Self::Generic { err: e.to_string() }
+    }
+}

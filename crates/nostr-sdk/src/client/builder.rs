@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use nostr_database::memory::MemoryDatabase;
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
+use nostr_sdk_signer::ClientSigner;
 
-use super::signer::ClientSigner;
 #[cfg(feature = "nip57")]
 use super::zapper::ClientZapper;
 use crate::{Client, Options};

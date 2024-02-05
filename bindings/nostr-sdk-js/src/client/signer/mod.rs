@@ -4,8 +4,11 @@
 
 use std::ops::Deref;
 
-use nostr_js::key::JsKeys;
+use nostr_js::error::{into_err, Result};
+use nostr_js::event::{JsEvent, JsUnsignedEvent};
+use nostr_js::key::{JsKeys, JsPublicKey};
 use nostr_js::nips::nip07::JsNip07Signer;
+use nostr_js::nips::nip44::JsNIP44Version;
 use nostr_sdk::ClientSigner;
 use wasm_bindgen::prelude::*;
 
@@ -51,7 +54,64 @@ impl JsClientSigner {
     /// NIP46 Client Signer
     pub fn nip46(signer: &JsNip46Signer) -> Self {
         Self {
-            inner: ClientSigner::NIP46(signer.deref().clone()),
+            inner: ClientSigner::nip46(signer.deref().clone()),
         }
+    }
+
+    /// Get signer public key
+    #[wasm_bindgen(js_name = publicKey)]
+    pub async fn public_key(&self) -> Result<JsPublicKey> {
+        Ok(self.inner.public_key().await.map_err(into_err)?.into())
+    }
+
+    #[wasm_bindgen(js_name = signEvent)]
+    pub async fn sign_event(&self, unsigned: &JsUnsignedEvent) -> Result<JsEvent> {
+        Ok(self
+            .inner
+            .sign_event(unsigned.deref().clone())
+            .await
+            .map_err(into_err)?
+            .into())
+    }
+
+    #[wasm_bindgen(js_name = nip04Encrypt)]
+    pub async fn nip04_encrypt(&self, public_key: &JsPublicKey, content: String) -> Result<String> {
+        self.inner
+            .nip04_encrypt(**public_key, content)
+            .await
+            .map_err(into_err)
+    }
+
+    #[wasm_bindgen(js_name = nip04Decrypt)]
+    pub async fn nip04_decrypt(
+        &self,
+        public_key: &JsPublicKey,
+        encrypted_content: String,
+    ) -> Result<String> {
+        self.inner
+            .nip04_decrypt(**public_key, encrypted_content)
+            .await
+            .map_err(into_err)
+    }
+
+    #[wasm_bindgen(js_name = nip44Encrypt)]
+    pub async fn nip44_encrypt(
+        &self,
+        public_key: &JsPublicKey,
+        content: String,
+        version: JsNIP44Version,
+    ) -> Result<String> {
+        self.inner
+            .nip44_encrypt(**public_key, content, version.into())
+            .await
+            .map_err(into_err)
+    }
+
+    #[wasm_bindgen(js_name = nip44Decrypt)]
+    pub async fn nip44_decrypt(&self, public_key: &JsPublicKey, content: String) -> Result<String> {
+        self.inner
+            .nip44_decrypt(**public_key, content)
+            .await
+            .map_err(into_err)
     }
 }

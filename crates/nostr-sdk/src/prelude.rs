@@ -11,6 +11,7 @@
 pub use nostr::prelude::*;
 pub use nostr_database::*;
 pub use nostr_sdk_pool::*;
+pub use nostr_sdk_signer::prelude::*;
 
 // Internal modules
 pub use crate::client::*;

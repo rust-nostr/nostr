@@ -28,6 +28,7 @@ pub use nostr_sdk_pool::{
     RelayOptions, RelayPoolNotification, RelayPoolOptions, RelaySendOptions, RelayServiceFlags,
     RelayStatus,
 };
+pub use nostr_sdk_signer::{self as signer, ClientSigner, ClientSignerType};
 #[cfg(feature = "sqlite")]
 pub use nostr_sqlite::{Error as SQLiteError, SQLiteDatabase};
 #[cfg(feature = "blocking")]
@@ -42,7 +43,7 @@ pub mod prelude;
 
 #[cfg(feature = "blocking")]
 pub use self::client::blocking;
-pub use self::client::{Client, ClientBuilder, ClientSigner, Options};
+pub use self::client::{Client, ClientBuilder, Options};
 
 #[cfg(feature = "blocking")]
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));

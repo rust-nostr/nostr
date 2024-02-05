@@ -11,9 +11,9 @@ use std::time::Duration;
 use nostr::prelude::*;
 use nostr_database::DynNostrDatabase;
 use nostr_sdk_pool::{pool, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification};
+use nostr_sdk_signer::ClientSigner;
 use tokio::sync::broadcast;
 
-use super::signer::ClientSigner;
 use super::{Error, Options, TryIntoUrl};
 use crate::{ClientBuilder, RUNTIME};
 
