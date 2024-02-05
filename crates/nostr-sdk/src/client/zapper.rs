@@ -252,20 +252,9 @@ impl Client {
                         if event.kind() == Kind::WalletConnectResponse
                             && event.event_ids().next().copied() == Some(event_id)
                         {
-                            let nip47_res = nip47::Response::from_event(uri, &event)?;
-
-                            if let Some(e) = &nip47_res.error {
-                                return Err(Error::NIP47ErrorCode(e.clone()));
-                            } else if let Some(ResponseResult::PayInvoice(pay_invoice_result)) =
-                                nip47_res.result
-                            {
-                                tracing::info!(
-                                    "Invoice paid! Preimage: {}",
-                                    pay_invoice_result.preimage
-                                );
-                            } else {
-                                return Err(Error::NIP47Unexpected(nip47_res.as_json()));
-                            }
+                            let res = nip47::Response::from_event(uri, &event)?;
+                            let PayInvoiceResponseResult { preimage } = res.to_pay_invoice()?;
+                            tracing::info!("Invoice paid! Preimage: {preimage}");
 
                             break;
                         }

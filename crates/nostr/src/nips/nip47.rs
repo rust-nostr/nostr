@@ -39,6 +39,10 @@ pub enum Error {
     EventBuilder(crate::event::builder::Error),
     /// Unsigned event error
     UnsignedEvent(crate::event::unsigned::Error),
+    /// Error code
+    ErrorCode(NIP47Error),
+    /// NIP47 Error Code
+    UnexpectedResult(String),
     /// Invalid request
     InvalidRequest,
     /// Too many/few params
@@ -64,6 +68,8 @@ impl fmt::Display for Error {
             #[cfg(feature = "std")]
             Self::EventBuilder(e) => write!(f, "Event Builder: {e}"),
             Self::UnsignedEvent(e) => write!(f, "Unsigned event: {e}"),
+            Self::ErrorCode(e) => write!(f, "{e}"),
+            Self::UnexpectedResult(json) => write!(f, "Unexpected NIP47 result: {json}"),
             Self::InvalidRequest => write!(f, "Invalid NIP47 Request"),
             Self::InvalidParamsLength => write!(f, "Invalid NIP47 Params length"),
             Self::UnsupportedMethod(e) => write!(f, "Unsupported method: {e}"),
@@ -678,6 +684,19 @@ impl Response {
                 result: None,
             })
         }
+    }
+
+    /// Covert [Result] to [PayInvoiceResponseResult]
+    pub fn to_pay_invoice(self) -> Result<PayInvoiceResponseResult, Error> {
+        if let Some(e) = self.error {
+            return Err(Error::ErrorCode(e));
+        }
+
+        if let Some(ResponseResult::PayInvoice(pay_invoice_result)) = self.result {
+            return Ok(pay_invoice_result);
+        }
+
+        Err(Error::UnexpectedResult(self.as_json()))
     }
 }
 

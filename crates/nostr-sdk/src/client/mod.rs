@@ -82,14 +82,6 @@ pub enum Error {
     #[cfg(feature = "nip47")]
     #[error(transparent)]
     NIP47(#[from] nostr::nips::nip47::Error),
-    /// NIP47 Error Code
-    #[cfg(feature = "nip47")]
-    #[error("{0}")]
-    NIP47ErrorCode(NIP47Error),
-    /// NIP47 Error Code
-    #[cfg(feature = "nip47")]
-    #[error("Unexpected NIP47 result: {0}")]
-    NIP47Unexpected(String),
     /// NIP57 error
     #[cfg(feature = "nip57")]
     #[error(transparent)]
