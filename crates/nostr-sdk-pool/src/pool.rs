@@ -21,11 +21,11 @@ use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, RwLock};
 
-use super::options::RelayPoolOptions;
-use super::{
-    Error as RelayError, FilterOptions, InternalSubscriptionId, Limits, NegentropyOptions, Relay,
-    RelayOptions, RelaySendOptions, RelayStatus,
+use crate::limits::Limits;
+use crate::options::{
+    FilterOptions, NegentropyOptions, RelayOptions, RelayPoolOptions, RelaySendOptions,
 };
+use crate::relay::{Error as RelayError, InternalSubscriptionId, Relay, RelayStatus};
 
 /// [`RelayPool`] error
 #[derive(Debug, Error)]

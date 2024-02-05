@@ -44,8 +44,8 @@ impl From<nostr_sdk::client::Error> for NostrSdkError {
     }
 }
 
-impl From<nostr_sdk::pool::Error> for NostrSdkError {
-    fn from(e: nostr_sdk::pool::Error) -> NostrSdkError {
+impl From<nostr_sdk::pool::relay::Error> for NostrSdkError {
+    fn from(e: nostr_sdk::pool::relay::Error) -> NostrSdkError {
         Self::Generic(e.to_string())
     }
 }

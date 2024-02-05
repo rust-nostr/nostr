@@ -16,9 +16,9 @@ use nostr::prelude::*;
 use nostr::types::metadata::Error as MetadataError;
 use nostr_database::DynNostrDatabase;
 use nostr_sdk_pool::pool::{self, Error as RelayPoolError, RelayPool};
+use nostr_sdk_pool::relay::Error as RelayError;
 use nostr_sdk_pool::{
-    Error as RelayError, FilterOptions, NegentropyOptions, Relay, RelayOptions,
-    RelayPoolNotification, RelaySendOptions,
+    FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
 };
 use nostr_sdk_signer::prelude::*;
 use tokio::sync::{broadcast, RwLock};
