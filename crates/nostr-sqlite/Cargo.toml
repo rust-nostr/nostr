@@ -13,10 +13,10 @@ keywords = ["nostr", "database", "sqlite"]
 
 [dependencies]
 async-trait.workspace = true
-deadpool-sqlite = "0.5"
+deadpool-sqlite = "0.7"
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
-rusqlite = { version = "0.28", features = ["bundled"] }
+rusqlite = { version = "0.30", features = ["bundled"] }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
