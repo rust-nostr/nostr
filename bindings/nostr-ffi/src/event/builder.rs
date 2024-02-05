@@ -485,22 +485,6 @@ impl EventBuilder {
         }
     }
 
-    #[uniffi::constructor]
-    pub fn gift_wrap(
-        sender_keys: Arc<Keys>,
-        receiver_pubkey: Arc<PublicKey>,
-        rumor: Arc<UnsignedEvent>,
-    ) -> Result<Arc<Event>> {
-        Ok(Arc::new(
-            nostr::EventBuilder::gift_wrap(
-                sender_keys.as_ref().deref(),
-                receiver_pubkey.as_ref().deref(),
-                rumor.as_ref().deref().clone(),
-            )?
-            .into(),
-        ))
-    }
-
     /// GiftWrapped Sealed Direct message
     #[uniffi::constructor]
     pub fn sealed_direct(receiver: Arc<PublicKey>, message: String) -> Self {
