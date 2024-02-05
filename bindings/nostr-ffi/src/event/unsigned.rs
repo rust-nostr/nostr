@@ -38,7 +38,7 @@ impl UnsignedEvent {
         Arc::new(self.inner.id.into())
     }
 
-    pub fn pubkey(&self) -> Arc<PublicKey> {
+    pub fn author(&self) -> Arc<PublicKey> {
         Arc::new(self.inner.pubkey.into())
     }
 
