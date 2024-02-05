@@ -16,13 +16,12 @@ use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
-#[cfg(feature = "std")]
 use super::nip04;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{ParseError, Url};
-use crate::JsonUtil;
+use crate::{Event, JsonUtil};
 #[cfg(feature = "std")]
-use crate::{Event, EventBuilder, Keys, Kind, Tag};
+use crate::{EventBuilder, Keys, Kind, Tag};
 
 /// NIP47 error
 #[derive(Debug)]
@@ -34,7 +33,6 @@ pub enum Error {
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// NIP04 error
-    #[cfg(feature = "std")]
     NIP04(nip04::Error),
     /// Event Builder error
     #[cfg(feature = "std")]
@@ -62,7 +60,6 @@ impl fmt::Display for Error {
             Self::JSON(e) => write!(f, "Json: {e}"),
             Self::Url(e) => write!(f, "Url: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
-            #[cfg(feature = "std")]
             Self::NIP04(e) => write!(f, "NIP04: {e}"),
             #[cfg(feature = "std")]
             Self::EventBuilder(e) => write!(f, "Event Builder: {e}"),
@@ -94,7 +91,6 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-#[cfg(feature = "std")]
 impl From<nip04::Error> for Error {
     fn from(e: nip04::Error) -> Self {
         Self::NIP04(e)
@@ -555,8 +551,8 @@ pub struct GetInfoResponseResult {
     pub methods: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 /// NIP47 Response Result
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResponseResult {
     /// Pay Invoice
     PayInvoice(PayInvoiceResponseResult),
@@ -620,6 +616,12 @@ struct ResponseTemplate {
 }
 
 impl Response {
+    /// Deserialize from [Event]
+    pub fn from_event(uri: &NostrWalletConnectURI, event: &Event) -> Result<Self, Error> {
+        let decrypt_res: String = nip04::decrypt(&uri.secret, event.author_ref(), event.content())?;
+        Self::from_json(decrypt_res)
+    }
+
     /// Deserialize from JSON string
     pub fn from_value(value: Value) -> Result<Self, Error> {
         let template: ResponseTemplate = serde_json::from_value(value)?;

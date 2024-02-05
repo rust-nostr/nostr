@@ -252,9 +252,7 @@ impl Client {
                         if event.kind() == Kind::WalletConnectResponse
                             && event.event_ids().next().copied() == Some(event_id)
                         {
-                            let decrypt_res =
-                                nip04::decrypt(&uri.secret, event.author_ref(), event.content())?;
-                            let nip47_res = nip47::Response::from_json(decrypt_res)?;
+                            let nip47_res = nip47::Response::from_event(uri, &event)?;
 
                             if let Some(e) = &nip47_res.error {
                                 return Err(Error::NIP47ErrorCode(e.clone()));
