@@ -6,7 +6,7 @@ The following crate feature flags are available:
 
 | Feature             | Default | Description                                                                                 |
 | ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
-| `blocking`          |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                     |
+| `blocking`          |   No    | Needed for usage in not async/await context                                                 |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                     |
 | `nip07`             |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**)|
 | `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                               |

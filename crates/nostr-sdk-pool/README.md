@@ -6,7 +6,7 @@ The following crate feature flags are available:
 
 | Feature             | Default | Description                                                                              |
 | ------------------- | :-----: | ---------------------------------------------------------------------------------------- |
-| `blocking`          |   No    | Enable `flatbuffers` de/serialization for nostr events                                   |
+| `blocking`          |   No    | Needed for usage in not async/await context                                              |
 | `nip11`             |   No    | Enable NIP-11: Relay Information Document                                                |
 
 ## State
