@@ -17,7 +17,6 @@ nip04 = ["nostr/nip04"]
 nip07 = ["nostr/nip07"]
 nip44 = ["nostr/nip44"]
 nip46 = ["nostr/nip46", "dep:nostr-sdk-pool"]
-blocking = ["async-utility/blocking", "nostr/blocking"]
 
 [dependencies]
 async-utility.workspace = true

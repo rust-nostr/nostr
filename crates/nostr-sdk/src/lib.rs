@@ -18,6 +18,7 @@
 #[cfg(all(target_arch = "wasm32", feature = "blocking"))]
 compile_error!("`blocking` feature can't be enabled for WASM targets");
 
+pub use async_utility;
 pub use nostr::{self, *};
 pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
 #[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]

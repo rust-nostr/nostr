@@ -14,11 +14,10 @@ keywords = ["nostr", "sdk", "pool"]
 [features]
 default = []
 nip11 = ["nostr/nip11"]
-blocking = ["async-utility/blocking", "nostr/blocking"]
 
 [dependencies]
 async-utility.workspace = true
-async-wsocket = "0.2"
+async-wsocket = "0.3"
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 thiserror.workspace = true

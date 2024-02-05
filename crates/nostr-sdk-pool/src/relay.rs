@@ -468,7 +468,7 @@ impl Relay {
                 }
 
                 let relay = self.clone();
-                thread::abortable(async move {
+                let _ = thread::spawn(async move {
                     loop {
                         let queue = relay.queue();
                         if queue > 0 {
@@ -537,7 +537,7 @@ impl Relay {
                 self.try_connect(connection_timeout).await
             } else {
                 let relay = self.clone();
-                thread::spawn(async move { relay.try_connect(connection_timeout).await });
+                let _ = thread::spawn(async move { relay.try_connect(connection_timeout).await });
             }
         }
     }
@@ -555,7 +555,7 @@ impl Relay {
         #[cfg(feature = "nip11")]
         {
             let relay = self.clone();
-            thread::spawn(async move {
+            let _ = thread::spawn(async move {
                 #[cfg(not(target_arch = "wasm32"))]
                 let proxy = relay.proxy();
                 #[cfg(target_arch = "wasm32")]
@@ -592,7 +592,7 @@ impl Relay {
                 self.stats.new_success();
 
                 #[cfg(not(target_arch = "wasm32"))]
-                let ping_abort_handle: AbortHandle = {
+                let ping_abort_handle: Option<AbortHandle> = {
                     let relay = self.clone();
                     thread::abortable(async move {
                         if relay.opts.flags.has_ping() {
@@ -627,10 +627,11 @@ impl Relay {
                             }
                         }
                     })
+                    .ok()
                 };
 
                 let relay = self.clone();
-                thread::spawn(async move {
+                let _ = thread::spawn(async move {
                     tracing::debug!("Relay Event Thread Started");
                     let mut rx = relay.relay_receiver.lock().await;
                     while let Some((relay_event, oneshot_sender)) = rx.recv().await {
@@ -740,11 +741,13 @@ impl Relay {
                     tracing::debug!("Exited from Relay Event Thread");
 
                     #[cfg(not(target_arch = "wasm32"))]
-                    ping_abort_handle.abort();
+                    if let Some(handle) = ping_abort_handle {
+                        handle.abort();
+                    }
                 });
 
                 let relay = self.clone();
-                thread::spawn(async move {
+                let _ = thread::spawn(async move {
                     tracing::debug!("Relay Message Thread Started");
 
                     async fn func(relay: &Relay, data: Vec<u8>) -> Result<bool, Error> {
@@ -1357,7 +1360,7 @@ impl Relay {
         }
 
         let relay = self.clone();
-        thread::spawn(async move {
+        let _ = thread::spawn(async move {
             let id = SubscriptionId::generate();
             let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
 

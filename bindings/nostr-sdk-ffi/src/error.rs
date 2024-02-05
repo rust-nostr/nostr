@@ -85,3 +85,9 @@ impl From<nostr_sdk::signer::nip46::Error> for NostrSdkError {
         Self::Generic(e.to_string())
     }
 }
+
+impl From<async_utility::thread::Error> for NostrSdkError {
+    fn from(e: async_utility::thread::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}

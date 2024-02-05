@@ -8,7 +8,6 @@ publish = false
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
-async-utility = "0.1"
 js-sys = "0.3"
 nostr-js = { path = "../nostr-js" }
 nostr-sdk = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "indexeddb", "webln"] }

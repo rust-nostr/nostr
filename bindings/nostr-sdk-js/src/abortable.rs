@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use async_utility::futures_util::stream::AbortHandle;
+use nostr_sdk::async_utility::futures_util::stream::AbortHandle;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(js_name = AbortHandle)]

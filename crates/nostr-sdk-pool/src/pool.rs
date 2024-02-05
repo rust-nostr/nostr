@@ -164,7 +164,7 @@ impl RelayPoolTask {
             tracing::debug!("RelayPoolTask Thread Started");
             self.set_running_to(true);
             let this = self.clone();
-            thread::spawn(async move {
+            let _ = thread::spawn(async move {
                 let mut receiver = this.receiver.lock().await;
                 while let Some(msg) = receiver.recv().await {
                     match msg {
@@ -366,7 +366,7 @@ impl Drop for RelayPool {
                 tracing::debug!("Dropping the Relay Pool...");
                 self.dropped.store(true, Ordering::SeqCst);
                 let pool = self.clone();
-                thread::spawn(async move {
+                let _ = thread::spawn(async move {
                     pool.shutdown()
                         .await
                         .expect("Impossible to drop the relay pool")
@@ -442,7 +442,7 @@ impl RelayPool {
         thread::spawn(async move {
             thread::sleep(Duration::from_secs(3)).await;
             let _ = self.pool_task_sender.send(RelayPoolMessage::Shutdown).await;
-        });
+        })?;
         Ok(())
     }
 
@@ -622,11 +622,11 @@ impl RelayPool {
                         }
                         Err(e) => tracing::error!("Impossible to send msg to {url}: {e}"),
                     }
-                });
+                })?;
                 handles.push(handle);
             }
 
-            for handle in handles.into_iter().flatten() {
+            for handle in handles.into_iter() {
                 handle.join().await?;
             }
 
@@ -730,11 +730,11 @@ impl RelayPool {
                         }
                         Err(e) => tracing::error!("Impossible to send event to {url}: {e}"),
                     }
-                });
+                })?;
                 handles.push(handle);
             }
 
-            for handle in handles.into_iter().flatten() {
+            for handle in handles.into_iter() {
                 handle.join().await?;
             }
 
@@ -858,12 +858,12 @@ impl RelayPool {
                     {
                         tracing::error!("Failed to get events from {url}: {e}");
                     }
-                });
+                })?;
                 handles.push(handle);
             }
 
             // Join threads
-            for handle in handles.into_iter().flatten() {
+            for handle in handles.into_iter() {
                 handle.join().await?;
             }
 
@@ -930,7 +930,9 @@ impl RelayPool {
             }
 
             for handle in handles.into_iter().flatten() {
-                let _ = handle.join().await;
+                if let Err(e) = handle.join().await {
+                    tracing::error!("Impossible to join thread: {e}")
+                }
             }
         } else {
             for relay in relays.values() {
@@ -988,11 +990,11 @@ impl RelayPool {
                 if let Err(e) = relay.reconcile(filter, my_items, opts).await {
                     tracing::error!("Failed to get reconcile with {url}: {e}");
                 }
-            });
+            })?;
             handles.push(handle);
         }
 
-        for handle in handles.into_iter().flatten() {
+        for handle in handles.into_iter() {
             handle.join().await?;
         }
 

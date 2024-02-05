@@ -349,7 +349,10 @@ impl Client {
         })
     }
 
-    pub fn handle_notifications(self: Arc<Self>, handler: Box<dyn HandleNotification>) {
+    pub fn handle_notifications(
+        self: Arc<Self>,
+        handler: Box<dyn HandleNotification>,
+    ) -> Result<()> {
         thread::spawn(async move {
             let handler = Arc::new(handler);
             self.inner
@@ -374,7 +377,8 @@ impl Client {
                     Ok(false)
                 })
                 .await
-        });
+        })?;
+        Ok(())
     }
 }
 

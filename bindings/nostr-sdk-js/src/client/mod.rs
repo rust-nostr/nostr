@@ -5,13 +5,13 @@
 use std::ops::Deref;
 use std::time::Duration;
 
-use async_utility::thread;
 use js_sys::Array;
 use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventArray, JsEventBuilder, JsEventId, JsTag};
 use nostr_js::key::JsPublicKey;
 use nostr_js::message::{JsClientMessage, JsFilter, JsRelayMessage};
 use nostr_js::types::{JsContact, JsMetadata};
+use nostr_sdk::async_utility::thread;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -639,7 +639,7 @@ impl JsClient {
     /// // Optionally, call `abortable.abort();` when you need to stop handle notifications thread
     /// ```
     #[wasm_bindgen(js_name = handleNotifications)]
-    pub fn handle_notifications(&self, callback: HandleNotification) -> JsAbortHandle {
+    pub fn handle_notifications(&self, callback: HandleNotification) -> Result<JsAbortHandle> {
         let inner = self.inner.clone();
         let handle = thread::abortable(async move {
             inner
@@ -665,8 +665,8 @@ impl JsClient {
             })
             .await
             .map_err(into_err).unwrap();
-        });
-        handle.into()
+        }).map_err(into_err)?;
+        Ok(handle.into())
     }
 }
 

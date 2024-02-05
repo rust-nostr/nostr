@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let c = client.clone();
-    thread::spawn(async move {
+    let _ = thread::spawn(async move {
         thread::sleep(Duration::from_secs(3)).await;
         c.relays().await;
         // First drop, dropping client...

@@ -142,7 +142,7 @@ impl Drop for Client {
                 tracing::debug!("Dropping the Client...");
                 self.dropped.store(true, Ordering::SeqCst);
                 let client: Client = self.clone();
-                thread::spawn(async move {
+                let _ = thread::spawn(async move {
                     client
                         .shutdown()
                         .await
