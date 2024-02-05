@@ -8,6 +8,7 @@ args=(
     "-p nostr-sqlite"
     "-p nostr-indexeddb"
     "-p nostr-sdk-pool"
+    "-p nostr-sdk-signer"
     "-p nostr-sdk"
 )
 

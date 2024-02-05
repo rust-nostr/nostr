@@ -32,8 +32,7 @@ buildargs=(
     "-p nostr-sdk"
     "-p nostr-sdk --no-default-features"
     "-p nostr-sdk --features blocking"
-    "-p nostr-sdk --features webln --target wasm32-unknown-unknown"
-    "-p nostr-sdk --features indexeddb --target wasm32-unknown-unknown"
+    "-p nostr-sdk --features indexeddb,webln --target wasm32-unknown-unknown"
     "-p nostr-sdk --features sqlite"
 )
 
