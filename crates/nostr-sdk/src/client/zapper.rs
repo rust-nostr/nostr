@@ -12,7 +12,7 @@ use async_utility::time;
 use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
 use nostr::prelude::*;
-use nostr_sdk_pool::{RelayPoolNotification, RelaySendOptions};
+use nostr_sdk_pool::{FilterOptions, RelayPoolNotification};
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 use webln::WebLN;
 
@@ -235,9 +235,10 @@ impl Client {
 
             // Subscribe
             relay
-                .send_msg(
-                    ClientMessage::req(id.clone(), vec![filter]),
-                    RelaySendOptions::new().skip_send_confirmation(false),
+                .send_req(
+                    id,
+                    vec![filter],
+                    Some(FilterOptions::WaitForEventsAfterEOSE(1)),
                 )
                 .await?;
 
@@ -265,10 +266,6 @@ impl Client {
             })
             .await
             .ok_or(Error::Timeout)??;
-
-            // Unsubscribe
-            self.send_msg_to([uri.relay_url.clone()], ClientMessage::close(id))
-                .await?;
         }
 
         Ok(())
