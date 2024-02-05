@@ -686,14 +686,27 @@ impl Response {
         }
     }
 
-    /// Covert [Result] to [PayInvoiceResponseResult]
+    /// Covert [Response] to [PayInvoiceResponseResult]
     pub fn to_pay_invoice(self) -> Result<PayInvoiceResponseResult, Error> {
         if let Some(e) = self.error {
             return Err(Error::ErrorCode(e));
         }
 
-        if let Some(ResponseResult::PayInvoice(pay_invoice_result)) = self.result {
-            return Ok(pay_invoice_result);
+        if let Some(ResponseResult::PayInvoice(result)) = self.result {
+            return Ok(result);
+        }
+
+        Err(Error::UnexpectedResult(self.as_json()))
+    }
+
+    /// Covert [Response] to [MakeInvoiceResponseResult]
+    pub fn to_make_invoice(self) -> Result<MakeInvoiceResponseResult, Error> {
+        if let Some(e) = self.error {
+            return Err(Error::ErrorCode(e));
+        }
+
+        if let Some(ResponseResult::MakeInvoice(result)) = self.result {
+            return Ok(result);
         }
 
         Err(Error::UnexpectedResult(self.as_json()))

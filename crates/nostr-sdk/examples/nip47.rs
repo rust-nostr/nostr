@@ -56,17 +56,9 @@ async fn main() -> Result<()> {
     client
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
-                let decrypt_res =
-                    nip04::decrypt(&nwc_uri.secret, &nwc_uri.public_key, &event.content).unwrap();
-                println!("{:?}", decrypt_res);
-
-                let nip47_res = nip47::Response::from_json(decrypt_res).unwrap();
-
-                if let Some(ResponseResult::PayInvoice(pay_invoice_result)) = nip47_res.result {
-                    println!("Payment sent. Preimage: {}", pay_invoice_result.preimage);
-                } else {
-                    println!("Unexpected result: {:?}", nip47_res.as_json());
-                }
+                let res = nip47::Response::from_event(&nwc_uri, &event)?;
+                let PayInvoiceResponseResult { preimage } = res.to_pay_invoice()?;
+                println!("Payment sent. Preimage: {preimage}");
             }
             Ok(true)
         })
