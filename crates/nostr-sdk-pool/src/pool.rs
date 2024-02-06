@@ -526,6 +526,16 @@ impl RelayPool {
         Ok(())
     }
 
+    /// Disconnect and remove all relays
+    pub async fn remove_all_relays(&self) -> Result<(), Error> {
+        let mut relays = self.relays.write().await;
+        for relay in relays.values() {
+            self.disconnect_relay(relay).await?;
+        }
+        relays.clear();
+        Ok(())
+    }
+
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
         let relays = self.relays().await;

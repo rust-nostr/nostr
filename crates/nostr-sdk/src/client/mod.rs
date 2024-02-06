@@ -354,6 +354,21 @@ impl Client {
         Ok(self.pool.add_relay(url, opts).await?)
     }
 
+    /// Add multiple relays
+    ///
+    /// This method **NOT** automatically start connection with relays!
+    pub async fn add_relays<I, U>(&self, relays: I) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        for url in relays.into_iter() {
+            self.add_relay(url).await?;
+        }
+        Ok(())
+    }
+
     /// Disconnect and remove relay
     ///
     /// # Example
@@ -376,18 +391,9 @@ impl Client {
         Ok(())
     }
 
-    /// Add multiple relays
-    ///
-    /// This method **NOT** automatically start connection with relays!
-    pub async fn add_relays<I, U>(&self, relays: I) -> Result<(), Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        for url in relays.into_iter() {
-            self.add_relay(url).await?;
-        }
+    /// Disconnect and remove all relays
+    pub async fn remove_all_relays(&self) -> Result<(), Error> {
+        self.pool.remove_all_relays().await?;
         Ok(())
     }
 
