@@ -1,0 +1,29 @@
+[package]
+name = "nostr-rocksdb"
+version = "0.27.0"
+edition = "2021"
+description = "RocksDB Storage backend for Nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "database", "rocksdb"]
+
+[dependencies]
+async-trait.workspace = true
+nostr = { workspace = true, features = ["std"] }
+nostr-database = { workspace = true, features = ["flatbuf"] }
+num_cpus = "1.16"
+rocksdb = { version = "0.21", default-features = false, features = ["multi-threaded-cf", "snappy"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
+tracing = { workspace = true, features = ["std", "attributes"] }
+
+[build-dependencies]
+# PIN for MSRV 1.64.0
+jobserver = "=0.1.26"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tracing-subscriber.workspace = true

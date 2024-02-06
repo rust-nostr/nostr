@@ -23,6 +23,8 @@ pub use nostr::{self, *};
 pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
 #[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]
 pub use nostr_indexeddb::{IndexedDBError, WebDatabase};
+#[cfg(feature = "rocksdb")]
+pub use nostr_rocksdb::RocksDatabase;
 pub use nostr_sdk_pool::{
     self as pool, ActiveSubscription, AtomicRelayServiceFlags, FilterOptions,
     InternalSubscriptionId, NegentropyDirection, NegentropyOptions, Relay, RelayConnectionStats,

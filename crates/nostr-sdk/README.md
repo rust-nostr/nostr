@@ -126,6 +126,7 @@ The following crate feature flags are available:
 | Feature             | Default | Description                                                                                 |
 | ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
 | `sqlite`            |   No    | Enable SQLite Storage backend                                                               |
+| `rocksdb`           |   No    | Enable RocksDB Storage backend                                                              |
 | `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                      |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                             |
 | `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                       |
