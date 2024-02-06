@@ -14,6 +14,7 @@ use bitcoin::secp256k1::XOnlyPublicKey;
 use serde_json::{json, Value};
 
 use super::{Kind, Tag};
+use crate::nips::nip13;
 use crate::Timestamp;
 
 /// [`EventId`] error
@@ -109,6 +110,13 @@ impl EventId {
         self.0.to_string()
     }
 
+    /// Check POW
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    pub fn check_pow(&self, difficulty: u8) -> bool {
+        nip13::get_leading_zero_bits(self.as_bytes()) >= difficulty
+    }
+
     /// Get [`EventId`] as [`Sha256Hash`]
     pub fn inner(&self) -> Sha256Hash {
         self.0
@@ -156,5 +164,26 @@ impl From<EventId> for String {
 impl From<EventId> for Tag {
     fn from(event_id: EventId) -> Self {
         Tag::event(event_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_pow() {
+        let id =
+            EventId::from_hex("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
+                .unwrap();
+        assert!(!id.check_pow(16));
+
+        // POW 20
+        let id =
+            EventId::from_hex("00000340cb60be5829fbf2712a285f12cf89e5db951c5303b731651f0d71ac1b")
+                .unwrap();
+        assert!(id.check_pow(16));
+        assert!(id.check_pow(20));
+        assert!(!id.check_pow(25));
     }
 }

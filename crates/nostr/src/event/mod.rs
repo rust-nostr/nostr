@@ -266,6 +266,13 @@ impl Event {
             .map_err(|_| Error::InvalidSignature)
     }
 
+    /// Check POW
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    pub fn check_pow(&self, difficulty: u8) -> bool {
+        self.inner.id.check_pow(difficulty)
+    }
+
     /// Get [`Timestamp`] expiration if set
     pub fn expiration(&self) -> Option<&Timestamp> {
         for tag in self.iter_tags() {
