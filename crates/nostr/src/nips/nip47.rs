@@ -667,8 +667,8 @@ impl Response {
                     ResponseResult::GetBalance(result)
                 }
                 Method::GetInfo => {
-                    let result: GetBalanceResponseResult = serde_json::from_value(result)?;
-                    ResponseResult::GetBalance(result)
+                    let result: GetInfoResponseResult = serde_json::from_value(result)?;
+                    ResponseResult::GetInfo(result)
                 }
             };
 
