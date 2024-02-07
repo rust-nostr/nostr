@@ -20,12 +20,13 @@ use async_wsocket::WsMessage;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
 use nostr::negentropy::{self, Bytes, Negentropy};
+use nostr::nips::nip01::Coordinate;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr::{
-    ClientMessage, Event, EventId, Filter, JsonUtil, Keys, RawRelayMessage, RelayMessage,
-    SubscriptionId, Timestamp, Url,
+    event, ClientMessage, Event, EventId, Filter, JsonUtil, Keys, MissingPartialEvent,
+    PartialEvent, RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
 use nostr_database::{DatabaseError, DynNostrDatabase, Order};
 use thiserror::Error;
@@ -54,6 +55,12 @@ pub enum Error {
     /// MessageHandle error
     #[error(transparent)]
     MessageHandle(#[from] MessageHandleError),
+    /// Event error
+    #[error(transparent)]
+    Event(#[from] event::Error),
+    /// Partial Event error
+    #[error(transparent)]
+    PartialEvent(#[from] event::partial::Error),
     /// Negentropy error
     #[error(transparent)]
     Negentropy(#[from] negentropy::Error),
@@ -143,6 +150,9 @@ pub enum Error {
         /// Max tags num
         max_size: usize,
     },
+    /// Event expired
+    #[error("event expired")]
+    EventExpired,
 }
 
 /// Relay connection status
@@ -789,17 +799,29 @@ impl Relay {
                             }
                         }
 
-                        if let Err(err) = relay
-                            .pool_sender
-                            .send(RelayPoolMessage::ReceivedMsg {
-                                relay_url: relay.url(),
-                                msg,
-                            })
-                            .await
-                        {
-                            tracing::error!("Impossible to send ReceivedMsg to pool: {}", &err);
-                            return Ok(true); // Exit
-                        };
+                        match relay.handle_relay_message(msg).await {
+                            Ok(Some(msg)) => {
+                                if let Err(err) = relay
+                                    .pool_sender
+                                    .send(RelayPoolMessage::ReceivedMsg {
+                                        relay_url: relay.url(),
+                                        msg,
+                                    })
+                                    .await
+                                {
+                                    tracing::error!(
+                                        "Impossible to send ReceivedMsg to pool: {}",
+                                        &err
+                                    );
+                                    return Ok(true); // Exit
+                                };
+                            }
+                            Ok(None) => (), // Nothing to handle
+                            Err(e) => tracing::error!(
+                                "Impossible to handle relay message from {}: {e}",
+                                relay.url
+                            ),
+                        }
 
                         Ok(false)
                     }
@@ -898,6 +920,115 @@ impl Relay {
                 tracing::error!("Impossible to connect to {}: {}", url, err);
             }
         };
+    }
+
+    /// Handle relay message
+    #[tracing::instrument(skip(self), level = "trace")]
+    async fn handle_relay_message(
+        &self,
+        msg: RawRelayMessage,
+    ) -> Result<Option<RelayMessage>, Error> {
+        match msg {
+            RawRelayMessage::Event {
+                subscription_id,
+                event,
+            } => {
+                // Deserialize partial event (id, pubkey and sig)
+                let partial_event: PartialEvent = PartialEvent::from_json(event.to_string())?;
+
+                // Check if event has been deleted
+                if self
+                    .database
+                    .has_event_id_been_deleted(&partial_event.id)
+                    .await?
+                {
+                    tracing::warn!(
+                        "Received event {} that was deleted: type=id, relay_url={}",
+                        partial_event.id,
+                        self.url
+                    );
+                    return Ok(None);
+                }
+
+                // Deserialize missing event fields
+                let missing: MissingPartialEvent =
+                    MissingPartialEvent::from_json(event.to_string())?;
+
+                // Check if event is replaceable and has coordinate
+                if missing.kind.is_replaceable() || missing.kind.is_parameterized_replaceable() {
+                    let coordinate: Coordinate =
+                        Coordinate::new(missing.kind, partial_event.pubkey)
+                            .identifier(missing.identifier().unwrap_or_default());
+                    // Check if event has been deleted
+                    if self
+                        .database
+                        .has_coordinate_been_deleted(&coordinate, missing.created_at)
+                        .await?
+                    {
+                        tracing::warn!(
+                            "Received event {} that was deleted: type=coordinate, relay_url={}",
+                            partial_event.id,
+                            self.url
+                        );
+                        return Ok(None);
+                    }
+                }
+
+                // Check if event id was already seen
+                let seen: bool = self
+                    .database
+                    .has_event_already_been_seen(&partial_event.id)
+                    .await?;
+
+                // Set event as seen by relay
+                if let Err(e) = self
+                    .database
+                    .event_id_seen(partial_event.id, self.url())
+                    .await
+                {
+                    tracing::error!(
+                        "Impossible to set event {} as seen by relay: {e}",
+                        partial_event.id
+                    );
+                }
+
+                // Check if event was already saved
+                if self
+                    .database
+                    .has_event_already_been_saved(&partial_event.id)
+                    .await?
+                {
+                    tracing::trace!("Event {} already saved into database", partial_event.id);
+                    return Ok(None);
+                }
+
+                // Compose full event
+                let event: Event = partial_event.merge(missing)?;
+
+                // Check if it's expired
+                if event.is_expired() {
+                    return Err(Error::EventExpired);
+                }
+
+                // Verify event
+                event.verify()?;
+
+                // Save event
+                self.database.save_event(&event).await?;
+
+                // Check if seen
+                if !seen {
+                    // Compose RelayMessage
+                    Ok(Some(RelayMessage::Event {
+                        subscription_id: SubscriptionId::new(subscription_id),
+                        event: Box::new(event),
+                    }))
+                } else {
+                    Ok(None)
+                }
+            }
+            m => Ok(Some(RelayMessage::try_from(m)?)),
+        }
     }
 
     fn send_relay_event(
