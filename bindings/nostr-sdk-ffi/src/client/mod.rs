@@ -82,10 +82,6 @@ impl Client {
         block_on(async move { Ok(self.inner.stop().await?) })
     }
 
-    pub fn is_running(&self) -> bool {
-        self.inner.is_running()
-    }
-
     pub fn shutdown(&self) -> Result<()> {
         block_on(async move { Ok(self.inner.clone().shutdown().await?) })
     }

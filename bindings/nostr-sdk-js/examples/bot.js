@@ -29,7 +29,7 @@ async function main() {
     const handle = {
         // Handle event
         handleEvent: async (relayUrl, event) => {
-            console.log("Received new event from", relayUrl);
+            console.log("Received new event from ", relayUrl);
             if (event.kind == 4) {
                 try {
                     let content = nip04_decrypt(keys.secretKey, event.pubkey, event.content);

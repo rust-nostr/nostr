@@ -23,6 +23,6 @@ pub use self::options::{
     FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelayPoolOptions,
     RelaySendOptions,
 };
-pub use self::pool::{RelayPoolMessage, RelayPoolNotification};
+pub use self::pool::RelayPoolNotification;
 pub use self::relay::{ActiveSubscription, InternalSubscriptionId, Relay, RelayStatus};
 pub use self::stats::RelayConnectionStats;

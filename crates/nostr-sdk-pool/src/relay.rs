@@ -39,7 +39,7 @@ use crate::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, MAX_ADJ_RETRY_SEC,
     MIN_RETRY_SEC, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP,
 };
-use crate::pool::{RelayPoolMessage, RelayPoolNotification};
+use crate::pool::RelayPoolNotification;
 use crate::stats::RelayConnectionStats;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
@@ -310,7 +310,6 @@ pub struct Relay {
     database: Arc<DynNostrDatabase>,
     scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
-    pool_sender: Sender<RelayPoolMessage>,
     relay_sender: Sender<Message>,
     relay_receiver: Arc<Mutex<Receiver<Message>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
@@ -329,7 +328,6 @@ impl Relay {
     pub fn new(
         url: Url,
         database: Arc<DynNostrDatabase>,
-        pool_sender: Sender<RelayPoolMessage>,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
         opts: RelayOptions,
         limits: Limits,
@@ -346,7 +344,6 @@ impl Relay {
             database,
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
-            pool_sender,
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
             notification_sender,
@@ -378,12 +375,12 @@ impl Relay {
         *s = status;
 
         // Send notification
-        if let Err(e) = self.pool_sender.try_send(RelayPoolMessage::RelayStatus {
-            relay_url: self.url(),
-            status,
-        }) {
-            tracing::error!("Impossible to send RelayPoolMessage::RelayStatus message: {e}");
-        }
+        let _ = self
+            .notification_sender
+            .send(RelayPoolNotification::RelayStatus {
+                relay_url: self.url(),
+                status,
+            });
     }
 
     /// Get Relay Service Flags
@@ -807,22 +804,28 @@ impl Relay {
 
                         match relay.handle_relay_message(msg).await {
                             Ok(Some(msg)) => {
-                                if let Err(err) = relay
-                                    .pool_sender
-                                    .send(RelayPoolMessage::ReceivedMsg {
+                                let _ = relay.notification_sender.send(
+                                    RelayPoolNotification::Message {
                                         relay_url: relay.url(),
-                                        msg,
-                                    })
-                                    .await
-                                {
-                                    tracing::error!(
-                                        "Impossible to send ReceivedMsg to pool: {}",
-                                        &err
-                                    );
-                                    return Ok(true); // Exit
-                                };
+                                        message: msg.clone(),
+                                    },
+                                );
+
+                                match msg {
+                                    RelayMessage::Notice { message } => {
+                                        tracing::warn!("Notice from {}: {message}", relay.url)
+                                    }
+                                    RelayMessage::Ok {
+                                        event_id,
+                                        status,
+                                        message,
+                                    } => {
+                                        tracing::debug!("Received OK from {} for event {event_id}: status={status}, message={message}", relay.url);
+                                    }
+                                    _ => (),
+                                }
                             }
-                            Ok(None) => (), // Nothing to handle
+                            Ok(None) => (),
                             Err(e) => tracing::error!(
                                 "Impossible to handle relay message from {}: {e}",
                                 relay.url
@@ -935,10 +938,7 @@ impl Relay {
         msg: RawRelayMessage,
     ) -> Result<Option<RelayMessage>, Error> {
         match msg {
-            RawRelayMessage::Event {
-                subscription_id,
-                event,
-            } => {
+            RawRelayMessage::Event { event, .. } => {
                 // Deserialize partial event (id, pubkey and sig)
                 let partial_event: PartialEvent = PartialEvent::from_json(event.to_string())?;
 
@@ -1030,14 +1030,13 @@ impl Relay {
 
                 // Check if seen
                 if !seen {
-                    // Compose RelayMessage
-                    Ok(Some(RelayMessage::Event {
-                        subscription_id: SubscriptionId::new(subscription_id),
-                        event: Box::new(event),
-                    }))
-                } else {
-                    Ok(None)
+                    let _ = self.notification_sender.send(RelayPoolNotification::Event {
+                        relay_url: self.url(),
+                        event,
+                    });
                 }
+
+                Ok(None)
             }
             m => Ok(Some(RelayMessage::try_from(m)?)),
         }

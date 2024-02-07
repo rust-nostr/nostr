@@ -242,7 +242,6 @@ impl Client {
 
     /// Start a previously stopped client
     pub async fn start(&self) {
-        self.pool.start();
         self.connect().await;
     }
 
@@ -251,11 +250,6 @@ impl Client {
     /// Disconnect all relays and set their status to `RelayStatus::Stopped`.
     pub async fn stop(&self) -> Result<(), Error> {
         Ok(self.pool.stop().await?)
-    }
-
-    /// Check if [`RelayPool`] is running
-    pub fn is_running(&self) -> bool {
-        self.pool.is_running()
     }
 
     /// Completely shutdown [`Client`]
