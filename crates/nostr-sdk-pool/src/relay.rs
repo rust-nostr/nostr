@@ -153,6 +153,12 @@ pub enum Error {
     /// Event expired
     #[error("event expired")]
     EventExpired,
+    /// POW diffculty too low
+    #[error("POW difficulty too low (min. {min})")]
+    PowDifficultyTooLow {
+        /// Min. difficulty
+        min: u8,
+    },
 }
 
 /// Relay connection status
@@ -935,6 +941,12 @@ impl Relay {
             } => {
                 // Deserialize partial event (id, pubkey and sig)
                 let partial_event: PartialEvent = PartialEvent::from_json(event.to_string())?;
+
+                // Check min POW
+                let difficulty: u8 = self.opts.get_pow_difficulty();
+                if difficulty > 0 && !partial_event.id.check_pow(difficulty) {
+                    return Err(Error::PowDifficultyTooLow { min: difficulty });
+                }
 
                 // Check if event has been deleted
                 if self

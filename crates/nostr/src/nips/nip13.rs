@@ -11,6 +11,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 /// Gets the number of leading zero bits. Result is between 0 and 255.
+#[inline]
 pub fn get_leading_zero_bits<T>(h: T) -> u8
 where
     T: AsRef<[u8]>,

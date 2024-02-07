@@ -6,7 +6,7 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -24,18 +24,12 @@ pub(super) const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
 /// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
-    /// Proxy
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) proxy: Option<SocketAddr>,
-    /// Relay Service Flags
     pub(super) flags: AtomicRelayServiceFlags,
-    /// Enable/disable auto reconnection (default: true)
+    pow: Arc<AtomicU8>,
     reconnect: Arc<AtomicBool>,
-    /// Retry connection time (default: 10 sec)
-    ///
-    /// Are allowed values `>=` 5 secs
     retry_sec: Arc<AtomicU64>,
-    /// Automatically adjust retry seconds based on success/attempts (default: true)
     adjust_retry_sec: Arc<AtomicBool>,
 }
 
@@ -45,6 +39,7 @@ impl Default for RelayOptions {
             #[cfg(not(target_arch = "wasm32"))]
             proxy: None,
             flags: AtomicRelayServiceFlags::new(RelayServiceFlags::READ | RelayServiceFlags::WRITE),
+            pow: Arc::new(AtomicU8::new(0)),
             reconnect: Arc::new(AtomicBool::new(true)),
             retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),
             adjust_retry_sec: Arc::new(AtomicBool::new(true)),
@@ -93,7 +88,22 @@ impl RelayOptions {
         self
     }
 
-    /// Set reconnect option
+    /// Minimum POW for received events (default: 0)
+    pub fn pow(mut self, diffculty: u8) -> Self {
+        self.pow = Arc::new(AtomicU8::new(diffculty));
+        self
+    }
+
+    pub(crate) fn get_pow_difficulty(&self) -> u8 {
+        self.pow.load(Ordering::SeqCst)
+    }
+
+    /// Set `pow` option
+    pub fn update_pow_difficulty(&self, diffculty: u8) {
+        self.pow.store(diffculty, Ordering::SeqCst);
+    }
+
+    /// Enable/disable auto reconnection (default: true)
     pub fn reconnect(self, reconnect: bool) -> Self {
         Self {
             reconnect: Arc::new(AtomicBool::new(reconnect)),
@@ -112,7 +122,9 @@ impl RelayOptions {
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(reconnect));
     }
 
-    /// Set retry seconds option
+    /// Retry connection time (default: 10 sec)
+    ///
+    /// Are allowed values `>=` 5 secs
     pub fn retry_sec(self, retry_sec: u64) -> Self {
         let retry_sec = if retry_sec >= MIN_RETRY_SEC {
             retry_sec
