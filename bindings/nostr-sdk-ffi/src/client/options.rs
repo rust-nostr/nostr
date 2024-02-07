@@ -55,6 +55,13 @@ impl Options {
         Arc::new(builder)
     }
 
+    /// Minimum POW difficulty for received events
+    pub fn min_pow(self: Arc<Self>, difficulty: u8) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.min_pow(difficulty);
+        builder
+    }
+
     pub fn req_filters_chunk_size(self: Arc<Self>, req_filters_chunk_size: u8) -> Arc<Self> {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.req_filters_chunk_size(req_filters_chunk_size);

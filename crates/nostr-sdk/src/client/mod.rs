@@ -307,10 +307,16 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        #[cfg(not(target_arch = "wasm32"))]
-        let opts: RelayOptions = RelayOptions::new().proxy(self.opts.proxy);
-        #[cfg(target_arch = "wasm32")]
         let opts: RelayOptions = RelayOptions::new();
+
+        // Add proxy
+        #[cfg(not(target_arch = "wasm32"))]
+        let opts: RelayOptions = opts.proxy(self.opts.proxy);
+
+        // Add min POW difficulty
+        let opts: RelayOptions = opts.pow(self.opts.get_min_pow_difficulty());
+
+        // Add relay
         self.add_relay_with_opts(url, opts).await
     }
 

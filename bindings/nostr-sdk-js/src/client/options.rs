@@ -51,6 +51,12 @@ impl JsOptions {
         self.inner.difficulty(difficulty).into()
     }
 
+    /// Minimum POW difficulty for received events
+    #[wasm_bindgen(js_name = minPow)]
+    pub fn min_pow(self, difficulty: u8) -> Self {
+        self.inner.min_pow(difficulty).into()
+    }
+
     #[wasm_bindgen(js_name = reqFiltersChunkSize)]
     pub fn req_filters_chunk_size(self, req_filters_chunk_size: u8) -> Self {
         self.inner

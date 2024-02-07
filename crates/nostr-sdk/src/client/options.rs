@@ -25,8 +25,8 @@ pub struct Options {
     wait_for_send: Arc<AtomicBool>,
     /// Wait for the subscription msg to be sent (default: false)
     wait_for_subscription: Arc<AtomicBool>,
-    /// POW difficulty for all events (default: 0)
-    difficulty: Arc<AtomicU8>,
+    new_events_difficulty: Arc<AtomicU8>,
+    min_pow_difficulty: Arc<AtomicU8>,
     /// REQ filters chunk size (default: 10)
     req_filters_chunk_size: Arc<AtomicU8>,
     /// Skip disconnected relays during send methods (default: true)
@@ -61,7 +61,8 @@ impl Default for Options {
         Self {
             wait_for_send: Arc::new(AtomicBool::new(true)),
             wait_for_subscription: Arc::new(AtomicBool::new(false)),
-            difficulty: Arc::new(AtomicU8::new(0)),
+            new_events_difficulty: Arc::new(AtomicU8::new(0)),
+            min_pow_difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: Arc::new(AtomicU8::new(10)),
             skip_disconnected_relays: Arc::new(AtomicBool::new(true)),
             timeout: Duration::from_secs(60),
@@ -116,22 +117,38 @@ impl Options {
             .skip_disconnected(skip_disconnected)
     }
 
-    /// Set default POW diffficulty for `Event`
+    /// Set default POW difficulty for `Event`
     pub fn difficulty(self, difficulty: u8) -> Self {
         Self {
-            difficulty: Arc::new(AtomicU8::new(difficulty)),
+            new_events_difficulty: Arc::new(AtomicU8::new(difficulty)),
             ..self
         }
     }
 
     pub(crate) fn get_difficulty(&self) -> u8 {
-        self.difficulty.load(Ordering::SeqCst)
+        self.new_events_difficulty.load(Ordering::SeqCst)
     }
 
     pub(crate) fn update_difficulty(&self, difficulty: u8) {
-        let _ = self
-            .difficulty
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(difficulty));
+        self.new_events_difficulty
+            .store(difficulty, Ordering::SeqCst);
+    }
+
+    /// Minimum POW difficulty for received events
+    pub fn min_pow(self, difficulty: u8) -> Self {
+        Self {
+            min_pow_difficulty: Arc::new(AtomicU8::new(difficulty)),
+            ..self
+        }
+    }
+
+    pub(crate) fn get_min_pow_difficulty(&self) -> u8 {
+        self.min_pow_difficulty.load(Ordering::SeqCst)
+    }
+
+    /// Update min POW difficulty
+    pub fn update_min_pow_difficulty(&self, difficulty: u8) {
+        self.min_pow_difficulty.store(difficulty, Ordering::SeqCst);
     }
 
     /// Set `REQ` filters chunk size
