@@ -3,7 +3,7 @@
 // Distributed under the MIT software license
 
 use core::fmt::{self, Write};
-use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use nostr_js::error::{into_err, Result};
 use tracing::dispatcher::SetGlobalDefaultError;
@@ -238,8 +238,8 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
             let meta = event.metadata();
             let level = meta.level();
             if self.config.report_logs_in_console {
-                let origin = meta
-                    .file()
+                let module = meta
+                    .module_path()
                     .and_then(|file| meta.line().map(|ln| format!("{}:{}", file, ln)))
                     .unwrap_or_default();
 
@@ -248,7 +248,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                         format!(
                             "%c{}%c {}{}%c{}",
                             level,
-                            origin,
+                            module,
                             thread_display_suffix(),
                             recorder,
                         ),
@@ -266,18 +266,15 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                     log1(format!(
                         "{} {}{} {}",
                         level,
-                        origin,
+                        module,
                         thread_display_suffix(),
                         recorder,
                     ));
                 }
             }
             if self.config.report_logs_in_timings {
-                let mark_name = format!(
-                    "c{:x}",
-                    self.last_event_id
-                        .fetch_add(1, core::sync::atomic::Ordering::Relaxed)
-                );
+                let mark_name =
+                    format!("c{:x}", self.last_event_id.fetch_add(1, Ordering::Relaxed));
                 // mark and measure so you can see a little blip in the profile
                 mark(&mark_name);
                 let _ = measure(
