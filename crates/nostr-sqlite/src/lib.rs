@@ -20,8 +20,8 @@ use deadpool_sqlite::{Config, Object, Pool, Runtime};
 use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
-    Backend, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
-    FlatBufferDecode, FlatBufferEncode, NostrDatabase, Order, RawEvent,
+    Backend, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
+    FlatBufferEncode, NostrDatabase, Order, RawEvent,
 };
 use rusqlite::config::DbConfig;
 use tokio::sync::RwLock;
@@ -114,10 +114,6 @@ impl NostrDatabase for SQLiteDatabase {
 
     fn backend(&self) -> Backend {
         Backend::SQLite
-    }
-
-    fn opts(&self) -> DatabaseOptions {
-        DatabaseOptions::default()
     }
 
     #[tracing::instrument(skip_all, level = "trace")]

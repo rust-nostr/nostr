@@ -29,8 +29,8 @@ use nostr::{Event, EventId, Filter, Timestamp, Url};
 #[cfg(target_arch = "wasm32")]
 use nostr_database::NostrDatabase;
 use nostr_database::{
-    Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, FlatBufferBuilder,
-    FlatBufferDecode, FlatBufferEncode, Order, RawEvent,
+    Backend, DatabaseError, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
+    FlatBufferEncode, Order, RawEvent,
 };
 use tokio::sync::Mutex;
 use wasm_bindgen::JsValue;
@@ -247,10 +247,6 @@ macro_rules! impl_nostr_database {
 impl_nostr_database!({
     fn backend(&self) -> Backend {
         Backend::IndexedDB
-    }
-
-    fn opts(&self) -> DatabaseOptions {
-        DatabaseOptions::default()
     }
 
     #[tracing::instrument(skip_all, level = "trace")]

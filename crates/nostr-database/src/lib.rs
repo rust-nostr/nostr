@@ -22,7 +22,6 @@ mod error;
 pub mod flatbuffers;
 pub mod index;
 pub mod memory;
-mod options;
 pub mod profile;
 mod raw;
 mod tag_indexes;
@@ -31,8 +30,7 @@ pub use self::error::DatabaseError;
 #[cfg(feature = "flatbuf")]
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
 pub use self::index::{DatabaseIndexes, EventIndex, EventIndexResult, FilterIndex};
-pub use self::memory::MemoryDatabase;
-pub use self::options::DatabaseOptions;
+pub use self::memory::{MemoryDatabase, MemoryDatabaseOptions};
 pub use self::profile::Profile;
 pub use self::raw::RawEvent;
 
@@ -111,9 +109,6 @@ pub trait NostrDatabase: AsyncTraitDeps {
 
     /// Name of the backend database used (ex. rocksdb, lmdb, sqlite, indexeddb, ...)
     fn backend(&self) -> Backend;
-
-    /// Database options
-    fn opts(&self) -> DatabaseOptions;
 
     /// Save [`Event`] into store
     ///
@@ -273,10 +268,6 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
 
     fn backend(&self) -> Backend {
         self.0.backend()
-    }
-
-    fn opts(&self) -> DatabaseOptions {
-        self.0.opts()
     }
 
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {

@@ -4,63 +4,93 @@
 
 //! Memory (RAM) Storage backend for Nostr apps
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
+use std::hash::Hash;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use lru::LruCache;
 use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
-use tokio::sync::RwLock;
+use tokio::sync::Mutex;
 
-use crate::{
-    Backend, DatabaseError, DatabaseIndexes, DatabaseOptions, EventIndexResult, NostrDatabase,
-    Order,
-};
+use crate::{Backend, DatabaseError, DatabaseIndexes, EventIndexResult, NostrDatabase, Order};
+
+/// Database options
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MemoryDatabaseOptions {
+    /// Store events (?)
+    pub events: bool,
+    /// Max events and IDs to store in memory
+    ///
+    /// `None` means no limits.
+    pub max_events: Option<usize>,
+}
+
+impl Default for MemoryDatabaseOptions {
+    fn default() -> Self {
+        Self {
+            events: false,
+            max_events: Some(100_000),
+        }
+    }
+}
+
+impl MemoryDatabaseOptions {
+    /// New default database options
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 /// Memory Database (RAM)
 #[derive(Debug)]
 pub struct MemoryDatabase {
-    opts: DatabaseOptions,
-    seen_event_ids: Arc<RwLock<HashMap<EventId, HashSet<Url>>>>,
-    events: Arc<RwLock<HashMap<EventId, Event>>>,
+    opts: MemoryDatabaseOptions,
+    seen_event_ids: Arc<Mutex<LruCache<EventId, HashSet<Url>>>>,
+    events: Arc<Mutex<LruCache<EventId, Event>>>,
     indexes: DatabaseIndexes,
 }
 
-// TODO: add queue field?
-
 impl Default for MemoryDatabase {
     fn default() -> Self {
-        Self::new(DatabaseOptions { events: false })
+        Self::new()
     }
 }
 
 impl MemoryDatabase {
+    /// New Memory database with default options
+    pub fn new() -> Self {
+        Self::with_opts(MemoryDatabaseOptions::default())
+    }
+
     /// New Memory database
-    pub fn new(opts: DatabaseOptions) -> Self {
+    pub fn with_opts(opts: MemoryDatabaseOptions) -> Self {
         Self {
             opts,
-            seen_event_ids: Arc::new(RwLock::new(HashMap::new())),
-            events: Arc::new(RwLock::new(HashMap::new())),
+            seen_event_ids: Arc::new(Mutex::new(new_lru_cache(opts.max_events))),
+            events: Arc::new(Mutex::new(new_lru_cache(opts.max_events))),
             indexes: DatabaseIndexes::new(),
         }
     }
 
     fn _event_id_seen(
         &self,
-        seen_event_ids: &mut HashMap<EventId, HashSet<Url>>,
+        seen_event_ids: &mut LruCache<EventId, HashSet<Url>>,
         event_id: EventId,
         relay_url: Url,
     ) {
-        seen_event_ids
-            .entry(event_id)
-            .and_modify(|set| {
-                set.insert(relay_url.clone());
-            })
-            .or_insert_with(|| {
+        match seen_event_ids.get_mut(&event_id) {
+            Some(set) => {
+                set.insert(relay_url);
+            }
+            None => {
                 let mut set = HashSet::with_capacity(1);
                 set.insert(relay_url);
-                set
-            });
+                seen_event_ids.put(event_id, set);
+            }
+        }
     }
 }
 
@@ -73,10 +103,6 @@ impl NostrDatabase for MemoryDatabase {
         Backend::Memory
     }
 
-    fn opts(&self) -> DatabaseOptions {
-        self.opts
-    }
-
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         if self.opts.events {
             let EventIndexResult {
@@ -85,12 +111,12 @@ impl NostrDatabase for MemoryDatabase {
             } = self.indexes.index_event(event).await;
 
             if to_store {
-                let mut events = self.events.write().await;
+                let mut events = self.events.lock().await;
 
-                events.insert(event.id(), event.clone());
+                events.put(event.id(), event.clone());
 
                 for event_id in to_discard.into_iter() {
-                    events.remove(&event_id);
+                    events.pop(&event_id);
                 }
 
                 Ok(true)
@@ -107,16 +133,16 @@ impl NostrDatabase for MemoryDatabase {
         if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else if self.opts.events {
-            let events = self.events.read().await;
-            Ok(events.contains_key(event_id))
+            let events = self.events.lock().await;
+            Ok(events.contains(event_id))
         } else {
             Ok(false)
         }
     }
 
     async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        let seen_event_ids = self.seen_event_ids.read().await;
-        Ok(seen_event_ids.contains_key(event_id))
+        let seen_event_ids = self.seen_event_ids.lock().await;
+        Ok(seen_event_ids.contains(event_id))
     }
 
     async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
@@ -135,7 +161,7 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
-        let mut seen_event_ids = self.seen_event_ids.write().await;
+        let mut seen_event_ids = self.seen_event_ids.lock().await;
         self._event_id_seen(&mut seen_event_ids, event_id, relay_url);
         Ok(())
     }
@@ -144,13 +170,13 @@ impl NostrDatabase for MemoryDatabase {
         &self,
         event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err> {
-        let seen_event_ids = self.seen_event_ids.read().await;
+        let mut seen_event_ids = self.seen_event_ids.lock().await;
         Ok(seen_event_ids.get(&event_id).cloned())
     }
 
     async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
         if self.opts.events {
-            let events = self.events.read().await;
+            let mut events = self.events.lock().await;
             events
                 .get(&event_id)
                 .cloned()
@@ -169,7 +195,7 @@ impl NostrDatabase for MemoryDatabase {
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
         if self.opts.events {
             let ids = self.indexes.query(filters, order).await;
-            let events = self.events.read().await;
+            let mut events = self.events.lock().await;
 
             let mut list: Vec<Event> = Vec::with_capacity(ids.len());
             for event_id in ids.into_iter() {
@@ -201,7 +227,7 @@ impl NostrDatabase for MemoryDatabase {
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
         if self.opts.events {
             let ids = self.indexes.query([filter], Order::Desc).await;
-            let events = self.events.read().await;
+            let mut events = self.events.lock().await;
 
             let mut list: Vec<(EventId, Timestamp)> = Vec::with_capacity(ids.len());
             for event_id in ids.into_iter() {
@@ -216,10 +242,23 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {
-        let mut seen_event_ids = self.seen_event_ids.write().await;
+        let mut seen_event_ids = self.seen_event_ids.lock().await;
         seen_event_ids.clear();
-        let mut events = self.events.write().await;
+        let mut events = self.events.lock().await;
         events.clear();
         Ok(())
+    }
+}
+
+fn new_lru_cache<K, V>(size: Option<usize>) -> LruCache<K, V>
+where
+    K: Hash + Eq,
+{
+    match size {
+        Some(size) => match NonZeroUsize::new(size) {
+            Some(size) => LruCache::new(size),
+            None => LruCache::unbounded(),
+        },
+        None => LruCache::unbounded(),
     }
 }

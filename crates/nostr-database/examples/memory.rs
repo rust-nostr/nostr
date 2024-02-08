@@ -5,7 +5,7 @@
 use nostr::prelude::*;
 use nostr::{EventBuilder, Filter, Keys, Kind, Metadata, Tag};
 use nostr_database::memory::MemoryDatabase;
-use nostr_database::{DatabaseOptions, NostrDatabase, Order};
+use nostr_database::{MemoryDatabaseOptions, NostrDatabase, Order};
 use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::main]
@@ -24,9 +24,9 @@ async fn main() {
             .unwrap();
     let keys_b = Keys::new(secret_key);
 
-    let mut opts = DatabaseOptions::default();
+    let mut opts = MemoryDatabaseOptions::default();
     opts.events = true;
-    let database = MemoryDatabase::new(opts);
+    let database = MemoryDatabase::with_opts(opts);
 
     for i in 0..100_000 {
         let event = EventBuilder::text_note(format!("Event #{i}"), [])
