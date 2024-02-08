@@ -104,6 +104,11 @@ impl Nip07Signer {
         Ok(Self { nostr_obj })
     }
 
+    /// Check if `window.nostr` object is available
+    pub fn is_available() -> bool {
+        Self::new().is_ok()
+    }
+
     fn get_func<S>(&self, obj: &Object, name: S) -> Result<Function, Error>
     where
         S: AsRef<str>,
