@@ -804,6 +804,17 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
+    /// Set relay list (NIP65)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    pub async fn set_relay_list<I>(&self, relays: I) -> Result<EventId, Error>
+    where
+        I: IntoIterator<Item = (UncheckedUrl, Option<RelayMetadata>)>,
+    {
+        let builder = EventBuilder::relay_list(relays);
+        self.send_event_builder(builder).await
+    }
+
     /// Publish text note
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
