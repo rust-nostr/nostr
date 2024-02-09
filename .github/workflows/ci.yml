@@ -25,14 +25,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-default-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
     - name: Check
       run: make check-crates
 
@@ -42,14 +34,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-msrv-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
     - name: Check
       run: make check-crates-msrv
 
@@ -59,14 +43,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-bindings-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
     - name: Check
       run: make check-bindings
 
@@ -76,14 +52,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-doc-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
       - name: Check
         run: make check-docs
 
