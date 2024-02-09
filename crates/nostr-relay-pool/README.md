@@ -1,4 +1,4 @@
-# Nostr SDK Pool
+# Nostr Relay Pool
 
 ## Crate Feature Flags
 

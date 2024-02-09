@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Nostr SDK Pool
+//! Nostr Relay Pool
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
@@ -23,6 +23,6 @@ pub use self::options::{
     FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelayPoolOptions,
     RelaySendOptions,
 };
-pub use self::pool::RelayPoolNotification;
+pub use self::pool::{RelayPool, RelayPoolNotification};
 pub use self::relay::{ActiveSubscription, InternalSubscriptionId, Relay, RelayStatus};
 pub use self::stats::RelayConnectionStats;

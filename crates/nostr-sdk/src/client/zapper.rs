@@ -12,7 +12,7 @@ use async_utility::time;
 use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
 use nostr::prelude::*;
-use nostr_sdk_pool::{FilterOptions, RelayPoolNotification};
+use nostr_relay_pool::{FilterOptions, RelayPoolNotification};
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
 use webln::WebLN;
 

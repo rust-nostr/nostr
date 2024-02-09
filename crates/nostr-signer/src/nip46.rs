@@ -13,8 +13,8 @@ use async_utility::time;
 use nostr::nips::nip46::{self, Message, NostrConnectMetadata, NostrConnectURI, Request, Response};
 use nostr::prelude::*;
 use nostr::{key, serde_json};
-use nostr_sdk_pool::pool::RelayPool;
-use nostr_sdk_pool::{RelayOptions, RelayPoolNotification, RelayPoolOptions, RelaySendOptions};
+use nostr_relay_pool::pool::RelayPool;
+use nostr_relay_pool::{RelayOptions, RelayPoolNotification, RelayPoolOptions, RelaySendOptions};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -35,7 +35,7 @@ pub enum Error {
     NIP46(#[from] nip46::Error),
     /// Pool
     #[error(transparent)]
-    Pool(#[from] nostr_sdk_pool::pool::Error),
+    Pool(#[from] nostr_relay_pool::pool::Error),
     /// Generic NIP46 error
     #[error("generic error")]
     Generic,

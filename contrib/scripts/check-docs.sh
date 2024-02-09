@@ -6,7 +6,7 @@ set -e
 buildargs=(
     "-p nostr"
     "-p nostr-database"
-    "-p nostr-sdk-pool"
+    "-p nostr-relay-pool"
     "-p nostr-signer"
     "-p nostr-sdk"
 )

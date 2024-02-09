@@ -1,5 +1,5 @@
 [package]
-name = "nostr-sdk-pool"
+name = "nostr-relay-pool"
 version = "0.27.0"
 edition = "2021"
 description = "Nostr Relay Pool"
@@ -9,7 +9,7 @@ repository.workspace = true
 license.workspace = true
 readme = "README.md"
 rust-version.workspace = true
-keywords = ["nostr", "sdk", "pool"]
+keywords = ["nostr", "relay", "pool"]
 
 [features]
 default = []

@@ -15,9 +15,9 @@ use nostr::event::builder::Error as EventBuilderError;
 use nostr::prelude::*;
 use nostr::types::metadata::Error as MetadataError;
 use nostr_database::DynNostrDatabase;
-use nostr_sdk_pool::pool::{self, Error as RelayPoolError, RelayPool};
-use nostr_sdk_pool::relay::Error as RelayError;
-use nostr_sdk_pool::{
+use nostr_relay_pool::pool::{self, Error as RelayPoolError, RelayPool};
+use nostr_relay_pool::relay::Error as RelayError;
+use nostr_relay_pool::{
     FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
 };
 use nostr_signer::prelude::*;

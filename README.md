@@ -10,9 +10,9 @@ The project is split up into several crates in the `crates/` directory:
         * [**nostr-rocksdb**](./crates/nostr-rocksdb/): RocksDB Storage backend for Nostr apps
         * [**nostr-sqlite**](./crates/nostr-sqlite/): SQLite Storage backend for Nostr apps
         * [**nostr-indexeddb**](./crates/nostr-indexeddb/): IndexedDB Storage backend for Nostr apps
-    * [**nostr-signer**](./crates/nostr-signer/): Nostr signer
+    * [**nostr-relay-pool**](./crates/nostr-relay-pool/): Nostr Relay Pool
+    * [**nostr-signer**](./crates/nostr-signer/): Signer for Nostr apps
     * [**nostr-sdk**](./crates/nostr-sdk/): High level client library.
-    * [**nostr-sdk-pool**](./crates/nostr-sdk-pool/): Relay Pool for Nostr
 * Binaries (tools):
     * [**nostr-cli**](./crates/nostr-cli/): Nostr CLI
 

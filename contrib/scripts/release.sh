@@ -7,7 +7,7 @@ args=(
     "-p nostr-database"
     "-p nostr-sqlite"
     "-p nostr-indexeddb"
-    "-p nostr-sdk-pool"
+    "-p nostr-relay-pool"
     "-p nostr-signer"
     "-p nostr-sdk"
 )
