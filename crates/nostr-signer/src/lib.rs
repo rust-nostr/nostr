@@ -4,6 +4,10 @@
 
 //! Nostr Signer
 
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+#![warn(rustdoc::bare_urls)]
+
 use std::fmt;
 
 use nostr::key;
@@ -17,10 +21,13 @@ pub mod prelude;
 #[cfg(feature = "nip46")]
 pub use self::nip46::Nip46Signer;
 
+/// Nostr Signer error
 #[derive(Debug, Error)]
 pub enum Error {
+    /// Keys error
     #[error(transparent)]
     Keys(#[from] key::Error),
+    /// Unsigned event error
     #[error(transparent)]
     Unsigned(#[from] unsigned::Error),
     /// NIP04 error

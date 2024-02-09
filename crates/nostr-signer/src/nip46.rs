@@ -18,13 +18,16 @@ use nostr_relay_pool::{RelayOptions, RelayPoolNotification, RelayPoolOptions, Re
 use thiserror::Error;
 use tokio::sync::Mutex;
 
+/// Nostr Connect error
 #[derive(Debug, Error)]
 pub enum Error {
     /// Json
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    /// Keys error
     #[error(transparent)]
     Keys(#[from] key::Error),
+    /// Event builder error
     #[error(transparent)]
     Builder(#[from] builder::Error),
     /// NIP04 error
@@ -42,8 +45,10 @@ pub enum Error {
     /// NIP46 response error
     #[error("response error: {0}")]
     Response(String),
+    /// Signer public key not found
     #[error("signer public key not found")]
     SignerPublicKeyNotFound,
+    /// Request timeout
     #[error("timeout")]
     Timeout,
 }
@@ -295,6 +300,7 @@ impl Nip46Signer {
         res
     }
 
+    /// Completely shutdown
     pub async fn shutdown(self) -> Result<(), Error> {
         Ok(self.pool.shutdown().await?)
     }
