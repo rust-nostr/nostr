@@ -9,7 +9,7 @@ use nostr_js::event::JsEventId;
 use nostr_js::key::JsPublicKey;
 use nostr_js::nips::nip47::JsNostrWalletConnectURI;
 use nostr_js::nips::nip57::JsZapType;
-use nostr_sdk::client::{ClientZapper, ZapDetails, ZapEntity};
+use nostr_sdk::client::{NostrZapper, ZapDetails, ZapEntity};
 use wasm_bindgen::prelude::*;
 
 /// Zap entity
@@ -42,32 +42,32 @@ impl JsZapEntity {
     }
 }
 
-/// Client Zapper
-#[wasm_bindgen(js_name = ClientZapper)]
-pub struct JsClientZapper {
-    inner: ClientZapper,
+/// Nostr Zapper
+#[wasm_bindgen(js_name = NostrZapper)]
+pub struct JsNostrZapper {
+    inner: NostrZapper,
 }
 
-impl Deref for JsClientZapper {
-    type Target = ClientZapper;
+impl Deref for JsNostrZapper {
+    type Target = NostrZapper;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-#[wasm_bindgen(js_class = ClientZapper)]
-impl JsClientZapper {
-    /// Create new `WebLN` instance and compose `ClientZapper`
-    pub fn webln() -> Result<JsClientZapper> {
+#[wasm_bindgen(js_class = NostrZapper)]
+impl JsNostrZapper {
+    /// Create new `WebLN` instance and compose `NostrZapper`
+    pub fn webln() -> Result<JsNostrZapper> {
         Ok(Self {
-            inner: ClientZapper::webln().map_err(into_err)?,
+            inner: NostrZapper::webln().map_err(into_err)?,
         })
     }
 
     pub fn nwc(uri: &JsNostrWalletConnectURI) -> Self {
         Self {
-            inner: ClientZapper::NWC(uri.deref().clone()),
+            inner: NostrZapper::NWC(uri.deref().clone()),
         }
     }
 }

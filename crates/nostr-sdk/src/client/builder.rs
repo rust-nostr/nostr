@@ -11,7 +11,7 @@ use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
 use nostr_signer::NostrSigner;
 
 #[cfg(feature = "nip57")]
-use super::zapper::ClientZapper;
+use super::zapper::NostrZapper;
 use crate::{Client, Options};
 
 /// Client builder
@@ -19,9 +19,9 @@ use crate::{Client, Options};
 pub struct ClientBuilder {
     /// Nostr Signer
     pub signer: Option<NostrSigner>,
-    /// Client Zapper
+    /// Nostr Zapper
     #[cfg(feature = "nip57")]
-    pub zapper: Option<ClientZapper>,
+    pub zapper: Option<NostrZapper>,
     /// Database
     pub database: Arc<DynNostrDatabase>,
     /// Client options
@@ -71,7 +71,7 @@ impl ClientBuilder {
     #[allow(unused_mut, unreachable_code)]
     pub fn zapper<S>(mut self, zapper: S) -> Self
     where
-        S: Into<ClientZapper>,
+        S: Into<NostrZapper>,
     {
         self.zapper = Some(zapper.into());
         self

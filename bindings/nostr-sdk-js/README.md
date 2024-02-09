@@ -34,7 +34,7 @@ async function main() {
     // Compose client with NIP07 signer and WebLN zapper
     let nip07_signer = new Nip07Signer();
     let signer = NostrSigner.nip07(nip07_signer);
-    let zapper = ClientZapper.webln(); // To use NWC: ClientZapper.nwc(uri); 
+    let zapper = NostrZapper.webln(); // To use NWC: NostrZapper.nwc(uri); 
     let client = new ClientBuilder().signer(signer).zapper(zapper).build();
 
     // Add relays

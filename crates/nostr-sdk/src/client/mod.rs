@@ -31,7 +31,7 @@ pub mod zapper;
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 #[cfg(feature = "nip57")]
-pub use self::zapper::{ClientZapper, ZapDetails, ZapEntity};
+pub use self::zapper::{NostrZapper, ZapDetails, ZapEntity};
 
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
@@ -114,7 +114,7 @@ pub struct Client {
     pool: RelayPool,
     signer: Arc<RwLock<Option<NostrSigner>>>,
     #[cfg(feature = "nip57")]
-    zapper: Arc<RwLock<Option<ClientZapper>>>,
+    zapper: Arc<RwLock<Option<NostrZapper>>>,
     opts: Options,
     dropped: Arc<AtomicBool>,
 }
@@ -214,18 +214,18 @@ impl Client {
         *s = signer;
     }
 
-    /// Get current client zapper
+    /// Get current nostr zapper
     ///
     /// Rise error if it not set.
     #[cfg(feature = "nip57")]
-    pub async fn zapper(&self) -> Result<ClientZapper, Error> {
+    pub async fn zapper(&self) -> Result<NostrZapper, Error> {
         let zapper = self.zapper.read().await;
         zapper.clone().ok_or(Error::ZapperNotConfigured)
     }
 
-    /// Set client zapper
+    /// Set nostr zapper
     #[cfg(feature = "nip57")]
-    pub async fn set_zapper(&self, zapper: Option<ClientZapper>) {
+    pub async fn set_zapper(&self, zapper: Option<NostrZapper>) {
         let mut s = self.zapper.write().await;
         *s = zapper;
     }

@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Client Zapper
+//! Nostr Zapper
 
 use std::str::FromStr;
 #[cfg(feature = "nip47")]
@@ -57,9 +57,9 @@ impl ZapEntity {
     }
 }
 
-/// Client Zapper
+/// Nostr Zapper
 #[derive(Debug, Clone)]
-pub enum ClientZapper {
+pub enum NostrZapper {
     /// WebLN
     #[cfg(all(feature = "webln", target_arch = "wasm32"))]
     WebLN(WebLN),
@@ -68,24 +68,29 @@ pub enum ClientZapper {
     NWC(NostrWalletConnectURI),
 }
 
-impl ClientZapper {
-    /// Create a new [WebLN] instance and compose [ClientZapper]
+impl NostrZapper {
+    /// Create a new [WebLN] instance and compose [NostrZapper]
     #[cfg(all(feature = "webln", target_arch = "wasm32"))]
     pub fn webln() -> Result<Self, Error> {
         let instance = WebLN::new()?;
         Ok(Self::WebLN(instance))
     }
+
+    /// Compose [NostrZapper] with [NostrWalletConnectURI]
+    pub fn nwc(uri: NostrWalletConnectURI) -> Self {
+        Self::NWC(uri)
+    }
 }
 
 #[cfg(all(feature = "webln", target_arch = "wasm32"))]
-impl From<WebLN> for ClientZapper {
+impl From<WebLN> for NostrZapper {
     fn from(value: WebLN) -> Self {
         Self::WebLN(value)
     }
 }
 
 #[cfg(feature = "nip47")]
-impl From<NostrWalletConnectURI> for ClientZapper {
+impl From<NostrWalletConnectURI> for NostrZapper {
     fn from(value: NostrWalletConnectURI) -> Self {
         Self::NWC(value)
     }
@@ -176,7 +181,7 @@ impl Client {
         self.pay_invoices(invoices).await
     }
 
-    /// Pay invoices with [ClientZapper]
+    /// Pay invoices with [NostrZapper]
     pub async fn pay_invoices<I, S>(&self, _invoices: I) -> Result<(), Error>
     where
         I: IntoIterator<Item = S>,
@@ -184,7 +189,7 @@ impl Client {
     {
         match self.zapper().await? {
             #[cfg(all(feature = "webln", target_arch = "wasm32"))]
-            ClientZapper::WebLN(webln) => {
+            NostrZapper::WebLN(webln) => {
                 webln.enable().await?;
                 for invoice in _invoices.into_iter() {
                     webln.send_payment(invoice.into()).await?;
@@ -192,7 +197,7 @@ impl Client {
                 Ok(())
             }
             #[cfg(feature = "nip47")]
-            ClientZapper::NWC(uri) => self.pay_invoices_with_nwc(&uri, _invoices).await,
+            NostrZapper::NWC(uri) => self.pay_invoices_with_nwc(&uri, _invoices).await,
         }
     }
 
