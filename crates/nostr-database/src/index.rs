@@ -31,6 +31,7 @@ enum Error {
 type ArcEventId = Arc<EventId>;
 type ArcEventIndex = Arc<EventIndex>;
 type ArcTagIndexes = Arc<TagIndexes>;
+type KindAuthorIndexes = HashMap<(Kind, PublicKeyPrefix), HashSet<ArcEventIndex>>;
 type ParameterizedReplaceableIndexes =
     HashMap<(Kind, PublicKeyPrefix, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>;
 
@@ -128,31 +129,6 @@ pub struct FilterIndex {
 }
 
 impl FilterIndex {
-    fn author(mut self, author: PublicKeyPrefix) -> Self {
-        self.authors.insert(author);
-        self
-    }
-
-    fn kind(mut self, kind: Kind) -> Self {
-        self.kinds.insert(kind);
-        self
-    }
-
-    fn identifier<S>(mut self, identifier: S) -> Self
-    where
-        S: Into<String>,
-    {
-        let identifier: GenericTagValue = GenericTagValue::String(identifier.into());
-        self.generic_tags
-            .entry(SingleLetterTag::lowercase(Alphabet::D))
-            .and_modify(|list| {
-                list.insert(identifier.clone());
-            })
-            .or_default()
-            .insert(identifier);
-        self
-    }
-
     fn ids_match(&self, event: &EventIndex) -> bool {
         self.ids.is_empty() || self.ids.contains(&event.event_id)
     }
@@ -295,36 +271,92 @@ impl<'a> EventOrRawEvent<'a> {
     }
 }
 
-enum QueryPattern {
-    Replaceable,
-    ParamReplaceable,
-    Generic,
+struct QueryByKindAndAuthorParams {
+    kind: Kind,
+    author: PublicKeyPrefix,
+    since: Option<Timestamp>,
+    until: Option<Timestamp>,
 }
 
-impl From<&Filter> for QueryPattern {
-    fn from(filter: &Filter) -> Self {
+impl QueryByKindAndAuthorParams {
+    pub fn new(kind: Kind, author: PublicKeyPrefix) -> Self {
+        Self {
+            kind,
+            author,
+            since: None,
+            until: None,
+        }
+    }
+}
+
+struct QueryByParamReplaceable {
+    kind: Kind,
+    author: PublicKeyPrefix,
+    identifier: [u8; TAG_INDEX_VALUE_SIZE],
+    since: Option<Timestamp>,
+    until: Option<Timestamp>,
+}
+
+impl QueryByParamReplaceable {
+    pub fn new(kind: Kind, author: PublicKeyPrefix, identifier: &str) -> Self {
+        Self {
+            kind,
+            author,
+            identifier: hash(identifier),
+            since: None,
+            until: None,
+        }
+    }
+}
+
+enum QueryPattern {
+    KindAuthor(QueryByKindAndAuthorParams),
+    ParamReplaceable(QueryByParamReplaceable),
+    Generic(Filter),
+}
+
+impl From<Filter> for QueryPattern {
+    fn from(filter: Filter) -> Self {
         let kinds_len = filter.kinds.len();
-        let first_kind = filter.kinds.iter().next();
+        let first_kind = filter.kinds.iter().next().copied();
         let authors_len = filter.authors.len();
+        let first_author = filter.authors.iter().next().copied();
         let ids_len = filter.ids.len();
         let generic_tags_len = filter.generic_tags.len();
+        let identifier = filter
+            .generic_tags
+            .get(&SingleLetterTag::lowercase(Alphabet::D))
+            .and_then(|v| v.iter().next().map(|v| hash(v.to_string())));
 
-        if kinds_len == 1
-            && first_kind.map_or(false, |k| k.is_replaceable())
-            && authors_len == 1
-            && ids_len == 0
-            && generic_tags_len == 0
-        {
-            Self::Replaceable
-        } else if kinds_len == 1
-            && first_kind.map_or(false, |k| k.is_parameterized_replaceable())
-            && authors_len == 1
-            && generic_tags_len != 0
-            && ids_len == 0
-        {
-            Self::ParamReplaceable
-        } else {
-            Self::Generic
+        match (
+            kinds_len,
+            first_kind,
+            authors_len,
+            first_author,
+            ids_len,
+            generic_tags_len,
+            identifier,
+        ) {
+            (1, Some(kind), 1, Some(author), 0, 0, None) => {
+                Self::KindAuthor(QueryByKindAndAuthorParams {
+                    kind,
+                    author: PublicKeyPrefix::from(author),
+                    since: filter.since,
+                    until: filter.until,
+                })
+            }
+            (1, Some(kind), 1, Some(author), 0, _, Some(identifier))
+                if kind.is_parameterized_replaceable() =>
+            {
+                Self::ParamReplaceable(QueryByParamReplaceable {
+                    kind,
+                    author: PublicKeyPrefix::from(author),
+                    identifier,
+                    since: filter.since,
+                    until: filter.until,
+                })
+            }
+            _ => Self::Generic(filter),
         }
     }
 }
@@ -344,8 +376,8 @@ pub struct DatabaseIndexes {
     index: Arc<RwLock<BTreeSet<ArcEventIndex>>>,
     /// Event IDs index
     ids_index: Arc<RwLock<HashMap<ArcEventId, ArcEventIndex>>>,
-    /// Replaceable index
-    kind_author_index: Arc<RwLock<HashMap<(Kind, PublicKeyPrefix), ArcEventIndex>>>,
+    /// Kind-Author index
+    kind_author_index: Arc<RwLock<KindAuthorIndexes>>,
     /// Param. replaceable index
     kind_author_tags_index: Arc<RwLock<ParameterizedReplaceableIndexes>>,
     deleted_ids: Arc<RwLock<HashSet<ArcEventId>>>,
@@ -401,7 +433,7 @@ impl DatabaseIndexes {
         &self,
         index: &mut BTreeSet<ArcEventIndex>,
         ids_index: &mut HashMap<ArcEventId, ArcEventIndex>,
-        kind_author_index: &mut HashMap<(Kind, PublicKeyPrefix), ArcEventIndex>,
+        kind_author_index: &mut KindAuthorIndexes,
         kind_author_tags_index: &mut ParameterizedReplaceableIndexes,
         deleted_ids: &mut HashSet<ArcEventId>,
         deleted_coordinates: &mut HashMap<Coordinate, Timestamp>,
@@ -450,9 +482,9 @@ impl DatabaseIndexes {
         let mut should_insert: bool = true;
 
         if kind.is_replaceable() {
-            let filter: FilterIndex = FilterIndex::default().author(pubkey_prefix).kind(kind);
-            if let Some(ev) =
-                self.internal_query_by_kind_and_author(kind_author_index, deleted_ids, filter)
+            let params: QueryByKindAndAuthorParams =
+                QueryByKindAndAuthorParams::new(kind, pubkey_prefix);
+            for ev in self.internal_query_by_kind_and_author(kind_author_index, deleted_ids, params)
             {
                 if ev.created_at > created_at || ev.event_id == event_id {
                     should_insert = false;
@@ -463,14 +495,12 @@ impl DatabaseIndexes {
         } else if kind.is_parameterized_replaceable() {
             match event.identifier() {
                 Some(identifier) => {
-                    let filter: FilterIndex = FilterIndex::default()
-                        .author(pubkey_prefix)
-                        .kind(kind)
-                        .identifier(identifier);
-                    if let Some(ev) = self.internal_query_by_kind_author_identifier(
+                    let params: QueryByParamReplaceable =
+                        QueryByParamReplaceable::new(kind, pubkey_prefix, identifier);
+                    if let Some(ev) = self.internal_query_param_replaceable(
                         kind_author_tags_index,
                         deleted_ids,
-                        filter,
+                        params,
                     ) {
                         if ev.created_at > created_at || ev.event_id == event_id {
                             should_insert = false;
@@ -517,13 +547,15 @@ impl DatabaseIndexes {
                 index.remove(ev);
                 ids_index.remove(&ev.event_id);
 
-                if ev.kind.is_replaceable() {
-                    kind_author_index.remove(&(ev.kind, ev.pubkey));
-                } else if ev.kind.is_parameterized_replaceable() {
+                if ev.kind.is_parameterized_replaceable() {
                     if let Some(identifier) = ev.tags.identifier() {
                         kind_author_tags_index.remove(&(ev.kind, ev.pubkey, identifier));
                     }
                 }
+            }
+
+            if let Some(set) = kind_author_index.get_mut(&(kind, pubkey_prefix)) {
+                set.retain(|e| !to_discard.contains(e));
             }
 
             deleted_ids.extend(to_discard.iter().map(|ev| ev.event_id.clone()));
@@ -542,12 +574,24 @@ impl DatabaseIndexes {
             index.insert(e.clone());
             ids_index.insert(event_id, e.clone());
 
-            if kind.is_replaceable() {
-                kind_author_index.insert((kind, pubkey_prefix), e);
-            } else if kind.is_parameterized_replaceable() {
+            if kind.is_parameterized_replaceable() {
                 if let Some(identifier) = e.tags.identifier() {
-                    kind_author_tags_index.insert((kind, pubkey_prefix, identifier), e);
+                    kind_author_tags_index.insert((kind, pubkey_prefix, identifier), e.clone());
                 }
+            }
+
+            if kind.is_replaceable() {
+                let mut set = HashSet::with_capacity(1);
+                set.insert(e);
+                kind_author_index.insert((kind, pubkey_prefix), set);
+            } else {
+                kind_author_index
+                    .entry((kind, pubkey_prefix))
+                    .and_modify(|set| {
+                        set.insert(e.clone());
+                    })
+                    .or_default()
+                    .insert(e);
             }
         }
 
@@ -590,84 +634,64 @@ impl DatabaseIndexes {
         .unwrap_or_default()
     }
 
-    /// Query by [`Kind`] and [`PublicKeyPrefix`] (replaceable)
-    fn internal_query_by_kind_and_author<'a, T>(
+    /// Query by [`Kind`] and [`PublicKeyPrefix`]
+    fn internal_query_by_kind_and_author<'a>(
         &self,
-        kind_author_index: &'a HashMap<(Kind, PublicKeyPrefix), ArcEventIndex>,
+        kind_author_index: &'a KindAuthorIndexes,
         deleted_ids: &'a HashSet<ArcEventId>,
-        filter: T,
-    ) -> Option<&'a ArcEventIndex>
-    where
-        T: Into<FilterIndex>,
-    {
-        let FilterIndex {
-            authors,
-            kinds,
+        params: QueryByKindAndAuthorParams,
+    ) -> Box<dyn Iterator<Item = &'a ArcEventIndex> + 'a> {
+        let QueryByKindAndAuthorParams {
+            kind,
+            author,
             since,
             until,
             ..
-        } = filter.into();
+        } = params;
+        match kind_author_index.get(&(kind, author)) {
+            Some(set) => Box::new(set.iter().filter(move |ev| {
+                if deleted_ids.contains(&ev.event_id) {
+                    return false;
+                }
 
-        let kind = kinds.iter().next()?;
-        let author = authors.iter().next()?;
+                if let Some(since) = since {
+                    if ev.created_at < since {
+                        return false;
+                    }
+                }
 
-        if !kind.is_replaceable() {
-            return None;
+                if let Some(until) = until {
+                    if ev.created_at > until {
+                        return false;
+                    }
+                }
+
+                true
+            })),
+            None => Box::new(std::iter::empty()),
         }
-
-        let ev = kind_author_index.get(&(*kind, *author))?;
-
-        if deleted_ids.contains(&ev.event_id) {
-            return None;
-        }
-
-        if let Some(since) = since {
-            if ev.created_at < since {
-                return None;
-            }
-        }
-
-        if let Some(until) = until {
-            if ev.created_at > until {
-                return None;
-            }
-        }
-
-        Some(ev)
     }
 
-    /// Query by [`Kind`], [`PublicKeyPrefix`] and `d` tag (param. replaceable)
-    fn internal_query_by_kind_author_identifier<'a, T>(
+    /// Query by param. replaceable
+    fn internal_query_param_replaceable<'a>(
         &self,
         kind_author_tag_index: &'a ParameterizedReplaceableIndexes,
         deleted_ids: &'a HashSet<ArcEventId>,
-        filter: T,
-    ) -> Option<&'a ArcEventIndex>
-    where
-        T: Into<FilterIndex>,
-    {
-        let FilterIndex {
-            authors,
-            kinds,
+        params: QueryByParamReplaceable,
+    ) -> Option<&'a ArcEventIndex> {
+        let QueryByParamReplaceable {
+            kind,
+            author,
+            identifier,
             since,
             until,
-            generic_tags,
-            ..
-        } = filter.into();
-
-        let kind = kinds.iter().next()?;
-        let author = authors.iter().next()?;
-        let identifier = generic_tags
-            .get(&SingleLetterTag::lowercase(Alphabet::D))?
-            .iter()
-            .next()
-            .map(|v| hash(v.to_string()))?;
+        } = params;
 
         if !kind.is_parameterized_replaceable() {
             return None;
         }
 
-        let ev = kind_author_tag_index.get(&(*kind, *author, identifier))?;
+        let ev = kind_author_tag_index.get(&(kind, author, identifier))?;
 
         if deleted_ids.contains(&ev.event_id) {
             return None;
@@ -731,39 +755,31 @@ impl DatabaseIndexes {
                 }
             }
 
-            match QueryPattern::from(&filter) {
-                QueryPattern::Replaceable => {
-                    if let Some(ev) = self.internal_query_by_kind_and_author(
-                        &kind_author_index,
-                        &deleted_ids,
-                        filter,
-                    ) {
-                        matching_ids.insert(ev);
-                    };
+            let limit: Option<usize> = filter.limit;
+
+            let evs: Box<dyn Iterator<Item = &ArcEventIndex>> = match QueryPattern::from(filter) {
+                QueryPattern::KindAuthor(params) => {
+                    self.internal_query_by_kind_and_author(&kind_author_index, &deleted_ids, params)
                 }
-                QueryPattern::ParamReplaceable => {
-                    if let Some(ev) = self.internal_query_by_kind_author_identifier(
+                QueryPattern::ParamReplaceable(params) => {
+                    match self.internal_query_param_replaceable(
                         &kind_author_tags_index,
                         &deleted_ids,
-                        filter,
+                        params,
                     ) {
-                        matching_ids.insert(ev);
-                    };
-                }
-                QueryPattern::Generic => {
-                    if let Some(limit) = filter.limit {
-                        matching_ids.extend(
-                            self.internal_generic_query(&index, &deleted_ids, filter)
-                                .take(limit),
-                        )
-                    } else {
-                        matching_ids.extend(self.internal_generic_query(
-                            &index,
-                            &deleted_ids,
-                            filter,
-                        ))
+                        Some(ev) => Box::new(std::iter::once(ev)),
+                        None => Box::new(std::iter::empty()),
                     }
                 }
+                QueryPattern::Generic(filter) => {
+                    Box::new(self.internal_generic_query(&index, &deleted_ids, filter))
+                }
+            };
+
+            if let Some(limit) = limit {
+                matching_ids.extend(evs.take(limit))
+            } else {
+                matching_ids.extend(evs)
             }
         }
 
@@ -875,6 +891,9 @@ mod tests {
         r#"{"id":"999e3e270100d7e1eaa98fcfab4a98274872c1f2dfdab024f32e42a5a12d5b5e","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704646606,"kind":5,"tags":[["e","90a761aec9b5b60b399a76826141f529db17466deac85696a17e4a243aa271f9"]],"content":"","sig":"4f3a33fd52784cea7ca8428fd35d94d65049712e9aa11a70b1a16a1fcd761c7b7e27afac325728b1c00dfa11e33e78b2efd0430a7e4b28f4ede5b579b3f32614"}"#,
         r#"{"id":"99a022e6d61c4e39c147d08a2be943b664e8030c0049325555ac1766429c2832","pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","created_at":1705241093,"kind":30333,"tags":[["d","multi-id"],["p","aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4"]],"content":"Multi-tags","sig":"0abfb2b696a7ed7c9e8e3bf7743686190f3f1b3d4045b72833ab6187c254f7ed278d289d52dfac3de28be861c1471421d9b1bfb5877413cbc81c84f63207a826"}"#,
     ];
+
+    const REPLACEABLE_EVENT_1: &str = r#"{"id":"f06d755821e56fe9e25373d6bd142979ebdca0063bb0f10a95a95baf41bb5419","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1707478309,"kind":0,"tags":[],"content":"{\"name\":\"Test 1\"}","sig":"a095d9cf4f26794e6421445c0d1c4ada8273ad79a9809aaa20c566fc8d679b57f09889121050853c47be9222106abad0215705a80723f002fd47616ff6ba7bb9"}"#;
+    const REPLACEABLE_EVENT_2: &str = r#"{"id":"e0899bedc802a836c331282eddf712600fea8e00123b541e25a81aa6a4669b4a","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1707478348,"kind":0,"tags":[],"content":"{\"name\":\"Test 2\"}","sig":"ca1192ac72530010a895b4d76943bf373696a6969911c486c835995122cd59a46988026e8c0ad8322bc3f5942ecd633fc903e93c0460c9a186243ab1f1597a9c"}"#;
 
     #[tokio::test]
     async fn test_database_indexes() {
@@ -1044,6 +1063,40 @@ mod tests {
                 )
                 .await,
             vec![Event::from_json(EVENTS[13]).unwrap().id(),]
+        );
+
+        // Test add new replaceable event (metadata)
+        let first_ev_metadata = Event::from_json(REPLACEABLE_EVENT_1).unwrap();
+        let res = indexes.index_event(&first_ev_metadata).await;
+        assert!(res.to_store);
+        assert!(res.to_discard.is_empty());
+        assert_eq!(
+            indexes
+                .query(
+                    [Filter::new()
+                        .kind(Kind::Metadata)
+                        .author(keys_a.public_key())],
+                    Order::Desc
+                )
+                .await,
+            vec![first_ev_metadata.id()]
+        );
+
+        // Test add replace metadata
+        let ev = Event::from_json(REPLACEABLE_EVENT_2).unwrap();
+        let res = indexes.index_event(&ev).await;
+        assert!(res.to_store);
+        assert!(res.to_discard.contains(&first_ev_metadata.id));
+        assert_eq!(
+            indexes
+                .query(
+                    [Filter::new()
+                        .kind(Kind::Metadata)
+                        .author(keys_a.public_key())],
+                    Order::Desc
+                )
+                .await,
+            vec![ev.id()]
         );
     }
 
