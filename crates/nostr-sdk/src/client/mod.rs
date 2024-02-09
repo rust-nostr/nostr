@@ -20,7 +20,7 @@ use nostr_sdk_pool::relay::Error as RelayError;
 use nostr_sdk_pool::{
     FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
 };
-use nostr_sdk_signer::prelude::*;
+use nostr_signer::prelude::*;
 use tokio::sync::{broadcast, RwLock};
 
 pub mod builder;
@@ -47,7 +47,7 @@ pub enum Error {
     Relay(#[from] RelayError),
     /// Signer error
     #[error(transparent)]
-    Signer(#[from] nostr_sdk_signer::Error),
+    Signer(#[from] nostr_signer::Error),
     /// [`EventBuilder`] error
     #[error("event builder error: {0}")]
     EventBuilder(#[from] EventBuilderError),
@@ -77,7 +77,7 @@ pub enum Error {
     /// NIP46 signer error
     #[cfg(feature = "nip46")]
     #[error(transparent)]
-    Nip46Signer(#[from] nostr_sdk_signer::nip46::Error),
+    Nip46Signer(#[from] nostr_signer::nip46::Error),
     /// NIP47 error
     #[cfg(feature = "nip47")]
     #[error(transparent)]

@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Nostr Connect Client (NIP46)
+//! Nostr Connect (NIP46)
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/46.md>
 

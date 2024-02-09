@@ -1,4 +1,6 @@
-# Nostr SDK Signer
+# Nostr Signer
+
+Signer for Nostr apps
 
 ## Crate Feature Flags
 

@@ -7,7 +7,7 @@ buildargs=(
     "-p nostr"
     "-p nostr-database"
     "-p nostr-sdk-pool"
-    "-p nostr-sdk-signer"
+    "-p nostr-signer"
     "-p nostr-sdk"
 )
 
