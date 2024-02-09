@@ -21,7 +21,7 @@ pub mod signer;
 pub mod zapper;
 
 use self::options::JsOptions;
-pub use self::signer::JsClientSigner;
+pub use self::signer::JsNostrSigner;
 use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
@@ -43,13 +43,13 @@ impl From<Client> for JsClient {
 #[wasm_bindgen(js_class = Client)]
 impl JsClient {
     #[wasm_bindgen(constructor)]
-    pub fn new(signer: Option<JsClientSigner>) -> Self {
+    pub fn new(signer: Option<JsNostrSigner>) -> Self {
         Self::with_opts(signer, &JsOptions::new())
     }
 
     /// Create a new Client with Options
     #[wasm_bindgen(js_name = withOpts)]
-    pub fn with_opts(signer: Option<JsClientSigner>, opts: &JsOptions) -> Self {
+    pub fn with_opts(signer: Option<JsNostrSigner>, opts: &JsOptions) -> Self {
         Self {
             inner: match signer {
                 Some(signer) => Client::with_opts(signer.deref().clone(), opts.deref().clone()),
@@ -64,10 +64,10 @@ impl JsClient {
         self.inner.update_difficulty(difficulty);
     }
 
-    /// Get current client signer
+    /// Get current nostr signer
     ///
     /// Rise error if it not set.
-    pub async fn signer(&self) -> Result<JsClientSigner> {
+    pub async fn signer(&self) -> Result<JsNostrSigner> {
         Ok(self.inner.signer().await.map_err(into_err)?.into())
     }
 
@@ -268,7 +268,7 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Signs the `EventBuilder` into an `Event` using the `ClientSigner`
+    /// Signs the `EventBuilder` into an `Event` using the `NostrSigner`
     #[wasm_bindgen(js_name = signEventBuilder)]
     pub async fn sign_event_builder(&self, builder: &JsEventBuilder) -> Result<JsEvent> {
         self.inner
@@ -278,9 +278,9 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
+    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to all relays.
     ///
-    /// Rise an error if the [`ClientSigner`] is not set.
+    /// Rise an error if the [`NostrSigner`] is not set.
     #[wasm_bindgen(js_name = sendEventBuilder)]
     pub async fn send_event_builder(&self, builder: &JsEventBuilder) -> Result<JsEventId> {
         self.inner
@@ -290,9 +290,9 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
+    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
     ///
-    /// Rise an error if the [`ClientSigner`] is not set.
+    /// Rise an error if the [`NostrSigner`] is not set.
     #[wasm_bindgen(js_name = sendEventBuilderTo)]
     pub async fn send_event_builder_to(
         &self,

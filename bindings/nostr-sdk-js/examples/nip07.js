@@ -1,4 +1,4 @@
-const { loadWasmAsync, Client, ClientSigner, Nip07Signer } = require("../");
+const { loadWasmAsync, Client, NostrSigner, Nip07Signer } = require("../");
 
 // NOTE: this code work only on browser!
 
@@ -7,7 +7,7 @@ async function main() {
 
     try {
         let nip07_signer = new Nip07Signer();
-        let signer = ClientSigner.nip07(nip07_signer);
+        let signer = NostrSigner.nip07(nip07_signer);
         let client = new Client(signer);
 
         await client.addRelay("wss://relay.damus.io");

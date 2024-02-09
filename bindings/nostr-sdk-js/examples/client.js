@@ -1,4 +1,4 @@
-const { Keys, Client, ClientSigner, Metadata, EventId, PublicKey, EventBuilder, loadWasmAsync, initLogger, LogLevel } = require("../");
+const { Keys, Client, NostrSigner, Metadata, EventId, PublicKey, EventBuilder, loadWasmAsync, initLogger, LogLevel } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -16,7 +16,7 @@ async function main() {
     console.log("Public key (bech32): ", keys.publicKey.toBech32());
     console.log("Secret key (bech32): ", keys.secretKey.toBech32());
 
-    let signer = ClientSigner.keys(keys);
+    let signer = NostrSigner.keys(keys);
     let client = new Client(signer);
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nos.lol");
@@ -48,7 +48,7 @@ async function main() {
     // Send custom event to a specific previously added relay
     // await client.sendEventTo(["wss://relay.damus.io"], event);
 
-    let builder = new EventBuilder(1111, "My custom event signer with the ClientSigner", []);
+    let builder = new EventBuilder(1111, "My custom event signer with the NostrSigner", []);
     await client.sendEventBuilder(builder);
 }
 

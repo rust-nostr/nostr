@@ -1,4 +1,4 @@
-const { Keys, Client, ClientSigner, Filter, Timestamp, nip04_decrypt, initLogger, LogLevel, loadWasmAsync } = require("../");
+const { Keys, Client, NostrSigner, Filter, Timestamp, nip04_decrypt, initLogger, LogLevel, loadWasmAsync } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -12,7 +12,7 @@ async function main() {
 
     let keys = Keys.fromSkStr("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
 
-    let signer = ClientSigner.keys(keys);
+    let signer = NostrSigner.keys(keys);
     let client = new Client(signer);
 
     await client.addRelay("wss://relay.damus.io");

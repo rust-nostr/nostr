@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { ClientBuilder, ClientSigner, ClientZapper, Filter, LogLevel, NegentropyOptions, Nip07Signer, NostrDatabase, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
+import { ClientBuilder, NostrSigner, ClientZapper, Filter, LogLevel, NegentropyOptions, Nip07Signer, NostrDatabase, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
 import './App.css';
 
 class App extends Component {
@@ -24,9 +24,9 @@ class App extends Component {
 
   handleLogin = async () => {
     try {
-      // Get NIP07 signer and compose Client with ClientSigner
+      // Get NIP07 signer and compose Client with NostrSigner
       let nip07_signer = new Nip07Signer();
-      let signer = ClientSigner.nip07(nip07_signer);
+      let signer = NostrSigner.nip07(nip07_signer);
       let zapper = ClientZapper.webln();
       let db = await NostrDatabase.indexeddb("nostr-sdk-webapp-example");
       let client = new ClientBuilder().signer(signer).zapper(zapper).database(db).build();

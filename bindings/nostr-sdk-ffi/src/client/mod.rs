@@ -24,7 +24,7 @@ pub mod signer;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
-pub use self::signer::ClientSigner;
+pub use self::signer::NostrSigner;
 use crate::error::Result;
 use crate::relay::options::NegentropyOptions;
 use crate::{NostrDatabase, Relay};
@@ -43,12 +43,12 @@ impl From<ClientSdk> for Client {
 #[uniffi::export]
 impl Client {
     #[uniffi::constructor]
-    pub fn new(signer: Option<Arc<ClientSigner>>) -> Self {
+    pub fn new(signer: Option<Arc<NostrSigner>>) -> Self {
         Self::with_opts(signer, Arc::new(Options::new()))
     }
 
     #[uniffi::constructor]
-    pub fn with_opts(signer: Option<Arc<ClientSigner>>, opts: Arc<Options>) -> Self {
+    pub fn with_opts(signer: Option<Arc<NostrSigner>>, opts: Arc<Options>) -> Self {
         Self {
             inner: match signer {
                 Some(signer) => ClientSdk::with_opts(
@@ -66,7 +66,7 @@ impl Client {
         self.inner.update_difficulty(difficulty);
     }
 
-    pub fn signer(&self) -> Result<ClientSigner> {
+    pub fn signer(&self) -> Result<NostrSigner> {
         block_on(async move { Ok(self.inner.signer().await?.into()) })
     }
 
@@ -233,7 +233,7 @@ impl Client {
         })
     }
 
-    /// Signs the `EventBuilder` into an `Event` using the `ClientSigner`
+    /// Signs the `EventBuilder` into an `Event` using the `NostrSigner`
     pub async fn sign_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<Event>> {
         block_on(async move {
             Ok(Arc::new(
@@ -245,9 +245,9 @@ impl Client {
         })
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
+    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to all relays.
     ///
-    /// Rise an error if the [`ClientSigner`] is not set.
+    /// Rise an error if the [`NostrSigner`] is not set.
     pub fn send_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<EventId>> {
         block_on(async move {
             Ok(Arc::new(
@@ -259,9 +259,9 @@ impl Client {
         })
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
+    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
     ///
-    /// Rise an error if the [`ClientSigner`] is not set.
+    /// Rise an error if the [`NostrSigner`] is not set.
     pub fn send_event_builder_to(
         &self,
         urls: Vec<String>,

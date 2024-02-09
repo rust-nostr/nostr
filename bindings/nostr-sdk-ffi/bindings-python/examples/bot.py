@@ -1,4 +1,4 @@
-from nostr_sdk import Client, ClientSigner, Keys, Event, UnsignedEvent, EventBuilder, Filter, \
+from nostr_sdk import Client, NostrSigner, Keys, Event, UnsignedEvent, EventBuilder, Filter, \
     HandleNotification, Timestamp, nip04_decrypt, nip59_extract_rumor, SecretKey, init_logger, LogLevel
 import time
 
@@ -13,7 +13,7 @@ sk = keys.secret_key()
 pk = keys.public_key()
 print(f"Bot public key: {pk.to_bech32()}")
 
-signer = ClientSigner.keys(keys)
+signer = NostrSigner.keys(keys)
 client = Client(signer)
 
 client.add_relay("wss://relay.damus.io")

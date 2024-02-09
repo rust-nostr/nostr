@@ -16,37 +16,37 @@ use self::nip46::Nip46Signer;
 use crate::error::Result;
 
 #[derive(Object)]
-pub struct ClientSigner {
-    inner: signer::ClientSigner,
+pub struct NostrSigner {
+    inner: signer::NostrSigner,
 }
 
-impl Deref for ClientSigner {
-    type Target = signer::ClientSigner;
+impl Deref for NostrSigner {
+    type Target = signer::NostrSigner;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl From<signer::ClientSigner> for ClientSigner {
-    fn from(inner: signer::ClientSigner) -> Self {
+impl From<signer::NostrSigner> for NostrSigner {
+    fn from(inner: signer::NostrSigner) -> Self {
         Self { inner }
     }
 }
 
 #[uniffi::export]
-impl ClientSigner {
+impl NostrSigner {
     #[uniffi::constructor]
     pub fn keys(keys: Arc<Keys>) -> Self {
         Self {
-            inner: signer::ClientSigner::Keys(keys.as_ref().deref().clone()),
+            inner: signer::NostrSigner::Keys(keys.as_ref().deref().clone()),
         }
     }
 
     #[uniffi::constructor]
     pub fn nip46(nip46: Arc<Nip46Signer>) -> Self {
         Self {
-            inner: signer::ClientSigner::nip46(nip46.as_ref().deref().clone()),
+            inner: signer::NostrSigner::nip46(nip46.as_ref().deref().clone()),
         }
     }
 

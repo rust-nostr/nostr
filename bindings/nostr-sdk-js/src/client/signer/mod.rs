@@ -9,52 +9,52 @@ use nostr_js::event::{JsEvent, JsUnsignedEvent};
 use nostr_js::key::{JsKeys, JsPublicKey};
 use nostr_js::nips::nip07::JsNip07Signer;
 use nostr_js::nips::nip44::JsNIP44Version;
-use nostr_sdk::ClientSigner;
+use nostr_sdk::NostrSigner;
 use wasm_bindgen::prelude::*;
 
 pub mod nip46;
 
 use self::nip46::JsNip46Signer;
 
-#[wasm_bindgen(js_name = ClientSigner)]
-pub struct JsClientSigner {
-    inner: nostr_sdk::ClientSigner,
+#[wasm_bindgen(js_name = NostrSigner)]
+pub struct JsNostrSigner {
+    inner: nostr_sdk::NostrSigner,
 }
 
-impl Deref for JsClientSigner {
-    type Target = ClientSigner;
+impl Deref for JsNostrSigner {
+    type Target = NostrSigner;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl From<ClientSigner> for JsClientSigner {
-    fn from(inner: ClientSigner) -> Self {
+impl From<NostrSigner> for JsNostrSigner {
+    fn from(inner: NostrSigner) -> Self {
         Self { inner }
     }
 }
 
-#[wasm_bindgen(js_class = ClientSigner)]
-impl JsClientSigner {
-    /// Private Key Client Signer
+#[wasm_bindgen(js_class = NostrSigner)]
+impl JsNostrSigner {
+    /// Private keys
     pub fn keys(keys: &JsKeys) -> Self {
         Self {
-            inner: ClientSigner::Keys(keys.deref().clone()),
+            inner: NostrSigner::Keys(keys.deref().clone()),
         }
     }
 
-    /// NIP07 Client Signer
+    /// NIP07
     pub fn nip07(signer: &JsNip07Signer) -> Self {
         Self {
-            inner: ClientSigner::NIP07(signer.deref().clone()),
+            inner: NostrSigner::NIP07(signer.deref().clone()),
         }
     }
 
-    /// NIP46 Client Signer
+    /// NIP46
     pub fn nip46(signer: &JsNip46Signer) -> Self {
         Self {
-            inner: ClientSigner::nip46(signer.deref().clone()),
+            inner: NostrSigner::nip46(signer.deref().clone()),
         }
     }
 

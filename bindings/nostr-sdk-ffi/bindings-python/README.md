@@ -17,7 +17,7 @@ pip install nostr-sdk
 ```
 
 ```python
-from nostr_sdk import Keys, Client, ClientSigner, EventBuilder, Filter, Metadata, Nip46Signer, init_logger, LogLevel
+from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, Nip46Signer, init_logger, LogLevel
 from datetime import timedelta
 import time
 
@@ -29,13 +29,13 @@ init_logger(LogLevel.INFO)
 
 # Or, initialize with Keys signer
 keys = Keys.generate()
-signer = ClientSigner.keys(keys)
+signer = NostrSigner.keys(keys)
 client = Client(signer)
 
 # Or, initialize with NIP46 signer
 # app_keys = Keys.generate()
 # nip46 = Nip46Signer("wss://relay.damus.io", app_keys, None)
-#signer = ClientSigner.nip46(nip46)
+#signer = NostrSigner.nip46(nip46)
 # client = Client(signer)
 
 # Add a single relay
@@ -47,7 +47,7 @@ client.add_relays(["wss://relay.damus.io", "wss://nos.lol"])
 # Connect
 client.connect()
 
-# Send an event using the Client Signer
+# Send an event using the Nostr Signer
 builder = EventBuilder.text_note("Test from Rust Nostr Python!", [])
 client.send_event_builder(builder)
 client.set_metadata(Metadata().set_name("Testing Rust Nostr"))

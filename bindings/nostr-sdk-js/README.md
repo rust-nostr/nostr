@@ -19,7 +19,7 @@ npm i @rust-nostr/nostr-sdk
 ```
     
 ```javascript
-const { Client, ClientBuilder, ClientSigner, Keys, Nip07Signer, Metadata, ZapDetails, ZapEntity, ZapType, PublicKey, loadWasmAsync } = require("@rust-nostr/nostr-sdk");
+const { Client, ClientBuilder, NostrSigner, Keys, Nip07Signer, Metadata, ZapDetails, ZapEntity, ZapType, PublicKey, loadWasmAsync } = require("@rust-nostr/nostr-sdk");
 
 async function main() {
     // Load WASM 
@@ -28,12 +28,12 @@ async function main() {
 
     // Compose client with private key
     let keys = Keys.generate(); // Random keys
-    let signer = ClientSigner.keys(keys);
+    let signer = NostrSigner.keys(keys);
     let client = new Client(signer);
 
     // Compose client with NIP07 signer and WebLN zapper
     let nip07_signer = new Nip07Signer();
-    let signer = ClientSigner.nip07(nip07_signer);
+    let signer = NostrSigner.nip07(nip07_signer);
     let zapper = ClientZapper.webln(); // To use NWC: ClientZapper.nwc(uri); 
     let client = new ClientBuilder().signer(signer).zapper(zapper).build();
 
@@ -62,8 +62,8 @@ async function main() {
     // Publish text note
     await client.publishTextNote("My first text note from Nostr SDK!", []);
 
-    // Compose and publish custom event (automatically signed with `ClientSigner`)
-    let builder = new EventBuilder(1111, "My custom event signer with the ClientSigner", []);
+    // Compose and publish custom event (automatically signed with `NostrSigner`)
+    let builder = new EventBuilder(1111, "My custom event signer with the NostrSigner", []);
     await client.sendEventBuilder(builder);
 
     // Send a Zap non-zap (no zap recepit created)

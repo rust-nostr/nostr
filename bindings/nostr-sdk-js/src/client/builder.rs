@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 
 use super::options::JsOptions;
 use super::zapper::JsClientZapper;
-use super::{JsClient, JsClientSigner};
+use super::{JsClient, JsNostrSigner};
 use crate::database::JsNostrDatabase;
 
 #[wasm_bindgen(js_name = ClientBuilder)]
@@ -35,7 +35,7 @@ impl JsClientBuilder {
         }
     }
 
-    pub fn signer(self, signer: &JsClientSigner) -> Self {
+    pub fn signer(self, signer: &JsNostrSigner) -> Self {
         self.inner.signer(signer.deref().clone()).into()
     }
 

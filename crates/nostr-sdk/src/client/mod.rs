@@ -112,7 +112,7 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
-    signer: Arc<RwLock<Option<ClientSigner>>>,
+    signer: Arc<RwLock<Option<NostrSigner>>>,
     #[cfg(feature = "nip57")]
     zapper: Arc<RwLock<Option<ClientZapper>>>,
     opts: Options,
@@ -159,7 +159,7 @@ impl Client {
     /// ```
     pub fn new<S>(signer: S) -> Self
     where
-        S: Into<ClientSigner>,
+        S: Into<NostrSigner>,
     {
         Self::with_opts(signer, Options::default())
     }
@@ -178,7 +178,7 @@ impl Client {
     /// ```
     pub fn with_opts<S>(signer: S, opts: Options) -> Self
     where
-        S: Into<ClientSigner>,
+        S: Into<NostrSigner>,
     {
         ClientBuilder::new().signer(signer).opts(opts).build()
     }
@@ -200,16 +200,16 @@ impl Client {
         self.opts.update_difficulty(difficulty);
     }
 
-    /// Get current client signer
+    /// Get current nostr signer
     ///
     /// Rise error if it not set.
-    pub async fn signer(&self) -> Result<ClientSigner, Error> {
+    pub async fn signer(&self) -> Result<NostrSigner, Error> {
         let signer = self.signer.read().await;
         signer.clone().ok_or(Error::SignerNotConfigured)
     }
 
-    /// Set client signer
-    pub async fn set_signer(&self, signer: Option<ClientSigner>) {
+    /// Set nostr signer
+    pub async fn set_signer(&self, signer: Option<NostrSigner>) {
         let mut s = self.signer.write().await;
         *s = signer;
     }
@@ -255,7 +255,7 @@ impl Client {
     /// Completely shutdown [`Client`]
     pub async fn shutdown(self) -> Result<(), Error> {
         #[cfg(feature = "nip46")]
-        if let Ok(ClientSigner::NIP46(s)) = self.signer().await {
+        if let Ok(NostrSigner::NIP46(s)) = self.signer().await {
             s.shutdown().await?;
         }
         Ok(self.pool.clone().shutdown().await?)
@@ -722,7 +722,7 @@ impl Client {
         Ok(self.pool.batch_event_to(urls, events, opts).await?)
     }
 
-    /// Signs the [`EventBuilder`] into an [`Event`] using the [`ClientSigner`]
+    /// Signs the [`EventBuilder`] into an [`Event`] using the [`NostrSigner`]
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
         let signer = self.signer().await?;
 
@@ -737,17 +737,17 @@ impl Client {
         Ok(signer.sign_event(unsigned).await?)
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to **all relays**.
+    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to **all relays**.
     ///
-    /// Rise an error if the [`ClientSigner`] is not set.
+    /// Rise an error if the [`NostrSigner`] is not set.
     pub async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event(event).await
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to **specific relays**.
+    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to **specific relays**.
     ///
-    /// Rise an error if the [`ClientSigner`] is not set.
+    /// Rise an error if the [`NostrSigner`] is not set.
     pub async fn send_event_builder_to<I, U>(
         &self,
         urls: I,
@@ -1232,7 +1232,7 @@ impl Client {
         rumor: EventBuilder,
     ) -> Result<(), Error> {
         // Compose rumor
-        let signer: ClientSigner = self.signer().await?;
+        let signer: NostrSigner = self.signer().await?;
         let public_key: XOnlyPublicKey = signer.public_key().await?;
         let rumor = rumor.to_unsigned_event(public_key);
 

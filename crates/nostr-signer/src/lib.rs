@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Nostr SDK Signer
+//! Nostr Signer
 
 use std::fmt;
 
@@ -58,9 +58,9 @@ impl Error {
     }
 }
 
-/// Client Signer Type
+/// Nostr Signer Type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ClientSignerType {
+pub enum NostrSignerType {
     /// Keys
     Keys,
     /// NIP07
@@ -72,21 +72,21 @@ pub enum ClientSignerType {
 }
 
 // TODO: better display
-impl fmt::Display for ClientSignerType {
+impl fmt::Display for NostrSignerType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Keys => write!(f, "Keys"),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            Self::NIP07 => write!(f, "NIP07"),
+            Self::NIP07 => write!(f, "Nostr Browser Extension"),
             #[cfg(feature = "nip46")]
-            Self::NIP46 => write!(f, "NIP46"),
+            Self::NIP46 => write!(f, "Nostr Connect"),
         }
     }
 }
 
-/// Client signer
+/// Nostr signer
 #[derive(Debug, Clone)]
-pub enum ClientSigner {
+pub enum NostrSigner {
     /// Private Keys
     Keys(Keys),
     /// NIP07 signer
@@ -97,28 +97,28 @@ pub enum ClientSigner {
     NIP46(Box<Nip46Signer>),
 }
 
-impl ClientSigner {
-    /// Create a new [NIP07] instance and compose [ClientSigner]
+impl NostrSigner {
+    /// Create a new [NIP07] instance and compose [NostrSigner]
     #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
     pub fn nip07() -> Result<Self, Error> {
         let instance = Nip07Signer::new()?;
         Ok(Self::NIP07(instance))
     }
 
-    /// Compose [ClientSigner] with [Nip46Signer]
+    /// Compose [NostrSigner] with [Nip46Signer]
     #[cfg(feature = "nip46")]
     pub fn nip46(signer: Nip46Signer) -> Self {
         Self::NIP46(Box::new(signer))
     }
 
-    /// Get Client Signer Type
-    pub fn r#type(&self) -> ClientSignerType {
+    /// Get Nostr Signer Type
+    pub fn r#type(&self) -> NostrSignerType {
         match self {
-            Self::Keys(..) => ClientSignerType::Keys,
+            Self::Keys(..) => NostrSignerType::Keys,
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            Self::NIP07(..) => ClientSignerType::NIP07,
+            Self::NIP07(..) => NostrSignerType::NIP07,
             #[cfg(feature = "nip46")]
-            Self::NIP46(..) => ClientSignerType::NIP46,
+            Self::NIP46(..) => NostrSignerType::NIP46,
         }
     }
 
@@ -136,11 +136,11 @@ impl ClientSigner {
     /// Sign an [UnsignedEvent]
     pub async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Error> {
         match self {
-            ClientSigner::Keys(keys) => Ok(unsigned.sign(keys)?),
+            Self::Keys(keys) => Ok(unsigned.sign(keys)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(nip07) => Ok(nip07.sign_event(unsigned).await?),
+            Self::NIP07(nip07) => Ok(nip07.sign_event(unsigned).await?),
             #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(nip46) => {
+            Self::NIP46(nip46) => {
                 let res = nip46
                     .send_req_to_signer(nostr::nips::nip46::Request::SignEvent(unsigned), None)
                     .await?;
@@ -165,13 +165,11 @@ impl ClientSigner {
     {
         let content: &str = content.as_ref();
         match self {
-            ClientSigner::Keys(keys) => {
-                Ok(nip04::encrypt(&keys.secret_key()?, &public_key, content)?)
-            }
+            Self::Keys(keys) => Ok(nip04::encrypt(&keys.secret_key()?, &public_key, content)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
+            Self::NIP07(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(signer) => {
+            Self::NIP46(signer) => {
                 let req = nostr::nips::nip46::Request::Nip04Encrypt {
                     public_key,
                     text: content.to_string(),
@@ -199,17 +197,15 @@ impl ClientSigner {
     {
         let encrypted_content: &str = encrypted_content.as_ref();
         match self {
-            ClientSigner::Keys(keys) => Ok(nip04::decrypt(
+            Self::Keys(keys) => Ok(nip04::decrypt(
                 &keys.secret_key()?,
                 &public_key,
                 encrypted_content,
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(signer) => {
-                Ok(signer.nip04_decrypt(public_key, encrypted_content).await?)
-            }
+            Self::NIP07(signer) => Ok(signer.nip04_decrypt(public_key, encrypted_content).await?),
             #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(signer) => {
+            Self::NIP46(signer) => {
                 let req = nostr::nips::nip46::Request::Nip04Decrypt {
                     public_key,
                     text: encrypted_content.to_string(),
@@ -225,7 +221,7 @@ impl ClientSigner {
         }
     }
 
-    /// NIP44 encryption with [ClientSigner]
+    /// NIP44 encryption with [NostrSigner]
     #[cfg(feature = "nip44")]
     pub async fn nip44_encrypt<T>(
         &self,
@@ -237,24 +233,24 @@ impl ClientSigner {
         T: AsRef<[u8]>,
     {
         match self {
-            ClientSigner::Keys(keys) => Ok(nip44::encrypt(
+            Self::Keys(keys) => Ok(nip44::encrypt(
                 &keys.secret_key()?,
                 &public_key,
                 content,
                 version,
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(..) => Err(Error::unsupported(
+            Self::NIP07(..) => Err(Error::unsupported(
                 "NIP44 encryption not supported with NIP07 signer yet!",
             )),
             #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(..) => Err(Error::unsupported(
+            Self::NIP46(..) => Err(Error::unsupported(
                 "NIP44 encryption not supported with NIP46 signer yet!",
             )),
         }
     }
 
-    /// NIP44 decryption with [ClientSigner]
+    /// NIP44 decryption with [NostrSigner]
     #[cfg(feature = "nip44")]
     pub async fn nip44_decrypt<T>(
         &self,
@@ -265,42 +261,40 @@ impl ClientSigner {
         T: AsRef<[u8]>,
     {
         match self {
-            ClientSigner::Keys(keys) => {
-                Ok(nip44::decrypt(&keys.secret_key()?, &public_key, payload)?)
-            }
+            Self::Keys(keys) => Ok(nip44::decrypt(&keys.secret_key()?, &public_key, payload)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            ClientSigner::NIP07(..) => Err(Error::unsupported(
+            Self::NIP07(..) => Err(Error::unsupported(
                 "NIP44 decryption not supported with NIP07 signer yet!",
             )),
             #[cfg(feature = "nip46")]
-            ClientSigner::NIP46(..) => Err(Error::unsupported(
+            Self::NIP46(..) => Err(Error::unsupported(
                 "NIP44 decryption not supported with NIP46 signer yet!",
             )),
         }
     }
 }
 
-impl From<Keys> for ClientSigner {
+impl From<Keys> for NostrSigner {
     fn from(keys: Keys) -> Self {
         Self::Keys(keys)
     }
 }
 
-impl From<&Keys> for ClientSigner {
+impl From<&Keys> for NostrSigner {
     fn from(keys: &Keys) -> Self {
         Self::Keys(keys.clone())
     }
 }
 
 #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-impl From<Nip07Signer> for ClientSigner {
+impl From<Nip07Signer> for NostrSigner {
     fn from(nip07: Nip07Signer) -> Self {
         Self::NIP07(nip07)
     }
 }
 
 #[cfg(feature = "nip46")]
-impl From<Nip46Signer> for ClientSigner {
+impl From<Nip46Signer> for NostrSigner {
     fn from(nip46: Nip46Signer) -> Self {
         Self::nip46(nip46)
     }

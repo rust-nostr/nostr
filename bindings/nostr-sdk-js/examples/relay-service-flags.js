@@ -1,4 +1,4 @@
-const { Keys, Client, ClientSigner, loadWasmAsync, RelayServiceFlags, initLogger, LogLevel } = require("../");
+const { Keys, Client, NostrSigner, loadWasmAsync, RelayServiceFlags, initLogger, LogLevel } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -8,7 +8,7 @@ async function main() {
     try {
         // Generate random keys
         let keys = Keys.generate();
-        let signer = ClientSigner.keys(keys);
+        let signer = NostrSigner.keys(keys);
         let client = new Client(signer);
 
         await client.addRelay("wss://relay.damus.io");
