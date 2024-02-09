@@ -133,6 +133,13 @@ impl NostrSigner {
         }
     }
 
+    /// Sign an [EventBuilder]
+    pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
+        let public_key: XOnlyPublicKey = self.public_key().await?;
+        let unsigned: UnsignedEvent = builder.to_unsigned_event(public_key);
+        self.sign_event(unsigned).await
+    }
+
     /// Sign an [UnsignedEvent]
     pub async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Error> {
         match self {

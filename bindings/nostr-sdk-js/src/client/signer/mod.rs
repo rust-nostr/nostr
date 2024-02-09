@@ -5,7 +5,7 @@
 use std::ops::Deref;
 
 use nostr_js::error::{into_err, Result};
-use nostr_js::event::{JsEvent, JsUnsignedEvent};
+use nostr_js::event::{JsEvent, JsEventBuilder, JsUnsignedEvent};
 use nostr_js::key::{JsKeys, JsPublicKey};
 use nostr_js::nips::nip07::JsNip07Signer;
 use nostr_js::nips::nip44::JsNIP44Version;
@@ -62,6 +62,16 @@ impl JsNostrSigner {
     #[wasm_bindgen(js_name = publicKey)]
     pub async fn public_key(&self) -> Result<JsPublicKey> {
         Ok(self.inner.public_key().await.map_err(into_err)?.into())
+    }
+
+    #[wasm_bindgen(js_name = signEventBuilder)]
+    pub async fn sign_event_builder(&self, builder: &JsEventBuilder) -> Result<JsEvent> {
+        Ok(self
+            .inner
+            .sign_event_builder(builder.deref().clone())
+            .await
+            .map_err(into_err)?
+            .into())
     }
 
     #[wasm_bindgen(js_name = signEvent)]

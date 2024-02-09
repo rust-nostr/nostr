@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::nips::nip44::Nip44Version;
-use nostr_ffi::{Event, Keys, PublicKey, UnsignedEvent};
+use nostr_ffi::{Event, EventBuilder, Keys, PublicKey, UnsignedEvent};
 use nostr_sdk::{block_on, signer};
 use uniffi::Object;
 
@@ -53,6 +53,17 @@ impl NostrSigner {
     /// Get signer public key
     pub fn public_key(&self) -> Result<Arc<PublicKey>> {
         block_on(async move { Ok(Arc::new(self.inner.public_key().await?.into())) })
+    }
+
+    pub fn sign_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<Event>> {
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .sign_event_builder(builder.as_ref().deref().clone())
+                    .await?
+                    .into(),
+            ))
+        })
     }
 
     pub fn sign_event(&self, unsigned: Arc<UnsignedEvent>) -> Result<Arc<Event>> {
