@@ -10,6 +10,7 @@ use clap::Parser;
 use cli::DatabaseCommand;
 use nostr_database::nostr::{Event, Filter, RelayMessage, Result};
 use nostr_database::{DatabaseIndexes, Order};
+use rayon::prelude::*;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use tokio::time::Instant;
@@ -79,6 +80,7 @@ async fn handle_command(command: Command, db: &mut DatabaseIndexes) -> Result<()
             limit,
             reverse,
             database,
+            count,
         } => {
             let mut filter = Filter::new();
 
@@ -103,19 +105,29 @@ async fn handle_command(command: Command, db: &mut DatabaseIndexes) -> Result<()
             } else if database {
                 // Query database
                 let now = Instant::now();
-                let ids = db
-                    .query([filter], if reverse { Order::Asc } else { Order::Desc })
-                    .await;
+
+                let (num, ids) = if count {
+                    let num = db.count([filter]).await;
+                    (num, None)
+                } else {
+                    let ids = db
+                        .query([filter], if reverse { Order::Asc } else { Order::Desc })
+                        .await;
+                    (ids.len(), Some(ids))
+                };
+
                 let duration = now.elapsed();
                 println!(
-                    "{} results in {}",
-                    ids.len(),
+                    "{num} results in {}",
                     if duration.as_secs() == 0 {
                         format!("{:.6} ms", duration.as_secs_f64() * 1000.0)
                     } else {
                         format!("{:.2} sec", duration.as_secs_f64())
                     }
                 );
+                if let Some(_ids) = ids {
+                    // Print events
+                }
             } else {
                 // Query relays
             }
@@ -134,24 +146,26 @@ async fn handle_command(command: Command, db: &mut DatabaseIndexes) -> Result<()
                     println!("File size: {} bytes", metadata.len());
 
                     // Deserialize events
-                    let mut events: BTreeSet<Event> = BTreeSet::new();
-
-                    for line in reader.lines() {
-                        match line {
-                            Ok(line_content) => {
-                                if let Ok(RelayMessage::Event { event, .. }) =
-                                    serde_json::from_str(&line_content)
-                                {
-                                    events.insert(*event);
-                                }
+                    let events: BTreeSet<Event> = reader
+                        .lines()
+                        .par_bridge()
+                        .flatten()
+                        .filter_map(|msg| {
+                            if let Ok(RelayMessage::Event { event, .. }) =
+                                serde_json::from_str(&msg)
+                            {
+                                Some(*event)
+                            } else {
+                                None
                             }
-                            Err(e) => eprintln!("Error reading line: {}", e),
-                        }
-                    }
+                        })
+                        .collect();
 
                     // Bulk load
                     println!("Indexing {} events", events.len());
+                    let now = Instant::now();
                     db.bulk_index(events).await;
+                    println!("Indexed in {:.6} secs", now.elapsed().as_secs_f64());
                 } else {
                     println!("File not found")
                 }

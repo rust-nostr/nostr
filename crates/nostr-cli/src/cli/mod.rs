@@ -47,6 +47,9 @@ pub enum Command {
         /// Query only database
         #[clap(short, long)]
         database: bool,
+        /// Count only
+        #[clap(short, long)]
+        count: bool,
     },
     /// Database
     #[command(arg_required_else_help = true)]
