@@ -6,6 +6,7 @@
 
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::iter;
 use std::sync::Arc;
 
 use nostr::event::id;
@@ -372,37 +373,22 @@ pub struct EventIndexResult {
 
 /// Database Indexes
 #[derive(Debug, Clone, Default)]
-pub struct DatabaseIndexes {
-    index: Arc<RwLock<BTreeSet<ArcEventIndex>>>,
-    /// Event IDs index
-    ids_index: Arc<RwLock<HashMap<ArcEventId, ArcEventIndex>>>,
-    /// Kind-Author index
-    kind_author_index: Arc<RwLock<KindAuthorIndexes>>,
-    /// Param. replaceable index
-    kind_author_tags_index: Arc<RwLock<ParameterizedReplaceableIndexes>>,
-    deleted_ids: Arc<RwLock<HashSet<ArcEventId>>>,
-    deleted_coordinates: Arc<RwLock<HashMap<Coordinate, Timestamp>>>,
+struct InternalDatabaseIndexes {
+    index: BTreeSet<ArcEventIndex>,
+    ids_index: HashMap<ArcEventId, ArcEventIndex>,
+    kind_author_index: KindAuthorIndexes,
+    kind_author_tags_index: ParameterizedReplaceableIndexes,
+    deleted_ids: HashSet<ArcEventId>,
+    deleted_coordinates: HashMap<Coordinate, Timestamp>,
 }
 
-impl DatabaseIndexes {
-    /// New empty indexes
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+impl InternalDatabaseIndexes {
     /// Bulk index
     #[tracing::instrument(skip_all)]
-    pub async fn bulk_index<'a, E>(&self, events: BTreeSet<E>) -> HashSet<EventId>
+    pub fn bulk_index<'a, E>(&mut self, events: BTreeSet<E>) -> HashSet<EventId>
     where
         E: Into<EventOrRawEvent<'a>>,
     {
-        let mut index = self.index.write().await;
-        let mut ids_index = self.ids_index.write().await;
-        let mut kind_author_index = self.kind_author_index.write().await;
-        let mut kind_author_tags_index = self.kind_author_tags_index.write().await;
-        let mut deleted_ids = self.deleted_ids.write().await;
-        let mut deleted_coordinates = self.deleted_coordinates.write().await;
-
         let mut to_discard: HashSet<EventId> = HashSet::new();
         let now: Timestamp = Timestamp::now();
 
@@ -411,16 +397,7 @@ impl DatabaseIndexes {
             .map(|e| e.into())
             .filter(|e| !e.kind().is_ephemeral())
             .for_each(|event| {
-                let res = self.internal_index_event(
-                    &mut index,
-                    &mut ids_index,
-                    &mut kind_author_index,
-                    &mut kind_author_tags_index,
-                    &mut deleted_ids,
-                    &mut deleted_coordinates,
-                    event,
-                    &now,
-                );
+                let res = self.internal_index_event(event, &now);
                 if let Ok(res) = res {
                     to_discard.extend(res.to_discard);
                 }
@@ -430,13 +407,7 @@ impl DatabaseIndexes {
     }
 
     fn internal_index_event<'a, E>(
-        &self,
-        index: &mut BTreeSet<ArcEventIndex>,
-        ids_index: &mut HashMap<ArcEventId, ArcEventIndex>,
-        kind_author_index: &mut KindAuthorIndexes,
-        kind_author_tags_index: &mut ParameterizedReplaceableIndexes,
-        deleted_ids: &mut HashSet<ArcEventId>,
-        deleted_coordinates: &mut HashMap<Coordinate, Timestamp>,
+        &mut self,
         event: E,
         now: &Timestamp,
     ) -> Result<EventIndexResult, Error>
@@ -453,11 +424,8 @@ impl DatabaseIndexes {
         };
 
         // Check if was deleted
-        if deleted_ids.contains(&event_id) {
-            return Ok(EventIndexResult {
-                to_store: false,
-                to_discard: HashSet::new(),
-            });
+        if self.deleted_ids.contains(&event_id) {
+            return Ok(EventIndexResult::default());
         }
 
         let mut to_discard: HashSet<ArcEventIndex> = HashSet::new();
@@ -484,8 +452,7 @@ impl DatabaseIndexes {
         if kind.is_replaceable() {
             let params: QueryByKindAndAuthorParams =
                 QueryByKindAndAuthorParams::new(kind, pubkey_prefix);
-            for ev in self.internal_query_by_kind_and_author(kind_author_index, deleted_ids, params)
-            {
+            for ev in self.internal_query_by_kind_and_author(params) {
                 if ev.created_at > created_at || ev.event_id == event_id {
                     should_insert = false;
                 } else {
@@ -497,11 +464,7 @@ impl DatabaseIndexes {
                 Some(identifier) => {
                     let params: QueryByParamReplaceable =
                         QueryByParamReplaceable::new(kind, pubkey_prefix, identifier);
-                    if let Some(ev) = self.internal_query_param_replaceable(
-                        kind_author_tags_index,
-                        deleted_ids,
-                        params,
-                    ) {
+                    if let Some(ev) = self.internal_query_param_replaceable(params) {
                         if ev.created_at > created_at || ev.event_id == event_id {
                             should_insert = false;
                         } else {
@@ -514,7 +477,7 @@ impl DatabaseIndexes {
         } else if kind == Kind::EventDeletion {
             // Check `e` tags
             for id in event.event_ids() {
-                if let Some(ev) = ids_index.get(&Arc::new(id)) {
+                if let Some(ev) = self.ids_index.get(&Arc::new(id)) {
                     if ev.pubkey == pubkey_prefix && ev.created_at <= created_at {
                         to_discard.insert(ev.clone());
                     }
@@ -527,16 +490,14 @@ impl DatabaseIndexes {
                     PublicKeyPrefix::from(coordinate.pubkey);
                 if coordinate_pubkey_prefix == pubkey_prefix {
                     // Save deleted coordinate at certain timestamp
-                    deleted_coordinates.insert(coordinate.clone(), created_at);
+                    self.deleted_coordinates
+                        .insert(coordinate.clone(), created_at);
 
                     let filter: Filter = coordinate.into();
                     let filter: Filter = filter.until(created_at);
                     // Not check if ev.pubkey match the pubkey_prefix because assume that query
                     // returned only the events owned by pubkey_prefix
-                    to_discard.extend(
-                        self.internal_generic_query(index, deleted_ids, filter)
-                            .cloned(),
-                    );
+                    to_discard.extend(self.internal_generic_query(filter).cloned());
                 }
             }
         }
@@ -544,21 +505,23 @@ impl DatabaseIndexes {
         // Remove events
         if !to_discard.is_empty() {
             for ev in to_discard.iter() {
-                index.remove(ev);
-                ids_index.remove(&ev.event_id);
+                self.index.remove(ev);
+                self.ids_index.remove(&ev.event_id);
 
                 if ev.kind.is_parameterized_replaceable() {
                     if let Some(identifier) = ev.tags.identifier() {
-                        kind_author_tags_index.remove(&(ev.kind, ev.pubkey, identifier));
+                        self.kind_author_tags_index
+                            .remove(&(ev.kind, ev.pubkey, identifier));
                     }
                 }
             }
 
-            if let Some(set) = kind_author_index.get_mut(&(kind, pubkey_prefix)) {
+            if let Some(set) = self.kind_author_index.get_mut(&(kind, pubkey_prefix)) {
                 set.retain(|e| !to_discard.contains(e));
             }
 
-            deleted_ids.extend(to_discard.iter().map(|ev| ev.event_id.clone()));
+            self.deleted_ids
+                .extend(to_discard.iter().map(|ev| ev.event_id.clone()));
         }
 
         // Insert event
@@ -571,21 +534,22 @@ impl DatabaseIndexes {
                 tags: Arc::new(event.tags()),
             });
 
-            index.insert(e.clone());
-            ids_index.insert(event_id, e.clone());
+            self.index.insert(e.clone());
+            self.ids_index.insert(event_id, e.clone());
 
             if kind.is_parameterized_replaceable() {
                 if let Some(identifier) = e.tags.identifier() {
-                    kind_author_tags_index.insert((kind, pubkey_prefix, identifier), e.clone());
+                    self.kind_author_tags_index
+                        .insert((kind, pubkey_prefix, identifier), e.clone());
                 }
             }
 
             if kind.is_replaceable() {
                 let mut set = HashSet::with_capacity(1);
                 set.insert(e);
-                kind_author_index.insert((kind, pubkey_prefix), set);
+                self.kind_author_index.insert((kind, pubkey_prefix), set);
             } else {
-                kind_author_index
+                self.kind_author_index
                     .entry((kind, pubkey_prefix))
                     .and_modify(|set| {
                         set.insert(e.clone());
@@ -605,40 +569,18 @@ impl DatabaseIndexes {
     ///
     /// **This method assume that [`Event`] was already verified**
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn index_event(&self, event: &Event) -> EventIndexResult {
-        // Check if it's expired or ephemeral
+    pub fn index_event(&mut self, event: &Event) -> EventIndexResult {
+        // Check if it's expired or ephemeral (in `internal_index_event` is checked only the raw event expiration)
         if event.is_expired() || event.is_ephemeral() {
             return EventIndexResult::default();
         }
-
-        // Acquire write lock
-        let mut index = self.index.write().await;
-        let mut ids_index = self.ids_index.write().await;
-        let mut kind_author_index = self.kind_author_index.write().await;
-        let mut kind_author_tags_index = self.kind_author_tags_index.write().await;
-        let mut deleted_ids = self.deleted_ids.write().await;
-        let mut deleted_coordinates = self.deleted_coordinates.write().await;
-
         let now = Timestamp::now();
-
-        self.internal_index_event(
-            &mut index,
-            &mut ids_index,
-            &mut kind_author_index,
-            &mut kind_author_tags_index,
-            &mut deleted_ids,
-            &mut deleted_coordinates,
-            event,
-            &now,
-        )
-        .unwrap_or_default()
+        self.internal_index_event(event, &now).unwrap_or_default()
     }
 
     /// Query by [`Kind`] and [`PublicKeyPrefix`]
     fn internal_query_by_kind_and_author<'a>(
-        &self,
-        kind_author_index: &'a KindAuthorIndexes,
-        deleted_ids: &'a HashSet<ArcEventId>,
+        &'a self,
         params: QueryByKindAndAuthorParams,
     ) -> Box<dyn Iterator<Item = &'a ArcEventIndex> + 'a> {
         let QueryByKindAndAuthorParams {
@@ -648,9 +590,9 @@ impl DatabaseIndexes {
             until,
             ..
         } = params;
-        match kind_author_index.get(&(kind, author)) {
+        match self.kind_author_index.get(&(kind, author)) {
             Some(set) => Box::new(set.iter().filter(move |ev| {
-                if deleted_ids.contains(&ev.event_id) {
+                if self.deleted_ids.contains(&ev.event_id) {
                     return false;
                 }
 
@@ -668,17 +610,15 @@ impl DatabaseIndexes {
 
                 true
             })),
-            None => Box::new(std::iter::empty()),
+            None => Box::new(iter::empty()),
         }
     }
 
     /// Query by param. replaceable
-    fn internal_query_param_replaceable<'a>(
+    fn internal_query_param_replaceable(
         &self,
-        kind_author_tag_index: &'a ParameterizedReplaceableIndexes,
-        deleted_ids: &'a HashSet<ArcEventId>,
         params: QueryByParamReplaceable,
-    ) -> Option<&'a ArcEventIndex> {
+    ) -> Option<&ArcEventIndex> {
         let QueryByParamReplaceable {
             kind,
             author,
@@ -691,9 +631,11 @@ impl DatabaseIndexes {
             return None;
         }
 
-        let ev = kind_author_tag_index.get(&(kind, author, identifier))?;
+        let ev = self
+            .kind_author_tags_index
+            .get(&(kind, author, identifier))?;
 
-        if deleted_ids.contains(&ev.event_id) {
+        if self.deleted_ids.contains(&ev.event_id) {
             return None;
         }
 
@@ -713,39 +655,29 @@ impl DatabaseIndexes {
     }
 
     /// Generic query
-    fn internal_generic_query<'a, T>(
-        &self,
-        index: &'a BTreeSet<ArcEventIndex>,
-        deleted_ids: &'a HashSet<ArcEventId>,
-        filter: T,
-    ) -> impl Iterator<Item = &'a ArcEventIndex>
+    fn internal_generic_query<T>(&self, filter: T) -> impl Iterator<Item = &ArcEventIndex>
     where
         T: Into<FilterIndex>,
     {
         let filter: FilterIndex = filter.into();
-        index.iter().filter(move |event| {
-            !deleted_ids.contains(&event.event_id) && filter.match_event(event)
+        self.index.iter().filter(move |event| {
+            !self.deleted_ids.contains(&event.event_id) && filter.match_event(event)
         })
     }
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn query<I>(&self, filters: I, order: Order) -> Vec<EventId>
+    pub fn query<I>(&self, filters: I, order: Order) -> Vec<EventId>
     where
         I: IntoIterator<Item = Filter>,
     {
-        let index = self.index.read().await;
-        let kind_author_index = self.kind_author_index.read().await;
-        let kind_author_tags_index = self.kind_author_tags_index.read().await;
-        let deleted_ids = self.deleted_ids.read().await;
-
         let mut matching_ids: BTreeSet<&ArcEventIndex> = BTreeSet::new();
 
         for filter in filters.into_iter() {
             if filter.is_empty() {
                 return match order {
-                    Order::Asc => index.iter().map(|e| *e.event_id).rev().collect(),
-                    Order::Desc => index.iter().map(|e| *e.event_id).collect(),
+                    Order::Asc => self.index.iter().map(|e| *e.event_id).rev().collect(),
+                    Order::Desc => self.index.iter().map(|e| *e.event_id).collect(),
                 };
             }
 
@@ -758,22 +690,14 @@ impl DatabaseIndexes {
             let limit: Option<usize> = filter.limit;
 
             let evs: Box<dyn Iterator<Item = &ArcEventIndex>> = match QueryPattern::from(filter) {
-                QueryPattern::KindAuthor(params) => {
-                    self.internal_query_by_kind_and_author(&kind_author_index, &deleted_ids, params)
-                }
+                QueryPattern::KindAuthor(params) => self.internal_query_by_kind_and_author(params),
                 QueryPattern::ParamReplaceable(params) => {
-                    match self.internal_query_param_replaceable(
-                        &kind_author_tags_index,
-                        &deleted_ids,
-                        params,
-                    ) {
-                        Some(ev) => Box::new(std::iter::once(ev)),
-                        None => Box::new(std::iter::empty()),
+                    match self.internal_query_param_replaceable(params) {
+                        Some(ev) => Box::new(iter::once(ev)),
+                        None => Box::new(iter::empty()),
                     }
                 }
-                QueryPattern::Generic(filter) => {
-                    Box::new(self.internal_generic_query(&index, &deleted_ids, filter))
-                }
+                QueryPattern::Generic(filter) => Box::new(self.internal_generic_query(filter)),
             };
 
             if let Some(limit) = limit {
@@ -795,18 +719,15 @@ impl DatabaseIndexes {
 
     /// Count events
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn count<I>(&self, filters: I) -> usize
+    pub fn count<I>(&self, filters: I) -> usize
     where
         I: IntoIterator<Item = Filter>,
     {
-        let index = self.index.read().await;
-        let deleted_ids = self.deleted_ids.read().await;
-
         let mut counter: usize = 0;
 
         for filter in filters.into_iter() {
             if filter.is_empty() {
-                counter = index.len();
+                counter = self.index.len();
                 break;
             }
 
@@ -817,9 +738,7 @@ impl DatabaseIndexes {
             }
 
             let limit: Option<usize> = filter.limit;
-            let count = self
-                .internal_generic_query(&index, &deleted_ids, filter)
-                .count();
+            let count = self.internal_generic_query(filter).count();
             if let Some(limit) = limit {
                 let count = if limit >= count { limit } else { count };
                 counter += count;
@@ -832,9 +751,90 @@ impl DatabaseIndexes {
     }
 
     /// Check if an event with [`EventId`] has been deleted
+    pub fn has_event_id_been_deleted(&self, event_id: &EventId) -> bool {
+        self.deleted_ids.contains(event_id)
+    }
+
+    /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
+    pub fn has_coordinate_been_deleted(
+        &self,
+        coordinate: &Coordinate,
+        timestamp: Timestamp,
+    ) -> bool {
+        if let Some(t) = self.deleted_coordinates.get(coordinate).copied() {
+            t >= timestamp
+        } else {
+            false
+        }
+    }
+
+    /// Clear indexes
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
+}
+
+/// Database Indexes
+#[derive(Debug, Clone, Default)]
+pub struct DatabaseIndexes {
+    inner: Arc<RwLock<InternalDatabaseIndexes>>,
+}
+
+impl DatabaseIndexes {
+    /// New empty database indexes
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Bulk index
+    #[tracing::instrument(skip_all)]
+    pub async fn bulk_index<'a, E>(&self, events: BTreeSet<E>) -> HashSet<EventId>
+    where
+        E: Into<EventOrRawEvent<'a>>,
+    {
+        let mut inner = self.inner.write().await;
+        inner.bulk_index(events)
+    }
+
+    /// Index [`Event`]
+    ///
+    /// **This method assume that [`Event`] was already verified**
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub async fn index_event(&self, event: &Event) -> EventIndexResult {
+        // Check if it's expired or ephemeral
+        if event.is_expired() || event.is_ephemeral() {
+            return EventIndexResult::default();
+        }
+
+        // Acquire write lock
+        let mut inner = self.inner.write().await;
+        inner.index_event(event)
+    }
+
+    /// Query
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub async fn query<I>(&self, filters: I, order: Order) -> Vec<EventId>
+    where
+        I: IntoIterator<Item = Filter>,
+    {
+        let inner = self.inner.read().await;
+        inner.query(filters, order)
+    }
+
+    /// Count events
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub async fn count<I>(&self, filters: I) -> usize
+    where
+        I: IntoIterator<Item = Filter>,
+    {
+        let inner = self.inner.read().await;
+        inner.count(filters)
+    }
+
+    /// Check if an event with [`EventId`] has been deleted
     pub async fn has_event_id_been_deleted(&self, event_id: &EventId) -> bool {
-        let deleted_ids = self.deleted_ids.read().await;
-        deleted_ids.contains(event_id)
+        let inner = self.inner.read().await;
+        inner.has_event_id_been_deleted(event_id)
     }
 
     /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
@@ -843,22 +843,14 @@ impl DatabaseIndexes {
         coordinate: &Coordinate,
         timestamp: Timestamp,
     ) -> bool {
-        let deleted_coordinates = self.deleted_coordinates.read().await;
-        if let Some(t) = deleted_coordinates.get(coordinate).copied() {
-            t >= timestamp
-        } else {
-            false
-        }
+        let inner = self.inner.read().await;
+        inner.has_coordinate_been_deleted(coordinate, timestamp)
     }
 
     /// Clear indexes
     pub async fn clear(&self) {
-        let mut index = self.index.write().await;
-        let mut deleted_ids = self.deleted_ids.write().await;
-        let mut deleted_coordinates = self.deleted_coordinates.write().await;
-        index.clear();
-        deleted_ids.clear();
-        deleted_coordinates.clear();
+        let mut inner = self.inner.write().await;
+        inner.clear();
     }
 }
 
