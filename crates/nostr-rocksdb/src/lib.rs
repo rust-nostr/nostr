@@ -9,7 +9,7 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -193,6 +193,35 @@ impl NostrDatabase for RocksDatabase {
         }
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
+        // Acquire FlatBuffers Builder
+        let mut fbb = self.fbb.write().await;
+
+        // Prepare write batch
+        let mut batch = WriteBatchWithTransaction::default();
+
+        let events = self.indexes.bulk_import(events).await;
+
+        // Get Column Family
+        let events_cf = self.cf_handle(EVENTS_CF)?;
+
+        for event in events.into_iter() {
+            // Serialize key and value
+            let id = event.id;
+            let key: &[u8] = id.as_bytes();
+            let value: &[u8] = event.encode(&mut fbb);
+
+            // Save event
+            batch.put_cf(&events_cf, key, value);
+        }
+
+        // Write batch changes
+        self.db.write(batch).map_err(DatabaseError::backend)?;
+
+        Ok(())
+    }
+
     async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
@@ -283,16 +312,17 @@ impl NostrDatabase for RocksDatabase {
 
             let mut events: Vec<Event> = Vec::with_capacity(ids.len());
 
-            for v in this
-                .db
-                .batched_multi_get_cf(&cf, ids, true)
-                .into_iter()
-                .flatten()
-                .flatten()
-            {
-                let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
-                events.push(event);
-            }
+            let span = tracing::trace_span!("query-batched-multi-get");
+            let list = span.in_scope(|| this.db.batched_multi_get_cf(&cf, ids, false));
+
+            let span = tracing::trace_span!("query-decode-events");
+            span.in_scope(|| {
+                for v in list.into_iter().flatten().flatten() {
+                    let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
+                    events.push(event);
+                }
+                Ok(())
+            })?;
 
             Ok(events)
         })

@@ -32,6 +32,8 @@ mod migration;
 pub use self::error::Error;
 use self::migration::STARTUP_SQL;
 
+const BATCH_SIZE: usize = 100;
+
 /// SQLite Nostr Database
 #[derive(Debug, Clone)]
 pub struct SQLiteDatabase {
@@ -86,21 +88,25 @@ impl SQLiteDatabase {
             .await??;
 
         // Build indexes
-        let to_discard = self.indexes.bulk_index(events).await;
+        let to_discard: Vec<EventId> = self.indexes.bulk_index(events).await.into_iter().collect();
 
         // Discard events
         if !to_discard.is_empty() {
             let conn = self.acquire().await?;
             conn.interact(move |conn| {
-                let delete_query = format!(
-                    "DELETE FROM events WHERE {};",
-                    to_discard
-                        .iter()
-                        .map(|id| format!("event_id = '{id}'"))
-                        .collect::<Vec<_>>()
-                        .join(" AND ")
-                );
-                conn.execute(&delete_query, [])
+                for chunk in to_discard.chunks(BATCH_SIZE) {
+                    let delete_query = format!(
+                        "DELETE FROM events WHERE {};",
+                        chunk
+                            .iter()
+                            .map(|id| format!("event_id = '{id}'"))
+                            .collect::<Vec<_>>()
+                            .join(" OR ")
+                    );
+                    conn.execute(&delete_query, [])?;
+                }
+
+                Ok::<(), Error>(())
             })
             .await??;
         }
@@ -126,16 +132,21 @@ impl NostrDatabase for SQLiteDatabase {
 
         if !to_discard.is_empty() {
             let conn = self.acquire().await?;
+            let to_discard: Vec<EventId> = to_discard.into_iter().collect();
             conn.interact(move |conn| {
-                let delete_query = format!(
-                    "DELETE FROM events WHERE {};",
-                    to_discard
-                        .iter()
-                        .map(|id| format!("event_id = '{id}'"))
-                        .collect::<Vec<_>>()
-                        .join(" AND ")
-                );
-                conn.execute(&delete_query, [])
+                for chunk in to_discard.chunks(BATCH_SIZE) {
+                    let delete_query = format!(
+                        "DELETE FROM events WHERE {};",
+                        chunk
+                            .iter()
+                            .map(|id| format!("event_id = '{id}'"))
+                            .collect::<Vec<_>>()
+                            .join(" OR ")
+                    );
+                    conn.execute(&delete_query, [])?;
+                }
+
+                Ok::<(), Error>(())
             })
             .await??;
         }
@@ -151,10 +162,10 @@ impl NostrDatabase for SQLiteDatabase {
             // Save event
             let conn = self.acquire().await?;
             conn.interact(move |conn| {
-                conn.execute(
+                let mut stmt = conn.prepare_cached(
                     "INSERT OR IGNORE INTO events (event_id, event) VALUES (?, ?);",
-                    (event_id.to_hex(), value),
-                )
+                )?;
+                stmt.execute((event_id.to_hex(), value))
             })
             .await??;
 
@@ -162,6 +173,45 @@ impl NostrDatabase for SQLiteDatabase {
         } else {
             Ok(false)
         }
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
+        // Acquire database conn lock
+        let conn = self.acquire().await?;
+
+        // Acquire FlatBuffers Builder
+        let mut fbb = self.fbb.write().await;
+
+        // Events to store
+        let events = self.indexes.bulk_import(events).await;
+
+        // Encode
+        let events: Vec<(EventId, Vec<u8>)> = events
+            .into_iter()
+            .map(move |e| {
+                let event_id: EventId = e.id();
+                let value: Vec<u8> = e.encode(&mut fbb).to_vec();
+                (event_id, value)
+            })
+            .collect();
+
+        // Bulk save
+        conn.interact(move |conn| {
+            let tx = conn.transaction()?;
+
+            for (event_id, value) in events.into_iter() {
+                tx.execute(
+                    "INSERT OR IGNORE INTO events (event_id, event) VALUES (?, ?);",
+                    (event_id.to_hex(), value),
+                )?;
+            }
+
+            tx.commit()
+        })
+        .await??;
+
+        Ok(())
     }
 
     async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
@@ -220,10 +270,10 @@ impl NostrDatabase for SQLiteDatabase {
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
         let conn = self.acquire().await?;
         conn.interact(move |conn| {
-            conn.execute(
+            let mut stmt = conn.prepare_cached(
                 "INSERT OR IGNORE INTO event_seen_by_relays (event_id, relay_url) VALUES (?, ?);",
-                (event_id.to_hex(), relay_url.to_string()),
-            )
+            )?;
+            stmt.execute((event_id.to_hex(), relay_url.to_string()))
         })
         .await??;
         Ok(())
@@ -273,10 +323,17 @@ impl NostrDatabase for SQLiteDatabase {
         let conn = self.acquire().await?;
         let ids: Vec<EventId> = self.indexes.query(filters, order).await;
         conn.interact(move |conn| {
-            let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
             let mut events = Vec::with_capacity(ids.len());
-            for id in ids.into_iter() {
-                let mut rows = stmt.query([id.to_hex()])?;
+            for chunk in ids.chunks(BATCH_SIZE) {
+                let mut stmt = conn.prepare_cached(&format!(
+                    "SELECT event FROM events WHERE {};",
+                    chunk
+                        .iter()
+                        .map(|id| format!("event_id = '{id}'"))
+                        .collect::<Vec<_>>()
+                        .join(" OR ")
+                ))?;
+                let mut rows = stmt.query([])?;
                 while let Ok(Some(row)) = rows.next() {
                     let buf: Vec<u8> = row.get(0)?;
                     events.push(Event::decode(&buf)?);

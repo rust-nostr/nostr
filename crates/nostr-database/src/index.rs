@@ -406,6 +406,22 @@ impl InternalDatabaseIndexes {
         to_discard
     }
 
+    /// Bulk import
+    #[tracing::instrument(skip_all)]
+    pub fn bulk_import<'a>(
+        &'a mut self,
+        events: BTreeSet<Event>,
+    ) -> impl Iterator<Item = Event> + 'a {
+        let now: Timestamp = Timestamp::now();
+        events
+            .into_iter()
+            .filter(|e| !e.is_expired() && !e.is_ephemeral())
+            .filter(move |event| match self.internal_index_event(event, &now) {
+                Ok(res) => res.to_store,
+                Err(_) => false,
+            })
+    }
+
     fn internal_index_event<'a, E>(
         &mut self,
         event: E,
@@ -794,6 +810,15 @@ impl DatabaseIndexes {
     {
         let mut inner = self.inner.write().await;
         inner.bulk_index(events)
+    }
+
+    /// Bulk import
+    ///
+    /// Take a set of [Event], index them and return **only** the ones that must be stored into the database
+    #[tracing::instrument(skip_all)]
+    pub async fn bulk_import(&self, events: BTreeSet<Event>) -> BTreeSet<Event> {
+        let mut inner = self.inner.write().await;
+        inner.bulk_import(events).collect()
     }
 
     /// Index [`Event`]

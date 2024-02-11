@@ -117,6 +117,11 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// **This method assume that [`Event`] was already verified**
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err>;
 
+    /// Bulk import events into database
+    ///
+    /// **This method assume that [`Event`] was already verified**
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err>;
+
     /// Check if [`Event`] has already been saved
     async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err>;
 
@@ -272,6 +277,10 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
 
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         self.0.save_event(event).await.map_err(Into::into)
+    }
+
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
+        self.0.bulk_import(events).await.map_err(Into::into)
     }
 
     async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {

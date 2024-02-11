@@ -10,7 +10,7 @@
 #![allow(unknown_lints, clippy::arc_with_non_send_sync)]
 #![cfg_attr(not(target_arch = "wasm32"), allow(unused))]
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::future::IntoFuture;
 use std::sync::Arc;
@@ -281,6 +281,30 @@ impl_nostr_database!({
         } else {
             Ok(false)
         }
+    }
+
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), IndexedDBError> {
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
+        let store = tx.object_store(EVENTS_CF)?;
+
+        // Bulk import indexes
+        let events = self.indexes.bulk_import(events).await;
+
+        // Acquire FlatBuffers Builder
+        let mut fbb = self.fbb.lock().await;
+
+        for event in events.into_iter() {
+            let key = JsValue::from(event.id.to_hex());
+            let value = JsValue::from(hex::encode(event.encode(&mut fbb)));
+            store.put_key_val(&key, &value)?;
+        }
+
+        tx.await.into_result()?;
+
+        Ok(())
     }
 
     async fn has_event_already_been_saved(

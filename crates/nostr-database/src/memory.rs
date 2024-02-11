@@ -4,7 +4,7 @@
 
 //! Memory (RAM) Storage backend for Nostr apps
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
@@ -126,6 +126,22 @@ impl NostrDatabase for MemoryDatabase {
             }
         } else {
             Ok(false)
+        }
+    }
+
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
+        if self.opts.events {
+            let events = self.indexes.bulk_import(events).await;
+
+            let mut e = self.events.lock().await;
+
+            for event in events.into_iter() {
+                e.put(event.id(), event);
+            }
+
+            Ok(())
+        } else {
+            Err(DatabaseError::FeatureDisabled)
         }
     }
 
