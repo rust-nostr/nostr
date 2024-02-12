@@ -73,6 +73,7 @@ impl EventId {
     }
 
     /// [`EventId`] hex string
+    #[inline]
     pub fn from_hex<S>(hex: S) -> Result<Self, Error>
     where
         S: AsRef<str>,
@@ -81,6 +82,7 @@ impl EventId {
     }
 
     /// [`EventId`] from bytes
+    #[inline]
     pub fn from_slice(sl: &[u8]) -> Result<Self, Error> {
         Ok(Self(Sha256Hash::from_slice(sl)?))
     }

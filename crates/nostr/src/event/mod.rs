@@ -167,51 +167,61 @@ impl Event {
     }
 
     /// Get event ID
+    #[inline]
     pub fn id(&self) -> EventId {
         self.inner.id
     }
 
     /// Get event author (`pubkey` field)
+    #[inline]
     pub fn author(&self) -> XOnlyPublicKey {
         self.inner.pubkey
     }
 
     /// Get event author reference (`pubkey` field)
+    #[inline]
     pub fn author_ref(&self) -> &XOnlyPublicKey {
         &self.inner.pubkey
     }
 
     /// Get [Timestamp] of when the event was created
+    #[inline]
     pub fn created_at(&self) -> Timestamp {
         self.inner.created_at
     }
 
     /// Get event [Kind]
+    #[inline]
     pub fn kind(&self) -> Kind {
         self.inner.kind
     }
 
     /// Get reference to event tags
+    #[inline]
     pub fn tags(&self) -> &[Tag] {
         &self.inner.tags
     }
 
     /// Iterate event tags
+    #[inline]
     pub fn iter_tags(&self) -> impl Iterator<Item = &Tag> {
         self.inner.tags.iter()
     }
 
     /// Iterate and consume event tags
+    #[inline]
     pub fn into_iter_tags(self) -> impl Iterator<Item = Tag> {
         self.inner.tags.into_iter()
     }
 
     /// Get reference to event content
+    #[inline]
     pub fn content(&self) -> &str {
         &self.inner.content
     }
 
     /// Get event signature
+    #[inline]
     pub fn signature(&self) -> Signature {
         self.inner.sig
     }
@@ -269,11 +279,13 @@ impl Event {
     /// Check POW
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    #[inline]
     pub fn check_pow(&self, difficulty: u8) -> bool {
         self.inner.id.check_pow(difficulty)
     }
 
     /// Get [`Timestamp`] expiration if set
+    #[inline]
     pub fn expiration(&self) -> Option<&Timestamp> {
         for tag in self.iter_tags() {
             if let Tag::Expiration(timestamp) = tag {
@@ -301,9 +313,18 @@ impl Event {
     where
         T: TimeSupplier,
     {
+        let now: Timestamp = Timestamp::now_with_supplier(supplier);
+        self.is_expired_at(&now)
+    }
+
+    /// Returns `true` if the event has an expiration tag that is expired.
+    /// If an event has no `Expiration` tag, then it will return `false`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    #[inline]
+    pub fn is_expired_at(&self, now: &Timestamp) -> bool {
         if let Some(timestamp) = self.expiration() {
-            let now: Timestamp = Timestamp::now_with_supplier(supplier);
-            return timestamp < &now;
+            return timestamp < now;
         }
         false
     }
@@ -311,6 +332,7 @@ impl Event {
     /// Check if [`Kind`] is a NIP90 job request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
     pub fn is_job_request(&self) -> bool {
         self.inner.kind.is_job_request()
     }
@@ -318,6 +340,7 @@ impl Event {
     /// Check if [`Kind`] is a NIP90 job result
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
     pub fn is_job_result(&self) -> bool {
         self.inner.kind.is_job_result()
     }
@@ -325,6 +348,7 @@ impl Event {
     /// Check if event [`Kind`] is `Regular`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
     pub fn is_regular(&self) -> bool {
         self.inner.kind.is_regular()
     }
@@ -332,6 +356,7 @@ impl Event {
     /// Check if event [`Kind`] is `Replaceable`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
     pub fn is_replaceable(&self) -> bool {
         self.inner.kind.is_replaceable()
     }
@@ -339,6 +364,7 @@ impl Event {
     /// Check if event [`Kind`] is `Ephemeral`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
     pub fn is_ephemeral(&self) -> bool {
         self.inner.kind.is_ephemeral()
     }
@@ -346,11 +372,13 @@ impl Event {
     /// Check if event [`Kind`] is `Parameterized replaceable`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
     pub fn is_parameterized_replaceable(&self) -> bool {
         self.inner.kind.is_parameterized_replaceable()
     }
 
     /// Extract identifier (`d` tag), if exists.
+    #[inline]
     pub fn identifier(&self) -> Option<&str> {
         for tag in self.iter_tags() {
             if let Tag::Identifier(id) = tag {
@@ -363,6 +391,7 @@ impl Event {
     /// Extract public keys from tags (`p` tag)
     ///
     /// **This method extract ONLY `Tag::PublicKey`**
+    #[inline]
     pub fn public_keys(&self) -> impl Iterator<Item = &XOnlyPublicKey> {
         self.iter_tags().filter_map(|t| match t {
             Tag::PublicKey { public_key, .. } => Some(public_key),
@@ -373,6 +402,7 @@ impl Event {
     /// Extract event IDs from tags (`e` tag)
     ///
     /// **This method extract ONLY `Tag::Event`**
+    #[inline]
     pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
         self.iter_tags().filter_map(|t| match t {
             Tag::Event { event_id, .. } => Some(event_id),
@@ -381,6 +411,7 @@ impl Event {
     }
 
     /// Extract coordinates from tags (`a` tag)
+    #[inline]
     pub fn coordinates(&self) -> impl Iterator<Item = Coordinate> + '_ {
         self.iter_tags().filter_map(|t| match t {
             Tag::A {

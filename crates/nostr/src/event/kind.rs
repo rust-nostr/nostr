@@ -190,6 +190,7 @@ impl Kind {
     /// Check if [`Kind`] is a NIP90 job request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
     pub fn is_job_request(&self) -> bool {
         NIP90_JOB_REQUEST_RANGE.contains(&self.as_u64())
     }
@@ -197,16 +198,19 @@ impl Kind {
     /// Check if [`Kind`] is a NIP90 job result
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
     pub fn is_job_result(&self) -> bool {
         NIP90_JOB_RESULT_RANGE.contains(&self.as_u64())
     }
 
     /// Check if [`Kind`] is `Regular`
+    #[inline]
     pub fn is_regular(&self) -> bool {
         REGULAR_RANGE.contains(&self.as_u64())
     }
 
     /// Check if [`Kind`] is `Replaceable`
+    #[inline]
     pub fn is_replaceable(&self) -> bool {
         matches!(self, Kind::Metadata)
             || matches!(self, Kind::ContactList)
@@ -215,11 +219,13 @@ impl Kind {
     }
 
     /// Check if [`Kind`] is `Ephemeral`
+    #[inline]
     pub fn is_ephemeral(&self) -> bool {
         EPHEMERAL_RANGE.contains(&self.as_u64())
     }
 
     /// Check if [`Kind`] is `Parameterized replaceable`
+    #[inline]
     pub fn is_parameterized_replaceable(&self) -> bool {
         PARAMETERIZED_REPLACEABLE_RANGE.contains(&self.as_u64())
     }
@@ -232,6 +238,7 @@ impl fmt::Display for Kind {
 }
 
 impl From<u64> for Kind {
+    #[inline]
     fn from(u: u64) -> Self {
         match u {
             0 => Self::Metadata,

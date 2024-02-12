@@ -192,6 +192,7 @@ impl From<u64> for Timestamp {
 impl FromStr for Timestamp {
     type Err = core::num::ParseIntError;
 
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(s.parse::<i64>()?))
     }

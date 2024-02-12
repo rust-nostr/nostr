@@ -76,6 +76,7 @@ impl<S> From<S> for UncheckedUrl
 where
     S: Into<String>,
 {
+    #[inline]
     fn from(url: S) -> Self {
         Self(url.into())
     }
