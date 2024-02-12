@@ -414,7 +414,7 @@ impl JsonUtil for Event {
 }
 
 /// Event Intermediate used for de/serialization of [`Event`]
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct EventIntermediate {
     /// Id
     pub id: EventId,
@@ -430,6 +430,22 @@ pub struct EventIntermediate {
     pub content: String,
     /// Signature
     pub sig: Signature,
+}
+
+impl PartialOrd for EventIntermediate {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for EventIntermediate {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.created_at != other.created_at {
+            self.created_at.cmp(&other.created_at).reverse()
+        } else {
+            self.id.cmp(&other.id)
+        }
+    }
 }
 
 impl Serialize for Event {
