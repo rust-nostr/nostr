@@ -56,7 +56,7 @@ impl EventId {
     ) -> Result<Arc<Self>> {
         let mut new_tags: Vec<Tag> = Vec::new();
         for tag in tags.into_iter() {
-            new_tags.push(Tag::try_from(tag)?);
+            new_tags.push(Tag::parse(tag)?);
         }
         Ok(Arc::new(Self {
             inner: nostr::EventId::new(

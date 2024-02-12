@@ -664,120 +664,10 @@ pub enum Tag {
 
 impl Tag {
     /// Parse [`Tag`] from string vector
-    pub fn parse<S>(data: Vec<S>) -> Result<Self, Error>
+    pub fn parse<S>(tag: Vec<S>) -> Result<Self, Error>
     where
         S: AsRef<str>,
     {
-        Tag::try_from(data)
-    }
-
-    /// Compose `Tag::Event` without `relay_url` and `marker`
-    ///
-    /// JSON: `["e", "event-id"]`
-    pub fn event(event_id: EventId) -> Self {
-        Self::Event {
-            event_id,
-            relay_url: None,
-            marker: None,
-        }
-    }
-
-    /// Compose `Tag::PublicKey` without `relay_url` and `alias`
-    ///
-    /// JSON: `["p", "<public-key>"]`
-    pub fn public_key(public_key: XOnlyPublicKey) -> Self {
-        Self::PublicKey {
-            public_key,
-            relay_url: None,
-            alias: None,
-            uppercase: false,
-        }
-    }
-
-    /// Get [`Tag`] as string vector
-    pub fn as_vec(&self) -> Vec<String> {
-        self.clone().into()
-    }
-
-    /// Consume [`Tag`] and return string vector
-    pub fn to_vec(self) -> Vec<String> {
-        self.into()
-    }
-
-    /// Get [`TagKind`]
-    pub fn kind(&self) -> TagKind {
-        match self {
-            Self::Generic(kind, ..) => kind.clone(),
-            Self::Event { .. } => TagKind::E,
-            Self::PublicKey {
-                uppercase: false, ..
-            } => TagKind::P,
-            Self::PublicKey {
-                uppercase: true, ..
-            } => TagKind::UpperP,
-            Self::EventReport(..) => TagKind::E,
-            Self::PubKeyReport(..) => TagKind::P,
-            Self::PubKeyLiveEvent { .. } => TagKind::P,
-            Self::Reference(..) => TagKind::R,
-            Self::RelayMetadata(..) => TagKind::R,
-            Self::Hashtag(..) => TagKind::T,
-            Self::Geohash(..) => TagKind::G,
-            Self::Identifier(..) => TagKind::D,
-            Self::ExternalIdentity(..) => TagKind::I,
-            Self::A { .. } => TagKind::A,
-            Self::Relay(..) => TagKind::Relay,
-            Self::POW { .. } => TagKind::Nonce,
-            Self::Delegation { .. } => TagKind::Delegation,
-            Self::ContentWarning { .. } => TagKind::ContentWarning,
-            Self::Expiration(..) => TagKind::Expiration,
-            Self::Subject(..) => TagKind::Subject,
-            Self::Challenge(..) => TagKind::Challenge,
-            Self::Title(..) => TagKind::Title,
-            Self::Image(..) => TagKind::Image,
-            Self::Thumb(..) => TagKind::Thumb,
-            Self::Summary(..) => TagKind::Summary,
-            Self::PublishedAt(..) => TagKind::PublishedAt,
-            Self::Description(..) => TagKind::Description,
-            Self::Bolt11(..) => TagKind::Bolt11,
-            Self::Preimage(..) => TagKind::Preimage,
-            Self::Relays(..) => TagKind::Relays,
-            Self::Amount { .. } => TagKind::Amount,
-            Self::Name(..) => TagKind::Name,
-            Self::Lnurl(..) => TagKind::Lnurl,
-            Self::Url(..) => TagKind::Url,
-            Self::MimeType(..) => TagKind::M,
-            Self::Aes256Gcm { .. } => TagKind::Aes256Gcm,
-            Self::Sha256(..) => TagKind::X,
-            Self::Size(..) => TagKind::Size,
-            Self::Dim(..) => TagKind::Dim,
-            Self::Magnet(..) => TagKind::Magnet,
-            Self::Blurhash(..) => TagKind::Blurhash,
-            Self::Streaming(..) => TagKind::Streaming,
-            Self::Recording(..) => TagKind::Recording,
-            Self::Starts(..) => TagKind::Starts,
-            Self::Ends(..) => TagKind::Ends,
-            Self::LiveEventStatus(..) | Self::DataVendingMachineStatus { .. } => TagKind::Status,
-            Self::CurrentParticipants(..) => TagKind::CurrentParticipants,
-            Self::TotalParticipants(..) => TagKind::TotalParticipants,
-            Self::AbsoluteURL(..) => TagKind::U,
-            Self::Method(..) => TagKind::Method,
-            Self::Payload(..) => TagKind::Payload,
-            Self::Anon { .. } => TagKind::Anon,
-            Self::Proxy { .. } => TagKind::Proxy,
-            Self::Emoji { .. } => TagKind::Emoji,
-            Self::Encrypted => TagKind::Encrypted,
-            Self::Request(..) => TagKind::Request,
-        }
-    }
-}
-
-impl<S> TryFrom<Vec<S>> for Tag
-where
-    S: AsRef<str>,
-{
-    type Error = Error;
-
-    fn try_from(tag: Vec<S>) -> Result<Self, Self::Error> {
         let tag_len: usize = tag.len();
         let tag_kind: TagKind = match tag.first() {
             Some(kind) => TagKind::from(kind),
@@ -1062,6 +952,109 @@ where
             ))
         }
     }
+
+    /// Compose `Tag::Event` without `relay_url` and `marker`
+    ///
+    /// JSON: `["e", "event-id"]`
+    #[inline]
+    pub fn event(event_id: EventId) -> Self {
+        Self::Event {
+            event_id,
+            relay_url: None,
+            marker: None,
+        }
+    }
+
+    /// Compose `Tag::PublicKey` without `relay_url` and `alias`
+    ///
+    /// JSON: `["p", "<public-key>"]`
+    #[inline]
+    pub fn public_key(public_key: XOnlyPublicKey) -> Self {
+        Self::PublicKey {
+            public_key,
+            relay_url: None,
+            alias: None,
+            uppercase: false,
+        }
+    }
+
+    /// Get [`Tag`] as string vector
+    #[inline]
+    pub fn as_vec(&self) -> Vec<String> {
+        self.clone().into()
+    }
+
+    /// Consume [`Tag`] and return string vector
+    #[inline]
+    pub fn to_vec(self) -> Vec<String> {
+        self.into()
+    }
+
+    /// Get [`TagKind`]
+    pub fn kind(&self) -> TagKind {
+        match self {
+            Self::Generic(kind, ..) => kind.clone(),
+            Self::Event { .. } => TagKind::E,
+            Self::PublicKey {
+                uppercase: false, ..
+            } => TagKind::P,
+            Self::PublicKey {
+                uppercase: true, ..
+            } => TagKind::UpperP,
+            Self::EventReport(..) => TagKind::E,
+            Self::PubKeyReport(..) => TagKind::P,
+            Self::PubKeyLiveEvent { .. } => TagKind::P,
+            Self::Reference(..) => TagKind::R,
+            Self::RelayMetadata(..) => TagKind::R,
+            Self::Hashtag(..) => TagKind::T,
+            Self::Geohash(..) => TagKind::G,
+            Self::Identifier(..) => TagKind::D,
+            Self::ExternalIdentity(..) => TagKind::I,
+            Self::A { .. } => TagKind::A,
+            Self::Relay(..) => TagKind::Relay,
+            Self::POW { .. } => TagKind::Nonce,
+            Self::Delegation { .. } => TagKind::Delegation,
+            Self::ContentWarning { .. } => TagKind::ContentWarning,
+            Self::Expiration(..) => TagKind::Expiration,
+            Self::Subject(..) => TagKind::Subject,
+            Self::Challenge(..) => TagKind::Challenge,
+            Self::Title(..) => TagKind::Title,
+            Self::Image(..) => TagKind::Image,
+            Self::Thumb(..) => TagKind::Thumb,
+            Self::Summary(..) => TagKind::Summary,
+            Self::PublishedAt(..) => TagKind::PublishedAt,
+            Self::Description(..) => TagKind::Description,
+            Self::Bolt11(..) => TagKind::Bolt11,
+            Self::Preimage(..) => TagKind::Preimage,
+            Self::Relays(..) => TagKind::Relays,
+            Self::Amount { .. } => TagKind::Amount,
+            Self::Name(..) => TagKind::Name,
+            Self::Lnurl(..) => TagKind::Lnurl,
+            Self::Url(..) => TagKind::Url,
+            Self::MimeType(..) => TagKind::M,
+            Self::Aes256Gcm { .. } => TagKind::Aes256Gcm,
+            Self::Sha256(..) => TagKind::X,
+            Self::Size(..) => TagKind::Size,
+            Self::Dim(..) => TagKind::Dim,
+            Self::Magnet(..) => TagKind::Magnet,
+            Self::Blurhash(..) => TagKind::Blurhash,
+            Self::Streaming(..) => TagKind::Streaming,
+            Self::Recording(..) => TagKind::Recording,
+            Self::Starts(..) => TagKind::Starts,
+            Self::Ends(..) => TagKind::Ends,
+            Self::LiveEventStatus(..) | Self::DataVendingMachineStatus { .. } => TagKind::Status,
+            Self::CurrentParticipants(..) => TagKind::CurrentParticipants,
+            Self::TotalParticipants(..) => TagKind::TotalParticipants,
+            Self::AbsoluteURL(..) => TagKind::U,
+            Self::Method(..) => TagKind::Method,
+            Self::Payload(..) => TagKind::Payload,
+            Self::Anon { .. } => TagKind::Anon,
+            Self::Proxy { .. } => TagKind::Proxy,
+            Self::Emoji { .. } => TagKind::Emoji,
+            Self::Encrypted => TagKind::Encrypted,
+            Self::Request(..) => TagKind::Request,
+        }
+    }
 }
 
 impl From<Tag> for Vec<String> {
@@ -1307,7 +1300,7 @@ impl<'de> Deserialize<'de> for Tag {
     {
         type Data = Vec<String>;
         let vec: Vec<String> = Data::deserialize(deserializer)?;
-        Self::try_from(vec).map_err(DeserializerError::custom)
+        Self::parse(vec).map_err(DeserializerError::custom)
     }
 }
 
