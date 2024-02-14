@@ -66,11 +66,11 @@ impl NostrSigner {
         })
     }
 
-    pub fn sign_event(&self, unsigned: Arc<UnsignedEvent>) -> Result<Arc<Event>> {
+    pub fn sign_event(&self, unsigned_event: Arc<UnsignedEvent>) -> Result<Arc<Event>> {
         block_on(async move {
             Ok(Arc::new(
                 self.inner
-                    .sign_event(unsigned.as_ref().deref().clone())
+                    .sign_event(unsigned_event.as_ref().deref().clone())
                     .await?
                     .into(),
             ))
