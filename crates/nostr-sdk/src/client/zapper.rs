@@ -144,7 +144,9 @@ impl Client {
         // 4. Send payment
 
         // Check if zapper is set
-        self.zapper().await?;
+        if !self.has_zapper().await {
+            return Err(Error::ZapperNotConfigured);
+        }
 
         // Get entity metadata
         let to: ZapEntity = to.into();

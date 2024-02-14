@@ -214,6 +214,13 @@ impl Client {
         *s = signer;
     }
 
+    /// Check if `zapper` is configured
+    #[cfg(feature = "nip57")]
+    pub async fn has_zapper(&self) -> bool {
+        let zapper = self.zapper.read().await;
+        zapper.is_some()
+    }
+
     /// Get current nostr zapper
     ///
     /// Rise error if it not set.
