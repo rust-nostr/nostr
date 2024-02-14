@@ -7,8 +7,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use nostr_database::nostr::secp256k1::XOnlyPublicKey;
-use nostr_database::nostr::Kind;
+use nostr_sdk::prelude::*;
 
 pub mod parser;
 
@@ -38,6 +37,9 @@ pub enum Command {
         /// Identifier (`d` tag)
         #[clap(short, long)]
         identifier: Option<String>,
+        /// Full-text search
+        #[clap(short, long)]
+        search: Option<String>,
         /// Limit
         #[clap(short, long)]
         limit: Option<usize>,
@@ -47,9 +49,9 @@ pub enum Command {
         /// Query only database
         #[clap(short, long)]
         database: bool,
-        /// Count only
-        #[clap(short, long)]
-        count: bool,
+        /// Print result
+        #[clap(long)]
+        print: bool,
     },
     /// Database
     #[command(arg_required_else_help = true)]

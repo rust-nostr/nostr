@@ -8,14 +8,15 @@ use std::io::{BufRead, BufReader};
 
 use clap::Parser;
 use cli::DatabaseCommand;
-use nostr_database::nostr::{Event, Filter, RelayMessage, Result};
-use nostr_database::{DatabaseIndexes, Order};
+use nostr_sdk::prelude::*;
 use rayon::prelude::*;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use tokio::time::Instant;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 mod cli;
+mod util;
 
 use self::cli::{parser, Cli, CliCommand, Command};
 
@@ -27,11 +28,17 @@ async fn main() {
 }
 
 async fn run() -> Result<()> {
+    tracing_subscriber::fmt::fmt()
+        .with_span_events(FmtSpan::CLOSE)
+        .init();
+
     let args = Cli::parse();
 
     match args.command {
         CliCommand::Open => {
-            let mut db = DatabaseIndexes::new();
+            //let db = RocksDatabase::open("./db/nostr").await?;
+            let db = SQLiteDatabase::open("nostr.db").await?;
+            let client = ClientBuilder::new().database(db).build();
 
             let rl = &mut DefaultEditor::new()?;
 
@@ -44,7 +51,7 @@ async fn run() -> Result<()> {
                         vec.insert(0, String::new());
                         match Command::try_parse_from(vec) {
                             Ok(command) => {
-                                if let Err(e) = handle_command(command, &mut db).await {
+                                if let Err(e) = handle_command(command, &client).await {
                                     eprintln!("Error: {e}");
                                 }
                             }
@@ -71,17 +78,20 @@ async fn run() -> Result<()> {
     }
 }
 
-async fn handle_command(command: Command, db: &mut DatabaseIndexes) -> Result<()> {
+async fn handle_command(command: Command, client: &Client) -> Result<()> {
     match command {
         Command::Query {
             kind,
             author,
             identifier,
+            search,
             limit,
             reverse,
             database,
-            count,
+            print,
         } => {
+            let db = client.database();
+
             let mut filter = Filter::new();
 
             if let Some(kind) = kind {
@@ -96,6 +106,10 @@ async fn handle_command(command: Command, db: &mut DatabaseIndexes) -> Result<()
                 filter = filter.identifier(identifier);
             }
 
+            if let Some(search) = search {
+                filter = filter.search(search);
+            }
+
             if let Some(limit) = limit {
                 filter = filter.limit(limit);
             }
@@ -105,28 +119,23 @@ async fn handle_command(command: Command, db: &mut DatabaseIndexes) -> Result<()
             } else if database {
                 // Query database
                 let now = Instant::now();
-
-                let (num, ids) = if count {
-                    let num = db.count([filter]).await;
-                    (num, None)
-                } else {
-                    let ids = db
-                        .query([filter], if reverse { Order::Asc } else { Order::Desc })
-                        .await;
-                    (ids.len(), Some(ids))
-                };
+                let events = db
+                    .query(vec![filter], if reverse { Order::Asc } else { Order::Desc })
+                    .await?;
 
                 let duration = now.elapsed();
                 println!(
-                    "{num} results in {}",
+                    "{} results in {}",
+                    events.len(),
                     if duration.as_secs() == 0 {
                         format!("{:.6} ms", duration.as_secs_f64() * 1000.0)
                     } else {
                         format!("{:.2} sec", duration.as_secs_f64())
                     }
                 );
-                if let Some(_ids) = ids {
+                if print {
                     // Print events
+                    util::print_events(events);
                 }
             } else {
                 // Query relays
@@ -162,9 +171,10 @@ async fn handle_command(command: Command, db: &mut DatabaseIndexes) -> Result<()
                         .collect();
 
                     // Bulk load
+                    let db = client.database();
                     println!("Indexing {} events", events.len());
                     let now = Instant::now();
-                    db.bulk_index(events).await;
+                    db.bulk_import(events).await?;
                     println!("Indexed in {:.6} secs", now.elapsed().as_secs_f64());
                 } else {
                     println!("File not found")
