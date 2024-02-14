@@ -366,6 +366,11 @@ pub struct EventIndexResult {
     pub to_discard: HashSet<EventId>,
 }
 
+enum InternalQueryResult<'a> {
+    All,
+    Set(BTreeSet<&'a ArcEventIndex>),
+}
+
 /// Database Indexes
 #[derive(Debug, Clone, Default)]
 struct InternalDatabaseIndexes {
@@ -678,9 +683,7 @@ impl InternalDatabaseIndexes {
         })
     }
 
-    /// Query
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub fn query<I>(&self, filters: I, order: Order) -> Vec<EventId>
+    fn internal_query<I>(&self, filters: I) -> InternalQueryResult<'_>
     where
         I: IntoIterator<Item = Filter>,
     {
@@ -688,10 +691,7 @@ impl InternalDatabaseIndexes {
 
         for filter in filters.into_iter() {
             if filter.is_empty() {
-                return match order {
-                    Order::Asc => self.index.iter().map(|e| e.event_id).rev().collect(),
-                    Order::Desc => self.index.iter().map(|e| e.event_id).collect(),
-                };
+                return InternalQueryResult::All;
             }
 
             if let (Some(since), Some(until)) = (filter.since, filter.until) {
@@ -720,13 +720,24 @@ impl InternalDatabaseIndexes {
             }
         }
 
-        match order {
-            Order::Asc => matching_ids
-                .into_iter()
-                .map(|ev| ev.event_id)
-                .rev()
-                .collect(),
-            Order::Desc => matching_ids.into_iter().map(|ev| ev.event_id).collect(),
+        InternalQueryResult::Set(matching_ids)
+    }
+
+    /// Query
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub fn query<I>(&self, filters: I, order: Order) -> Vec<EventId>
+    where
+        I: IntoIterator<Item = Filter>,
+    {
+        match self.internal_query(filters) {
+            InternalQueryResult::All => match order {
+                Order::Asc => self.index.iter().map(|ev| ev.event_id).rev().collect(),
+                Order::Desc => self.index.iter().map(|ev| ev.event_id).collect(),
+            },
+            InternalQueryResult::Set(set) => match order {
+                Order::Asc => set.into_iter().map(|ev| ev.event_id).rev().collect(),
+                Order::Desc => set.into_iter().map(|ev| ev.event_id).collect(),
+            },
         }
     }
 
@@ -736,31 +747,10 @@ impl InternalDatabaseIndexes {
     where
         I: IntoIterator<Item = Filter>,
     {
-        let mut counter: usize = 0;
-
-        for filter in filters.into_iter() {
-            if filter.is_empty() {
-                counter = self.index.len();
-                break;
-            }
-
-            if let (Some(since), Some(until)) = (filter.since, filter.until) {
-                if since > until {
-                    continue;
-                }
-            }
-
-            let limit: Option<usize> = filter.limit;
-            let count = self.internal_generic_query(filter).count();
-            if let Some(limit) = limit {
-                let count = if limit >= count { limit } else { count };
-                counter += count;
-            } else {
-                counter += count;
-            }
+        match self.internal_query(filters) {
+            InternalQueryResult::All => self.index.len(),
+            InternalQueryResult::Set(set) => set.len(),
         }
-
-        counter
     }
 
     /// Check if an event with [`EventId`] has been deleted
