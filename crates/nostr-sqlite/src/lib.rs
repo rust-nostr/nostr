@@ -377,6 +377,8 @@ impl NostrDatabase for SQLiteDatabase {
 
         migration::run(&conn).await?;
 
+        self.indexes.clear().await;
+
         Ok(())
     }
 }

@@ -469,6 +469,8 @@ impl_nostr_database!({
             store.clear()?.await?;
         }
 
+        self.indexes.clear().await;
+
         Ok(())
     }
 });
