@@ -29,12 +29,7 @@ enum Error {
     EventId(#[from] id::Error),
 }
 
-type ArcEventId = Arc<EventId>;
 type ArcEventIndex = Arc<EventIndex>;
-type ArcTagIndexes = Arc<TagIndexes>;
-type KindAuthorIndexes = HashMap<(Kind, PublicKeyPrefix), HashSet<ArcEventIndex>>;
-type ParameterizedReplaceableIndexes =
-    HashMap<(Kind, PublicKeyPrefix, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>;
 
 /// Event Index
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -42,13 +37,13 @@ pub struct EventIndex {
     /// Timestamp (seconds)
     created_at: Timestamp,
     /// Event ID
-    event_id: ArcEventId,
+    event_id: EventId,
     /// Public key prefix
     pubkey: PublicKeyPrefix,
     /// Kind
     kind: Kind,
     /// Tag indexes
-    tags: ArcTagIndexes,
+    tags: TagIndexes,
 }
 
 impl PartialOrd for EventIndex {
@@ -73,10 +68,10 @@ impl TryFrom<RawEvent> for EventIndex {
     fn try_from(raw: RawEvent) -> Result<Self, Self::Error> {
         Ok(Self {
             created_at: raw.created_at,
-            event_id: Arc::new(EventId::from_slice(&raw.id)?),
+            event_id: EventId::from_slice(&raw.id)?,
             pubkey: PublicKeyPrefix::from(raw.pubkey),
             kind: raw.kind,
-            tags: Arc::new(TagIndexes::from(raw.tags.into_iter())),
+            tags: TagIndexes::from(raw.tags.into_iter()),
         })
     }
 }
@@ -85,10 +80,10 @@ impl From<&Event> for EventIndex {
     fn from(e: &Event) -> Self {
         Self {
             created_at: e.created_at(),
-            event_id: Arc::new(e.id()),
+            event_id: e.id(),
             pubkey: PublicKeyPrefix::from(e.author_ref()),
             kind: e.kind(),
-            tags: Arc::new(TagIndexes::from(e.iter_tags().map(|t| t.as_vec()))),
+            tags: TagIndexes::from(e.iter_tags().map(|t| t.as_vec())),
         }
     }
 }
@@ -375,10 +370,11 @@ pub struct EventIndexResult {
 #[derive(Debug, Clone, Default)]
 struct InternalDatabaseIndexes {
     index: BTreeSet<ArcEventIndex>,
-    ids_index: HashMap<ArcEventId, ArcEventIndex>,
-    kind_author_index: KindAuthorIndexes,
-    kind_author_tags_index: ParameterizedReplaceableIndexes,
-    deleted_ids: HashSet<ArcEventId>,
+    ids_index: HashMap<EventId, ArcEventIndex>,
+    kind_author_index: HashMap<(Kind, PublicKeyPrefix), HashSet<ArcEventIndex>>,
+    kind_author_tags_index:
+        HashMap<(Kind, PublicKeyPrefix, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>,
+    deleted_ids: HashSet<EventId>,
     deleted_coordinates: HashMap<Coordinate, Timestamp>,
 }
 
@@ -433,10 +429,10 @@ impl InternalDatabaseIndexes {
         let event = event.into();
 
         // Parse event ID
-        let event_id: ArcEventId = match &event {
-            EventOrRawEvent::Event(e) => Arc::new(e.id()),
-            EventOrRawEvent::EventOwned(e) => Arc::new(e.id()),
-            EventOrRawEvent::Raw(r) => Arc::new(EventId::from_slice(&r.id)?),
+        let event_id: EventId = match &event {
+            EventOrRawEvent::Event(e) => e.id(),
+            EventOrRawEvent::EventOwned(e) => e.id(),
+            EventOrRawEvent::Raw(r) => EventId::from_slice(&r.id)?,
         };
 
         // Check if was deleted
@@ -450,7 +446,7 @@ impl InternalDatabaseIndexes {
         if let EventOrRawEvent::Raw(raw) = &event {
             if raw.is_expired(now) {
                 let mut to_discard = HashSet::with_capacity(1);
-                to_discard.insert(*event_id);
+                to_discard.insert(event_id);
                 return Ok(EventIndexResult {
                     to_store: false,
                     to_discard,
@@ -537,17 +533,17 @@ impl InternalDatabaseIndexes {
             }
 
             self.deleted_ids
-                .extend(to_discard.iter().map(|ev| ev.event_id.clone()));
+                .extend(to_discard.iter().map(|ev| ev.event_id));
         }
 
         // Insert event
         if should_insert {
             let e: ArcEventIndex = Arc::new(EventIndex {
                 created_at,
-                event_id: event_id.clone(),
+                event_id,
                 pubkey: pubkey_prefix,
                 kind,
-                tags: Arc::new(event.tags()),
+                tags: event.tags(),
             });
 
             self.index.insert(e.clone());
@@ -577,7 +573,7 @@ impl InternalDatabaseIndexes {
 
         Ok(EventIndexResult {
             to_store: should_insert,
-            to_discard: to_discard.into_iter().map(|ev| *ev.event_id).collect(),
+            to_discard: to_discard.into_iter().map(|ev| ev.event_id).collect(),
         })
     }
 
@@ -692,8 +688,8 @@ impl InternalDatabaseIndexes {
         for filter in filters.into_iter() {
             if filter.is_empty() {
                 return match order {
-                    Order::Asc => self.index.iter().map(|e| *e.event_id).rev().collect(),
-                    Order::Desc => self.index.iter().map(|e| *e.event_id).collect(),
+                    Order::Asc => self.index.iter().map(|e| e.event_id).rev().collect(),
+                    Order::Desc => self.index.iter().map(|e| e.event_id).collect(),
                 };
             }
 
@@ -726,10 +722,10 @@ impl InternalDatabaseIndexes {
         match order {
             Order::Asc => matching_ids
                 .into_iter()
-                .map(|ev| *ev.event_id)
+                .map(|ev| ev.event_id)
                 .rev()
                 .collect(),
-            Order::Desc => matching_ids.into_iter().map(|ev| *ev.event_id).collect(),
+            Order::Desc => matching_ids.into_iter().map(|ev| ev.event_id).collect(),
         }
     }
 
