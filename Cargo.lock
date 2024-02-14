@@ -1596,16 +1596,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nostr-database-perf"
-version = "0.1.0"
-dependencies = [
- "nostr-database",
- "serde_json",
- "tokio",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "nostr-ffi"
 version = "0.1.0"
 dependencies = [

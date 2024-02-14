@@ -4,7 +4,6 @@ members = [
     "bindings/nostr-sdk-ffi",
     "bindings/uniffi-bindgen",
     "crates/*",
-    "crates/nostr-database/fuzz/perf",
 ]
 exclude = [
     "bindings/nostr-js", # rust-analyzer not work well with multiple different targets in workspace
