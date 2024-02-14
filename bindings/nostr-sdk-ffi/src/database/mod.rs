@@ -6,8 +6,12 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::{Event, EventId, Filter, PublicKey};
+use nostr_sdk::block_on;
 use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt, Order};
-use nostr_sdk::{block_on, SQLiteDatabase};
+#[cfg(feature = "ndb")]
+use nostr_sdk::NdbDatabase;
+#[cfg(feature = "sqlite")]
+use nostr_sdk::SQLiteDatabase;
 use uniffi::Object;
 
 pub mod custom;
@@ -35,13 +39,24 @@ impl From<&NostrDatabase> for Arc<DynNostrDatabase> {
 
 #[uniffi::export]
 impl NostrDatabase {
+    #[cfg(feature = "sqlite")]
     #[uniffi::constructor]
-    pub fn sqlite(path: String) -> Result<Self> {
+    pub fn sqlite(path: &str) -> Result<Self> {
         block_on(async move {
             let db = Arc::new(SQLiteDatabase::open(path).await?);
             Ok(Self {
                 inner: db.into_nostr_database(),
             })
+        })
+    }
+
+    /// [`nostrdb`](https://github.com/damus-io/nostrdb) backend
+    #[cfg(feature = "ndb")]
+    #[uniffi::constructor]
+    pub fn ndb(path: &str) -> Result<Self> {
+        let db = Arc::new(NdbDatabase::open(path)?);
+        Ok(Self {
+            inner: db.into_nostr_database(),
         })
     }
 

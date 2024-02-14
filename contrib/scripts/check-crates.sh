@@ -35,18 +35,37 @@ buildargs=(
     "-p nostr-sdk --features nip47,nip57 --target wasm32-unknown-unknown"
     "-p nostr-sdk --features indexeddb,webln --target wasm32-unknown-unknown"
     "-p nostr-sdk --features sqlite"
+    "-p nostr-sdk --features ndb"
 )
 
-for arg in "${buildargs[@]}"; do
-    if [[ $version == "" ]]; then
+skip_msrv=(
+  "-p nostr-sdk --features ndb" # MSRV: 1.70.0
+)
+
+for arg in "${buildargs[@]}";
+do
+    # Skip the current crate if is_msrv is true and it's in the skip list
+    if [ "$is_msrv" == true ] && [[ "${skip_msrv[*]}" =~ $arg ]]; then
+        echo "Skipping MSRV check for '$arg'"
+        echo
+        continue
+    fi
+
+    if [[ $version == "" ]];
+    then
         echo  "Checking '$arg' [default]"
     else
         echo  "Checking '$arg' [$version]"
     fi
+
     cargo $version check $arg
-    if [[ $arg != *"--target wasm32-unknown-unknown"* ]]; then
+
+    if [[ $arg != *"--target wasm32-unknown-unknown"* ]];
+    then
         cargo $version test $arg
     fi
+
     cargo $version clippy $arg -- -D warnings
+
     echo
 done

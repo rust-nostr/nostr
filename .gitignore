@@ -4,5 +4,6 @@ db/
 *.db
 *.db-shm
 *.db-wal
+*.mdb
 .idea/
 .vscode/

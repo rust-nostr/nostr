@@ -137,25 +137,26 @@ NOTE: Currently `nip03` feature not support WASM.
 
 The following crate feature flags are available:
 
-| Feature             | Default | Description                                                                                 |
-| ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
-| `sqlite`            |   No    | Enable SQLite Storage backend                                                               |
-| `rocksdb`           |   No    | Enable RocksDB Storage backend                                                              |
-| `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                      |
-| `webln`             |   No    | Enable WebLN zapper                                                                         |
-| `all-nips`          |   Yes   | Enable all NIPs                                                                             |
-| `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                       |
-| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                     |
-| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                         |
-| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                               |
-| `nip07`             |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**)|
-| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                   |
-| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                               |
-| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                |
-| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                         |
-| `nip49`             |   Yes   | Enable NIP-49: Private Key Encryption                                                       |
-| `nip57`             |   Yes   | Enable NIP-57: Zaps                                                                         |
-| `nip59`             |   Yes   | Enable NIP-59: Gift Wrap                                                                    |
+| Feature             | Default | Description                                                                                  |
+| ------------------- | :-----: |----------------------------------------------------------------------------------------------|
+| `ndb`               |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend                        |
+| `sqlite`            |   No    | Enable SQLite storage backend                                                                |
+| `rocksdb`           |   No    | Enable RocksDB storage backend                                                               |
+| `indexeddb`         |   No    | Enable Web's IndexedDb storage backend                                                       |
+| `webln`             |   No    | Enable WebLN zapper                                                                          |
+| `all-nips`          |   Yes   | Enable all NIPs                                                                              |
+| `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                        |
+| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                      |
+| `nip05`             |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                          |
+| `nip06`             |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                |
+| `nip07`             |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**) |
+| `nip11`             |   Yes   | Enable NIP-11: Relay Information Document                                                    |
+| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                                |
+| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                 |
+| `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                          |
+| `nip49`             |   Yes   | Enable NIP-49: Private Key Encryption                                                        |
+| `nip57`             |   Yes   | Enable NIP-57: Zaps                                                                          |
+| `nip59`             |   Yes   | Enable NIP-59: Gift Wrap                                                                     |
 
 ## Supported NIPs
 

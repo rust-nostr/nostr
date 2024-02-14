@@ -312,6 +312,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "bindgen"
+version = "0.69.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a00dc851838a2120612785d195287475a3ac45514741da670b735818822129a0"
+dependencies = [
+ "bitflags 2.4.1",
+ "cexpr",
+ "clang-sys",
+ "itertools",
+ "lazy_static",
+ "lazycell",
+ "log",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "rustc-hash",
+ "shlex",
+ "syn",
+ "which",
+]
+
+[[package]]
 name = "bip39"
 version = "2.0.0"
 source = "git+https://github.com/rust-bitcoin/rust-bip39?rev=256a00e7c23c5b2ecc04df90894f60248c8d56d5#256a00e7c23c5b2ecc04df90894f60248c8d56d5"
@@ -1140,6 +1163,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "home"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
+dependencies = [
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "http"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1318,6 +1350,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1392,7 +1433,7 @@ version = "0.11.0+8.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3386f101bcb4bd252d8e9d2fb41ec3b0862a15a62b478c355b2982efa469e3e"
 dependencies = [
- "bindgen",
+ "bindgen 0.65.1",
  "bzip2-sys",
  "cc",
  "glob",
@@ -1702,6 +1743,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-ndb"
+version = "0.29.0"
+dependencies = [
+ "async-trait",
+ "nostr",
+ "nostr-database",
+ "nostrdb",
+ "tracing",
+]
+
+[[package]]
 name = "nostr-ots"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1752,6 +1804,7 @@ dependencies = [
  "nostr",
  "nostr-database",
  "nostr-indexeddb",
+ "nostr-ndb",
  "nostr-relay-pool",
  "nostr-rocksdb",
  "nostr-signer",
@@ -1836,6 +1889,21 @@ dependencies = [
  "async-trait",
  "nostr",
  "thiserror",
+]
+
+[[package]]
+name = "nostrdb"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4d574f011d7bca4fcb7167da332da7a73d5612b24a187df08f5a000de08d3f4"
+dependencies = [
+ "bindgen 0.69.4",
+ "cc",
+ "flatbuffers",
+ "libc",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3429,6 +3497,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "998d2c24ec099a87daf9467808859f9d82b61f1d9c9701251aea037f514eae0e"
 dependencies = [
  "nom",
+]
+
+[[package]]
+name = "which"
+version = "4.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87ba24419a2078cd2b0f2ede2691b6c66d8e47836da3b6db8265ebad47afbfc7"
+dependencies = [
+ "either",
+ "home",
+ "once_cell",
+ "rustix",
 ]
 
 [[package]]

@@ -1,0 +1,19 @@
+[package]
+name = "nostr-ndb"
+version = "0.29.0"
+edition = "2021"
+description = "ndb (nostrdb) storage backend for Nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version = "1.70.0"
+keywords = ["nostr", "database", "ndb", "nostrdb"]
+
+[dependencies]
+async-trait.workspace = true
+nostr = { workspace = true, features = ["std"] }
+nostr-database.workspace = true
+nostrdb = "0.3.2"
+tracing = { workspace = true, features = ["std", "attributes"] }

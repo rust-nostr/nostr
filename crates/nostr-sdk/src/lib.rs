@@ -23,6 +23,8 @@ pub use nostr::{self, *};
 pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
 #[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]
 pub use nostr_indexeddb::{IndexedDBError, WebDatabase};
+#[cfg(feature = "ndb")]
+pub use nostr_ndb::{self as ndb, NdbDatabase};
 pub use nostr_relay_pool::{
     self as pool, AtomicRelayServiceFlags, FilterOptions, NegentropyDirection, NegentropyOptions,
     Relay, RelayConnectionStats, RelayOptions, RelayPool, RelayPoolNotification, RelayPoolOptions,
