@@ -30,6 +30,7 @@ tokio = { version = "1", features = ["full"] }
 
 ```rust,no_run
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::str::FromStr;
 
 use nostr_sdk::prelude::*;
 
@@ -86,16 +87,33 @@ async fn main() -> Result<()> {
     let event: Event = EventBuilder::text_note("POW text note from nostr-sdk", []).to_pow_event(&my_keys, 20)?;
     client.send_event(event).await?;
 
-    // Send custom event
+    // Compose custom event and send to specific relay
     let event_id = EventId::from_bech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r")?;
     let public_key = XOnlyPublicKey::from_bech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz")?;
     let event: Event = EventBuilder::reaction(event_id, public_key, "🧡").to_event(&my_keys)?;
-
-    // Send custom event to all relays
-    // client.send_event(event).await?;
-
-    // Send custom event to a specific previously added relay
     client.send_event_to(["wss://relay.damus.io"], event).await?;
+
+    // --------- Zap! -------------
+
+    // Configure zapper
+    let uri = NostrWalletConnectURI::from_str("nostr+walletconnect://...")?;
+    let zapper = NostrZapper::nwc(uri);
+    client.set_zapper(Some(zapper)).await;
+
+    // Send SAT without zap event
+    let public_key = XOnlyPublicKey::from_bech32(
+        "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
+    )?;
+    client.zap(public_key, 1000, None).await?;
+
+    // Zap profile
+    let details = ZapDetails::new(ZapType::Public).message("Test");
+    client.zap(public_key, 1000, Some(details)).await?;
+
+    // Zap event
+    let event = Nip19Event::from_bech32("nevent1qqsr0q447ylm3y3tvw07vt69w3kzk026vl6yn3dwm9fweay0dw0jttgpz3mhxue69uhhyetvv9ujumn0wd68ytnzvupzq6xcz9jerqgqkldy8lpg7lglcyj4g3nwzy2cs6u70wejdaj7csnjqvzqqqqqqygequ53")?;
+    let details = ZapDetails::new(ZapType::Anonymous).message("Anonymous Zap!");
+    client.zap(event, 1000, Some(details)).await?;
 
     Ok(())
 }
