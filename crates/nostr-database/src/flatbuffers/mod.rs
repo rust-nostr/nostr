@@ -144,7 +144,6 @@ impl FlatBufferDecode for RawEvent {
                     None => None,
                 })
                 .collect(),
-            content: ev.content().ok_or(Error::NotFound)?.to_owned(),
         })
     }
 }
