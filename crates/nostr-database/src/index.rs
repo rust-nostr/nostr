@@ -385,21 +385,14 @@ impl InternalDatabaseIndexes {
     where
         E: Into<EventOrRawEvent<'a>>,
     {
-        let mut to_discard: HashSet<EventId> = HashSet::new();
         let now: Timestamp = Timestamp::now();
-
         events
             .into_iter()
             .map(|e| e.into())
             .filter(|e| !e.kind().is_ephemeral())
-            .for_each(|event| {
-                let res = self.internal_index_event(event, &now);
-                if let Ok(res) = res {
-                    to_discard.extend(res.to_discard);
-                }
-            });
-
-        to_discard
+            .filter_map(|event| self.internal_index_event(event, &now).ok())
+            .flat_map(|res| res.to_discard)
+            .collect()
     }
 
     /// Bulk import
@@ -435,17 +428,25 @@ impl InternalDatabaseIndexes {
             EventOrRawEvent::Raw(r) => EventId::from_slice(&r.id)?,
         };
 
-        // Check if was deleted
-        if self.deleted_ids.contains(&event_id) {
+        // Check if was already added
+        if self.ids_index.contains_key(&event_id) {
             return Ok(EventIndexResult::default());
         }
 
-        let mut to_discard: HashSet<ArcEventIndex> = HashSet::new();
+        let mut to_discard: HashSet<EventId> = HashSet::new();
+
+        // Check if was deleted
+        if self.deleted_ids.contains(&event_id) {
+            to_discard.insert(event_id);
+            return Ok(EventIndexResult {
+                to_store: false,
+                to_discard,
+            });
+        }
 
         // Check if is expired
         if let EventOrRawEvent::Raw(raw) = &event {
             if raw.is_expired(now) {
-                let mut to_discard = HashSet::with_capacity(1);
                 to_discard.insert(event_id);
                 return Ok(EventIndexResult {
                     to_store: false,
@@ -468,19 +469,20 @@ impl InternalDatabaseIndexes {
                 if ev.created_at > created_at || ev.event_id == event_id {
                     should_insert = false;
                 } else {
-                    to_discard.insert(ev.clone());
+                    to_discard.insert(ev.event_id);
                 }
             }
         } else if kind.is_parameterized_replaceable() {
             match event.identifier() {
                 Some(identifier) => {
+                    // TODO: check if coordinate was deleted
                     let params: QueryByParamReplaceable =
                         QueryByParamReplaceable::new(kind, pubkey_prefix, identifier);
                     if let Some(ev) = self.internal_query_param_replaceable(params) {
                         if ev.created_at > created_at || ev.event_id == event_id {
                             should_insert = false;
                         } else {
-                            to_discard.insert(ev.clone());
+                            to_discard.insert(ev.event_id);
                         }
                     }
                 }
@@ -489,9 +491,9 @@ impl InternalDatabaseIndexes {
         } else if kind == Kind::EventDeletion {
             // Check `e` tags
             for id in event.event_ids() {
-                if let Some(ev) = self.ids_index.get(&Arc::new(id)) {
+                if let Some(ev) = self.ids_index.get(&id) {
                     if ev.pubkey == pubkey_prefix && ev.created_at <= created_at {
-                        to_discard.insert(ev.clone());
+                        to_discard.insert(ev.event_id);
                     }
                 }
             }
@@ -509,31 +511,30 @@ impl InternalDatabaseIndexes {
                     let filter: Filter = filter.until(created_at);
                     // Not check if ev.pubkey match the pubkey_prefix because assume that query
                     // returned only the events owned by pubkey_prefix
-                    to_discard.extend(self.internal_generic_query(filter).cloned());
+                    to_discard.extend(self.internal_generic_query(filter).map(|e| e.event_id));
                 }
             }
         }
 
         // Remove events
         if !to_discard.is_empty() {
-            for ev in to_discard.iter() {
-                self.index.remove(ev);
-                self.ids_index.remove(&ev.event_id);
+            for id in to_discard.iter() {
+                if let Some(ev) = self.ids_index.remove(id) {
+                    self.index.remove(&ev);
 
-                if ev.kind.is_parameterized_replaceable() {
-                    if let Some(identifier) = ev.tags.identifier() {
-                        self.kind_author_tags_index
-                            .remove(&(ev.kind, ev.pubkey, identifier));
+                    if ev.kind.is_parameterized_replaceable() {
+                        if let Some(identifier) = ev.tags.identifier() {
+                            self.kind_author_tags_index
+                                .remove(&(ev.kind, ev.pubkey, identifier));
+                        }
                     }
                 }
+                self.deleted_ids.insert(*id);
             }
 
             if let Some(set) = self.kind_author_index.get_mut(&(kind, pubkey_prefix)) {
-                set.retain(|e| !to_discard.contains(e));
+                set.retain(|e| !to_discard.contains(&e.event_id));
             }
-
-            self.deleted_ids
-                .extend(to_discard.iter().map(|ev| ev.event_id));
         }
 
         // Insert event
@@ -573,7 +574,7 @@ impl InternalDatabaseIndexes {
 
         Ok(EventIndexResult {
             to_store: should_insert,
-            to_discard: to_discard.into_iter().map(|ev| ev.event_id).collect(),
+            to_discard,
         })
     }
 
@@ -917,11 +918,10 @@ mod tests {
         let indexes = DatabaseIndexes::new();
 
         // Build indexes
-        let mut events: BTreeSet<RawEvent> = BTreeSet::new();
+        let mut events: BTreeSet<Event> = BTreeSet::new();
         for event in EVENTS.into_iter() {
             let event = Event::from_json(event).unwrap();
-            let raw: RawEvent = event.into();
-            events.insert(raw);
+            events.insert(event);
         }
         indexes.bulk_index(events).await;
 

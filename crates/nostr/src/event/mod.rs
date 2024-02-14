@@ -472,7 +472,7 @@ impl PartialOrd for EventIntermediate {
 impl Ord for EventIntermediate {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.created_at != other.created_at {
-            self.created_at.cmp(&other.created_at).reverse()
+            self.created_at.cmp(&other.created_at)
         } else {
             self.id.cmp(&other.id)
         }
