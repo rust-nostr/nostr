@@ -174,14 +174,14 @@ impl From<Filter> for FilterIndex {
 #[allow(missing_docs)]
 pub enum EventOrTempEvent<'a> {
     Event(&'a Event),
-    EventOwned(Event),
+    EventOwned(Box<Event>),
     #[cfg(feature = "flatbuf")]
     Temp(TempEvent),
 }
 
 impl<'a> From<Event> for EventOrTempEvent<'a> {
     fn from(value: Event) -> Self {
-        Self::EventOwned(value)
+        Self::EventOwned(Box::new(value))
     }
 }
 
