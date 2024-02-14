@@ -19,8 +19,9 @@ mod event_generated;
 mod event_seen_by_generated;
 
 use self::event_generated::event_fbs;
+pub(crate) use self::event_generated::event_fbs::StringVector;
 use self::event_seen_by_generated::event_seen_by_fbs;
-use crate::raw::RawEvent;
+use crate::temp::TempEvent;
 
 /// FlatBuffers Error
 #[derive(Debug, Error)]
@@ -120,31 +121,16 @@ impl FlatBufferDecode for Event {
     }
 }
 
-impl FlatBufferDecode for RawEvent {
+impl FlatBufferDecode for TempEvent {
     #[tracing::instrument(skip_all, level = "trace")]
     fn decode(buf: &[u8]) -> Result<Self, Error> {
         let ev = event_fbs::root_as_event(buf)?;
-        Ok(Self {
-            id: ev.id().ok_or(Error::NotFound)?.0,
-            pubkey: ev.pubkey().ok_or(Error::NotFound)?.0,
-            created_at: Timestamp::from(ev.created_at()),
-            kind: Kind::from(ev.kind()),
-            tags: ev
-                .tags()
-                .ok_or(Error::NotFound)?
-                .into_iter()
-                .filter_map(|tag| match tag.data() {
-                    Some(t) => {
-                        if t.len() > 1 {
-                            Some(t.into_iter().map(|s| s.to_owned()).collect::<Vec<String>>())
-                        } else {
-                            None
-                        }
-                    }
-                    None => None,
-                })
-                .collect(),
-        })
+        let id = ev.id().ok_or(Error::NotFound)?.0;
+        let pubkey = ev.pubkey().ok_or(Error::NotFound)?.0;
+        let created_at = ev.created_at();
+        let kind = ev.kind();
+        let tags = ev.tags().ok_or(Error::NotFound)?;
+        Ok(Self::new(id, pubkey, created_at, kind, tags))
     }
 }
 

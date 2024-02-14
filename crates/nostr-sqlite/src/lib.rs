@@ -21,7 +21,7 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, NostrDatabase, Order, RawEvent,
+    FlatBufferEncode, NostrDatabase, Order, TempEvent,
 };
 use rusqlite::config::DbConfig;
 use tokio::sync::RwLock;
@@ -80,10 +80,10 @@ impl SQLiteDatabase {
                 let mut events = BTreeSet::new();
                 while let Ok(Some(row)) = rows.next() {
                     let buf: Vec<u8> = row.get(0)?;
-                    let raw = RawEvent::decode(&buf)?;
+                    let raw = TempEvent::decode(&buf)?;
                     events.insert(raw);
                 }
-                Ok::<BTreeSet<RawEvent>, Error>(events)
+                Ok::<BTreeSet<TempEvent>, Error>(events)
             })
             .await??;
 

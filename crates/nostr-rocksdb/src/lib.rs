@@ -21,7 +21,7 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, NostrDatabase, Order, RawEvent,
+    FlatBufferEncode, NostrDatabase, Order, TempEvent,
 };
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, IteratorMode,
@@ -119,7 +119,7 @@ impl RocksDatabase {
             .db
             .full_iterator_cf(&cf, IteratorMode::Start)
             .flatten()
-            .filter_map(|(_, value)| RawEvent::decode(&value).ok())
+            .filter_map(|(_, value)| TempEvent::decode(&value).ok())
             .collect();
 
         // Build indexes

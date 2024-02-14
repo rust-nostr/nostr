@@ -7,9 +7,14 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::{Deref, DerefMut};
 
+#[cfg(feature = "flatbuf")]
+use flatbuffers::{ForwardsUOffset, Vector};
 use nostr::hashes::siphash24::Hash as SipHash24;
 use nostr::hashes::Hash;
 use nostr::{Alphabet, GenericTagValue, SingleLetterTag};
+
+#[cfg(feature = "flatbuf")]
+use crate::flatbuffers::StringVector;
 
 /// Tag Index Value Size
 pub const TAG_INDEX_VALUE_SIZE: usize = 8;
@@ -35,6 +40,25 @@ impl DerefMut for TagIndexes {
 }
 
 impl TagIndexes {
+    #[cfg(feature = "flatbuf")]
+    pub(crate) fn from_flatb<'a>(v: Vector<'a, ForwardsUOffset<StringVector<'a>>>) -> Self {
+        let mut tag_index: TagIndexes = TagIndexes::default();
+        for t in v.into_iter() {
+            if let Some(t) = t.data() {
+                if t.len() > 1 {
+                    if let Some(single_letter_tag) = single_char_tagname(t.get(0)) {
+                        let inner = hash(t.get(1));
+                        tag_index
+                            .entry(single_letter_tag)
+                            .or_default()
+                            .insert(inner);
+                    }
+                }
+            }
+        }
+        tag_index
+    }
+
     /// Get hashed `d` tag
     pub fn identifier(&self) -> Option<[u8; TAG_INDEX_VALUE_SIZE]> {
         let values = self.inner.get(&SingleLetterTag::lowercase(Alphabet::D))?;

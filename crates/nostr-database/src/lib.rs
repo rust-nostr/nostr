@@ -23,8 +23,9 @@ pub mod flatbuffers;
 pub mod index;
 pub mod memory;
 pub mod profile;
-mod raw;
 mod tag_indexes;
+#[cfg(feature = "flatbuf")]
+mod temp;
 
 pub use self::error::DatabaseError;
 #[cfg(feature = "flatbuf")]
@@ -32,7 +33,8 @@ pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncod
 pub use self::index::{DatabaseIndexes, EventIndex, EventIndexResult, FilterIndex};
 pub use self::memory::{MemoryDatabase, MemoryDatabaseOptions};
 pub use self::profile::Profile;
-pub use self::raw::RawEvent;
+#[cfg(feature = "flatbuf")]
+pub use self::temp::TempEvent;
 
 /// Backend
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -16,8 +16,9 @@ use nostr::{Alphabet, Event, EventId, Filter, GenericTagValue, Kind, SingleLette
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-use crate::raw::RawEvent;
 use crate::tag_indexes::{hash, TagIndexValues, TagIndexes, TAG_INDEX_VALUE_SIZE};
+#[cfg(feature = "flatbuf")]
+use crate::temp::TempEvent;
 use crate::Order;
 
 /// Public Key Prefix Size
@@ -59,20 +60,6 @@ impl Ord for EventIndex {
         } else {
             self.event_id.cmp(&other.event_id)
         }
-    }
-}
-
-impl TryFrom<RawEvent> for EventIndex {
-    type Error = nostr::event::id::Error;
-
-    fn try_from(raw: RawEvent) -> Result<Self, Self::Error> {
-        Ok(Self {
-            created_at: raw.created_at,
-            event_id: EventId::from_slice(&raw.id)?,
-            pubkey: PublicKeyPrefix::from(raw.pubkey),
-            kind: raw.kind,
-            tags: TagIndexes::from(raw.tags.into_iter()),
-        })
     }
 }
 
@@ -185,36 +172,48 @@ impl From<Filter> for FilterIndex {
 }
 
 #[allow(missing_docs)]
-pub enum EventOrRawEvent<'a> {
+pub enum EventOrTempEvent<'a> {
     Event(&'a Event),
     EventOwned(Event),
-    Raw(RawEvent),
+    #[cfg(feature = "flatbuf")]
+    Temp(TempEvent),
 }
 
-impl<'a> From<Event> for EventOrRawEvent<'a> {
+impl<'a> From<Event> for EventOrTempEvent<'a> {
     fn from(value: Event) -> Self {
         Self::EventOwned(value)
     }
 }
 
-impl<'a> From<&'a Event> for EventOrRawEvent<'a> {
+impl<'a> From<&'a Event> for EventOrTempEvent<'a> {
     fn from(value: &'a Event) -> Self {
         Self::Event(value)
     }
 }
 
-impl<'a> From<RawEvent> for EventOrRawEvent<'a> {
-    fn from(value: RawEvent) -> Self {
-        Self::Raw(value)
+#[cfg(feature = "flatbuf")]
+impl<'a> From<TempEvent> for EventOrTempEvent<'a> {
+    fn from(value: TempEvent) -> Self {
+        Self::Temp(value)
     }
 }
 
-impl<'a> EventOrRawEvent<'a> {
+impl<'a> EventOrTempEvent<'a> {
+    fn id(&self) -> Result<EventId, Error> {
+        match self {
+            EventOrTempEvent::Event(e) => Ok(e.id()),
+            EventOrTempEvent::EventOwned(e) => Ok(e.id()),
+            #[cfg(feature = "flatbuf")]
+            EventOrTempEvent::Temp(r) => Ok(EventId::from_slice(&r.id)?),
+        }
+    }
+
     fn pubkey(&self) -> PublicKeyPrefix {
         match self {
             Self::Event(e) => PublicKeyPrefix::from(e.author_ref()),
             Self::EventOwned(e) => PublicKeyPrefix::from(e.author_ref()),
-            Self::Raw(r) => PublicKeyPrefix::from(r.pubkey),
+            #[cfg(feature = "flatbuf")]
+            Self::Temp(r) => PublicKeyPrefix::from(r.pubkey),
         }
     }
 
@@ -222,7 +221,8 @@ impl<'a> EventOrRawEvent<'a> {
         match self {
             Self::Event(e) => e.created_at(),
             Self::EventOwned(e) => e.created_at(),
-            Self::Raw(r) => r.created_at,
+            #[cfg(feature = "flatbuf")]
+            Self::Temp(r) => r.created_at,
         }
     }
 
@@ -230,7 +230,8 @@ impl<'a> EventOrRawEvent<'a> {
         match self {
             Self::Event(e) => e.kind(),
             Self::EventOwned(e) => e.kind(),
-            Self::Raw(r) => r.kind,
+            #[cfg(feature = "flatbuf")]
+            Self::Temp(r) => r.kind,
         }
     }
 
@@ -238,23 +239,26 @@ impl<'a> EventOrRawEvent<'a> {
         match self {
             Self::Event(e) => TagIndexes::from(e.iter_tags().map(|t| t.as_vec())),
             Self::EventOwned(e) => TagIndexes::from(e.iter_tags().map(|t| t.as_vec())),
-            Self::Raw(r) => TagIndexes::from(r.tags.into_iter()),
+            #[cfg(feature = "flatbuf")]
+            Self::Temp(r) => r.tags,
         }
     }
 
-    fn identifier(&self) -> Option<&str> {
+    fn identifier(&self) -> Option<[u8; TAG_INDEX_VALUE_SIZE]> {
         match self {
-            Self::Event(e) => e.identifier(),
-            Self::EventOwned(e) => e.identifier(),
-            Self::Raw(r) => r.identifier(),
+            Self::Event(e) => e.identifier().map(hash),
+            Self::EventOwned(e) => e.identifier().map(hash),
+            #[cfg(feature = "flatbuf")]
+            Self::Temp(r) => r.identifier,
         }
     }
 
-    fn event_ids(&self) -> Box<dyn Iterator<Item = EventId> + '_> {
+    fn event_ids(&self) -> Box<dyn Iterator<Item = &EventId> + '_> {
         match self {
-            Self::Event(e) => Box::new(e.event_ids().copied()),
-            Self::EventOwned(e) => Box::new(e.event_ids().copied()),
-            Self::Raw(r) => Box::new(r.event_ids()),
+            Self::Event(e) => Box::new(e.event_ids()),
+            Self::EventOwned(e) => Box::new(e.event_ids()),
+            #[cfg(feature = "flatbuf")]
+            Self::Temp(r) => Box::new(r.event_ids.iter()),
         }
     }
 
@@ -262,7 +266,17 @@ impl<'a> EventOrRawEvent<'a> {
         match self {
             Self::Event(e) => Box::new(e.coordinates()),
             Self::EventOwned(e) => Box::new(e.coordinates()),
-            Self::Raw(r) => Box::new(r.coordinates()),
+            #[cfg(feature = "flatbuf")]
+            Self::Temp(r) => Box::new(r.coordinates.iter().cloned()),
+        }
+    }
+
+    fn is_expired(&self, now: &Timestamp) -> bool {
+        match self {
+            Self::Event(e) => e.is_expired_at(now),
+            Self::EventOwned(e) => e.is_expired_at(now),
+            #[cfg(feature = "flatbuf")]
+            Self::Temp(r) => r.is_expired(now),
         }
     }
 }
@@ -294,11 +308,15 @@ struct QueryByParamReplaceable {
 }
 
 impl QueryByParamReplaceable {
-    pub fn new(kind: Kind, author: PublicKeyPrefix, identifier: &str) -> Self {
+    pub fn new(
+        kind: Kind,
+        author: PublicKeyPrefix,
+        identifier: [u8; TAG_INDEX_VALUE_SIZE],
+    ) -> Self {
         Self {
             kind,
             author,
-            identifier: hash(identifier),
+            identifier,
             since: None,
             until: None,
         }
@@ -388,7 +406,7 @@ impl InternalDatabaseIndexes {
     #[tracing::instrument(skip_all)]
     pub fn bulk_index<'a, E>(&mut self, events: BTreeSet<E>) -> HashSet<EventId>
     where
-        E: Into<EventOrRawEvent<'a>>,
+        E: Into<EventOrTempEvent<'a>>,
     {
         let now: Timestamp = Timestamp::now();
         events
@@ -422,26 +440,19 @@ impl InternalDatabaseIndexes {
         now: &Timestamp,
     ) -> Result<EventIndexResult, Error>
     where
-        E: Into<EventOrRawEvent<'a>>,
+        E: Into<EventOrTempEvent<'a>>,
     {
         let event = event.into();
-
-        // Parse event ID
-        let event_id: EventId = match &event {
-            EventOrRawEvent::Event(e) => e.id(),
-            EventOrRawEvent::EventOwned(e) => e.id(),
-            EventOrRawEvent::Raw(r) => EventId::from_slice(&r.id)?,
-        };
+        let event_id: EventId = event.id()?;
 
         // Check if was already added
         if self.ids_index.contains_key(&event_id) {
             return Ok(EventIndexResult::default());
         }
 
-        let mut to_discard: HashSet<EventId> = HashSet::new();
-
-        // Check if was deleted
-        if self.deleted_ids.contains(&event_id) {
+        // Check if was deleted or is expired
+        if self.deleted_ids.contains(&event_id) || event.is_expired(now) {
+            let mut to_discard: HashSet<EventId> = HashSet::with_capacity(1);
             to_discard.insert(event_id);
             return Ok(EventIndexResult {
                 to_store: false,
@@ -449,16 +460,7 @@ impl InternalDatabaseIndexes {
             });
         }
 
-        // Check if is expired
-        if let EventOrRawEvent::Raw(raw) = &event {
-            if raw.is_expired(now) {
-                to_discard.insert(event_id);
-                return Ok(EventIndexResult {
-                    to_store: false,
-                    to_discard,
-                });
-            }
-        }
+        let mut to_discard: HashSet<EventId> = HashSet::new();
 
         // Compose others fields
         let pubkey_prefix: PublicKeyPrefix = event.pubkey();
@@ -496,7 +498,7 @@ impl InternalDatabaseIndexes {
         } else if kind == Kind::EventDeletion {
             // Check `e` tags
             for id in event.event_ids() {
-                if let Some(ev) = self.ids_index.get(&id) {
+                if let Some(ev) = self.ids_index.get(id) {
                     if ev.pubkey == pubkey_prefix && ev.created_at <= created_at {
                         to_discard.insert(ev.event_id);
                     }
@@ -808,7 +810,7 @@ impl DatabaseIndexes {
     #[tracing::instrument(skip_all)]
     pub async fn bulk_index<'a, E>(&self, events: BTreeSet<E>) -> HashSet<EventId>
     where
-        E: Into<EventOrRawEvent<'a>>,
+        E: Into<EventOrTempEvent<'a>>,
     {
         let mut inner = self.inner.write().await;
         inner.bulk_index(events)
