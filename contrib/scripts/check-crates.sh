@@ -36,6 +36,7 @@ buildargs=(
     "-p nostr-sdk --features nip47,nip57 --target wasm32-unknown-unknown"
     "-p nostr-sdk --features indexeddb,webln --target wasm32-unknown-unknown"
     "-p nostr-sdk --features sqlite"
+    "-p nostr-sdk --features ndb"
 )
 
 for arg in "${buildargs[@]}"; do

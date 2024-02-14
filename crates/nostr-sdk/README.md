@@ -139,6 +139,7 @@ The following crate feature flags are available:
 
 | Feature             | Default | Description                                                                                 |
 | ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
+| `ndb`               |   No    | Enable [ndb](https://github.com/damus-io/nostrdb) Storage backend                           |
 | `sqlite`            |   No    | Enable SQLite Storage backend                                                               |
 | `rocksdb`           |   No    | Enable RocksDB Storage backend                                                              |
 | `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                      |
