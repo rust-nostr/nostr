@@ -356,22 +356,7 @@ impl NostrDatabase for SQLiteDatabase {
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        let conn = self.acquire().await?;
-        let ids: Vec<EventId> = self.indexes.query([filter], Order::Desc).await;
-        conn.interact(move |conn| {
-            let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
-            let mut events = Vec::with_capacity(ids.len());
-            for id in ids.into_iter() {
-                let mut rows = stmt.query([id.to_hex()])?;
-                while let Ok(Some(row)) = rows.next() {
-                    let buf: Vec<u8> = row.get(0)?;
-                    let event = Event::decode(&buf)?;
-                    events.push((event.id(), event.created_at()));
-                }
-            }
-            Ok(events)
-        })
-        .await?
+        Ok(self.indexes.negentropy_items(filter).await)
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {

@@ -753,6 +753,21 @@ impl InternalDatabaseIndexes {
         }
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub fn negentropy_items(&self, filter: Filter) -> Vec<(EventId, Timestamp)> {
+        match self.internal_query([filter]) {
+            InternalQueryResult::All => self
+                .index
+                .iter()
+                .map(|ev| (ev.event_id, ev.created_at))
+                .collect(),
+            InternalQueryResult::Set(set) => set
+                .into_iter()
+                .map(|ev| (ev.event_id, ev.created_at))
+                .collect(),
+        }
+    }
+
     /// Check if an event with [`EventId`] has been deleted
     pub fn has_event_id_been_deleted(&self, event_id: &EventId) -> bool {
         self.deleted_ids.contains(event_id)
@@ -841,6 +856,13 @@ impl DatabaseIndexes {
     {
         let inner = self.inner.read().await;
         inner.count(filters)
+    }
+
+    /// Get negentropy items
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub async fn negentropy_items(&self, filter: Filter) -> Vec<(EventId, Timestamp)> {
+        let inner = self.inner.read().await;
+        inner.negentropy_items(filter)
     }
 
     /// Check if an event with [`EventId`] has been deleted

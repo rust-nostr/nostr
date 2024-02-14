@@ -342,29 +342,7 @@ impl NostrDatabase for RocksDatabase {
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        let ids: Vec<EventId> = self.indexes.query(vec![filter], Order::Desc).await;
-
-        let this = self.clone();
-        tokio::task::spawn_blocking(move || {
-            let cf = this.cf_handle(EVENTS_CF)?;
-
-            let mut event_ids: Vec<(EventId, Timestamp)> = Vec::with_capacity(ids.len());
-
-            for v in this
-                .db
-                .batched_multi_get_cf(&cf, ids, true)
-                .into_iter()
-                .flatten()
-                .flatten()
-            {
-                let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
-                event_ids.push((event.id(), event.created_at()));
-            }
-
-            Ok(event_ids)
-        })
-        .await
-        .map_err(DatabaseError::backend)?
+        Ok(self.indexes.negentropy_items(filter).await)
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {

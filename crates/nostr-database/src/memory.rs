@@ -242,16 +242,7 @@ impl NostrDatabase for MemoryDatabase {
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
         if self.opts.events {
-            let ids = self.indexes.query([filter], Order::Desc).await;
-            let mut events = self.events.lock().await;
-
-            let mut list: Vec<(EventId, Timestamp)> = Vec::with_capacity(ids.len());
-            for event_id in ids.into_iter() {
-                if let Some(event) = events.get(&event_id).cloned() {
-                    list.push((event.id, event.created_at));
-                }
-            }
-            Ok(list)
+            Ok(self.indexes.negentropy_items(filter).await)
         } else {
             Err(DatabaseError::FeatureDisabled)
         }

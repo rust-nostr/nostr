@@ -457,25 +457,7 @@ impl_nostr_database!({
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, IndexedDBError> {
-        let tx = self
-            .db
-            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
-        let store = tx.object_store(EVENTS_CF)?;
-
-        let ids = self.indexes.query([filter], Order::Desc).await;
-        let mut events: Vec<(EventId, Timestamp)> = Vec::with_capacity(ids.len());
-
-        for event_id in ids.into_iter() {
-            let key = JsValue::from(event_id.to_hex());
-            if let Some(jsvalue) = store.get(&key)?.await? {
-                let event_hex = jsvalue.as_string().ok_or(DatabaseError::NotFound)?;
-                let bytes = hex::decode(event_hex).map_err(DatabaseError::backend)?;
-                let raw = RawEvent::decode(&bytes).map_err(DatabaseError::backend)?;
-                events.push((event_id, raw.created_at));
-            }
-        }
-
-        Ok(events)
+        Ok(self.indexes.negentropy_items(filter).await)
     }
 
     async fn wipe(&self) -> Result<(), IndexedDBError> {
