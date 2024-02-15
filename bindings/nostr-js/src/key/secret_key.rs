@@ -8,6 +8,7 @@ use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
+use crate::nips::nip49::JsEncryptedSecretKey;
 
 #[wasm_bindgen(js_name = SecretKey)]
 pub struct JsSecretKey {
@@ -59,5 +60,13 @@ impl JsSecretKey {
     #[wasm_bindgen(js_name = toBech32)]
     pub fn to_bech32(&self) -> Result<String> {
         self.inner.to_bech32().map_err(into_err)
+    }
+
+    /// Encrypt secret key
+    ///
+    /// By default `LOG_N` is set to `16` and `KeySecurity` to `Unknown`.
+    /// To use custom values check `EncryptedSecretKey` constructor.
+    pub fn encrypt(&self, password: &str) -> Result<JsEncryptedSecretKey> {
+        Ok(self.inner.encrypt(password).map_err(into_err)?.into())
     }
 }

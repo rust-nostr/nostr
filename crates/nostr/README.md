@@ -103,6 +103,7 @@ The following crate feature flags are available:
 | `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                               |
 | `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                |
 | `nip47`             |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                         |
+| `nip49`             |   Yes   | Enable NIP-49: Private Key Encryption                                                       |
 | `nip57`             |   Yes   | Enable NIP-57: Zaps                                                                         |
 | `nip59`             |   Yes   | Enable NIP-59: Gift Wrap                                                                    |
 
@@ -110,56 +111,57 @@ The following crate feature flags are available:
 
 | Supported  | NIP                                                                                                                                |
 |:----------:| ---------------------------------------------------------------------------------------------------------------------------------- |
-| ✅         | [01 - Basic protocol flow description](https://github.com/nostr-protocol/nips/blob/master/01.md)                                    |
-| ✅         | [02 - Contact List and Petnames](https://github.com/nostr-protocol/nips/blob/master/02.md)                                          |
-| ✅         | [03 - OpenTimestamps Attestations for Events](https://github.com/nostr-protocol/nips/blob/master/03.md)                             |
-| ✅         | [04 - Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)                                           |
-| ✅         | [05 - Mapping Nostr keys to DNS-based internet identifiers](https://github.com/nostr-protocol/nips/blob/master/05.md)               |
-| ✅         | [06 - Basic key derivation from mnemonic seed phrase](https://github.com/nostr-protocol/nips/blob/master/06.md)                     |
-| ✅         | [07 - `window.nostr` capability for web browsers](https://github.com/nostr-protocol/nips/blob/master/07.md)                     |
-| ✅         | [09 - Event Deletion](https://github.com/nostr-protocol/nips/blob/master/09.md)                                                     |
-| ✅         | [10 - Conventions for clients' use of `e` and `p` tags in text events](https://github.com/nostr-protocol/nips/blob/master/10.md)    |
-| ✅         | [11 - Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)                                         |
-| ✅         | [12 - Generic Tag Queries](https://github.com/nostr-protocol/nips/blob/master/12.md)                                                |
-| ✅         | [13 - Proof of Work](https://github.com/nostr-protocol/nips/blob/master/13.md)                                                      |
-| ✅         | [14 - Subject tag in text events](https://github.com/nostr-protocol/nips/blob/master/14.md)                                         |
-| ✅         | [15 - Nostr Marketplace](https://github.com/nostr-protocol/nips/blob/master/15.md)                                                  |
-| ✅         | [16 - Event Treatment](https://github.com/nostr-protocol/nips/blob/master/16.md)                                                    |
-| ✅         | [18 - Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)                                                            |
-| ✅         | [19 - bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)                                            |
-| ✅         | [20 - Command Results](https://github.com/nostr-protocol/nips/blob/master/20.md)                                                    |
-| ✅         | [21 - URI scheme](https://github.com/nostr-protocol/nips/blob/master/21.md)                                                         |
-| ✅         | [23 - Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)                                                  |
-| ✅         | [25 - Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)                                                          |
-| ✅         | [26 - Delegated Event Signing](https://github.com/nostr-protocol/nips/blob/master/26.md)                                            |
-| ❌         | [27 - Text Note References](https://github.com/nostr-protocol/nips/blob/master/27.md)                                               |
-| ✅         | [28 - Public Chat](https://github.com/nostr-protocol/nips/blob/master/28.md)                                                        |
-| ✅         | [30 - Custom Emoji](https://github.com/nostr-protocol/nips/blob/master/30.md)                                                       |
-| ❌         | [31 - Dealing with Unknown Events](https://github.com/nostr-protocol/nips/blob/master/31.md)                                        |
-| ❌         | [32 - Labeling](https://github.com/nostr-protocol/nips/blob/master/32.md)                                                           |
-| ✅         | [36 - Sensitive Content](https://github.com/nostr-protocol/nips/blob/master/36.md)                                                  |
-| ✅         | [39 - External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md)                                    |
-| ✅         | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                                               |
-| ✅         | [42 - Authentication of clients to relays](https://github.com/nostr-protocol/nips/blob/master/42.md)                                |
-| ✅         | [44 - Encrypted Payloads (Versioned)](https://github.com/nostr-protocol/nips/blob/master/44.md)                                                       |
-| ✅         | [45 - Event Counts](https://github.com/nostr-protocol/nips/blob/master/45.md)                                                       |
-| ✅         | [46 - Nostr Connect](https://github.com/nostr-protocol/nips/blob/master/46.md)                                                      |
-| ✅         | [47 - Wallet Connect](https://github.com/nostr-protocol/nips/blob/master/47.md)                                                     |
-| ✅         | [48 - Proxy Tags](https://github.com/nostr-protocol/nips/blob/master/48.md)                                   |
-| ✅         | [50 - Keywords filter](https://github.com/nostr-protocol/nips/blob/master/50.md)                                                    |
-| ✅         | [51 - Lists](https://github.com/nostr-protocol/nips/blob/master/51.md)                                                              |
-| ✅         | [53 - Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)                                                    |
-| ✅         | [56 - Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)                                                          |
-| ✅         | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                                     |
-| ✅         | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                                             |
-| ✅         | [59 - Gift Wrap](https://github.com/nostr-protocol/nips/blob/master/59.md)                                                             |
-| ✅         | [65 - Relay List Metadata](https://github.com/nostr-protocol/nips/blob/master/65.md)                                                |
-| ✅         | [78 - Arbitrary custom app data](https://github.com/nostr-protocol/nips/blob/master/78.md)                                          |
-| ❌         | [89 - Recommended Application Handlers](https://github.com/nostr-protocol/nips/blob/master/89.md)                                   |
-| ✅         | [90 - Data Vending Machine](https://github.com/nostr-protocol/nips/blob/master/90.md)                                                          |
-| ✅         | [94 - File Metadata](https://github.com/nostr-protocol/nips/blob/master/94.md)                                                      |
-| ✅         | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                                          |
-| ❌         | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                                                |
+| ✅         | [01 - Basic protocol flow description](https://github.com/nostr-protocol/nips/blob/master/01.md)                    |
+| ✅         | [02 - Contact List and Petnames](https://github.com/nostr-protocol/nips/blob/master/02.md)                          |
+| ✅         | [03 - OpenTimestamps Attestations for Events](https://github.com/nostr-protocol/nips/blob/master/03.md)             |
+| ✅         | [04 - Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)                           |
+| ✅         | [05 - Mapping Nostr keys to DNS-based internet ids](https://github.com/nostr-protocol/nips/blob/master/05.md)       |
+| ✅         | [06 - Basic key derivation from mnemonic seed phrase](https://github.com/nostr-protocol/nips/blob/master/06.md)     |
+| ✅         | [07 - `window.nostr` capability for web browsers](https://github.com/nostr-protocol/nips/blob/master/07.md)         |
+| ✅         | [09 - Event Deletion](https://github.com/nostr-protocol/nips/blob/master/09.md)                                     |
+| ✅         | [10 - On "e" and "p" tags in Text Events](https://github.com/nostr-protocol/nips/blob/master/10.md)                 |
+| ✅         | [11 - Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)                         |
+| ✅         | [12 - Generic Tag Queries](https://github.com/nostr-protocol/nips/blob/master/12.md)                                |
+| ✅         | [13 - Proof of Work](https://github.com/nostr-protocol/nips/blob/master/13.md)                                      |
+| ✅         | [14 - Subject tag in text events](https://github.com/nostr-protocol/nips/blob/master/14.md)                         |
+| ✅         | [15 - Nostr Marketplace](https://github.com/nostr-protocol/nips/blob/master/15.md)                                  |
+| ✅         | [16 - Event Treatment](https://github.com/nostr-protocol/nips/blob/master/16.md)                                    |
+| ✅         | [18 - Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)                                            |
+| ✅         | [19 - bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)                            |
+| ✅         | [20 - Command Results](https://github.com/nostr-protocol/nips/blob/master/20.md)                                    |
+| ✅         | [21 - URI scheme](https://github.com/nostr-protocol/nips/blob/master/21.md)                                         |
+| ✅         | [23 - Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)                                  |
+| ✅         | [25 - Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)                                          |
+| ✅         | [26 - Delegated Event Signing](https://github.com/nostr-protocol/nips/blob/master/26.md)                            |
+| ❌         | [27 - Text Note References](https://github.com/nostr-protocol/nips/blob/master/27.md)                               |
+| ✅         | [28 - Public Chat](https://github.com/nostr-protocol/nips/blob/master/28.md)                                        |
+| ✅         | [30 - Custom Emoji](https://github.com/nostr-protocol/nips/blob/master/30.md)                                       |
+| ❌         | [31 - Dealing with Unknown Events](https://github.com/nostr-protocol/nips/blob/master/31.md)                        |
+| ❌         | [32 - Labeling](https://github.com/nostr-protocol/nips/blob/master/32.md)                                           |
+| ✅         | [36 - Sensitive Content](https://github.com/nostr-protocol/nips/blob/master/36.md)                                  |
+| ✅         | [39 - External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md)                    |
+| ✅         | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                               |
+| ✅         | [42 - Authentication of clients to relays](https://github.com/nostr-protocol/nips/blob/master/42.md)                |
+| ✅         | [44 - Encrypted Payloads (Versioned)](https://github.com/nostr-protocol/nips/blob/master/44.md)                     |
+| ✅         | [45 - Event Counts](https://github.com/nostr-protocol/nips/blob/master/45.md)                                       |
+| ✅         | [46 - Nostr Connect](https://github.com/nostr-protocol/nips/blob/master/46.md)                                      |
+| ✅         | [47 - Wallet Connect](https://github.com/nostr-protocol/nips/blob/master/47.md)                                     |
+| ✅         | [48 - Proxy Tags](https://github.com/nostr-protocol/nips/blob/master/48.md)                                         |
+| ✅         | [49 - Private Key Encryption](https://github.com/nostr-protocol/nips/blob/master/49.md)                             |
+| ✅         | [50 - Keywords filter](https://github.com/nostr-protocol/nips/blob/master/50.md)                                    |
+| ✅         | [51 - Lists](https://github.com/nostr-protocol/nips/blob/master/51.md)                                              |
+| ✅         | [53 - Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)                                    |
+| ✅         | [56 - Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)                                          |
+| ✅         | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                     |
+| ✅         | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                             |
+| ✅         | [59 - Gift Wrap](https://github.com/nostr-protocol/nips/blob/master/59.md)                                          |
+| ✅         | [65 - Relay List Metadata](https://github.com/nostr-protocol/nips/blob/master/65.md)                                |
+| ✅         | [78 - Arbitrary custom app data](https://github.com/nostr-protocol/nips/blob/master/78.md)                          |
+| ❌         | [89 - Recommended Application Handlers](https://github.com/nostr-protocol/nips/blob/master/89.md)                   |
+| ✅         | [90 - Data Vending Machine](https://github.com/nostr-protocol/nips/blob/master/90.md)                               |
+| ✅         | [94 - File Metadata](https://github.com/nostr-protocol/nips/blob/master/94.md)                                      |
+| ✅         | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                          |
+| ❌         | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                                |
 
 ## State
 

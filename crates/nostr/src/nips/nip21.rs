@@ -136,6 +136,10 @@ impl TryFrom<Nip19> for Nip21 {
             Nip19::Secret(..) => Err(Error::UnsupportedBech32Type(
                 UnsupportedBech32Type::SecretKey,
             )),
+            #[cfg(feature = "nip49")]
+            Nip19::EncryptedSecret(..) => Err(Error::UnsupportedBech32Type(
+                UnsupportedBech32Type::SecretKey,
+            )),
             Nip19::Pubkey(val) => Ok(Self::Pubkey(val)),
             Nip19::Profile(val) => Ok(Self::Profile(val)),
             Nip19::EventId(val) => Ok(Self::EventId(val)),

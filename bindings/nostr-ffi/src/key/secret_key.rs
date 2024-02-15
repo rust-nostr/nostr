@@ -3,11 +3,13 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::sync::Arc;
 
 use nostr::nips::nip19::{FromBech32, ToBech32};
 use uniffi::Object;
 
 use crate::error::Result;
+use crate::nips::nip49::EncryptedSecretKey;
 
 #[derive(Object)]
 pub struct SecretKey {
@@ -65,5 +67,13 @@ impl SecretKey {
 
     pub fn to_bech32(&self) -> Result<String> {
         Ok(self.inner.to_bech32()?)
+    }
+
+    /// Encrypt `SecretKey`
+    ///
+    /// By default `LOG_N` is set to `16` and `KeySecurity` to `Unknown`.
+    /// To use custom values check `EncryptedSecretKey` constructor.
+    pub fn encrypt(&self, password: String) -> Result<Arc<EncryptedSecretKey>> {
+        Ok(Arc::new(self.inner.encrypt(password)?.into()))
     }
 }

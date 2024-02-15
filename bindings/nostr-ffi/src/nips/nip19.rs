@@ -9,6 +9,7 @@ use nostr::nips::nip21::NostrURI;
 use uniffi::{Enum, Object};
 
 use super::nip01::Coordinate;
+use super::nip49::EncryptedSecretKey;
 use crate::error::Result;
 use crate::{EventId, PublicKey, SecretKey};
 
@@ -19,6 +20,8 @@ use crate::{EventId, PublicKey, SecretKey};
 pub enum Nip19Enum {
     /// nsec
     Secret { nsec: Arc<SecretKey> },
+    /// Encrypted Secret Key
+    EncryptedSecret { ncryptsec: Arc<EncryptedSecretKey> },
     /// npub
     Pubkey { npub: Arc<PublicKey> },
     /// nprofile
@@ -36,6 +39,9 @@ impl From<nip19::Nip19> for Nip19Enum {
         match value {
             nip19::Nip19::Secret(nsec) => Self::Secret {
                 nsec: Arc::new(nsec.into()),
+            },
+            nip19::Nip19::EncryptedSecret(ncryptsec) => Self::EncryptedSecret {
+                ncryptsec: Arc::new(ncryptsec.into()),
             },
             nip19::Nip19::Pubkey(npub) => Self::Pubkey {
                 npub: Arc::new(npub.into()),

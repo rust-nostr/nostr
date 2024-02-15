@@ -13,6 +13,8 @@ use bitcoin::secp256k1;
 
 use super::Error;
 use crate::nips::nip19::FromBech32;
+#[cfg(all(feature = "std", feature = "nip49"))]
+use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
 
 /// Secret key
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,6 +89,18 @@ impl SecretKey {
     /// Get secret key as `bytes`
     pub fn to_secret_bytes(&self) -> [u8; 32] {
         self.inner.secret_bytes()
+    }
+
+    /// Encrypt [SecretKey]
+    ///
+    /// By default `LOG_N` is set to `16` and [KeySecurity] to `Unknown`.
+    /// To use custom values check [EncryptedSecretKey] constructors.
+    #[cfg(all(feature = "std", feature = "nip49"))]
+    pub fn encrypt<T>(&self, password: T) -> Result<EncryptedSecretKey, nip49::Error>
+    where
+        T: AsRef<[u8]>,
+    {
+        EncryptedSecretKey::new(self, password, 16, KeySecurity::Unknown)
     }
 }
 

@@ -17,10 +17,13 @@ use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::Hash;
 
 use super::nip01::Coordinate;
+#[cfg(feature = "nip49")]
+use super::nip49::{self, EncryptedSecretKey};
 use crate::event::id::{self, EventId};
 use crate::{key, Kind, PublicKey, SecretKey};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
+pub const PREFIX_BECH32_SECRET_KEY_ENCRYPTED: &str = "ncryptsec";
 pub const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 pub const PREFIX_BECH32_NOTE_ID: &str = "note";
 pub const PREFIX_BECH32_PROFILE: &str = "nprofile";
@@ -45,6 +48,9 @@ pub enum Error {
     Keys(key::Error),
     /// EventId error
     EventId(id::Error),
+    /// NIP49 error
+    #[cfg(feature = "nip49")]
+    NIP49(nip49::Error),
     /// Wrong prefix or variant
     WrongPrefixOrVariant,
     /// Not implemented
@@ -68,6 +74,8 @@ impl fmt::Display for Error {
             Self::Hash(e) => write!(f, "Hash: {e}"),
             Self::Keys(e) => write!(f, "Keys: {e}"),
             Self::EventId(e) => write!(f, "Event ID: {e}"),
+            #[cfg(feature = "nip49")]
+            Self::NIP49(e) => write!(f, "{e}"),
             Self::WrongPrefixOrVariant => write!(f, "Wrong prefix or variant"),
             Self::FieldMissing(name) => write!(f, "Field missing: {name}"),
             Self::TLV => write!(f, "TLV (type-length-value) error"),
@@ -107,11 +115,21 @@ impl From<id::Error> for Error {
     }
 }
 
+#[cfg(feature = "nip49")]
+impl From<nip49::Error> for Error {
+    fn from(e: nip49::Error) -> Self {
+        Self::NIP49(e)
+    }
+}
+
 /// To ensure total matching on prefixes when decoding a [`Nip19`] object
 enum Nip19Prefix {
-    /// nsec
+    /// Secret Key
     NSec,
-    /// npub
+    /// Encrypted Secret Key
+    #[cfg(feature = "nip49")]
+    NCryptSec,
+    /// Public key
     NPub,
     /// note
     Note,
@@ -130,6 +148,8 @@ impl FromStr for Nip19Prefix {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             PREFIX_BECH32_SECRET_KEY => Ok(Nip19Prefix::NSec),
+            #[cfg(feature = "nip49")]
+            PREFIX_BECH32_SECRET_KEY_ENCRYPTED => Ok(Nip19Prefix::NCryptSec),
             PREFIX_BECH32_PUBLIC_KEY => Ok(Nip19Prefix::NPub),
             PREFIX_BECH32_NOTE_ID => Ok(Nip19Prefix::Note),
             PREFIX_BECH32_PROFILE => Ok(Nip19Prefix::NProfile),
@@ -147,6 +167,9 @@ impl FromStr for Nip19Prefix {
 pub enum Nip19 {
     /// nsec
     Secret(SecretKey),
+    /// Encrypted Secret Key (ncryptsec)
+    #[cfg(feature = "nip49")]
+    EncryptedSecret(EncryptedSecretKey),
     /// npub
     Pubkey(PublicKey),
     /// nprofile
@@ -166,6 +189,59 @@ pub trait FromBech32: Sized {
         S: AsRef<str>;
 }
 
+pub trait ToBech32 {
+    type Err;
+    fn to_bech32(&self) -> Result<String, Self::Err>;
+}
+
+impl FromBech32 for Nip19 {
+    type Err = Error;
+
+    fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
+    where
+        S: AsRef<str>,
+    {
+        let (hrp, data, checksum) = bech32::decode(hash.as_ref())?;
+        let prefix: Nip19Prefix = Nip19Prefix::from_str(&hrp)?;
+
+        if checksum != Variant::Bech32 {
+            return Err(Error::WrongPrefixOrVariant);
+        }
+
+        let data: Vec<u8> = Vec::<u8>::from_base32(&data)?;
+
+        match prefix {
+            Nip19Prefix::NSec => Ok(Self::Secret(SecretKey::from_slice(data.as_slice())?)),
+            #[cfg(feature = "nip49")]
+            Nip19Prefix::NCryptSec => Ok(Self::EncryptedSecret(EncryptedSecretKey::from_slice(
+                data.as_slice(),
+            )?)),
+            Nip19Prefix::NPub => Ok(Self::Pubkey(PublicKey::from_slice(data.as_slice())?)),
+            Nip19Prefix::NProfile => Ok(Self::Profile(Nip19Profile::from_bech32_data(data)?)),
+            Nip19Prefix::NEvent => Ok(Self::Event(Nip19Event::from_bech32_data(data)?)),
+            Nip19Prefix::Note => Ok(Self::EventId(EventId::from_slice(data.as_slice())?)),
+            Nip19Prefix::NAddr => Ok(Self::Coordinate(Coordinate::from_bech32_data(data)?)),
+        }
+    }
+}
+
+impl ToBech32 for Nip19 {
+    type Err = Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        match self {
+            Nip19::Secret(sec) => sec.to_bech32(),
+            #[cfg(feature = "nip49")]
+            Nip19::EncryptedSecret(cryptsec) => cryptsec.to_bech32(),
+            Nip19::Pubkey(pubkey) => pubkey.to_bech32(),
+            Nip19::Event(event) => event.to_bech32(),
+            Nip19::Profile(profile) => profile.to_bech32(),
+            Nip19::EventId(event_id) => event_id.to_bech32(),
+            Nip19::Coordinate(coordinate) => coordinate.to_bech32(),
+        }
+    }
+}
+
 impl FromBech32 for SecretKey {
     type Err = Error;
 
@@ -181,6 +257,52 @@ impl FromBech32 for SecretKey {
 
         let data = Vec::<u8>::from_base32(&data)?;
         Ok(Self::from_slice(data.as_slice())?)
+    }
+}
+
+impl ToBech32 for SecretKey {
+    type Err = Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        let data = self.secret_bytes().to_base32();
+        Ok(bech32::encode(
+            PREFIX_BECH32_SECRET_KEY,
+            data,
+            Variant::Bech32,
+        )?)
+    }
+}
+
+#[cfg(feature = "nip49")]
+impl FromBech32 for EncryptedSecretKey {
+    type Err = Error;
+
+    fn from_bech32<S>(secret_key: S) -> Result<Self, Self::Err>
+    where
+        S: AsRef<str>,
+    {
+        let (hrp, data, checksum) = bech32::decode(secret_key.as_ref())?;
+
+        if hrp != PREFIX_BECH32_SECRET_KEY_ENCRYPTED || checksum != Variant::Bech32 {
+            return Err(Error::WrongPrefixOrVariant);
+        }
+
+        let data = Vec::<u8>::from_base32(&data)?;
+        Ok(Self::from_slice(data.as_slice())?)
+    }
+}
+
+#[cfg(feature = "nip49")]
+impl ToBech32 for EncryptedSecretKey {
+    type Err = Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        let data = self.as_vec().to_base32();
+        Ok(bech32::encode(
+            PREFIX_BECH32_SECRET_KEY_ENCRYPTED,
+            data,
+            Variant::Bech32,
+        )?)
     }
 }
 
@@ -202,45 +324,16 @@ impl FromBech32 for PublicKey {
     }
 }
 
-impl FromBech32 for Nip19 {
-    type Err = Error;
-
-    fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data, checksum) = bech32::decode(hash.as_ref())?;
-        let prefix: Nip19Prefix = Nip19Prefix::from_str(&hrp)?;
-
-        if checksum != Variant::Bech32 {
-            return Err(Error::WrongPrefixOrVariant);
-        }
-
-        let data: Vec<u8> = Vec::<u8>::from_base32(&data)?;
-
-        match prefix {
-            Nip19Prefix::NSec => Ok(Self::Secret(SecretKey::from_slice(data.as_slice())?)),
-            Nip19Prefix::NPub => Ok(Self::Pubkey(PublicKey::from_slice(data.as_slice())?)),
-            Nip19Prefix::NProfile => Ok(Self::Profile(Nip19Profile::from_bech32_data(data)?)),
-            Nip19Prefix::NEvent => Ok(Self::Event(Nip19Event::from_bech32_data(data)?)),
-            Nip19Prefix::Note => Ok(Self::EventId(EventId::from_slice(data.as_slice())?)),
-            Nip19Prefix::NAddr => Ok(Self::Coordinate(Coordinate::from_bech32_data(data)?)),
-        }
-    }
-}
-
-impl ToBech32 for Nip19 {
+impl ToBech32 for PublicKey {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        match self {
-            Nip19::Secret(sec) => sec.to_bech32(),
-            Nip19::Pubkey(pubkey) => pubkey.to_bech32(),
-            Nip19::Event(event) => event.to_bech32(),
-            Nip19::Profile(profile) => profile.to_bech32(),
-            Nip19::EventId(event_id) => event_id.to_bech32(),
-            Nip19::Coordinate(coordinate) => coordinate.to_bech32(),
-        }
+        let data = self.serialize().to_base32();
+        Ok(bech32::encode(
+            PREFIX_BECH32_PUBLIC_KEY,
+            data,
+            Variant::Bech32,
+        )?)
     }
 }
 
@@ -262,38 +355,6 @@ impl FromBech32 for EventId {
     }
 }
 
-pub trait ToBech32 {
-    type Err;
-    fn to_bech32(&self) -> Result<String, Self::Err>;
-}
-
-impl ToBech32 for PublicKey {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
-        let data = self.serialize().to_base32();
-        Ok(bech32::encode(
-            PREFIX_BECH32_PUBLIC_KEY,
-            data,
-            Variant::Bech32,
-        )?)
-    }
-}
-
-impl ToBech32 for SecretKey {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
-        let data = self.secret_bytes().to_base32();
-        Ok(bech32::encode(
-            PREFIX_BECH32_SECRET_KEY,
-            data,
-            Variant::Bech32,
-        )?)
-    }
-}
-
-// Note ID
 impl ToBech32 for EventId {
     type Err = Error;
 
