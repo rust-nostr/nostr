@@ -3,34 +3,32 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 
 use nostr::nips::nip19::{FromBech32, ToBech32};
 use nostr::nips::nip21::NostrURI;
-use nostr::secp256k1::XOnlyPublicKey;
 use uniffi::Object;
 
 use crate::error::Result;
 
 #[derive(Object)]
 pub struct PublicKey {
-    inner: XOnlyPublicKey,
+    inner: nostr::PublicKey,
 }
 
-impl From<XOnlyPublicKey> for PublicKey {
-    fn from(inner: XOnlyPublicKey) -> Self {
+impl From<nostr::PublicKey> for PublicKey {
+    fn from(inner: nostr::PublicKey) -> Self {
         Self { inner }
     }
 }
 
-impl From<&PublicKey> for XOnlyPublicKey {
+impl From<&PublicKey> for nostr::PublicKey {
     fn from(pk: &PublicKey) -> Self {
         pk.inner
     }
 }
 
 impl Deref for PublicKey {
-    type Target = XOnlyPublicKey;
+    type Target = nostr::PublicKey;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -39,31 +37,39 @@ impl Deref for PublicKey {
 
 #[uniffi::export]
 impl PublicKey {
+    /// Try to parse public key from `hex` or `bech32`
+    #[uniffi::constructor]
+    pub fn parse(public_key: String) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::PublicKey::parse(public_key)?,
+        })
+    }
+
     #[uniffi::constructor]
     pub fn from_hex(hex: String) -> Result<Self> {
         Ok(Self {
-            inner: XOnlyPublicKey::from_str(&hex)?,
+            inner: nostr::PublicKey::from_hex(hex)?,
         })
     }
 
     #[uniffi::constructor]
     pub fn from_bech32(pk: String) -> Result<Self> {
         Ok(Self {
-            inner: XOnlyPublicKey::from_bech32(pk)?,
+            inner: nostr::PublicKey::from_bech32(pk)?,
         })
     }
 
     #[uniffi::constructor]
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
         Ok(Self {
-            inner: XOnlyPublicKey::from_slice(&bytes)?,
+            inner: nostr::PublicKey::from_slice(&bytes)?,
         })
     }
 
     #[uniffi::constructor]
     pub fn from_nostr_uri(uri: String) -> Result<Self> {
         Ok(Self {
-            inner: XOnlyPublicKey::from_nostr_uri(uri)?,
+            inner: nostr::PublicKey::from_nostr_uri(uri)?,
         })
     }
 

@@ -3,7 +3,6 @@
 
 use std::str::FromStr;
 
-use nostr::nips::nip57;
 use nostr::prelude::*;
 
 const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
@@ -12,9 +11,8 @@ fn main() -> Result<()> {
     let secret_key = SecretKey::from_str(ALICE_SK)?;
     let alice_keys = Keys::new(secret_key);
 
-    let public_key = XOnlyPublicKey::from_bech32(
-        "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
-    )?;
+    let public_key =
+        PublicKey::from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")?;
     let relays = [UncheckedUrl::from("wss://relay.damus.io")];
     let msg = "Zap!";
     let data = ZapRequestData::new(public_key, relays).message(msg);

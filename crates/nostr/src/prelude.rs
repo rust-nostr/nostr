@@ -9,13 +9,11 @@
 
 // External crates
 #[cfg(feature = "nip06")]
-pub use bip39::*;
-pub use bitcoin::bech32::*;
-pub use bitcoin::hashes::*;
-pub use bitcoin::secp256k1::*;
-pub use bitcoin::*;
-pub use negentropy::*;
-pub use serde_json::*;
+pub use bip39::Mnemonic;
+pub use bitcoin::secp256k1::rand;
+pub use bitcoin::secp256k1::schnorr::Signature;
+pub use negentropy::Negentropy;
+pub use serde_json::Value;
 
 // Internal modules
 pub use crate::event::builder::*;

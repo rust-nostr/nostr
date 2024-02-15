@@ -6,7 +6,7 @@
 
 use alloc::string::String;
 
-use bitcoin::secp256k1::{ecdh, Parity, PublicKey, SecretKey, XOnlyPublicKey};
+use bitcoin::secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey};
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::{rand, All, Secp256k1};
 #[cfg(feature = "std")]
@@ -19,15 +19,16 @@ pub mod hex;
 pub mod hkdf;
 
 use crate::nips::nip01::Coordinate;
-use crate::{EventId, Tag};
+use crate::{EventId, PublicKey, SecretKey, Tag};
 
 /// Generate shared key
 ///
 /// **Important: use of a strong cryptographic hash function may be critical to security! Do NOT use
 /// unless you understand cryptographical implications.**
-pub fn generate_shared_key(sk: &SecretKey, pk: &XOnlyPublicKey) -> [u8; 32] {
-    let pk_normalized: PublicKey = PublicKey::from_x_only_public_key(*pk, Parity::Even);
-    let ssp: [u8; 64] = ecdh::shared_secret_point(&pk_normalized, sk);
+pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> [u8; 32] {
+    let public_key_normalized: NormalizedPublicKey =
+        NormalizedPublicKey::from_x_only_public_key(**public_key, Parity::Even);
+    let ssp: [u8; 64] = ecdh::shared_secret_point(&public_key_normalized, secret_key);
     let mut shared_key: [u8; 32] = [0u8; 32];
     shared_key.copy_from_slice(&ssp[..32]);
     shared_key

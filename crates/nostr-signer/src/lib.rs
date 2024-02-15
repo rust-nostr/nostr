@@ -130,7 +130,7 @@ impl NostrSigner {
     }
 
     /// Get signer public key
-    pub async fn public_key(&self) -> Result<XOnlyPublicKey, Error> {
+    pub async fn public_key(&self) -> Result<PublicKey, Error> {
         match self {
             Self::Keys(keys) => Ok(keys.public_key()),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
@@ -142,7 +142,7 @@ impl NostrSigner {
 
     /// Sign an [EventBuilder]
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
-        let public_key: XOnlyPublicKey = self.public_key().await?;
+        let public_key: PublicKey = self.public_key().await?;
         let unsigned: UnsignedEvent = builder.to_unsigned_event(public_key);
         self.sign_event(unsigned).await
     }
@@ -169,11 +169,7 @@ impl NostrSigner {
 
     /// NIP04 encrypt
     #[cfg(feature = "nip04")]
-    pub async fn nip04_encrypt<T>(
-        &self,
-        public_key: XOnlyPublicKey,
-        content: T,
-    ) -> Result<String, Error>
+    pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
     where
         T: AsRef<str>,
     {
@@ -203,7 +199,7 @@ impl NostrSigner {
     #[cfg(feature = "nip04")]
     pub async fn nip04_decrypt<T>(
         &self,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         encrypted_content: T,
     ) -> Result<String, Error>
     where
@@ -239,7 +235,7 @@ impl NostrSigner {
     #[cfg(feature = "nip44")]
     pub async fn nip44_encrypt<T>(
         &self,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         content: T,
         version: nip44::Version,
     ) -> Result<String, Error>
@@ -266,11 +262,7 @@ impl NostrSigner {
 
     /// NIP44 decryption with [NostrSigner]
     #[cfg(feature = "nip44")]
-    pub async fn nip44_decrypt<T>(
-        &self,
-        public_key: XOnlyPublicKey,
-        payload: T,
-    ) -> Result<String, Error>
+    pub async fn nip44_decrypt<T>(&self, public_key: PublicKey, payload: T) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {

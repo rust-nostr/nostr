@@ -3,27 +3,25 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 
 use nostr::nips::nip19::{FromBech32, ToBech32};
-use nostr::secp256k1::SecretKey as Sk;
 use uniffi::Object;
 
 use crate::error::Result;
 
 #[derive(Object)]
 pub struct SecretKey {
-    inner: Sk,
+    inner: nostr::SecretKey,
 }
 
-impl From<Sk> for SecretKey {
-    fn from(inner: Sk) -> Self {
+impl From<nostr::SecretKey> for SecretKey {
+    fn from(inner: nostr::SecretKey) -> Self {
         Self { inner }
     }
 }
 
 impl Deref for SecretKey {
-    type Target = Sk;
+    type Target = nostr::SecretKey;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -32,29 +30,37 @@ impl Deref for SecretKey {
 
 #[uniffi::export]
 impl SecretKey {
+    /// Try to parse secret key from `hex` or `bech32`
+    #[uniffi::constructor]
+    pub fn parse(secret_key: String) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::SecretKey::parse(secret_key)?,
+        })
+    }
+
     #[uniffi::constructor]
     pub fn from_hex(hex: String) -> Result<Self> {
         Ok(Self {
-            inner: Sk::from_str(&hex)?,
+            inner: nostr::SecretKey::from_hex(hex)?,
         })
     }
 
     #[uniffi::constructor]
     pub fn from_bech32(sk: String) -> Result<Self> {
         Ok(Self {
-            inner: Sk::from_bech32(sk)?,
+            inner: nostr::SecretKey::from_bech32(sk)?,
         })
     }
 
     #[uniffi::constructor]
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
         Ok(Self {
-            inner: Sk::from_slice(&bytes)?,
+            inner: nostr::SecretKey::from_slice(&bytes)?,
         })
     }
 
     pub fn to_hex(&self) -> String {
-        self.inner.display_secret().to_string()
+        self.inner.to_secret_hex()
     }
 
     pub fn to_bech32(&self) -> Result<String> {

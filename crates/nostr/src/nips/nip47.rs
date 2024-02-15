@@ -12,14 +12,13 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use super::nip04;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{ParseError, Url};
-use crate::{Event, JsonUtil};
+use crate::{key, Event, JsonUtil, PublicKey, SecretKey};
 #[cfg(feature = "std")]
 use crate::{EventBuilder, Keys, Kind, Tag};
 
@@ -30,8 +29,8 @@ pub enum Error {
     JSON(serde_json::Error),
     /// Url parse error
     Url(ParseError),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
+    /// Keys error
+    Keys(key::Error),
     /// NIP04 error
     NIP04(nip04::Error),
     /// Event Builder error
@@ -63,7 +62,7 @@ impl fmt::Display for Error {
         match self {
             Self::JSON(e) => write!(f, "Json: {e}"),
             Self::Url(e) => write!(f, "Url: {e}"),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Keys(e) => write!(f, "Keys: {e}"),
             Self::NIP04(e) => write!(f, "NIP04: {e}"),
             #[cfg(feature = "std")]
             Self::EventBuilder(e) => write!(f, "Event Builder: {e}"),
@@ -91,9 +90,9 @@ impl From<ParseError> for Error {
     }
 }
 
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Keys(e)
     }
 }
 
@@ -741,7 +740,7 @@ pub const NOSTR_WALLET_CONNECT_URI_SCHEME: &str = "nostr+walletconnect";
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NostrWalletConnectURI {
     /// App Pubkey
-    pub public_key: XOnlyPublicKey,
+    pub public_key: PublicKey,
     /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.
     pub relay_url: Url,
     /// 32-byte randomly generated hex encoded string
@@ -753,7 +752,7 @@ pub struct NostrWalletConnectURI {
 impl NostrWalletConnectURI {
     /// Create new [`NostrWalletConnectURI`]
     pub fn new(
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         relay_url: Url,
         random_secret_key: SecretKey,
         lud16: Option<String>,
@@ -778,7 +777,7 @@ impl FromStr for NostrWalletConnectURI {
         }
 
         if let Some(pubkey) = url.domain() {
-            let public_key = XOnlyPublicKey::from_str(pubkey)?;
+            let public_key = PublicKey::from_str(pubkey)?;
 
             let mut relay_url: Option<Url> = None;
             let mut secret: Option<SecretKey> = None;
@@ -824,7 +823,7 @@ impl fmt::Display for NostrWalletConnectURI {
             "{NOSTR_WALLET_CONNECT_URI_SCHEME}://{}?relay={}&secret={}",
             self.public_key,
             url_encode(self.relay_url.to_string()),
-            url_encode(self.secret.display_secret().to_string())
+            url_encode(self.secret.to_secret_hex())
         )?;
         if let Some(lud16) = &self.lud16 {
             write!(f, "&lud16={}", url_encode(lud16))?;
@@ -860,10 +859,9 @@ mod test {
 
     #[test]
     fn test_uri() {
-        let pubkey = XOnlyPublicKey::from_str(
-            "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
+                .unwrap();
         let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let secret =
             SecretKey::from_str("71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c")
@@ -885,10 +883,9 @@ mod test {
         let uri = "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&lud16=nostr%40nostr.com";
         let uri = NostrWalletConnectURI::from_str(uri).unwrap();
 
-        let pubkey = XOnlyPublicKey::from_str(
-            "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
+                .unwrap();
         let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let secret =
             SecretKey::from_str("71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c")

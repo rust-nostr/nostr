@@ -12,9 +12,8 @@ use core::fmt;
 use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::XOnlyPublicKey;
 
-use crate::{ImageDimensions, Tag, Timestamp, UncheckedUrl};
+use crate::{ImageDimensions, PublicKey, Tag, Timestamp, UncheckedUrl};
 
 /// NIP53 Error
 #[derive(Debug)]
@@ -107,7 +106,7 @@ where
 /// Live Event Host
 pub struct LiveEventHost {
     /// Host public key
-    pub public_key: XOnlyPublicKey,
+    pub public_key: PublicKey,
     /// Host relay URL
     pub relay_url: Option<UncheckedUrl>,
     /// Host proof
@@ -145,9 +144,9 @@ pub struct LiveEvent {
     /// Host
     pub host: Option<LiveEventHost>,
     /// Speakers
-    pub speakers: Vec<(XOnlyPublicKey, Option<UncheckedUrl>)>,
+    pub speakers: Vec<(PublicKey, Option<UncheckedUrl>)>,
     /// Participants
-    pub participants: Vec<(XOnlyPublicKey, Option<UncheckedUrl>)>,
+    pub participants: Vec<(PublicKey, Option<UncheckedUrl>)>,
 }
 
 impl From<LiveEvent> for Vec<Tag> {

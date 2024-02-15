@@ -9,11 +9,9 @@
 use alloc::string::String;
 use core::fmt;
 
-use bitcoin::secp256k1::XOnlyPublicKey;
-
 use super::nip01::Coordinate;
 use super::nip19::{self, FromBech32, Nip19, Nip19Event, Nip19Profile, ToBech32};
-use crate::event::id::EventId;
+use crate::{EventId, PublicKey};
 
 /// URI scheme
 pub const SCHEME: &str = "nostr";
@@ -95,7 +93,7 @@ where
     }
 }
 
-impl NostrURI for XOnlyPublicKey {}
+impl NostrURI for PublicKey {}
 impl NostrURI for EventId {}
 impl NostrURI for Nip19Profile {}
 impl NostrURI for Nip19Event {}
@@ -107,7 +105,7 @@ impl NostrURI for Coordinate {}
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Nip21 {
     /// nostr::npub
-    Pubkey(XOnlyPublicKey),
+    Pubkey(PublicKey),
     /// nostr::nprofile
     Profile(Nip19Profile),
     /// nostr::note
@@ -178,10 +176,9 @@ mod tests {
 
     #[test]
     fn test_to_nostr_uri() {
-        let pubkey = XOnlyPublicKey::from_str(
-            "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4")
+                .unwrap();
         assert_eq!(
             pubkey.to_nostr_uri().unwrap(),
             String::from("nostr:npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
@@ -190,12 +187,11 @@ mod tests {
 
     #[test]
     fn test_from_nostr_uri() {
-        let pubkey = XOnlyPublicKey::from_str(
-            "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4")
+                .unwrap();
         assert_eq!(
-            XOnlyPublicKey::from_nostr_uri(
+            PublicKey::from_nostr_uri(
                 "nostr:npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy"
             )
             .unwrap(),
@@ -211,7 +207,7 @@ mod tests {
         assert_eq!(
             Nip21::parse("nostr:nprofile1qqsr9cvzwc652r4m83d86ykplrnm9dg5gwdvzzn8ameanlvut35wy3gpz3mhxue69uhhyetvv9ujuerpd46hxtnfduyu75sw").unwrap(),
             Nip21::Profile(Nip19Profile::new(
-                XOnlyPublicKey::from_str(
+                PublicKey::from_str(
                     "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
                 )
                 .unwrap(),

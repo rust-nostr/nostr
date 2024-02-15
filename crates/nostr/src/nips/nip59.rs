@@ -8,12 +8,10 @@
 use alloc::string::String;
 use core::fmt;
 
-use bitcoin::secp256k1::SecretKey;
-
 use super::nip44;
 use crate::event::unsigned::{self, UnsignedEvent};
 use crate::event::{self, Event};
-use crate::key::{self, Keys};
+use crate::key::{self, Keys, SecretKey};
 use crate::{JsonUtil, Kind};
 
 /// NIP59 error

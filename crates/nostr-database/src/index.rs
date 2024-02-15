@@ -11,8 +11,9 @@ use std::sync::Arc;
 
 use nostr::event::id;
 use nostr::nips::nip01::Coordinate;
-use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{Alphabet, Event, EventId, Filter, GenericTagValue, Kind, SingleLetterTag, Timestamp};
+use nostr::{
+    Alphabet, Event, EventId, Filter, GenericTagValue, Kind, PublicKey, SingleLetterTag, Timestamp,
+};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -79,15 +80,15 @@ impl From<&Event> for EventIndex {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct PublicKeyPrefix([u8; PUBLIC_KEY_PREFIX_SIZE]);
 
-impl From<&XOnlyPublicKey> for PublicKeyPrefix {
-    fn from(pk: &XOnlyPublicKey) -> Self {
+impl From<&PublicKey> for PublicKeyPrefix {
+    fn from(pk: &PublicKey) -> Self {
         let pk: [u8; 32] = pk.serialize();
         Self::from(pk)
     }
 }
 
-impl From<XOnlyPublicKey> for PublicKeyPrefix {
-    fn from(pk: XOnlyPublicKey) -> Self {
+impl From<PublicKey> for PublicKeyPrefix {
+    fn from(pk: PublicKey) -> Self {
         Self::from(&pk)
     }
 }
@@ -508,7 +509,7 @@ impl InternalDatabaseIndexes {
             // Check `a` tags
             for coordinate in event.coordinates() {
                 let coordinate_pubkey_prefix: PublicKeyPrefix =
-                    PublicKeyPrefix::from(coordinate.pubkey);
+                    PublicKeyPrefix::from(coordinate.public_key);
                 if coordinate_pubkey_prefix == pubkey_prefix {
                     // Save deleted coordinate at certain timestamp
                     self.deleted_coordinates
@@ -895,8 +896,7 @@ mod tests {
     use std::str::FromStr;
 
     use nostr::secp256k1::schnorr::Signature;
-    use nostr::secp256k1::SecretKey;
-    use nostr::{FromBech32, JsonUtil, Keys, Tag};
+    use nostr::{FromBech32, JsonUtil, Keys, SecretKey, Tag};
 
     use super::*;
 
@@ -1132,10 +1132,9 @@ mod tests {
         let event_id =
             EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
                 .unwrap();
-        let pubkey = XOnlyPublicKey::from_str(
-            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap();
         let event =
             Event::new(
                 event_id,
@@ -1143,7 +1142,7 @@ mod tests {
                 Timestamp::from(1612809991),
                 Kind::TextNote,
                 [
-                    Tag::public_key(XOnlyPublicKey::from_str("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
+                    Tag::public_key(PublicKey::from_str("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
                     Tag::event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap()),
                 ],
                 "test",
@@ -1190,7 +1189,7 @@ mod tests {
         // Match (#p tag and kind)
         let filter: FilterIndex = Filter::new()
             .pubkey(
-                XOnlyPublicKey::from_str(
+                PublicKey::from_str(
                     "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
                 )
                 .unwrap(),
@@ -1202,7 +1201,7 @@ mod tests {
         // Match (tags)
         let filter: FilterIndex = Filter::new()
             .pubkey(
-                XOnlyPublicKey::from_str(
+                PublicKey::from_str(
                     "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
                 )
                 .unwrap(),

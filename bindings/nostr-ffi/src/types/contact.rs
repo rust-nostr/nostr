@@ -38,7 +38,7 @@ impl Contact {
     }
 
     pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.pk.into())
+        Arc::new(self.inner.public_key.into())
     }
 
     pub fn relay_url(&self) -> Option<String> {

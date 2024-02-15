@@ -6,15 +6,13 @@
 
 use alloc::string::String;
 
-use bitcoin::secp256k1::XOnlyPublicKey;
-
-use crate::UncheckedUrl;
+use crate::{PublicKey, UncheckedUrl};
 
 /// Contact
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct Contact {
     /// Public key
-    pub pk: XOnlyPublicKey,
+    pub public_key: PublicKey,
     /// Relay url
     pub relay_url: Option<UncheckedUrl>,
     /// Alias
@@ -23,12 +21,12 @@ pub struct Contact {
 
 impl Contact {
     /// Create new [`Contact`]
-    pub fn new<S>(pk: XOnlyPublicKey, relay_url: Option<UncheckedUrl>, alias: Option<S>) -> Self
+    pub fn new<S>(public_key: PublicKey, relay_url: Option<UncheckedUrl>, alias: Option<S>) -> Self
     where
         S: Into<String>,
     {
         Self {
-            pk,
+            public_key,
             relay_url,
             alias: alias.map(|a| a.into()),
         }

@@ -19,7 +19,7 @@ use bitcoin::hashes::Hash;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, RngCore};
-use bitcoin::secp256k1::{self, Secp256k1, SecretKey, Signing, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, Secp256k1, Signing};
 use cbc::{Decryptor, Encryptor};
 
 use super::nip01::Coordinate;
@@ -31,7 +31,8 @@ use crate::types::time::TimeSupplier;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{
-    event, util, Event, EventBuilder, EventId, JsonUtil, Keys, Kind, Tag, Timestamp, UncheckedUrl,
+    event, util, Event, EventBuilder, EventId, JsonUtil, Keys, Kind, PublicKey, SecretKey, Tag,
+    Timestamp, UncheckedUrl,
 };
 
 type Aes256CbcEnc = Encryptor<Aes256>;
@@ -123,7 +124,7 @@ pub enum ZapType {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ZapRequestData {
     /// Public key of the recipient
-    pub public_key: XOnlyPublicKey,
+    pub public_key: PublicKey,
     /// List of relays the recipient's wallet should publish its zap receipt to
     pub relays: Vec<UncheckedUrl>,
     /// Message
@@ -140,7 +141,7 @@ pub struct ZapRequestData {
 
 impl ZapRequestData {
     /// New Zap Request Data
-    pub fn new<I>(public_key: XOnlyPublicKey, relays: I) -> Self
+    pub fn new<I>(public_key: PublicKey, relays: I) -> Self
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
@@ -300,10 +301,10 @@ where
 /// Create NIP57 encryption key for **private** zap
 pub fn create_encryption_key(
     secret_key: &SecretKey,
-    public_key: &XOnlyPublicKey,
+    public_key: &PublicKey,
     created_at: Timestamp,
 ) -> Result<SecretKey, Error> {
-    let mut unhashed: String = secret_key.display_secret().to_string();
+    let mut unhashed: String = secret_key.to_secret_hex();
     unhashed.push_str(&public_key.to_string());
     unhashed.push_str(&created_at.to_string());
     let hash = Sha256Hash::hash(unhashed.as_bytes());
@@ -313,7 +314,7 @@ pub fn create_encryption_key(
 fn encrypt_private_zap_message<R, T>(
     rng: &mut R,
     secret_key: &SecretKey,
-    public_key: &XOnlyPublicKey,
+    public_key: &PublicKey,
     msg: T,
 ) -> Result<String, Error>
 where
@@ -351,7 +352,7 @@ fn extract_anon_tag_message(event: &Event) -> Result<&String, Error> {
 /// Decrypt **private** zap message
 pub fn decrypt_private_zap_message(
     secret_key: &SecretKey,
-    public_key: &XOnlyPublicKey,
+    public_key: &PublicKey,
     private_zap_event: &Event,
 ) -> Result<Event, Error> {
     let secret_key: SecretKey =
@@ -403,7 +404,7 @@ mod tests {
                 .unwrap();
         let alice_keys = Keys::new(secret_key);
 
-        let public_key = XOnlyPublicKey::from_bech32(
+        let public_key = PublicKey::from_bech32(
             "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
         )
         .unwrap();

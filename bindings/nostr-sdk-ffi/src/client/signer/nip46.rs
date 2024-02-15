@@ -62,7 +62,7 @@ impl Nip46Signer {
         self.inner.relay_url().to_string()
     }
 
-    /// Get signer [`XOnlyPublicKey`]
+    /// Get signer public key
     pub fn signer_public_key(&self) -> Result<Arc<PublicKey>> {
         block_on(async move { Ok(Arc::new(self.inner.signer_public_key().await?.into())) })
     }

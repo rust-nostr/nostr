@@ -9,8 +9,7 @@ use std::collections::HashSet;
 pub use flatbuffers::FlatBufferBuilder;
 use flatbuffers::InvalidFlatbuffer;
 use nostr::secp256k1::schnorr::Signature;
-use nostr::secp256k1::{self, XOnlyPublicKey};
-use nostr::{Event, EventId, Kind, Tag, Timestamp, Url};
+use nostr::{key, secp256k1, Event, EventId, Kind, PublicKey, Tag, Timestamp, Url};
 use thiserror::Error;
 
 #[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
@@ -38,6 +37,9 @@ pub enum Error {
     /// Secp256k1 error
     #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),
+    /// Keys error
+    #[error(transparent)]
+    Keys(#[from] key::Error),
     /// Not found
     #[error("not found")]
     NotFound,
@@ -111,7 +113,7 @@ impl FlatBufferDecode for Event {
 
         Ok(Self::new(
             EventId::from_slice(&ev.id().ok_or(Error::NotFound)?.0)?,
-            XOnlyPublicKey::from_slice(&ev.pubkey().ok_or(Error::NotFound)?.0)?,
+            PublicKey::from_slice(&ev.pubkey().ok_or(Error::NotFound)?.0)?,
             Timestamp::from(ev.created_at()),
             Kind::from(ev.kind()),
             tags,

@@ -18,7 +18,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng, RngCore};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message as Secp256k1Message, Secp256k1, Signing, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, Message as Secp256k1Message, Secp256k1, Signing};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -30,7 +30,7 @@ use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{ParseError, Url};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Event, JsonUtil};
+use crate::{Event, JsonUtil, PublicKey};
 
 /// NIP46 error
 #[derive(Debug)]
@@ -135,27 +135,27 @@ pub enum Request {
     /// Sign [`UnsignedEvent`]
     SignEvent(UnsignedEvent),
     /// Connect
-    Connect(XOnlyPublicKey),
+    Connect(PublicKey),
     /// Disconnect
     Disconnect,
     /// Delegate
     Delegate {
         /// Pubkey
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         /// NIP26 conditions
         conditions: Conditions,
     },
     /// Encrypt text (NIP04)
     Nip04Encrypt {
         /// Pubkey
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         /// Plain text
         text: String,
     },
     /// Decrypt (NIP04)
     Nip04Decrypt {
         /// Pubkey
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         /// Ciphertext
         text: String,
     },
@@ -272,9 +272,9 @@ impl Request {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct DelegationResult {
     /// Pubkey of Delegator
-    pub from: XOnlyPublicKey,
+    pub from: PublicKey,
     /// Pubkey of Delegatee
-    pub to: XOnlyPublicKey,
+    pub to: PublicKey,
     /// Conditions of delegation
     pub cond: Conditions,
     /// Signature of Delegation Token
@@ -287,7 +287,7 @@ pub enum Response {
     /// Describe
     Describe(Vec<String>),
     /// Get public key
-    GetPublicKey(XOnlyPublicKey),
+    GetPublicKey(PublicKey),
     /// Sign event
     SignEvent(Event),
     /// Delegation
@@ -399,7 +399,7 @@ impl Message {
                         return Err(Error::InvalidParamsLength);
                     }
 
-                    let pubkey: XOnlyPublicKey = serde_json::from_value(params[0].to_owned())?;
+                    let pubkey: PublicKey = serde_json::from_value(params[0].to_owned())?;
                     Ok(Request::Connect(pubkey))
                 }
                 "disconnect" => Ok(Request::Disconnect),
@@ -566,7 +566,7 @@ impl NostrConnectMetadata {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NostrConnectURI {
     /// App Pubkey
-    pub public_key: XOnlyPublicKey,
+    pub public_key: PublicKey,
     /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.
     pub relay_url: Url,
     /// Metadata
@@ -575,7 +575,7 @@ pub struct NostrConnectURI {
 
 impl NostrConnectURI {
     /// Create new [`NostrConnectURI`]
-    pub fn new<S>(public_key: XOnlyPublicKey, relay_url: Url, app_name: S) -> Self
+    pub fn new<S>(public_key: PublicKey, relay_url: Url, app_name: S) -> Self
     where
         S: Into<String>,
     {
@@ -584,7 +584,7 @@ impl NostrConnectURI {
 
     /// Create new [`NostrConnectURI`]
     pub fn with_metadata(
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         relay_url: Url,
         metadata: NostrConnectMetadata,
     ) -> Self {
@@ -634,7 +634,7 @@ impl FromStr for NostrConnectURI {
         }
 
         if let Some(pubkey) = url.domain() {
-            let public_key = XOnlyPublicKey::from_str(pubkey)?;
+            let public_key = PublicKey::from_str(pubkey)?;
 
             let mut relay_url: Option<Url> = None;
             let mut metadata: Option<NostrConnectMetadata> = None;
@@ -688,10 +688,9 @@ mod test {
 
     #[test]
     fn test_uri() {
-        let pubkey = XOnlyPublicKey::from_str(
-            "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
+                .unwrap();
         let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
         let uri = NostrConnectURI::new(pubkey, relay_url, app_name);
@@ -706,10 +705,9 @@ mod test {
         let uri = "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&metadata=%7B%22name%22%3A%22Example%22%7D";
         let uri = NostrConnectURI::from_str(uri).unwrap();
 
-        let pubkey = XOnlyPublicKey::from_str(
-            "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
+                .unwrap();
         let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
         assert_eq!(uri, NostrConnectURI::new(pubkey, relay_url, app_name));

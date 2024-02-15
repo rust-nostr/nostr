@@ -16,20 +16,17 @@ use bitcoin::hashes::Hash;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::RngCore;
-use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::XChaCha20;
 
 pub mod v2;
 
 use self::v2::ConversationKey;
-use crate::util;
+use crate::{util, PublicKey, SecretKey};
 
 /// Error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
     /// NIP44 V2 error
     V2(v2::ErrorV2),
     /// Error while decoding from base64
@@ -52,7 +49,6 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::V2(e) => write!(f, "{e}"),
             Self::Base64Decode(e) => write!(f, "Error while decoding from base64: {e}"),
             Self::InvalidLength => write!(f, "Invalid length"),
@@ -61,12 +57,6 @@ impl fmt::Display for Error {
             Self::VersionNotFound => write!(f, "Version not found in payload"),
             Self::NotFound(value) => write!(f, "{value} not found in payload"),
         }
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
     }
 }
 
@@ -120,7 +110,7 @@ impl TryFrom<u8> for Version {
 #[cfg(feature = "std")]
 pub fn encrypt<T>(
     secret_key: &SecretKey,
-    public_key: &XOnlyPublicKey,
+    public_key: &PublicKey,
     content: T,
     version: Version,
 ) -> Result<String, Error>
@@ -134,7 +124,7 @@ where
 pub fn encrypt_with_rng<R, T>(
     rng: &mut R,
     secret_key: &SecretKey,
-    public_key: &XOnlyPublicKey,
+    public_key: &PublicKey,
     content: T,
     version: Version,
 ) -> Result<String, Error>
@@ -179,7 +169,7 @@ where
 /// Decrypt
 pub fn decrypt<T>(
     secret_key: &SecretKey,
-    public_key: &XOnlyPublicKey,
+    public_key: &PublicKey,
     payload: T,
 ) -> Result<String, Error>
 where
@@ -192,7 +182,7 @@ where
 /// Decrypt **without** converting bytes to UTF-8 string
 pub fn decrypt_to_bytes<T>(
     secret_key: &SecretKey,
-    public_key: &XOnlyPublicKey,
+    public_key: &PublicKey,
     payload: T,
 ) -> Result<Vec<u8>, Error>
 where
@@ -240,27 +230,24 @@ where
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::secp256k1::{KeyPair, Secp256k1, SecretKey, XOnlyPublicKey};
-
     use super::*;
+    use crate::Keys;
 
     #[test]
     fn test_nip44_encryption_decryption() {
-        let secp = Secp256k1::new();
-
         // Alice keys
         let alice_sk =
             SecretKey::from_str("5c0c523f52a5b6fad39ed2403092df8cebc36318b39383bca6c00808626fab3a")
                 .unwrap();
-        let alice_key_pair = KeyPair::from_secret_key(&secp, &alice_sk);
-        let alice_pk = XOnlyPublicKey::from_keypair(&alice_key_pair).0;
+        let alice_keys = Keys::new(alice_sk);
+        let alice_pk = alice_keys.public_key();
 
         // Bob keys
         let bob_sk =
             SecretKey::from_str("4b22aa260e4acb7021e32f38a6cdf4b673c6a277755bfce287e370c924dc936d")
                 .unwrap();
-        let bob_key_pair = KeyPair::from_secret_key(&secp, &bob_sk);
-        let bob_pk = XOnlyPublicKey::from_keypair(&bob_key_pair).0;
+        let bob_keys = Keys::new(bob_sk);
+        let bob_pk = bob_keys.public_key();
 
         let content = String::from("hello");
         let encrypted_content = encrypt(&alice_sk, &bob_pk, &content, Version::V2).unwrap();
@@ -275,10 +262,9 @@ mod tests {
         let secret_key =
             SecretKey::from_str("0000000000000000000000000000000000000000000000000000000000000002")
                 .unwrap();
-        let public_key = XOnlyPublicKey::from_str(
-            "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdeb",
-        )
-        .unwrap();
+        let public_key =
+            PublicKey::from_str("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdeb")
+                .unwrap();
         let payload =
             "AUXEhLosA5eFMYOtumkiFW4Joq1OPmkU8k/25+3+VDFvOU39qkUDl1aiy8Q+0ozTwbhD57VJoIYayYS++hE=";
         assert_eq!(
@@ -289,20 +275,18 @@ mod tests {
         let secret_key =
             SecretKey::from_str("0000000000000000000000000000000000000000000000000000000000000001")
                 .unwrap();
-        let public_key = XOnlyPublicKey::from_str(
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-        )
-        .unwrap();
+        let public_key =
+            PublicKey::from_str("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+                .unwrap();
         let payload = "AdYN4IQFz5veUIFH6CIkrGr0CcErnlSS4VdvoQaP2DCB1dIFL72HSriG1aFABcTlu86hrsG0MdOO9rPdVXc3jptMMzqvIN6tJlHPC8GdwFD5Y8BT76xIIOTJR2W0IdrM7++WC/9harEJAdeWHDAC9zNJX81CpCz4fnV1FZ8GxGLC0nUF7NLeUiNYu5WFXQuO9uWMK0pC7tk3XVogk90X6rwq0MQG9ihT7e1elatDy2YGat+VgQlDrz8ZLRw/lvU+QqeXMQgjqn42sMTrimG6NdKfHJSVWkT6SKZYVsuTyU1Iu5Nk0twEV8d11/MPfsMx4i36arzTC9qxE6jftpOoG8f/jwPTSCEpHdZzrb/CHJcpc+zyOW9BZE2ZOmSxYHAE0ustC9zRNbMT3m6LqxIoHq8j+8Ysu+Cwqr4nUNLYq/Q31UMdDg1oamYS17mWIAS7uf2yF5uT5IlG";
         assert_eq!(decrypt(&secret_key, &public_key, payload).unwrap(), String::from("A purely peer-to-peer version of electronic cash would allow online payments to be sent directly from one party to another without going through a financial institution. Digital signatures provide part of the solution, but the main benefits are lost if a trusted third party is still required to prevent double-spending."));
 
         let secret_key =
             SecretKey::from_str("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364139")
                 .unwrap();
-        let public_key = XOnlyPublicKey::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000002",
-        )
-        .unwrap();
+        let public_key =
+            PublicKey::from_str("0000000000000000000000000000000000000000000000000000000000000002")
+                .unwrap();
         let payload = "AfSBdQ4T36kLcit8zg2znYCw2y6JXMMAGjM=";
         assert_eq!(
             decrypt(&secret_key, &public_key, payload).unwrap(),

@@ -355,10 +355,9 @@ mod tests {
     use core::str::FromStr;
 
     use bitcoin::secp256k1::schnorr::Signature;
-    use bitcoin::secp256k1::XOnlyPublicKey;
 
     use super::*;
-    use crate::{Kind, Timestamp};
+    use crate::{Kind, PublicKey, Timestamp};
 
     #[test]
     fn test_handle_valid_notice() {
@@ -412,10 +411,9 @@ mod tests {
         let id =
             EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
                 .unwrap();
-        let pubkey = XOnlyPublicKey::from_str(
-            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap();
         let created_at = Timestamp::from(1612809991);
         let kind = Kind::TextNote;
         let content = "test";
@@ -517,10 +515,9 @@ mod tests {
         let id =
             EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
                 .unwrap();
-        let pubkey = XOnlyPublicKey::from_str(
-            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap();
         let created_at = Timestamp::from(1612809991);
         let kind = Kind::TextNote;
         let content = "test";

@@ -12,13 +12,13 @@ use core::ops::Range;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
-use bitcoin::secp256k1::{self, Secp256k1, Signing, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, Secp256k1, Signing};
 use serde_json::{json, Value};
 
 use super::kind::{Kind, NIP90_JOB_REQUEST_RANGE, NIP90_JOB_RESULT_RANGE};
 use super::tag::ImageDimensions;
 use super::{Event, EventId, Marker, Tag, TagKind, UnsignedEvent};
-use crate::key::{self, Keys};
+use crate::key::{self, Keys, PublicKey};
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
 use crate::nips::nip15::{ProductData, StallData};
@@ -210,7 +210,7 @@ impl EventBuilder {
         R: Rng + CryptoRng,
         T: TimeSupplier,
     {
-        let pubkey: XOnlyPublicKey = keys.public_key();
+        let pubkey: PublicKey = keys.public_key();
         Ok(self
             .to_unsigned_event_with_supplier(supplier, pubkey)
             .sign_with_ctx(secp, rng, keys)?)
@@ -220,7 +220,7 @@ impl EventBuilder {
     pub fn to_unsigned_event_with_supplier<T>(
         self,
         supplier: &T,
-        pubkey: XOnlyPublicKey,
+        pubkey: PublicKey,
     ) -> UnsignedEvent
     where
         T: TimeSupplier,
@@ -253,7 +253,7 @@ impl EventBuilder {
         R: Rng + CryptoRng,
         T: TimeSupplier,
     {
-        let pubkey: XOnlyPublicKey = keys.public_key();
+        let pubkey: PublicKey = keys.public_key();
         Ok(self
             .to_unsigned_pow_event_with_supplier(supplier, pubkey, difficulty)
             .sign_with_ctx(secp, rng, keys)?)
@@ -263,7 +263,7 @@ impl EventBuilder {
     pub fn to_unsigned_pow_event_with_supplier<T>(
         self,
         supplier: &T,
-        pubkey: XOnlyPublicKey,
+        pubkey: PublicKey,
         difficulty: u8,
     ) -> UnsignedEvent
     where
@@ -318,7 +318,7 @@ impl EventBuilder {
 
     /// Build [`UnsignedEvent`]
     #[cfg(feature = "std")]
-    pub fn to_unsigned_event(self, pubkey: XOnlyPublicKey) -> UnsignedEvent {
+    pub fn to_unsigned_event(self, pubkey: PublicKey) -> UnsignedEvent {
         self.to_unsigned_event_with_supplier(&Instant::now(), pubkey)
     }
 
@@ -336,7 +336,7 @@ impl EventBuilder {
 
     /// Build unsigned POW [`Event`]
     #[cfg(feature = "std")]
-    pub fn to_unsigned_pow_event(self, pubkey: XOnlyPublicKey, difficulty: u8) -> UnsignedEvent {
+    pub fn to_unsigned_pow_event(self, pubkey: PublicKey, difficulty: u8) -> UnsignedEvent {
         self.to_unsigned_pow_event_with_supplier(&Instant::now(), pubkey, difficulty)
     }
 }
@@ -430,7 +430,7 @@ impl EventBuilder {
         I: IntoIterator<Item = Contact>,
     {
         let tags = contacts.into_iter().map(|contact| Tag::PublicKey {
-            public_key: contact.pk,
+            public_key: contact.public_key,
             relay_url: contact.relay_url,
             alias: contact.alias,
             uppercase: false,
@@ -464,7 +464,7 @@ impl EventBuilder {
     #[cfg(all(feature = "std", feature = "nip04"))]
     pub fn encrypted_direct_msg<S>(
         sender_keys: &Keys,
-        receiver_pubkey: XOnlyPublicKey,
+        receiver_pubkey: PublicKey,
         content: S,
         reply_to: Option<EventId>,
     ) -> Result<Self, Error>
@@ -483,7 +483,7 @@ impl EventBuilder {
     }
 
     /// Repost event
-    pub fn repost(event_id: EventId, public_key: XOnlyPublicKey) -> Self {
+    pub fn repost(event_id: EventId, public_key: PublicKey) -> Self {
         Self::new(
             Kind::Repost,
             String::new(),
@@ -515,7 +515,7 @@ impl EventBuilder {
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
-    pub fn reaction<S>(event_id: EventId, public_key: XOnlyPublicKey, content: S) -> Self
+    pub fn reaction<S>(event_id: EventId, public_key: PublicKey, content: S) -> Self
     where
         S: Into<String>,
     {
@@ -594,7 +594,7 @@ impl EventBuilder {
     /// Mute channel user
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn mute_channel_user<S>(public_key: XOnlyPublicKey, reason: Option<S>) -> Self
+    pub fn mute_channel_user<S>(public_key: PublicKey, reason: Option<S>) -> Self
     where
         S: Into<String>,
     {
@@ -629,7 +629,7 @@ impl EventBuilder {
     #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
     pub fn nostr_connect(
         sender_keys: &Keys,
-        receiver_pubkey: XOnlyPublicKey,
+        receiver_pubkey: PublicKey,
         msg: NostrConnectMessage,
     ) -> Result<Self, Error> {
         Ok(Self::new(
@@ -652,7 +652,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
     pub fn live_event_msg<S>(
         live_event_id: S,
-        live_event_host: XOnlyPublicKey,
+        live_event_host: PublicKey,
         content: S,
         relay_url: Option<Url>,
         mut tags: Vec<Tag>,
@@ -692,7 +692,7 @@ impl EventBuilder {
     /// # #[cfg(all(feature = "std", feature = "nip57"))]
     /// # fn main() {
     /// # let keys = Keys::generate();
-    /// # let public_key = XOnlyPublicKey::from_bech32(
+    /// # let public_key = PublicKey::from_bech32(
     /// # "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
     /// # ).unwrap();
     /// # let relays = [UncheckedUrl::from("wss://relay.damus.io")];
@@ -875,7 +875,7 @@ impl EventBuilder {
     pub fn profile_badges(
         badge_definitions: Vec<Event>,
         badge_awards: Vec<Event>,
-        pubkey_awarded: &XOnlyPublicKey,
+        pubkey_awarded: &PublicKey,
     ) -> Result<Self, Error> {
         if badge_definitions.len() != badge_awards.len() {
             return Err(Error::NIP58(nip58::Error::InvalidLength));
@@ -1064,7 +1064,7 @@ impl EventBuilder {
     #[cfg(all(feature = "std", feature = "nip59"))]
     pub fn seal(
         sender_keys: &Keys,
-        receiver_pubkey: &XOnlyPublicKey,
+        receiver_pubkey: &PublicKey,
         rumor: UnsignedEvent,
     ) -> Result<Self, Error> {
         let content = nip44::encrypt(
@@ -1080,7 +1080,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[cfg(all(feature = "std", feature = "nip59"))]
-    pub fn gift_wrap_from_seal(receiver: &XOnlyPublicKey, seal: &Event) -> Result<Event, Error> {
+    pub fn gift_wrap_from_seal(receiver: &PublicKey, seal: &Event) -> Result<Event, Error> {
         if seal.kind != Kind::Seal {
             return Err(Error::WrongKind {
                 received: seal.kind,
@@ -1106,7 +1106,7 @@ impl EventBuilder {
     #[cfg(all(feature = "std", feature = "nip59"))]
     pub fn gift_wrap(
         sender_keys: &Keys,
-        receiver: &XOnlyPublicKey,
+        receiver: &PublicKey,
         rumor: UnsignedEvent,
     ) -> Result<Event, Error> {
         let seal: Event = Self::seal(sender_keys, receiver, rumor)?.to_event(sender_keys)?;
@@ -1115,7 +1115,7 @@ impl EventBuilder {
 
     /// GiftWrapped Sealed Direct message
     #[cfg(feature = "nip59")]
-    pub fn sealed_direct<S>(receiver: XOnlyPublicKey, message: S) -> Self
+    pub fn sealed_direct<S>(receiver: PublicKey, message: S) -> Self
     where
         S: Into<String>,
     {
@@ -1128,10 +1128,9 @@ mod tests {
     #[cfg(feature = "std")]
     use core::str::FromStr;
 
-    #[cfg(feature = "std")]
-    use bitcoin::secp256k1::SecretKey;
-
     use super::*;
+    #[cfg(feature = "std")]
+    use crate::SecretKey;
 
     #[test]
     #[cfg(feature = "std")]
@@ -1312,7 +1311,7 @@ mod tests {
         // Create new event with the event builder
         let awarded_pubkeys = vec![
             Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
                 )
                 .unwrap(),
@@ -1321,7 +1320,7 @@ mod tests {
                 uppercase: false,
             },
             Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
                 )
                 .unwrap(),
@@ -1361,7 +1360,7 @@ mod tests {
                 uppercase: false,
             },
             Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
                 )
                 .unwrap(),

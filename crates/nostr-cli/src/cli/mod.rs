@@ -33,7 +33,7 @@ pub enum Command {
         kind: Option<Kind>,
         /// Author
         #[clap(short, long)]
-        author: Option<XOnlyPublicKey>,
+        author: Option<PublicKey>,
         /// Identifier (`d` tag)
         #[clap(short, long)]
         identifier: Option<String>,

@@ -4,8 +4,6 @@
 // Distributed under the MIT software license
 
 //! Keys
-//!
-//! This module defines the [`Keys`] structure.
 
 use core::fmt;
 #[cfg(feature = "std")]
@@ -15,15 +13,15 @@ use core::str::FromStr;
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
-pub use bitcoin::secp256k1::{
-    self, KeyPair, Message, PublicKey, Secp256k1, SecretKey, Signing, XOnlyPublicKey,
-};
+use bitcoin::secp256k1::{self, KeyPair, Message, Secp256k1, Signing, XOnlyPublicKey};
 
+pub mod public_key;
+pub mod secret_key;
 #[cfg(feature = "std")]
 pub mod vanity;
 
-#[cfg(feature = "std")]
-use crate::nips::nip19::FromBech32;
+pub use self::public_key::PublicKey;
+pub use self::secret_key::SecretKey;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 
@@ -65,6 +63,7 @@ impl From<secp256k1::Error> for Error {
 
 /// Trait for [`Keys`]
 #[cfg(feature = "std")]
+#[deprecated(since = "0.28.0", note = "Use `Keys::parse` instead")]
 pub trait FromSkStr: Sized {
     /// Error
     type Err;
@@ -73,7 +72,7 @@ pub trait FromSkStr: Sized {
 }
 
 /// Trait for [`Keys`]
-#[cfg(feature = "std")]
+#[deprecated(since = "0.28.0")]
 pub trait FromPkStr: Sized {
     /// Error
     type Err;
@@ -84,7 +83,7 @@ pub trait FromPkStr: Sized {
 /// Keys
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keys {
-    public_key: XOnlyPublicKey,
+    public_key: PublicKey,
     key_pair: Option<KeyPair>,
     secret_key: Option<SecretKey>,
 }
@@ -94,6 +93,14 @@ impl Keys {
     /// Initialize from secret key.
     pub fn new(secret_key: SecretKey) -> Self {
         Self::new_with_ctx(&SECP256K1, secret_key)
+    }
+
+    /// Try to parse [Keys] from **secret key** `hex` or `bech32`
+    pub fn parse<S>(secret_key: S) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        Self::parse_with_ctx(&SECP256K1, secret_key)
     }
 
     /// Generate new random [`Keys`]
@@ -118,11 +125,6 @@ impl Keys {
         Self::generate_without_keypair_with_ctx(&SECP256K1, rng)
     }
 
-    /// Get [`PublicKey`]
-    pub fn normalized_public_key(&self) -> Result<PublicKey, Error> {
-        self.normalized_public_key_with_ctx(&SECP256K1)
-    }
-
     /// Sign schnorr [`Message`]
     pub fn sign_schnorr(&self, message: &Message) -> Result<Signature, Error> {
         self.sign_schnorr_with_ctx(&SECP256K1, message, &mut OsRng)
@@ -139,14 +141,24 @@ impl Keys {
         let public_key = XOnlyPublicKey::from_keypair(&key_pair).0;
 
         Self {
-            public_key,
+            public_key: PublicKey::from(public_key),
             key_pair: Some(key_pair),
             secret_key: Some(secret_key),
         }
     }
 
+    /// Try to parse [Keys] from **secret key** `hex` or `bech32`
+    pub fn parse_with_ctx<C, S>(secp: &Secp256k1<C>, secret_key: S) -> Result<Self, Error>
+    where
+        C: Signing,
+        S: AsRef<str>,
+    {
+        let secret_key: SecretKey = SecretKey::parse(secret_key)?;
+        Ok(Self::new_with_ctx(secp, secret_key))
+    }
+
     /// Initialize with public key only (no secret key).
-    pub fn from_public_key(public_key: XOnlyPublicKey) -> Self {
+    pub fn from_public_key(public_key: PublicKey) -> Self {
         Self {
             public_key,
             key_pair: None,
@@ -161,7 +173,7 @@ impl Keys {
         R: Rng + ?Sized,
     {
         let (secret_key, _) = secp.generate_keypair(rng);
-        Self::new_with_ctx(secp, secret_key)
+        Self::new_with_ctx(secp, SecretKey::from(secret_key))
     }
 
     /// Generate random [`Keys`] with custom [`Rng`] and without [`KeyPair`]
@@ -174,14 +186,14 @@ impl Keys {
         let (secret_key, public_key) = secp.generate_keypair(rng);
         let (public_key, _) = public_key.x_only_public_key();
         Self {
-            public_key,
+            public_key: PublicKey::from(public_key),
             key_pair: None,
-            secret_key: Some(secret_key),
+            secret_key: Some(SecretKey::from(secret_key)),
         }
     }
 
-    /// Get [`XOnlyPublicKey`]
-    pub fn public_key(&self) -> XOnlyPublicKey {
+    /// Get public key
+    pub fn public_key(&self) -> PublicKey {
         self.public_key
     }
 
@@ -192,14 +204,6 @@ impl Keys {
         } else {
             Err(Error::SkMissing)
         }
-    }
-
-    /// Get [`PublicKey`]
-    pub fn normalized_public_key_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<PublicKey, Error>
-    where
-        C: Signing,
-    {
-        Ok(self.secret_key()?.public_key(secp))
     }
 
     /// Get keypair
@@ -234,34 +238,35 @@ impl Keys {
 }
 
 #[cfg(feature = "std")]
+impl FromStr for Keys {
+    type Err = Error;
+
+    /// Try to parse [Keys] from **secret key** `hex` or `bech32`
+    fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
+        Self::parse(secret_key)
+    }
+}
+
+#[cfg(feature = "std")]
+#[allow(deprecated)]
 impl FromSkStr for Keys {
     type Err = Error;
 
     /// Init [`Keys`] from `hex` or `bech32` secret key
     fn from_sk_str(secret_key: &str) -> Result<Self, Self::Err> {
-        match SecretKey::from_str(secret_key) {
-            Ok(secret_key) => Ok(Self::new(secret_key)),
-            Err(_) => match SecretKey::from_bech32(secret_key) {
-                Ok(secret_key) => Ok(Self::new(secret_key)),
-                Err(_) => Err(Error::InvalidSecretKey),
-            },
-        }
+        let secret_key = SecretKey::parse(secret_key)?;
+        Ok(Self::new(secret_key))
     }
 }
 
-#[cfg(feature = "std")]
+#[allow(deprecated)]
 impl FromPkStr for Keys {
     type Err = Error;
 
     /// Init [`Keys`] from `hex` or `bech32` public key
     fn from_pk_str(public_key: &str) -> Result<Self, Self::Err> {
-        match XOnlyPublicKey::from_str(public_key) {
-            Ok(public_key) => Ok(Self::from_public_key(public_key)),
-            Err(_) => match XOnlyPublicKey::from_bech32(public_key) {
-                Ok(public_key) => Ok(Self::from_public_key(public_key)),
-                Err(_) => Err(Error::InvalidPublicKey),
-            },
-        }
+        let public_key = PublicKey::parse(public_key)?;
+        Ok(Self::from_public_key(public_key))
     }
 }
 

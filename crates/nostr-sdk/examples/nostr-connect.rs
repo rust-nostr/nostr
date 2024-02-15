@@ -37,9 +37,8 @@ async fn main() -> Result<()> {
         .await?;
     println!("Published text note: {id}\n");
 
-    let receiver = XOnlyPublicKey::from_bech32(
-        "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
-    )?;
+    let receiver =
+        PublicKey::from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")?;
     client
         .send_direct_msg(receiver, "Hello from nostr-sdk", None)
         .await?;

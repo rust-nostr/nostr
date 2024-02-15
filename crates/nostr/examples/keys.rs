@@ -2,19 +2,17 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr::nips::nip19::{FromBech32, ToBech32};
-use nostr::secp256k1::{SecretKey, XOnlyPublicKey};
-use nostr::{Keys, Result};
+use nostr::prelude::*;
 
 fn main() -> Result<()> {
-    //  Random keys
+    // Random keys
     let keys = Keys::generate();
     let public_key = keys.public_key();
     let secret_key = keys.secret_key()?;
 
     println!("Public key: {}", public_key);
     println!("Public key bech32: {}", public_key.to_bech32()?);
-    println!("Secret key: {}", keys.secret_key()?.display_secret());
+    println!("Secret key: {}", keys.secret_key()?.to_secret_hex());
     println!("Secret key bech32: {}", secret_key.to_bech32()?);
 
     // Bech32 keys
@@ -23,9 +21,8 @@ fn main() -> Result<()> {
     let keys = Keys::new(secret_key);
     println!("Public key: {}", keys.public_key());
 
-    let public_key = XOnlyPublicKey::from_bech32(
-        "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
-    )?;
+    let public_key =
+        PublicKey::from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")?;
     let keys = Keys::from_public_key(public_key);
     println!("Public key: {}", keys.public_key());
 

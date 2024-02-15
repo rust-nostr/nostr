@@ -9,12 +9,12 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
 
 use super::tag;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Event, EventId, JsonUtil, Kind, Tag, Timestamp};
+use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Tag, Timestamp};
 
 /// [`PartialEvent`] error
 #[derive(Debug)]
@@ -67,7 +67,7 @@ pub struct PartialEvent {
     /// ID
     pub id: EventId,
     /// Author
-    pub pubkey: XOnlyPublicKey,
+    pub pubkey: PublicKey,
     /// Signature
     pub sig: Signature,
 }

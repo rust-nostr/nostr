@@ -21,9 +21,9 @@ use bitcoin::secp256k1::rand::RngCore;
 use bitcoin::secp256k1::{Secp256k1, Signing};
 use bitcoin::Network;
 
-use crate::Keys;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+use crate::{Keys, SecretKey};
 
 /// `NIP06` error
 #[derive(Debug, Eq, PartialEq)]
@@ -126,7 +126,8 @@ impl FromMnemonic for Keys {
         let account: u32 = account.unwrap_or_default();
         let path = DerivationPath::from_str(&format!("m/44'/1237'/{account}'/0/0"))?;
         let child_xprv = root_key.derive_priv(secp, &path)?;
-        Ok(Self::new_with_ctx(secp, child_xprv.private_key))
+        let secret_key = SecretKey::from(child_xprv.private_key);
+        Ok(Self::new_with_ctx(secp, secret_key))
     }
 }
 
@@ -156,8 +157,6 @@ impl GenerateMnemonic for Keys {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::secp256k1::SecretKey;
-
     use super::*;
 
     #[test]

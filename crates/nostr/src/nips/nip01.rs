@@ -13,16 +13,14 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
-use bitcoin::secp256k1::{self, XOnlyPublicKey};
-
 use crate::event::id;
-use crate::{Filter, Kind, Tag, UncheckedUrl};
+use crate::{key, Filter, Kind, PublicKey, Tag, UncheckedUrl};
 
 /// Raw Event error
 #[derive(Debug)]
 pub enum Error {
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
+    /// Keys error
+    Keys(key::Error),
     /// Event ID error
     EventId(id::Error),
     /// Parse Int error
@@ -37,7 +35,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Keys(e) => write!(f, "Keys: {e}"),
             Self::EventId(e) => write!(f, "Event ID: {e}"),
             Self::ParseInt(e) => write!(f, "Parse Int: {e}"),
             Self::InvalidCoordinate => write!(f, "Invalid coordinate"),
@@ -45,9 +43,9 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Keys(e)
     }
 }
 
@@ -69,7 +67,7 @@ pub struct Coordinate {
     /// Kind
     pub kind: Kind,
     /// Public Key
-    pub pubkey: XOnlyPublicKey,
+    pub public_key: PublicKey,
     /// `d` tag identifier
     ///
     /// Needed for a parametrized replaceable event.
@@ -81,10 +79,10 @@ pub struct Coordinate {
 
 impl Coordinate {
     /// Create new event coordinate
-    pub fn new(kind: Kind, pubkey: XOnlyPublicKey) -> Self {
+    pub fn new(kind: Kind, public_key: PublicKey) -> Self {
         Self {
             kind,
-            pubkey,
+            public_key,
             identifier: String::new(),
             relays: Vec::new(),
         }
@@ -106,7 +104,7 @@ impl From<Coordinate> for Tag {
     fn from(value: Coordinate) -> Self {
         Self::A {
             kind: value.kind,
-            public_key: value.pubkey,
+            public_key: value.public_key,
             identifier: value.identifier,
             relay_url: value.relays.first().map(UncheckedUrl::from),
         }
@@ -116,11 +114,11 @@ impl From<Coordinate> for Tag {
 impl From<Coordinate> for Filter {
     fn from(value: Coordinate) -> Self {
         if value.identifier.is_empty() {
-            Filter::new().kind(value.kind).author(value.pubkey)
+            Filter::new().kind(value.kind).author(value.public_key)
         } else {
             Filter::new()
                 .kind(value.kind)
-                .author(value.pubkey)
+                .author(value.public_key)
                 .identifier(value.identifier)
         }
     }
@@ -131,12 +129,12 @@ impl FromStr for Coordinate {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut kpi = s.split(':');
-        if let (Some(kind_str), Some(pubkey_str), Some(identifier)) =
+        if let (Some(kind_str), Some(public_key_str), Some(identifier)) =
             (kpi.next(), kpi.next(), kpi.next())
         {
             Ok(Self {
                 kind: Kind::from_str(kind_str)?,
-                pubkey: XOnlyPublicKey::from_str(pubkey_str)?,
+                public_key: PublicKey::from_str(public_key_str)?,
                 identifier: identifier.to_owned(),
                 relays: Vec::new(),
             })

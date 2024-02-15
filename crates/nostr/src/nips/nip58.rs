@@ -9,9 +9,7 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use bitcoin::secp256k1::XOnlyPublicKey;
-
-use crate::{Event, Kind, Tag, UncheckedUrl};
+use crate::{Event, Kind, PublicKey, Tag, UncheckedUrl};
 
 #[derive(Debug)]
 /// [`BadgeAward`](crate::event::kind::Kind#variant.BadgeAward) error
@@ -57,8 +55,8 @@ pub(crate) fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Eve
 /// Helper function to extract the awarded public key from an array of PubKey tags
 pub(crate) fn extract_awarded_public_key(
     tags: &[Tag],
-    awarded_public_key: &XOnlyPublicKey,
-) -> Option<(XOnlyPublicKey, Option<UncheckedUrl>)> {
+    awarded_public_key: &PublicKey,
+) -> Option<(PublicKey, Option<UncheckedUrl>)> {
     tags.iter().find_map(|t| match t {
         Tag::PublicKey {
             public_key,

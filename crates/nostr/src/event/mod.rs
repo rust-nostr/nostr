@@ -13,7 +13,7 @@ use core::hash::{Hash, Hasher};
 use core::ops::Deref;
 
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -37,7 +37,7 @@ use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{JsonUtil, Timestamp};
+use crate::{JsonUtil, PublicKey, Timestamp};
 
 /// [`Event`] error
 #[derive(Debug, PartialEq, Eq)]
@@ -134,7 +134,7 @@ impl Event {
     /// Compose event
     pub fn new<I, S>(
         id: EventId,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         created_at: Timestamp,
         kind: Kind,
         tags: I,
@@ -174,13 +174,13 @@ impl Event {
 
     /// Get event author (`pubkey` field)
     #[inline]
-    pub fn author(&self) -> XOnlyPublicKey {
+    pub fn author(&self) -> PublicKey {
         self.inner.pubkey
     }
 
     /// Get event author reference (`pubkey` field)
     #[inline]
-    pub fn author_ref(&self) -> &XOnlyPublicKey {
+    pub fn author_ref(&self) -> &PublicKey {
         &self.inner.pubkey
     }
 
@@ -392,7 +392,7 @@ impl Event {
     ///
     /// **This method extract ONLY `Tag::PublicKey`**
     #[inline]
-    pub fn public_keys(&self) -> impl Iterator<Item = &XOnlyPublicKey> {
+    pub fn public_keys(&self) -> impl Iterator<Item = &PublicKey> {
         self.iter_tags().filter_map(|t| match t {
             Tag::PublicKey { public_key, .. } => Some(public_key),
             _ => None,
@@ -421,7 +421,7 @@ impl Event {
                 ..
             } => Some(Coordinate {
                 kind: *kind,
-                pubkey: *public_key,
+                public_key: *public_key,
                 identifier: identifier.clone(),
                 relays: Vec::new(),
             }),
@@ -450,7 +450,7 @@ pub struct EventIntermediate {
     /// Id
     pub id: EventId,
     /// Author
-    pub pubkey: XOnlyPublicKey,
+    pub pubkey: PublicKey,
     /// Timestamp (seconds)
     pub created_at: Timestamp,
     /// Kind

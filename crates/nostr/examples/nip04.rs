@@ -8,8 +8,8 @@ const ALICE_SK: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88
 const BOB_SK: &str = "7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
 
 fn main() -> Result<()> {
-    let alice_keys = Keys::from_sk_str(ALICE_SK)?;
-    let bob_keys = Keys::from_sk_str(BOB_SK)?;
+    let alice_keys = Keys::parse(ALICE_SK)?;
+    let bob_keys = Keys::parse(BOB_SK)?;
 
     let alice_encrypted_msg = EventBuilder::encrypted_direct_msg(
         &alice_keys,

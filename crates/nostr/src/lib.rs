@@ -53,7 +53,7 @@ pub use self::event::tag::{
 pub use self::event::{
     Event, EventBuilder, EventId, Kind, MissingPartialEvent, PartialEvent, UnsignedEvent,
 };
-pub use self::key::Keys;
+pub use self::key::{Keys, PublicKey, SecretKey};
 pub use self::message::{
     Alphabet, ClientMessage, Filter, GenericTagValue, RawRelayMessage, RelayMessage,
     SingleLetterTag, SubscriptionId,

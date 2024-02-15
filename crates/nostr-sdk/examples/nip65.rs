@@ -8,9 +8,8 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let public_key = XOnlyPublicKey::from_bech32(
-        "npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c",
-    )?;
+    let public_key =
+        PublicKey::from_bech32("npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c")?;
 
     let client = Client::default();
     client.add_relay("wss://nostr.mikedilger.com").await?;

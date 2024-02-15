@@ -5,7 +5,7 @@
 use core::ops::Deref;
 
 use nostr::nips::nip07::Nip07Signer;
-use nostr::secp256k1::XOnlyPublicKey;
+use nostr::PublicKey;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
@@ -39,7 +39,7 @@ impl JsNip07Signer {
 
     #[wasm_bindgen(js_name = getPublicKey)]
     pub async fn get_public_key(&self) -> Result<JsPublicKey> {
-        let public_key: XOnlyPublicKey = self.inner.get_public_key().await.map_err(into_err)?;
+        let public_key: PublicKey = self.inner.get_public_key().await.map_err(into_err)?;
         Ok(public_key.into())
     }
 

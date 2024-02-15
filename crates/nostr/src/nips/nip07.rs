@@ -10,21 +10,23 @@ use alloc::string::{String, ToString};
 use core::fmt;
 use core::str::FromStr;
 
+use bitcoin::secp256k1;
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, XOnlyPublicKey};
 use js_sys::{Array, Function, Object, Promise, Reflect};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
 
 use crate::event::{self, unsigned};
-use crate::{Event, UnsignedEvent};
+use crate::{key, Event, PublicKey, UnsignedEvent};
 
 /// NIP07 error
 #[derive(Debug)]
 pub enum Error {
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
+    /// Keys error
+    Keys(key::Error),
     /// Event error
     Event(event::Error),
     /// Unsigned error
@@ -48,6 +50,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Keys(e) => write!(f, "Keys: {e}"),
             Self::Event(e) => write!(f, "Event: {e}"),
             Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
             Self::Wasm(e) => write!(f, "{e:?}"),
@@ -62,6 +65,12 @@ impl fmt::Display for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Keys(e)
     }
 }
 
@@ -127,14 +136,14 @@ impl Nip07Signer {
     }
 
     /// Get Public Key
-    pub async fn get_public_key(&self) -> Result<XOnlyPublicKey, Error> {
+    pub async fn get_public_key(&self) -> Result<PublicKey, Error> {
         let func: Function = self.get_func(&self.nostr_obj, "getPublicKey")?;
         let promise: Promise = Promise::resolve(&func.call0(&self.nostr_obj)?);
         let result: JsValue = JsFuture::from(promise).await?;
         let public_key: String = result
             .as_string()
             .ok_or_else(|| Error::TypeMismatch(String::from("expected a hex string")))?;
-        Ok(XOnlyPublicKey::from_str(&public_key)?)
+        Ok(PublicKey::from_hex(public_key)?)
     }
 
     /// Sign event
@@ -215,7 +224,7 @@ impl Nip07Signer {
     /// NIP04 encrypt
     pub async fn nip04_encrypt<S>(
         &self,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         plaintext: S,
     ) -> Result<String, Error>
     where
@@ -237,7 +246,7 @@ impl Nip07Signer {
     /// NIP04 decrypt
     pub async fn nip04_decrypt<S>(
         &self,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         ciphertext: S,
     ) -> Result<String, Error>
     where

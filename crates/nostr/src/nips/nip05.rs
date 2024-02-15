@@ -12,12 +12,12 @@ use core::fmt;
 use core::str::FromStr;
 use std::net::SocketAddr;
 
-use bitcoin::secp256k1::{self, XOnlyPublicKey};
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
 use serde_json::Value;
 
 use crate::nips::nip19::Nip19Profile;
+use crate::{key, PublicKey};
 
 /// `NIP05` error
 #[derive(Debug)]
@@ -30,8 +30,8 @@ pub enum Error {
     Reqwest(reqwest::Error),
     /// Error deserializing JSON data
     Json(serde_json::Error),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
+    /// Keys error
+    Keys(key::Error),
 }
 
 #[cfg(feature = "std")]
@@ -44,7 +44,7 @@ impl fmt::Display for Error {
             Self::ImpossibleToVerify => write!(f, "impossible to verify"),
             Self::Reqwest(e) => write!(f, "{e}"),
             Self::Json(e) => write!(f, "impossible to deserialize NIP05 data: {e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Keys(e) => write!(f, "{e}"),
         }
     }
 }
@@ -61,9 +61,9 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Keys(e)
     }
 }
 
@@ -82,7 +82,7 @@ where
     Ok((url, name.to_string()))
 }
 
-fn get_key_from_json<S>(json: Value, name: S) -> Option<XOnlyPublicKey>
+fn get_key_from_json<S>(json: Value, name: S) -> Option<PublicKey>
 where
     S: AsRef<str>,
 {
@@ -90,10 +90,10 @@ where
     json.get("names")
         .and_then(|names| names.get(name))
         .and_then(|value| value.as_str())
-        .and_then(|pubkey| XOnlyPublicKey::from_str(pubkey).ok())
+        .and_then(|pubkey| PublicKey::from_str(pubkey).ok())
 }
 
-fn get_relays_from_json(json: Value, pk: XOnlyPublicKey) -> Vec<String> {
+fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<String> {
     let relays_list: Option<Vec<String>> = json
         .get("relays")
         .and_then(|relays| relays.get(pk.to_string()))
@@ -105,7 +105,7 @@ fn get_relays_from_json(json: Value, pk: XOnlyPublicKey) -> Vec<String> {
     }
 }
 
-fn verify_json<S>(public_key: XOnlyPublicKey, json: Value, name: S) -> Result<(), Error>
+fn verify_json<S>(public_key: PublicKey, json: Value, name: S) -> Result<(), Error>
 where
     S: AsRef<str>,
 {
@@ -122,7 +122,7 @@ where
 ///
 /// **Proxy is ignored for WASM targets!**
 pub async fn verify<S>(
-    public_key: XOnlyPublicKey,
+    public_key: PublicKey,
     nip05: S,
     _proxy: Option<SocketAddr>,
 ) -> Result<(), Error>
@@ -155,7 +155,7 @@ where
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "blocking")]
 pub fn verify_blocking<S>(
-    public_key: XOnlyPublicKey,
+    public_key: PublicKey,
     nip05: S,
     proxy: Option<SocketAddr>,
 ) -> Result<(), Error>

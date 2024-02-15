@@ -29,10 +29,8 @@ fn main() -> Result<()> {
     // Generate new random keys
     let my_keys = Keys::generate();
 
-    // or use your already existing
-    //
-    // From HEX or Bech32
-    // let my_keys = Keys::from_sk_str("hex-or-bech32-secret-key")?;
+    // Or use your already existing (from hex or bech32)
+    let my_keys = Keys::parse("hex-or-bech32-secret-key")?;
 
     // Show bech32 public key
     let bech32_pubkey: String = my_keys.public_key().to_bech32()?;

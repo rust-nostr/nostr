@@ -772,7 +772,7 @@ impl Client {
     /// Get public key metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    pub async fn metadata(&self, public_key: XOnlyPublicKey) -> Result<Metadata, Error> {
+    pub async fn metadata(&self, public_key: PublicKey) -> Result<Metadata, Error> {
         let filter: Filter = Filter::new()
             .author(public_key)
             .kind(Kind::Metadata)
@@ -916,8 +916,8 @@ impl Client {
     pub async fn get_contact_list_public_keys(
         &self,
         timeout: Option<Duration>,
-    ) -> Result<Vec<XOnlyPublicKey>, Error> {
-        let mut pubkeys: Vec<XOnlyPublicKey> = Vec::new();
+    ) -> Result<Vec<PublicKey>, Error> {
+        let mut pubkeys: Vec<PublicKey> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
         let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
@@ -932,9 +932,9 @@ impl Client {
     pub async fn get_contact_list_metadata(
         &self,
         timeout: Option<Duration>,
-    ) -> Result<HashMap<XOnlyPublicKey, Metadata>, Error> {
+    ) -> Result<HashMap<PublicKey, Metadata>, Error> {
         let public_keys = self.get_contact_list_public_keys(timeout).await?;
-        let mut contacts: HashMap<XOnlyPublicKey, Metadata> =
+        let mut contacts: HashMap<PublicKey, Metadata> =
             public_keys.iter().map(|p| (*p, Metadata::new())).collect();
 
         let chunk_size: usize = self.opts.get_req_filters_chunk_size();
@@ -972,10 +972,9 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let alice_pubkey = XOnlyPublicKey::from_bech32(
-    ///     "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
-    /// )
-    /// .unwrap();
+    /// let alice_pubkey =
+    ///     PublicKey::from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
+    ///         .unwrap();
     ///
     /// client
     ///     .send_direct_msg(alice_pubkey, "My first DM fro Nostr SDK!", None)
@@ -986,7 +985,7 @@ impl Client {
     #[cfg(feature = "nip04")]
     pub async fn send_direct_msg<S>(
         &self,
-        receiver: XOnlyPublicKey,
+        receiver: PublicKey,
         msg: S,
         reply_to: Option<EventId>,
     ) -> Result<EventId, Error>
@@ -1011,7 +1010,7 @@ impl Client {
     pub async fn repost_event(
         &self,
         event_id: EventId,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
     ) -> Result<EventId, Error> {
         let builder = EventBuilder::repost(event_id, public_key);
         self.send_event_builder(builder).await
@@ -1045,19 +1044,14 @@ impl Client {
     /// let event_id =
     ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
     ///         .unwrap();
-    /// let public_key = XOnlyPublicKey::from_str(
-    ///     "a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
-    /// )
-    /// .unwrap();
+    /// let public_key =
+    ///     PublicKey::from_str("a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2")
+    ///         .unwrap();
     ///
     /// client.like(event_id, public_key).await.unwrap();
     /// # }
     /// ```
-    pub async fn like(
-        &self,
-        event_id: EventId,
-        public_key: XOnlyPublicKey,
-    ) -> Result<EventId, Error> {
+    pub async fn like(&self, event_id: EventId, public_key: PublicKey) -> Result<EventId, Error> {
         let builder = EventBuilder::reaction(event_id, public_key, "+");
         self.send_event_builder(builder).await
     }
@@ -1079,10 +1073,9 @@ impl Client {
     /// let event_id =
     ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
     ///         .unwrap();
-    /// let public_key = XOnlyPublicKey::from_str(
-    ///     "a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
-    /// )
-    /// .unwrap();
+    /// let public_key =
+    ///     PublicKey::from_str("a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2")
+    ///         .unwrap();
     ///
     /// client.dislike(event_id, public_key).await.unwrap();
     /// # }
@@ -1090,7 +1083,7 @@ impl Client {
     pub async fn dislike(
         &self,
         event_id: EventId,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
     ) -> Result<EventId, Error> {
         let builder = EventBuilder::reaction(event_id, public_key, "-");
         self.send_event_builder(builder).await
@@ -1113,10 +1106,9 @@ impl Client {
     /// let event_id =
     ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
     ///         .unwrap();
-    /// let public_key = XOnlyPublicKey::from_str(
-    ///     "a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2",
-    /// )
-    /// .unwrap();
+    /// let public_key =
+    ///     PublicKey::from_str("a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2")
+    ///         .unwrap();
     ///
     /// client.reaction(event_id, public_key, "🐻").await.unwrap();
     /// # }
@@ -1124,7 +1116,7 @@ impl Client {
     pub async fn reaction<S>(
         &self,
         event_id: EventId,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         content: S,
     ) -> Result<EventId, Error>
     where
@@ -1191,7 +1183,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub async fn mute_channel_user<S>(
         &self,
-        pubkey: XOnlyPublicKey,
+        pubkey: PublicKey,
         reason: Option<S>,
     ) -> Result<EventId, Error>
     where
@@ -1233,14 +1225,10 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap(
-        &self,
-        receiver: XOnlyPublicKey,
-        rumor: EventBuilder,
-    ) -> Result<(), Error> {
+    pub async fn gift_wrap(&self, receiver: PublicKey, rumor: EventBuilder) -> Result<(), Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
-        let public_key: XOnlyPublicKey = signer.public_key().await?;
+        let public_key: PublicKey = signer.public_key().await?;
         let rumor = rumor.to_unsigned_event(public_key);
 
         // Compose seal
@@ -1261,11 +1249,7 @@ impl Client {
 
     /// Send GiftWrapper Sealed Direct message
     #[cfg(feature = "nip59")]
-    pub async fn send_sealed_msg<S>(
-        &self,
-        receiver: XOnlyPublicKey,
-        message: S,
-    ) -> Result<(), Error>
+    pub async fn send_sealed_msg<S>(&self, receiver: PublicKey, message: S) -> Result<(), Error>
     where
         S: Into<String>,
     {

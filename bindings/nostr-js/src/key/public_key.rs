@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use core::ops::Deref;
-use core::str::FromStr;
 
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -12,30 +11,30 @@ use crate::error::{into_err, Result};
 
 #[wasm_bindgen(js_name = PublicKey)]
 pub struct JsPublicKey {
-    pub(crate) inner: XOnlyPublicKey,
+    pub(crate) inner: PublicKey,
 }
 
 impl Deref for JsPublicKey {
-    type Target = XOnlyPublicKey;
+    type Target = PublicKey;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl From<XOnlyPublicKey> for JsPublicKey {
-    fn from(public_key: XOnlyPublicKey) -> Self {
-        Self { inner: public_key }
+impl From<PublicKey> for JsPublicKey {
+    fn from(inner: PublicKey) -> Self {
+        Self { inner }
     }
 }
 
-impl From<JsPublicKey> for XOnlyPublicKey {
+impl From<JsPublicKey> for PublicKey {
     fn from(public_key: JsPublicKey) -> Self {
         public_key.inner
     }
 }
 
-impl From<&JsPublicKey> for XOnlyPublicKey {
+impl From<&JsPublicKey> for PublicKey {
     fn from(public_key: &JsPublicKey) -> Self {
         public_key.inner
     }
@@ -43,17 +42,24 @@ impl From<&JsPublicKey> for XOnlyPublicKey {
 
 #[wasm_bindgen(js_class = PublicKey)]
 impl JsPublicKey {
+    /// Try to parse public key from `hex` or `bech32`
+    pub fn parse(public_key: &str) -> Result<JsPublicKey> {
+        Ok(Self {
+            inner: PublicKey::parse(public_key).map_err(into_err)?,
+        })
+    }
+
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Result<JsPublicKey> {
         Ok(Self {
-            inner: XOnlyPublicKey::from_str(hex).map_err(into_err)?,
+            inner: PublicKey::from_hex(hex).map_err(into_err)?,
         })
     }
 
     #[wasm_bindgen(js_name = fromBech32)]
     pub fn from_bech32(pk: &str) -> Result<JsPublicKey> {
         Ok(Self {
-            inner: XOnlyPublicKey::from_bech32(pk).map_err(into_err)?,
+            inner: PublicKey::from_bech32(pk).map_err(into_err)?,
         })
     }
 

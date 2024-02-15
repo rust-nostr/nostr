@@ -16,13 +16,13 @@ use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::engine::{general_purpose, Engine};
+use bitcoin::secp256k1;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::RngCore;
-use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 use cbc::{Decryptor, Encryptor};
 
-use crate::util;
+use crate::{util, PublicKey, SecretKey};
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
@@ -68,7 +68,7 @@ impl From<secp256k1::Error> for Error {
 
 /// Encrypt
 #[cfg(feature = "std")]
-pub fn encrypt<T>(sk: &SecretKey, pk: &XOnlyPublicKey, text: T) -> Result<String, Error>
+pub fn encrypt<T>(sk: &SecretKey, pk: &PublicKey, text: T) -> Result<String, Error>
 where
     T: AsRef<[u8]>,
 {
@@ -79,7 +79,7 @@ where
 pub fn encrypt_with_rng<R, T>(
     rng: &mut R,
     sk: &SecretKey,
-    pk: &XOnlyPublicKey,
+    pk: &PublicKey,
     text: T,
 ) -> Result<String, Error>
 where
@@ -110,7 +110,7 @@ where
 /// Decrypts content to bytes
 pub fn decrypt_to_bytes<S>(
     sk: &SecretKey,
-    pk: &XOnlyPublicKey,
+    pk: &PublicKey,
     encrypted_content: S,
 ) -> Result<Vec<u8>, Error>
 where
@@ -139,11 +139,7 @@ where
 }
 
 /// Decrypts content to a UTF-8 string
-pub fn decrypt<S>(
-    sk: &SecretKey,
-    pk: &XOnlyPublicKey,
-    encrypted_content: S,
-) -> Result<String, Error>
+pub fn decrypt<S>(sk: &SecretKey, pk: &PublicKey, encrypted_content: S) -> Result<String, Error>
 where
     S: Into<String>,
 {
@@ -156,25 +152,22 @@ where
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::secp256k1::{KeyPair, Secp256k1};
-
     use super::*;
+    use crate::Keys;
 
     #[test]
     fn test_encryption_decryption() {
-        let secp = Secp256k1::new();
-
         let sender_sk =
             SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap();
-        let sender_key_pair = KeyPair::from_secret_key(&secp, &sender_sk);
-        let sender_pk = XOnlyPublicKey::from_keypair(&sender_key_pair).0;
+        let sender_keys = Keys::new(sender_sk);
+        let sender_pk = sender_keys.public_key();
 
         let receiver_sk =
             SecretKey::from_str("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap();
-        let receiver_key_pair = KeyPair::from_secret_key(&secp, &receiver_sk);
-        let receiver_pk = XOnlyPublicKey::from_keypair(&receiver_key_pair).0;
+        let receiver_keys = Keys::new(receiver_sk);
+        let receiver_pk = receiver_keys.public_key();
 
         let encrypted_content_from_outside =
             "dJc+WbBgaFCD2/kfg1XCWJParplBDxnZIdJGZ6FCTOg=?iv=M6VxRPkMZu7aIdD+10xPuw==";

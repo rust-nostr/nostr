@@ -16,8 +16,8 @@ use alloc_cortex_m::CortexMHeap;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
 use nostr::secp256k1::rand::{self, RngCore};
-use nostr::secp256k1::{Secp256k1, SecretKey};
-use nostr::{FromBech32, Keys, ToBech32};
+use nostr::secp256k1::Secp256k1;
+use nostr::{FromBech32, Keys, ToBech32, SecretKey};
 use nostr::nips::nip06::FromMnemonic;
 
 // this is the allocator the application will use
@@ -86,7 +86,7 @@ fn main() -> ! {
 fn print_keys(keys: &Keys) {
     hprintln!(
         "- Secret Key (hex): {}",
-        keys.secret_key().unwrap().display_secret()
+        keys.secret_key().unwrap().to_secret_hex()
     )
     .unwrap();
     hprintln!("- Public Key (hex): {}", keys.public_key()).unwrap();

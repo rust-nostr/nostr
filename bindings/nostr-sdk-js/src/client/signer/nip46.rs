@@ -62,7 +62,7 @@ impl JsNip46Signer {
         self.inner.relay_url().to_string()
     }
 
-    /// Get signer [`XOnlyPublicKey`]
+    /// Get signer public key
     #[wasm_bindgen(js_name = signerPublicKey)]
     pub async fn signer_public_key(&self) -> Result<JsPublicKey> {
         Ok(self

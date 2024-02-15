@@ -7,14 +7,12 @@
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 
-use nostr::secp256k1::XOnlyPublicKey;
-
-use crate::Metadata;
+use crate::{Metadata, PublicKey};
 
 /// Profile
 #[derive(Debug, Clone)]
 pub struct Profile {
-    public_key: XOnlyPublicKey,
+    public_key: PublicKey,
     metadata: Metadata,
 }
 
@@ -44,15 +42,15 @@ impl Hash for Profile {
     }
 }
 
-impl From<XOnlyPublicKey> for Profile {
-    fn from(public_key: XOnlyPublicKey) -> Self {
+impl From<PublicKey> for Profile {
+    fn from(public_key: PublicKey) -> Self {
         Self::new(public_key, Metadata::default())
     }
 }
 
 impl Profile {
     /// Compose new profile
-    pub fn new(public_key: XOnlyPublicKey, metadata: Metadata) -> Self {
+    pub fn new(public_key: PublicKey, metadata: Metadata) -> Self {
         Self {
             public_key,
             metadata,
@@ -60,7 +58,7 @@ impl Profile {
     }
 
     /// Get profile public key
-    pub fn public_key(&self) -> XOnlyPublicKey {
+    pub fn public_key(&self) -> PublicKey {
         self.public_key
     }
 
@@ -92,10 +90,10 @@ impl Profile {
     }
 }
 
-/// Get the first and last 8 chars of a [`XOnlyPublicKey`]
+/// Get the first and last 8 chars of a [`PublicKey`]
 ///
 /// Ex. `00000000:00000002`
-pub fn cut_public_key(pk: XOnlyPublicKey) -> String {
+pub fn cut_public_key(pk: PublicKey) -> String {
     let pk = pk.to_string();
     format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
 }

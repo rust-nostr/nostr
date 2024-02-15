@@ -14,8 +14,7 @@ use std::sync::Arc;
 pub use async_trait::async_trait;
 pub use nostr;
 use nostr::nips::nip01::Coordinate;
-use nostr::secp256k1::XOnlyPublicKey;
-use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, Timestamp, Url};
+use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, PublicKey, Timestamp, Url};
 
 mod error;
 #[cfg(feature = "flatbuf")]
@@ -185,7 +184,7 @@ pub trait NostrDatabase: AsyncTraitDeps {
 pub trait NostrDatabaseExt: NostrDatabase {
     /// Get profile metadata
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn profile(&self, public_key: XOnlyPublicKey) -> Result<Profile, Self::Err> {
+    async fn profile(&self, public_key: PublicKey) -> Result<Profile, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::Metadata)
@@ -207,8 +206,8 @@ pub trait NostrDatabaseExt: NostrDatabase {
     #[tracing::instrument(skip_all, level = "trace")]
     async fn contacts_public_keys(
         &self,
-        public_key: XOnlyPublicKey,
-    ) -> Result<Vec<XOnlyPublicKey>, Self::Err> {
+        public_key: PublicKey,
+    ) -> Result<Vec<PublicKey>, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::ContactList)
@@ -220,9 +219,9 @@ pub trait NostrDatabaseExt: NostrDatabase {
         }
     }
 
-    /// Get contact list with metadata of [`XOnlyPublicKey`]
+    /// Get contact list with metadata of [`PublicKey`]
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn contacts(&self, public_key: XOnlyPublicKey) -> Result<BTreeSet<Profile>, Self::Err> {
+    async fn contacts(&self, public_key: PublicKey) -> Result<BTreeSet<Profile>, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::ContactList)

@@ -9,9 +9,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use bitcoin::secp256k1::XOnlyPublicKey;
-
-use crate::Tag;
+use crate::{PublicKey, Tag};
 
 /// Payload for creating or updating stall
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -298,7 +296,7 @@ pub struct MerchantVerifyPayment {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomerContact {
     /// Nostr pub key of the customer (optional, as not decided yet if required)
-    pub nostr: Option<XOnlyPublicKey>,
+    pub nostr: Option<PublicKey>,
     /// Phone number of the customer
     pub phone: Option<String>,
     /// Email of the customer

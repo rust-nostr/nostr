@@ -36,13 +36,11 @@ use nostr_sdk::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Generate new keys
-    let my_keys: Keys = Keys::generate();
-    //
-    // or use your already existing
-    //
-    // From HEX or Bech32
-    // let my_keys = Keys::from_sk_str("hex-or-bech32-secret-key")?;
+    // Generate new random keys
+    let my_keys = Keys::generate();
+
+    // Or use your already existing (from hex or bech32)
+    let my_keys = Keys::parse("hex-or-bech32-secret-key")?;
 
     // Show bech32 public key
     let bech32_pubkey: String = my_keys.public_key().to_bech32()?;
@@ -89,7 +87,7 @@ async fn main() -> Result<()> {
 
     // Compose custom event and send to specific relay
     let event_id = EventId::from_bech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r")?;
-    let public_key = XOnlyPublicKey::from_bech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz")?;
+    let public_key = PublicKey::from_bech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz")?;
     let event: Event = EventBuilder::reaction(event_id, public_key, "🧡").to_event(&my_keys)?;
     client.send_event_to(["wss://relay.damus.io"], event).await?;
 
@@ -101,7 +99,7 @@ async fn main() -> Result<()> {
     client.set_zapper(Some(zapper)).await;
 
     // Send SAT without zap event
-    let public_key = XOnlyPublicKey::from_bech32(
+    let public_key = PublicKey::from_bech32(
         "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
     )?;
     client.zap(public_key, 1000, None).await?;

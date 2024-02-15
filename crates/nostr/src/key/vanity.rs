@@ -12,11 +12,10 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, RecvError};
 use std::thread;
 
-use bitcoin::secp256k1::{rand, SecretKey};
+use bitcoin::secp256k1::rand;
 
-use super::Keys;
+use super::{Keys, SecretKey};
 use crate::nips::nip19::{ToBech32, PREFIX_BECH32_PUBLIC_KEY};
-use crate::SECP256K1;
 
 const BECH32_CHARS: &str = "023456789acdefghjklmnpqrstuvwxyz";
 const HEX_CHARS: &str = "0123456789abcdef";
@@ -91,25 +90,27 @@ impl Keys {
                         break;
                     }
 
-                    let (secret_key, public_key) = SECP256K1.generate_keypair(&mut rng);
-                    let (xonly_public_key, _) = public_key.x_only_public_key();
+                    let keys = Keys::generate_without_keypair(&mut rng);
 
                     if bech32 {
-                        let bech32_key = xonly_public_key
+                        let bech32_key = keys
+                            .public_key
                             .to_bech32()
                             .expect("Unable to convert key to bech32");
                         if prefixes.iter().any(|prefix| {
                             bech32_key.starts_with(&format!("{PREFIX_BECH32_PUBLIC_KEY}1{prefix}"))
                         }) {
-                            tx.send(secret_key).expect("Unable to send on channel");
+                            tx.send(keys.secret_key.unwrap())
+                                .expect("Unable to send on channel");
                             let _ = found
                                 .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
                             break;
                         }
                     } else {
-                        let pubkey = xonly_public_key.to_string();
+                        let pubkey = keys.public_key.to_string();
                         if prefixes.iter().any(|prefix| pubkey.starts_with(prefix)) {
-                            tx.send(secret_key).expect("Unable to send on channel");
+                            tx.send(keys.secret_key.unwrap())
+                                .expect("Unable to send on channel");
                             let _ = found
                                 .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
                             break;

@@ -58,7 +58,7 @@ pub enum Error {
 pub struct Nip46Signer {
     relay_url: Url,
     app_keys: Keys,
-    signer_public_key: Arc<Mutex<Option<XOnlyPublicKey>>>,
+    signer_public_key: Arc<Mutex<Option<PublicKey>>>,
     pool: RelayPool,
     timeout: Duration,
 }
@@ -68,7 +68,7 @@ impl Nip46Signer {
     pub async fn new(
         relay_url: Url,
         app_keys: Keys,
-        signer_public_key: Option<XOnlyPublicKey>,
+        signer_public_key: Option<PublicKey>,
         timeout: Duration,
     ) -> Result<Self, Error> {
         Self::with_opts(
@@ -85,7 +85,7 @@ impl Nip46Signer {
     pub async fn with_opts(
         relay_url: Url,
         app_keys: Keys,
-        signer_public_key: Option<XOnlyPublicKey>,
+        signer_public_key: Option<PublicKey>,
         timeout: Duration,
         opts: RelayPoolOptions,
     ) -> Result<Self, Error> {
@@ -108,13 +108,13 @@ impl Nip46Signer {
         self.relay_url.clone()
     }
 
-    /// Get signer [`XOnlyPublicKey`]
-    pub async fn signer_public_key(&self) -> Result<XOnlyPublicKey, Error> {
+    /// Get signer [PublicKey]
+    pub async fn signer_public_key(&self) -> Result<PublicKey, Error> {
         let mut signer_public_key = self.signer_public_key.lock().await;
         match *signer_public_key {
             Some(p) => Ok(p),
             None => {
-                let public_key: XOnlyPublicKey = self.get_signer_public_key().await?;
+                let public_key: PublicKey = self.get_signer_public_key().await?;
                 *signer_public_key = Some(public_key);
                 Ok(public_key)
             }
@@ -126,7 +126,7 @@ impl Nip46Signer {
         NostrConnectURI::with_metadata(self.app_keys.public_key(), self.relay_url(), metadata)
     }
 
-    async fn get_signer_public_key(&self) -> Result<XOnlyPublicKey, Error> {
+    async fn get_signer_public_key(&self) -> Result<PublicKey, Error> {
         let public_key = self.app_keys.public_key();
         let secret_key = self.app_keys.secret_key()?;
 
@@ -186,7 +186,7 @@ impl Nip46Signer {
         let public_key = self.app_keys.public_key();
         let secret_key = self.app_keys.secret_key()?;
 
-        let signer_public_key: XOnlyPublicKey = self.signer_public_key().await?;
+        let signer_public_key: PublicKey = self.signer_public_key().await?;
 
         // Build request
         let event = EventBuilder::nostr_connect(&self.app_keys, signer_public_key, msg)?

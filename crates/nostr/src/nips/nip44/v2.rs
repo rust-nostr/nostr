@@ -19,12 +19,12 @@ use bitcoin::hashes::{self, Hash, HashEngine};
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::RngCore;
-use bitcoin::secp256k1::{SecretKey, XOnlyPublicKey};
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
 
 use super::Error;
 use crate::util::{self, hkdf};
+use crate::{PublicKey, SecretKey};
 
 const MESSAGE_KEYS_SIZE: usize = 76;
 const MESSAGES_KEYS_ENCRYPTION_SIZE: usize = 32;
@@ -135,7 +135,7 @@ impl Deref for ConversationKey {
 
 impl ConversationKey {
     /// Derive Conversation Key
-    pub fn derive(secret_key: &SecretKey, public_key: &XOnlyPublicKey) -> Self {
+    pub fn derive(secret_key: &SecretKey, public_key: &PublicKey) -> Self {
         let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
         Self(hkdf::extract(b"nip44-v2", &shared_key))
     }
@@ -349,10 +349,10 @@ mod tests {
     use core::str::FromStr;
 
     use base64::engine::{general_purpose, Engine};
-    use bitcoin::secp256k1::{Secp256k1, SecretKey, XOnlyPublicKey};
 
     use super::*;
     use crate::nips::nip44;
+    use crate::Keys;
 
     const JSON_VECTORS: &'static str = include_str!("nip44.vectors.json");
 
@@ -415,7 +415,7 @@ mod tests {
             };
             let pub2 = {
                 let pub2hex = vector.get("pub2").unwrap().as_str().unwrap();
-                XOnlyPublicKey::from_str(&pub2hex).unwrap()
+                PublicKey::from_str(&pub2hex).unwrap()
             };
             let conversation_key: [u8; 32] = {
                 let ckeyhex = vector.get("conversation_key").unwrap().as_str().unwrap();
@@ -462,7 +462,6 @@ mod tests {
 
     #[test]
     fn test_valid_encrypt_decrypt() {
-        let secp = Secp256k1::new();
         let json: serde_json::Value = serde_json::from_str(JSON_VECTORS).unwrap();
 
         for (i, vectorobj) in json
@@ -491,10 +490,8 @@ mod tests {
             };
             let pub2 = {
                 let sec2hex = vector.get("sec2").unwrap().as_str().unwrap();
-                SecretKey::from_str(&sec2hex)
-                    .unwrap()
-                    .x_only_public_key(&secp)
-                    .0
+                let secret_key = SecretKey::from_str(&sec2hex).unwrap();
+                Keys::new(secret_key).public_key()
             };
             let conversation_key: ConversationKey = {
                 let ckeyhex = vector.get("conversation_key").unwrap().as_str().unwrap();
@@ -568,7 +565,7 @@ mod tests {
             };
             let pub2result = {
                 let pub2hex = vector.get("pub2").unwrap().as_str().unwrap();
-                XOnlyPublicKey::from_str(pub2hex)
+                PublicKey::from_str(pub2hex)
             };
             let note = vector.get("note").unwrap().as_str().unwrap();
 

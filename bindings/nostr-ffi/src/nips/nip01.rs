@@ -55,7 +55,7 @@ impl Coordinate {
     }
 
     pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.pubkey.into())
+        Arc::new(self.inner.public_key.into())
     }
 
     pub fn identifier(&self) -> String {
@@ -71,7 +71,7 @@ impl From<Coordinate> for nip01::Coordinate {
     fn from(value: Coordinate) -> Self {
         Self {
             kind: value.inner.kind,
-            pubkey: value.inner.pubkey,
+            public_key: value.inner.public_key,
             identifier: value.inner.identifier,
             relays: value.inner.relays,
         }

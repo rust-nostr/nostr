@@ -5,7 +5,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::key::{self, FromPkStr, FromSkStr};
+use nostr::key;
 use nostr::nips::nip06::FromMnemonic;
 use nostr::secp256k1::Message;
 use uniffi::Object;
@@ -45,25 +45,19 @@ impl Keys {
         }
     }
 
+    /// Try to parse keys from **secret key** `hex` or `bech32`
+    #[uniffi::constructor]
+    pub fn parse(secret_key: String) -> Result<Self> {
+        Ok(Self {
+            inner: key::Keys::parse(secret_key)?,
+        })
+    }
+
     #[uniffi::constructor]
     pub fn from_public_key(pk: Arc<PublicKey>) -> Self {
         Self {
             inner: key::Keys::from_public_key(**pk),
         }
-    }
-
-    #[uniffi::constructor]
-    pub fn from_sk_str(sk: String) -> Result<Self> {
-        Ok(Self {
-            inner: key::Keys::from_sk_str(&sk)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_pk_str(pk: String) -> Result<Self> {
-        Ok(Self {
-            inner: key::Keys::from_pk_str(&pk)?,
-        })
     }
 
     #[uniffi::constructor]

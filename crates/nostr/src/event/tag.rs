@@ -12,8 +12,8 @@ use core::num::ParseIntError;
 use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::secp256k1;
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, XOnlyPublicKey};
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -24,11 +24,13 @@ use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::types::url::{ParseError, Url};
-use crate::{Event, JsonUtil, Kind, Timestamp, UncheckedUrl};
+use crate::{key, Event, JsonUtil, Kind, PublicKey, Timestamp, UncheckedUrl};
 
 /// [`Tag`] error
 #[derive(Debug)]
 pub enum Error {
+    /// Keys
+    Keys(key::Error),
     /// Impossible to parse [`Marker`]
     MarkerParseError,
     /// Unknown [`Report`]
@@ -71,6 +73,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Keys(e) => write!(f, "Keys: {e}"),
             Self::MarkerParseError => write!(f, "Impossible to parse marker"),
             Self::UnknownReportType => write!(f, "Unknown report type"),
             Self::KindNotFound => write!(f, "Impossible to find tag kind"),
@@ -89,6 +92,12 @@ impl fmt::Display for Error {
             Self::InvalidHttpMethod(m) => write!(f, "Invalid HTTP method: {m}"),
             Self::InvalidRelayMetadata(s) => write!(f, "Invalid relay metadata: {s}"),
         }
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Keys(e)
     }
 }
 
@@ -563,16 +572,16 @@ pub enum Tag {
         marker: Option<Marker>,
     },
     PublicKey {
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         relay_url: Option<UncheckedUrl>,
         alias: Option<String>,
         /// Whether the p tag is an uppercase P or not
         uppercase: bool,
     },
     EventReport(EventId, Report),
-    PubKeyReport(XOnlyPublicKey, Report),
+    PubKeyReport(PublicKey, Report),
     PubKeyLiveEvent {
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         relay_url: Option<UncheckedUrl>,
         marker: LiveEventMarker,
         proof: Option<Signature>,
@@ -585,7 +594,7 @@ pub enum Tag {
     ExternalIdentity(Identity),
     A {
         kind: Kind,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         identifier: String,
         relay_url: Option<UncheckedUrl>,
     },
@@ -595,7 +604,7 @@ pub enum Tag {
         difficulty: u8,
     },
     Delegation {
-        delegator: XOnlyPublicKey,
+        delegator: PublicKey,
         conditions: Conditions,
         sig: Signature,
     },
@@ -700,7 +709,7 @@ impl Tag {
                     {
                         Ok(Self::A {
                             kind: Kind::from_str(kind_str)?,
-                            public_key: XOnlyPublicKey::from_str(pubkey_str)?,
+                            public_key: PublicKey::from_str(pubkey_str)?,
                             identifier: identifier.to_owned(),
                             relay_url: None,
                         })
@@ -708,9 +717,9 @@ impl Tag {
                         Err(Error::InvalidLength)
                     }
                 }
-                TagKind::P => Ok(Self::public_key(XOnlyPublicKey::from_str(tag_1)?)),
+                TagKind::P => Ok(Self::public_key(PublicKey::from_str(tag_1)?)),
                 TagKind::UpperP => {
-                    let public_key = XOnlyPublicKey::from_str(tag_1)?;
+                    let public_key = PublicKey::from_str(tag_1)?;
                     Ok(Self::PublicKey {
                         public_key,
                         relay_url: None,
@@ -783,7 +792,7 @@ impl Tag {
 
             match tag_kind {
                 TagKind::P => {
-                    let public_key = XOnlyPublicKey::from_str(tag_1)?;
+                    let public_key = PublicKey::from_str(tag_1)?;
                     if tag_2.is_empty() {
                         Ok(Self::PublicKey {
                             public_key,
@@ -840,7 +849,7 @@ impl Tag {
                     {
                         Ok(Self::A {
                             kind: Kind::from_str(kind_str)?,
-                            public_key: XOnlyPublicKey::from_str(pubkey_str)?,
+                            public_key: PublicKey::from_str(pubkey_str)?,
                             identifier: identifier.to_owned(),
                             relay_url: Some(UncheckedUrl::from(tag_2)),
                         })
@@ -894,7 +903,7 @@ impl Tag {
 
             match tag_kind {
                 TagKind::P | TagKind::UpperP => {
-                    let public_key: XOnlyPublicKey = XOnlyPublicKey::from_str(tag_1)?;
+                    let public_key: PublicKey = PublicKey::from_str(tag_1)?;
                     let relay_url: Option<UncheckedUrl> = Some(UncheckedUrl::from(tag_2));
 
                     match LiveEventMarker::from_str(tag_3) {
@@ -918,7 +927,7 @@ impl Tag {
                     marker: (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
                 }),
                 TagKind::Delegation => Ok(Self::Delegation {
-                    delegator: XOnlyPublicKey::from_str(tag_1)?,
+                    delegator: PublicKey::from_str(tag_1)?,
                     conditions: Conditions::from_str(tag_2)?,
                     sig: Signature::from_str(tag_3)?,
                 }),
@@ -935,7 +944,7 @@ impl Tag {
 
             match tag_kind {
                 TagKind::P | TagKind::UpperP => Ok(Self::PubKeyLiveEvent {
-                    public_key: XOnlyPublicKey::from_str(tag_1)?,
+                    public_key: PublicKey::from_str(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: LiveEventMarker::from_str(tag_3)?,
                     proof: Signature::from_str(tag_4).ok(),
@@ -969,7 +978,7 @@ impl Tag {
     ///
     /// JSON: `["p", "<public-key>"]`
     #[inline]
-    pub fn public_key(public_key: XOnlyPublicKey) -> Self {
+    pub fn public_key(public_key: PublicKey) -> Self {
         Self::PublicKey {
             public_key,
             relay_url: None,
@@ -1413,7 +1422,7 @@ mod tests {
         assert_eq!(
             tag,
             &Tag::public_key(
-                XOnlyPublicKey::from_str(
+                PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap()
@@ -1423,14 +1432,13 @@ mod tests {
 
     #[test]
     fn test_serialize_tag_to_event() {
-        let public_key = XOnlyPublicKey::from_str(
-            "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
-        )
-        .unwrap();
+        let public_key =
+            PublicKey::from_str("68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272")
+                .unwrap();
         let event = Event::new(
             EventId::from_str("378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7")
                 .unwrap(),
-            XOnlyPublicKey::from_str("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3").unwrap(),
+            PublicKey::from_str("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3").unwrap(),
             Timestamp::from(1671739153),
             Kind::EncryptedDirectMessage,
             [Tag::public_key(public_key)],
@@ -1456,7 +1464,7 @@ mod tests {
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ],
             Tag::public_key(
-                XOnlyPublicKey::from_str(
+                PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap()
@@ -1517,7 +1525,7 @@ mod tests {
                 "wss://relay.damus.io"
             ],
             Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1569,7 +1577,7 @@ mod tests {
                 "spam"
             ],
             Tag::PubKeyReport(
-                XOnlyPublicKey::from_str(
+                PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1611,7 +1619,7 @@ mod tests {
             ],
             Tag::A {
                 kind: Kind::LongFormTextNote,
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
                 )
                 .unwrap(),
@@ -1629,7 +1637,7 @@ mod tests {
                 "Speaker",
             ],
             Tag::PubKeyLiveEvent {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1648,7 +1656,7 @@ mod tests {
                 "Participant",
             ],
             Tag::PubKeyLiveEvent {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1667,7 +1675,7 @@ mod tests {
                 "alias",
             ],
             Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1703,7 +1711,7 @@ mod tests {
                 "kind=1",
                 "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             ],
-            Tag::Delegation { delegator: XOnlyPublicKey::from_str(
+            Tag::Delegation { delegator: PublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
             .as_vec()
@@ -1723,7 +1731,7 @@ mod tests {
                 "a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"
             ],
             Tag::PubKeyLiveEvent {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 ).unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
@@ -1753,7 +1761,7 @@ mod tests {
             ])
             .unwrap(),
             Tag::public_key(
-                XOnlyPublicKey::from_str(
+                PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap()
@@ -1831,7 +1839,7 @@ mod tests {
             ])
             .unwrap(),
             Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1883,7 +1891,7 @@ mod tests {
             ])
             .unwrap(),
             Tag::PubKeyReport(
-                XOnlyPublicKey::from_str(
+                PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1924,7 +1932,7 @@ mod tests {
             .unwrap(),
             Tag::A {
                 kind: Kind::LongFormTextNote,
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
                 )
                 .unwrap(),
@@ -1950,7 +1958,7 @@ mod tests {
             ])
             .unwrap(),
             Tag::PublicKey {
-                public_key: XOnlyPublicKey::from_str(
+                public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
@@ -1985,7 +1993,7 @@ mod tests {
                 "kind=1",
                 "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             ]).unwrap(),
-            Tag::Delegation { delegator: XOnlyPublicKey::from_str(
+            Tag::Delegation { delegator: PublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
         );

@@ -10,12 +10,11 @@ use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::XOnlyPublicKey;
 use serde_json::{json, Value};
 
 use super::{Kind, Tag};
 use crate::nips::nip13;
-use crate::Timestamp;
+use crate::{PublicKey, Timestamp};
 
 /// [`EventId`] error
 #[derive(Debug, PartialEq, Eq)]
@@ -61,13 +60,13 @@ pub struct EventId(Sha256Hash);
 impl EventId {
     /// Generate [`EventId`]
     pub fn new(
-        pubkey: &XOnlyPublicKey,
+        public_key: &PublicKey,
         created_at: Timestamp,
         kind: &Kind,
         tags: &[Tag],
         content: &str,
     ) -> Self {
-        let json: Value = json!([0, pubkey, created_at, kind, tags, content]);
+        let json: Value = json!([0, public_key, created_at, kind, tags, content]);
         let event_str: String = json.to_string();
         Self(Sha256Hash::hash(event_str.as_bytes()))
     }
@@ -154,12 +153,6 @@ impl fmt::Display for EventId {
 impl From<Sha256Hash> for EventId {
     fn from(hash: Sha256Hash) -> Self {
         Self(hash)
-    }
-}
-
-impl From<EventId> for String {
-    fn from(event_id: EventId) -> Self {
-        event_id.to_string()
     }
 }
 

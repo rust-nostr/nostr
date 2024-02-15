@@ -8,9 +8,8 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let public_key = XOnlyPublicKey::from_bech32(
-        "npub1080l37pfvdpyuzasyuy2ytjykjvq3ylr5jlqlg7tvzjrh9r8vn3sf5yaph",
-    )?;
+    let public_key =
+        PublicKey::from_bech32("npub1080l37pfvdpyuzasyuy2ytjykjvq3ylr5jlqlg7tvzjrh9r8vn3sf5yaph")?;
 
     let client = Client::default();
     client.add_relay("wss://atl.purplerelay.com").await?;

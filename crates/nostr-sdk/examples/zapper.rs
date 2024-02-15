@@ -31,10 +31,9 @@ async fn main() -> Result<()> {
     client.add_relay("wss://relay.damus.io").await?;
     client.connect().await;
 
-    let public_key = XOnlyPublicKey::from_bech32(
-        "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
-    )
-    .unwrap();
+    let public_key =
+        PublicKey::from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
+            .unwrap();
 
     // Send sats without zap event
     client.zap(public_key, 1000, None).await?;

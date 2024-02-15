@@ -12,11 +12,11 @@ use core::fmt;
 use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification};
 
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Event, EventId, JsonUtil, Keys, Kind, Tag, Timestamp};
+use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Timestamp};
 
 /// [`UnsignedEvent`] error
 #[derive(Debug, PartialEq, Eq)]
@@ -75,7 +75,7 @@ pub struct UnsignedEvent {
     /// Id
     pub id: EventId,
     /// Author
-    pub pubkey: XOnlyPublicKey,
+    pub pubkey: PublicKey,
     /// Timestamp (seconds)
     pub created_at: Timestamp,
     /// Kind

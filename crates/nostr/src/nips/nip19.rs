@@ -15,11 +15,10 @@ use core::str::FromStr;
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{self, SecretKey, XOnlyPublicKey};
 
 use super::nip01::Coordinate;
 use crate::event::id::{self, EventId};
-use crate::Kind;
+use crate::{key, Kind, PublicKey, SecretKey};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
@@ -40,10 +39,10 @@ pub enum Error {
     Bech32(bech32::Error),
     /// UFT-8 error
     UTF8(FromUtf8Error),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
     /// Hash error
     Hash(bitcoin::hashes::Error),
+    /// Keys error
+    Keys(key::Error),
     /// EventId error
     EventId(id::Error),
     /// Wrong prefix or variant
@@ -66,8 +65,8 @@ impl fmt::Display for Error {
         match self {
             Self::Bech32(e) => write!(f, "Bech32: {e}"),
             Self::UTF8(e) => write!(f, "UTF8: {e}"),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::Hash(e) => write!(f, "Hash: {e}"),
+            Self::Keys(e) => write!(f, "Keys: {e}"),
             Self::EventId(e) => write!(f, "Event ID: {e}"),
             Self::WrongPrefixOrVariant => write!(f, "Wrong prefix or variant"),
             Self::FieldMissing(name) => write!(f, "Field missing: {name}"),
@@ -90,15 +89,15 @@ impl From<FromUtf8Error> for Error {
     }
 }
 
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
-    }
-}
-
 impl From<bitcoin::hashes::Error> for Error {
     fn from(e: bitcoin::hashes::Error) -> Self {
         Self::Hash(e)
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Keys(e)
     }
 }
 
@@ -149,7 +148,7 @@ pub enum Nip19 {
     /// nsec
     Secret(SecretKey),
     /// npub
-    Pubkey(XOnlyPublicKey),
+    Pubkey(PublicKey),
     /// nprofile
     Profile(Nip19Profile),
     /// note
@@ -185,7 +184,7 @@ impl FromBech32 for SecretKey {
     }
 }
 
-impl FromBech32 for XOnlyPublicKey {
+impl FromBech32 for PublicKey {
     type Err = Error;
 
     fn from_bech32<S>(public_key: S) -> Result<Self, Self::Err>
@@ -221,7 +220,7 @@ impl FromBech32 for Nip19 {
 
         match prefix {
             Nip19Prefix::NSec => Ok(Self::Secret(SecretKey::from_slice(data.as_slice())?)),
-            Nip19Prefix::NPub => Ok(Self::Pubkey(XOnlyPublicKey::from_slice(data.as_slice())?)),
+            Nip19Prefix::NPub => Ok(Self::Pubkey(PublicKey::from_slice(data.as_slice())?)),
             Nip19Prefix::NProfile => Ok(Self::Profile(Nip19Profile::from_bech32_data(data)?)),
             Nip19Prefix::NEvent => Ok(Self::Event(Nip19Event::from_bech32_data(data)?)),
             Nip19Prefix::Note => Ok(Self::EventId(EventId::from_slice(data.as_slice())?)),
@@ -268,7 +267,7 @@ pub trait ToBech32 {
     fn to_bech32(&self) -> Result<String, Self::Err>;
 }
 
-impl ToBech32 for XOnlyPublicKey {
+impl ToBech32 for PublicKey {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
@@ -311,7 +310,7 @@ impl ToBech32 for EventId {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Nip19Event {
     pub event_id: EventId,
-    pub author: Option<XOnlyPublicKey>,
+    pub author: Option<PublicKey>,
     pub relays: Vec<String>,
 }
 
@@ -330,7 +329,7 @@ impl Nip19Event {
 
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut event_id: Option<EventId> = None;
-        let mut author: Option<XOnlyPublicKey> = None;
+        let mut author: Option<PublicKey> = None;
         let mut relays: Vec<String> = Vec::new();
 
         while !data.is_empty() {
@@ -350,7 +349,7 @@ impl Nip19Event {
                 // the pubkey of the event"
                 AUTHOR => {
                     if author.is_none() {
-                        author = Some(XOnlyPublicKey::from_slice(bytes)?);
+                        author = Some(PublicKey::from_slice(bytes)?);
                     }
                 }
                 RELAY => {
@@ -407,12 +406,12 @@ impl ToBech32 for Nip19Event {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Nip19Profile {
-    pub public_key: XOnlyPublicKey,
+    pub public_key: PublicKey,
     pub relays: Vec<String>,
 }
 
 impl Nip19Profile {
-    pub fn new<I, S>(public_key: XOnlyPublicKey, relays: I) -> Self
+    pub fn new<I, S>(public_key: PublicKey, relays: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
@@ -424,7 +423,7 @@ impl Nip19Profile {
     }
 
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
-        let mut public_key: Option<XOnlyPublicKey> = None;
+        let mut public_key: Option<PublicKey> = None;
         let mut relays: Vec<String> = Vec::new();
 
         while !data.is_empty() {
@@ -437,7 +436,7 @@ impl Nip19Profile {
             match *t {
                 SPECIAL => {
                     if public_key.is_none() {
-                        public_key = Some(XOnlyPublicKey::from_slice(bytes)?);
+                        public_key = Some(PublicKey::from_slice(bytes)?);
                     }
                 }
                 RELAY => {
@@ -498,7 +497,7 @@ impl FromBech32 for Nip19Profile {
 impl Coordinate {
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut identifier: Option<String> = None;
-        let mut pubkey: Option<XOnlyPublicKey> = None;
+        let mut pubkey: Option<PublicKey> = None;
         let mut kind: Option<Kind> = None;
         let mut relays: Vec<String> = Vec::new();
 
@@ -520,7 +519,7 @@ impl Coordinate {
                 }
                 AUTHOR => {
                     if pubkey.is_none() {
-                        pubkey = Some(XOnlyPublicKey::from_slice(bytes)?);
+                        pubkey = Some(PublicKey::from_slice(bytes)?);
                     }
                 }
                 KIND => {
@@ -539,7 +538,7 @@ impl Coordinate {
 
         Ok(Self {
             kind: kind.ok_or_else(|| Error::FieldMissing("kind".to_string()))?,
-            pubkey: pubkey.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
+            public_key: pubkey.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
             identifier: identifier.ok_or_else(|| Error::FieldMissing("identifier".to_string()))?,
             relays,
         })
@@ -581,7 +580,7 @@ impl ToBech32 for Coordinate {
 
         // Author
         bytes.extend([AUTHOR, 32]);
-        bytes.extend(self.pubkey.serialize());
+        bytes.extend(self.public_key.serialize());
 
         // Kind
         bytes.extend([KIND, 4]);
@@ -604,10 +603,9 @@ mod tests {
 
     #[test]
     fn to_bech32_public_key() {
-        let public_key = XOnlyPublicKey::from_str(
-            "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4",
-        )
-        .unwrap();
+        let public_key =
+            PublicKey::from_str("aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4")
+                .unwrap();
         assert_eq!(
             "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy".to_string(),
             public_key.to_bech32().unwrap()
@@ -651,10 +649,9 @@ mod tests {
 
     #[test]
     fn from_bech32_nip19_profile() {
-        let expected_pubkey = XOnlyPublicKey::from_str(
-            "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
-        )
-        .unwrap();
+        let expected_pubkey =
+            PublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")
+                .unwrap();
 
         let nprofile = "nprofile1qqsr9cvzwc652r4m83d86ykplrnm9dg5gwdvzzn8ameanlvut35wy3gpz3mhxue69uhhyetvv9ujuerpd46hxtnfduyu75sw";
         let nip19 = Nip19::from_bech32(nprofile).unwrap();
@@ -669,10 +666,9 @@ mod tests {
 
     #[test]
     fn from_bech32_nevent_author() {
-        let expected_pubkey = XOnlyPublicKey::from_str(
-            "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
-        )
-        .unwrap();
+        let expected_pubkey =
+            PublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")
+                .unwrap();
         let nevent = "nevent1qqsdhet4232flykq3048jzc9msmaa3hnxuesxy3lnc33vd0wt9xwk6szyqewrqnkx4zsaweutf739s0cu7et29zrntqs5elw70vlm8zudr3y24sqsgy";
         let event = Nip19Event::from_bech32(nevent).unwrap();
         assert_eq!(event.author, Some(expected_pubkey));

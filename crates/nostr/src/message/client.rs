@@ -356,20 +356,16 @@ impl JsonUtil for ClientMessage {
 
 #[cfg(test)]
 mod tests {
-
     use core::str::FromStr;
 
-    use bitcoin::secp256k1::XOnlyPublicKey;
-
     use super::*;
-    use crate::Kind;
+    use crate::{Kind, PublicKey};
 
     #[test]
     fn test_client_message_req() {
-        let pk = XOnlyPublicKey::from_str(
-            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
-        )
-        .unwrap();
+        let pk =
+            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap();
         let filters = vec![
             Filter::new().kind(Kind::EncryptedDirectMessage),
             Filter::new().pubkey(pk),
@@ -384,10 +380,9 @@ mod tests {
 
     #[test]
     fn test_client_message_custom_kind() {
-        let pk = XOnlyPublicKey::from_str(
-            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
-        )
-        .unwrap();
+        let pk =
+            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap();
         let filters = vec![
             Filter::new().kind(Kind::Custom(22)),
             Filter::new().pubkey(pk),

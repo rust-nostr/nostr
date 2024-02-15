@@ -27,7 +27,7 @@ pub enum ZapEntity {
     /// Zap to event
     Event(EventId),
     /// Zap to public key
-    PublicKey(XOnlyPublicKey),
+    PublicKey(PublicKey),
 }
 
 impl From<EventId> for ZapEntity {
@@ -42,8 +42,8 @@ impl From<Nip19Event> for ZapEntity {
     }
 }
 
-impl From<XOnlyPublicKey> for ZapEntity {
-    fn from(value: XOnlyPublicKey) -> Self {
+impl From<PublicKey> for ZapEntity {
+    fn from(value: PublicKey) -> Self {
         Self::PublicKey(value)
     }
 }
@@ -150,13 +150,13 @@ impl Client {
 
         // Get entity metadata
         let to: ZapEntity = to.into();
-        let (public_key, metadata): (XOnlyPublicKey, Metadata) = match to {
+        let (public_key, metadata): (PublicKey, Metadata) = match to {
             ZapEntity::Event(event_id) => {
                 // Get event
                 let filter: Filter = Filter::new().id(event_id);
                 let events: Vec<Event> = self.get_events_of(vec![filter], None).await?;
                 let event: &Event = events.first().ok_or(Error::EventNotFound(event_id))?;
-                let public_key: XOnlyPublicKey = event.author();
+                let public_key: PublicKey = event.author();
                 let metadata: Metadata = self.metadata(public_key).await?;
                 (public_key, metadata)
             }
@@ -281,7 +281,7 @@ impl Client {
     /// Split zap to support Rust Nostr development
     async fn zap_split(
         &self,
-        public_key: XOnlyPublicKey,
+        public_key: PublicKey,
         lud: Lud06OrLud16,
         satoshi: u64,
         details: Option<ZapDetails>,

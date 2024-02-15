@@ -17,12 +17,11 @@ use bitcoin::hashes::Hash;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::RngCore;
-use bitcoin::secp256k1::XOnlyPublicKey;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::{EventId, JsonUtil, Kind, Timestamp};
+use crate::{EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
 type GenericTags = AllocMap<SingleLetterTag, AllocSet<GenericTagValue>>;
 
@@ -301,7 +300,7 @@ impl<'de> Deserialize<'de> for SubscriptionId {
 #[serde(untagged)]
 pub enum GenericTagValue {
     /// Public Key
-    Pubkey(XOnlyPublicKey),
+    Pubkey(PublicKey),
     /// Event Id
     EventId(EventId),
     /// Other (string)
@@ -323,7 +322,7 @@ pub trait IntoGenericTagValue {
     fn into_generic_tag_value(self) -> GenericTagValue;
 }
 
-impl IntoGenericTagValue for XOnlyPublicKey {
+impl IntoGenericTagValue for PublicKey {
     fn into_generic_tag_value(self) -> GenericTagValue {
         GenericTagValue::Pubkey(self)
     }
@@ -354,10 +353,10 @@ pub struct Filter {
     #[serde(skip_serializing_if = "AllocSet::is_empty")]
     #[serde(default)]
     pub ids: AllocSet<EventId>,
-    /// List of [`XOnlyPublicKey`]
+    /// List of [`PublicKey`]
     #[serde(skip_serializing_if = "AllocSet::is_empty")]
     #[serde(default)]
-    pub authors: AllocSet<XOnlyPublicKey>,
+    pub authors: AllocSet<PublicKey>,
     /// List of a kind numbers
     #[serde(skip_serializing_if = "AllocSet::is_empty")]
     #[serde(default)]
@@ -423,7 +422,7 @@ impl Filter {
     }
 
     /// Add author
-    pub fn author(mut self, author: XOnlyPublicKey) -> Self {
+    pub fn author(mut self, author: PublicKey) -> Self {
         self.authors.insert(author);
         self
     }
@@ -431,7 +430,7 @@ impl Filter {
     /// Add authors
     pub fn authors<I>(mut self, authors: I) -> Self
     where
-        I: IntoIterator<Item = XOnlyPublicKey>,
+        I: IntoIterator<Item = PublicKey>,
     {
         self.authors.extend(authors);
         self
@@ -440,7 +439,7 @@ impl Filter {
     /// Remove authors
     pub fn remove_authors<I>(mut self, authors: I) -> Self
     where
-        I: IntoIterator<Item = XOnlyPublicKey>,
+        I: IntoIterator<Item = PublicKey>,
     {
         for author in authors.into_iter() {
             self.authors.remove(&author);
@@ -496,14 +495,14 @@ impl Filter {
     }
 
     /// Add pubkey
-    pub fn pubkey(self, pubkey: XOnlyPublicKey) -> Self {
+    pub fn pubkey(self, pubkey: PublicKey) -> Self {
         self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), [pubkey])
     }
 
     /// Add pubkeys
     pub fn pubkeys<I>(self, pubkeys: I) -> Self
     where
-        I: IntoIterator<Item = XOnlyPublicKey>,
+        I: IntoIterator<Item = PublicKey>,
     {
         self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
     }
@@ -511,7 +510,7 @@ impl Filter {
     /// Remove pubkeys
     pub fn remove_pubkeys<I>(self, pubkeys: I) -> Self
     where
-        I: IntoIterator<Item = XOnlyPublicKey>,
+        I: IntoIterator<Item = PublicKey>,
     {
         self.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
     }
@@ -892,10 +891,9 @@ mod test {
         let event_id =
             EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
                 .unwrap();
-        let pubkey = XOnlyPublicKey::from_str(
-            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap();
         assert_eq!(
             filter,
             Filter::new()

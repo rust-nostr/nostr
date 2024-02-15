@@ -43,6 +43,13 @@ impl JsKeys {
         }
     }
 
+    /// Try to parse keys from **secret key** `hex` or `bech32`
+    pub fn parse(secret_key: String) -> Result<JsKeys> {
+        Ok(Self {
+            inner: Keys::parse(secret_key).map_err(into_err)?,
+        })
+    }
+
     /// Initialize with public key only (no secret key).
     #[wasm_bindgen(js_name = fromPublicKey)]
     pub fn from_public_key(public_key: &JsPublicKey) -> JsKeys {
@@ -51,28 +58,17 @@ impl JsKeys {
         }
     }
 
-    /// Init [`Keys`] from `hex` or `bech32` secret key string
-    #[wasm_bindgen(js_name = fromSkStr)]
-    pub fn from_sk_str(secret_key: &str) -> Result<JsKeys> {
-        Ok(Self {
-            inner: Keys::from_sk_str(secret_key).map_err(into_err)?,
-        })
-    }
-
-    /// Init [`Keys`] from `hex` or `bech32` public key string
-    #[wasm_bindgen(js_name = fromPkStr)]
-    pub fn from_pk_str(public_key: &str) -> Result<JsKeys> {
-        Ok(Self {
-            inner: Keys::from_pk_str(public_key).map_err(into_err)?,
-        })
-    }
-
     /// Generate new random keys
-    #[wasm_bindgen]
     pub fn generate() -> JsKeys {
         Self {
             inner: Keys::generate(),
         }
+    }
+
+    pub fn vanity(prefixes: Vec<String>, bech32: bool, num_cores: u8) -> Result<JsKeys> {
+        Ok(Self {
+            inner: Keys::vanity(prefixes, bech32, num_cores as usize).map_err(into_err)?,
+        })
     }
 
     /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
