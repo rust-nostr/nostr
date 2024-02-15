@@ -60,6 +60,13 @@ impl JsEventId {
         }
     }
 
+    /// Try to parse event ID from `hex` or `bech32`
+    pub fn parse(id: &str) -> Result<JsEventId> {
+        Ok(Self {
+            inner: EventId::parse(id).map_err(into_err)?,
+        })
+    }
+
     #[wasm_bindgen(js_name = fromSlice)]
     pub fn from_slice(bytes: &[u8]) -> Result<JsEventId> {
         Ok(Self {

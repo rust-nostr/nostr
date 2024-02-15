@@ -53,12 +53,12 @@ impl EventId {
         kind: u64,
         tags: Vec<Vec<String>>,
         content: String,
-    ) -> Result<Arc<Self>> {
+    ) -> Result<Self> {
         let mut new_tags: Vec<Tag> = Vec::new();
         for tag in tags.into_iter() {
             new_tags.push(Tag::parse(tag)?);
         }
-        Ok(Arc::new(Self {
+        Ok(Self {
             inner: nostr::EventId::new(
                 pubkey.as_ref().deref(),
                 *created_at.as_ref().deref(),
@@ -66,35 +66,43 @@ impl EventId {
                 &new_tags,
                 &content,
             ),
-        }))
+        })
+    }
+
+    /// Try to parse event ID from `hex` or `bech32`
+    #[uniffi::constructor]
+    pub fn parse(id: String) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventId::parse(id)?,
+        })
     }
 
     #[uniffi::constructor]
-    pub fn from_bytes(bytes: Vec<u8>) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+        Ok(Self {
             inner: nostr::EventId::from_slice(&bytes)?,
-        }))
+        })
     }
 
     #[uniffi::constructor]
-    pub fn from_hex(hex: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_hex(hex: String) -> Result<Self> {
+        Ok(Self {
             inner: nostr::EventId::from_hex(hex)?,
-        }))
+        })
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(id: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_bech32(id: String) -> Result<Self> {
+        Ok(Self {
             inner: nostr::EventId::from_bech32(id)?,
-        }))
+        })
     }
 
     #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_nostr_uri(uri: String) -> Result<Self> {
+        Ok(Self {
             inner: nostr::EventId::from_nostr_uri(uri)?,
-        }))
+        })
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {

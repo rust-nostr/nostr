@@ -14,6 +14,7 @@ use serde_json::{json, Value};
 
 use super::{Kind, Tag};
 use crate::nips::nip13;
+use crate::nips::nip19::FromBech32;
 use crate::{PublicKey, Timestamp};
 
 /// [`EventId`] error
@@ -23,6 +24,8 @@ pub enum Error {
     Hex(bitcoin::hashes::hex::Error),
     /// Hash error
     Hash(bitcoin::hashes::Error),
+    /// Invalid event ID
+    InvalidEventId,
 }
 
 #[cfg(feature = "std")]
@@ -33,6 +36,7 @@ impl fmt::Display for Error {
         match self {
             Self::Hex(e) => write!(f, "Hex: {e}"),
             Self::Hash(e) => write!(f, "Hash: {e}"),
+            Self::InvalidEventId => write!(f, "Invalid event ID"),
         }
     }
 }
@@ -69,6 +73,21 @@ impl EventId {
         let json: Value = json!([0, public_key, created_at, kind, tags, content]);
         let event_str: String = json.to_string();
         Self(Sha256Hash::hash(event_str.as_bytes()))
+    }
+
+    /// Try to parse [EventId] from `hex` or `bech32`
+    pub fn parse<S>(id: S) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        let id: &str = id.as_ref();
+        match Self::from_hex(id) {
+            Ok(id) => Ok(id),
+            Err(_) => match Self::from_bech32(id) {
+                Ok(id) => Ok(id),
+                Err(_) => Err(Error::InvalidEventId),
+            },
+        }
     }
 
     /// [`EventId`] hex string
@@ -127,8 +146,9 @@ impl EventId {
 impl FromStr for EventId {
     type Err = Error;
 
-    fn from_str(hex: &str) -> Result<Self, Self::Err> {
-        Self::from_hex(hex)
+    /// Try to parse [EventId] from `hex` or `bech32`
+    fn from_str(id: &str) -> Result<Self, Self::Err> {
+        Self::parse(id)
     }
 }
 
