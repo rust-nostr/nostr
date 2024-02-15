@@ -1,6 +1,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -935,7 +936,7 @@ impl NostrWalletConnectURI {
         Ok(nip47::NostrWalletConnectURI::new(
             **public_key,
             Url::parse(&relay_url)?,
-            **random_secret_key,
+            random_secret_key.as_ref().deref().clone(),
             lud16,
         )
         .into())
@@ -958,7 +959,7 @@ impl NostrWalletConnectURI {
 
     /// 32-byte randomly generated hex encoded string
     pub fn secret(&self) -> Arc<SecretKey> {
-        Arc::new(self.inner.secret.into())
+        Arc::new(self.inner.secret.clone().into())
     }
 
     /// A lightning address that clients can use to automatically setup the lud16 field on the user's profile if they have none configured.

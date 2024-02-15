@@ -14,7 +14,7 @@ use std::thread;
 
 use bitcoin::secp256k1::rand;
 
-use super::{Keys, SecretKey};
+use super::Keys;
 use crate::nips::nip19::{ToBech32, PREFIX_BECH32_PUBLIC_KEY};
 
 const BECH32_CHARS: &str = "023456789acdefghjklmnpqrstuvwxyz";
@@ -75,9 +75,9 @@ impl Keys {
             }
         }
 
-        let (tx, rx) = sync_channel::<SecretKey>(1);
+        let (tx, rx) = sync_channel::<Keys>(1);
         let found = Arc::new(AtomicBool::new(false));
-        let mut handles = Vec::new();
+        let mut handles = Vec::with_capacity(num_cores);
 
         for _ in 0..num_cores {
             let tx = tx.clone();
@@ -100,8 +100,7 @@ impl Keys {
                         if prefixes.iter().any(|prefix| {
                             bech32_key.starts_with(&format!("{PREFIX_BECH32_PUBLIC_KEY}1{prefix}"))
                         }) {
-                            tx.send(keys.secret_key.unwrap())
-                                .expect("Unable to send on channel");
+                            tx.send(keys).expect("Unable to send on channel");
                             let _ = found
                                 .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
                             break;
@@ -109,8 +108,7 @@ impl Keys {
                     } else {
                         let pubkey = keys.public_key.to_string();
                         if prefixes.iter().any(|prefix| pubkey.starts_with(prefix)) {
-                            tx.send(keys.secret_key.unwrap())
-                                .expect("Unable to send on channel");
+                            tx.send(keys).expect("Unable to send on channel");
                             let _ = found
                                 .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
                             break;
@@ -125,6 +123,6 @@ impl Keys {
             handle.join().map_err(|_| Error::JoinHandleError)?;
         }
 
-        Ok(Self::new(rx.recv()?))
+        Ok(rx.recv()?)
     }
 }

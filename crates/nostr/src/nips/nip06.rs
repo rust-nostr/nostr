@@ -173,7 +173,7 @@ mod tests {
             let keys = Keys::from_mnemonic_with_ctx(&secp, mnemonic, None, None).unwrap();
             assert_eq!(
                 keys.secret_key().unwrap(),
-                SecretKey::from_str(expected_secret_key).unwrap()
+                &SecretKey::from_str(expected_secret_key).unwrap()
             );
         }
     }

@@ -175,7 +175,7 @@ impl NostrSigner {
     {
         let content: &str = content.as_ref();
         match self {
-            Self::Keys(keys) => Ok(nip04::encrypt(&keys.secret_key()?, &public_key, content)?),
+            Self::Keys(keys) => Ok(nip04::encrypt(keys.secret_key()?, &public_key, content)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
@@ -208,7 +208,7 @@ impl NostrSigner {
         let encrypted_content: &str = encrypted_content.as_ref();
         match self {
             Self::Keys(keys) => Ok(nip04::decrypt(
-                &keys.secret_key()?,
+                keys.secret_key()?,
                 &public_key,
                 encrypted_content,
             )?),
@@ -244,7 +244,7 @@ impl NostrSigner {
     {
         match self {
             Self::Keys(keys) => Ok(nip44::encrypt(
-                &keys.secret_key()?,
+                keys.secret_key()?,
                 &public_key,
                 content,
                 version,
@@ -267,7 +267,7 @@ impl NostrSigner {
         T: AsRef<[u8]>,
     {
         match self {
-            Self::Keys(keys) => Ok(nip44::decrypt(&keys.secret_key()?, &public_key, payload)?),
+            Self::Keys(keys) => Ok(nip44::decrypt(keys.secret_key()?, &public_key, payload)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(..) => Err(Error::unsupported(
                 "NIP44 decryption not supported with NIP07 signer yet!",

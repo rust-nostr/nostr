@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind() == Kind::EncryptedDirectMessage {
                     if let Ok(msg) =
-                        nip04::decrypt(&my_keys.secret_key()?, event.author_ref(), event.content())
+                        nip04::decrypt(my_keys.secret_key()?, event.author_ref(), event.content())
                     {
                         println!("New DM: {msg}");
                         client

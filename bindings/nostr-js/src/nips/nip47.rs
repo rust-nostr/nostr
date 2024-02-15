@@ -36,7 +36,12 @@ impl JsNostrWalletConnectURI {
     ) -> Result<JsNostrWalletConnectURI> {
         let relay_url = Url::parse(relay_url).map_err(into_err)?;
         Ok(Self {
-            inner: NostrWalletConnectURI::new(**public_key, relay_url, **random_secret_key, lud16),
+            inner: NostrWalletConnectURI::new(
+                **public_key,
+                relay_url,
+                random_secret_key.deref().clone(),
+                lud16,
+            ),
         })
     }
 
@@ -61,7 +66,7 @@ impl JsNostrWalletConnectURI {
 
     /// 32-byte randomly generated hex encoded string
     pub fn secret(&self) -> JsSecretKey {
-        self.inner.secret.into()
+        self.inner.secret.clone().into()
     }
 
     /// A lightning address that clients can use to automatically setup the lud16 field on the user's profile if they have none configured.

@@ -151,7 +151,7 @@ impl Nip46Signer {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind() == Kind::NostrConnect {
                         let msg: String =
-                            nip04::decrypt(&secret_key, event.author_ref(), event.content())?;
+                            nip04::decrypt(secret_key, event.author_ref(), event.content())?;
                         let msg = Message::from_json(msg)?;
                         if let Ok(Request::Connect(pk)) = msg.to_request() {
                             // Unsubscribe
@@ -217,7 +217,7 @@ impl Nip46Signer {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind() == Kind::NostrConnect {
-                        let msg = nip04::decrypt(&secret_key, event.author_ref(), event.content())?;
+                        let msg = nip04::decrypt(secret_key, event.author_ref(), event.content())?;
                         let msg = Message::from_json(msg)?;
 
                         if let Message::Response { id, result, error } = &msg {

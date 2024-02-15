@@ -250,9 +250,20 @@ mod tests {
         let bob_pk = bob_keys.public_key();
 
         let content = String::from("hello");
-        let encrypted_content = encrypt(&alice_sk, &bob_pk, &content, Version::V2).unwrap();
+        let encrypted_content = encrypt(
+            alice_keys.secret_key().unwrap(),
+            &bob_pk,
+            &content,
+            Version::V2,
+        )
+        .unwrap();
         assert_eq!(
-            decrypt(&bob_sk, &alice_pk, &encrypted_content).unwrap(),
+            decrypt(
+                bob_keys.secret_key().unwrap(),
+                &alice_pk,
+                &encrypted_content
+            )
+            .unwrap(),
             content
         );
     }

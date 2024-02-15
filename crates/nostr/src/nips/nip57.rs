@@ -277,7 +277,7 @@ where
 
     // Create encryption key
     let secret_key: SecretKey =
-        create_encryption_key(&keys.secret_key()?, &data.public_key, created_at)?;
+        create_encryption_key(keys.secret_key()?, &data.public_key, created_at)?;
 
     // Compose encrypted message
     let mut tags: Vec<Tag> = vec![Tag::public_key(data.public_key)];
@@ -413,8 +413,12 @@ mod tests {
         let data = ZapRequestData::new(public_key, relays).message(msg);
         let private_zap = private_zap_request(data, &alice_keys).unwrap();
 
-        let private_zap_msg =
-            decrypt_private_zap_message(&secret_key, &public_key, &private_zap).unwrap();
+        let private_zap_msg = decrypt_private_zap_message(
+            alice_keys.secret_key().unwrap(),
+            &public_key,
+            &private_zap,
+        )
+        .unwrap();
 
         assert_eq!(msg, private_zap_msg.content())
     }

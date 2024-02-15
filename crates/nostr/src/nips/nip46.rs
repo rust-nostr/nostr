@@ -250,11 +250,11 @@ impl Request {
             }
             Self::Nip04Encrypt { public_key, text } => {
                 let encrypted_content =
-                    nip04::encrypt_with_rng(rng, &keys.secret_key()?, &public_key, text)?;
+                    nip04::encrypt_with_rng(rng, keys.secret_key()?, &public_key, text)?;
                 Some(Response::Nip04Encrypt(encrypted_content))
             }
             Self::Nip04Decrypt { public_key, text } => {
-                let decrypted_content = nip04::decrypt(&keys.secret_key()?, &public_key, text)?;
+                let decrypted_content = nip04::decrypt(keys.secret_key()?, &public_key, text)?;
                 Some(Response::Nip04Decrypt(decrypted_content))
             }
             Self::SignSchnorr(value) => {

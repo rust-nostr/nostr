@@ -447,7 +447,7 @@ impl Request {
     #[cfg(feature = "std")]
     pub fn to_event(self, uri: &NostrWalletConnectURI) -> Result<Event, Error> {
         let encrypted = nip04::encrypt(&uri.secret, &uri.public_key, self.as_json())?;
-        let keys: Keys = Keys::new(uri.secret);
+        let keys: Keys = Keys::new(uri.secret.clone());
         Ok(EventBuilder::new(
             Kind::WalletConnectRequest,
             encrypted,

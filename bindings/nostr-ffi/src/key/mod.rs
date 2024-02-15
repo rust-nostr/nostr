@@ -41,7 +41,7 @@ impl Keys {
     #[uniffi::constructor]
     pub fn new(sk: Arc<SecretKey>) -> Self {
         Self {
-            inner: key::Keys::new(**sk),
+            inner: key::Keys::new(sk.as_ref().deref().clone()),
         }
     }
 
@@ -96,7 +96,7 @@ impl Keys {
     }
 
     pub fn secret_key(&self) -> Result<Arc<SecretKey>> {
-        Ok(Arc::new(self.inner.secret_key()?.into()))
+        Ok(Arc::new(self.inner.secret_key()?.clone().into()))
     }
 
     pub fn sign_schnorr(&self, message: Vec<u8>) -> Result<String> {

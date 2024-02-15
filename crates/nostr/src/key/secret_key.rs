@@ -15,7 +15,7 @@ use super::Error;
 use crate::nips::nip19::FromBech32;
 
 /// Secret key
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecretKey {
     inner: secp256k1::SecretKey,
 }
@@ -96,5 +96,12 @@ impl FromStr for SecretKey {
     /// Try to parse [SecretKey] from `hex` or `bech32`
     fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
         Self::parse(secret_key)
+    }
+}
+
+impl Drop for SecretKey {
+    fn drop(&mut self) {
+        self.inner.non_secure_erase();
+        tracing::trace!("Secret Key dropped.");
     }
 }

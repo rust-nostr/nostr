@@ -28,12 +28,6 @@ impl From<SecretKey> for JsSecretKey {
     }
 }
 
-impl From<&JsSecretKey> for SecretKey {
-    fn from(secret_key: &JsSecretKey) -> Self {
-        secret_key.inner
-    }
-}
-
 #[wasm_bindgen(js_class = SecretKey)]
 impl JsSecretKey {
     /// Try to parse secret key from `hex` or `bech32`

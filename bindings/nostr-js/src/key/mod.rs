@@ -39,7 +39,7 @@ impl JsKeys {
     #[wasm_bindgen(constructor)]
     pub fn new(secret_key: &JsSecretKey) -> JsKeys {
         Self {
-            inner: Keys::new(secret_key.into()),
+            inner: Keys::new(secret_key.deref().clone()),
         }
     }
 
@@ -88,6 +88,6 @@ impl JsKeys {
     /// Get secret key
     #[wasm_bindgen(js_name = secretKey, getter)]
     pub fn secret_key(&self) -> Result<JsSecretKey> {
-        Ok(self.inner.secret_key().map_err(into_err)?.into())
+        Ok(self.inner.secret_key().cloned().map_err(into_err)?.into())
     }
 }

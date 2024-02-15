@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind() == Kind::EncryptedDirectMessage {
-                    match nip04::decrypt(&keys.secret_key()?, event.author_ref(), event.content()) {
+                    match nip04::decrypt(keys.secret_key()?, event.author_ref(), event.content()) {
                         Ok(msg) => {
                             let content: String = match msg.as_str() {
                                 "/rand" => rand::random::<u16>().to_string(),

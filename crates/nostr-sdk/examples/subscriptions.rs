@@ -11,7 +11,8 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let secret_key = SecretKey::from_bech32(BECH32_SK)?;
-    let public_key = Keys::new(secret_key).public_key();
+    let keys = Keys::new(secret_key);
+    let public_key = keys.public_key();
 
     let opts = Options::new().wait_for_send(false);
     let client = ClientBuilder::new().opts(opts).build();
@@ -50,7 +51,9 @@ async fn main() -> Result<()> {
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind() == Kind::EncryptedDirectMessage {
-                    if nip04::decrypt(&secret_key, event.author_ref(), event.content()).is_ok() {
+                    if nip04::decrypt(keys.secret_key()?, event.author_ref(), event.content())
+                        .is_ok()
+                    {
                         // Overwrite subscrption with `other-id` internal ID
                         let relay = client.relay("wss://relay.damus.io").await?;
                         let other_filters = Filter::new()

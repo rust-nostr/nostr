@@ -477,7 +477,7 @@ impl EventBuilder {
         }
         Ok(Self::new(
             Kind::EncryptedDirectMessage,
-            nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, content.into())?,
+            nip04::encrypt(sender_keys.secret_key()?, &receiver_pubkey, content.into())?,
             tags,
         ))
     }
@@ -634,7 +634,7 @@ impl EventBuilder {
     ) -> Result<Self, Error> {
         Ok(Self::new(
             Kind::NostrConnect,
-            nip04::encrypt(&sender_keys.secret_key()?, &receiver_pubkey, msg.as_json())?,
+            nip04::encrypt(sender_keys.secret_key()?, &receiver_pubkey, msg.as_json())?,
             [Tag::public_key(receiver_pubkey)],
         ))
     }
@@ -1068,7 +1068,7 @@ impl EventBuilder {
         rumor: UnsignedEvent,
     ) -> Result<Self, Error> {
         let content = nip44::encrypt(
-            &sender_keys.secret_key()?,
+            sender_keys.secret_key()?,
             receiver_pubkey,
             rumor.as_json(),
             Version::default(),
@@ -1090,7 +1090,7 @@ impl EventBuilder {
 
         let keys: Keys = Keys::generate();
         let content: String = nip44::encrypt(
-            &keys.secret_key()?,
+            keys.secret_key()?,
             receiver,
             seal.as_json(),
             Version::default(),

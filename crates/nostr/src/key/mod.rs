@@ -198,8 +198,8 @@ impl Keys {
     }
 
     /// Get secret key
-    pub fn secret_key(&self) -> Result<SecretKey, Error> {
-        if let Some(secret_key) = self.secret_key {
+    pub fn secret_key(&self) -> Result<&SecretKey, Error> {
+        if let Some(secret_key) = &self.secret_key {
             Ok(secret_key)
         } else {
             Err(Error::SkMissing)
@@ -216,8 +216,8 @@ impl Keys {
         if let Some(key_pair) = self.key_pair {
             Ok(key_pair)
         } else {
-            let sk = self.secret_key()?;
-            Ok(KeyPair::from_secret_key(secp, &sk))
+            let secret_key = self.secret_key()?;
+            Ok(KeyPair::from_secret_key(secp, secret_key))
         }
     }
 
@@ -272,11 +272,6 @@ impl FromPkStr for Keys {
 
 impl Drop for Keys {
     fn drop(&mut self) {
-        tracing::trace!("Dropping Secret Key...");
-        if let Some(sk) = self.secret_key.as_mut() {
-            sk.non_secure_erase();
-            tracing::trace!("Secret Key dropped.");
-        }
         self.secret_key = None;
     }
 }

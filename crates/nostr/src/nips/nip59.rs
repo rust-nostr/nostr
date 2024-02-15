@@ -75,14 +75,14 @@ pub fn extract_rumor(receiver_keys: &Keys, gift_wrap: &Event) -> Result<Unsigned
         return Err(Error::NotGiftWrap);
     }
 
-    let secret_key: SecretKey = receiver_keys.secret_key()?;
+    let secret_key: &SecretKey = receiver_keys.secret_key()?;
 
     // Decrypt seal
-    let seal: String = nip44::decrypt(&secret_key, gift_wrap.author_ref(), gift_wrap.content())?;
+    let seal: String = nip44::decrypt(secret_key, gift_wrap.author_ref(), gift_wrap.content())?;
     let seal: Event = Event::from_json(seal)?;
 
     // Decrypt rumor
-    let rumor: String = nip44::decrypt(&secret_key, seal.author_ref(), seal.content())?;
+    let rumor: String = nip44::decrypt(secret_key, seal.author_ref(), seal.content())?;
 
     Ok(UnsignedEvent::from_json(rumor)?)
 }
