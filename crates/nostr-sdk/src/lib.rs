@@ -51,6 +51,7 @@ pub use self::client::{Client, ClientBuilder, Options};
 #[cfg(feature = "blocking")]
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
 
+#[doc(hidden)]
 #[allow(missing_docs)]
 #[cfg(feature = "blocking")]
 pub fn block_on<F>(future: F) -> F::Output

@@ -26,16 +26,20 @@ extern crate test;
 extern crate std;
 
 #[macro_use]
-pub extern crate alloc;
+extern crate alloc;
 
 #[macro_use]
 extern crate serde;
 
+#[doc(hidden)]
 #[cfg(any(feature = "nip04", feature = "nip44"))]
 pub use base64;
+#[doc(hidden)]
 #[cfg(feature = "nip06")]
 pub use bip39;
+#[doc(hidden)]
 pub use bitcoin::{bech32, hashes, secp256k1};
+#[doc(hidden)]
 pub use {bitcoin, negentropy, serde_json};
 
 pub mod event;

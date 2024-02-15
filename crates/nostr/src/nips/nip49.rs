@@ -4,7 +4,7 @@
 
 //! Encrypted Secret Key
 //!
-//! https://github.com/nostr-protocol/nips/blob/master/49.md
+//! <https://github.com/nostr-protocol/nips/blob/master/49.md>
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;

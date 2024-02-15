@@ -18,7 +18,8 @@ other lower-level crates. If you're attempting something more custom, you might 
 
 * [`nostr`](https://crates.io/crates/nostr): Rust implementation of Nostr protocol
 * [`nostr-database`](https://crates.io/crates/nostr-database): Database for Nostr apps
-* [`nostr-sdk-net`](https://crates.io/crates/nostr-sdk-net): Nostr SDK Network library
+* [`nostr-relay-pool`](https://crates.io/crates/nostr-relay-pool): Nostr Relay Pool
+* [`nostr-signer`](https://crates.io/crates/nostr-signer): Signer for Nostr apps
 
 ## Getting started
 
@@ -83,13 +84,8 @@ async fn main() -> Result<()> {
 
     // Create a POW text note
     let event: Event = EventBuilder::text_note("POW text note from nostr-sdk", []).to_pow_event(&my_keys, 20)?;
-    client.send_event(event).await?;
-
-    // Compose custom event and send to specific relay
-    let event_id = EventId::from_bech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r")?;
-    let public_key = PublicKey::from_bech32("npub14rnkcwkw0q5lnmjye7ffxvy7yxscyjl3u4mrr5qxsks76zctmz3qvuftjz")?;
-    let event: Event = EventBuilder::reaction(event_id, public_key, "🧡").to_event(&my_keys)?;
-    client.send_event_to(["wss://relay.damus.io"], event).await?;
+    client.send_event(event).await?; // Send to all relays
+    // client.send_event_to(["wss://relay.damus.io"], event).await?; // Send to specific relay
 
     // --------- Zap! -------------
 
@@ -123,7 +119,7 @@ More examples can be found in the [examples/](https://github.com/rust-nostr/nost
 
 This crate supports the `wasm32` targets.
 
-An example can be found at [`nostr-sdk-wasm-example`](https://github.com/NostrDevKit/nostr-sdk-wasm-example) repo.
+An example can be found at [`nostr-sdk-wasm-example`](https://github.com/rust-nostr/nostr-sdk-wasm-example) repo.
 
 On macOS you need to install `llvm`:
 

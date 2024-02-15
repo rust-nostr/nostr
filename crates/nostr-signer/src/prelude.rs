@@ -6,6 +6,7 @@
 
 #![allow(unknown_lints)]
 #![allow(ambiguous_glob_reexports)]
+#![doc(hidden)]
 
 #[cfg(feature = "nip46")]
 pub use crate::nip46::Nip46Signer;

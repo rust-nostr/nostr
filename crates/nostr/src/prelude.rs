@@ -6,6 +6,7 @@
 
 #![allow(unknown_lints)]
 #![allow(ambiguous_glob_reexports)]
+#![doc(hidden)]
 
 // External crates
 #[cfg(feature = "nip06")]
