@@ -234,7 +234,7 @@ impl Client {
     }
 
     /// Signs the `EventBuilder` into an `Event` using the `NostrSigner`
-    pub async fn sign_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<Event>> {
+    pub fn sign_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<Event>> {
         block_on(async move {
             Ok(Arc::new(
                 self.inner
