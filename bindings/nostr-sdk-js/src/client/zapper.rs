@@ -74,12 +74,7 @@ impl JsNostrZapper {
     }
 
     pub async fn nwc(uri: &JsNostrWalletConnectURI) -> Result<JsNostrZapper> {
-        let zapper = NWC::with_opts(
-            uri.deref().clone(),
-            NostrWalletConnectOptions::new().shutdown_on_drop(true),
-        )
-        .await
-        .map_err(into_err)?;
+        let zapper = NWC::new(uri.deref().clone()).await.map_err(into_err)?;
         Ok(Self {
             inner: zapper.into_nostr_zapper(),
         })
@@ -111,7 +106,7 @@ impl JsZapDetails {
     }
 
     /// Add message
-    pub fn message(self, message: String) -> Self {
+    pub fn message(self, message: &str) -> Self {
         Self {
             inner: self.inner.message(message),
         }
