@@ -12,7 +12,10 @@ The project is split up into several crates in the `crates/` directory:
         * [**nostr-indexeddb**](./crates/nostr-indexeddb/): IndexedDB Storage backend for Nostr apps
     * [**nostr-relay-pool**](./crates/nostr-relay-pool/): Nostr Relay Pool
     * [**nostr-signer**](./crates/nostr-signer/): Signer for Nostr apps
+    * [**nostr-zapper**](./crates/nostr-zapper/): Zapper abstraction for Nostr apps
+        * [**nostr-webln**](./crates/nostr-webln/): WebLN zapper backend for Nostr apps
     * [**nostr-sdk**](./crates/nostr-sdk/): High level client library.
+    * [**nwc**](./crates/nwc/): `NWC` client and zapper backend for Nostr apps
 * Binaries (tools):
     * [**nostr-cli**](./crates/nostr-cli/): Nostr CLI
 

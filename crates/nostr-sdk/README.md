@@ -20,6 +20,8 @@ other lower-level crates. If you're attempting something more custom, you might 
 * [`nostr-database`](https://crates.io/crates/nostr-database): Database for Nostr apps
 * [`nostr-relay-pool`](https://crates.io/crates/nostr-relay-pool): Nostr Relay Pool
 * [`nostr-signer`](https://crates.io/crates/nostr-signer): Signer for Nostr apps
+* [`nostr-zapper`](https://crates.io/crates/nostr-zapper): Zapper abscraction for Nostr apps
+* [`nwc`](https://crates.io/crates/nwc): `NWC` client and zapper backend for Nostr apps
 
 ## Getting started
 
