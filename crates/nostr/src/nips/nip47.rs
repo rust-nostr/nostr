@@ -407,6 +407,14 @@ impl Request {
         }
     }
 
+    /// Compose `get_info` request
+    pub fn get_info() -> Self {
+        Self {
+            method: Method::GetInfo,
+            params: RequestParams::GetInfo,
+        }
+    }
+
     /// Deserialize from [`Value`]
     pub fn from_value(value: Value) -> Result<Self, Error> {
         let template: RequestTemplate = serde_json::from_value(value)?;
@@ -726,6 +734,19 @@ impl Response {
         }
 
         if let Some(ResponseResult::GetBalance(result)) = self.result {
+            return Ok(result);
+        }
+
+        Err(Error::UnexpectedResult(self.as_json()))
+    }
+
+    /// Covert [Response] to [GetInfoResponseResult]
+    pub fn to_get_info(self) -> Result<GetInfoResponseResult, Error> {
+        if let Some(e) = self.error {
+            return Err(Error::ErrorCode(e));
+        }
+
+        if let Some(ResponseResult::GetInfo(result)) = self.result {
             return Ok(result);
         }
 
