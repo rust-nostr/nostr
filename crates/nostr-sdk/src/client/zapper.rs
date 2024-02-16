@@ -132,7 +132,7 @@ impl Client {
 
         let zapper = self.zapper().await?;
         for invoice in invoices.into_iter() {
-            zapper.pay_invoice(invoice).await?;
+            zapper.pay(invoice).await?;
         }
         Ok(())
     }

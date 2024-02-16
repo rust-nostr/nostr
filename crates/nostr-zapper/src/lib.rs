@@ -82,7 +82,7 @@ pub trait NostrZapper: AsyncTraitDeps {
     fn backend(&self) -> ZapperBackend;
 
     /// Pay invoice
-    async fn pay_invoice(&self, invoice: String) -> Result<(), Self::Err>;
+    async fn pay(&self, invoice: String) -> Result<(), Self::Err>;
 }
 
 #[repr(transparent)]
@@ -103,8 +103,8 @@ impl<T: NostrZapper> NostrZapper for EraseNostrZapperError<T> {
         self.0.backend()
     }
 
-    async fn pay_invoice(&self, invoice: String) -> Result<(), Self::Err> {
-        self.0.pay_invoice(invoice).await.map_err(Into::into)
+    async fn pay(&self, invoice: String) -> Result<(), Self::Err> {
+        self.0.pay(invoice).await.map_err(Into::into)
     }
 }
 

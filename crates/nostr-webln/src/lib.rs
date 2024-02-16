@@ -71,7 +71,7 @@ impl_nostr_zapper!({
         ZapperBackend::WebLN
     }
 
-    async fn pay_invoice(&self, invoice: String) -> Result<(), ZapperError> {
+    async fn pay(&self, invoice: String) -> Result<(), ZapperError> {
         self.inner
             .send_payment(invoice)
             .await

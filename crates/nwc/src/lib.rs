@@ -107,10 +107,13 @@ impl NWC {
     }
 
     /// Pay invoice
-    pub async fn send_payment(&self, invoice: String) -> Result<String, Error> {
+    pub async fn pay_invoice<S>(&self, invoice: S) -> Result<String, Error>
+    where
+        S: Into<String>,
+    {
         let req = Request::pay_invoice(PayInvoiceRequestParams {
             id: None,
-            invoice,
+            invoice: invoice.into(),
             amount: None,
         });
         let res: Response = self.send_request(req).await?;
@@ -131,19 +134,11 @@ impl NWC {
     /// Create invoice
     pub async fn make_invoice(
         &self,
-        satoshi: u64,
-        description: Option<String>,
-        expiry: Option<u64>,
-    ) -> Result<String, Error> {
-        let req: Request = Request::make_invoice(MakeInvoiceRequestParams {
-            amount: satoshi * 1000,
-            description,
-            description_hash: None,
-            expiry,
-        });
+        params: MakeInvoiceRequestParams,
+    ) -> Result<MakeInvoiceResponseResult, Error> {
+        let req: Request = Request::make_invoice(params);
         let res: Response = self.send_request(req).await?;
-        let MakeInvoiceResponseResult { invoice, .. } = res.to_make_invoice()?;
-        Ok(invoice)
+        Ok(res.to_make_invoice()?)
     }
 
     /// Lookup invoice
@@ -191,8 +186,8 @@ impl NostrZapper for NWC {
         ZapperBackend::NWC
     }
 
-    async fn pay_invoice(&self, invoice: String) -> Result<(), Self::Err> {
-        self.send_payment(invoice).await?;
+    async fn pay(&self, invoice: String) -> Result<(), Self::Err> {
+        self.pay_invoice(invoice).await?;
         Ok(())
     }
 }
