@@ -3,13 +3,14 @@
 // Distributed under the MIT software license
 
 use core::ops::Deref;
+use std::sync::Arc;
 
 use nostr_js::error::{into_err, Result};
 use nostr_js::event::JsEventId;
 use nostr_js::key::JsPublicKey;
 use nostr_js::nips::nip47::JsNostrWalletConnectURI;
 use nostr_js::nips::nip57::JsZapType;
-use nostr_sdk::client::{NostrZapper, ZapDetails, ZapEntity};
+use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 /// Zap entity
@@ -45,30 +46,43 @@ impl JsZapEntity {
 /// Nostr Zapper
 #[wasm_bindgen(js_name = NostrZapper)]
 pub struct JsNostrZapper {
-    inner: NostrZapper,
+    inner: Arc<DynNostrZapper>,
 }
 
 impl Deref for JsNostrZapper {
-    type Target = NostrZapper;
+    type Target = Arc<DynNostrZapper>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
+impl From<Arc<DynNostrZapper>> for JsNostrZapper {
+    fn from(inner: Arc<DynNostrZapper>) -> Self {
+        Self { inner }
+    }
+}
+
 #[wasm_bindgen(js_class = NostrZapper)]
 impl JsNostrZapper {
     /// Create new `WebLN` instance and compose `NostrZapper`
-    pub fn webln() -> Result<JsNostrZapper> {
+    pub async fn webln() -> Result<JsNostrZapper> {
+        let zapper = WebLNZapper::new().await.map_err(into_err)?;
         Ok(Self {
-            inner: NostrZapper::webln().map_err(into_err)?,
+            inner: zapper.into_nostr_zapper(),
         })
     }
 
-    pub fn nwc(uri: &JsNostrWalletConnectURI) -> Self {
-        Self {
-            inner: NostrZapper::NWC(uri.deref().clone()),
-        }
+    pub async fn nwc(uri: &JsNostrWalletConnectURI) -> Result<JsNostrZapper> {
+        let zapper = NWC::with_opts(
+            uri.deref().clone(),
+            NostrWalletConnectOptions::new().shutdown_on_drop(true),
+        )
+        .await
+        .map_err(into_err)?;
+        Ok(Self {
+            inner: zapper.into_nostr_zapper(),
+        })
     }
 }
 

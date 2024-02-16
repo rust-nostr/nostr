@@ -9,6 +9,9 @@ args=(
     "-p nostr-indexeddb"
     "-p nostr-relay-pool"
     "-p nostr-signer"
+    "-p nostr-zapper"
+    "-p nostr-webln"
+    "-p nwc"
     "-p nostr-sdk"
 )
 

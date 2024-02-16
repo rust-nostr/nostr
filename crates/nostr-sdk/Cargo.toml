@@ -21,6 +21,7 @@ blocking = ["dep:once_cell", "nostr/blocking"]
 rocksdb = ["dep:nostr-rocksdb"]
 sqlite = ["dep:nostr-sqlite"]
 indexeddb = ["dep:nostr-indexeddb"]
+webln = ["nip57", "dep:nostr-webln"]
 all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59"]
 nip03 = ["nostr/nip03"]
 nip04 = ["nostr/nip04", "nostr-signer/nip04"]
@@ -30,9 +31,9 @@ nip07 = ["nostr/nip07", "nostr-signer/nip07"]
 nip11 = ["nostr/nip11", "nostr-relay-pool/nip11"]
 nip44 = ["nostr/nip44", "nostr-signer/nip44"]
 nip46 = ["nostr/nip46", "nostr-signer/nip46"]
-nip47 = ["nostr/nip47"]
+nip47 = ["nostr/nip47", "dep:nwc"]
 nip49 = ["nostr/nip49"]
-nip57 = ["nostr/nip57", "dep:lnurl-pay"]
+nip57 = ["nostr/nip57", "dep:nostr-zapper", "dep:lnurl-pay"]
 nip59 = ["nostr/nip59"]
 
 [dependencies]
@@ -42,6 +43,8 @@ nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 nostr-relay-pool.workspace = true
 nostr-signer.workspace = true
+nostr-zapper = { workspace = true, optional = true }
+nwc = { version = "0.27", path = "../nwc", optional = true }
 once_cell = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["std", "attributes"] }
@@ -53,8 +56,8 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 nostr-indexeddb = { version = "0.27", path = "../nostr-indexeddb", optional = true }
+nostr-webln = { version = "0.27", path = "../nostr-webln", optional = true }
 tokio = { workspace = true, features = ["rt", "macros", "sync"] }
-webln = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

@@ -91,8 +91,8 @@ async fn main() -> Result<()> {
 
     // Configure zapper
     let uri = NostrWalletConnectURI::from_str("nostr+walletconnect://...")?;
-    let zapper = NostrZapper::nwc(uri);
-    client.set_zapper(Some(zapper)).await;
+    let zapper = NWC::new(uri).await?; // Use `WebLNZapper::new().await` for WebLN
+    client.set_zapper(zapper).await;
 
     // Send SAT without zap event
     let public_key = PublicKey::from_bech32(
@@ -140,6 +140,7 @@ The following crate feature flags are available:
 | `sqlite`            |   No    | Enable SQLite Storage backend                                                               |
 | `rocksdb`           |   No    | Enable RocksDB Storage backend                                                              |
 | `indexeddb`         |   No    | Enable Web's IndexedDb Storage backend                                                      |
+| `webln`             |   No    | Enable WebLN zapper                                                                         |
 | `all-nips`          |   Yes   | Enable all NIPs                                                                             |
 | `nip03`             |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                       |
 | `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                     |

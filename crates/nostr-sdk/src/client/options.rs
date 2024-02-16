@@ -6,17 +6,12 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_relay_pool::options::DEFAULT_SEND_TIMEOUT;
 use nostr_relay_pool::{RelayPoolOptions, RelaySendOptions};
-
-/// Default Support Rust Nostr LUD16
-pub const SUPPORT_RUST_NOSTR_LUD16: &str = "yuki@getalby.com"; // TODO: use a rust-nostr dedicated LUD16
-/// Default Support Rust Nostr basis points
-pub const DEFAULT_SUPPORT_RUST_NOSTR_BSP: u64 = 500; // 5%
 
 /// Options
 #[derive(Debug, Clone)]
@@ -50,10 +45,6 @@ pub struct Options {
     pub shutdown_on_drop: bool,
     /// Pool Options
     pub pool: RelayPoolOptions,
-    /// Support Rust Nostr in basis points (default: 5%)
-    ///
-    /// 100 bps = 1%
-    support_rust_nostr_bps: Arc<AtomicU64>,
 }
 
 impl Default for Options {
@@ -72,7 +63,6 @@ impl Default for Options {
             proxy: None,
             shutdown_on_drop: false,
             pool: RelayPoolOptions::default(),
-            support_rust_nostr_bps: Arc::new(AtomicU64::new(DEFAULT_SUPPORT_RUST_NOSTR_BSP)),
         }
     }
 }
@@ -216,32 +206,5 @@ impl Options {
     /// Set pool options
     pub fn pool(self, opts: RelayPoolOptions) -> Self {
         Self { pool: opts, ..self }
-    }
-
-    /// Support Rust Nostr with a % of zaps (default: 5%)
-    ///
-    /// 100 bps = 1%
-    pub fn support_rust_nostr(mut self, bps: u64) -> Self {
-        self.support_rust_nostr_bps = Arc::new(AtomicU64::new(bps));
-        self
-    }
-
-    /// Update Support Rust Nostr basis points
-    ///
-    /// 100 bps = 1%
-    pub fn update_support_rust_nostr(&self, bps: u64) {
-        let _ =
-            self.support_rust_nostr_bps
-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(bps));
-    }
-
-    /// Get Support Rust Nostr percentage
-    pub fn get_support_rust_nostr_percentage(&self) -> Option<f64> {
-        let bps: u64 = self.support_rust_nostr_bps.load(Ordering::SeqCst);
-        if bps != 0 {
-            Some(bps as f64 / 10_000.0)
-        } else {
-            None
-        }
     }
 }

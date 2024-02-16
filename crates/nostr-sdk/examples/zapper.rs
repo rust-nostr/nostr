@@ -17,15 +17,15 @@ async fn main() -> Result<()> {
         .read_line(&mut nwc_uri_string)
         .expect("Failed to read line");
 
-    // Parse NWC URI
-    let nwc_uri =
-        NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
+    // Parse NWC URI and compose NWC client
+    let uri = NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
+    let nwc = NWC::new(uri).await?;
 
     // Compose client
     let secret_key =
         SecretKey::from_bech32("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
     let keys = Keys::new(secret_key);
-    let client = ClientBuilder::new().signer(keys).zapper(nwc_uri).build();
+    let client = ClientBuilder::new().signer(keys).zapper(nwc).build();
 
     client.add_relay("wss://relay.nostr.band").await?;
     client.add_relay("wss://relay.damus.io").await?;

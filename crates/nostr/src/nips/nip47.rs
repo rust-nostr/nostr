@@ -305,7 +305,7 @@ pub struct PayKeysendRequestParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     /// Amount in millisatoshis
-    pub amount: i64,
+    pub amount: u64,
     /// Receiver's node id
     pub pubkey: String,
     /// Optional preimage
@@ -328,13 +328,13 @@ pub struct MultiPayKeysendRequestParams {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MakeInvoiceRequestParams {
     /// Amount in millisatoshis
-    pub amount: i64,
+    pub amount: u64,
     /// Invoice description
     pub description: Option<String>,
     /// Invoice description hash
     pub description_hash: Option<String>,
     /// Invoice expiry in seconds
-    pub expiry: Option<i64>,
+    pub expiry: Option<u64>,
 }
 
 /// Lookup Invoice Request Params

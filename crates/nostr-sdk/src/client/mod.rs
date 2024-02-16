@@ -16,47 +16,40 @@ use nostr::prelude::*;
 use nostr::types::metadata::Error as MetadataError;
 use nostr_database::DynNostrDatabase;
 use nostr_relay_pool::pool::{self, Error as RelayPoolError, RelayPool};
-use nostr_relay_pool::relay::Error as RelayError;
 use nostr_relay_pool::{
     FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
 };
 use nostr_signer::prelude::*;
+#[cfg(feature = "nip57")]
+use nostr_zapper::{DynNostrZapper, IntoNostrZapper, ZapperError};
 use tokio::sync::{broadcast, RwLock};
 
 pub mod builder;
 pub mod options;
 #[cfg(feature = "nip57")]
-pub mod zapper;
+mod zapper;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 #[cfg(feature = "nip57")]
-pub use self::zapper::{NostrZapper, ZapDetails, ZapEntity};
+pub use self::zapper::{ZapDetails, ZapEntity};
 
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// Url parse error
-    #[error("impossible to parse URL: {0}")]
-    Url(#[from] nostr::types::url::ParseError),
     /// [`RelayPool`] error
     #[error("relay pool error: {0}")]
     RelayPool(#[from] RelayPoolError),
-    /// [`Relay`] error
-    #[error("relay error: {0}")]
-    Relay(#[from] RelayError),
     /// Signer error
     #[error(transparent)]
     Signer(#[from] nostr_signer::Error),
+    /// Zapper error
+    #[cfg(feature = "nip57")]
+    #[error(transparent)]
+    Zapper(#[from] ZapperError),
     /// [`EventBuilder`] error
     #[error("event builder error: {0}")]
     EventBuilder(#[from] EventBuilderError),
-    /// Secp256k1 error
-    #[error("secp256k1 error: {0}")]
-    Secp256k1(#[from] nostr::secp256k1::Error),
-    /// Hex error
-    #[error("hex decoding error: {0}")]
-    Hex(#[from] nostr::hashes::hex::Error),
     /// Metadata error
     #[error(transparent)]
     Metadata(#[from] MetadataError),
@@ -70,18 +63,10 @@ pub enum Error {
     #[cfg(feature = "nip57")]
     #[error("zapper not configured")]
     ZapperNotConfigured,
-    /// NIP04 error
-    #[cfg(feature = "nip04")]
-    #[error(transparent)]
-    NIP04(#[from] nostr::nips::nip04::Error),
     /// NIP46 signer error
     #[cfg(feature = "nip46")]
     #[error(transparent)]
-    Nip46Signer(#[from] nostr_signer::nip46::Error),
-    /// NIP47 error
-    #[cfg(feature = "nip47")]
-    #[error(transparent)]
-    NIP47(#[from] nostr::nips::nip47::Error),
+    Nip46Signer(#[from] nostr_signer::nip46::Error), // TODO remove
     /// NIP57 error
     #[cfg(feature = "nip57")]
     #[error(transparent)]
@@ -90,19 +75,9 @@ pub enum Error {
     #[cfg(feature = "nip57")]
     #[error(transparent)]
     LnUrlPay(#[from] lnurl_pay::Error),
-    /// WebLN error
-    #[cfg(all(feature = "webln", target_arch = "wasm32"))]
-    #[error(transparent)]
-    WebLN(#[from] webln::Error),
-    /// Timeout
-    #[error("timeout")]
-    Timeout,
     /// Event not found
     #[error("event not found: {0}")]
     EventNotFound(EventId),
-    /// Event not found
-    #[error("event not found")]
-    GenericEventNotFound,
     /// Impossible to zap
     #[error("impossible to send zap: {0}")]
     ImpossibleToZap(String),
@@ -114,7 +89,7 @@ pub struct Client {
     pool: RelayPool,
     signer: Arc<RwLock<Option<NostrSigner>>>,
     #[cfg(feature = "nip57")]
-    zapper: Arc<RwLock<Option<NostrZapper>>>,
+    zapper: Arc<RwLock<Option<Arc<DynNostrZapper>>>>,
     opts: Options,
     dropped: Arc<AtomicBool>,
 }
@@ -225,16 +200,26 @@ impl Client {
     ///
     /// Rise error if it not set.
     #[cfg(feature = "nip57")]
-    pub async fn zapper(&self) -> Result<NostrZapper, Error> {
+    pub async fn zapper(&self) -> Result<Arc<DynNostrZapper>, Error> {
         let zapper = self.zapper.read().await;
         zapper.clone().ok_or(Error::ZapperNotConfigured)
     }
 
     /// Set nostr zapper
     #[cfg(feature = "nip57")]
-    pub async fn set_zapper(&self, zapper: Option<NostrZapper>) {
+    pub async fn set_zapper<Z>(&self, zapper: Z)
+    where
+        Z: IntoNostrZapper,
+    {
         let mut s = self.zapper.write().await;
-        *s = zapper;
+        *s = Some(zapper.into_nostr_zapper());
+    }
+
+    /// Unset nostr zapper
+    #[cfg(feature = "nip57")]
+    pub async fn unset_zapper(&self) {
+        let mut s = self.zapper.write().await;
+        *s = None;
     }
 
     /// Get [`RelayPool`]
@@ -1219,6 +1204,22 @@ impl Client {
     {
         let builder = EventBuilder::zap_receipt(bolt11, preimage, zap_request);
         self.send_event_builder(builder).await
+    }
+
+    /// Send a Zap!
+    ///
+    /// This method automatically create a split zap to support Rust Nostr development.
+    #[cfg(feature = "nip57")]
+    pub async fn zap<T>(
+        &self,
+        to: T,
+        satoshi: u64,
+        details: Option<ZapDetails>,
+    ) -> Result<(), Error>
+    where
+        T: Into<ZapEntity>,
+    {
+        self.internal_zap(to, satoshi, details).await
     }
 
     /// Gift Wrap

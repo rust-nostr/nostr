@@ -9,9 +9,9 @@ use std::sync::Arc;
 use nostr_database::memory::MemoryDatabase;
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
 use nostr_signer::NostrSigner;
-
 #[cfg(feature = "nip57")]
-use super::zapper::NostrZapper;
+use nostr_zapper::{DynNostrZapper, IntoNostrZapper};
+
 use crate::{Client, Options};
 
 /// Client builder
@@ -21,7 +21,7 @@ pub struct ClientBuilder {
     pub signer: Option<NostrSigner>,
     /// Nostr Zapper
     #[cfg(feature = "nip57")]
-    pub zapper: Option<NostrZapper>,
+    pub zapper: Option<Arc<DynNostrZapper>>,
     /// Database
     pub database: Arc<DynNostrDatabase>,
     /// Client options
@@ -68,12 +68,11 @@ impl ClientBuilder {
 
     /// Set zapper
     #[cfg(feature = "nip57")]
-    #[allow(unused_mut, unreachable_code)]
-    pub fn zapper<S>(mut self, zapper: S) -> Self
+    pub fn zapper<Z>(mut self, zapper: Z) -> Self
     where
-        S: Into<NostrZapper>,
+        Z: IntoNostrZapper,
     {
-        self.zapper = Some(zapper.into());
+        self.zapper = Some(zapper.into_nostr_zapper());
         self
     }
 

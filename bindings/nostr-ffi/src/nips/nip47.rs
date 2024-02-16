@@ -331,7 +331,7 @@ pub struct PayKeysendRequestParams {
     /// Optional id
     pub id: Option<String>,
     /// Amount in millisatoshis
-    pub amount: i64,
+    pub amount: u64,
     /// Receiver's node id
     pub pubkey: String,
     /// Optional preimage
@@ -418,13 +418,13 @@ impl From<nip47::TransactionType> for TransactionType {
 #[derive(Record)]
 pub struct MakeInvoiceRequestParams {
     /// Amount in millisatoshis
-    pub amount: i64,
+    pub amount: u64,
     /// Invoice description
     pub description: Option<String>,
     /// Invoice description hash
     pub description_hash: Option<String>,
     /// Invoice expiry in seconds
-    pub expiry: Option<i64>,
+    pub expiry: Option<u64>,
 }
 
 impl From<nip47::MakeInvoiceRequestParams> for MakeInvoiceRequestParams {
@@ -915,6 +915,14 @@ impl Response {
 #[derive(Object)]
 pub struct NostrWalletConnectURI {
     inner: nip47::NostrWalletConnectURI,
+}
+
+impl Deref for NostrWalletConnectURI {
+    type Target = nip47::NostrWalletConnectURI;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 impl From<nip47::NostrWalletConnectURI> for NostrWalletConnectURI {

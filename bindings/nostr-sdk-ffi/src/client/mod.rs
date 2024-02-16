@@ -21,6 +21,7 @@ use uniffi::Object;
 mod builder;
 mod options;
 pub mod signer;
+pub mod zapper;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;

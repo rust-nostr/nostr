@@ -2,23 +2,16 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Nostr Zapper
-
 use std::str::FromStr;
-#[cfg(feature = "nip47")]
-use std::time::Duration;
 
-use async_utility::time;
 use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
 use nostr::prelude::*;
-use nostr_relay_pool::{FilterOptions, RelayPoolNotification};
-#[cfg(all(feature = "webln", target_arch = "wasm32"))]
-use webln::WebLN;
 
-use super::options::SUPPORT_RUST_NOSTR_LUD16;
 use super::{Client, Error};
 
+const SUPPORT_RUST_NOSTR_LUD16: &str = "yuki@getalby.com"; // TODO: use a rust-nostr dedicated LUD16
+const SUPPORT_RUST_NOSTR_PERCENTAGE: f64 = 0.05; // 5%
 const SUPPORT_RUST_NOSTR_MSG: &str = "Zap split to support Rust Nostr development!";
 
 /// Zap entity
@@ -57,45 +50,6 @@ impl ZapEntity {
     }
 }
 
-/// Nostr Zapper
-#[derive(Debug, Clone)]
-pub enum NostrZapper {
-    /// WebLN
-    #[cfg(all(feature = "webln", target_arch = "wasm32"))]
-    WebLN(WebLN),
-    /// NWC
-    #[cfg(feature = "nip47")]
-    NWC(NostrWalletConnectURI),
-}
-
-impl NostrZapper {
-    /// Create a new [WebLN] instance and compose [NostrZapper]
-    #[cfg(all(feature = "webln", target_arch = "wasm32"))]
-    pub fn webln() -> Result<Self, Error> {
-        let instance = WebLN::new()?;
-        Ok(Self::WebLN(instance))
-    }
-
-    /// Compose [NostrZapper] with [NostrWalletConnectURI]
-    pub fn nwc(uri: NostrWalletConnectURI) -> Self {
-        Self::NWC(uri)
-    }
-}
-
-#[cfg(all(feature = "webln", target_arch = "wasm32"))]
-impl From<WebLN> for NostrZapper {
-    fn from(value: WebLN) -> Self {
-        Self::WebLN(value)
-    }
-}
-
-#[cfg(feature = "nip47")]
-impl From<NostrWalletConnectURI> for NostrZapper {
-    fn from(value: NostrWalletConnectURI) -> Self {
-        Self::NWC(value)
-    }
-}
-
 /// Zap Details
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ZapDetails {
@@ -125,10 +79,12 @@ impl ZapDetails {
 }
 
 impl Client {
-    /// Send a Zap!
-    ///
-    /// This method automatically create a split zap to support Rust Nostr development.
-    pub async fn zap<T>(
+    /// Steps
+    /// 1. Check if zapper is set and availabe
+    /// 2. Get metadata of pubkey/author of event
+    /// 3. Get invoice
+    /// 4. Send payment
+    pub(super) async fn internal_zap<T>(
         &self,
         to: T,
         satoshi: u64,
@@ -137,12 +93,6 @@ impl Client {
     where
         T: Into<ZapEntity>,
     {
-        // Steps
-        // 1. Check if zapper is set and availabe
-        // 2. Get metadata of pubkey/author of event
-        // 3. Get invoice
-        // 4. Send payment
-
         // Check if zapper is set
         if !self.has_zapper().await {
             return Err(Error::ZapperNotConfigured);
@@ -180,101 +130,8 @@ impl Client {
             .zap_split(public_key, lud, satoshi, details, to.event_id())
             .await?;
 
-        self.pay_invoices(invoices).await
-    }
-
-    /// Pay invoices with [NostrZapper]
-    pub async fn pay_invoices<I, S>(&self, _invoices: I) -> Result<(), Error>
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        match self.zapper().await? {
-            #[cfg(all(feature = "webln", target_arch = "wasm32"))]
-            NostrZapper::WebLN(webln) => {
-                webln.enable().await?;
-                for invoice in _invoices.into_iter() {
-                    webln.send_payment(invoice.into()).await?;
-                }
-                Ok(())
-            }
-            #[cfg(feature = "nip47")]
-            NostrZapper::NWC(uri) => self.pay_invoices_with_nwc(&uri, _invoices).await,
-        }
-    }
-
-    /// Pay invoices with [NostrWalletConnectURI]
-    pub async fn pay_invoices_with_nwc<I, S>(
-        &self,
-        uri: &NostrWalletConnectURI,
-        invoices: I,
-    ) -> Result<(), Error>
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        // Add relay and connect if not exists
-        if self.add_relay(uri.relay_url.clone()).await? {
-            self.connect_relay(uri.relay_url.clone()).await?;
-        }
-
-        for invoice in invoices.into_iter() {
-            // Compose NWC request event
-            let req = nip47::Request {
-                method: Method::PayInvoice,
-                params: RequestParams::PayInvoice(PayInvoiceRequestParams {
-                    id: None,
-                    invoice: invoice.into(),
-                    amount: None,
-                }),
-            };
-            let event = req.to_event(uri)?;
-            let event_id = event.id;
-
-            // Subscribe
-            let relay = self.relay(uri.relay_url.clone()).await?;
-            let id = SubscriptionId::generate();
-            let filter = Filter::new()
-                .author(uri.public_key)
-                .kind(Kind::WalletConnectResponse)
-                .event(event_id)
-                .limit(1);
-
-            // Subscribe
-            relay
-                .send_req(
-                    id,
-                    vec![filter],
-                    Some(FilterOptions::WaitForEventsAfterEOSE(1)),
-                )
-                .await?;
-
-            let mut notifications = self.notifications();
-
-            // Send request
-            self.send_event_to([uri.relay_url.clone()], event).await?;
-
-            time::timeout(Some(Duration::from_secs(10)), async {
-                while let Ok(notification) = notifications.recv().await {
-                    if let RelayPoolNotification::Event { event, .. } = notification {
-                        if event.kind() == Kind::WalletConnectResponse
-                            && event.event_ids().next().copied() == Some(event_id)
-                        {
-                            let res = nip47::Response::from_event(uri, &event)?;
-                            let PayInvoiceResponseResult { preimage } = res.to_pay_invoice()?;
-                            tracing::info!("Invoice paid! Preimage: {preimage}");
-
-                            break;
-                        }
-                    }
-                }
-
-                Ok::<(), Error>(())
-            })
-            .await
-            .ok_or(Error::Timeout)??;
-        }
-
+        let zapper = self.zapper().await?;
+        zapper.pay_multi_invoices(invoices).await?;
         Ok(())
     }
 
@@ -290,40 +147,41 @@ impl Client {
         let mut invoices: Vec<String> = Vec::with_capacity(2);
         let mut msats: u64 = satoshi * 1000;
 
-        // Check if is set a percentage
-        if let Some(percentage) = self.opts.get_support_rust_nostr_percentage() {
-            let rust_nostr_msats = (satoshi as f64 * percentage * 1000.0) as u64;
-            let rust_nostr_lud = LightningAddress::parse(SUPPORT_RUST_NOSTR_LUD16)?;
-            let rust_nostr_lud = Lud06OrLud16::Lud16(rust_nostr_lud);
+        let rust_nostr_sats: u64 = (satoshi as f64 * SUPPORT_RUST_NOSTR_PERCENTAGE) as u64;
+        let rust_nostr_msats: u64 = rust_nostr_sats * 1000;
+        let rust_nostr_lud = LightningAddress::parse(SUPPORT_RUST_NOSTR_LUD16)?;
+        let rust_nostr_lud = Lud06OrLud16::Lud16(rust_nostr_lud);
 
-            // Check if LUD is equal to Rust Nostr LUD
-            if rust_nostr_lud != lud {
-                match lnurl_pay::api::get_invoice(
-                    rust_nostr_lud,
-                    rust_nostr_msats,
-                    Some(SUPPORT_RUST_NOSTR_MSG.to_string()),
-                    None,
-                    None,
-                )
-                .await
-                {
-                    Ok(invoice) => {
-                        invoices.push(invoice);
-                        msats = satoshi * 1000 - rust_nostr_msats;
-                    }
-                    Err(e) => {
-                        tracing::error!("Impossible to get invoice for Rust Nostr: {e}");
-                    }
+        // Check if LUD is equal to Rust Nostr LUD
+        if rust_nostr_lud != lud {
+            match lnurl_pay::api::get_invoice(
+                rust_nostr_lud,
+                rust_nostr_msats,
+                Some(SUPPORT_RUST_NOSTR_MSG.to_string()),
+                None,
+                None,
+            )
+            .await
+            {
+                Ok(invoice) => {
+                    invoices.push(invoice);
+                    msats = satoshi * 1000 - rust_nostr_msats;
+                }
+                Err(e) => {
+                    tracing::error!("Impossible to get invoice for Rust Nostr: {e}");
                 }
             }
-        };
+        }
 
         // Compose zap request
         let zap_request: Option<String> = match details {
             Some(details) => {
                 let mut data = ZapRequestData::new(
                     public_key,
-                    [UncheckedUrl::from("wss://nostr.mutinywallet.com")],
+                    [
+                        UncheckedUrl::from("wss://nostr.mutinywallet.com"),
+                        UncheckedUrl::from("wss://relay.mutinywallet.com"),
+                    ],
                 )
                 .amount(msats)
                 .message(details.message);

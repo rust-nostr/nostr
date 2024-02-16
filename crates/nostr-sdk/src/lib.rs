@@ -34,14 +34,19 @@ pub use nostr_rocksdb::RocksDatabase;
 pub use nostr_signer::{self as signer, NostrSigner, NostrSignerType};
 #[cfg(feature = "sqlite")]
 pub use nostr_sqlite::{Error as SQLiteError, SQLiteDatabase};
+#[cfg(all(target_arch = "wasm32", feature = "webln"))]
+pub use nostr_webln::WebLNZapper;
+#[cfg(feature = "nip57")]
+pub use nostr_zapper::{self as zapper, NostrZapper, ZapperBackend, ZapperError};
+#[cfg(feature = "nip47")]
+pub use nwc::{self, NostrWalletConnectOptions, NWC};
 #[cfg(feature = "blocking")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "blocking")]
 use tokio::runtime::Runtime;
+#[doc(hidden)]
 #[cfg(feature = "blocking")]
 pub use tokio::task::spawn_blocking;
-#[cfg(all(feature = "webln", target_arch = "wasm32"))]
-pub use webln;
 
 pub mod client;
 pub mod prelude;

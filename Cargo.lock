@@ -1716,12 +1716,14 @@ dependencies = [
  "nostr-rocksdb",
  "nostr-signer",
  "nostr-sqlite",
+ "nostr-webln",
+ "nostr-zapper",
+ "nwc",
  "once_cell",
  "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
- "webln",
 ]
 
 [[package]]
@@ -1763,6 +1765,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-webln"
+version = "0.27.0"
+dependencies = [
+ "nostr-zapper",
+ "webln",
+]
+
+[[package]]
+name = "nostr-zapper"
+version = "0.27.0"
+dependencies = [
+ "async-trait",
+ "nostr",
+ "thiserror",
+]
+
+[[package]]
 name = "nu-ansi-term"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1780,6 +1799,20 @@ checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
 dependencies = [
  "hermit-abi",
  "libc",
+]
+
+[[package]]
+name = "nwc"
+version = "0.27.0"
+dependencies = [
+ "async-utility",
+ "nostr",
+ "nostr-relay-pool",
+ "nostr-zapper",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
