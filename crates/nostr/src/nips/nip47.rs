@@ -399,6 +399,22 @@ struct RequestTemplate {
 }
 
 impl Request {
+    /// Compose `make_invoice` request
+    pub fn make_invoice(params: MakeInvoiceRequestParams) -> Self {
+        Self {
+            method: Method::MakeInvoice,
+            params: RequestParams::MakeInvoice(params),
+        }
+    }
+
+    /// Compose `pay_invoice` request
+    pub fn pay_invoice(params: PayInvoiceRequestParams) -> Self {
+        Self {
+            method: Method::PayInvoice,
+            params: RequestParams::PayInvoice(params),
+        }
+    }
+
     /// Compose `list_transactions` request
     pub fn list_transactions(params: ListTransactionsRequestParams) -> Self {
         Self {

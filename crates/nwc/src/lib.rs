@@ -18,9 +18,8 @@ pub extern crate nostr_zapper as zapper;
 use async_utility::time;
 use nostr::nips::nip47::{
     GetBalanceResponseResult, GetInfoResponseResult, ListTransactionsRequestParams,
-    LookupInvoiceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult, Method,
-    NostrWalletConnectURI, PayInvoiceRequestParams, PayInvoiceResponseResult, Request,
-    RequestParams, Response,
+    LookupInvoiceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult,
+    NostrWalletConnectURI, PayInvoiceRequestParams, PayInvoiceResponseResult, Request, Response,
 };
 use nostr::{Filter, Kind, SubscriptionId};
 use nostr_relay_pool::{FilterOptions, RelayPool, RelayPoolNotification, RelaySendOptions};
@@ -59,6 +58,53 @@ impl NWC {
         Ok(Self { uri, pool })
     }
 
+    async fn send_request(&self, req: Request) -> Result<Response, Error> {
+        // Convert request to event
+        let event = req.to_event(&self.uri)?;
+        let event_id = event.id;
+
+        // Subscribe
+        let relay = self.pool.relay(&self.uri.relay_url).await?;
+        let id = SubscriptionId::generate();
+        let filter = Filter::new()
+            .author(self.uri.public_key)
+            .kind(Kind::WalletConnectResponse)
+            .event(event_id)
+            .limit(1);
+
+        // Subscribe
+        relay
+            .send_req(
+                id,
+                vec![filter],
+                Some(FilterOptions::WaitForEventsAfterEOSE(1)),
+            )
+            .await?;
+
+        let mut notifications = self.pool.notifications();
+
+        // Send request
+        self.pool
+            .send_event_to([&self.uri.relay_url], event, RelaySendOptions::new())
+            .await?;
+
+        time::timeout(Some(Duration::from_secs(10)), async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Event { event, .. } = notification {
+                    if event.kind() == Kind::WalletConnectResponse
+                        && event.event_ids().next().copied() == Some(event_id)
+                    {
+                        return Ok(Response::from_event(&self.uri, &event)?);
+                    }
+                }
+            }
+
+            Err(Error::Timeout)
+        })
+        .await
+        .ok_or(Error::Timeout)?
+    }
+
     /// Create invoice
     pub async fn make_invoice(
         &self,
@@ -66,120 +112,27 @@ impl NWC {
         description: Option<String>,
         expiry: Option<u64>,
     ) -> Result<String, Error> {
-        // Compose NWC request event
-        let req = Request {
-            method: Method::MakeInvoice,
-            params: RequestParams::MakeInvoice(MakeInvoiceRequestParams {
-                amount: satoshi * 1000,
-                description,
-                description_hash: None,
-                expiry,
-            }),
-        };
-        let event = req.to_event(&self.uri)?;
-        let event_id = event.id;
-
-        // Subscribe
-        let relay = self.pool.relay(&self.uri.relay_url).await?;
-        let id = SubscriptionId::generate();
-        let filter = Filter::new()
-            .author(self.uri.public_key)
-            .kind(Kind::WalletConnectResponse)
-            .event(event_id)
-            .limit(1);
-
-        // Subscribe
-        relay
-            .send_req(
-                id,
-                vec![filter],
-                Some(FilterOptions::WaitForEventsAfterEOSE(1)),
-            )
-            .await?;
-
-        let mut notifications = self.pool.notifications();
-
-        // Send request
-        self.pool
-            .send_event_to([&self.uri.relay_url], event, RelaySendOptions::new())
-            .await?;
-
-        time::timeout(Some(Duration::from_secs(10)), async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind() == Kind::WalletConnectResponse
-                        && event.event_ids().next().copied() == Some(event_id)
-                    {
-                        let res = Response::from_event(&self.uri, &event)?;
-                        let MakeInvoiceResponseResult { invoice, .. } = res.to_make_invoice()?;
-                        return Ok(invoice);
-                    }
-                }
-            }
-
-            Err(Error::Timeout)
-        })
-        .await
-        .ok_or(Error::Timeout)?
+        let req: Request = Request::make_invoice(MakeInvoiceRequestParams {
+            amount: satoshi * 1000,
+            description,
+            description_hash: None,
+            expiry,
+        });
+        let res: Response = self.send_request(req).await?;
+        let MakeInvoiceResponseResult { invoice, .. } = res.to_make_invoice()?;
+        Ok(invoice)
     }
 
     /// Pay invoice
-    pub async fn send_payment(&self, invoice: String) -> Result<(), Error> {
-        // Compose NWC request event
-        let req = Request {
-            method: Method::PayInvoice,
-            params: RequestParams::PayInvoice(PayInvoiceRequestParams {
-                id: None,
-                invoice,
-                amount: None,
-            }),
-        };
-        let event = req.to_event(&self.uri)?;
-        let event_id = event.id;
-
-        // Subscribe
-        let relay = self.pool.relay(&self.uri.relay_url).await?;
-        let id = SubscriptionId::generate();
-        let filter = Filter::new()
-            .author(self.uri.public_key)
-            .kind(Kind::WalletConnectResponse)
-            .event(event_id)
-            .limit(1);
-
-        // Subscribe
-        relay
-            .send_req(
-                id,
-                vec![filter],
-                Some(FilterOptions::WaitForEventsAfterEOSE(1)),
-            )
-            .await?;
-
-        let mut notifications = self.pool.notifications();
-
-        // Send request
-        self.pool
-            .send_event_to([&self.uri.relay_url], event, RelaySendOptions::new())
-            .await?;
-
-        time::timeout(Some(Duration::from_secs(10)), async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind() == Kind::WalletConnectResponse
-                        && event.event_ids().next().copied() == Some(event_id)
-                    {
-                        let res = Response::from_event(&self.uri, &event)?;
-                        let PayInvoiceResponseResult { preimage } = res.to_pay_invoice()?;
-                        tracing::info!("Invoice paid! Preimage: {preimage}");
-                        break;
-                    }
-                }
-            }
-
-            Ok::<(), Error>(())
-        })
-        .await
-        .ok_or(Error::Timeout)?
+    pub async fn send_payment(&self, invoice: String) -> Result<String, Error> {
+        let req = Request::pay_invoice(PayInvoiceRequestParams {
+            id: None,
+            invoice,
+            amount: None,
+        });
+        let res: Response = self.send_request(req).await?;
+        let PayInvoiceResponseResult { preimage } = res.to_pay_invoice()?;
+        Ok(preimage)
     }
 
     /// Get info
@@ -187,153 +140,24 @@ impl NWC {
         &self,
         params: ListTransactionsRequestParams,
     ) -> Result<Vec<LookupInvoiceResponseResult>, Error> {
-        // Compose NWC request event
         let req = Request::list_transactions(params);
-        let event = req.to_event(&self.uri)?;
-        let event_id = event.id;
-
-        // Subscribe
-        let relay = self.pool.relay(&self.uri.relay_url).await?;
-        let id = SubscriptionId::generate();
-        let filter = Filter::new()
-            .author(self.uri.public_key)
-            .kind(Kind::WalletConnectResponse)
-            .event(event_id)
-            .limit(1);
-
-        // Subscribe
-        relay
-            .send_req(
-                id,
-                vec![filter],
-                Some(FilterOptions::WaitForEventsAfterEOSE(1)),
-            )
-            .await?;
-
-        let mut notifications = self.pool.notifications();
-
-        // Send request
-        self.pool
-            .send_event_to([&self.uri.relay_url], event, RelaySendOptions::new())
-            .await?;
-
-        time::timeout(Some(Duration::from_secs(10)), async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind() == Kind::WalletConnectResponse
-                        && event.event_ids().next().copied() == Some(event_id)
-                    {
-                        let res = Response::from_event(&self.uri, &event)?;
-                        return Ok(res.to_list_transactions()?);
-                    }
-                }
-            }
-
-            Err(Error::Timeout)
-        })
-        .await
-        .ok_or(Error::Timeout)?
+        let res: Response = self.send_request(req).await?;
+        Ok(res.to_list_transactions()?)
     }
 
     /// Get balance
     pub async fn get_balance(&self) -> Result<u64, Error> {
-        // Compose NWC request event
         let req = Request::get_balance();
-        let event = req.to_event(&self.uri)?;
-        let event_id = event.id;
-
-        // Subscribe
-        let relay = self.pool.relay(&self.uri.relay_url).await?;
-        let id = SubscriptionId::generate();
-        let filter = Filter::new()
-            .author(self.uri.public_key)
-            .kind(Kind::WalletConnectResponse)
-            .event(event_id)
-            .limit(1);
-
-        // Subscribe
-        relay
-            .send_req(
-                id,
-                vec![filter],
-                Some(FilterOptions::WaitForEventsAfterEOSE(1)),
-            )
-            .await?;
-
-        let mut notifications = self.pool.notifications();
-
-        // Send request
-        self.pool
-            .send_event_to([&self.uri.relay_url], event, RelaySendOptions::new())
-            .await?;
-
-        time::timeout(Some(Duration::from_secs(10)), async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind() == Kind::WalletConnectResponse
-                        && event.event_ids().next().copied() == Some(event_id)
-                    {
-                        let res = Response::from_event(&self.uri, &event)?;
-                        let GetBalanceResponseResult { balance } = res.to_get_balance()?;
-                        return Ok(balance);
-                    }
-                }
-            }
-
-            Err(Error::Timeout)
-        })
-        .await
-        .ok_or(Error::Timeout)?
+        let res: Response = self.send_request(req).await?;
+        let GetBalanceResponseResult { balance } = res.to_get_balance()?;
+        Ok(balance)
     }
 
     /// Get info
     pub async fn get_info(&self) -> Result<GetInfoResponseResult, Error> {
-        // Compose NWC request event
         let req = Request::get_info();
-        let event = req.to_event(&self.uri)?;
-        let event_id = event.id;
-
-        // Subscribe
-        let relay = self.pool.relay(&self.uri.relay_url).await?;
-        let id = SubscriptionId::generate();
-        let filter = Filter::new()
-            .author(self.uri.public_key)
-            .kind(Kind::WalletConnectResponse)
-            .event(event_id)
-            .limit(1);
-
-        // Subscribe
-        relay
-            .send_req(
-                id,
-                vec![filter],
-                Some(FilterOptions::WaitForEventsAfterEOSE(1)),
-            )
-            .await?;
-
-        let mut notifications = self.pool.notifications();
-
-        // Send request
-        self.pool
-            .send_event_to([&self.uri.relay_url], event, RelaySendOptions::new())
-            .await?;
-
-        time::timeout(Some(Duration::from_secs(10)), async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind() == Kind::WalletConnectResponse
-                        && event.event_ids().next().copied() == Some(event_id)
-                    {
-                        let res = Response::from_event(&self.uri, &event)?;
-                        return Ok(res.to_get_info()?);
-                    }
-                }
-            }
-
-            Err(Error::Timeout)
-        })
-        .await
-        .ok_or(Error::Timeout)?
+        let res: Response = self.send_request(req).await?;
+        Ok(res.to_get_info()?)
     }
 }
 
@@ -347,6 +171,7 @@ impl NostrZapper for NWC {
     }
 
     async fn pay_invoice(&self, invoice: String) -> Result<(), Self::Err> {
-        self.send_payment(invoice).await
+        self.send_payment(invoice).await?;
+        Ok(())
     }
 }

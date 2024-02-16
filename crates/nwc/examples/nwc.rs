@@ -11,26 +11,23 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let mut nwc_uri_string = String::new();
-    let mut invoice = String::new();
 
     println!("Please enter a NWC string");
     std::io::stdin()
         .read_line(&mut nwc_uri_string)
         .expect("Failed to read line");
 
-    println!("Please enter a BOLT 11 invoice");
-    std::io::stdin()
-        .read_line(&mut invoice)
-        .expect("Failed to read line");
-
-    invoice = String::from(invoice.trim());
-
     // Parse URI and compose NWC client
     let uri = NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
     let nwc = NWC::new(uri).await?;
 
-    // Pay invoice
-    nwc.send_payment(invoice).await?;
+    // Get info
+    let info = nwc.get_info().await?;
+    println!("{info:?}");
+
+    // Get balance
+    let balance = nwc.get_balance().await?;
+    println!("Balance: {balance}");
 
     Ok(())
 }
