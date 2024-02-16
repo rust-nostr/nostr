@@ -938,7 +938,10 @@ impl Relay {
         msg: RawRelayMessage,
     ) -> Result<Option<RelayMessage>, Error> {
         match msg {
-            RawRelayMessage::Event { event, .. } => {
+            RawRelayMessage::Event {
+                subscription_id,
+                event,
+            } => {
                 // Deserialize partial event (id, pubkey and sig)
                 let partial_event: PartialEvent = PartialEvent::from_json(event.to_string())?;
 
@@ -1032,11 +1035,14 @@ impl Relay {
                 if !seen {
                     let _ = self.notification_sender.send(RelayPoolNotification::Event {
                         relay_url: self.url(),
-                        event,
+                        event: event.clone(),
                     });
                 }
 
-                Ok(None)
+                Ok(Some(RelayMessage::Event {
+                    subscription_id: SubscriptionId::new(subscription_id),
+                    event: Box::new(event),
+                }))
             }
             m => Ok(Some(RelayMessage::try_from(m)?)),
         }
