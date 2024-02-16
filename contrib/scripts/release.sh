@@ -6,6 +6,7 @@ args=(
     "-p nostr"
     "-p nostr-database"
     "-p nostr-sqlite"
+    "-p nostr-rocksdb"
     "-p nostr-indexeddb"
     "-p nostr-relay-pool"
     "-p nostr-signer"
