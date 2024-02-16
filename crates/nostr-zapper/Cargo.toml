@@ -1,0 +1,17 @@
+[package]
+name = "nostr-zapper"
+version = "0.27.0"
+edition = "2021"
+description = "Zapper abstraction for Nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "zapper"]
+
+[dependencies]
+async-trait.workspace = true
+nostr = { workspace = true, features = ["std"] }
+thiserror.workspace = true
