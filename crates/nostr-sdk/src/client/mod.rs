@@ -81,6 +81,9 @@ pub enum Error {
     /// Impossible to zap
     #[error("impossible to send zap: {0}")]
     ImpossibleToZap(String),
+    /// Metadata not found
+    #[error("metadata not found")]
+    MetadataNotFound,
 }
 
 /// Nostr client
@@ -765,7 +768,7 @@ impl Client {
         let events: Vec<Event> = self.get_events_of(vec![filter], None).await?;
         match events.first() {
             Some(event) => Ok(Metadata::from_json(event.content())?),
-            None => Ok(Metadata::default()),
+            None => Err(Error::MetadataNotFound),
         }
     }
 
