@@ -21,7 +21,7 @@
     * Publish `JS` bindings
     * Publish `Swift` bindings
 
-* Bump versions in `book`
+* Bump versions in `book` (**without commit**, commit in next step)
     * Update examples
     * Rust book tests: `make check-book`
 

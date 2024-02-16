@@ -13,7 +13,7 @@ pub async fn quickstart() -> Result<()> {
     client
         .add_relay_with_opts(
             "wss://relay.nostr.info",
-            RelayOptions::new().proxy(proxy).write(false),
+            RelayOptions::new().proxy(proxy).flags(RelayServiceFlags::default().remove(RelayServiceFlags::WRITE)),
         )
         .await?;
     client

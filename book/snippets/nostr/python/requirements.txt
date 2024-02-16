@@ -1,1 +1,1 @@
-nostr-protocol==0.8.0
+nostr-protocol==0.9.0

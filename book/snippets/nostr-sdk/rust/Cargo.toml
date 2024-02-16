@@ -8,5 +8,5 @@ edition = "2021"
 members = ["."]
 
 [dependencies]
-nostr-sdk = "0.27"
+nostr-sdk = "0.28"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
