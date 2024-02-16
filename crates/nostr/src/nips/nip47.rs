@@ -399,6 +399,14 @@ struct RequestTemplate {
 }
 
 impl Request {
+    /// Compose `get_balance` request
+    pub fn get_balance() -> Self {
+        Self {
+            method: Method::GetBalance,
+            params: RequestParams::GetBalance,
+        }
+    }
+
     /// Deserialize from [`Value`]
     pub fn from_value(value: Value) -> Result<Self, Error> {
         let template: RequestTemplate = serde_json::from_value(value)?;
@@ -705,6 +713,19 @@ impl Response {
         }
 
         if let Some(ResponseResult::MakeInvoice(result)) = self.result {
+            return Ok(result);
+        }
+
+        Err(Error::UnexpectedResult(self.as_json()))
+    }
+
+    /// Covert [Response] to [GetBalanceResponseResult]
+    pub fn to_get_balance(self) -> Result<GetBalanceResponseResult, Error> {
+        if let Some(e) = self.error {
+            return Err(Error::ErrorCode(e));
+        }
+
+        if let Some(ResponseResult::GetBalance(result)) = self.result {
             return Ok(result);
         }
 

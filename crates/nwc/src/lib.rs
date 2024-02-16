@@ -17,8 +17,9 @@ pub extern crate nostr_zapper as zapper;
 
 use async_utility::time;
 use nostr::nips::nip47::{
-    MakeInvoiceRequestParams, MakeInvoiceResponseResult, Method, NostrWalletConnectURI,
-    PayInvoiceRequestParams, PayInvoiceResponseResult, Request, RequestParams, Response,
+    GetBalanceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult, Method,
+    NostrWalletConnectURI, PayInvoiceRequestParams, PayInvoiceResponseResult, Request,
+    RequestParams, Response,
 };
 use nostr::{Filter, Kind, SubscriptionId};
 use nostr_relay_pool::{FilterOptions, RelayPool, RelayPoolNotification, RelaySendOptions};
@@ -175,6 +176,57 @@ impl NWC {
             }
 
             Ok::<(), Error>(())
+        })
+        .await
+        .ok_or(Error::Timeout)?
+    }
+
+    /// Get balance
+    pub async fn get_balance(&self) -> Result<u64, Error> {
+        // Compose NWC request event
+        let req = Request::get_balance();
+        let event = req.to_event(&self.uri)?;
+        let event_id = event.id;
+
+        // Subscribe
+        let relay = self.pool.relay(&self.uri.relay_url).await?;
+        let id = SubscriptionId::generate();
+        let filter = Filter::new()
+            .author(self.uri.public_key)
+            .kind(Kind::WalletConnectResponse)
+            .event(event_id)
+            .limit(1);
+
+        // Subscribe
+        relay
+            .send_req(
+                id,
+                vec![filter],
+                Some(FilterOptions::WaitForEventsAfterEOSE(1)),
+            )
+            .await?;
+
+        let mut notifications = self.pool.notifications();
+
+        // Send request
+        self.pool
+            .send_event_to([&self.uri.relay_url], event, RelaySendOptions::new())
+            .await?;
+
+        time::timeout(Some(Duration::from_secs(10)), async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Event { event, .. } = notification {
+                    if event.kind() == Kind::WalletConnectResponse
+                        && event.event_ids().next().copied() == Some(event_id)
+                    {
+                        let res = Response::from_event(&self.uri, &event)?;
+                        let GetBalanceResponseResult { balance } = res.to_get_balance()?;
+                        return Ok(balance);
+                    }
+                }
+            }
+
+            Err(Error::Timeout)
         })
         .await
         .ok_or(Error::Timeout)?
