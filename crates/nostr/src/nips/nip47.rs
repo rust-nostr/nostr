@@ -415,6 +415,14 @@ impl Request {
         }
     }
 
+    /// Compose `lookup_invoice` request
+    pub fn lookup_invoice(params: LookupInvoiceRequestParams) -> Self {
+        Self {
+            method: Method::LookupInvoice,
+            params: RequestParams::LookupInvoice(params),
+        }
+    }
+
     /// Compose `list_transactions` request
     pub fn list_transactions(params: ListTransactionsRequestParams) -> Self {
         Self {
@@ -745,6 +753,19 @@ impl Response {
         }
 
         if let Some(ResponseResult::MakeInvoice(result)) = self.result {
+            return Ok(result);
+        }
+
+        Err(Error::UnexpectedResult(self.as_json()))
+    }
+
+    /// Covert [Response] to [LookupInvoiceResponseResult]
+    pub fn to_lookup_invoice(self) -> Result<LookupInvoiceResponseResult, Error> {
+        if let Some(e) = self.error {
+            return Err(Error::ErrorCode(e));
+        }
+
+        if let Some(ResponseResult::LookupInvoice(result)) = self.result {
             return Ok(result);
         }
 

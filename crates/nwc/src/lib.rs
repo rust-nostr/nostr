@@ -18,8 +18,9 @@ pub extern crate nostr_zapper as zapper;
 use async_utility::time;
 use nostr::nips::nip47::{
     GetBalanceResponseResult, GetInfoResponseResult, ListTransactionsRequestParams,
-    LookupInvoiceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult,
-    NostrWalletConnectURI, PayInvoiceRequestParams, PayInvoiceResponseResult, Request, Response,
+    LookupInvoiceRequestParams, LookupInvoiceResponseResult, MakeInvoiceRequestParams,
+    MakeInvoiceResponseResult, NostrWalletConnectURI, PayInvoiceRequestParams,
+    PayInvoiceResponseResult, Request, Response,
 };
 use nostr::{Filter, Kind, SubscriptionId};
 use nostr_relay_pool::{FilterOptions, RelayPool, RelayPoolNotification, RelaySendOptions};
@@ -135,7 +136,17 @@ impl NWC {
         Ok(preimage)
     }
 
-    /// Get info
+    /// Lookup invoice
+    pub async fn lookup_invoice(
+        &self,
+        params: LookupInvoiceRequestParams,
+    ) -> Result<LookupInvoiceResponseResult, Error> {
+        let req = Request::lookup_invoice(params);
+        let res: Response = self.send_request(req).await?;
+        Ok(res.to_lookup_invoice()?)
+    }
+
+    /// List transactions
     pub async fn list_transactions(
         &self,
         params: ListTransactionsRequestParams,
