@@ -96,9 +96,9 @@ impl SecretKey {
     /// By default `LOG_N` is set to `16` and [KeySecurity] to `Unknown`.
     /// To use custom values check [EncryptedSecretKey] constructors.
     #[cfg(all(feature = "std", feature = "nip49"))]
-    pub fn encrypt<T>(&self, password: T) -> Result<EncryptedSecretKey, nip49::Error>
+    pub fn encrypt<S>(&self, password: S) -> Result<EncryptedSecretKey, nip49::Error>
     where
-        T: AsRef<[u8]>,
+        S: AsRef<str>,
     {
         EncryptedSecretKey::new(self, password, 16, KeySecurity::Unknown)
     }

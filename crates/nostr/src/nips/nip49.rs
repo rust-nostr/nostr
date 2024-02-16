@@ -19,6 +19,7 @@ use chacha20poly1305::XChaCha20Poly1305;
 use scrypt::errors::{InvalidOutputLen, InvalidParams};
 use scrypt::Params as ScryptParams;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use unicode_normalization::UnicodeNormalization;
 
 use super::nip19::{FromBech32, ToBech32};
 use crate::{key, SecretKey};
@@ -189,29 +190,29 @@ pub struct EncryptedSecretKey {
 impl EncryptedSecretKey {
     /// Encrypt [SecretKey]
     #[cfg(feature = "std")]
-    pub fn new<T>(
+    pub fn new<S>(
         secret_key: &SecretKey,
-        password: T,
+        password: S,
         log_n: u8,
         key_security: KeySecurity,
     ) -> Result<Self, Error>
     where
-        T: AsRef<[u8]>,
+        S: AsRef<str>,
     {
         Self::new_with_rng(&mut OsRng, secret_key, password, log_n, key_security)
     }
 
     /// Encrypt [SecretKey]
-    pub fn new_with_rng<R, T>(
+    pub fn new_with_rng<R, S>(
         rng: &mut R,
         secret_key: &SecretKey,
-        password: T,
+        password: S,
         log_n: u8,
         key_security: KeySecurity,
     ) -> Result<Self, Error>
     where
         R: RngCore + CryptoRng,
-        T: AsRef<[u8]>,
+        S: AsRef<str>,
     {
         // Generate salt
         let salt: [u8; SALT_SIZE] = {
@@ -321,9 +322,9 @@ impl EncryptedSecretKey {
     }
 
     /// Decrypt secret key
-    pub fn to_secret_key<T>(self, password: T) -> Result<SecretKey, Error>
+    pub fn to_secret_key<S>(self, password: S) -> Result<SecretKey, Error>
     where
-        T: AsRef<[u8]>,
+        S: AsRef<str>,
     {
         // Derive key
         let key: [u8; KEY_SIZE] = derive_key(password, &self.salt, self.log_n)?;
@@ -364,16 +365,20 @@ impl<'de> Deserialize<'de> for EncryptedSecretKey {
     }
 }
 
-fn derive_key<T>(password: T, salt: &[u8; SALT_SIZE], log_n: u8) -> Result<[u8; KEY_SIZE], Error>
+fn derive_key<S>(password: S, salt: &[u8; SALT_SIZE], log_n: u8) -> Result<[u8; KEY_SIZE], Error>
 where
-    T: AsRef<[u8]>,
+    S: AsRef<str>,
 {
+    // Unicode Normalization
+    let password: &str = password.as_ref();
+    let password: String = password.nfkc().collect();
+
     // Compose params
     let params: ScryptParams = ScryptParams::new(log_n, 8, 1, KEY_SIZE)?;
 
     // Derive key
     let mut key: [u8; KEY_SIZE] = [0u8; KEY_SIZE];
-    scrypt::scrypt(password.as_ref(), salt, &params, &mut key)?;
+    scrypt::scrypt(password.as_bytes(), salt, &params, &mut key)?;
     Ok(key)
 }
 

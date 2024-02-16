@@ -33,6 +33,7 @@ std = [
     "serde_json/std",
     "serde_json/preserve_order",
     "tracing/std",
+    "unicode-normalization?/std",
     "wasm-bindgen?/std",
 ]
 alloc = [
@@ -55,7 +56,7 @@ nip11 = ["dep:reqwest"]
 nip44 = ["dep:base64", "dep:chacha20"]
 nip46 = ["nip04"]
 nip47 = ["nip04"]
-nip49 = ["dep:chacha20poly1305", "dep:scrypt"]
+nip49 = ["dep:chacha20poly1305", "dep:scrypt", "dep:unicode-normalization"]
 nip57 = ["dep:aes", "dep:cbc"]
 nip59 = ["nip44"]
 
@@ -75,6 +76,7 @@ scrypt = { version = "0.11", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json.workspace = true
 tracing.workspace = true
+unicode-normalization = { version = "0.1", default-features = false, optional = true }
 url = { version = "2.5", default-features = false, features = ["serde"], optional = true } # Used in std
 url-fork = { version = "3.0", default-features = false, features = ["serde"], optional = true } # Used for no_std
 
@@ -87,7 +89,7 @@ wasm-bindgen-futures = { workspace = true, optional = true }
 web-sys = { workspace = true, features = ["Window"], optional = true }
 
 [dev-dependencies]
-num_cpus = "1.15.0"
+num_cpus = "1.15"
 
 [[example]]
 name = "keys"

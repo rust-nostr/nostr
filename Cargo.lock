@@ -1601,6 +1601,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "unicode-normalization",
  "url",
  "url-fork",
  "wasm-bindgen",
