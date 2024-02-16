@@ -399,19 +399,27 @@ struct RequestTemplate {
 }
 
 impl Request {
-    /// Compose `make_invoice` request
-    pub fn make_invoice(params: MakeInvoiceRequestParams) -> Self {
-        Self {
-            method: Method::MakeInvoice,
-            params: RequestParams::MakeInvoice(params),
-        }
-    }
-
     /// Compose `pay_invoice` request
     pub fn pay_invoice(params: PayInvoiceRequestParams) -> Self {
         Self {
             method: Method::PayInvoice,
             params: RequestParams::PayInvoice(params),
+        }
+    }
+
+    /// Compose `pay_keysend` request
+    pub fn pay_keysend(params: PayKeysendRequestParams) -> Self {
+        Self {
+            method: Method::PayKeysend,
+            params: RequestParams::PayKeysend(params),
+        }
+    }
+
+    /// Compose `make_invoice` request
+    pub fn make_invoice(params: MakeInvoiceRequestParams) -> Self {
+        Self {
+            method: Method::MakeInvoice,
+            params: RequestParams::MakeInvoice(params),
         }
     }
 
@@ -740,6 +748,19 @@ impl Response {
         }
 
         if let Some(ResponseResult::PayInvoice(result)) = self.result {
+            return Ok(result);
+        }
+
+        Err(Error::UnexpectedResult(self.as_json()))
+    }
+
+    /// Covert [Response] to [PayKeysendResponseResult]
+    pub fn to_pay_keysend(self) -> Result<PayKeysendResponseResult, Error> {
+        if let Some(e) = self.error {
+            return Err(Error::ErrorCode(e));
+        }
+
+        if let Some(ResponseResult::PayKeysend(result)) = self.result {
             return Ok(result);
         }
 

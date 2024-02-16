@@ -20,7 +20,7 @@ use nostr::nips::nip47::{
     GetBalanceResponseResult, GetInfoResponseResult, ListTransactionsRequestParams,
     LookupInvoiceRequestParams, LookupInvoiceResponseResult, MakeInvoiceRequestParams,
     MakeInvoiceResponseResult, NostrWalletConnectURI, PayInvoiceRequestParams,
-    PayInvoiceResponseResult, Request, Response,
+    PayInvoiceResponseResult, PayKeysendRequestParams, PayKeysendResponseResult, Request, Response,
 };
 use nostr::{Filter, Kind, SubscriptionId};
 use nostr_relay_pool::{FilterOptions, RelayPool, RelayPoolNotification, RelaySendOptions};
@@ -106,6 +106,28 @@ impl NWC {
         .ok_or(Error::Timeout)?
     }
 
+    /// Pay invoice
+    pub async fn send_payment(&self, invoice: String) -> Result<String, Error> {
+        let req = Request::pay_invoice(PayInvoiceRequestParams {
+            id: None,
+            invoice,
+            amount: None,
+        });
+        let res: Response = self.send_request(req).await?;
+        let PayInvoiceResponseResult { preimage } = res.to_pay_invoice()?;
+        Ok(preimage)
+    }
+
+    /// Pay keysend
+    pub async fn pay_keysend(
+        &self,
+        params: PayKeysendRequestParams,
+    ) -> Result<PayKeysendResponseResult, Error> {
+        let req = Request::pay_keysend(params);
+        let res: Response = self.send_request(req).await?;
+        Ok(res.to_pay_keysend()?)
+    }
+
     /// Create invoice
     pub async fn make_invoice(
         &self,
@@ -122,18 +144,6 @@ impl NWC {
         let res: Response = self.send_request(req).await?;
         let MakeInvoiceResponseResult { invoice, .. } = res.to_make_invoice()?;
         Ok(invoice)
-    }
-
-    /// Pay invoice
-    pub async fn send_payment(&self, invoice: String) -> Result<String, Error> {
-        let req = Request::pay_invoice(PayInvoiceRequestParams {
-            id: None,
-            invoice,
-            amount: None,
-        });
-        let res: Response = self.send_request(req).await?;
-        let PayInvoiceResponseResult { preimage } = res.to_pay_invoice()?;
-        Ok(preimage)
     }
 
     /// Lookup invoice
