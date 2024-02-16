@@ -31,7 +31,7 @@ android {
 }
 
 dependencies {
-    implementation("net.java.dev.jna:jna:5.8.0@aar")
+    implementation("net.java.dev.jna:jna:5.12.0@aar")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7")
     implementation("androidx.appcompat:appcompat:1.4.0")
     implementation("androidx.core:core-ktx:1.7.0")
