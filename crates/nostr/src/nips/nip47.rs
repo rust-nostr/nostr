@@ -399,6 +399,14 @@ struct RequestTemplate {
 }
 
 impl Request {
+    /// Compose `list_transactions` request
+    pub fn list_transactions(params: ListTransactionsRequestParams) -> Self {
+        Self {
+            method: Method::ListTransactions,
+            params: RequestParams::ListTransactions(params),
+        }
+    }
+
     /// Compose `get_balance` request
     pub fn get_balance() -> Self {
         Self {
@@ -721,6 +729,19 @@ impl Response {
         }
 
         if let Some(ResponseResult::MakeInvoice(result)) = self.result {
+            return Ok(result);
+        }
+
+        Err(Error::UnexpectedResult(self.as_json()))
+    }
+
+    /// Covert [Response] to list of [LookupInvoiceResponseResult]
+    pub fn to_list_transactions(self) -> Result<Vec<LookupInvoiceResponseResult>, Error> {
+        if let Some(e) = self.error {
+            return Err(Error::ErrorCode(e));
+        }
+
+        if let Some(ResponseResult::ListTransactions(result)) = self.result {
             return Ok(result);
         }
 
