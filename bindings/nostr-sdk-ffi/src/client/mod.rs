@@ -26,6 +26,7 @@ pub mod zapper;
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 pub use self::signer::NostrSigner;
+use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
 use crate::relay::options::NegentropyOptions;
 use crate::{NostrDatabase, Relay};
@@ -302,6 +303,23 @@ impl Client {
                     .await?
                     .into(),
             ))
+        })
+    }
+
+    /// Send a Zap!
+    ///
+    /// This method automatically create a split zap to support Rust Nostr development.
+    pub fn zap(
+        &self,
+        to: Arc<ZapEntity>,
+        satoshi: u64,
+        details: Option<Arc<ZapDetails>>,
+    ) -> Result<()> {
+        block_on(async move {
+            Ok(self
+                .inner
+                .zap(**to, satoshi, details.map(|d| d.as_ref().deref().clone()))
+                .await?)
         })
     }
 

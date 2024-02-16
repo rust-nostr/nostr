@@ -7,8 +7,10 @@ use std::sync::Arc;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
 use nostr_sdk::database::DynNostrDatabase;
+use nostr_sdk::zapper::DynNostrZapper;
 use uniffi::Object;
 
+use super::zapper::NostrZapper;
 use super::{Client, ClientSdk, NostrSigner, Options};
 use crate::database::NostrDatabase;
 
@@ -37,6 +39,13 @@ impl ClientBuilder {
         let signer: nostr_sdk::NostrSigner = signer.as_ref().deref().clone();
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.signer(signer);
+        builder
+    }
+
+    pub fn zapper(self: Arc<Self>, zapper: Arc<NostrZapper>) -> Self {
+        let zapper: Arc<DynNostrZapper> = zapper.as_ref().deref().clone();
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.zapper(zapper);
         builder
     }
 

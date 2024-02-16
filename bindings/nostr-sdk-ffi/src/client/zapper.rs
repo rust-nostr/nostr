@@ -10,7 +10,7 @@ use nostr_ffi::nips::nip47::NostrWalletConnectURI;
 use nostr_ffi::nips::nip57::ZapType;
 use nostr_ffi::{EventId, PublicKey};
 use nostr_sdk::zapper::{DynNostrZapper, IntoNostrZapper};
-use nostr_sdk::{block_on, client, NostrWalletConnectOptions, NWC};
+use nostr_sdk::{block_on, client, NWC};
 use uniffi::Object;
 
 use crate::error::Result;
@@ -72,11 +72,7 @@ impl NostrZapper {
     pub fn nwc(uri: Arc<NostrWalletConnectURI>) -> Result<Self> {
         block_on(async move {
             let uri = uri.as_ref().deref();
-            let zapper = NWC::with_opts(
-                uri.to_owned(),
-                NostrWalletConnectOptions::new().shutdown_on_drop(true),
-            )
-            .await?;
+            let zapper = NWC::new(uri.to_owned()).await?;
             Ok(Self {
                 inner: zapper.into_nostr_zapper(),
             })
@@ -90,9 +86,11 @@ pub struct ZapDetails {
     inner: client::ZapDetails,
 }
 
-impl From<ZapDetails> for client::ZapDetails {
-    fn from(value: ZapDetails) -> Self {
-        value.inner
+impl Deref for ZapDetails {
+    type Target = client::ZapDetails;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
