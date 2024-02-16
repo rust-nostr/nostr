@@ -6,7 +6,7 @@ rust-version.workspace = true
 
 [dependencies]
 clap = { version = "4.3", features = ["derive"] }
-nostr-sdk = { version = "0.27", path = "../nostr-sdk", features = ["sqlite"] }
+nostr-sdk = { version = "0.28", path = "../nostr-sdk", features = ["sqlite"] }
 once_cell.workspace = true
 prettytable-rs = "0.10"
 rayon = "1.8"
