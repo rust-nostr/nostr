@@ -83,14 +83,6 @@ pub trait NostrZapper: AsyncTraitDeps {
 
     /// Pay invoice
     async fn pay_invoice(&self, invoice: String) -> Result<(), Self::Err>;
-
-    /// Pay multiple invoices
-    async fn pay_multi_invoices(&self, invoices: Vec<String>) -> Result<(), Self::Err> {
-        for invoice in invoices.into_iter() {
-            self.pay_invoice(invoice).await?;
-        }
-        Ok(())
-    }
 }
 
 #[repr(transparent)]
@@ -113,13 +105,6 @@ impl<T: NostrZapper> NostrZapper for EraseNostrZapperError<T> {
 
     async fn pay_invoice(&self, invoice: String) -> Result<(), Self::Err> {
         self.0.pay_invoice(invoice).await.map_err(Into::into)
-    }
-
-    async fn pay_multi_invoices(&self, invoices: Vec<String>) -> Result<(), Self::Err> {
-        self.0
-            .pay_multi_invoices(invoices)
-            .await
-            .map_err(Into::into)
     }
 }
 
