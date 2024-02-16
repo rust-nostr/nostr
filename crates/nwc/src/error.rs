@@ -1,0 +1,35 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Copyright (c) 2023-2024 Rust Nostr Developers
+// Distributed under the MIT software license
+
+//! NWC error
+
+use nostr::nips::nip47;
+use nostr_zapper::ZapperError;
+use thiserror::Error;
+
+/// NWC error
+#[derive(Debug, Error)]
+pub enum Error {
+    /// Zapper error
+    #[error(transparent)]
+    Zapper(#[from] ZapperError),
+    /// NIP47 error
+    #[error(transparent)]
+    NIP47(#[from] nip47::Error),
+    /// Relay
+    #[error(transparent)]
+    Relay(#[from] nostr_relay_pool::relay::Error),
+    /// Pool
+    #[error(transparent)]
+    Pool(#[from] nostr_relay_pool::pool::Error),
+    /// Request timeout
+    #[error("timeout")]
+    Timeout,
+}
+
+impl From<Error> for ZapperError {
+    fn from(e: Error) -> Self {
+        Self::backend(e)
+    }
+}

@@ -1,0 +1,24 @@
+[package]
+name = "nwc"
+version = "0.27.0"
+edition = "2021"
+description = "NWC client and zapper backend for Nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "zapper", "nwc"]
+
+[dependencies]
+async-utility.workspace = true
+nostr = { workspace = true, features = ["std", "nip47"] }
+nostr-relay-pool.workspace = true
+nostr-zapper.workspace = true
+thiserror.workspace = true
+tracing = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing-subscriber.workspace = true

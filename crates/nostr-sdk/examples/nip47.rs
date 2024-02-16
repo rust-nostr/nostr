@@ -5,6 +5,8 @@ use std::str::FromStr;
 
 use nostr_sdk::prelude::*;
 
+// Check `nwc` crate for high level client library!
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
