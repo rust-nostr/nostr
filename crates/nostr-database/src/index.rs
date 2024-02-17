@@ -395,7 +395,7 @@ enum InternalQueryResult<'a> {
 struct InternalDatabaseIndexes {
     index: BTreeSet<ArcEventIndex>,
     ids_index: HashMap<EventId, ArcEventIndex>,
-    kind_author_index: HashMap<(Kind, PublicKeyPrefix), HashSet<ArcEventIndex>>,
+    kind_author_index: HashMap<(Kind, PublicKeyPrefix), BTreeSet<ArcEventIndex>>,
     kind_author_tags_index:
         HashMap<(Kind, PublicKeyPrefix, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>,
     deleted_ids: HashSet<EventId>,
@@ -566,7 +566,7 @@ impl InternalDatabaseIndexes {
             }
 
             if kind.is_replaceable() {
-                let mut set = HashSet::with_capacity(1);
+                let mut set = BTreeSet::new();
                 set.insert(e);
                 self.kind_author_index.insert((kind, pubkey_prefix), set);
             } else {
