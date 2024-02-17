@@ -4,7 +4,7 @@
 
 //! Relay
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -1593,13 +1593,13 @@ impl Relay {
             .query(filters.clone(), Order::Desc)
             .await
             .unwrap_or_default();
-        let events: Mutex<Vec<Event>> = Mutex::new(stored_events);
+        let events: Mutex<BTreeSet<Event>> = Mutex::new(stored_events.into_iter().collect());
         self.get_events_of_with_callback(filters, timeout, opts, |event| async {
             let mut events = events.lock().await;
-            events.push(event);
+            events.insert(event);
         })
         .await?;
-        Ok(events.into_inner())
+        Ok(events.into_inner().into_iter().rev().collect())
     }
 
     /// Request events of filter. All events will be sent to notification listener,
