@@ -395,6 +395,7 @@ struct RequestTemplate {
     /// Request method
     method: Method,
     /// Params
+    #[serde(default)] // handle no params as `Value::Null`
     params: Value,
 }
 
