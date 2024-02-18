@@ -10,6 +10,7 @@ use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
 
 use bitcoin::secp256k1;
+use serde::{Deserialize, Deserializer};
 
 use super::Error;
 use crate::nips::nip19::FromBech32;
@@ -110,6 +111,16 @@ impl FromStr for SecretKey {
     /// Try to parse [SecretKey] from `hex` or `bech32`
     fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
         Self::parse(secret_key)
+    }
+}
+
+impl<'de> Deserialize<'de> for SecretKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let secret_key: String = String::deserialize(deserializer)?;
+        Self::parse(secret_key).map_err(serde::de::Error::custom)
     }
 }
 
