@@ -175,6 +175,11 @@ impl NWC {
         let res: Response = self.send_request(req).await?;
         Ok(res.to_get_info()?)
     }
+
+    /// Completely shutdown [NWC] client
+    pub async fn shutdown(self) -> Result<(), Error> {
+        Ok(self.pool.shutdown().await?)
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
