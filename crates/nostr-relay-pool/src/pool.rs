@@ -162,12 +162,9 @@ impl RelayPool {
         self.disconnect().await?;
         thread::spawn(async move {
             thread::sleep(Duration::from_secs(3)).await;
-            if let Err(e) = self
+            let _ = self
                 .notification_sender
-                .send(RelayPoolNotification::Shutdown)
-            {
-                tracing::error!("Impossible to send SHUTDOWN notification: {}", e);
-            }
+                .send(RelayPoolNotification::Shutdown);
         })?;
         Ok(())
     }
