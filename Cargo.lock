@@ -1580,7 +1580,7 @@ dependencies = [
 
 [[package]]
 name = "nostr"
-version = "0.28.0"
+version = "0.28.1"
 dependencies = [
  "aes",
  "base64",
@@ -1803,7 +1803,7 @@ dependencies = [
 
 [[package]]
 name = "nwc"
-version = "0.28.0"
+version = "0.28.1"
 dependencies = [
  "async-utility",
  "nostr",
