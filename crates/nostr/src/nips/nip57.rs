@@ -311,7 +311,8 @@ pub fn create_encryption_key(
     Ok(SecretKey::from_slice(hash.as_byte_array())?)
 }
 
-fn encrypt_private_zap_message<R, T>(
+/// Encrypt a private zap message using the given keys
+pub fn encrypt_private_zap_message<R, T>(
     rng: &mut R,
     secret_key: &SecretKey,
     public_key: &PublicKey,
