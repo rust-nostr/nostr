@@ -15,14 +15,13 @@ use core::str::FromStr;
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::Hash;
-use url::Url;
 
 use super::nip01::Coordinate;
 #[cfg(feature = "nip49")]
 use super::nip49::{self, EncryptedSecretKey};
 use crate::event::id::{self, EventId};
-use crate::types::url;
-use crate::{key, Kind, PublicKey, SecretKey, TryIntoUrl};
+use crate::types::url::{self, TryIntoUrl, Url};
+use crate::{key, Kind, PublicKey, SecretKey};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_SECRET_KEY_ENCRYPTED: &str = "ncryptsec";
