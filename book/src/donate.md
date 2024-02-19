@@ -9,10 +9,9 @@ Your donation directly supports the continued development of `rust-nostr`.
 * 🔗 Onchain: `bc1quk478kpm45744q5pt3p9j42fnv72ykytmt3z0j`
 * ⚡ Lightning: `yuki@getalby.com` (<https://getalby.com/p/yuki>)
 * 🕸️ Fedimint: `TODO`
-* 🥜 Cashu: `TODO`
 * 💧 Liquid: `TODO`
 
-### (Shit)coins
+### Altcoins
 
 We not accept coins different from bitcoin. If you are insterested to support `rust-nostr` with these ones, are availabe some swap services to convert them directly into bitcoin:
 
@@ -24,7 +23,9 @@ Disclaimer: `rust-nostr` is not affiliated in any way with these services!
 
 ## Recurring donations
 
-Not currenlty available
+Please consider becoming a sustaining supporter of the `rust-nostr` project by giving a recurring monthly donation. If we know how much funding to expect every month, we can better plan our efforts and the use of available resources.
+
+You can setup an [automatically recurring donation here](https://subscribe.rust-nostr.org/). Thank you!
 
 ## Verify donation details
 

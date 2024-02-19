@@ -6,6 +6,8 @@
         <a href="https://github.com/rust-nostr">Project Homepage</a>
         <span> | </span>
         <a href="https://github.com/rust-nostr/nostr">Repository</a>
+        <span> | </span>
+        <a href="./donate.md">Become a supporter</a>
     </h4>
     <h2 style="font-size: 16px; font-weight: normal;">
         The <code>nostr</code> development kit to build <strong>fast</strong>, <strong>stable</strong> and <strong>efficient</strong> apps for <strong>any environment</strong>!
