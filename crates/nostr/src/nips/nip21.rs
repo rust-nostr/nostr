@@ -209,14 +209,14 @@ mod tests {
         );
 
         assert_eq!(
-            Nip21::parse("nostr:nprofile1qqsr9cvzwc652r4m83d86ykplrnm9dg5gwdvzzn8ameanlvut35wy3gpz3mhxue69uhhyetvv9ujuerpd46hxtnfduyu75sw").unwrap(),
+            Nip21::parse("nostr:nprofile1qqsr9cvzwc652r4m83d86ykplrnm9dg5gwdvzzn8ameanlvut35wy3gpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsz4nxck").unwrap(),
             Nip21::Profile(Nip19Profile::new(
                 PublicKey::from_str(
                     "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
                 )
                 .unwrap(),
-                ["wss://relay.damus.io"]
-            )),
+                ["wss://relay.damus.io/"]
+            ).unwrap()),
         );
     }
 

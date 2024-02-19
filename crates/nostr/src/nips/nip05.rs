@@ -15,6 +15,7 @@ use std::net::SocketAddr;
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
 use serde_json::Value;
+use url::Url;
 
 use crate::nips::nip19::Nip19Profile;
 use crate::{key, PublicKey};
@@ -93,8 +94,8 @@ where
         .and_then(|pubkey| PublicKey::from_str(pubkey).ok())
 }
 
-fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<String> {
-    let relays_list: Option<Vec<String>> = json
+fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
+    let relays_list: Option<Vec<Url>> = json
         .get("relays")
         .and_then(|relays| relays.get(pk.to_string()))
         .and_then(|value| serde_json::from_value(value.clone()).ok());

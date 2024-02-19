@@ -15,12 +15,14 @@ use core::str::FromStr;
 
 use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
 use bitcoin::hashes::Hash;
+use url::Url;
 
 use super::nip01::Coordinate;
 #[cfg(feature = "nip49")]
 use super::nip49::{self, EncryptedSecretKey};
 use crate::event::id::{self, EventId};
-use crate::{key, Kind, PublicKey, SecretKey};
+use crate::types::url;
+use crate::{key, Kind, PublicKey, SecretKey, TryIntoUrl};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_SECRET_KEY_ENCRYPTED: &str = "ncryptsec";
@@ -38,6 +40,8 @@ pub const KIND: u8 = 3;
 /// `NIP19` error
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
+    /// Url parse error
+    Url(url::ParseError),
     /// Bech32 error.
     Bech32(bech32::Error),
     /// UFT-8 error
@@ -69,6 +73,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Url(e) => write!(f, "Url: {e}"),
             Self::Bech32(e) => write!(f, "Bech32: {e}"),
             Self::UTF8(e) => write!(f, "UTF8: {e}"),
             Self::Hash(e) => write!(f, "Hash: {e}"),
@@ -82,6 +87,12 @@ impl fmt::Display for Error {
             Self::TryFromSlice => write!(f, "Impossible to perform conversion from slice"),
             Self::NotImplemented => write!(f, "Not implemented"),
         }
+    }
+}
+
+impl From<url::ParseError> for Error {
+    fn from(e: url::ParseError) -> Self {
+        Self::Url(e)
     }
 }
 
@@ -468,24 +479,28 @@ impl ToBech32 for Nip19Event {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Nip19Profile {
     pub public_key: PublicKey,
-    pub relays: Vec<String>,
+    pub relays: Vec<Url>,
 }
 
 impl Nip19Profile {
-    pub fn new<I, S>(public_key: PublicKey, relays: I) -> Self
+    pub fn new<I, U>(public_key: PublicKey, relays: I) -> Result<Self, Error>
     where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
     {
-        Self {
+        Ok(Self {
             public_key,
-            relays: relays.into_iter().map(|u| u.into()).collect(),
-        }
+            relays: relays
+                .into_iter()
+                .map(|u| u.try_into_url())
+                .collect::<Result<Vec<Url>, _>>()?,
+        })
     }
 
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut public_key: Option<PublicKey> = None;
-        let mut relays: Vec<String> = Vec::new();
+        let mut relays: Vec<Url> = Vec::new();
 
         while !data.is_empty() {
             let t = data.first().ok_or(Error::TLV)?;
@@ -501,7 +516,9 @@ impl Nip19Profile {
                     }
                 }
                 RELAY => {
-                    relays.push(String::from_utf8(bytes.to_vec())?);
+                    let url = String::from_utf8(bytes.to_vec())?;
+                    let url = Url::parse(&url)?;
+                    relays.push(url);
                 }
                 _ => (),
             };
@@ -524,8 +541,8 @@ impl ToBech32 for Nip19Profile {
         bytes.extend(self.public_key.serialize());
 
         for relay in self.relays.iter() {
-            bytes.extend([RELAY, relay.len() as u8]);
-            bytes.extend(relay.as_bytes());
+            bytes.extend([RELAY, relay.as_str().len() as u8]);
+            bytes.extend(relay.as_ref().as_bytes());
         }
 
         let data = bytes.to_base32();
@@ -714,11 +731,11 @@ mod tests {
             PublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")
                 .unwrap();
 
-        let nprofile = "nprofile1qqsr9cvzwc652r4m83d86ykplrnm9dg5gwdvzzn8ameanlvut35wy3gpz3mhxue69uhhyetvv9ujuerpd46hxtnfduyu75sw";
+        let nprofile = "nprofile1qqsr9cvzwc652r4m83d86ykplrnm9dg5gwdvzzn8ameanlvut35wy3gpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsz4nxck";
         let nip19 = Nip19::from_bech32(nprofile).unwrap();
 
         assert_eq!(
-            Nip19::Profile(Nip19Profile::new(expected_pubkey, ["wss://relay.damus.io"])),
+            Nip19::Profile(Nip19Profile::new(expected_pubkey, ["wss://relay.damus.io/"]).unwrap()),
             nip19
         );
 

@@ -83,10 +83,10 @@ impl From<Nip19Profile> for JsNip19Profile {
 impl JsNip19Profile {
     /// New NIP19 profile
     #[wasm_bindgen(constructor)]
-    pub fn new(public_key: &JsPublicKey, relays: Vec<String>) -> Self {
-        Self {
-            inner: Nip19Profile::new(**public_key, relays),
-        }
+    pub fn new(public_key: &JsPublicKey, relays: Vec<String>) -> Result<JsNip19Profile> {
+        Ok(Self {
+            inner: Nip19Profile::new(**public_key, relays).map_err(into_err)?,
+        })
     }
 
     #[wasm_bindgen(js_name = fromBech32)]
@@ -119,6 +119,6 @@ impl JsNip19Profile {
     }
 
     pub fn relays(&self) -> Vec<String> {
-        self.inner.relays.clone()
+        self.inner.relays.iter().map(|u| u.to_string()).collect()
     }
 }
