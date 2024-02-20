@@ -1080,7 +1080,11 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[cfg(all(feature = "std", feature = "nip59"))]
-    pub fn gift_wrap_from_seal(receiver: &PublicKey, seal: &Event) -> Result<Event, Error> {
+    pub fn gift_wrap_from_seal(
+        receiver: &PublicKey,
+        seal: &Event,
+        expiration: Option<Timestamp>,
+    ) -> Result<Event, Error> {
         if seal.kind != Kind::Seal {
             return Err(Error::WrongKind {
                 received: seal.kind,
@@ -1095,7 +1099,15 @@ impl EventBuilder {
             seal.as_json(),
             Version::default(),
         )?;
-        Self::new(Kind::GiftWrap, content, [Tag::public_key(*receiver)])
+
+        let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(expiration.is_some()));
+        tags.push(Tag::public_key(*receiver));
+
+        if let Some(expiration) = expiration {
+            tags.push(Tag::Expiration(expiration));
+        }
+
+        Self::new(Kind::GiftWrap, content, tags)
             .custom_created_at(Timestamp::tweaked())
             .to_event(&keys)
     }
@@ -1108,9 +1120,10 @@ impl EventBuilder {
         sender_keys: &Keys,
         receiver: &PublicKey,
         rumor: UnsignedEvent,
+        expiration: Option<Timestamp>,
     ) -> Result<Event, Error> {
         let seal: Event = Self::seal(sender_keys, receiver, rumor)?.to_event(sender_keys)?;
-        Self::gift_wrap_from_seal(receiver, &seal)
+        Self::gift_wrap_from_seal(receiver, &seal, expiration)
     }
 
     /// GiftWrapped Sealed Direct message

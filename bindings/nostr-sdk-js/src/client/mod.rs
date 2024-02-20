@@ -10,7 +10,7 @@ use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventArray, JsEventBuilder, JsEventId, JsTag};
 use nostr_js::key::JsPublicKey;
 use nostr_js::message::{JsClientMessage, JsFilter, JsRelayMessage};
-use nostr_js::types::{JsContact, JsMetadata};
+use nostr_js::types::{JsContact, JsMetadata, JsTimestamp};
 use nostr_sdk::async_utility::thread;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -573,18 +573,28 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[wasm_bindgen(js_name = giftWrap)]
-    pub async fn gift_wrap(&self, receiver: &JsPublicKey, rumor: &JsEventBuilder) -> Result<()> {
+    pub async fn gift_wrap(
+        &self,
+        receiver: &JsPublicKey,
+        rumor: &JsEventBuilder,
+        expiration: Option<JsTimestamp>,
+    ) -> Result<()> {
         self.inner
-            .gift_wrap(**receiver, rumor.deref().clone())
+            .gift_wrap(**receiver, rumor.deref().clone(), expiration.map(|t| *t))
             .await
             .map_err(into_err)
     }
 
     /// Send GiftWrapper Sealed Direct message
     #[wasm_bindgen(js_name = sendSealedMsg)]
-    pub async fn send_sealed_msg(&self, receiver: &JsPublicKey, message: &str) -> Result<()> {
+    pub async fn send_sealed_msg(
+        &self,
+        receiver: &JsPublicKey,
+        message: &str,
+        expiration: Option<JsTimestamp>,
+    ) -> Result<()> {
         self.inner
-            .send_sealed_msg(**receiver, message)
+            .send_sealed_msg(**receiver, message, expiration.map(|t| *t))
             .await
             .map_err(into_err)
     }

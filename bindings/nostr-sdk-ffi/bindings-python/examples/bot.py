@@ -43,7 +43,7 @@ class NotificationHandler(HandleNotification):
                 if rumor.kind() == 14:
                     msg = rumor.content()
                     print(f"Received new msg [sealed]: {msg}")
-                    client.send_sealed_msg(rumor.author(), f"Echo: {msg}")
+                    client.send_sealed_msg(rumor.author(), f"Echo: {msg}", None)
                 else:
                     print(f"{rumor.as_json()}")
             except Exception as e:

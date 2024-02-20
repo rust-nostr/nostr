@@ -1229,7 +1229,12 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap(&self, receiver: PublicKey, rumor: EventBuilder) -> Result<(), Error> {
+    pub async fn gift_wrap(
+        &self,
+        receiver: PublicKey,
+        rumor: EventBuilder,
+        expiration: Option<Timestamp>,
+    ) -> Result<(), Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
         let public_key: PublicKey = signer.public_key().await?;
@@ -1243,7 +1248,7 @@ impl Client {
         let seal: Event = self.sign_event_builder(seal).await?;
 
         // Compose gift wrap
-        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal)?;
+        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal, expiration)?;
 
         // Send event
         self.send_event(gift_wrap).await?;
@@ -1253,12 +1258,17 @@ impl Client {
 
     /// Send GiftWrapper Sealed Direct message
     #[cfg(feature = "nip59")]
-    pub async fn send_sealed_msg<S>(&self, receiver: PublicKey, message: S) -> Result<(), Error>
+    pub async fn send_sealed_msg<S>(
+        &self,
+        receiver: PublicKey,
+        message: S,
+        expiration: Option<Timestamp>,
+    ) -> Result<(), Error>
     where
         S: Into<String>,
     {
         let rumor: EventBuilder = EventBuilder::sealed_direct(receiver, message);
-        self.gift_wrap(receiver, rumor).await
+        self.gift_wrap(receiver, rumor, expiration).await
     }
 
     /// File metadata

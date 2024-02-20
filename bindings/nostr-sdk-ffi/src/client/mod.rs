@@ -11,7 +11,7 @@ use std::time::Duration;
 use async_utility::thread;
 use nostr_ffi::{
     ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
-    RelayMessage,
+    RelayMessage, Timestamp,
 };
 use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::pool::RelayPoolNotification as RelayPoolNotificationSdk;
@@ -326,18 +326,37 @@ impl Client {
     /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    pub fn gift_wrap(&self, receiver: Arc<PublicKey>, rumor: Arc<EventBuilder>) -> Result<()> {
+    pub fn gift_wrap(
+        &self,
+        receiver: Arc<PublicKey>,
+        rumor: Arc<EventBuilder>,
+        expiration: Option<Arc<Timestamp>>,
+    ) -> Result<()> {
         block_on(async move {
             Ok(self
                 .inner
-                .gift_wrap(**receiver, rumor.as_ref().deref().clone())
+                .gift_wrap(
+                    **receiver,
+                    rumor.as_ref().deref().clone(),
+                    expiration.map(|t| **t),
+                )
                 .await?)
         })
     }
 
     /// Send GiftWrapper Sealed Direct message
-    pub fn send_sealed_msg(&self, receiver: Arc<PublicKey>, message: String) -> Result<()> {
-        block_on(async move { Ok(self.inner.send_sealed_msg(**receiver, message).await?) })
+    pub fn send_sealed_msg(
+        &self,
+        receiver: Arc<PublicKey>,
+        message: String,
+        expiration: Option<Arc<Timestamp>>,
+    ) -> Result<()> {
+        block_on(async move {
+            Ok(self
+                .inner
+                .send_sealed_msg(**receiver, message, expiration.map(|t| **t))
+                .await?)
+        })
     }
 
     pub fn file_metadata(
