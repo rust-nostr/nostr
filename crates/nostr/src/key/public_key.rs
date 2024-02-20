@@ -111,6 +111,6 @@ impl<'de> Deserialize<'de> for PublicKey {
         D: Deserializer<'de>,
     {
         let hex: String = String::deserialize(deserializer)?;
-        Self::from_hex(hex).map_err(serde::de::Error::custom)
+        Self::parse(hex).map_err(serde::de::Error::custom)
     }
 }
