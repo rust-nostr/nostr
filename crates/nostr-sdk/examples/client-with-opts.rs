@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
                         tracing::error!("Impossible to decrypt direct message");
                     }
                 } else if event.kind() == Kind::GiftWrap {
-                    let rumor = nip59::extract_rumor(&my_keys, &event)?;
+                    let UnwrappedGift { rumor, .. } = nip59::extract_rumor(&my_keys, &event)?;
                     println!("Rumor: {}", rumor.as_json());
                 } else {
                     println!("{:?}", event);

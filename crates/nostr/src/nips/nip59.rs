@@ -8,11 +8,15 @@
 use alloc::string::String;
 use core::fmt;
 
+use bitcoin::secp256k1::{Secp256k1, Verification};
+
 use super::nip44;
 use crate::event::unsigned::{self, UnsignedEvent};
 use crate::event::{self, Event};
 use crate::key::{self, Keys, SecretKey};
-use crate::{JsonUtil, Kind};
+#[cfg(feature = "std")]
+use crate::SECP256K1;
+use crate::{JsonUtil, Kind, PublicKey};
 
 /// NIP59 error
 #[derive(Debug, PartialEq, Eq)]
@@ -68,23 +72,61 @@ impl From<nip44::Error> for Error {
     }
 }
 
-/// Extract `rumor` from Gift Wrap event
-pub fn extract_rumor(receiver_keys: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Error> {
-    // Check event kind
-    if gift_wrap.kind != Kind::GiftWrap {
-        return Err(Error::NotGiftWrap);
+/// Unwrapped Gift Wrap (NIP59)
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct UnwrappedGift {
+    /// The public key of the sender included in the `seal`
+    pub sender: PublicKey,
+    /// The rumor
+    pub rumor: UnsignedEvent,
+}
+
+impl UnwrappedGift {
+    /// Unwrap Gift Wrap event
+    ///
+    /// Internally verify the `seal` event
+    #[cfg(feature = "std")]
+    pub fn from_gift_wrap(receiver_keys: &Keys, gift_wrap: &Event) -> Result<Self, Error> {
+        Self::from_gift_wrap_with_ctx(&SECP256K1, receiver_keys, gift_wrap)
     }
 
-    let secret_key: &SecretKey = receiver_keys.secret_key()?;
+    /// Unwrap Gift Wrap event
+    ///
+    /// Internally verify the `seal` event
+    pub fn from_gift_wrap_with_ctx<C>(
+        secp: &Secp256k1<C>,
+        receiver_keys: &Keys,
+        gift_wrap: &Event,
+    ) -> Result<Self, Error>
+    where
+        C: Verification,
+    {
+        // Check event kind
+        if gift_wrap.kind != Kind::GiftWrap {
+            return Err(Error::NotGiftWrap);
+        }
 
-    // Decrypt seal
-    let seal: String = nip44::decrypt(secret_key, gift_wrap.author_ref(), gift_wrap.content())?;
-    let seal: Event = Event::from_json(seal)?;
+        let secret_key: &SecretKey = receiver_keys.secret_key()?;
 
-    // Decrypt rumor
-    let rumor: String = nip44::decrypt(secret_key, seal.author_ref(), seal.content())?;
+        // Decrypt and verify seal
+        let seal: String = nip44::decrypt(secret_key, gift_wrap.author_ref(), gift_wrap.content())?;
+        let seal: Event = Event::from_json(seal)?;
+        seal.verify_with_ctx(secp)?;
 
-    Ok(UnsignedEvent::from_json(rumor)?)
+        // Decrypt rumor
+        let rumor: String = nip44::decrypt(secret_key, seal.author_ref(), seal.content())?;
+
+        Ok(UnwrappedGift {
+            sender: seal.author(),
+            rumor: UnsignedEvent::from_json(rumor)?,
+        })
+    }
+}
+
+/// Extract `rumor` from Gift Wrap event
+#[cfg(feature = "std")]
+pub fn extract_rumor(receiver_keys: &Keys, gift_wrap: &Event) -> Result<UnwrappedGift, Error> {
+    UnwrappedGift::from_gift_wrap(receiver_keys, gift_wrap)
 }
 
 #[cfg(feature = "std")]
@@ -112,7 +154,13 @@ mod tests {
         let event: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor.clone())
                 .unwrap();
-        assert_eq!(extract_rumor(&receiver_keys, &event).unwrap(), rumor);
+        assert_eq!(
+            extract_rumor(&receiver_keys, &event).unwrap(),
+            UnwrappedGift {
+                sender: sender_keys.public_key(),
+                rumor,
+            }
+        );
         assert!(extract_rumor(&sender_keys, &event).is_err());
 
         let event: Event = EventBuilder::text_note("", [])
