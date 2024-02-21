@@ -99,15 +99,26 @@ pub fn nip57_private_zap_request(data: Arc<ZapRequestData>, keys: Arc<Keys>) -> 
 }
 
 #[uniffi::export]
-pub fn nip57_decrypt_private_zap_message(
+pub fn decrypt_sent_private_zap_message(
     secret_key: Arc<SecretKey>,
     public_key: Arc<PublicKey>,
     private_zap: Arc<Event>,
 ) -> Result<Event> {
-    Ok(nip57::decrypt_private_zap_message(
+    Ok(nip57::decrypt_sent_private_zap_message(
         secret_key.deref(),
         public_key.deref(),
         private_zap.deref(),
     )?
     .into())
+}
+
+#[uniffi::export]
+pub fn decrypt_received_private_zap_message(
+    secret_key: Arc<SecretKey>,
+    private_zap: Arc<Event>,
+) -> Result<Event> {
+    Ok(
+        nip57::decrypt_received_private_zap_message(secret_key.deref(), private_zap.deref())?
+            .into(),
+    )
 }
