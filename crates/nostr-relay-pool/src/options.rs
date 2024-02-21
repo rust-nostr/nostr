@@ -38,7 +38,7 @@ impl Default for RelayOptions {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
             proxy: None,
-            flags: AtomicRelayServiceFlags::new(RelayServiceFlags::READ | RelayServiceFlags::WRITE),
+            flags: AtomicRelayServiceFlags::default(),
             pow: Arc::new(AtomicU8::new(0)),
             reconnect: Arc::new(AtomicBool::new(true)),
             retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),

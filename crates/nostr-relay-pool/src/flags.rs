@@ -87,6 +87,12 @@ pub struct AtomicRelayServiceFlags {
     flags: Arc<AtomicU64>,
 }
 
+impl Default for AtomicRelayServiceFlags {
+    fn default() -> Self {
+        Self::new(RelayServiceFlags::default())
+    }
+}
+
 impl AtomicRelayServiceFlags {
     /// Compose new from [RelayServiceFlags]
     pub fn new(flags: RelayServiceFlags) -> Self {
