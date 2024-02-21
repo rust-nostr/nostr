@@ -350,16 +350,32 @@ fn extract_anon_tag_message(event: &Event) -> Result<&String, Error> {
     Err(Error::PrivateZapMessageNotFound)
 }
 
-/// Decrypt **private** zap message
-pub fn decrypt_private_zap_message(
+/// Decrypt **private** zap message that was sent by the owner of the secret key
+pub fn decrypt_sent_private_zap_message(
     secret_key: &SecretKey,
     public_key: &PublicKey,
     private_zap_event: &Event,
 ) -> Result<Event, Error> {
+    // Re-create our ephemeral encryption key
     let secret_key: SecretKey =
         create_encryption_key(secret_key, public_key, private_zap_event.created_at())?;
     let key: [u8; 32] = util::generate_shared_key(&secret_key, public_key);
 
+    // decrypt like normal
+    decrypt_private_zap_message(key, private_zap_event)
+}
+
+/// Decrypt **private** zap message that was received by the owner of the secret key
+pub fn decrypt_received_private_zap_message(
+    secret_key: &SecretKey,
+    private_zap_event: &Event,
+) -> Result<Event, Error> {
+    let key: [u8; 32] = util::generate_shared_key(secret_key, &private_zap_event.pubkey);
+
+    decrypt_private_zap_message(key, private_zap_event)
+}
+
+fn decrypt_private_zap_message(key: [u8; 32], private_zap_event: &Event) -> Result<Event, Error> {
     let msg: &String = extract_anon_tag_message(private_zap_event)?;
     let mut splitted = msg.split('_');
 
@@ -393,33 +409,30 @@ pub fn decrypt_private_zap_message(
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
-    use core::str::FromStr;
-
     use super::*;
-    use crate::FromBech32;
 
     #[test]
     fn test_encrypt_decrypt_private_zap_message() {
-        let secret_key =
-            SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
-                .unwrap();
-        let alice_keys = Keys::new(secret_key);
+        let alice_keys = Keys::generate();
+        let bob_keys = Keys::generate();
 
-        let public_key = PublicKey::from_bech32(
-            "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
-        )
-        .unwrap();
         let relays = [UncheckedUrl::from("wss://relay.damus.io")];
         let msg = "Private Zap message!";
-        let data = ZapRequestData::new(public_key, relays).message(msg);
+        let data = ZapRequestData::new(bob_keys.public_key(), relays).message(msg);
         let private_zap = private_zap_request(data, &alice_keys).unwrap();
 
-        let private_zap_msg = decrypt_private_zap_message(
+        let private_zap_msg = decrypt_sent_private_zap_message(
             alice_keys.secret_key().unwrap(),
-            &public_key,
+            &bob_keys.public_key(),
             &private_zap,
         )
         .unwrap();
+
+        assert_eq!(msg, private_zap_msg.content());
+
+        let private_zap_msg =
+            decrypt_received_private_zap_message(bob_keys.secret_key().unwrap(), &private_zap)
+                .unwrap();
 
         assert_eq!(msg, private_zap_msg.content())
     }
