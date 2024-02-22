@@ -780,25 +780,20 @@ impl Relay {
 
                         if let RawRelayMessage::Event { event, .. } = &msg {
                             // Check event size
-                            let size: usize = event.to_string().as_bytes().len();
+                            let size: usize = event.as_json().as_bytes().len();
                             let max_size: usize = relay.limits.events.max_size as usize;
                             if size > max_size {
                                 return Err(Error::EventTooLarge { size, max_size });
                             }
 
                             // Check tags limit
-                            if let Some(tags) = event.get("tags") {
-                                if let Some(tags) = tags.as_array() {
-                                    let size: usize = tags.len();
-                                    let max_num_tags: usize =
-                                        relay.limits.events.max_num_tags as usize;
-                                    if size > max_num_tags {
-                                        return Err(Error::TooManyTags {
-                                            size,
-                                            max_size: max_num_tags,
-                                        });
-                                    }
-                                }
+                            let size: usize = event.tags.len();
+                            let max_num_tags: usize = relay.limits.events.max_num_tags as usize;
+                            if size > max_num_tags {
+                                return Err(Error::TooManyTags {
+                                    size,
+                                    max_size: max_num_tags,
+                                });
                             }
                         }
 
@@ -943,7 +938,7 @@ impl Relay {
                 event,
             } => {
                 // Deserialize partial event (id, pubkey and sig)
-                let partial_event: PartialEvent = PartialEvent::from_json(event.to_string())?;
+                let partial_event: PartialEvent = PartialEvent::from_raw(&event)?;
 
                 // Check min POW
                 let difficulty: u8 = self.opts.get_pow_difficulty();
@@ -966,8 +961,7 @@ impl Relay {
                 }
 
                 // Deserialize missing event fields
-                let missing: MissingPartialEvent =
-                    MissingPartialEvent::from_json(event.to_string())?;
+                let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event);
 
                 // Check if event is replaceable and has coordinate
                 if missing.kind.is_replaceable() || missing.kind.is_parameterized_replaceable() {

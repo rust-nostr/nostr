@@ -26,6 +26,8 @@ pub enum MessageHandleError {
     EventId(event::id::Error),
     /// Event error
     Event(event::Error),
+    /// Raw event error
+    RawEvent(event::raw::Error),
     /// Empty message
     EmptyMsg,
 }
@@ -40,6 +42,7 @@ impl fmt::Display for MessageHandleError {
             Self::Json(e) => write!(f, "Json deserialization failed: {e}"),
             Self::EventId(e) => write!(f, "EventId: {e}"),
             Self::Event(e) => write!(f, "Event: {e}"),
+            Self::RawEvent(e) => write!(f, "Raw event: {e}"),
             Self::EmptyMsg => write!(f, "Received empty message"),
         }
     }
@@ -60,5 +63,11 @@ impl From<event::id::Error> for MessageHandleError {
 impl From<event::Error> for MessageHandleError {
     fn from(e: event::Error) -> Self {
         Self::Event(e)
+    }
+}
+
+impl From<event::raw::Error> for MessageHandleError {
+    fn from(e: event::raw::Error) -> Self {
+        Self::RawEvent(e)
     }
 }

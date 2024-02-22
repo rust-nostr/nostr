@@ -11,6 +11,7 @@ use core::fmt;
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
 
+use super::raw::{self, RawEvent};
 use super::tag;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
@@ -23,6 +24,8 @@ pub enum Error {
     Json(serde_json::Error),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
+    /// Raw event error
+    RawEvent(raw::Error),
     /// Tag parse
     Tag(tag::Error),
     /// Invalid signature
@@ -37,6 +40,7 @@ impl fmt::Display for Error {
         match self {
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::RawEvent(e) => write!(f, "Raw event: {e}"),
             Self::Tag(e) => write!(f, "Tag: {e}"),
             Self::InvalidSignature => write!(f, "Invalid signature"),
         }
@@ -52,6 +56,12 @@ impl From<serde_json::Error> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+impl From<raw::Error> for Error {
+    fn from(e: raw::Error) -> Self {
+        Self::RawEvent(e)
     }
 }
 
@@ -73,6 +83,11 @@ pub struct PartialEvent {
 }
 
 impl PartialEvent {
+    /// Compose from [RawEvent]
+    pub fn from_raw(raw: &RawEvent) -> Result<Self, Error> {
+        Ok(raw.try_into()?)
+    }
+
     /// Verify [`Signature`]
     #[cfg(feature = "std")]
     pub fn verify_signature(&self) -> Result<(), Error> {
@@ -127,6 +142,16 @@ pub struct MissingPartialEvent {
 }
 
 impl MissingPartialEvent {
+    /// Compose from [RawEvent]
+    pub fn from_raw(raw: RawEvent) -> Self {
+        Self {
+            created_at: Timestamp::from(raw.created_at),
+            kind: Kind::from(raw.kind),
+            tags: raw.tags,
+            content: raw.content,
+        }
+    }
+
     /// Extract identifier (`d` tag), if exists.
     pub fn identifier(&self) -> Option<&str> {
         for tag in self.tags.iter() {

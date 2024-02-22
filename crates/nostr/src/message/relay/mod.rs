@@ -301,7 +301,7 @@ impl TryFrom<RawRelayMessage> for RelayMessage {
                 event,
             } => Ok(Self::Event {
                 subscription_id: SubscriptionId::new(subscription_id),
-                event: Box::new(Event::from_value(event)?),
+                event: Box::new(event.try_into()?),
             }),
             RawRelayMessage::Ok {
                 event_id,

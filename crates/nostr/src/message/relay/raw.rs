@@ -8,6 +8,7 @@ use alloc::string::String;
 
 use serde_json::Value;
 
+use crate::event::raw::RawEvent;
 use crate::message::MessageHandleError;
 
 /// Raw Relay Message
@@ -18,7 +19,7 @@ pub enum RawRelayMessage {
         /// Subscription ID
         subscription_id: String,
         /// Event JSON
-        event: Value,
+        event: RawEvent,
     },
     /// `["OK", <event_id>, <true|false>, <message>]` (NIP01)
     Ok {
@@ -115,7 +116,7 @@ impl RawRelayMessage {
             if v_len >= 3 {
                 return Ok(Self::Event {
                     subscription_id: serde_json::from_value(v[1].clone())?,
-                    event: v[2].clone(),
+                    event: serde_json::from_value(v[2].clone())?,
                 });
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
