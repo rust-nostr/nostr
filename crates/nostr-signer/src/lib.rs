@@ -232,15 +232,8 @@ impl NostrSigner {
     }
 
     /// NIP44 encryption with [NostrSigner]
-    ///
-    /// Note: `Version` is ignored for NIP07!
     #[cfg(feature = "nip44")]
-    pub async fn nip44_encrypt<T>(
-        &self,
-        public_key: PublicKey,
-        content: T,
-        version: nip44::Version,
-    ) -> Result<String, Error>
+    pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
     where
         T: AsRef<str>,
     {
@@ -250,7 +243,7 @@ impl NostrSigner {
                 keys.secret_key()?,
                 &public_key,
                 content,
-                version,
+                nip44::Version::default(),
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip44_encrypt(public_key, content).await?),

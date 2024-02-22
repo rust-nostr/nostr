@@ -1241,9 +1241,7 @@ impl Client {
         let rumor = rumor.to_unsigned_event(public_key);
 
         // Compose seal
-        let content: String = signer
-            .nip44_encrypt(receiver, rumor.as_json(), nip44::Version::default())
-            .await?;
+        let content: String = signer.nip44_encrypt(receiver, rumor.as_json()).await?;
         let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, []);
         let seal: Event = self.sign_event_builder(seal).await?;
 

@@ -8,7 +8,6 @@ use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventBuilder, JsUnsignedEvent};
 use nostr_js::key::{JsKeys, JsPublicKey};
 use nostr_js::nips::nip07::JsNip07Signer;
-use nostr_js::nips::nip44::JsNIP44Version;
 use nostr_sdk::NostrSigner;
 use wasm_bindgen::prelude::*;
 
@@ -105,14 +104,9 @@ impl JsNostrSigner {
     }
 
     #[wasm_bindgen(js_name = nip44Encrypt)]
-    pub async fn nip44_encrypt(
-        &self,
-        public_key: &JsPublicKey,
-        content: String,
-        version: JsNIP44Version,
-    ) -> Result<String> {
+    pub async fn nip44_encrypt(&self, public_key: &JsPublicKey, content: String) -> Result<String> {
         self.inner
-            .nip44_encrypt(**public_key, content, version.into())
+            .nip44_encrypt(**public_key, content)
             .await
             .map_err(into_err)
     }

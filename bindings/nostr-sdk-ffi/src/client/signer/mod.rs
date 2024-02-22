@@ -5,7 +5,6 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_ffi::nips::nip44::Nip44Version;
 use nostr_ffi::{Event, EventBuilder, Keys, PublicKey, UnsignedEvent};
 use nostr_sdk::{block_on, signer};
 use uniffi::Object;
@@ -94,18 +93,8 @@ impl NostrSigner {
         })
     }
 
-    pub fn nip44_encrypt(
-        &self,
-        public_key: Arc<PublicKey>,
-        content: String,
-        version: Nip44Version,
-    ) -> Result<String> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .nip44_encrypt(**public_key, content, version.into())
-                .await?)
-        })
+    pub fn nip44_encrypt(&self, public_key: Arc<PublicKey>, content: String) -> Result<String> {
+        block_on(async move { Ok(self.inner.nip44_encrypt(**public_key, content).await?) })
     }
 
     pub fn nip44_decrypt(&self, public_key: Arc<PublicKey>, content: String) -> Result<String> {
