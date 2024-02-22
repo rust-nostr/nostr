@@ -347,20 +347,22 @@ impl IntoGenericTagValue for &str {
 }
 
 /// Subscription filters
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/01.md>
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Filter {
     /// List of [`EventId`]
-    #[serde(skip_serializing_if = "AllocSet::is_empty")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub ids: AllocSet<EventId>,
+    pub ids: Option<AllocSet<EventId>>,
     /// List of [`PublicKey`]
-    #[serde(skip_serializing_if = "AllocSet::is_empty")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub authors: AllocSet<PublicKey>,
+    pub authors: Option<AllocSet<PublicKey>>,
     /// List of a kind numbers
-    #[serde(skip_serializing_if = "AllocSet::is_empty")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub kinds: AllocSet<Kind>,
+    pub kinds: Option<AllocSet<Kind>>,
     /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
@@ -396,89 +398,91 @@ impl Filter {
     }
 
     /// Add [`EventId`]
-    pub fn id(mut self, id: EventId) -> Self {
-        self.ids.insert(id);
-        self
+    #[inline]
+    pub fn id(self, id: EventId) -> Self {
+        self.ids([id])
     }
 
     /// Add event ids or prefixes
+    #[inline]
     pub fn ids<I>(mut self, ids: I) -> Self
     where
         I: IntoIterator<Item = EventId>,
     {
-        self.ids.extend(ids);
+        self.ids = extend_or_collect(self.ids, ids);
         self
     }
 
     /// Remove event ids
+    #[inline]
     pub fn remove_ids<I>(mut self, ids: I) -> Self
     where
         I: IntoIterator<Item = EventId>,
     {
-        for id in ids.into_iter() {
-            self.ids.remove(&id);
-        }
+        self.ids = remove_or_none(self.ids, ids);
         self
     }
 
     /// Add author
-    pub fn author(mut self, author: PublicKey) -> Self {
-        self.authors.insert(author);
-        self
+    #[inline]
+    pub fn author(self, author: PublicKey) -> Self {
+        self.authors([author])
     }
 
     /// Add authors
+    #[inline]
     pub fn authors<I>(mut self, authors: I) -> Self
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        self.authors.extend(authors);
+        self.authors = extend_or_collect(self.authors, authors);
         self
     }
 
     /// Remove authors
+    #[inline]
     pub fn remove_authors<I>(mut self, authors: I) -> Self
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        for author in authors.into_iter() {
-            self.authors.remove(&author);
-        }
+        self.authors = remove_or_none(self.authors, authors);
         self
     }
 
     /// Add kind
-    pub fn kind(mut self, kind: Kind) -> Self {
-        self.kinds.insert(kind);
-        self
+    #[inline]
+    pub fn kind(self, kind: Kind) -> Self {
+        self.kinds([kind])
     }
 
     /// Add kinds
+    #[inline]
     pub fn kinds<I>(mut self, kinds: I) -> Self
     where
         I: IntoIterator<Item = Kind>,
     {
-        self.kinds.extend(kinds);
+        self.kinds = extend_or_collect(self.kinds, kinds);
         self
     }
 
     /// Remove kinds
+    #[inline]
     pub fn remove_kinds<I>(mut self, kinds: I) -> Self
     where
         I: IntoIterator<Item = Kind>,
     {
-        for kind in kinds.into_iter() {
-            self.kinds.remove(&kind);
-        }
+        self.kinds = remove_or_none(self.kinds, kinds);
         self
     }
 
     /// Add event
+    #[inline]
     pub fn event(self, id: EventId) -> Self {
         self.custom_tag(SingleLetterTag::lowercase(Alphabet::E), [id])
     }
 
     /// Add events
+    #[inline]
     pub fn events<I>(self, events: I) -> Self
     where
         I: IntoIterator<Item = EventId>,
@@ -487,6 +491,7 @@ impl Filter {
     }
 
     /// Remove events
+    #[inline]
     pub fn remove_events<I>(self, events: I) -> Self
     where
         I: IntoIterator<Item = EventId>,
@@ -495,11 +500,13 @@ impl Filter {
     }
 
     /// Add pubkey
+    #[inline]
     pub fn pubkey(self, pubkey: PublicKey) -> Self {
         self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), [pubkey])
     }
 
     /// Add pubkeys
+    #[inline]
     pub fn pubkeys<I>(self, pubkeys: I) -> Self
     where
         I: IntoIterator<Item = PublicKey>,
@@ -508,6 +515,7 @@ impl Filter {
     }
 
     /// Remove pubkeys
+    #[inline]
     pub fn remove_pubkeys<I>(self, pubkeys: I) -> Self
     where
         I: IntoIterator<Item = PublicKey>,
@@ -518,6 +526,7 @@ impl Filter {
     /// Add hashtag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    #[inline]
     pub fn hashtag<S>(self, hashtag: S) -> Self
     where
         S: Into<String>,
@@ -528,6 +537,7 @@ impl Filter {
     /// Add hashtags
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    #[inline]
     pub fn hashtags<I, S>(self, hashtags: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -540,6 +550,7 @@ impl Filter {
     }
 
     /// Remove hashtags
+    #[inline]
     pub fn remove_hashtags<I, S>(self, hashtags: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -554,6 +565,7 @@ impl Filter {
     /// Add reference
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    #[inline]
     pub fn reference<S>(self, reference: S) -> Self
     where
         S: Into<String>,
@@ -564,6 +576,7 @@ impl Filter {
     /// Add references
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    #[inline]
     pub fn references<I, S>(self, references: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -576,6 +589,7 @@ impl Filter {
     }
 
     /// Remove references
+    #[inline]
     pub fn remove_references<I, S>(self, references: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -590,6 +604,7 @@ impl Filter {
     /// Add identifier
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/33.md>
+    #[inline]
     pub fn identifier<S>(self, identifier: S) -> Self
     where
         S: Into<String>,
@@ -600,6 +615,7 @@ impl Filter {
     /// Add identifiers
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/33.md>
+    #[inline]
     pub fn identifiers<I, S>(self, identifiers: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -612,6 +628,7 @@ impl Filter {
     }
 
     /// Remove identifiers
+    #[inline]
     pub fn remove_identifiers<I, S>(self, identifiers: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -624,70 +641,64 @@ impl Filter {
     }
 
     /// Add search field
-    pub fn search<S>(self, value: S) -> Self
+    #[inline]
+    pub fn search<S>(mut self, value: S) -> Self
     where
         S: Into<String>,
     {
-        Self {
-            search: Some(value.into()),
-            ..self
-        }
+        self.search = Some(value.into());
+        self
     }
 
     /// Remove search
-    pub fn remove_search(self) -> Self {
-        Self {
-            search: None,
-            ..self
-        }
+    #[inline]
+    pub fn remove_search(mut self) -> Self {
+        self.search = None;
+        self
     }
 
     /// Add since unix timestamp
-    pub fn since(self, since: Timestamp) -> Self {
-        Self {
-            since: Some(since),
-            ..self
-        }
+    #[inline]
+    pub fn since(mut self, since: Timestamp) -> Self {
+        self.since = Some(since);
+        self
     }
 
     /// Remove since
-    pub fn remove_since(self) -> Self {
-        Self {
-            since: None,
-            ..self
-        }
+    #[inline]
+    pub fn remove_since(mut self) -> Self {
+        self.since = None;
+        self
     }
 
     /// Add until unix timestamp
-    pub fn until(self, until: Timestamp) -> Self {
-        Self {
-            until: Some(until),
-            ..self
-        }
+    #[inline]
+    pub fn until(mut self, until: Timestamp) -> Self {
+        self.until = Some(until);
+        self
     }
 
     /// Remove until
-    pub fn remove_until(self) -> Self {
-        Self {
-            until: None,
-            ..self
-        }
+    #[inline]
+    pub fn remove_until(mut self) -> Self {
+        self.until = None;
+        self
     }
 
     /// Add limit
     ///
     /// Maximum number of events to be returned in the initial query
+    #[inline]
     pub fn limit(mut self, limit: usize) -> Self {
         self.limit = Some(limit);
         self
     }
 
     /// Remove limit
-    pub fn remove_limit(self) -> Self {
-        Self {
-            limit: None,
-            ..self
-        }
+    #[inline]
+    pub fn remove_limit(mut self) -> Self {
+        self.limit = None;
+        self
     }
 
     /// Add custom tag
@@ -715,17 +726,25 @@ impl Filter {
         I: IntoIterator<Item = T>,
         T: IntoGenericTagValue,
     {
-        let values: AllocSet<GenericTagValue> = values
-            .into_iter()
-            .map(|v| v.into_generic_tag_value())
-            .collect();
-        self.generic_tags.entry(tag).and_modify(|list| {
-            list.retain(|value| !values.contains(value));
+        let values = values.into_iter().map(|v| v.into_generic_tag_value());
+        self.generic_tags.entry(tag).and_modify(|set| {
+            for item in values {
+                set.remove(&item);
+            }
         });
+
+        // Remove tag if empty
+        if let Some(set) = self.generic_tags.get(&tag) {
+            if set.is_empty() {
+                self.generic_tags.remove(&tag);
+            }
+        }
+
         self
     }
 
     /// Check if [`Filter`] is empty
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self == &Filter::default()
     }
@@ -798,6 +817,39 @@ where
     deserializer.deserialize_map(GenericTagsVisitor)
 }
 
+fn extend_or_collect<T, I>(mut set: Option<AllocSet<T>>, iter: I) -> Option<AllocSet<T>>
+where
+    I: IntoIterator<Item = T>,
+    T: Eq + Ord + core::hash::Hash,
+{
+    match set.as_mut() {
+        Some(s) => {
+            s.extend(iter);
+        }
+        None => set = Some(iter.into_iter().collect()),
+    };
+    set
+}
+
+/// Remove values from set
+/// If after remove the set is empty, will be returned `None`
+fn remove_or_none<T, I>(mut set: Option<AllocSet<T>>, iter: I) -> Option<AllocSet<T>>
+where
+    I: IntoIterator<Item = T>,
+    T: Eq + Ord + core::hash::Hash,
+{
+    if let Some(s) = set.as_mut() {
+        for item in iter.into_iter() {
+            s.remove(&item);
+        }
+
+        if s.is_empty() {
+            set = None;
+        }
+    }
+    set
+}
+
 #[cfg(test)]
 mod test {
     use core::str::FromStr;
@@ -828,17 +880,41 @@ mod test {
     }
 
     #[test]
-    fn test_remove_ids() {
-        let event_id =
-            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
-                .unwrap();
-        let filter = Filter::new().id(EventId::all_zeros()).id(event_id);
-        let filter = filter.remove_ids([EventId::all_zeros()]);
-        assert_eq!(filter, Filter::new().id(event_id));
+    fn test_empty_filter_serialization() {
+        let filter = Filter::new().authors([]);
+        assert_eq!(filter.as_json(), r#"{"authors":[]}"#);
+
+        let filter = Filter::new().pubkeys([]);
+        assert_eq!(filter.as_json(), r##"{"#p":[]}"##);
     }
 
     #[test]
-    fn test_remove_custom_tag() {
+    fn test_remove() {
+        let event_id =
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap();
+
+        // Test remove ids
+        let filter = Filter::new().id(EventId::all_zeros()).id(event_id);
+        let filter = filter.remove_ids([EventId::all_zeros()]);
+        assert_eq!(filter, Filter::new().id(event_id));
+
+        // Test remove #e tag
+        let filter = Filter::new().events([EventId::all_zeros(), event_id]);
+        let filter = filter.remove_events([EventId::all_zeros()]);
+        assert_eq!(filter, Filter::new().event(event_id));
+        let filter = filter.remove_events([event_id]);
+        assert!(filter.is_empty());
+
+        // Test remove #d tag
+        let mut filter = Filter::new().identifier("myidentifier");
+        filter = filter.custom_tag(SingleLetterTag::lowercase(Alphabet::D), ["mysecondid"]);
+        filter = filter.identifiers(["test", "test2"]);
+        filter = filter.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::D), ["test2"]);
+        filter = filter.remove_identifiers(["mysecondid"]);
+        assert_eq!(filter, Filter::new().identifiers(["myidentifier", "test"]));
+
+        // Test remove custom tag
         let filter =
             Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::C), ["test", "test2"]);
         let filter = filter.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::C), ["test2"]);
@@ -846,16 +922,6 @@ mod test {
             filter,
             Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::C), ["test"])
         );
-    }
-
-    #[test]
-    fn test_add_remove_event_tag() {
-        let mut filter = Filter::new().identifier("myidentifier");
-        filter = filter.custom_tag(SingleLetterTag::lowercase(Alphabet::D), ["mysecondid"]);
-        filter = filter.identifiers(["test", "test2"]);
-        filter = filter.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::D), ["test2"]);
-        filter = filter.remove_identifiers(["mysecondid"]);
-        assert_eq!(filter, Filter::new().identifiers(["myidentifier", "test"]));
     }
 
     #[test]

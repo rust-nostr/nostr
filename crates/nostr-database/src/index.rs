@@ -158,13 +158,14 @@ impl FilterIndex {
 impl From<Filter> for FilterIndex {
     fn from(value: Filter) -> Self {
         Self {
-            ids: value.ids,
+            ids: value.ids.unwrap_or_default(),
             authors: value
                 .authors
+                .unwrap_or_default()
                 .into_iter()
                 .map(PublicKeyPrefix::from)
                 .collect(),
-            kinds: value.kinds,
+            kinds: value.kinds.unwrap_or_default(),
             since: value.since,
             until: value.until,
             generic_tags: value.generic_tags,
@@ -332,12 +333,18 @@ enum QueryPattern {
 
 impl From<Filter> for QueryPattern {
     fn from(filter: Filter) -> Self {
-        let kinds_len = filter.kinds.len();
-        let first_kind = filter.kinds.iter().next().copied();
-        let authors_len = filter.authors.len();
-        let first_author = filter.authors.iter().next().copied();
-        let ids_len = filter.ids.len();
-        let generic_tags_len = filter.generic_tags.len();
+        let (kinds_len, first_kind): (usize, Option<Kind>) = filter
+            .kinds
+            .as_ref()
+            .map(|set| (set.len(), set.iter().next().copied()))
+            .unwrap_or_default();
+        let (authors_len, first_author): (usize, Option<PublicKey>) = filter
+            .authors
+            .as_ref()
+            .map(|set| (set.len(), set.iter().next().copied()))
+            .unwrap_or_default();
+        let ids_len: usize = filter.ids.as_ref().map(|set| set.len()).unwrap_or_default();
+        let generic_tags_len: usize = filter.generic_tags.len();
         let identifier = filter
             .generic_tags
             .get(&SingleLetterTag::lowercase(Alphabet::D))
