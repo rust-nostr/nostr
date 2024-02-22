@@ -110,7 +110,7 @@ impl From<crate::event::builder::Error> for Error {
 }
 
 /// NIP47 Response Error codes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ErrorCode {
     ///  The client is sending commands too fast.
     #[serde(rename = "RATE_LIMITED")]
@@ -180,7 +180,7 @@ impl FromStr for Method {
 }
 
 /// NIP47 Error message
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct NIP47Error {
     /// Error Code
     pub code: ErrorCode,
