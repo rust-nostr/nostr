@@ -15,9 +15,7 @@ async fn main() -> Result<()> {
 
     let client = Client::default();
     client.add_relay("wss://relay.damus.io").await?;
-    client.add_relay("wss://nostr.wine").await?;
     client.add_relay("wss://relay.rip").await?;
-    client.add_relay("wss://relay.nostr.info").await?;
 
     client.connect().await;
 
@@ -25,7 +23,7 @@ async fn main() -> Result<()> {
     let filter = Filter::new().author(public_key).kind(Kind::Metadata);
     let events = client
         .get_events_of(vec![filter], Some(Duration::from_secs(10)))
-        .await;
+        .await?;
     println!("{events:#?}");
 
     // Get events from specific relays
@@ -39,7 +37,7 @@ async fn main() -> Result<()> {
             vec![filter],
             Some(Duration::from_secs(10)),
         )
-        .await;
+        .await?;
     println!("{events:#?}");
 
     Ok(())
