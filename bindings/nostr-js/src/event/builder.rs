@@ -12,6 +12,7 @@ use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip15::{JsProductData, JsStallData};
+use crate::nips::nip53::JsLiveEvent;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
 use crate::nips::nip90::JsDataVendingMachineStatus;
@@ -220,6 +221,13 @@ impl JsEventBuilder {
         Ok(Self {
             builder: EventBuilder::auth(challenge, url),
         })
+    }
+
+    #[wasm_bindgen(js_name = liveEvent)]
+    pub fn live_event(live_event: JsLiveEvent) -> Self {
+        Self {
+            builder: EventBuilder::live_event(live_event.into()),
+        }
     }
 
     #[wasm_bindgen]

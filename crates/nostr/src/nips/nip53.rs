@@ -104,6 +104,7 @@ where
 }
 
 /// Live Event Host
+#[derive(Clone)]
 pub struct LiveEventHost {
     /// Host public key
     pub public_key: PublicKey,

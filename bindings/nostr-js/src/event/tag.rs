@@ -52,6 +52,7 @@ impl From<JsThumbnails> for (UncheckedUrl, Option<ImageDimensions>) {
     }
 }
 
+#[derive(Clone, Copy)]
 #[wasm_bindgen(js_name = ImageDimensions)]
 pub struct JsImageDimensions {
     pub width: u64,
