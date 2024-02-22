@@ -232,6 +232,8 @@ impl NostrSigner {
     }
 
     /// NIP44 encryption with [NostrSigner]
+    ///
+    /// Note: `Version` is ignored for NIP07!
     #[cfg(feature = "nip44")]
     pub async fn nip44_encrypt<T>(
         &self,
@@ -240,8 +242,9 @@ impl NostrSigner {
         version: nip44::Version,
     ) -> Result<String, Error>
     where
-        T: AsRef<[u8]>,
+        T: AsRef<str>,
     {
+        let content: &str = content.as_ref();
         match self {
             Self::Keys(keys) => Ok(nip44::encrypt(
                 keys.secret_key()?,
@@ -250,9 +253,7 @@ impl NostrSigner {
                 version,
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            Self::NIP07(..) => Err(Error::unsupported(
-                "NIP44 encryption not supported with NIP07 signer yet!",
-            )),
+            Self::NIP07(signer) => Ok(signer.nip44_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
             Self::NIP46(..) => Err(Error::unsupported(
                 "NIP44 encryption not supported with NIP46 signer yet!",
@@ -264,14 +265,13 @@ impl NostrSigner {
     #[cfg(feature = "nip44")]
     pub async fn nip44_decrypt<T>(&self, public_key: PublicKey, payload: T) -> Result<String, Error>
     where
-        T: AsRef<[u8]>,
+        T: AsRef<str>,
     {
+        let payload: &str = payload.as_ref();
         match self {
             Self::Keys(keys) => Ok(nip44::decrypt(keys.secret_key()?, &public_key, payload)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            Self::NIP07(..) => Err(Error::unsupported(
-                "NIP44 decryption not supported with NIP07 signer yet!",
-            )),
+            Self::NIP07(signer) => Ok(signer.nip44_decrypt(public_key, payload).await?),
             #[cfg(feature = "nip46")]
             Self::NIP46(..) => Err(Error::unsupported(
                 "NIP44 decryption not supported with NIP46 signer yet!",

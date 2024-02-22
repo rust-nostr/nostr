@@ -264,4 +264,56 @@ impl Nip07Signer {
             .as_string()
             .ok_or_else(|| Error::TypeMismatch(String::from("expected a string")))
     }
+
+    fn nip44_obj(&self) -> Result<Object, Error> {
+        let namespace: JsValue = Reflect::get(&self.nostr_obj, &JsValue::from_str("nip44"))
+            .map_err(|_| Error::NamespaceNotFound(String::from("nip44")))?;
+        namespace
+            .dyn_into()
+            .map_err(|_| Error::NamespaceNotFound(String::from("nip44")))
+    }
+
+    /// NIP44 encrypt
+    pub async fn nip44_encrypt<S>(
+        &self,
+        public_key: PublicKey,
+        plaintext: S,
+    ) -> Result<String, Error>
+    where
+        S: AsRef<str>,
+    {
+        let nip44_obj: Object = self.nip44_obj()?;
+        let func: Function = self.get_func(&nip44_obj, "encrypt")?;
+        let promise: Promise = Promise::resolve(&func.call2(
+            &nip44_obj,
+            &JsValue::from_str(&public_key.to_string()),
+            &JsValue::from_str(plaintext.as_ref()),
+        )?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        result
+            .as_string()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string")))
+    }
+
+    /// NIP44 decrypt
+    pub async fn nip44_decrypt<S>(
+        &self,
+        public_key: PublicKey,
+        ciphertext: S,
+    ) -> Result<String, Error>
+    where
+        S: AsRef<str>,
+    {
+        let nip44_obj: Object = self.nip44_obj()?;
+        let func: Function = self.get_func(&nip44_obj, "decrypt")?;
+        let promise: Promise = Promise::resolve(&func.call2(
+            &nip44_obj,
+            &JsValue::from_str(&public_key.to_string()),
+            &JsValue::from_str(ciphertext.as_ref()),
+        )?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        result
+            .as_string()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string")))
+    }
 }
