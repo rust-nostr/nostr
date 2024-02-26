@@ -222,20 +222,18 @@ impl Nip07Signer {
     }
 
     /// NIP04 encrypt
-    pub async fn nip04_encrypt<S>(
-        &self,
-        public_key: PublicKey,
-        plaintext: S,
-    ) -> Result<String, Error>
+    pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
     where
-        S: AsRef<str>,
+        T: AsRef<[u8]>,
     {
         let nip04_obj: Object = self.nip04_obj()?;
         let func: Function = self.get_func(&nip04_obj, "encrypt")?;
+        let content: &[u8] = content.as_ref();
+        let content: String = String::from_utf8_lossy(content).to_string();
         let promise: Promise = Promise::resolve(&func.call2(
             &nip04_obj,
             &JsValue::from_str(&public_key.to_string()),
-            &JsValue::from_str(plaintext.as_ref()),
+            &JsValue::from_str(&content),
         )?);
         let result: JsValue = JsFuture::from(promise).await?;
         result
@@ -256,7 +254,7 @@ impl Nip07Signer {
         let func: Function = self.get_func(&nip04_obj, "decrypt")?;
         let promise: Promise = Promise::resolve(&func.call2(
             &nip04_obj,
-            &JsValue::from_str(&public_key.to_string()),
+            &JsValue::from_str(&public_key.to_hex()),
             &JsValue::from_str(ciphertext.as_ref()),
         )?);
         let result: JsValue = JsFuture::from(promise).await?;
@@ -274,20 +272,18 @@ impl Nip07Signer {
     }
 
     /// NIP44 encrypt
-    pub async fn nip44_encrypt<S>(
-        &self,
-        public_key: PublicKey,
-        plaintext: S,
-    ) -> Result<String, Error>
+    pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
     where
-        S: AsRef<str>,
+        T: AsRef<[u8]>,
     {
         let nip44_obj: Object = self.nip44_obj()?;
         let func: Function = self.get_func(&nip44_obj, "encrypt")?;
+        let content: &[u8] = content.as_ref();
+        let content: String = String::from_utf8_lossy(content).to_string();
         let promise: Promise = Promise::resolve(&func.call2(
             &nip44_obj,
-            &JsValue::from_str(&public_key.to_string()),
-            &JsValue::from_str(plaintext.as_ref()),
+            &JsValue::from_str(&public_key.to_hex()),
+            &JsValue::from_str(&content),
         )?);
         let result: JsValue = JsFuture::from(promise).await?;
         result
@@ -296,20 +292,22 @@ impl Nip07Signer {
     }
 
     /// NIP44 decrypt
-    pub async fn nip44_decrypt<S>(
+    pub async fn nip44_decrypt<T>(
         &self,
         public_key: PublicKey,
-        ciphertext: S,
+        ciphertext: T,
     ) -> Result<String, Error>
     where
-        S: AsRef<str>,
+        T: AsRef<[u8]>,
     {
         let nip44_obj: Object = self.nip44_obj()?;
         let func: Function = self.get_func(&nip44_obj, "decrypt")?;
+        let ciphertext: &[u8] = ciphertext.as_ref();
+        let ciphertext: String = String::from_utf8_lossy(ciphertext).to_string();
         let promise: Promise = Promise::resolve(&func.call2(
             &nip44_obj,
             &JsValue::from_str(&public_key.to_string()),
-            &JsValue::from_str(ciphertext.as_ref()),
+            &JsValue::from_str(&ciphertext),
         )?);
         let result: JsValue = JsFuture::from(promise).await?;
         result

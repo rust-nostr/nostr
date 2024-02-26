@@ -68,26 +68,30 @@ impl From<secp256k1::Error> for Error {
 
 /// Encrypt
 #[cfg(feature = "std")]
-pub fn encrypt<T>(sk: &SecretKey, pk: &PublicKey, text: T) -> Result<String, Error>
+pub fn encrypt<T>(
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
+    content: T,
+) -> Result<String, Error>
 where
     T: AsRef<[u8]>,
 {
-    encrypt_with_rng(&mut rand::thread_rng(), sk, pk, text)
+    encrypt_with_rng(&mut rand::thread_rng(), secret_key, public_key, content)
 }
 
 /// Encrypt
 pub fn encrypt_with_rng<R, T>(
     rng: &mut R,
-    sk: &SecretKey,
-    pk: &PublicKey,
-    text: T,
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
+    content: T,
 ) -> Result<String, Error>
 where
     R: RngCore,
     T: AsRef<[u8]>,
 {
     // Generate key
-    let key: [u8; 32] = util::generate_shared_key(sk, pk);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
 
     // Generate iv
     let mut iv: [u8; 16] = [0u8; 16];
@@ -97,7 +101,7 @@ where
     let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
 
     // Encrypt
-    let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_ref());
+    let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(content.as_ref());
 
     // Encode with base64
     Ok(format!(
@@ -109,8 +113,8 @@ where
 
 /// Decrypts content to bytes
 pub fn decrypt_to_bytes<S>(
-    sk: &SecretKey,
-    pk: &PublicKey,
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
     encrypted_content: S,
 ) -> Result<Vec<u8>, Error>
 where
@@ -128,7 +132,7 @@ where
     let iv: Vec<u8> = general_purpose::STANDARD
         .decode(parsed_content[1])
         .map_err(|_| Error::Base64Decode)?;
-    let key: [u8; 32] = util::generate_shared_key(sk, pk);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
 
     let cipher = Aes256CbcDec::new(&key.into(), iv.as_slice().into());
     let result = cipher
@@ -139,11 +143,15 @@ where
 }
 
 /// Decrypts content to a UTF-8 string
-pub fn decrypt<S>(sk: &SecretKey, pk: &PublicKey, encrypted_content: S) -> Result<String, Error>
+pub fn decrypt<T>(
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
+    encrypted_content: T,
+) -> Result<String, Error>
 where
-    S: Into<String>,
+    T: Into<String>,
 {
-    let result = decrypt_to_bytes(sk, pk, encrypted_content)?;
+    let result = decrypt_to_bytes(secret_key, public_key, encrypted_content)?;
     String::from_utf8(result).map_err(|_| Error::Utf8Encode)
 }
 

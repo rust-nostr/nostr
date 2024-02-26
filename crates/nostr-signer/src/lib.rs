@@ -171,9 +171,9 @@ impl NostrSigner {
     #[cfg(feature = "nip04")]
     pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
     where
-        T: AsRef<str>,
+        T: AsRef<[u8]>,
     {
-        let content: &str = content.as_ref();
+        let content: &[u8] = content.as_ref();
         match self {
             Self::Keys(keys) => Ok(nip04::encrypt(keys.secret_key()?, &public_key, content)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
@@ -182,7 +182,7 @@ impl NostrSigner {
             Self::NIP46(signer) => {
                 let req = nostr::nips::nip46::Request::Nip04Encrypt {
                     public_key,
-                    text: content.to_string(),
+                    text: String::from_utf8_lossy(content).to_string(),
                 };
                 let res: nostr::nips::nip46::Response =
                     signer.send_req_to_signer(req, None).await?;
@@ -235,9 +235,9 @@ impl NostrSigner {
     #[cfg(feature = "nip44")]
     pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
     where
-        T: AsRef<str>,
+        T: AsRef<[u8]>,
     {
-        let content: &str = content.as_ref();
+        let content: &[u8] = content.as_ref();
         match self {
             Self::Keys(keys) => Ok(nip44::encrypt(
                 keys.secret_key()?,
@@ -258,9 +258,9 @@ impl NostrSigner {
     #[cfg(feature = "nip44")]
     pub async fn nip44_decrypt<T>(&self, public_key: PublicKey, payload: T) -> Result<String, Error>
     where
-        T: AsRef<str>,
+        T: AsRef<[u8]>,
     {
-        let payload: &str = payload.as_ref();
+        let payload: &[u8] = payload.as_ref();
         match self {
             Self::Keys(keys) => Ok(nip44::decrypt(keys.secret_key()?, &public_key, payload)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
