@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use core::ops::Deref;
+use std::str::FromStr;
 
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -228,6 +229,28 @@ impl JsEventBuilder {
         Self {
             builder: EventBuilder::live_event(live_event.into()),
         }
+    }
+
+    #[wasm_bindgen(js_name = liveEventMsg)]
+    pub fn live_event_msg(
+        live_event_id: String,
+        live_event_host: JsPublicKey,
+        content: String,
+        relay_url: Option<String>,
+        tags: Vec<JsTag>,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::live_event_msg(
+                live_event_id,
+                live_event_host.deref().to_owned(),
+                content,
+                match relay_url {
+                    Some(url) => Some(Url::from_str(&url).map_err(into_err)?),
+                    None => None,
+                },
+                tags.into_iter().map(|t| t.into()).collect(),
+            ),
+        })
     }
 
     #[wasm_bindgen]
