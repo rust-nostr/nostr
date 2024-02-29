@@ -9,7 +9,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::{PublicKey, Tag};
+use crate::{JsonUtil, PublicKey, Tag};
 
 /// Payload for creating or updating stall
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,10 +59,8 @@ impl From<StallData> for Vec<Tag> {
     }
 }
 
-impl From<StallData> for String {
-    fn from(value: StallData) -> Self {
-        serde_json::to_string(&value).unwrap_or_default()
-    }
+impl JsonUtil for StallData {
+    type Err = serde_json::Error;
 }
 
 /// Payload for creating or updating product
@@ -176,10 +174,8 @@ impl From<ProductData> for Vec<Tag> {
     }
 }
 
-impl From<ProductData> for String {
-    fn from(value: ProductData) -> Self {
-        serde_json::to_string(&value).unwrap_or_default()
-    }
+impl JsonUtil for ProductData {
+    type Err = serde_json::Error;
 }
 
 /// A shipping method as defined by the merchant
@@ -235,6 +231,10 @@ impl ShippingMethod {
     }
 }
 
+impl JsonUtil for ShippingMethod {
+    type Err = serde_json::Error;
+}
+
 /// Delivery cost for shipping method as defined by the merchant in the product
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShippingCost {
@@ -242,6 +242,10 @@ pub struct ShippingCost {
     pub id: String,
     /// Cost to use this shipping method
     pub cost: f64,
+}
+
+impl JsonUtil for ShippingCost {
+    type Err = serde_json::Error;
 }
 
 /// Payload for customer creating an order
@@ -253,17 +257,21 @@ pub struct CustomerOrder {
     #[serde(rename = "type")]
     pub r#type: usize,
     /// Name of the customer
-    name: Option<String>,
+    pub name: Option<String>,
     /// Address of the customer if product is physical
-    address: Option<String>,
+    pub address: Option<String>,
     /// Message to the merchant
-    message: Option<String>,
+    pub message: Option<String>,
     /// Contact details of the customer
-    contact: CustomerContact,
+    pub contact: CustomerContact,
     /// Items ordered
-    items: Vec<CustomerOrderItem>,
+    pub items: Vec<CustomerOrderItem>,
     /// Shipping method id
-    shipping_id: String,
+    pub shipping_id: String,
+}
+
+impl JsonUtil for CustomerOrder {
+    type Err = serde_json::Error;
 }
 
 /// Payload for a merchant to create a payment request
@@ -276,6 +284,10 @@ pub struct MerchantPaymentRequest {
     pub r#type: usize,
     /// Available payment options
     pub payment_options: Vec<PaymentOption>,
+}
+
+impl JsonUtil for MerchantPaymentRequest {
+    type Err = serde_json::Error;
 }
 
 /// Payload to notify a customer about the received payment and or shipping
@@ -292,6 +304,10 @@ pub struct MerchantVerifyPayment {
     pub shipped: bool,
 }
 
+impl JsonUtil for MerchantVerifyPayment {
+    type Err = serde_json::Error;
+}
+
 /// A customers contact options
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomerContact {
@@ -303,6 +319,10 @@ pub struct CustomerContact {
     pub email: Option<String>,
 }
 
+impl JsonUtil for CustomerContact {
+    type Err = serde_json::Error;
+}
+
 /// An item in the order
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomerOrderItem {
@@ -310,6 +330,10 @@ pub struct CustomerOrderItem {
     pub id: String,
     /// Quantity of the product
     pub quantity: u64,
+}
+
+impl JsonUtil for CustomerOrderItem {
+    type Err = serde_json::Error;
 }
 
 /// A payment option of an invoice
@@ -320,6 +344,10 @@ pub struct PaymentOption {
     pub r#type: String,
     /// Payment link (url, ln invoice, etc.)
     pub link: String,
+}
+
+impl JsonUtil for PaymentOption {
+    type Err = serde_json::Error;
 }
 
 #[cfg(test)]
@@ -341,7 +369,7 @@ mod tests {
             "tags contains stall id"
         );
 
-        let string: String = stall.into();
+        let string: String = stall.as_json();
         assert_eq!(
             string,
             r#"{"id":"123","name":"Test Stall","description":"Test Description","currency":"USD","shipping":[{"id":"123","name":"default","cost":5.0,"regions":[]}]}"#
@@ -379,7 +407,7 @@ mod tests {
             "tags contains category"
         );
 
-        let string: String = product.into();
+        let string: String = product.as_json();
         assert_eq!(
             string,
             r#"{"id":"123","stall_id":"456","name":"Test Product","images":["https://example.com/image.png"],"currency":"USD","price":10.0,"quantity":10,"specs":[["Size","M"]],"shipping":[{"id":"123","cost":5.0}]}"#

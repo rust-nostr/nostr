@@ -1047,7 +1047,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
     pub fn stall_data(data: StallData) -> Self {
         let tags: Vec<Tag> = data.clone().into();
-        Self::new(Kind::SetStall, data, tags)
+        Self::new(Kind::SetStall, data.as_json(), tags)
     }
 
     /// Set product data
@@ -1055,7 +1055,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
     pub fn product_data(data: ProductData) -> Self {
         let tags: Vec<Tag> = data.clone().into();
-        Self::new(Kind::SetProduct, data, tags)
+        Self::new(Kind::SetProduct, data.as_json(), tags)
     }
 
     /// Seal
