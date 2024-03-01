@@ -472,10 +472,10 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn stall_data(data: StallData) -> Self {
-        Self {
-            inner: nostr::EventBuilder::stall_data(data.into()),
-        }
+    pub fn stall_data(data: Arc<StallData>) -> Arc<Self> {
+        Arc::new(Self {
+            inner: nostr::EventBuilder::stall_data(data.as_ref().deref().clone()),
+        })
     }
 
     #[uniffi::constructor]
