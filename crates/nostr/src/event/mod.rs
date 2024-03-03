@@ -89,12 +89,26 @@ impl From<bitcoin::hashes::hex::Error> for Error {
 }
 
 /// [`Event`] struct
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Event {
     /// Event
     inner: EventIntermediate,
     /// JSON deserialization key order
     deser_order: Vec<String>,
+}
+
+impl fmt::Debug for Event {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Event")
+            .field("id", &self.inner.id)
+            .field("pubkey", &self.inner.pubkey)
+            .field("created_at", &self.inner.created_at)
+            .field("kind", &self.inner.kind)
+            .field("tags", &self.inner.tags)
+            .field("content", &self.inner.content)
+            .field("sig", &self.inner.sig)
+            .finish()
+    }
 }
 
 impl PartialEq for Event {
