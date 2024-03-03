@@ -21,7 +21,7 @@ pub use self::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 pub use self::limits::Limits;
 pub use self::options::{
     FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelayPoolOptions,
-    RelaySendOptions,
+    RelaySendOptions, RequestAutoCloseOptions, RequestOptions,
 };
 pub use self::pool::{RelayPool, RelayPoolNotification};
 pub use self::relay::{ActiveSubscription, InternalSubscriptionId, Relay, RelayStatus};

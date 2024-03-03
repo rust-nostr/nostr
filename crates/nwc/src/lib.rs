@@ -23,7 +23,10 @@ use nostr::nips::nip47::{
     PayInvoiceResponseResult, PayKeysendRequestParams, PayKeysendResponseResult, Request, Response,
 };
 use nostr::{Filter, Kind, SubscriptionId};
-use nostr_relay_pool::{FilterOptions, RelayPool, RelayPoolNotification, RelaySendOptions};
+use nostr_relay_pool::{
+    FilterOptions, RelayPool, RelayPoolNotification, RelaySendOptions, RequestAutoCloseOptions,
+    RequestOptions,
+};
 use nostr_zapper::{async_trait, NostrZapper, ZapperBackend};
 
 pub mod error;
@@ -32,6 +35,8 @@ pub mod prelude;
 
 pub use self::error::Error;
 pub use self::options::NostrWalletConnectOptions;
+
+const TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Nostr Wallet Connect client
 #[derive(Debug, Clone)]
@@ -73,14 +78,13 @@ impl NWC {
             .event(event_id)
             .limit(1);
 
+        let auto_close_opts = RequestAutoCloseOptions::default()
+            .filter(FilterOptions::WaitForEventsAfterEOSE(1))
+            .timeout(Some(TIMEOUT));
+        let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
+
         // Subscribe
-        relay
-            .send_req(
-                id,
-                vec![filter],
-                Some(FilterOptions::WaitForEventsAfterEOSE(1)),
-            )
-            .await?;
+        relay.send_req(id, vec![filter], req_opts).await?;
 
         let mut notifications = self.pool.notifications();
 
@@ -89,7 +93,7 @@ impl NWC {
             .send_event_to([&self.uri.relay_url], event, RelaySendOptions::new())
             .await?;
 
-        time::timeout(Some(Duration::from_secs(10)), async {
+        time::timeout(Some(TIMEOUT), async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind() == Kind::WalletConnectResponse

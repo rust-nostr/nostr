@@ -219,6 +219,41 @@ impl RelaySendOptions {
     }
 }
 
+/// Relay `REQ` auto-close options
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RequestAutoCloseOptions {
+    pub(super) filter: FilterOptions,
+    pub(super) timeout: Option<Duration>,
+}
+
+impl RequestAutoCloseOptions {
+    /// Close subscription when [FilterOptions] is satisfied
+    pub fn filter(mut self, filter: FilterOptions) -> Self {
+        self.filter = filter;
+        self
+    }
+
+    /// Automatically close subscription after [Duration]
+    pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.timeout = timeout;
+        self
+    }
+}
+
+/// Relay `REQ` options
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RequestOptions {
+    pub(super) auto_close: Option<RequestAutoCloseOptions>,
+}
+
+impl RequestOptions {
+    /// Set auto-close conditions
+    pub fn close_on(mut self, opts: Option<RequestAutoCloseOptions>) -> Self {
+        self.auto_close = opts;
+        self
+    }
+}
+
 /// Filter options
 #[derive(Debug, Clone, Copy, Default)]
 pub enum FilterOptions {

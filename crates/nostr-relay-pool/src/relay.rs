@@ -36,8 +36,9 @@ use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 use crate::flags::AtomicRelayServiceFlags;
 use crate::limits::Limits;
 use crate::options::{
-    FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, MAX_ADJ_RETRY_SEC,
-    MIN_RETRY_SEC, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP,
+    FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, RequestAutoCloseOptions,
+    RequestOptions, MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC, NEGENTROPY_BATCH_SIZE_DOWN,
+    NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP,
 };
 use crate::pool::RelayPoolNotification;
 use crate::stats::RelayConnectionStats;
@@ -1131,12 +1132,12 @@ impl Relay {
 
     /// Send `REQ` to relay
     ///
-    /// If `close_on` is `Some(..)`, the `REQ` will be automatically closed (depending on [FilterOptions]).
+    /// Automatically close `REQ` if set in [RequestOptions]
     pub async fn send_req(
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,
-        close_on: Option<FilterOptions>,
+        opts: RequestOptions,
     ) -> Result<(), Error> {
         self.send_msg(
             ClientMessage::req(id.clone(), filters),
@@ -1144,88 +1145,109 @@ impl Relay {
         )
         .await?;
 
-        if let Some(opts) = close_on {
-            let relay = self.clone();
+        // Check if auto-close conditions are set
+        if let Some(opts) = opts.auto_close {
+            let this = self.clone();
             thread::spawn(async move {
-                let mut counter = 0;
-                let mut received_eose: bool = false;
+                let sub_id = id.clone();
+                let relay = this.clone();
+                let res = time::timeout(opts.timeout, async move {
+                    let mut counter = 0;
+                    let mut received_eose: bool = false;
 
-                let mut notifications = relay.notification_sender.subscribe();
-                while let Ok(notification) = notifications.recv().await {
-                    match notification {
-                        RelayPoolNotification::Message { message, .. } => match message {
-                            RelayMessage::Event {
-                                subscription_id, ..
-                            } => {
-                                if subscription_id.eq(&id) {
-                                    if let FilterOptions::WaitForEventsAfterEOSE(num) = opts {
-                                        if received_eose {
-                                            counter += 1;
-                                            if counter >= num {
-                                                break;
+                    let mut notifications = relay.notification_sender.subscribe();
+                    while let Ok(notification) = notifications.recv().await {
+                        match notification {
+                            RelayPoolNotification::Message { message, .. } => match message {
+                                RelayMessage::Event {
+                                    subscription_id, ..
+                                } => {
+                                    if subscription_id.eq(&id) {
+                                        if let FilterOptions::WaitForEventsAfterEOSE(num) =
+                                            opts.filter
+                                        {
+                                            if received_eose {
+                                                counter += 1;
+                                                if counter >= num {
+                                                    break;
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                            RelayMessage::EndOfStoredEvents(subscription_id) => {
-                                if subscription_id.eq(&id) {
-                                    tracing::debug!(
-                                        "Received EOSE for subscription {id} from {}",
-                                        relay.url
-                                    );
-                                    received_eose = true;
-                                    if let FilterOptions::ExitOnEOSE
-                                    | FilterOptions::WaitDurationAfterEOSE(_) = opts
-                                    {
-                                        break;
+                                RelayMessage::EndOfStoredEvents(subscription_id) => {
+                                    if subscription_id.eq(&id) {
+                                        tracing::debug!(
+                                            "Received EOSE for subscription {id} from {}",
+                                            relay.url
+                                        );
+                                        received_eose = true;
+                                        if let FilterOptions::ExitOnEOSE
+                                        | FilterOptions::WaitDurationAfterEOSE(_) = opts.filter
+                                        {
+                                            break;
+                                        }
                                     }
-                                }
-                            }
-                            _ => (),
-                        },
-                        RelayPoolNotification::RelayStatus { relay_url, status } => {
-                            if relay_url == relay.url && status.is_disconnected() {
-                                return Ok(()); // No need to send CLOSE msg
-                            }
-                        }
-                        RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => {
-                            return Ok(()); // No need to send CLOSE msg
-                        }
-                        _ => (),
-                    }
-                }
-
-                if let FilterOptions::WaitDurationAfterEOSE(duration) = opts {
-                    time::timeout(Some(duration), async {
-                        while let Ok(notification) = notifications.recv().await {
-                            match notification {
-                                RelayPoolNotification::RelayStatus { relay_url, status } => {
-                                    if relay_url == relay.url && status.is_disconnected() {
-                                        return Ok(()); // No need to send CLOSE msg
-                                    }
-                                }
-                                RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => {
-                                    return Ok(()); // No need to send CLOSE msg
                                 }
                                 _ => (),
+                            },
+                            RelayPoolNotification::RelayStatus { relay_url, status } => {
+                                if relay_url == relay.url && status.is_disconnected() {
+                                    return false; // No need to send CLOSE msg
+                                }
                             }
+                            RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => {
+                                return false; // No need to send CLOSE msg
+                            }
+                            _ => (),
                         }
+                    }
 
-                        Ok::<(), Error>(())
-                    })
-                    .await;
-                }
+                    if let FilterOptions::WaitDurationAfterEOSE(duration) = opts.filter {
+                        time::timeout(Some(duration), async {
+                            while let Ok(notification) = notifications.recv().await {
+                                match notification {
+                                    RelayPoolNotification::RelayStatus { relay_url, status } => {
+                                        if relay_url == relay.url && status.is_disconnected() {
+                                            return Ok(()); // No need to send CLOSE msg
+                                        }
+                                    }
+                                    RelayPoolNotification::Stop
+                                    | RelayPoolNotification::Shutdown => {
+                                        return Ok(()); // No need to send CLOSE msg
+                                    }
+                                    _ => (),
+                                }
+                            }
 
-                // Unsubscribe
-                relay
-                    .send_msg(
-                        ClientMessage::close(id.clone()),
+                            Ok::<(), Error>(())
+                        })
+                        .await;
+                    }
+
+                    true // Need to send CLOSE msg
+                })
+                .await;
+
+                // Check if CLOSE needed
+                let to_close: bool = match res {
+                    Some(val) => val,
+                    None => {
+                        tracing::warn!("Timeout reached for REQ {sub_id}, auto-closing.");
+                        true
+                    }
+                };
+
+                if to_close {
+                    // Unsubscribe
+                    this.send_msg(
+                        ClientMessage::close(sub_id.clone()),
                         RelaySendOptions::default(),
                     )
                     .await?;
 
-                tracing::debug!("Subscription {id} auto-closed");
+                    tracing::debug!("Subscription {sub_id} auto-closed");
+                }
 
                 Ok::<(), Error>(())
             })?;
@@ -1566,7 +1588,12 @@ impl Relay {
 
         let id = SubscriptionId::generate();
 
-        self.send_req(id.clone(), filters, Some(opts)).await?;
+        let auto_close_opts = RequestAutoCloseOptions::default()
+            .filter(opts)
+            .timeout(Some(timeout));
+        let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
+
+        self.send_req(id.clone(), filters, req_opts).await?;
 
         self.handle_events_of(id, timeout, opts, callback).await?;
 
