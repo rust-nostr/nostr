@@ -66,28 +66,6 @@ impl RelayOptions {
         self
     }
 
-    /// Set read option
-    #[deprecated(since = "0.28.0", note = "use `flags` instead")]
-    pub fn read(self, read: bool) -> Self {
-        if read {
-            self.flags.add(RelayServiceFlags::READ);
-        } else {
-            self.flags.remove(RelayServiceFlags::READ);
-        }
-        self
-    }
-
-    /// Set write option
-    #[deprecated(since = "0.28.0", note = "use `flags` instead")]
-    pub fn write(self, write: bool) -> Self {
-        if write {
-            self.flags.add(RelayServiceFlags::WRITE);
-        } else {
-            self.flags.remove(RelayServiceFlags::WRITE);
-        }
-        self
-    }
-
     /// Minimum POW for received events (default: 0)
     pub fn pow(mut self, diffculty: u8) -> Self {
         self.pow = Arc::new(AtomicU8::new(diffculty));

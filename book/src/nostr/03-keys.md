@@ -70,7 +70,7 @@ fn main() -> Result<()> {
     let keys = Keys::new(secret_key);
 
     // Try from bech32 or hex
-    let keys = Keys::from_sk_str("hex or bech32 secret key")?;
+    let keys = Keys::parse("hex or bech32 secret key")?;
 
     // ...
 
@@ -92,7 +92,7 @@ keys = Keys(secret_key)
 secret_key = SecretKey.from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
 keys = Keys(secret_key)
 
-keys = Keys.from_sk_str("hex or bech32 secret key")
+keys = Keys.parse("hex or bech32 secret key")
 ```
 
 </section>

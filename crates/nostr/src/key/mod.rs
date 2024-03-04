@@ -61,25 +61,6 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-/// Trait for [`Keys`]
-#[cfg(feature = "std")]
-#[deprecated(since = "0.28.0", note = "Use `Keys::parse` instead")]
-pub trait FromSkStr: Sized {
-    /// Error
-    type Err;
-    /// Init [`Keys`] from `hex` or `bech32` secret key string
-    fn from_sk_str(secret_key: &str) -> Result<Self, Self::Err>;
-}
-
-/// Trait for [`Keys`]
-#[deprecated(since = "0.28.0")]
-pub trait FromPkStr: Sized {
-    /// Error
-    type Err;
-    /// Init [`Keys`] from `hex` or `bech32` public key string
-    fn from_pk_str(public_key: &str) -> Result<Self, Self::Err>;
-}
-
 /// Keys
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keys {
@@ -244,29 +225,6 @@ impl FromStr for Keys {
     /// Try to parse [Keys] from **secret key** `hex` or `bech32`
     fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
         Self::parse(secret_key)
-    }
-}
-
-#[cfg(feature = "std")]
-#[allow(deprecated)]
-impl FromSkStr for Keys {
-    type Err = Error;
-
-    /// Init [`Keys`] from `hex` or `bech32` secret key
-    fn from_sk_str(secret_key: &str) -> Result<Self, Self::Err> {
-        let secret_key = SecretKey::parse(secret_key)?;
-        Ok(Self::new(secret_key))
-    }
-}
-
-#[allow(deprecated)]
-impl FromPkStr for Keys {
-    type Err = Error;
-
-    /// Init [`Keys`] from `hex` or `bech32` public key
-    fn from_pk_str(public_key: &str) -> Result<Self, Self::Err> {
-        let public_key = PublicKey::parse(public_key)?;
-        Ok(Self::from_public_key(public_key))
     }
 }
 

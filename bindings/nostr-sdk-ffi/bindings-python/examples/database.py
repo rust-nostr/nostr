@@ -2,7 +2,7 @@ from nostr_sdk import Keys, Client, EventBuilder, Filter, ClientBuilder, NostrDa
 from datetime import timedelta
 import time
 
-keys = Keys.from_sk_str("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
+keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
 print(keys.public_key().to_bech32())
 
 database = NostrDatabase.sqlite("nostr.db")

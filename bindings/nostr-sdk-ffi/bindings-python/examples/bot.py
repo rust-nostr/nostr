@@ -7,7 +7,7 @@ init_logger(LogLevel.DEBUG)
 # sk = SecretKey.from_bech32("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
 # keys = Keys(sk)
 # OR
-keys = Keys.from_sk_str("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
+keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
 
 sk = keys.secret_key()
 pk = keys.public_key()
