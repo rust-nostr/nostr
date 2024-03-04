@@ -443,7 +443,7 @@ impl Client {
                         RelayPoolNotificationSdk::Message { relay_url, message } => {
                             let h = handler.clone();
                             let _ = spawn_blocking(move || {
-                                h.handle_msg(relay_url.to_string(), message.into())
+                                h.handle_msg(relay_url.to_string(), Arc::new(message.into()))
                             })
                             .await;
                         }
@@ -466,6 +466,6 @@ impl Client {
 
 #[uniffi::export(callback_interface)]
 pub trait HandleNotification: Send + Sync + Debug {
-    fn handle_msg(&self, relay_url: String, msg: RelayMessage);
+    fn handle_msg(&self, relay_url: String, msg: Arc<RelayMessage>);
     fn handle(&self, relay_url: String, event: Arc<Event>);
 }

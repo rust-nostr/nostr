@@ -2,14 +2,18 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use core::ops::Deref;
 use std::sync::Arc;
 
-use uniffi::Enum;
+use nostr::message::relay::NegentropyErrorCode;
+use nostr::{JsonUtil, SubscriptionId};
+use uniffi::{Enum, Object};
 
+use crate::error::Result;
 use crate::{Event, EventId};
 
 #[derive(Enum)]
-pub enum RelayMessage {
+pub enum RelayMessageEnum {
     EventMsg {
         subscription_id: String,
         event: Arc<Event>,
@@ -46,7 +50,7 @@ pub enum RelayMessage {
     },
 }
 
-impl From<nostr::RelayMessage> for RelayMessage {
+impl From<nostr::RelayMessage> for RelayMessageEnum {
     fn from(value: nostr::RelayMessage) -> Self {
         match value {
             nostr::RelayMessage::Event {
@@ -99,5 +103,159 @@ impl From<nostr::RelayMessage> for RelayMessage {
                 code: code.to_string(),
             },
         }
+    }
+}
+
+impl From<RelayMessageEnum> for nostr::RelayMessage {
+    fn from(value: RelayMessageEnum) -> Self {
+        match value {
+            RelayMessageEnum::EventMsg {
+                subscription_id,
+                event,
+            } => Self::Event {
+                subscription_id: SubscriptionId::new(subscription_id),
+                event: Box::new(event.as_ref().deref().clone()),
+            },
+            RelayMessageEnum::Closed {
+                subscription_id,
+                message,
+            } => Self::Closed {
+                subscription_id: SubscriptionId::new(subscription_id),
+                message,
+            },
+            RelayMessageEnum::Notice { message } => Self::Notice { message },
+            RelayMessageEnum::EndOfStoredEvents { subscription_id } => {
+                Self::eose(SubscriptionId::new(subscription_id))
+            }
+            RelayMessageEnum::Ok {
+                event_id,
+                status,
+                message,
+            } => Self::Ok {
+                event_id: **event_id,
+                status,
+                message,
+            },
+            RelayMessageEnum::Auth { challenge } => Self::Auth { challenge },
+            RelayMessageEnum::Count {
+                subscription_id,
+                count,
+            } => Self::Count {
+                subscription_id: SubscriptionId::new(subscription_id),
+                count: count as usize,
+            },
+            RelayMessageEnum::NegMsg {
+                subscription_id,
+                message,
+            } => Self::NegMsg {
+                subscription_id: SubscriptionId::new(subscription_id),
+                message,
+            },
+            RelayMessageEnum::NegErr {
+                subscription_id,
+                code,
+            } => Self::NegErr {
+                subscription_id: SubscriptionId::new(subscription_id),
+                code: NegentropyErrorCode::from(code),
+            },
+        }
+    }
+}
+
+#[derive(Object)]
+pub struct RelayMessage {
+    inner: nostr::RelayMessage,
+}
+
+impl From<nostr::RelayMessage> for RelayMessage {
+    fn from(inner: nostr::RelayMessage) -> Self {
+        Self { inner }
+    }
+}
+
+#[uniffi::export]
+impl RelayMessage {
+    /// Create new `EVENT` message
+    #[uniffi::constructor]
+    pub fn event(subscription_id: String, event: Arc<Event>) -> Self {
+        Self {
+            inner: nostr::RelayMessage::event(
+                SubscriptionId::new(subscription_id),
+                event.as_ref().deref().clone(),
+            ),
+        }
+    }
+
+    /// Create new `NOTICE` message
+    #[uniffi::constructor]
+    pub fn notice(message: String) -> Self {
+        Self {
+            inner: nostr::RelayMessage::notice(message),
+        }
+    }
+
+    /// Create new `CLOSED` message
+    #[uniffi::constructor]
+    pub fn closed(subscription_id: String, message: String) -> Self {
+        Self {
+            inner: nostr::RelayMessage::closed(SubscriptionId::new(subscription_id), message),
+        }
+    }
+
+    /// Create new `EOSE` message
+    #[uniffi::constructor]
+    pub fn eose(subscription_id: String) -> Self {
+        Self {
+            inner: nostr::RelayMessage::eose(SubscriptionId::new(subscription_id)),
+        }
+    }
+
+    /// Create new `OK` message
+    #[uniffi::constructor]
+    pub fn ok(event_id: Arc<EventId>, status: bool, message: String) -> Self {
+        Self {
+            inner: nostr::RelayMessage::ok(**event_id, status, message),
+        }
+    }
+
+    /// Create new `AUTH` message
+    #[uniffi::constructor]
+    pub fn auth(challenge: String) -> Self {
+        Self {
+            inner: nostr::RelayMessage::auth(challenge),
+        }
+    }
+
+    /// Create new `EVENT` message
+    #[uniffi::constructor]
+    pub fn count(subscription_id: String, count: f64) -> Self {
+        Self {
+            inner: nostr::RelayMessage::count(SubscriptionId::new(subscription_id), count as usize),
+        }
+    }
+
+    /// Deserialize `RelayMessage` from JSON string
+    ///
+    /// **This method NOT verify the event signature!**
+    #[uniffi::constructor]
+    pub fn from_json(json: String) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::RelayMessage::from_json(json)?,
+        })
+    }
+
+    /// Convert `RelayMessageEnum` to `RelayMessage`
+    #[uniffi::constructor]
+    pub fn from_enum(e: RelayMessageEnum) -> Self {
+        Self { inner: e.into() }
+    }
+
+    pub fn as_json(&self) -> String {
+        self.inner.as_json()
+    }
+
+    /// Clone `RelayMessage` and convert it to `RelayMessageEnum`
+    pub fn as_enum(&self) -> RelayMessageEnum {
+        self.inner.clone().into()
     }
 }
