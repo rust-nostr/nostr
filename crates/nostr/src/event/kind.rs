@@ -46,6 +46,8 @@ pub enum Kind {
     EventDeletion,
     /// Repost (NIP18)
     Repost,
+    /// Generic Repost (NIP18)
+    GenericRepost,
     /// Reaction (NIP25)
     Reaction,
     /// Badge Award (NIP58)
@@ -249,6 +251,7 @@ impl From<u64> for Kind {
             4 => Self::EncryptedDirectMessage,
             5 => Self::EventDeletion,
             6 => Self::Repost,
+            16 => Self::GenericRepost,
             7 => Self::Reaction,
             8 => Self::BadgeAward,
             40 => Self::ChannelCreation,
@@ -313,6 +316,7 @@ impl From<Kind> for u64 {
             Kind::EncryptedDirectMessage => 4,
             Kind::EventDeletion => 5,
             Kind::Repost => 6,
+            Kind::GenericRepost => 16,
             Kind::Reaction => 7,
             Kind::BadgeAward => 8,
             Kind::ChannelCreation => 40,

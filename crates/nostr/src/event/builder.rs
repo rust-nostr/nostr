@@ -482,13 +482,36 @@ impl EventBuilder {
         ))
     }
 
-    /// Repost event
-    pub fn repost(event_id: EventId, public_key: PublicKey) -> Self {
-        Self::new(
-            Kind::Repost,
-            String::new(),
-            [Tag::event(event_id), Tag::public_key(public_key)],
-        )
+    /// Repost
+    pub fn repost(event: &Event, relay_url: Option<UncheckedUrl>) -> Self {
+        if event.kind == Kind::TextNote {
+            Self::new(
+                Kind::Repost,
+                event.as_json(),
+                [
+                    Tag::Event {
+                        event_id: event.id(),
+                        relay_url,
+                        marker: None,
+                    },
+                    Tag::public_key(event.author()),
+                ],
+            )
+        } else {
+            Self::new(
+                Kind::GenericRepost,
+                event.as_json(),
+                [
+                    Tag::Event {
+                        event_id: event.id(),
+                        relay_url,
+                        marker: None,
+                    },
+                    Tag::public_key(event.author()),
+                    Tag::Kind(event.kind()),
+                ],
+            )
+        }
     }
 
     /// Create delete event

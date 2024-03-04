@@ -15,7 +15,7 @@ use nostr_ffi::{
 };
 use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::pool::RelayPoolNotification as RelayPoolNotificationSdk;
-use nostr_sdk::{block_on, spawn_blocking};
+use nostr_sdk::{block_on, spawn_blocking, UncheckedUrl};
 use uniffi::Object;
 
 mod builder;
@@ -300,6 +300,18 @@ impl Client {
             Ok(Arc::new(
                 self.inner
                     .send_direct_msg(**receiver, msg, reply.map(|r| **r))
+                    .await?
+                    .into(),
+            ))
+        })
+    }
+
+    /// Repost
+    pub fn repost(&self, event: Arc<Event>, relay_url: Option<String>) -> Result<Arc<EventId>> {
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .repost(event.as_ref().deref(), relay_url.map(UncheckedUrl::from))
                     .await?
                     .into(),
             ))

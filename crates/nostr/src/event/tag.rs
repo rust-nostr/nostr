@@ -359,6 +359,8 @@ pub enum TagKind {
     U,
     /// SHA256
     X,
+    /// Kind
+    K,
     /// Relay
     Relay,
     /// Nonce
@@ -456,6 +458,7 @@ impl fmt::Display for TagKind {
             Self::M => write!(f, "m"),
             Self::U => write!(f, "u"),
             Self::X => write!(f, "x"),
+            Self::K => write!(f, "k"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
@@ -518,6 +521,7 @@ where
             "m" => Self::M,
             "u" => Self::U,
             "x" => Self::X,
+            "k" => Self::K,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,
@@ -598,6 +602,7 @@ pub enum Tag {
         identifier: String,
         relay_url: Option<UncheckedUrl>,
     },
+    Kind(Kind),
     Relay(UncheckedUrl),
     POW {
         nonce: u128,
@@ -738,6 +743,7 @@ impl Tag {
                 TagKind::T => Ok(Self::Hashtag(tag_1.to_owned())),
                 TagKind::G => Ok(Self::Geohash(tag_1.to_owned())),
                 TagKind::D => Ok(Self::Identifier(tag_1.to_owned())),
+                TagKind::K => Ok(Self::Kind(Kind::from_str(tag_1)?)),
                 TagKind::Relay => Ok(Self::Relay(UncheckedUrl::from(tag_1))),
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(tag_1.to_owned()),
@@ -1020,6 +1026,7 @@ impl Tag {
             Self::Identifier(..) => TagKind::D,
             Self::ExternalIdentity(..) => TagKind::I,
             Self::A { .. } => TagKind::A,
+            Self::Kind(..) => TagKind::K,
             Self::Relay(..) => TagKind::Relay,
             Self::POW { .. } => TagKind::Nonce,
             Self::Delegation { .. } => TagKind::Delegation,
@@ -1157,6 +1164,7 @@ impl From<Tag> for Vec<String> {
                 vec
             }
             Tag::ExternalIdentity(identity) => identity.into(),
+            Tag::Kind(kind) => vec![TagKind::K.to_string(), kind.to_string()],
             Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
             Tag::POW { nonce, difficulty } => vec![
                 TagKind::Nonce.to_string(),

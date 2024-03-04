@@ -403,15 +403,10 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Repost event
-    #[wasm_bindgen(js_name = repostEvent)]
-    pub async fn repost_event(
-        &self,
-        event_id: &JsEventId,
-        public_key: &JsPublicKey,
-    ) -> Result<JsEventId> {
+    /// Repost
+    pub async fn repost(&self, event: &JsEvent, relay_url: Option<String>) -> Result<JsEventId> {
         self.inner
-            .repost_event(event_id.into(), public_key.into())
+            .repost(&*event, relay_url.map(UncheckedUrl::from))
             .await
             .map_err(into_err)
             .map(|id| id.into())

@@ -160,13 +160,13 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn repost(event_id: Arc<EventId>, public_key: Arc<PublicKey>) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn repost(event: Arc<Event>, relay_url: Option<String>) -> Self {
+        Self {
             inner: nostr::EventBuilder::repost(
-                event_id.as_ref().into(),
-                *public_key.as_ref().deref(),
+                event.as_ref().deref(),
+                relay_url.map(UncheckedUrl::from),
             ),
-        })
+        }
     }
 
     /// Create delete event

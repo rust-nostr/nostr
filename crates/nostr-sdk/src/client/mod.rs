@@ -994,13 +994,13 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /// Repost event
-    pub async fn repost_event(
+    /// Repost
+    pub async fn repost(
         &self,
-        event_id: EventId,
-        public_key: PublicKey,
+        event: &Event,
+        relay_url: Option<UncheckedUrl>,
     ) -> Result<EventId, Error> {
-        let builder = EventBuilder::repost(event_id, public_key);
+        let builder = EventBuilder::repost(event, relay_url);
         self.send_event_builder(builder).await
     }
 

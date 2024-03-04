@@ -122,10 +122,10 @@ impl JsEventBuilder {
         })
     }
 
-    #[wasm_bindgen]
-    pub fn repost(event_id: &JsEventId, public_key: &JsPublicKey) -> Self {
+    /// Repost
+    pub fn repost(event: &JsEvent, relay_url: Option<String>) -> Self {
         Self {
-            builder: EventBuilder::repost(event_id.into(), public_key.into()),
+            builder: EventBuilder::repost(&*event, relay_url.map(UncheckedUrl::from)),
         }
     }
 

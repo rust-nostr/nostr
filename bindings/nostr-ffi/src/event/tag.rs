@@ -175,6 +175,8 @@ pub enum TagKind {
     U,
     /// SHA256
     X,
+    /// Kind
+    K,
     /// Relay
     RelayUrl,
     /// Nonce
@@ -269,6 +271,7 @@ impl From<tag::TagKind> for TagKind {
             tag::TagKind::M => Self::M,
             tag::TagKind::U => Self::U,
             tag::TagKind::X => Self::X,
+            tag::TagKind::K => Self::K,
             tag::TagKind::Relay => Self::RelayUrl,
             tag::TagKind::Nonce => Self::Nonce,
             tag::TagKind::Delegation => Self::Delegation,
@@ -328,6 +331,7 @@ impl From<TagKind> for tag::TagKind {
             TagKind::M => Self::M,
             TagKind::U => Self::U,
             TagKind::X => Self::X,
+            TagKind::K => Self::K,
             TagKind::RelayUrl => Self::Relay,
             TagKind::Nonce => Self::Nonce,
             TagKind::Delegation => Self::Delegation,
@@ -428,6 +432,9 @@ pub enum TagEnum {
         public_key: Arc<PublicKey>,
         identifier: String,
         relay_url: Option<String>,
+    },
+    Kind {
+        kind: u64,
     },
     RelayUrl {
         relay_url: String,
@@ -637,6 +644,9 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::ExternalIdentity(identity) => Self::ExternalIdentityTag {
                 identity: identity.into(),
             },
+            tag::Tag::Kind(kind) => Self::Kind {
+                kind: kind.as_u64(),
+            },
             tag::Tag::Relay(url) => Self::RelayUrl {
                 relay_url: url.to_string(),
             },
@@ -810,6 +820,7 @@ impl TryFrom<TagEnum> for tag::Tag {
                 identifier,
                 relay_url: relay_url.map(UncheckedUrl::from),
             }),
+            TagEnum::Kind { kind } => Ok(Self::Kind(Kind::from(kind))),
             TagEnum::RelayUrl { relay_url } => Ok(Self::Relay(UncheckedUrl::from(relay_url))),
             TagEnum::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,
