@@ -318,6 +318,42 @@ impl Client {
         })
     }
 
+    /// Like event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
+    pub fn like(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner.like(event.as_ref().deref()).await?.into(),
+            ))
+        })
+    }
+
+    /// Disike event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
+    pub fn dislike(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner.dislike(event.as_ref().deref()).await?.into(),
+            ))
+        })
+    }
+
+    /// React to an [`Event`]
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
+    pub fn reaction(&self, event: Arc<Event>, reaction: String) -> Result<Arc<EventId>> {
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .reaction(event.as_ref().deref(), reaction)
+                    .await?
+                    .into(),
+            ))
+        })
+    }
+
     /// Send a Zap!
     ///
     /// This method automatically create a split zap to support Rust Nostr development.

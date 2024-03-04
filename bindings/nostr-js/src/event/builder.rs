@@ -140,9 +140,9 @@ impl JsEventBuilder {
         }
     }
 
-    pub fn reaction(event_id: &JsEventId, public_key: &JsPublicKey, content: &str) -> Self {
+    pub fn reaction(event: &JsEvent, reaction: &str) -> Self {
         Self {
-            builder: EventBuilder::reaction(event_id.into(), public_key.into(), content),
+            builder: EventBuilder::reaction(event.deref(), reaction),
         }
     }
 

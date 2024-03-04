@@ -427,9 +427,9 @@ impl JsClient {
     /// Like event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn like(&self, event_id: &JsEventId, public_key: &JsPublicKey) -> Result<JsEventId> {
+    pub async fn like(&self, event: &JsEvent) -> Result<JsEventId> {
         self.inner
-            .like(event_id.into(), public_key.into())
+            .like(event.deref())
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -438,13 +438,9 @@ impl JsClient {
     /// Disike event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn dislike(
-        &self,
-        event_id: &JsEventId,
-        public_key: &JsPublicKey,
-    ) -> Result<JsEventId> {
+    pub async fn dislike(&self, event: &JsEvent) -> Result<JsEventId> {
         self.inner
-            .dislike(event_id.into(), public_key.into())
+            .dislike(event.deref())
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -453,14 +449,9 @@ impl JsClient {
     /// React to an [`Event`]
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn reaction(
-        &self,
-        event_id: &JsEventId,
-        public_key: &JsPublicKey,
-        content: String,
-    ) -> Result<JsEventId> {
+    pub async fn reaction(&self, event: &JsEvent, reaction: String) -> Result<JsEventId> {
         self.inner
-            .reaction(event_id.into(), public_key.into(), content)
+            .reaction(event.deref(), reaction)
             .await
             .map_err(into_err)
             .map(|id| id.into())

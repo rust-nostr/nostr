@@ -1029,19 +1029,15 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let event_id =
-    ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
-    ///         .unwrap();
-    /// let public_key =
-    ///     PublicKey::from_str("a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2")
+    /// let event =
+    ///     Event::from_json(r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#)
     ///         .unwrap();
     ///
-    /// client.like(event_id, public_key).await.unwrap();
+    /// client.like(&event).await.unwrap();
     /// # }
     /// ```
-    pub async fn like(&self, event_id: EventId, public_key: PublicKey) -> Result<EventId, Error> {
-        let builder = EventBuilder::reaction(event_id, public_key, "+");
-        self.send_event_builder(builder).await
+    pub async fn like(&self, event: &Event) -> Result<EventId, Error> {
+        self.reaction(event, "+").await
     }
 
     /// Disike event
@@ -1058,23 +1054,15 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let event_id =
-    ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
-    ///         .unwrap();
-    /// let public_key =
-    ///     PublicKey::from_str("a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2")
+    /// let event =
+    ///     Event::from_json(r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#)
     ///         .unwrap();
     ///
-    /// client.dislike(event_id, public_key).await.unwrap();
+    /// client.dislike(&event).await.unwrap();
     /// # }
     /// ```
-    pub async fn dislike(
-        &self,
-        event_id: EventId,
-        public_key: PublicKey,
-    ) -> Result<EventId, Error> {
-        let builder = EventBuilder::reaction(event_id, public_key, "-");
-        self.send_event_builder(builder).await
+    pub async fn dislike(&self, event: &Event) -> Result<EventId, Error> {
+        self.reaction(event, "-").await
     }
 
     /// React to an [`Event`]
@@ -1091,26 +1079,18 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let event_id =
-    ///     EventId::from_hex("3aded8d2194dc2fedb1d7b70480b43b6c4deb0a22dcdc9c471d1958485abcf21")
-    ///         .unwrap();
-    /// let public_key =
-    ///     PublicKey::from_str("a8e76c3ace7829f9ee44cf9293309e21a1824bf1e57631d00685a1ed0b0bd8a2")
+    /// let event =
+    ///     Event::from_json(r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#)
     ///         .unwrap();
     ///
-    /// client.reaction(event_id, public_key, "🐻").await.unwrap();
+    /// client.reaction(&event, "🐻").await.unwrap();
     /// # }
     /// ```
-    pub async fn reaction<S>(
-        &self,
-        event_id: EventId,
-        public_key: PublicKey,
-        content: S,
-    ) -> Result<EventId, Error>
+    pub async fn reaction<S>(&self, event: &Event, reaction: S) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
-        let builder = EventBuilder::reaction(event_id, public_key, content);
+        let builder = EventBuilder::reaction(event, reaction);
         self.send_event_builder(builder).await
     }
 

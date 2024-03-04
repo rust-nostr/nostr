@@ -182,17 +182,9 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn reaction(
-        event_id: Arc<EventId>,
-        public_key: Arc<PublicKey>,
-        content: String,
-    ) -> Arc<Self> {
+    pub fn reaction(event: Arc<Event>, reaction: String) -> Arc<Self> {
         Arc::new(Self {
-            inner: nostr::EventBuilder::reaction(
-                event_id.as_ref().into(),
-                *public_key.as_ref().deref(),
-                content,
-            ),
+            inner: nostr::EventBuilder::reaction(event.as_ref().deref(), reaction),
         })
     }
 
