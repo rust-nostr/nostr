@@ -125,7 +125,7 @@ impl JsEventBuilder {
     /// Repost
     pub fn repost(event: &JsEvent, relay_url: Option<String>) -> Self {
         Self {
-            builder: EventBuilder::repost(&*event, relay_url.map(UncheckedUrl::from)),
+            builder: EventBuilder::repost(event.deref(), relay_url.map(UncheckedUrl::from)),
         }
     }
 

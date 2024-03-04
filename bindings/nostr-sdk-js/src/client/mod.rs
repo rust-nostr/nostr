@@ -406,7 +406,7 @@ impl JsClient {
     /// Repost
     pub async fn repost(&self, event: &JsEvent, relay_url: Option<String>) -> Result<JsEventId> {
         self.inner
-            .repost(&*event, relay_url.map(UncheckedUrl::from))
+            .repost(event.deref(), relay_url.map(UncheckedUrl::from))
             .await
             .map_err(into_err)
             .map(|id| id.into())
