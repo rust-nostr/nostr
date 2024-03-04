@@ -183,8 +183,13 @@ impl Relay {
         block_on(async move { Ok(self.inner.terminate().await?) })
     }
 
-    pub fn send_msg(&self, msg: ClientMessage, opts: Arc<RelaySendOptions>) -> Result<()> {
-        block_on(async move { Ok(self.inner.send_msg(msg.into(), **opts).await?) })
+    pub fn send_msg(&self, msg: Arc<ClientMessage>, opts: Arc<RelaySendOptions>) -> Result<()> {
+        block_on(async move {
+            Ok(self
+                .inner
+                .send_msg(msg.as_ref().deref().clone(), **opts)
+                .await?)
+        })
     }
 
     pub fn subscribe(&self, filters: Vec<Arc<Filter>>, opts: Arc<RelaySendOptions>) -> Result<()> {

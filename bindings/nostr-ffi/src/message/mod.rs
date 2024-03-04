@@ -2,10 +2,10 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-mod client;
-mod relay;
-mod subscription;
+pub mod client;
+pub mod relay;
+pub mod subscription;
 
-pub use self::client::ClientMessage;
-pub use self::relay::RelayMessage;
+pub use self::client::{ClientMessage, ClientMessageEnum};
+pub use self::relay::{RelayMessage, RelayMessageEnum};
 pub use self::subscription::{Alphabet, Filter};

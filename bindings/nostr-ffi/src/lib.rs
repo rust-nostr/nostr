@@ -11,20 +11,22 @@ use std::sync::Arc;
 use uniffi::Object;
 
 mod error;
-mod event;
+pub mod event;
 pub mod helper;
-mod key;
-mod message;
+pub mod key;
+pub mod message;
 pub mod nips;
-mod types;
-mod util;
+pub mod types;
+pub mod util;
 
 pub use crate::error::NostrError;
 pub use crate::event::{
     Event, EventBuilder, EventId, RelayMetadata, Tag, TagEnum, TagKind, UnsignedEvent,
 };
 pub use crate::key::{Keys, PublicKey, SecretKey};
-pub use crate::message::{Alphabet, ClientMessage, Filter, RelayMessage};
+pub use crate::message::{
+    Alphabet, ClientMessage, ClientMessageEnum, Filter, RelayMessage, RelayMessageEnum,
+};
 pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
 pub use crate::nips::nip05::{get_nip05_profile, verify_nip05};
 pub use crate::nips::nip11::RelayInformationDocument;

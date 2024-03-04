@@ -205,12 +205,17 @@ impl Client {
 
     // TODO: add req_events_of_with_opts
 
-    pub fn send_msg(&self, msg: ClientMessage) -> Result<()> {
-        block_on(async move { Ok(self.inner.send_msg(msg.into()).await?) })
+    pub fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<()> {
+        block_on(async move { Ok(self.inner.send_msg(msg.as_ref().deref().clone()).await?) })
     }
 
-    pub fn send_msg_to(&self, urls: Vec<String>, msg: ClientMessage) -> Result<()> {
-        block_on(async move { Ok(self.inner.send_msg_to(urls, msg.into()).await?) })
+    pub fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<()> {
+        block_on(async move {
+            Ok(self
+                .inner
+                .send_msg_to(urls, msg.as_ref().deref().clone())
+                .await?)
+        })
     }
 
     pub fn send_event(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
