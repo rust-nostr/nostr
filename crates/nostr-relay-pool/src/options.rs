@@ -66,6 +66,36 @@ impl RelayOptions {
         self
     }
 
+    /// Set read flag
+    pub fn read(self, read: bool) -> Self {
+        if read {
+            self.flags.add(RelayServiceFlags::READ);
+        } else {
+            self.flags.remove(RelayServiceFlags::READ);
+        }
+        self
+    }
+
+    /// Set write flag
+    pub fn write(self, write: bool) -> Self {
+        if write {
+            self.flags.add(RelayServiceFlags::WRITE);
+        } else {
+            self.flags.remove(RelayServiceFlags::WRITE);
+        }
+        self
+    }
+
+    /// Set ping flag
+    pub fn ping(self, ping: bool) -> Self {
+        if ping {
+            self.flags.add(RelayServiceFlags::PING);
+        } else {
+            self.flags.remove(RelayServiceFlags::PING);
+        }
+        self
+    }
+
     /// Minimum POW for received events (default: 0)
     pub fn pow(mut self, diffculty: u8) -> Self {
         self.pow = Arc::new(AtomicU8::new(diffculty));
