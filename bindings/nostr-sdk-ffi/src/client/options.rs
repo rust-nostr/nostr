@@ -33,7 +33,7 @@ impl Options {
     #[uniffi::constructor]
     pub fn new() -> Self {
         Self {
-            inner: nostr_sdk::Options::new().shutdown_on_drop(true),
+            inner: nostr_sdk::Options::new(),
         }
     }
 

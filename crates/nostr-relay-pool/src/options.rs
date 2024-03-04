@@ -277,17 +277,13 @@ pub enum FilterOptions {
 /// Relay Pool Options
 #[derive(Debug, Clone, Copy)]
 pub struct RelayPoolOptions {
-    /// Notification channel size (default: 4096)
-    pub notification_channel_size: usize,
-    /// Shutdown on [RelayPool](super::pool::RelayPool) drop
-    pub shutdown_on_drop: bool,
+    pub(super) notification_channel_size: usize,
 }
 
 impl Default for RelayPoolOptions {
     fn default() -> Self {
         Self {
             notification_channel_size: 4096,
-            shutdown_on_drop: false,
         }
     }
 }
@@ -298,12 +294,16 @@ impl RelayPoolOptions {
         Self::default()
     }
 
+    /// Notification channel size (default: 4096)
+    pub fn notification_channel_size(mut self, size: usize) -> Self {
+        self.notification_channel_size = size;
+        self
+    }
+
     /// Shutdown on [`RelayPool`](super::pool::RelayPool) drop
-    pub fn shutdown_on_drop(self, value: bool) -> Self {
-        Self {
-            shutdown_on_drop: value,
-            ..self
-        }
+    #[deprecated(since = "0.29.0", note = "No longer needed")]
+    pub fn shutdown_on_drop(self, _value: bool) -> Self {
+        self
     }
 }
 

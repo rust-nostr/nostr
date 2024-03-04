@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use nostr_ffi::nips::nip46::{NostrConnectMetadata, NostrConnectURI};
 use nostr_ffi::{Keys, PublicKey};
-use nostr_sdk::{block_on, signer, RelayPoolOptions, Url};
+use nostr_sdk::{block_on, signer, Url};
 use uniffi::Object;
 
 use crate::error::Result;
@@ -45,12 +45,11 @@ impl Nip46Signer {
         block_on(async move {
             let relay_url: Url = Url::parse(&relay_url)?;
             Ok(Self {
-                inner: signer::Nip46Signer::with_opts(
+                inner: signer::Nip46Signer::new(
                     relay_url,
                     app_keys.as_ref().deref().clone(),
                     signer_public_key.map(|p| **p),
                     timeout,
-                    RelayPoolOptions::new().shutdown_on_drop(true),
                 )
                 .await?,
             })

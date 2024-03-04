@@ -7,13 +7,12 @@
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 
-use nostr_relay_pool::{RelayOptions, RelayPoolOptions};
+use nostr_relay_pool::RelayOptions;
 
 /// NWC options
 #[derive(Debug, Clone, Default)]
 pub struct NostrWalletConnectOptions {
     pub(super) relay: RelayOptions,
-    pub(super) pool: RelayPoolOptions,
 }
 
 impl NostrWalletConnectOptions {
@@ -27,15 +26,12 @@ impl NostrWalletConnectOptions {
     pub fn proxy(self, proxy: Option<SocketAddr>) -> Self {
         Self {
             relay: self.relay.proxy(proxy),
-            ..self
         }
     }
 
     /// Automatically shutdown relay pool on drop
-    pub fn shutdown_on_drop(self, shutdown_on_drop: bool) -> Self {
-        Self {
-            pool: self.pool.shutdown_on_drop(shutdown_on_drop),
-            ..self
-        }
+    #[deprecated(since = "0.29.0", note = "No longer needed")]
+    pub fn shutdown_on_drop(self, _shutdown_on_drop: bool) -> Self {
+        self
     }
 }

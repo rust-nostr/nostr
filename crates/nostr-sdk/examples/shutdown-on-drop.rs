@@ -11,24 +11,27 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let opts = Options::new().shutdown_on_drop(true);
-    let client = ClientBuilder::new().opts(opts).build();
-    client.add_relay("wss://relay.nostr.info").await?;
-    client.add_relay("wss://relay.damus.io").await?;
+    let keys = Keys::generate();
+    let client = Client::new(keys); // Ref countert set to 1
 
+    client.add_relay("wss://relay.rip").await?;
+    client.add_relay("wss://relay.damus.io").await?;
     client.connect().await;
 
-    let c = client.clone();
+    let c = client.clone(); // Clone, ref counter set to 2
     let _ = thread::spawn(async move {
         thread::sleep(Duration::from_secs(3)).await;
         c.relays().await;
-        // First drop, dropping client...
+        // First drop, decrease ref counter to 1...
     });
 
-    thread::sleep(Duration::from_secs(10)).await;
+    thread::sleep(Duration::from_secs(5)).await;
 
-    // Try to publish a text note (will fail since the client is dropped)
     client.publish_text_note("Hello world", []).await?;
+
+    thread::sleep(Duration::from_secs(5)).await;
 
     Ok(())
 }
+
+// Client dropped, ref counter set to 0: auto shutdown relay pool.

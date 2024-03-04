@@ -8,7 +8,7 @@ use nostr_js::error::{into_err, Result};
 use nostr_js::key::{JsKeys, JsPublicKey};
 use nostr_js::nips::nip46::{JsNostrConnectMetadata, JsNostrConnectURI};
 use nostr_sdk::signer::Nip46Signer;
-use nostr_sdk::{RelayPoolOptions, Url};
+use nostr_sdk::Url;
 use wasm_bindgen::prelude::*;
 
 use crate::duration::JsDuration;
@@ -44,12 +44,11 @@ impl JsNip46Signer {
     ) -> Result<JsNip46Signer> {
         let relay_url: Url = Url::parse(&relay_url).map_err(into_err)?;
         Ok(Self {
-            inner: Nip46Signer::with_opts(
+            inner: Nip46Signer::new(
                 relay_url,
                 app_keys.deref().clone(),
                 signer_public_key.map(|p| *p),
                 *timeout,
-                RelayPoolOptions::new().shutdown_on_drop(true),
             )
             .await
             .map_err(into_err)?,

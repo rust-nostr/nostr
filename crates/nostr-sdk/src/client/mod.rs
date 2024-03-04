@@ -6,16 +6,15 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::thread;
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::prelude::*;
 use nostr::types::metadata::Error as MetadataError;
 use nostr_database::DynNostrDatabase;
 use nostr_relay_pool::pool::{self, Error as RelayPoolError, RelayPool};
+use nostr_relay_pool::relay::Error as RelayError;
 use nostr_relay_pool::{
     FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
 };
@@ -37,6 +36,9 @@ pub use self::zapper::{ZapDetails, ZapEntity};
 /// [`Client`] error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// [`Relay`] error
+    #[error("relay error: {0}")]
+    Relay(#[from] RelayError),
     /// [`RelayPool`] error
     #[error("relay pool error: {0}")]
     RelayPool(#[from] RelayPoolError),
@@ -63,10 +65,6 @@ pub enum Error {
     #[cfg(feature = "nip57")]
     #[error("zapper not configured")]
     ZapperNotConfigured,
-    /// NIP46 signer error
-    #[cfg(feature = "nip46")]
-    #[error(transparent)]
-    Nip46Signer(#[from] nostr_signer::nip46::Error), // TODO remove
     /// NIP57 error
     #[cfg(feature = "nip57")]
     #[error(transparent)]
@@ -94,32 +92,11 @@ pub struct Client {
     #[cfg(feature = "nip57")]
     zapper: Arc<RwLock<Option<Arc<DynNostrZapper>>>>,
     opts: Options,
-    dropped: Arc<AtomicBool>,
 }
 
 impl Default for Client {
     fn default() -> Self {
         ClientBuilder::new().build()
-    }
-}
-
-impl Drop for Client {
-    fn drop(&mut self) {
-        if self.opts.shutdown_on_drop {
-            if self.dropped.load(Ordering::SeqCst) {
-                tracing::warn!("Client already dropped");
-            } else {
-                tracing::debug!("Dropping the Client...");
-                self.dropped.store(true, Ordering::SeqCst);
-                let client: Client = self.clone();
-                let _ = thread::spawn(async move {
-                    client
-                        .shutdown()
-                        .await
-                        .expect("Impossible to drop the client")
-                });
-            }
-        }
     }
 }
 
@@ -169,7 +146,6 @@ impl Client {
             #[cfg(feature = "nip57")]
             zapper: Arc::new(RwLock::new(builder.zapper)),
             opts: builder.opts,
-            dropped: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -249,11 +225,7 @@ impl Client {
 
     /// Completely shutdown [`Client`]
     pub async fn shutdown(self) -> Result<(), Error> {
-        #[cfg(feature = "nip46")]
-        if let Ok(NostrSigner::NIP46(s)) = self.signer().await {
-            s.shutdown().await?;
-        }
-        Ok(self.pool.clone().shutdown().await?)
+        Ok(self.pool.shutdown().await?)
     }
 
     /// Get new notification listener
@@ -442,7 +414,7 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let relay = self.relay(url).await?;
-        self.pool.disconnect_relay(&relay).await?;
+        relay.terminate().await?;
         Ok(())
     }
 

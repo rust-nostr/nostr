@@ -55,8 +55,7 @@ impl JsClientBuilder {
     /// Build `Client`
     ///
     /// This method **consume** the `ClientBuilder`!
-    pub fn build(mut self) -> JsClient {
-        self.inner.opts = self.inner.opts.shutdown_on_drop(true);
+    pub fn build(self) -> JsClient {
         Client::from_builder(self.inner).into()
     }
 }

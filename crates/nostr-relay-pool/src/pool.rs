@@ -5,11 +5,11 @@
 //! Relay Pool
 
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::thread;
+use async_utility::{thread, time};
 use nostr::message::MessageHandleError;
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, Timestamp, TryIntoUrl, Url};
 use nostr_database::{DatabaseError, DynNostrDatabase, IntoNostrDatabase, MemoryDatabase, Order};
@@ -21,6 +21,7 @@ use crate::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelayPoolOptions, RelaySendOptions,
 };
 use crate::relay::{Error as RelayError, InternalSubscriptionId, Relay, RelayStatus};
+use crate::util::SaturatingUsize;
 
 /// [`RelayPool`] error
 #[derive(Debug, Error)]
@@ -91,30 +92,75 @@ pub enum RelayPoolNotification {
 }
 
 /// Relay Pool
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RelayPool {
     database: Arc<DynNostrDatabase>,
     relays: Arc<RwLock<HashMap<Url, Relay>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     filters: Arc<RwLock<Vec<Filter>>>,
     opts: RelayPoolOptions,
-    dropped: Arc<AtomicBool>,
+    shutdown: Arc<AtomicBool>,
+    ref_counter: Arc<AtomicUsize>,
+}
+
+impl Default for RelayPool {
+    fn default() -> Self {
+        Self::new(RelayPoolOptions::default())
+    }
+}
+
+impl RelayPool {
+    fn internal_clone(&self) -> Self {
+        Self {
+            database: self.database.clone(),
+            relays: self.relays.clone(),
+            notification_sender: self.notification_sender.clone(),
+            filters: self.filters.clone(),
+            opts: self.opts,
+            shutdown: self.shutdown.clone(),
+            ref_counter: self.ref_counter.clone(),
+        }
+    }
+}
+
+impl Clone for RelayPool {
+    fn clone(&self) -> Self {
+        // Increase counter
+        let new_ref_counter: usize = self.ref_counter.saturating_increment(Ordering::SeqCst);
+        tracing::debug!("Relay Pool cloned: ref counter increased to {new_ref_counter}");
+
+        // Clone
+        self.internal_clone()
+    }
 }
 
 impl Drop for RelayPool {
     fn drop(&mut self) {
-        if self.opts.shutdown_on_drop {
-            if self.dropped.load(Ordering::SeqCst) {
-                tracing::warn!("Relay Pool already dropped");
-            } else {
-                tracing::debug!("Dropping the Relay Pool...");
-                self.dropped.store(true, Ordering::SeqCst);
-                let pool = self.clone();
+        // Check if already shutdown
+        if self.shutdown.load(Ordering::SeqCst) {
+            tracing::debug!("Relay Pool already shutdown");
+        } else {
+            // Decrease counter
+            let new_ref_counter: usize = self.ref_counter.saturating_decrement(Ordering::SeqCst);
+            tracing::debug!("Relay Pool dropped: ref counter decreased to {new_ref_counter}");
+
+            // Check if it's time for shutdown
+            if new_ref_counter == 0 {
+                tracing::debug!("Shutting down Relay Pool...");
+
+                // Mark as shutdown
+                self.shutdown.store(true, Ordering::SeqCst);
+
+                // Internally clone pool and shutdown
+                let pool: RelayPool = self.internal_clone(); // TODO: avoid this, use InternalRelayPool?
                 let _ = thread::spawn(async move {
-                    pool.shutdown()
-                        .await
-                        .expect("Impossible to drop the relay pool")
+                    // TODO: avoid this (cause drop recursion)
+                    if let Err(e) = pool.shutdown().await {
+                        tracing::error!("Impossible to shutdown Relay Pool: {e}");
+                    }
                 });
+
+                tracing::info!("Relay Pool shutdown.");
             }
         }
     }
@@ -139,7 +185,8 @@ impl RelayPool {
             notification_sender,
             filters: Arc::new(RwLock::new(Vec::new())),
             opts,
-            dropped: Arc::new(AtomicBool::new(false)),
+            shutdown: Arc::new(AtomicBool::new(false)),
+            ref_counter: Arc::new(AtomicUsize::new(1)),
         }
     }
 
@@ -159,13 +206,19 @@ impl RelayPool {
 
     /// Completely shutdown pool
     pub async fn shutdown(self) -> Result<(), Error> {
+        // Disconnect all relays
         self.disconnect().await?;
+
+        // Send shutdown notification
         thread::spawn(async move {
-            thread::sleep(Duration::from_secs(3)).await;
-            let _ = self
-                .notification_sender
-                .send(RelayPoolNotification::Shutdown);
+            time::timeout(Some(Duration::from_secs(3)), async move {
+                let _ = self
+                    .notification_sender
+                    .send(RelayPoolNotification::Shutdown);
+            })
+            .await;
         })?;
+
         Ok(())
     }
 
@@ -243,7 +296,7 @@ impl RelayPool {
         let url: Url = url.try_into_url()?;
         let mut relays = self.relays.write().await;
         if let Some(relay) = relays.remove(&url) {
-            self.disconnect_relay(&relay).await?;
+            relay.terminate().await?;
         }
         Ok(())
     }
@@ -252,7 +305,7 @@ impl RelayPool {
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
         let mut relays = self.relays.write().await;
         for relay in relays.values() {
-            self.disconnect_relay(relay).await?;
+            relay.terminate().await?;
         }
         relays.clear();
         Ok(())
@@ -683,8 +736,8 @@ impl RelayPool {
     /// Disconnect from all relays
     pub async fn disconnect(&self) -> Result<(), Error> {
         let relays = self.relays().await;
-        for relay in relays.values() {
-            self.disconnect_relay(relay).await?;
+        for relay in relays.into_values() {
+            relay.terminate().await?;
         }
         Ok(())
     }
@@ -698,12 +751,6 @@ impl RelayPool {
             .update_subscription_filters(InternalSubscriptionId::Pool, filters)
             .await;
         relay.connect(connection_timeout).await;
-    }
-
-    /// Disconnect from relay
-    pub async fn disconnect_relay(&self, relay: &Relay) -> Result<(), Error> {
-        relay.terminate().await?;
-        Ok(())
     }
 
     /// Negentropy reconciliation

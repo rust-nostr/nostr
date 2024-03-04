@@ -57,7 +57,7 @@ impl NWC {
         opts: NostrWalletConnectOptions,
     ) -> Result<Self, Error> {
         // Compose pool
-        let pool = RelayPool::new(opts.pool);
+        let pool = RelayPool::default();
         pool.add_relay(&uri.relay_url, opts.relay).await?;
         pool.connect(Some(Duration::from_secs(10))).await;
 

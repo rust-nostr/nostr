@@ -41,8 +41,6 @@ pub struct Options {
     /// Proxy
     #[cfg(not(target_arch = "wasm32"))]
     pub proxy: Option<SocketAddr>,
-    /// Shutdown on [Client](super::Client) drop
-    pub shutdown_on_drop: bool,
     /// Pool Options
     pub pool: RelayPoolOptions,
 }
@@ -61,7 +59,6 @@ impl Default for Options {
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             #[cfg(not(target_arch = "wasm32"))]
             proxy: None,
-            shutdown_on_drop: false,
             pool: RelayPoolOptions::default(),
         }
     }
@@ -196,11 +193,9 @@ impl Options {
     }
 
     /// Shutdown client on drop
-    pub fn shutdown_on_drop(self, value: bool) -> Self {
-        Self {
-            shutdown_on_drop: value,
-            ..self
-        }
+    #[deprecated(since = "0.29.0", note = "No longer needed")]
+    pub fn shutdown_on_drop(self, _value: bool) -> Self {
+        self
     }
 
     /// Set pool options

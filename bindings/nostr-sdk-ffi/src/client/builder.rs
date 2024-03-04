@@ -65,8 +65,7 @@ impl ClientBuilder {
 
     /// Build [`Client`]
     pub fn build(&self) -> Arc<Client> {
-        let mut inner = self.inner.clone();
-        inner.opts = inner.opts.shutdown_on_drop(true);
+        let inner = self.inner.clone();
         Arc::new(ClientSdk::from_builder(inner).into())
     }
 }

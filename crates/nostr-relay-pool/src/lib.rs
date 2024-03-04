@@ -16,6 +16,7 @@ pub mod options;
 pub mod pool;
 pub mod relay;
 mod stats;
+mod util;
 
 pub use self::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 pub use self::limits::Limits;
