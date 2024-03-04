@@ -5,7 +5,8 @@ use nostr::Result;
 mod event;
 mod keys;
 mod messages;
-mod nip_01;
+mod nip01;
+mod nip44;
 
 fn main() -> Result<()> {
     keys::keys()?;
@@ -15,7 +16,8 @@ fn main() -> Result<()> {
 
     messages::relay::relay_message()?;
 
-    nip_01::nip_01()?;
+    nip01::nip01()?;
+    nip44::run()?;
 
     Ok(())
 }

@@ -1,6 +1,6 @@
 use nostr::prelude::*;
 
-pub fn nip_01() -> Result<()> {
+pub fn nip01() -> Result<()> {
     let keys = Keys::generate();
     let content = r#"{
         "name": "w3irdrobot",

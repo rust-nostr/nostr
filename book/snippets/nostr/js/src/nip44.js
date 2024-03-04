@@ -1,7 +1,7 @@
-const { Keys, PublicKey, nip44_encrypt, nip44_decrypt, NIP44Version, loadWasmAsync } = require("../");
+const { Keys, PublicKey, nip44_encrypt, nip44_decrypt, NIP44Version, loadWasmSync } = require("@rust-nostr/nostr");
 
-async function main() {
-    await loadWasmAsync();
+function run() {
+    loadWasmSync();
 
     let keys = Keys.generate();
     
@@ -14,4 +14,4 @@ async function main() {
     console.log("Decrypted: " + plaintext)
 }
 
-main();
+module.exports.run = run;
