@@ -10,9 +10,8 @@ pub fn event() -> Result<()> {
     let textnote_event = EventBuilder::text_note("Hello", []).to_event(&keys)?;
 
     // Compose reply to above text note
-    let reply_event =
-        EventBuilder::text_note("Reply to hello", [Tag::event(textnote_event.id)])
-            .to_event(&keys)?;
+    let reply_event = EventBuilder::text_note("Reply to hello", [Tag::event(textnote_event.id)])
+        .to_event(&keys)?;
 
     // Compose POW event
     let pow_event =
