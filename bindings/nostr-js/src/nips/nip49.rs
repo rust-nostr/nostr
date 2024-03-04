@@ -119,6 +119,7 @@ impl JsEncryptedSecretKey {
         Ok(self.inner.to_secret_key(password).map_err(into_err)?.into())
     }
 
+    #[wasm_bindgen(js_name = toBech32)]
     pub fn to_bech32(&self) -> Result<String> {
         self.inner.to_bech32().map_err(into_err)
     }

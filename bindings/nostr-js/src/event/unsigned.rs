@@ -90,6 +90,7 @@ impl JsUnsignedEvent {
     }
 
     /// Add signature
+    #[wasm_bindgen(js_name = addSignature)]
     pub fn add_signature(self, sig: &str) -> Result<JsEvent> {
         let sig: Signature = Signature::from_str(sig).map_err(into_err)?;
         Ok(self.inner.add_signature(sig).map_err(into_err)?.into())

@@ -11,13 +11,13 @@ use crate::error::{into_err, Result};
 use crate::key::{JsPublicKey, JsSecretKey};
 
 /// Encrypt (NIP04)
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = nip04Encrypt)]
 pub fn nip04_encrypt(sk: &JsSecretKey, pk: &JsPublicKey, text: &str) -> Result<String> {
     nip04::encrypt(sk.deref(), pk.deref(), text).map_err(into_err)
 }
 
 /// Decrypt (NIP04)
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = nip04Decrypt)]
 pub fn nip04_decrypt(
     sk: &JsSecretKey,
     pk: &JsPublicKey,

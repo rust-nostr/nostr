@@ -38,7 +38,7 @@ impl From<JsNIP44Version> for Version {
 }
 
 /// Encrypt (NIP44)
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = nip44Encrypt)]
 pub fn nip44_encrypt(
     sk: &JsSecretKey,
     pk: &JsPublicKey,
@@ -49,7 +49,7 @@ pub fn nip44_encrypt(
 }
 
 /// Decrypt (NIP44)
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = nip44Decrypt)]
 pub fn nip44_decrypt(sk: &JsSecretKey, pk: &JsPublicKey, payload: &str) -> Result<String> {
     nip44::decrypt(sk.deref(), pk.deref(), payload).map_err(into_err)
 }

@@ -12,7 +12,7 @@ use crate::event::JsEventId;
 use crate::key::JsPublicKey;
 use crate::types::JsTimestamp;
 
-#[wasm_bindgen(js_name = "Alphabet")]
+#[wasm_bindgen(js_name = Alphabet)]
 pub enum JsAlphabet {
     A,
     B,
