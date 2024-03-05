@@ -26,7 +26,7 @@ impl Deref for Contact {
 #[uniffi::export]
 impl Contact {
     #[uniffi::constructor]
-    pub fn new(pk: Arc<PublicKey>, relay_url: Option<String>, alias: Option<String>) -> Self {
+    pub fn new(pk: &PublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
         let relay_url = relay_url.map(|relay_url| UncheckedUrl::from(&relay_url));
         Self {
             inner: nostr::Contact::new(**pk, relay_url, alias),

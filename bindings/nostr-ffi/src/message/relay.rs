@@ -177,18 +177,18 @@ impl From<nostr::RelayMessage> for RelayMessage {
 impl RelayMessage {
     /// Create new `EVENT` message
     #[uniffi::constructor]
-    pub fn event(subscription_id: String, event: Arc<Event>) -> Self {
+    pub fn event(subscription_id: &str, event: &Event) -> Self {
         Self {
             inner: nostr::RelayMessage::event(
                 SubscriptionId::new(subscription_id),
-                event.as_ref().deref().clone(),
+                event.deref().clone(),
             ),
         }
     }
 
     /// Create new `NOTICE` message
     #[uniffi::constructor]
-    pub fn notice(message: String) -> Self {
+    pub fn notice(message: &str) -> Self {
         Self {
             inner: nostr::RelayMessage::notice(message),
         }
@@ -196,7 +196,7 @@ impl RelayMessage {
 
     /// Create new `CLOSED` message
     #[uniffi::constructor]
-    pub fn closed(subscription_id: String, message: String) -> Self {
+    pub fn closed(subscription_id: &str, message: &str) -> Self {
         Self {
             inner: nostr::RelayMessage::closed(SubscriptionId::new(subscription_id), message),
         }
@@ -204,7 +204,7 @@ impl RelayMessage {
 
     /// Create new `EOSE` message
     #[uniffi::constructor]
-    pub fn eose(subscription_id: String) -> Self {
+    pub fn eose(subscription_id: &str) -> Self {
         Self {
             inner: nostr::RelayMessage::eose(SubscriptionId::new(subscription_id)),
         }
@@ -212,7 +212,7 @@ impl RelayMessage {
 
     /// Create new `OK` message
     #[uniffi::constructor]
-    pub fn ok(event_id: Arc<EventId>, status: bool, message: String) -> Self {
+    pub fn ok(event_id: &EventId, status: bool, message: &str) -> Self {
         Self {
             inner: nostr::RelayMessage::ok(**event_id, status, message),
         }
@@ -220,7 +220,7 @@ impl RelayMessage {
 
     /// Create new `AUTH` message
     #[uniffi::constructor]
-    pub fn auth(challenge: String) -> Self {
+    pub fn auth(challenge: &str) -> Self {
         Self {
             inner: nostr::RelayMessage::auth(challenge),
         }
@@ -228,7 +228,7 @@ impl RelayMessage {
 
     /// Create new `EVENT` message
     #[uniffi::constructor]
-    pub fn count(subscription_id: String, count: f64) -> Self {
+    pub fn count(subscription_id: &str, count: f64) -> Self {
         Self {
             inner: nostr::RelayMessage::count(SubscriptionId::new(subscription_id), count as usize),
         }
@@ -238,7 +238,7 @@ impl RelayMessage {
     ///
     /// **This method NOT verify the event signature!**
     #[uniffi::constructor]
-    pub fn from_json(json: String) -> Result<Self> {
+    pub fn from_json(json: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::RelayMessage::from_json(json)?,
         })

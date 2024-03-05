@@ -15,18 +15,6 @@ pub struct PublicKey {
     inner: nostr::PublicKey,
 }
 
-impl From<nostr::PublicKey> for PublicKey {
-    fn from(inner: nostr::PublicKey) -> Self {
-        Self { inner }
-    }
-}
-
-impl From<&PublicKey> for nostr::PublicKey {
-    fn from(pk: &PublicKey) -> Self {
-        pk.inner
-    }
-}
-
 impl Deref for PublicKey {
     type Target = nostr::PublicKey;
 
@@ -35,39 +23,45 @@ impl Deref for PublicKey {
     }
 }
 
+impl From<nostr::PublicKey> for PublicKey {
+    fn from(inner: nostr::PublicKey) -> Self {
+        Self { inner }
+    }
+}
+
 #[uniffi::export]
 impl PublicKey {
     /// Try to parse public key from `hex` or `bech32`
     #[uniffi::constructor]
-    pub fn parse(public_key: String) -> Result<Self> {
+    pub fn parse(public_key: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::PublicKey::parse(public_key)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_hex(hex: String) -> Result<Self> {
+    pub fn from_hex(hex: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::PublicKey::from_hex(hex)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(pk: String) -> Result<Self> {
+    pub fn from_bech32(bech32: &str) -> Result<Self> {
         Ok(Self {
-            inner: nostr::PublicKey::from_bech32(pk)?,
+            inner: nostr::PublicKey::from_bech32(bech32)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(Self {
-            inner: nostr::PublicKey::from_slice(&bytes)?,
+            inner: nostr::PublicKey::from_slice(bytes)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: String) -> Result<Self> {
+    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::PublicKey::from_nostr_uri(uri)?,
         })

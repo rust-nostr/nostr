@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr_ffi::{Event, EventBuilder, Keys, PublicKey, UnsignedEvent};
 use nostr_sdk::{block_on, signer};
@@ -36,53 +35,51 @@ impl From<signer::NostrSigner> for NostrSigner {
 #[uniffi::export]
 impl NostrSigner {
     #[uniffi::constructor]
-    pub fn keys(keys: Arc<Keys>) -> Self {
+    pub fn keys(keys: &Keys) -> Self {
         Self {
-            inner: signer::NostrSigner::Keys(keys.as_ref().deref().clone()),
+            inner: signer::NostrSigner::Keys(keys.deref().clone()),
         }
     }
 
     #[uniffi::constructor]
-    pub fn nip46(nip46: Arc<Nip46Signer>) -> Self {
+    pub fn nip46(nip46: &Nip46Signer) -> Self {
         Self {
-            inner: signer::NostrSigner::nip46(nip46.as_ref().deref().clone()),
+            inner: signer::NostrSigner::nip46(nip46.deref().clone()),
         }
     }
 
     /// Get signer public key
-    pub fn public_key(&self) -> Result<Arc<PublicKey>> {
-        block_on(async move { Ok(Arc::new(self.inner.public_key().await?.into())) })
+    pub fn public_key(&self) -> Result<PublicKey> {
+        block_on(async move { Ok(self.inner.public_key().await?.into()) })
     }
 
-    pub fn sign_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<Event>> {
+    pub fn sign_event_builder(&self, builder: &EventBuilder) -> Result<Event> {
         block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .sign_event_builder(builder.as_ref().deref().clone())
-                    .await?
-                    .into(),
-            ))
+            Ok(self
+                .inner
+                .sign_event_builder(builder.deref().clone())
+                .await?
+                .into())
         })
     }
 
-    pub fn sign_event(&self, unsigned_event: Arc<UnsignedEvent>) -> Result<Arc<Event>> {
+    pub fn sign_event(&self, unsigned_event: &UnsignedEvent) -> Result<Event> {
         block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .sign_event(unsigned_event.as_ref().deref().clone())
-                    .await?
-                    .into(),
-            ))
+            Ok(self
+                .inner
+                .sign_event(unsigned_event.deref().clone())
+                .await?
+                .into())
         })
     }
 
-    pub fn nip04_encrypt(&self, public_key: Arc<PublicKey>, content: String) -> Result<String> {
+    pub fn nip04_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
         block_on(async move { Ok(self.inner.nip04_encrypt(**public_key, content).await?) })
     }
 
     pub fn nip04_decrypt(
         &self,
-        public_key: Arc<PublicKey>,
+        public_key: &PublicKey,
         encrypted_content: String,
     ) -> Result<String> {
         block_on(async move {
@@ -93,11 +90,11 @@ impl NostrSigner {
         })
     }
 
-    pub fn nip44_encrypt(&self, public_key: Arc<PublicKey>, content: String) -> Result<String> {
+    pub fn nip44_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
         block_on(async move { Ok(self.inner.nip44_encrypt(**public_key, content).await?) })
     }
 
-    pub fn nip44_decrypt(&self, public_key: Arc<PublicKey>, content: String) -> Result<String> {
+    pub fn nip44_decrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
         block_on(async move { Ok(self.inner.nip44_decrypt(**public_key, content).await?) })
     }
 }

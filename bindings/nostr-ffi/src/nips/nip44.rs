@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::nips::nip44::{self, Version};
 use uniffi::Enum;
@@ -32,14 +31,14 @@ impl From<Nip44Version> for Version {
 
 #[uniffi::export]
 pub fn nip44_encrypt(
-    secret_key: Arc<SecretKey>,
-    public_key: Arc<PublicKey>,
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
     content: String,
     version: Nip44Version,
 ) -> Result<String> {
     Ok(nip44::encrypt(
-        secret_key.as_ref().deref(),
-        public_key.as_ref().deref(),
+        secret_key.deref(),
+        public_key.deref(),
         content,
         version.into(),
     )?)
@@ -47,13 +46,13 @@ pub fn nip44_encrypt(
 
 #[uniffi::export]
 pub fn nip44_decrypt(
-    secret_key: Arc<SecretKey>,
-    public_key: Arc<PublicKey>,
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
     payload: String,
 ) -> Result<String> {
     Ok(nip44::decrypt(
-        secret_key.as_ref().deref(),
-        public_key.as_ref().deref(),
+        secret_key.deref(),
+        public_key.deref(),
         payload,
     )?)
 }

@@ -21,7 +21,7 @@ pub struct Coordinate {
 #[uniffi::export]
 impl Coordinate {
     #[uniffi::constructor]
-    pub fn new(kind: u64, public_key: Arc<PublicKey>) -> Self {
+    pub fn new(kind: u64, public_key: &PublicKey) -> Self {
         Self {
             inner: nip01::Coordinate::new(kind.into(), **public_key),
         }

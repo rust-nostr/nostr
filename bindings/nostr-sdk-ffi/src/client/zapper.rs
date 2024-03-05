@@ -39,7 +39,7 @@ impl ZapEntity {
     }
 
     #[uniffi::constructor]
-    pub fn public_key(public_key: Arc<PublicKey>) -> Self {
+    pub fn public_key(public_key: &PublicKey) -> Self {
         Self {
             inner: client::ZapEntity::PublicKey(**public_key),
         }

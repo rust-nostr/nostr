@@ -37,22 +37,22 @@ impl Options {
         }
     }
 
-    pub fn wait_for_send(self: Arc<Self>, wait: bool) -> Arc<Self> {
+    pub fn wait_for_send(self: Arc<Self>, wait: bool) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.wait_for_send(wait);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn wait_for_subscription(self: Arc<Self>, wait: bool) -> Arc<Self> {
+    pub fn wait_for_subscription(self: Arc<Self>, wait: bool) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.wait_for_subscription(wait);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn difficulty(self: Arc<Self>, difficulty: u8) -> Arc<Self> {
+    pub fn difficulty(self: Arc<Self>, difficulty: u8) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.difficulty(difficulty);
-        Arc::new(builder)
+        builder
     }
 
     /// Minimum POW difficulty for received events
@@ -62,36 +62,36 @@ impl Options {
         builder
     }
 
-    pub fn req_filters_chunk_size(self: Arc<Self>, req_filters_chunk_size: u8) -> Arc<Self> {
+    pub fn req_filters_chunk_size(self: Arc<Self>, req_filters_chunk_size: u8) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.req_filters_chunk_size(req_filters_chunk_size);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn skip_disconnected_relays(self: Arc<Self>, skip: bool) -> Arc<Self> {
+    pub fn skip_disconnected_relays(self: Arc<Self>, skip: bool) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.skip_disconnected_relays(skip);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn timeout(self: Arc<Self>, timeout: Duration) -> Arc<Self> {
+    pub fn timeout(self: Arc<Self>, timeout: Duration) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.timeout(timeout);
-        Arc::new(builder)
+        builder
     }
 
     /// Connection timeout (default: None)
     ///
     /// If set to `None`, the client will try to connect to the relays without waiting.
-    pub fn connection_timeout(self: Arc<Self>, timeout: Option<Duration>) -> Arc<Self> {
+    pub fn connection_timeout(self: Arc<Self>, timeout: Option<Duration>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.connection_timeout(timeout);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn send_timeout(self: Arc<Self>, send_timeout: Option<Duration>) -> Arc<Self> {
+    pub fn send_timeout(self: Arc<Self>, send_timeout: Option<Duration>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.send_timeout(send_timeout);
-        Arc::new(builder)
+        builder
     }
 }

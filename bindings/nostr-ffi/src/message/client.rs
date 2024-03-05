@@ -182,15 +182,15 @@ impl From<nostr::ClientMessage> for ClientMessage {
 impl ClientMessage {
     /// Create new `EVENT` message
     #[uniffi::constructor]
-    pub fn event(event: Arc<Event>) -> Self {
+    pub fn event(event: &Event) -> Self {
         Self {
-            inner: nostr::ClientMessage::event(event.as_ref().deref().clone()),
+            inner: nostr::ClientMessage::event(event.deref().clone()),
         }
     }
 
     /// Create new `REQ` message
     #[uniffi::constructor]
-    pub fn req(subscription_id: String, filters: Vec<Arc<Filter>>) -> Self {
+    pub fn req(subscription_id: &str, filters: Vec<Arc<Filter>>) -> Self {
         Self {
             inner: nostr::ClientMessage::req(
                 SubscriptionId::new(subscription_id),
@@ -204,7 +204,7 @@ impl ClientMessage {
 
     /// Create new `COUNT` message
     #[uniffi::constructor]
-    pub fn count(subscription_id: String, filters: Vec<Arc<Filter>>) -> Self {
+    pub fn count(subscription_id: &str, filters: Vec<Arc<Filter>>) -> Self {
         Self {
             inner: nostr::ClientMessage::count(
                 SubscriptionId::new(subscription_id),
@@ -218,7 +218,7 @@ impl ClientMessage {
 
     /// Create new `CLOSE` message
     #[uniffi::constructor]
-    pub fn close(subscription_id: String) -> Self {
+    pub fn close(subscription_id: &str) -> Self {
         Self {
             inner: nostr::ClientMessage::close(SubscriptionId::new(subscription_id)),
         }
@@ -226,9 +226,9 @@ impl ClientMessage {
 
     /// Create new `AUTH` message
     #[uniffi::constructor]
-    pub fn auth(event: Arc<Event>) -> Self {
+    pub fn auth(event: &Event) -> Self {
         Self {
-            inner: nostr::ClientMessage::auth(event.as_ref().deref().clone()),
+            inner: nostr::ClientMessage::auth(event.deref().clone()),
         }
     }
 
@@ -236,7 +236,7 @@ impl ClientMessage {
     ///
     /// **This method NOT verify the event signature!**
     #[uniffi::constructor]
-    pub fn from_json(json: String) -> Result<Self> {
+    pub fn from_json(json: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::ClientMessage::from_json(json)?,
         })

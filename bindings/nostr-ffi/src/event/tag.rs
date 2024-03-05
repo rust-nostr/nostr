@@ -842,11 +842,11 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::Title { title } => Ok(Self::Title(title)),
             TagEnum::Image { url, dimensions } => Ok(Self::Image(
                 UncheckedUrl::from(url),
-                dimensions.map(|d| d.as_ref().into()),
+                dimensions.map(|d| **d),
             )),
             TagEnum::Thumb { url, dimensions } => Ok(Self::Thumb(
                 UncheckedUrl::from(url),
-                dimensions.map(|d| d.as_ref().into()),
+                dimensions.map(|d| **d),
             )),
             TagEnum::Summary { summary } => Ok(Self::Summary(summary)),
             TagEnum::Description { desc } => Ok(Self::Description(desc)),
@@ -864,7 +864,7 @@ impl TryFrom<TagEnum> for tag::Tag {
             TagEnum::Aes256Gcm { key, iv } => Ok(Self::Aes256Gcm { key, iv }),
             TagEnum::Sha256 { hash } => Ok(Self::Sha256(Sha256Hash::from_str(&hash)?)),
             TagEnum::Size { size } => Ok(Self::Size(size as usize)),
-            TagEnum::Dim { dimensions } => Ok(Self::Dim(dimensions.as_ref().into())),
+            TagEnum::Dim { dimensions } => Ok(Self::Dim(**dimensions)),
             TagEnum::Magnet { uri } => Ok(Self::Magnet(uri)),
             TagEnum::Blurhash { blurhash } => Ok(Self::Blurhash(blurhash)),
             TagEnum::Streaming { url } => Ok(Self::Streaming(UncheckedUrl::from(url))),
@@ -903,17 +903,17 @@ pub struct Tag {
     inner: tag::Tag,
 }
 
-impl From<tag::Tag> for Tag {
-    fn from(inner: tag::Tag) -> Self {
-        Self { inner }
-    }
-}
-
 impl Deref for Tag {
     type Target = tag::Tag;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+impl From<tag::Tag> for Tag {
+    fn from(inner: tag::Tag) -> Self {
+        Self { inner }
     }
 }
 
@@ -935,7 +935,7 @@ impl Tag {
 
     /// Compose `["p", "<public-key>"]` tag
     #[uniffi::constructor]
-    pub fn public_key(public_key: Arc<PublicKey>) -> Self {
+    pub fn public_key(public_key: &PublicKey) -> Self {
         Self {
             inner: tag::Tag::public_key(**public_key),
         }
@@ -943,7 +943,7 @@ impl Tag {
 
     /// Compose `["e", "<event-id>"]` tag
     #[uniffi::constructor]
-    pub fn event(event_id: Arc<EventId>) -> Self {
+    pub fn event(event_id: &EventId) -> Self {
         Self {
             inner: tag::Tag::event(**event_id),
         }

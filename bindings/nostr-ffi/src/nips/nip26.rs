@@ -3,7 +3,6 @@
 
 use std::ops::Deref;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use nostr::nips::nip26::{self, Conditions, DelegationTag, EventProperties};
 use nostr::secp256k1::schnorr::Signature;
@@ -15,8 +14,8 @@ use crate::{Keys, PublicKey};
 /// See also validate_delegation_tag().
 #[uniffi::export]
 pub fn create_delegation_tag(
-    delegator_keys: Arc<Keys>,
-    delegatee_pubkey: Arc<PublicKey>,
+    delegator_keys: &Keys,
+    delegatee_pubkey: &PublicKey,
     conditions: String,
 ) -> Result<String> {
     let conditions = Conditions::from_str(&conditions)?;
@@ -28,7 +27,7 @@ pub fn create_delegation_tag(
 #[uniffi::export]
 pub fn validate_delegation_tag(
     delegation_tag: String,
-    delegatee_pubkey: Arc<PublicKey>,
+    delegatee_pubkey: &PublicKey,
     event_kind: u64,
     created_at: u64,
 ) -> bool {
@@ -45,8 +44,8 @@ pub fn validate_delegation_tag(
 /// See `create_delegation_tag` for more complete functionality.
 #[uniffi::export]
 pub fn sign_delegation(
-    delegator_keys: Arc<Keys>,
-    delegatee_pk: Arc<PublicKey>,
+    delegator_keys: &Keys,
+    delegatee_pk: &PublicKey,
     conditions: String,
 ) -> Result<String> {
     let conditions = Conditions::from_str(&conditions)?;
@@ -56,8 +55,8 @@ pub fn sign_delegation(
 /// Verify delegation signature (NIP26)
 #[uniffi::export]
 pub fn verify_delegation_signature(
-    delegator_public_key: Arc<PublicKey>,
-    delegatee_public_key: Arc<PublicKey>,
+    delegator_public_key: &PublicKey,
+    delegatee_public_key: &PublicKey,
     conditions: String,
     signature: String,
 ) -> Result<bool> {

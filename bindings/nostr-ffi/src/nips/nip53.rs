@@ -130,12 +130,9 @@ impl From<LiveEvent> for nip53::LiveEvent {
             id: value.id,
             title: value.title,
             summary: value.summary,
-            image: value.image.map(|i: Image| {
-                (
-                    UncheckedUrl::from(i.url),
-                    i.dimensions.map(|d| d.as_ref().into()),
-                )
-            }),
+            image: value
+                .image
+                .map(|i: Image| (UncheckedUrl::from(i.url), i.dimensions.map(|d| **d))),
             hashtags: value.hashtags,
             streaming: value.streaming.map(UncheckedUrl::from),
             recording: value.recording.map(UncheckedUrl::from),

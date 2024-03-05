@@ -34,15 +34,15 @@ impl RelayInformationDocument {
     }
 
     #[uniffi::constructor]
-    pub fn get(url: String, proxy: Option<String>) -> Result<Arc<Self>> {
+    pub fn get(url: String, proxy: Option<String>) -> Result<Self> {
         let url: Url = Url::parse(&url)?;
         let proxy: Option<SocketAddr> = match proxy {
             Some(proxy) => Some(proxy.parse()?),
             None => None,
         };
-        Ok(Arc::new(Self {
+        Ok(Self {
             inner: nip11::RelayInformationDocument::get_blocking(url, proxy)?,
-        }))
+        })
     }
 
     pub fn name(&self) -> Option<String> {

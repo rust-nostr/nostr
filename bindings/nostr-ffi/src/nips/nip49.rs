@@ -74,14 +74,14 @@ impl EncryptedSecretKey {
     /// Encrypt secret key
     #[uniffi::constructor]
     pub fn new(
-        secret_key: Arc<SecretKey>,
+        secret_key: &SecretKey,
         password: String,
         log_n: u8,
         key_security: KeySecurity,
     ) -> Result<Self> {
         Ok(Self {
             inner: nip49::EncryptedSecretKey::new(
-                secret_key.as_ref().deref(),
+                secret_key.deref(),
                 password,
                 log_n,
                 key_security.into(),

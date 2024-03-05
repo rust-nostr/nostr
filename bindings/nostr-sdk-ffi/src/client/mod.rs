@@ -297,7 +297,7 @@ impl Client {
 
     pub fn send_direct_msg(
         &self,
-        receiver: Arc<PublicKey>,
+        receiver: &PublicKey,
         msg: String,
         reply: Option<Arc<EventId>>,
     ) -> Result<Arc<EventId>> {
@@ -381,7 +381,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     pub fn gift_wrap(
         &self,
-        receiver: Arc<PublicKey>,
+        receiver: &PublicKey,
         rumor: Arc<EventBuilder>,
         expiration: Option<Arc<Timestamp>>,
     ) -> Result<()> {
@@ -400,7 +400,7 @@ impl Client {
     /// Send GiftWrapper Sealed Direct message
     pub fn send_sealed_msg(
         &self,
-        receiver: Arc<PublicKey>,
+        receiver: &PublicKey,
         message: String,
         expiration: Option<Arc<Timestamp>>,
     ) -> Result<()> {

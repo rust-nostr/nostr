@@ -37,45 +37,45 @@ impl From<nip94::FileMetadata> for FileMetadata {
 #[uniffi::export]
 impl FileMetadata {
     #[uniffi::constructor]
-    pub fn new(url: String, mime_type: String, hash: String) -> Result<Arc<Self>> {
+    pub fn new(url: String, mime_type: String, hash: String) -> Result<Self> {
         let url = Url::parse(&url)?;
         let hash = Sha256Hash::from_str(&hash)?;
-        Ok(Arc::new(Self {
+        Ok(Self {
             inner: nip94::FileMetadata::new(url, mime_type, hash),
-        }))
+        })
     }
 
-    pub fn aes_256_gcm(self: Arc<Self>, key: String, iv: String) -> Arc<Self> {
+    pub fn aes_256_gcm(self: Arc<Self>, key: String, iv: String) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.aes_256_gcm(key, iv);
-        Arc::new(builder)
+        builder
     }
 
     /// Add file size (bytes)
-    pub fn size(self: Arc<Self>, size: u64) -> Arc<Self> {
+    pub fn size(self: Arc<Self>, size: u64) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.size(size as usize);
-        Arc::new(builder)
+        builder
     }
 
     /// Add file size (pixels)
-    pub fn dimensions(self: Arc<Self>, dim: Arc<ImageDimensions>) -> Arc<Self> {
+    pub fn dimensions(self: Arc<Self>, dim: &ImageDimensions) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.dimensions(dim.as_ref().into());
-        Arc::new(builder)
+        builder.inner = builder.inner.dimensions(**dim);
+        builder
     }
 
     /// Add magnet
-    pub fn magnet(self: Arc<Self>, magnet: String) -> Arc<Self> {
+    pub fn magnet(self: Arc<Self>, magnet: String) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.magnet(magnet);
-        Arc::new(builder)
+        builder
     }
 
     /// Add blurhash
-    pub fn blurhash(self: Arc<Self>, blurhash: String) -> Arc<Self> {
+    pub fn blurhash(self: Arc<Self>, blurhash: String) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.blurhash(blurhash);
-        Arc::new(builder)
+        builder
     }
 }

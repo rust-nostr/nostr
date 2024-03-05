@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::nips::nip04;
 
@@ -12,26 +11,26 @@ use crate::{PublicKey, SecretKey};
 
 #[uniffi::export]
 pub fn nip04_encrypt(
-    secret_key: Arc<SecretKey>,
-    public_key: Arc<PublicKey>,
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
     content: String,
 ) -> Result<String> {
     Ok(nip04::encrypt(
-        secret_key.as_ref().deref(),
-        public_key.as_ref().deref(),
+        secret_key.deref(),
+        public_key.deref(),
         content,
     )?)
 }
 
 #[uniffi::export]
 pub fn nip04_decrypt(
-    secret_key: Arc<SecretKey>,
-    public_key: Arc<PublicKey>,
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
     encrypted_content: String,
 ) -> Result<String> {
     Ok(nip04::decrypt(
-        secret_key.as_ref().deref(),
-        public_key.as_ref().deref(),
+        secret_key.deref(),
+        public_key.deref(),
         encrypted_content,
     )?)
 }

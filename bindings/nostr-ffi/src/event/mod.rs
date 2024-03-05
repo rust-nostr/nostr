@@ -5,13 +5,13 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::{Event as EventSdk, JsonUtil};
+use nostr::JsonUtil;
 use uniffi::Object;
 
-mod builder;
-mod id;
+pub mod builder;
+pub mod id;
 pub mod tag;
-mod unsigned;
+pub mod unsigned;
 
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
@@ -23,17 +23,17 @@ use crate::{PublicKey, Timestamp};
 
 #[derive(Object)]
 pub struct Event {
-    inner: EventSdk,
+    inner: nostr::Event,
 }
 
-impl From<EventSdk> for Event {
-    fn from(inner: EventSdk) -> Self {
+impl From<nostr::Event> for Event {
+    fn from(inner: nostr::Event) -> Self {
         Self { inner }
     }
 }
 
 impl Deref for Event {
-    type Target = EventSdk;
+    type Target = nostr::Event;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -42,17 +42,17 @@ impl Deref for Event {
 
 #[uniffi::export]
 impl Event {
-    pub fn id(&self) -> Arc<EventId> {
-        Arc::new(self.inner.id().into())
+    pub fn id(&self) -> EventId {
+        self.inner.id().into()
     }
 
     /// Get event author (`pubkey` field)
-    pub fn author(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.author().into())
+    pub fn author(&self) -> PublicKey {
+        self.inner.author().into()
     }
 
-    pub fn created_at(&self) -> Arc<Timestamp> {
-        Arc::new(self.inner.created_at().into())
+    pub fn created_at(&self) -> Timestamp {
+        self.inner.created_at().into()
     }
 
     pub fn kind(&self) -> u64 {
@@ -177,10 +177,10 @@ impl Event {
     }
 
     #[uniffi::constructor]
-    pub fn from_json(json: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
-            inner: EventSdk::from_json(json)?,
-        }))
+    pub fn from_json(json: String) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::Event::from_json(json)?,
+        })
     }
 
     pub fn as_json(&self) -> String {

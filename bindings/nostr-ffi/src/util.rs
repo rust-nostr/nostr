@@ -4,7 +4,6 @@
 
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::serde_json::{Number, Value};
 use nostr::util;
@@ -14,8 +13,8 @@ use crate::error::Result;
 use crate::{NostrError, PublicKey, SecretKey};
 
 #[uniffi::export]
-pub fn generate_shared_key(secret_key: Arc<SecretKey>, public_key: Arc<PublicKey>) -> Vec<u8> {
-    util::generate_shared_key(secret_key.as_ref().deref(), public_key.as_ref().deref()).to_vec()
+pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> Vec<u8> {
+    util::generate_shared_key(secret_key.deref(), public_key.deref()).to_vec()
 }
 
 #[derive(Enum)]

@@ -38,7 +38,7 @@ impl Nip46Signer {
     #[uniffi::constructor]
     pub fn new(
         relay_url: String,
-        app_keys: Arc<Keys>,
+        app_keys: &Keys,
         signer_public_key: Option<Arc<PublicKey>>,
         timeout: Duration,
     ) -> Result<Self> {
@@ -47,7 +47,7 @@ impl Nip46Signer {
             Ok(Self {
                 inner: signer::Nip46Signer::new(
                     relay_url,
-                    app_keys.as_ref().deref().clone(),
+                    app_keys.deref().clone(),
                     signer_public_key.map(|p| **p),
                     timeout,
                 )
@@ -62,15 +62,13 @@ impl Nip46Signer {
     }
 
     /// Get signer public key
-    pub fn signer_public_key(&self) -> Result<Arc<PublicKey>> {
-        block_on(async move { Ok(Arc::new(self.inner.signer_public_key().await?.into())) })
+    pub fn signer_public_key(&self) -> Result<PublicKey> {
+        block_on(async move { Ok(self.inner.signer_public_key().await?.into()) })
     }
 
-    pub fn nostr_connect_uri(&self, metadata: Arc<NostrConnectMetadata>) -> Arc<NostrConnectURI> {
-        Arc::new(
-            self.inner
-                .nostr_connect_uri(metadata.as_ref().deref().clone())
-                .into(),
-        )
+    pub fn nostr_connect_uri(&self, metadata: &NostrConnectMetadata) -> NostrConnectURI {
+        self.inner
+            .nostr_connect_uri(metadata.deref().clone())
+            .into()
     }
 }

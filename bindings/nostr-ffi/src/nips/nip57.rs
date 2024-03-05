@@ -54,54 +54,51 @@ impl From<nip57::ZapRequestData> for ZapRequestData {
 #[uniffi::export]
 impl ZapRequestData {
     #[uniffi::constructor]
-    pub fn new(public_key: Arc<PublicKey>, relays: Vec<String>) -> Self {
+    pub fn new(public_key: &PublicKey, relays: Vec<String>) -> Self {
         Self {
-            inner: nip57::ZapRequestData::new(
-                public_key.as_ref().into(),
-                relays.into_iter().map(|r| r.into()),
-            ),
+            inner: nip57::ZapRequestData::new(**public_key, relays.into_iter().map(|r| r.into())),
         }
     }
 
-    pub fn message(self: Arc<Self>, message: String) -> Arc<Self> {
+    pub fn message(self: Arc<Self>, message: &str) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.message(message);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn amount(self: Arc<Self>, amount: u64) -> Arc<Self> {
+    pub fn amount(self: Arc<Self>, amount: u64) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.amount(amount);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn lnurl(self: Arc<Self>, lnurl: String) -> Arc<Self> {
+    pub fn lnurl(self: Arc<Self>, lnurl: &str) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.lnurl(lnurl);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn event_id(self: Arc<Self>, event_id: Arc<EventId>) -> Arc<Self> {
+    pub fn event_id(self: Arc<Self>, event_id: &EventId) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.event_id(event_id.as_ref().into());
-        Arc::new(builder)
+        builder.inner = builder.inner.event_id(**event_id);
+        builder
     }
 }
 
 #[uniffi::export]
-pub fn nip57_anonymous_zap_request(data: Arc<ZapRequestData>) -> Result<Event> {
-    Ok(nip57::anonymous_zap_request(data.as_ref().deref().clone())?.into())
+pub fn nip57_anonymous_zap_request(data: &ZapRequestData) -> Result<Event> {
+    Ok(nip57::anonymous_zap_request(data.deref().clone())?.into())
 }
 
 #[uniffi::export]
-pub fn nip57_private_zap_request(data: Arc<ZapRequestData>, keys: Arc<Keys>) -> Result<Event> {
-    Ok(nip57::private_zap_request(data.as_ref().deref().clone(), keys.deref())?.into())
+pub fn nip57_private_zap_request(data: &ZapRequestData, keys: &Keys) -> Result<Event> {
+    Ok(nip57::private_zap_request(data.deref().clone(), keys.deref())?.into())
 }
 
 #[uniffi::export]
 pub fn decrypt_sent_private_zap_message(
-    secret_key: Arc<SecretKey>,
-    public_key: Arc<PublicKey>,
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
     private_zap: Arc<Event>,
 ) -> Result<Event> {
     Ok(nip57::decrypt_sent_private_zap_message(
@@ -114,7 +111,7 @@ pub fn decrypt_sent_private_zap_message(
 
 #[uniffi::export]
 pub fn decrypt_received_private_zap_message(
-    secret_key: Arc<SecretKey>,
+    secret_key: &SecretKey,
     private_zap: Arc<Event>,
 ) -> Result<Event> {
     Ok(

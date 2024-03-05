@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::nips::nip19::{FromBech32, ToBech32};
 use uniffi::Object;
@@ -34,30 +33,30 @@ impl Deref for SecretKey {
 impl SecretKey {
     /// Try to parse secret key from `hex` or `bech32`
     #[uniffi::constructor]
-    pub fn parse(secret_key: String) -> Result<Self> {
+    pub fn parse(secret_key: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::SecretKey::parse(secret_key)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_hex(hex: String) -> Result<Self> {
+    pub fn from_hex(hex: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::SecretKey::from_hex(hex)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(sk: String) -> Result<Self> {
+    pub fn from_bech32(bech32: &str) -> Result<Self> {
         Ok(Self {
-            inner: nostr::SecretKey::from_bech32(sk)?,
+            inner: nostr::SecretKey::from_bech32(bech32)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(Self {
-            inner: nostr::SecretKey::from_slice(&bytes)?,
+            inner: nostr::SecretKey::from_slice(bytes)?,
         })
     }
 
@@ -73,7 +72,7 @@ impl SecretKey {
     ///
     /// By default `LOG_N` is set to `16` and `KeySecurity` to `Unknown`.
     /// To use custom values check `EncryptedSecretKey` constructor.
-    pub fn encrypt(&self, password: String) -> Result<Arc<EncryptedSecretKey>> {
-        Ok(Arc::new(self.inner.encrypt(password)?.into()))
+    pub fn encrypt(&self, password: &str) -> Result<EncryptedSecretKey> {
+        Ok(self.inner.encrypt(password)?.into())
     }
 }

@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use uniffi::Object;
 
 #[derive(Object)]
@@ -9,21 +11,17 @@ pub struct ImageDimensions {
     inner: nostr::ImageDimensions,
 }
 
+impl Deref for ImageDimensions {
+    type Target = nostr::ImageDimensions;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 impl From<nostr::ImageDimensions> for ImageDimensions {
     fn from(inner: nostr::ImageDimensions) -> Self {
         Self { inner }
-    }
-}
-
-impl From<ImageDimensions> for nostr::ImageDimensions {
-    fn from(dim: ImageDimensions) -> Self {
-        dim.inner
-    }
-}
-
-impl From<&ImageDimensions> for nostr::ImageDimensions {
-    fn from(dim: &ImageDimensions) -> Self {
-        dim.inner
     }
 }
 

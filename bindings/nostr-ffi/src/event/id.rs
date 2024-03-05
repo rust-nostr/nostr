@@ -7,11 +7,11 @@ use std::sync::Arc;
 
 use nostr::nips::nip21::NostrURI;
 use nostr::prelude::{FromBech32, ToBech32};
-use nostr::{Kind, Tag};
+use nostr::Kind;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::{PublicKey, Timestamp};
+use crate::{PublicKey, Tag, Timestamp};
 
 #[derive(Object)]
 pub struct EventId {
@@ -32,74 +32,59 @@ impl From<nostr::EventId> for EventId {
     }
 }
 
-impl From<EventId> for nostr::EventId {
-    fn from(event_id: EventId) -> Self {
-        event_id.inner
-    }
-}
-
-impl From<&EventId> for nostr::EventId {
-    fn from(event_id: &EventId) -> Self {
-        event_id.inner
-    }
-}
-
 #[uniffi::export]
 impl EventId {
     #[uniffi::constructor]
     pub fn new(
-        pubkey: Arc<PublicKey>,
-        created_at: Arc<Timestamp>,
+        public_key: &PublicKey,
+        created_at: &Timestamp,
         kind: u64,
-        tags: Vec<Vec<String>>,
-        content: String,
+        tags: &[Arc<Tag>],
+        content: &str,
     ) -> Result<Self> {
-        let mut new_tags: Vec<Tag> = Vec::new();
-        for tag in tags.into_iter() {
-            new_tags.push(Tag::parse(tag)?);
-        }
+        let tags: Vec<nostr::Tag> = tags.iter().map(|t| t.as_ref().deref().clone()).collect();
         Ok(Self {
             inner: nostr::EventId::new(
-                pubkey.as_ref().deref(),
-                *created_at.as_ref().deref(),
+                public_key.deref(),
+                **created_at,
                 &Kind::from(kind),
-                &new_tags,
-                &content,
+                &tags,
+                content,
             ),
         })
     }
 
     /// Try to parse event ID from `hex` or `bech32`
     #[uniffi::constructor]
-    pub fn parse(id: String) -> Result<Self> {
+    pub fn parse(id: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventId::parse(id)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(Self {
-            inner: nostr::EventId::from_slice(&bytes)?,
+            inner: nostr::EventId::from_slice(bytes)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_hex(hex: String) -> Result<Self> {
+    pub fn from_hex(hex: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventId::from_hex(hex)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(id: String) -> Result<Self> {
+    pub fn from_bech32(id: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventId::from_bech32(id)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: String) -> Result<Self> {
+    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventId::from_nostr_uri(uri)?,
         })

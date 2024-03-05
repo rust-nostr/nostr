@@ -136,222 +136,212 @@ impl From<nostr::Filter> for Filter {
 #[uniffi::export]
 impl Filter {
     #[uniffi::constructor]
-    pub fn new() -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new() -> Self {
+        Self {
             inner: nostr::Filter::new(),
-        })
+        }
     }
 
-    pub fn id(self: Arc<Self>, id: Arc<EventId>) -> Arc<Self> {
+    pub fn id(self: Arc<Self>, id: &EventId) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.id(**id);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn ids(self: Arc<Self>, ids: Vec<Arc<EventId>>) -> Arc<Self> {
+    pub fn ids(self: Arc<Self>, ids: &[Arc<EventId>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.ids(ids.into_iter().map(|id| **id));
-        Arc::new(builder)
+        builder.inner = builder.inner.ids(ids.iter().map(|id| ***id));
+        builder
     }
 
-    pub fn remove_ids(self: Arc<Self>, ids: Vec<Arc<EventId>>) -> Arc<Self> {
+    pub fn remove_ids(self: Arc<Self>, ids: &[Arc<EventId>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.remove_ids(ids.into_iter().map(|id| **id));
-        Arc::new(builder)
+        builder.inner = builder.inner.remove_ids(ids.iter().map(|id| ***id));
+        builder
     }
 
     /// Add event author Public Key
-    pub fn author(self: Arc<Self>, author: Arc<PublicKey>) -> Arc<Self> {
+    pub fn author(self: Arc<Self>, author: &PublicKey) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.author(**author);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn authors(self: Arc<Self>, authors: Vec<Arc<PublicKey>>) -> Arc<Self> {
+    pub fn authors(self: Arc<Self>, authors: &[Arc<PublicKey>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.authors(authors.into_iter().map(|pk| **pk));
-        Arc::new(builder)
+        builder.inner = builder.inner.authors(authors.iter().map(|pk| ***pk));
+        builder
     }
 
-    pub fn remove_authors(self: Arc<Self>, authors: Vec<Arc<PublicKey>>) -> Arc<Self> {
+    pub fn remove_authors(self: Arc<Self>, authors: &[Arc<PublicKey>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder
-            .inner
-            .remove_authors(authors.into_iter().map(|pk| **pk));
-        Arc::new(builder)
+        builder.inner = builder.inner.remove_authors(authors.iter().map(|pk| ***pk));
+        builder
     }
 
-    pub fn kind(self: Arc<Self>, kind: u64) -> Arc<Self> {
+    pub fn kind(self: Arc<Self>, kind: u64) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.kind(kind.into());
-        Arc::new(builder)
+        builder
     }
 
-    pub fn kinds(self: Arc<Self>, kinds: Vec<u64>) -> Arc<Self> {
+    pub fn kinds(self: Arc<Self>, kinds: Vec<u64>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.kinds(kinds.into_iter().map(|k| k.into()));
-        Arc::new(builder)
+        builder
     }
 
-    pub fn remove_kinds(self: Arc<Self>, kinds: Vec<u64>) -> Arc<Self> {
+    pub fn remove_kinds(self: Arc<Self>, kinds: Vec<u64>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder
             .inner
             .remove_kinds(kinds.into_iter().map(|k| k.into()));
-        Arc::new(builder)
+        builder
     }
 
     /// Add event ID (`e` tag)
-    pub fn event(self: Arc<Self>, event_id: Arc<EventId>) -> Arc<Self> {
+    pub fn event(self: Arc<Self>, event_id: &EventId) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.event(event_id.as_ref().into());
-        Arc::new(builder)
+        builder.inner = builder.inner.event(**event_id);
+        builder
     }
 
     /// Add event IDs (`e` tag)
-    pub fn events(self: Arc<Self>, ids: Vec<Arc<EventId>>) -> Arc<Self> {
+    pub fn events(self: Arc<Self>, ids: &[Arc<EventId>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder
-            .inner
-            .events(ids.into_iter().map(|id| id.as_ref().into()));
-        Arc::new(builder)
+        builder.inner = builder.inner.events(ids.iter().map(|id| ***id));
+        builder
     }
 
-    pub fn remove_events(self: Arc<Self>, ids: Vec<Arc<EventId>>) -> Arc<Self> {
+    pub fn remove_events(self: Arc<Self>, ids: &[Arc<EventId>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder
-            .inner
-            .remove_events(ids.into_iter().map(|id| id.as_ref().into()));
-        Arc::new(builder)
+        builder.inner = builder.inner.remove_events(ids.iter().map(|id| ***id));
+        builder
     }
 
     /// Add Public Key (`p` tag)
-    pub fn pubkey(self: Arc<Self>, pubkey: Arc<PublicKey>) -> Arc<Self> {
+    pub fn pubkey(self: Arc<Self>, pubkey: &PublicKey) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.pubkey(*pubkey.as_ref().deref());
-        Arc::new(builder)
+        builder.inner = builder.inner.pubkey(**pubkey);
+        builder
     }
 
     /// Add Public Keys (`p` tag)
-    pub fn pubkeys(self: Arc<Self>, pubkeys: Vec<Arc<PublicKey>>) -> Arc<Self> {
+    pub fn pubkeys(self: Arc<Self>, pubkeys: &[Arc<PublicKey>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder
-            .inner
-            .pubkeys(pubkeys.into_iter().map(|id| *id.as_ref().deref()));
-        Arc::new(builder)
+        builder.inner = builder.inner.pubkeys(pubkeys.iter().map(|pk| ***pk));
+        builder
     }
 
-    pub fn remove_pubkeys(self: Arc<Self>, pubkeys: Vec<Arc<PublicKey>>) -> Arc<Self> {
+    pub fn remove_pubkeys(self: Arc<Self>, pubkeys: &[Arc<PublicKey>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder
-            .inner
-            .remove_pubkeys(pubkeys.into_iter().map(|id| *id.as_ref().deref()));
-        Arc::new(builder)
+        builder.inner = builder.inner.remove_pubkeys(pubkeys.iter().map(|pk| ***pk));
+        builder
     }
 
-    pub fn hashtag(self: Arc<Self>, hashtag: String) -> Arc<Self> {
+    pub fn hashtag(self: Arc<Self>, hashtag: &str) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.hashtag(hashtag);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn hashtags(self: Arc<Self>, hashtags: Vec<String>) -> Arc<Self> {
+    pub fn hashtags(self: Arc<Self>, hashtags: Vec<String>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.hashtags(hashtags);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn remove_hashtags(self: Arc<Self>, hashtags: Vec<String>) -> Arc<Self> {
+    pub fn remove_hashtags(self: Arc<Self>, hashtags: Vec<String>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.remove_hashtags(hashtags);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn reference(self: Arc<Self>, reference: String) -> Arc<Self> {
+    pub fn reference(self: Arc<Self>, reference: &str) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.reference(reference);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn references(self: Arc<Self>, references: Vec<String>) -> Arc<Self> {
+    pub fn references(self: Arc<Self>, references: Vec<String>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.references(references);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn remove_references(self: Arc<Self>, references: Vec<String>) -> Arc<Self> {
+    pub fn remove_references(self: Arc<Self>, references: Vec<String>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.remove_references(references);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn identifier(self: Arc<Self>, identifier: String) -> Arc<Self> {
+    pub fn identifier(self: Arc<Self>, identifier: &str) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.identifier(identifier);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn identifiers(self: Arc<Self>, identifiers: Vec<String>) -> Arc<Self> {
+    pub fn identifiers(self: Arc<Self>, identifiers: Vec<String>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.identifiers(identifiers);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn remove_identifiers(self: Arc<Self>, identifiers: Vec<String>) -> Arc<Self> {
+    pub fn remove_identifiers(self: Arc<Self>, identifiers: Vec<String>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.remove_identifiers(identifiers);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn search(self: Arc<Self>, text: String) -> Arc<Self> {
+    pub fn search(self: Arc<Self>, text: &str) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.search(text);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn remove_search(self: Arc<Self>) -> Arc<Self> {
+    pub fn remove_search(self: Arc<Self>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.remove_search();
-        Arc::new(builder)
+        builder
     }
 
-    pub fn since(self: Arc<Self>, timestamp: Arc<Timestamp>) -> Arc<Self> {
+    pub fn since(self: Arc<Self>, timestamp: &Timestamp) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.since(*timestamp.as_ref().deref());
-        Arc::new(builder)
+        builder.inner = builder.inner.since(**timestamp);
+        builder
     }
 
-    pub fn remove_since(self: Arc<Self>) -> Arc<Self> {
+    pub fn remove_since(self: Arc<Self>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.remove_since();
-        Arc::new(builder)
+        builder
     }
 
-    pub fn until(self: Arc<Self>, timestamp: Arc<Timestamp>) -> Arc<Self> {
+    pub fn until(self: Arc<Self>, timestamp: &Timestamp) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.until(*timestamp.as_ref().deref());
-        Arc::new(builder)
+        builder.inner = builder.inner.until(**timestamp);
+        builder
     }
 
-    pub fn remove_until(self: Arc<Self>) -> Arc<Self> {
+    pub fn remove_until(self: Arc<Self>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.remove_until();
-        Arc::new(builder)
+        builder
     }
 
-    pub fn limit(self: Arc<Self>, limit: u64) -> Arc<Self> {
+    pub fn limit(self: Arc<Self>, limit: u64) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.limit(limit as usize);
-        Arc::new(builder)
+        builder
     }
 
-    pub fn remove_limit(self: Arc<Self>) -> Arc<Self> {
+    pub fn remove_limit(self: Arc<Self>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.remove_limit();
-        Arc::new(builder)
+        builder
     }
 
-    pub fn custom_tag(self: Arc<Self>, tag: Arc<SingleLetterTag>, content: Vec<String>) -> Self {
+    pub fn custom_tag(self: Arc<Self>, tag: &SingleLetterTag, content: Vec<String>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.custom_tag(**tag, content);
         builder
@@ -372,10 +362,10 @@ impl Filter {
     }
 
     #[uniffi::constructor]
-    pub fn from_json(json: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_json(json: String) -> Result<Self> {
+        Ok(Self {
             inner: nostr::Filter::from_json(json)?,
-        }))
+        })
     }
 
     pub fn as_json(&self) -> String {

@@ -159,7 +159,7 @@ impl From<nip19::Nip19Profile> for Nip19Profile {
 impl Nip19Profile {
     /// New NIP19 profile
     #[uniffi::constructor]
-    pub fn new(public_key: Arc<PublicKey>, relays: Vec<String>) -> Result<Self> {
+    pub fn new(public_key: &PublicKey, relays: Vec<String>) -> Result<Self> {
         Ok(Self {
             inner: nip19::Nip19Profile::new(**public_key, relays)?,
         })

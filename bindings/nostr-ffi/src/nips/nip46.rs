@@ -91,10 +91,10 @@ impl Deref for NostrConnectURI {
 #[uniffi::export]
 impl NostrConnectURI {
     #[uniffi::constructor]
-    pub fn from_string(uri: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_string(uri: String) -> Result<Self> {
+        Ok(Self {
             inner: nip46::NostrConnectURI::from_str(&uri)?,
-        }))
+        })
     }
 
     pub fn public_key(&self) -> Arc<PublicKey> {

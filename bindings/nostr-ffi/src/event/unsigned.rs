@@ -34,16 +34,16 @@ impl From<nostr::UnsignedEvent> for UnsignedEvent {
 
 #[uniffi::export]
 impl UnsignedEvent {
-    pub fn id(&self) -> Arc<EventId> {
-        Arc::new(self.inner.id.into())
+    pub fn id(&self) -> EventId {
+        self.inner.id.into()
     }
 
-    pub fn author(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.pubkey.into())
+    pub fn author(&self) -> PublicKey {
+        self.inner.pubkey.into()
     }
 
-    pub fn created_at(&self) -> Arc<Timestamp> {
-        Arc::new(self.inner.created_at.into())
+    pub fn created_at(&self) -> Timestamp {
+        self.inner.created_at.into()
     }
 
     pub fn kind(&self) -> u64 {
@@ -63,25 +63,21 @@ impl UnsignedEvent {
         self.inner.content.clone()
     }
 
-    pub fn sign(&self, keys: Arc<Keys>) -> Result<Arc<Event>> {
-        Ok(Arc::new(Event::from(
-            self.inner.clone().sign(keys.as_ref().deref())?,
-        )))
+    pub fn sign(&self, keys: &Keys) -> Result<Event> {
+        Ok(Event::from(self.inner.clone().sign(keys.deref())?))
     }
 
     /// Add signature to [`UnsignedEvent`]
-    pub fn add_signature(&self, sig: String) -> Result<Arc<Event>> {
-        let sig = Signature::from_str(&sig)?;
-        Ok(Arc::new(Event::from(
-            self.inner.clone().add_signature(sig)?,
-        )))
+    pub fn add_signature(&self, sig: &str) -> Result<Event> {
+        let sig = Signature::from_str(sig)?;
+        Ok(Event::from(self.inner.clone().add_signature(sig)?))
     }
 
     #[uniffi::constructor]
-    pub fn from_json(json: String) -> Result<Arc<Self>> {
-        Ok(Arc::new(Self {
+    pub fn from_json(json: String) -> Result<Self> {
+        Ok(Self {
             inner: nostr::UnsignedEvent::from_json(json)?,
-        }))
+        })
     }
 
     pub fn as_json(&self) -> String {

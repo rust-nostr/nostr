@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::key;
 use nostr::nips::nip06::FromMnemonic;
@@ -17,7 +16,7 @@ pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
 use crate::error::{NostrError, Result};
 
-#[derive(Clone, Object)]
+#[derive(Object)]
 pub struct Keys {
     inner: key::Keys,
 }
@@ -39,27 +38,28 @@ impl From<key::Keys> for Keys {
 #[uniffi::export]
 impl Keys {
     #[uniffi::constructor]
-    pub fn new(sk: Arc<SecretKey>) -> Self {
+    pub fn new(secret_key: &SecretKey) -> Self {
         Self {
-            inner: key::Keys::new(sk.as_ref().deref().clone()),
+            inner: key::Keys::new(secret_key.deref().clone()),
         }
     }
 
     /// Try to parse keys from **secret key** `hex` or `bech32`
     #[uniffi::constructor]
-    pub fn parse(secret_key: String) -> Result<Self> {
+    pub fn parse(secret_key: &str) -> Result<Self> {
         Ok(Self {
             inner: key::Keys::parse(secret_key)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_public_key(pk: Arc<PublicKey>) -> Self {
+    pub fn from_public_key(public_key: &PublicKey) -> Self {
         Self {
-            inner: key::Keys::from_public_key(**pk),
+            inner: key::Keys::from_public_key(**public_key),
         }
     }
 
+    /// Generate random `Keys`
     #[uniffi::constructor]
     pub fn generate() -> Self {
         Self {
@@ -91,16 +91,16 @@ impl Keys {
         })
     }
 
-    pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.public_key().into())
+    pub fn public_key(&self) -> PublicKey {
+        self.inner.public_key().into()
     }
 
-    pub fn secret_key(&self) -> Result<Arc<SecretKey>> {
-        Ok(Arc::new(self.inner.secret_key()?.clone().into()))
+    pub fn secret_key(&self) -> Result<SecretKey> {
+        Ok(self.inner.secret_key()?.clone().into())
     }
 
-    pub fn sign_schnorr(&self, message: Vec<u8>) -> Result<String> {
-        let message = Message::from_slice(&message)?;
+    pub fn sign_schnorr(&self, message: &[u8]) -> Result<String> {
+        let message = Message::from_slice(message)?;
         Ok(self.inner.sign_schnorr(&message)?.to_string())
     }
 }

@@ -936,15 +936,15 @@ impl NostrWalletConnectURI {
     /// Create new Nostr Wallet Connect URI
     #[uniffi::constructor]
     pub fn new(
-        public_key: Arc<PublicKey>,
+        public_key: &PublicKey,
         relay_url: String,
-        random_secret_key: Arc<SecretKey>,
+        random_secret_key: &SecretKey,
         lud16: Option<String>,
     ) -> Result<Self> {
         Ok(nip47::NostrWalletConnectURI::new(
             **public_key,
             Url::parse(&relay_url)?,
-            random_secret_key.as_ref().deref().clone(),
+            random_secret_key.deref().clone(),
             lud16,
         )
         .into())

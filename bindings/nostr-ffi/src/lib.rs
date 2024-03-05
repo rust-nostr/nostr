@@ -6,8 +6,6 @@
 
 #![allow(clippy::new_without_default)]
 
-use std::sync::Arc;
-
 use uniffi::Object;
 
 mod error;
@@ -42,8 +40,8 @@ pub struct NostrLibrary;
 #[uniffi::export]
 impl NostrLibrary {
     #[uniffi::constructor]
-    pub fn new() -> Arc<Self> {
-        Arc::new(Self)
+    pub fn new() -> Self {
+        Self
     }
 
     pub fn git_hash_version(&self) -> Option<String> {

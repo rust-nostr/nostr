@@ -24,7 +24,7 @@ impl From<database::Profile> for Profile {
 impl Profile {
     /// Compose new profile
     #[uniffi::constructor]
-    pub fn new(public_key: Arc<PublicKey>, metadata: Arc<Metadata>) -> Self {
+    pub fn new(public_key: &PublicKey, metadata: Arc<Metadata>) -> Self {
         Self {
             inner: database::Profile::new(**public_key, metadata.as_ref().deref().clone()),
         }
