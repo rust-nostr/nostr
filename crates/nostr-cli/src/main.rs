@@ -85,6 +85,8 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             author,
             identifier,
             search,
+            since,
+            until,
             limit,
             reverse,
             database,
@@ -108,6 +110,14 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
 
             if let Some(search) = search {
                 filter = filter.search(search);
+            }
+
+            if let Some(since) = since {
+                filter = filter.since(since);
+            }
+
+            if let Some(until) = until {
+                filter = filter.until(until);
             }
 
             if let Some(limit) = limit {

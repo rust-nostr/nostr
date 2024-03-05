@@ -40,6 +40,12 @@ pub enum Command {
         /// Full-text search
         #[clap(short, long)]
         search: Option<String>,
+        /// Since
+        #[clap(short, long)]
+        since: Option<Timestamp>,
+        /// Until
+        #[clap(short, long)]
+        until: Option<Timestamp>,
         /// Limit
         #[clap(short, long)]
         limit: Option<usize>,
