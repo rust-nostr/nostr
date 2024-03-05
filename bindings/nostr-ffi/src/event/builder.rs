@@ -13,7 +13,7 @@ use super::{Event, EventId};
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
-use crate::nips::nip15::{ProductData, StallData};
+use crate::nips::nip15::{ProductData, StallDataRecord};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -464,10 +464,10 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn stall_data(data: Arc<StallData>) -> Arc<Self> {
-        Arc::new(Self {
-            inner: nostr::EventBuilder::stall_data(data.as_ref().deref().clone()),
-        })
+    pub fn stall_data(data: StallDataRecord) -> Self {
+        Self {
+            inner: nostr::EventBuilder::stall_data(data.into()),
+        }
     }
 
     #[uniffi::constructor]
