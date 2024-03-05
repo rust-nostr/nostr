@@ -8,7 +8,7 @@ use nostr::nips::nip26::{self, Conditions, DelegationTag, EventProperties};
 use nostr::secp256k1::schnorr::Signature;
 
 use crate::error::Result;
-use crate::{Keys, PublicKey};
+use crate::{Keys, Kind, PublicKey};
 
 /// Create a NIP-26 delegation tag (including the signature).
 /// See also validate_delegation_tag().
@@ -28,12 +28,12 @@ pub fn create_delegation_tag(
 pub fn validate_delegation_tag(
     delegation_tag: String,
     delegatee_pubkey: &PublicKey,
-    event_kind: u64,
+    event_kind: &Kind,
     created_at: u64,
 ) -> bool {
     match DelegationTag::from_str(&delegation_tag) {
         Ok(tag) => {
-            let event_properties = EventProperties::new(event_kind, created_at);
+            let event_properties = EventProperties::new(event_kind.as_u64(), created_at);
             tag.validate(**delegatee_pubkey, &event_properties).is_ok()
         }
         Err(_) => false,

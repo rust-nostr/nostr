@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 use nostr::nips::nip21::NostrURI;
 use nostr::prelude::{FromBech32, ToBech32};
-use nostr::Kind;
 use uniffi::Object;
 
+use super::Kind;
 use crate::error::Result;
 use crate::{PublicKey, Tag, Timestamp};
 
@@ -38,7 +38,7 @@ impl EventId {
     pub fn new(
         public_key: &PublicKey,
         created_at: &Timestamp,
-        kind: u64,
+        kind: &Kind,
         tags: &[Arc<Tag>],
         content: &str,
     ) -> Result<Self> {
@@ -47,7 +47,7 @@ impl EventId {
             inner: nostr::EventId::new(
                 public_key.deref(),
                 **created_at,
-                &Kind::from(kind),
+                kind.deref(),
                 &tags,
                 content,
             ),

@@ -10,11 +10,13 @@ use uniffi::Object;
 
 pub mod builder;
 pub mod id;
+pub mod kind;
 pub mod tag;
 pub mod unsigned;
 
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
+pub use self::kind::{Kind, KindEnum};
 pub use self::tag::{RelayMetadata, Tag, TagEnum, TagKind};
 pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
@@ -55,7 +57,7 @@ impl Event {
         self.inner.created_at().into()
     }
 
-    pub fn kind(&self) -> u64 {
+    pub fn kind(&self) -> Kind {
         self.inner.kind().into()
     }
 

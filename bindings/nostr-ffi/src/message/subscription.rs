@@ -11,7 +11,7 @@ use uniffi::{Enum, Object};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::{EventId, PublicKey, Timestamp};
+use crate::{EventId, Kind, PublicKey, Timestamp};
 
 #[derive(Enum)]
 pub enum Alphabet {
@@ -179,23 +179,21 @@ impl Filter {
         builder
     }
 
-    pub fn kind(self: Arc<Self>, kind: u64) -> Self {
+    pub fn kind(self: Arc<Self>, kind: &Kind) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.kind(kind.into());
+        builder.inner = builder.inner.kind(**kind);
         builder
     }
 
-    pub fn kinds(self: Arc<Self>, kinds: Vec<u64>) -> Self {
+    pub fn kinds(self: Arc<Self>, kinds: Vec<Arc<Kind>>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.kinds(kinds.into_iter().map(|k| k.into()));
+        builder.inner = builder.inner.kinds(kinds.into_iter().map(|k| **k));
         builder
     }
 
-    pub fn remove_kinds(self: Arc<Self>, kinds: Vec<u64>) -> Self {
+    pub fn remove_kinds(self: Arc<Self>, kinds: Vec<Arc<Kind>>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder
-            .inner
-            .remove_kinds(kinds.into_iter().map(|k| k.into()));
+        builder.inner = builder.inner.remove_kinds(kinds.into_iter().map(|k| **k));
         builder
     }
 

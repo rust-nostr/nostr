@@ -12,14 +12,15 @@ use nostr::event::tag;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip26::Conditions;
 use nostr::secp256k1::schnorr::Signature;
-use nostr::{Kind, UncheckedUrl, Url};
+use nostr::{UncheckedUrl, Url};
 use uniffi::{Enum, Object, Record};
 
+use super::kind::KindEnum;
 use crate::error::{NostrError, Result};
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::LiveEventMarker;
 use crate::nips::nip90::DataVendingMachineStatus;
-use crate::{Event, EventId, ImageDimensions, LiveEventStatus, PublicKey, Timestamp};
+use crate::{Event, EventId, ImageDimensions, Kind, LiveEventStatus, PublicKey, Timestamp};
 
 /// Marker
 #[derive(Enum)]
@@ -428,13 +429,13 @@ pub enum TagEnum {
         identity: Identity,
     },
     A {
-        kind: u64,
+        kind: Arc<Kind>,
         public_key: Arc<PublicKey>,
         identifier: String,
         relay_url: Option<String>,
     },
     Kind {
-        kind: u64,
+        kind: KindEnum,
     },
     RelayUrl {
         relay_url: String,
@@ -636,7 +637,7 @@ impl From<tag::Tag> for TagEnum {
                 identifier,
                 relay_url,
             } => Self::A {
-                kind: kind.as_u64(),
+                kind: Arc::new(kind.into()),
                 public_key: Arc::new(public_key.into()),
                 identifier,
                 relay_url: relay_url.map(|u| u.to_string()),
@@ -644,9 +645,7 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::ExternalIdentity(identity) => Self::ExternalIdentityTag {
                 identity: identity.into(),
             },
-            tag::Tag::Kind(kind) => Self::Kind {
-                kind: kind.as_u64(),
-            },
+            tag::Tag::Kind(kind) => Self::Kind { kind: kind.into() },
             tag::Tag::Relay(url) => Self::RelayUrl {
                 relay_url: url.to_string(),
             },
@@ -815,12 +814,12 @@ impl TryFrom<TagEnum> for tag::Tag {
                 identifier,
                 relay_url,
             } => Ok(Self::A {
-                kind: Kind::from(kind),
+                kind: **kind,
                 public_key: **public_key,
                 identifier,
                 relay_url: relay_url.map(UncheckedUrl::from),
             }),
-            TagEnum::Kind { kind } => Ok(Self::Kind(Kind::from(kind))),
+            TagEnum::Kind { kind } => Ok(Self::Kind(kind.into())),
             TagEnum::RelayUrl { relay_url } => Ok(Self::Relay(UncheckedUrl::from(relay_url))),
             TagEnum::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,

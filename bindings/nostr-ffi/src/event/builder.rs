@@ -9,7 +9,7 @@ use std::sync::Arc;
 use nostr::{Contact as ContactSdk, UncheckedUrl, Url};
 use uniffi::Object;
 
-use super::{Event, EventId};
+use super::{Event, EventId, Kind};
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
@@ -46,10 +46,10 @@ impl Deref for EventBuilder {
 #[uniffi::export]
 impl EventBuilder {
     #[uniffi::constructor]
-    pub fn new(kind: u64, content: &str, tags: &[Arc<Tag>]) -> Result<Self> {
+    pub fn new(kind: &Kind, content: &str, tags: &[Arc<Tag>]) -> Result<Self> {
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
         Ok(Self {
-            inner: nostr::EventBuilder::new(kind.into(), content, tags),
+            inner: nostr::EventBuilder::new(**kind, content, tags),
         })
     }
 
@@ -354,10 +354,10 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[uniffi::constructor]
-    pub fn job_request(kind: u64, tags: &[Arc<Tag>]) -> Result<Self> {
+    pub fn job_request(kind: &Kind, tags: &[Arc<Tag>]) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventBuilder::job_request(
-                kind.into(),
+                **kind,
                 tags.iter().map(|t| t.as_ref().deref().clone()),
             )?,
         })
