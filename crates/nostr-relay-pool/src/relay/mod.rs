@@ -7,13 +7,12 @@
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{cmp, fmt};
 
-use async_utility::thread;
 use async_wsocket::futures_util::Future;
+use atomic_destructor::AtomicDestructor;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
@@ -38,7 +37,6 @@ pub use self::options::{
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 use crate::pool::RelayPoolNotification;
-use crate::util::SaturatingUsize;
 
 /// Relay Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,16 +141,14 @@ impl ActiveSubscription {
 }
 
 /// Relay
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Relay {
-    internal: InternalRelay,
-    shutdown: Arc<AtomicBool>,
-    ref_counter: Arc<AtomicUsize>,
+    inner: AtomicDestructor<InternalRelay>,
 }
 
 impl PartialEq for Relay {
     fn eq(&self, other: &Self) -> bool {
-        self.internal.url == other.internal.url
+        self.inner.url == other.inner.url
     }
 }
 
@@ -166,59 +162,7 @@ impl PartialOrd for Relay {
 
 impl Ord for Relay {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.internal.url.cmp(&other.internal.url)
-    }
-}
-
-impl Clone for Relay {
-    fn clone(&self) -> Self {
-        // Increase counter
-        let new_ref_counter: usize = self.ref_counter.saturating_increment(Ordering::SeqCst);
-        tracing::debug!(
-            "Relay {} cloned: ref counter increased to {new_ref_counter}",
-            self.internal.url
-        );
-
-        // Clone
-        Self {
-            internal: self.internal.clone(),
-            shutdown: self.shutdown.clone(),
-            ref_counter: self.ref_counter.clone(),
-        }
-    }
-}
-
-impl Drop for Relay {
-    fn drop(&mut self) {
-        // Check if already shutdown
-        if self.shutdown.load(Ordering::SeqCst) {
-            tracing::debug!("Relay '{}' already shutdown", self.internal.url);
-        } else {
-            // Decrease counter
-            let new_ref_counter: usize = self.ref_counter.saturating_decrement(Ordering::SeqCst);
-            tracing::debug!(
-                "Relay '{}' dropped: ref counter decreased to {new_ref_counter}",
-                self.internal.url
-            );
-
-            // Check if it's time for shutdown
-            if new_ref_counter == 0 {
-                tracing::debug!("Shutting down '{}' relay...", self.internal.url);
-
-                // Mark as shutdown
-                self.shutdown.store(true, Ordering::SeqCst);
-
-                // Clone internal relay and shutdown
-                let relay = self.internal.clone();
-                let _ = thread::spawn(async move {
-                    if let Err(e) = relay.terminate().await {
-                        tracing::error!("Impossible to terminate {} relay: {e}", relay.url);
-                    }
-                });
-
-                tracing::info!("Relay '{}' shutdown.", self.internal.url);
-            }
-        }
+        self.inner.url.cmp(&other.inner.url)
     }
 }
 
@@ -242,47 +186,45 @@ impl Relay {
         limits: Limits,
     ) -> Self {
         Self {
-            internal: InternalRelay::new(url, database, opts, limits),
-            shutdown: Arc::new(AtomicBool::new(false)),
-            ref_counter: Arc::new(AtomicUsize::new(1)),
+            inner: AtomicDestructor::new(InternalRelay::new(url, database, opts, limits)),
         }
     }
 
     /// Get relay url
     pub fn url(&self) -> Url {
-        self.internal.url()
+        self.inner.url()
     }
 
     /// Get proxy
     #[cfg(not(target_arch = "wasm32"))]
     pub fn proxy(&self) -> Option<SocketAddr> {
-        self.internal.proxy()
+        self.inner.proxy()
     }
 
     /// Get [`RelayStatus`]
     pub async fn status(&self) -> RelayStatus {
-        self.internal.status().await
+        self.inner.status().await
     }
 
     /// Get Relay Service Flags
     pub fn flags(&self) -> AtomicRelayServiceFlags {
-        self.internal.flags()
+        self.inner.flags()
     }
 
     /// Check if [`Relay`] is connected
     pub async fn is_connected(&self) -> bool {
-        self.internal.is_connected().await
+        self.inner.is_connected().await
     }
 
     /// Get [`RelayInformationDocument`]
     #[cfg(feature = "nip11")]
     pub async fn document(&self) -> RelayInformationDocument {
-        self.internal.document().await
+        self.inner.document().await
     }
 
     /// Get [`ActiveSubscription`]
     pub async fn subscriptions(&self) -> HashMap<InternalSubscriptionId, ActiveSubscription> {
-        self.internal.subscriptions().await
+        self.inner.subscriptions().await
     }
 
     /// Get [`ActiveSubscription`] by [`InternalSubscriptionId`]
@@ -290,7 +232,7 @@ impl Relay {
         &self,
         internal_id: &InternalSubscriptionId,
     ) -> Option<ActiveSubscription> {
-        self.internal.subscription(internal_id).await
+        self.inner.subscription(internal_id).await
     }
 
     pub(crate) async fn update_subscription_filters(
@@ -298,29 +240,29 @@ impl Relay {
         internal_id: InternalSubscriptionId,
         filters: Vec<Filter>,
     ) {
-        self.internal
+        self.inner
             .update_subscription_filters(internal_id, filters)
             .await
     }
 
     /// Get [`RelayOptions`]
     pub fn opts(&self) -> RelayOptions {
-        self.internal.opts()
+        self.inner.opts()
     }
 
     /// Get [`RelayConnectionStats`]
     pub fn stats(&self) -> RelayConnectionStats {
-        self.internal.stats()
+        self.inner.stats()
     }
 
     /// Get queue len
     pub fn queue(&self) -> usize {
-        self.internal.queue()
+        self.inner.queue()
     }
 
     /// Get new **relay** notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayNotification> {
-        self.internal.internal_notification_sender.subscribe()
+        self.inner.internal_notification_sender.subscribe()
     }
 
     /// Set external notification sender
@@ -328,24 +270,24 @@ impl Relay {
         &self,
         notification_sender: Option<broadcast::Sender<RelayPoolNotification>>,
     ) {
-        self.internal
+        self.inner
             .set_notification_sender(notification_sender)
             .await
     }
 
     /// Connect to relay and keep alive connection
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        self.internal.connect(connection_timeout).await
+        self.inner.connect(connection_timeout).await
     }
 
     /// Disconnect from relay and set status to 'Stopped'
     pub async fn stop(&self) -> Result<(), Error> {
-        self.internal.stop().await
+        self.inner.stop().await
     }
 
     /// Disconnect from relay and set status to 'Terminated'
     pub async fn terminate(&self) -> Result<(), Error> {
-        self.internal.terminate().await
+        self.inner.terminate().await
     }
 
     /// Send msg to relay
@@ -359,7 +301,7 @@ impl Relay {
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.internal.batch_msg(msgs, opts).await
+        self.inner.batch_msg(msgs, opts).await
     }
 
     /// Send `REQ` to relay
@@ -371,12 +313,12 @@ impl Relay {
         filters: Vec<Filter>,
         opts: RequestOptions,
     ) -> Result<(), Error> {
-        self.internal.send_req(id, filters, opts).await
+        self.inner.send_req(id, filters, opts).await
     }
 
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
-        self.internal.send_event(event, opts).await
+        self.inner.send_event(event, opts).await
     }
 
     /// Send multiple [`Event`] at once
@@ -385,7 +327,7 @@ impl Relay {
         events: Vec<Event>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.internal.batch_event(events, opts).await
+        self.inner.batch_event(events, opts).await
     }
 
     /// Subscribe to filters
@@ -396,7 +338,7 @@ impl Relay {
         filters: Vec<Filter>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.internal.subscribe(filters, opts).await
+        self.inner.subscribe(filters, opts).await
     }
 
     /// Subscribe with custom internal ID
@@ -406,7 +348,7 @@ impl Relay {
         filters: Vec<Filter>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.internal
+        self.inner
             .subscribe_with_internal_id(internal_id, filters, opts)
             .await
     }
@@ -415,7 +357,7 @@ impl Relay {
     ///
     /// Internal Subscription ID set to `InternalSubscriptionId::Default`
     pub async fn unsubscribe(&self, opts: RelaySendOptions) -> Result<(), Error> {
-        self.internal.unsubscribe(opts).await
+        self.inner.unsubscribe(opts).await
     }
 
     /// Unsubscribe with custom internal id
@@ -424,14 +366,14 @@ impl Relay {
         internal_id: InternalSubscriptionId,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.internal
+        self.inner
             .unsubscribe_with_internal_id(internal_id, opts)
             .await
     }
 
     /// Unsubscribe from all subscriptions
     pub async fn unsubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
-        self.internal.unsubscribe_all(opts).await
+        self.inner.unsubscribe_all(opts).await
     }
 
     /// Get events of filters with custom callback
@@ -445,7 +387,7 @@ impl Relay {
     where
         F: Future<Output = ()>,
     {
-        self.internal
+        self.inner
             .get_events_of_with_callback(filters, timeout, opts, callback)
             .await
     }
@@ -459,13 +401,13 @@ impl Relay {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        self.internal.get_events_of(filters, timeout, opts).await
+        self.inner.get_events_of(filters, timeout, opts).await
     }
 
     /// Request events of filter. All events will be sent to notification listener,
     /// until the EOSE "end of stored events" message is received from the relay.
     pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Duration, opts: FilterOptions) {
-        self.internal.req_events_of(filters, timeout, opts)
+        self.inner.req_events_of(filters, timeout, opts)
     }
 
     /// Count events of filters
@@ -474,7 +416,7 @@ impl Relay {
         filters: Vec<Filter>,
         timeout: Duration,
     ) -> Result<usize, Error> {
-        self.internal.count_events_of(filters, timeout).await
+        self.inner.count_events_of(filters, timeout).await
     }
 
     /// Negentropy reconciliation
@@ -484,11 +426,11 @@ impl Relay {
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
-        self.internal.reconcile(filter, items, opts).await
+        self.inner.reconcile(filter, items, opts).await
     }
 
     /// Check if relay support negentropy protocol
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
-        self.internal.support_negentropy().await
+        self.inner.support_negentropy().await
     }
 }

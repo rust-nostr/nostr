@@ -17,6 +17,7 @@ use async_utility::futures_util::stream::AbortHandle;
 use async_utility::{futures_util, thread, time};
 use async_wsocket::futures_util::{Future, SinkExt, StreamExt};
 use async_wsocket::WsMessage;
+use atomic_destructor::AtomicDestroyer;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
 use nostr::negentropy::{self, Bytes, Negentropy};
@@ -199,6 +200,21 @@ pub(super) struct InternalRelay {
     external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
     subscriptions: Arc<RwLock<HashMap<InternalSubscriptionId, ActiveSubscription>>>,
     limits: Limits,
+}
+
+impl AtomicDestroyer for InternalRelay {
+    fn name(&self) -> Option<String> {
+        Some(format!("Relay {}", self.url))
+    }
+
+    fn on_destroy(&self) {
+        let relay = self.clone();
+        let _ = thread::spawn(async move {
+            if let Err(e) = relay.terminate().await {
+                tracing::error!("Impossible to shutdown {} relay: {e}", relay.url);
+            }
+        });
+    }
 }
 
 impl InternalRelay {

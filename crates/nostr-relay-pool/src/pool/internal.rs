@@ -10,14 +10,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::{thread, time};
+use atomic_destructor::AtomicDestroyer;
 use nostr::message::MessageHandleError;
 use nostr::{ClientMessage, Event, EventId, Filter, Timestamp, TryIntoUrl, Url};
 use nostr_database::{DatabaseError, DynNostrDatabase, IntoNostrDatabase, Order};
 use thiserror::Error;
 use tokio::sync::{broadcast, Mutex, RwLock};
 
-use super::RelayPoolNotification;
 use super::options::RelayPoolOptions;
+use super::RelayPoolNotification;
 use crate::relay::limits::Limits;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Error as RelayError, InternalSubscriptionId, Relay};
@@ -69,6 +70,21 @@ pub struct InternalRelayPool {
     // opts: RelayPoolOptions,
 }
 
+impl AtomicDestroyer for InternalRelayPool {
+    fn name(&self) -> Option<String> {
+        Some(String::from("Relay Pool"))
+    }
+
+    fn on_destroy(&self) {
+        let pool = self.clone();
+        let _ = thread::spawn(async move {
+            if let Err(e) = pool.shutdown().await {
+                tracing::error!("Impossible to shutdown Relay Pool: {e}");
+            }
+        });
+    }
+}
+
 impl InternalRelayPool {
     pub fn with_database<D>(opts: RelayPoolOptions, database: D) -> Self
     where
@@ -111,6 +127,8 @@ impl InternalRelayPool {
                 .send(RelayPoolNotification::Shutdown);
         })
         .await;
+
+        tracing::info!("Relay pool shutdown");
 
         Ok(())
     }

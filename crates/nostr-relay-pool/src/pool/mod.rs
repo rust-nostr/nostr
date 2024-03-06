@@ -5,24 +5,22 @@
 //! Relay Pool
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::thread;
+use atomic_destructor::AtomicDestructor;
 use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, Timestamp, TryIntoUrl, Url};
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
-pub mod options;
 mod internal;
+pub mod options;
 
 pub use self::internal::Error;
 use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayStatus};
-use crate::util::SaturatingUsize;
 
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,62 +53,14 @@ pub enum RelayPoolNotification {
 }
 
 /// Relay Pool
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RelayPool {
-    internal: InternalRelayPool,
-    shutdown: Arc<AtomicBool>,
-    ref_counter: Arc<AtomicUsize>,
+    inner: AtomicDestructor<InternalRelayPool>,
 }
 
 impl Default for RelayPool {
     fn default() -> Self {
         Self::new(RelayPoolOptions::default())
-    }
-}
-
-impl Clone for RelayPool {
-    fn clone(&self) -> Self {
-        // Increase counter
-        let new_ref_counter: usize = self.ref_counter.saturating_increment(Ordering::SeqCst);
-        tracing::debug!("Relay Pool cloned: ref counter increased to {new_ref_counter}");
-
-        // Clone
-        Self {
-            internal: self.internal.clone(),
-            shutdown: self.shutdown.clone(),
-            ref_counter: self.ref_counter.clone(),
-        }
-    }
-}
-
-impl Drop for RelayPool {
-    fn drop(&mut self) {
-        // Check if already shutdown
-        if self.shutdown.load(Ordering::SeqCst) {
-            tracing::debug!("Relay Pool already shutdown");
-        } else {
-            // Decrease counter
-            let new_ref_counter: usize = self.ref_counter.saturating_decrement(Ordering::SeqCst);
-            tracing::debug!("Relay Pool dropped: ref counter decreased to {new_ref_counter}");
-
-            // Check if it's time for shutdown
-            if new_ref_counter == 0 {
-                tracing::debug!("Shutting down Relay Pool...");
-
-                // Mark as shutdown
-                self.shutdown.store(true, Ordering::SeqCst);
-
-                // Clone internal pool and shutdown
-                let pool: InternalRelayPool = self.internal.clone();
-                let _ = thread::spawn(async move {
-                    if let Err(e) = pool.shutdown().await {
-                        tracing::error!("Impossible to shutdown Relay Pool: {e}");
-                    }
-                });
-
-                tracing::info!("Relay Pool shutdown.");
-            }
-        }
     }
 }
 
@@ -126,9 +76,7 @@ impl RelayPool {
         D: IntoNostrDatabase,
     {
         Self {
-            internal: InternalRelayPool::with_database(opts, database),
-            shutdown: Arc::new(AtomicBool::new(false)),
-            ref_counter: Arc::new(AtomicUsize::new(1)),
+            inner: AtomicDestructor::new(InternalRelayPool::with_database(opts, database)),
         }
     }
 
@@ -136,27 +84,27 @@ impl RelayPool {
     ///
     /// Call `connect` to re-start relays connections
     pub async fn stop(&self) -> Result<(), Error> {
-        self.internal.stop().await
+        self.inner.stop().await
     }
 
     /// Completely shutdown pool
     pub async fn shutdown(self) -> Result<(), Error> {
-        self.internal.shutdown().await
+        self.inner.shutdown().await
     }
 
     /// Get new **pool** notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
-        self.internal.notifications()
+        self.inner.notifications()
     }
 
     /// Get database
     pub fn database(&self) -> Arc<DynNostrDatabase> {
-        self.internal.database()
+        self.inner.database()
     }
 
     /// Get relays
     pub async fn relays(&self) -> HashMap<Url, Relay> {
-        self.internal.relays().await
+        self.inner.relays().await
     }
 
     /// Get [`Relay`]
@@ -165,12 +113,12 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.internal.relay(url).await
+        self.inner.relay(url).await
     }
 
     /// Get subscription filters
     pub async fn subscription_filters(&self) -> Vec<Filter> {
-        self.internal.subscription_filters().await
+        self.inner.subscription_filters().await
     }
 
     /// Add new relay
@@ -179,7 +127,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.internal.add_relay(url, opts).await
+        self.inner.add_relay(url, opts).await
     }
 
     /// Disconnect and remove relay
@@ -188,12 +136,12 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.internal.remove_relay(url).await
+        self.inner.remove_relay(url).await
     }
 
     /// Disconnect and remove all relays
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
-        self.internal.remove_all_relays().await
+        self.inner.remove_all_relays().await
     }
 
     /// Send client message
@@ -243,7 +191,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.internal.batch_msg_to(urls, msgs, opts).await
+        self.inner.batch_msg_to(urls, msgs, opts).await
     }
 
     /// Send event and wait for `OK` relay msg
@@ -291,21 +239,21 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.internal.batch_event_to(urls, events, opts).await
+        self.inner.batch_event_to(urls, events, opts).await
     }
 
     /// Subscribe to filters
     ///
     /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
     pub async fn subscribe(&self, filters: Vec<Filter>, opts: RelaySendOptions) {
-        self.internal.subscribe(filters, opts).await
+        self.inner.subscribe(filters, opts).await
     }
 
     /// Unsubscribe from filters
     ///
     /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
     pub async fn unsubscribe(&self, opts: RelaySendOptions) {
-        self.internal.unsubscribe(opts).await
+        self.inner.unsubscribe(opts).await
     }
 
     /// Get events of filters
@@ -339,7 +287,9 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.internal.get_events_from(urls, filters, timeout, opts).await
+        self.inner
+            .get_events_from(urls, filters, timeout, opts)
+            .await
     }
 
     /// Request events of filter.
@@ -387,24 +337,24 @@ impl RelayPool {
 
     /// Connect to all added relays and keep connection alive
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        self.internal.connect(connection_timeout).await
+        self.inner.connect(connection_timeout).await
     }
 
     /// Disconnect from all relays
     pub async fn disconnect(&self) -> Result<(), Error> {
-        self.internal.disconnect().await
+        self.inner.disconnect().await
     }
 
     /// Connect to relay
     ///
     /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
     pub async fn connect_relay(&self, relay: &Relay, connection_timeout: Option<Duration>) {
-        self.internal.connect_relay(relay, connection_timeout).await
+        self.inner.connect_relay(relay, connection_timeout).await
     }
 
     /// Negentropy reconciliation
     pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
-        self.internal.reconcile(filter, opts).await
+        self.inner.reconcile(filter, opts).await
     }
 
     /// Negentropy reconciliation with custom items
@@ -414,6 +364,6 @@ impl RelayPool {
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
-        self.internal.reconcile_with_items(filter, items, opts).await
+        self.inner.reconcile_with_items(filter, items, opts).await
     }
 }

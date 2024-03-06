@@ -13,7 +13,6 @@
 pub mod pool;
 pub mod prelude;
 pub mod relay;
-mod util;
 
 pub use self::pool::options::RelayPoolOptions;
 pub use self::pool::{RelayPool, RelayPoolNotification};

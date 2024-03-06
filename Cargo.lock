@@ -225,6 +225,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic-destructor"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a7dfd4ff3593a86a2d847fff59892419835e3759193180ac7256c4b58885d20"
+dependencies = [
+ "tracing",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1654,6 +1663,7 @@ version = "0.28.1"
 dependencies = [
  "async-utility",
  "async-wsocket",
+ "atomic-destructor",
  "nostr",
  "nostr-database",
  "thiserror",
