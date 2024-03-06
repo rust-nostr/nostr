@@ -16,10 +16,9 @@ use nostr_database::{DatabaseError, DynNostrDatabase, IntoNostrDatabase, MemoryD
 use thiserror::Error;
 use tokio::sync::{broadcast, Mutex, RwLock};
 
-use crate::limits::Limits;
-use crate::options::{
-    FilterOptions, NegentropyOptions, RelayOptions, RelayPoolOptions, RelaySendOptions,
-};
+use crate::options::RelayPoolOptions;
+use crate::relay::limits::Limits;
+use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Error as RelayError, InternalSubscriptionId, Relay, RelayStatus};
 use crate::util::SaturatingUsize;
 

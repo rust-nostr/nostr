@@ -33,15 +33,20 @@ use thiserror::Error;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
-use crate::flags::AtomicRelayServiceFlags;
-use crate::limits::Limits;
-use crate::options::{
+pub mod flags;
+pub mod limits;
+pub mod options;
+pub mod stats;
+
+use self::flags::AtomicRelayServiceFlags;
+use self::limits::Limits;
+use self::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, RequestAutoCloseOptions,
     RequestOptions, MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC, NEGENTROPY_BATCH_SIZE_DOWN,
     NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP,
 };
+use self::stats::RelayConnectionStats;
 use crate::pool::RelayPoolNotification;
-use crate::stats::RelayConnectionStats;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
 

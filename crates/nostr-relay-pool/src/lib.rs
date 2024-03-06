@@ -10,20 +10,18 @@
 #![allow(unknown_lints)]
 #![allow(clippy::arc_with_non_send_sync)]
 
-mod flags;
-pub mod limits;
 pub mod options;
 pub mod pool;
 pub mod relay;
-mod stats;
 mod util;
 
-pub use self::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
-pub use self::limits::Limits;
-pub use self::options::{
-    FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelayPoolOptions,
-    RelaySendOptions, RequestAutoCloseOptions, RequestOptions,
-};
+pub use self::options::RelayPoolOptions;
 pub use self::pool::{RelayPool, RelayPoolNotification};
+pub use self::relay::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
+pub use self::relay::limits::Limits;
+pub use self::relay::options::{
+    FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelaySendOptions,
+    RequestAutoCloseOptions, RequestOptions,
+};
+pub use self::relay::stats::RelayConnectionStats;
 pub use self::relay::{ActiveSubscription, InternalSubscriptionId, Relay, RelayStatus};
-pub use self::stats::RelayConnectionStats;

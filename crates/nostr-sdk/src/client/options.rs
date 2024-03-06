@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_relay_pool::options::DEFAULT_SEND_TIMEOUT;
+use nostr_relay_pool::relay::options::DEFAULT_SEND_TIMEOUT;
 use nostr_relay_pool::{RelayPoolOptions, RelaySendOptions};
 
 /// Options
