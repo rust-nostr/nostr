@@ -1,13 +1,15 @@
 # Donate to Rust Nostr 💜
 
-Your donation directly supports the continued development of `rust-nostr`.
+Your donation directly supports the continued development of `rust-nostr`!
 
 ## Give a one-time donation
 
 ### Bitcoin
 
 * 🔗 Onchain: `bc1quk478kpm45744q5pt3p9j42fnv72ykytmt3z0j`
-* ⚡ Lightning: `yuki@getalby.com` (<https://getalby.com/p/yuki>)
+* ⚡ Lightning:
+    * `yuki@getalby.com` (<https://getalby.com/p/yuki>)
+    * `rustnostr@geyser.fund` (<https://geyser.fund/project/rustnostr> - 2% Geyser fee)
 * 🕸️ Fedimint: `TODO`
 * 💧 Liquid: `TODO`
 
@@ -25,7 +27,8 @@ Disclaimer: `rust-nostr` is not affiliated in any way with these services!
 
 Please consider becoming a sustaining supporter of the `rust-nostr` project by giving a recurring monthly donation. If we know how much funding to expect every month, we can better plan our efforts and the use of available resources.
 
-You can setup an [automatically recurring donation here](https://subscribe.rust-nostr.org/). Thank you!
+You can setup an automatically recurring donation here:
+* <https://subscribe.rust-nostr.org>
 
 ## Verify donation details
 
