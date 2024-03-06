@@ -329,6 +329,20 @@ impl PartialEq for Relay {
     }
 }
 
+impl Eq for Relay {}
+
+impl PartialOrd for Relay {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Relay {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.url.cmp(&other.url)
+    }
+}
+
 impl Relay {
     /// Create new `Relay`
     pub fn new(
