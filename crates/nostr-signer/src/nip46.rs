@@ -13,10 +13,14 @@ use async_utility::time;
 use nostr::nips::nip46::{self, Message, NostrConnectMetadata, NostrConnectURI, Request, Response};
 use nostr::prelude::*;
 use nostr::{key, serde_json};
-use nostr_relay_pool::pool::RelayPool;
-use nostr_relay_pool::{RelayOptions, RelayPoolNotification, RelayPoolOptions, RelaySendOptions};
+use nostr_relay_pool::{
+    FilterOptions, Relay, RelayNotification, RelayOptions, RelaySendOptions,
+    RequestAutoCloseOptions, RequestOptions,
+};
 use thiserror::Error;
 use tokio::sync::Mutex;
+
+const TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Nostr Connect error
 #[derive(Debug, Error)]
@@ -36,9 +40,9 @@ pub enum Error {
     /// NIP46 error
     #[error(transparent)]
     NIP46(#[from] nip46::Error),
-    /// Pool
+    /// Relay
     #[error(transparent)]
-    Pool(#[from] nostr_relay_pool::pool::Error),
+    Relay(#[from] nostr_relay_pool::relay::Error),
     /// Generic NIP46 error
     #[error("generic error")]
     Generic,
@@ -56,10 +60,9 @@ pub enum Error {
 /// NIP46 Signer
 #[derive(Debug, Clone)]
 pub struct Nip46Signer {
-    relay_url: Url,
     app_keys: Keys,
     signer_public_key: Arc<Mutex<Option<PublicKey>>>,
-    pool: RelayPool,
+    relay: Relay,
     timeout: Duration,
 }
 
@@ -76,7 +79,7 @@ impl Nip46Signer {
             app_keys,
             signer_public_key,
             timeout,
-            RelayPoolOptions::default(),
+            RelayOptions::default(),
         )
         .await
     }
@@ -87,25 +90,23 @@ impl Nip46Signer {
         app_keys: Keys,
         signer_public_key: Option<PublicKey>,
         timeout: Duration,
-        opts: RelayPoolOptions,
+        opts: RelayOptions,
     ) -> Result<Self, Error> {
         // Compose pool
-        let pool = RelayPool::new(opts);
-        pool.add_relay(&relay_url, RelayOptions::default()).await?;
-        pool.connect(Some(Duration::from_secs(10))).await;
+        let relay = Relay::with_opts(relay_url, opts);
+        relay.connect(Some(Duration::from_secs(10))).await;
 
         Ok(Self {
-            relay_url,
             app_keys,
             signer_public_key: Arc::new(Mutex::new(signer_public_key)),
-            pool,
+            relay,
             timeout,
         })
     }
 
     /// Get signer relay [`Url`]
     pub fn relay_url(&self) -> Url {
-        self.relay_url.clone()
+        self.relay.url()
     }
 
     /// Get signer [PublicKey]
@@ -136,32 +137,25 @@ impl Nip46Signer {
             .kind(Kind::NostrConnect)
             .since(Timestamp::now());
 
+        let auto_close_opts = RequestAutoCloseOptions::default()
+            .filter(FilterOptions::WaitForEventsAfterEOSE(1))
+            .timeout(Some(TIMEOUT));
+        let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
+
         // Subscribe
-        self.pool
-            .send_msg_to(
-                [self.relay_url()],
-                ClientMessage::req(id.clone(), vec![filter]),
-                RelaySendOptions::new(),
-            )
+        self.relay
+            .send_req(id.clone(), vec![filter], req_opts)
             .await?;
 
-        let mut notifications = self.pool.notifications();
+        let mut notifications = self.relay.notifications();
         time::timeout(Some(self.timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
+                if let RelayNotification::Event { event } = notification {
                     if event.kind() == Kind::NostrConnect {
                         let msg: String =
                             nip04::decrypt(secret_key, event.author_ref(), event.content())?;
                         let msg = Message::from_json(msg)?;
                         if let Ok(Request::Connect(pk)) = msg.to_request() {
-                            // Unsubscribe
-                            self.pool
-                                .send_msg_to(
-                                    [self.relay_url()],
-                                    ClientMessage::close(id),
-                                    RelaySendOptions::new(),
-                                )
-                                .await?;
                             return Ok(pk);
                         }
                     }
@@ -192,30 +186,30 @@ impl Nip46Signer {
         let event = EventBuilder::nostr_connect(&self.app_keys, signer_public_key, msg)?
             .to_event(&self.app_keys)?;
 
-        // Send request to signer
-        self.pool
-            .send_event_to([self.relay_url()], event, RelaySendOptions::new())
-            .await?;
-
         let sub_id = SubscriptionId::generate();
         let filter = Filter::new()
             .pubkey(public_key)
             .kind(Kind::NostrConnect)
             .since(Timestamp::now());
 
+        let auto_close_opts = RequestAutoCloseOptions::default()
+            .filter(FilterOptions::WaitForEventsAfterEOSE(1))
+            .timeout(Some(TIMEOUT));
+        let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
+
         // Subscribe
-        self.pool
-            .send_msg_to(
-                [self.relay_url()],
-                ClientMessage::req(sub_id.clone(), vec![filter]),
-                RelaySendOptions::new(),
-            )
+        self.relay.send_req(sub_id, vec![filter], req_opts).await?;
+
+        let mut notifications = self.relay.notifications();
+
+        // Send request
+        self.relay
+            .send_event(event, RelaySendOptions::new())
             .await?;
 
-        let mut notifications = self.pool.notifications();
         let future = async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
+                if let RelayNotification::Event { event } = notification {
                     if event.kind() == Kind::NostrConnect {
                         let msg = nip04::decrypt(secret_key, event.author_ref(), event.content())?;
                         let msg = Message::from_json(msg)?;
@@ -250,26 +244,10 @@ impl Nip46Signer {
                                         _ => break,
                                     };
 
-                                    // Unsubscribe
-                                    self.pool
-                                        .send_msg_to(
-                                            [self.relay_url()],
-                                            ClientMessage::close(sub_id.clone()),
-                                            RelaySendOptions::new(),
-                                        )
-                                        .await?;
                                     return Ok(res);
                                 }
 
                                 if let Some(error) = error {
-                                    // Unsubscribe
-                                    self.pool
-                                        .send_msg_to(
-                                            [self.relay_url()],
-                                            ClientMessage::close(sub_id.clone()),
-                                            RelaySendOptions::new(),
-                                        )
-                                        .await?;
                                     return Err(Error::Response(error.to_owned()));
                                 }
 
@@ -283,25 +261,13 @@ impl Nip46Signer {
             Err(Error::Generic)
         };
 
-        let res: Result<Response, Error> =
-            time::timeout(Some(timeout.unwrap_or(self.timeout)), future)
-                .await
-                .ok_or(Error::Timeout)?;
-
-        // Unsubscribe
-        self.pool
-            .send_msg_to(
-                [self.relay_url()],
-                ClientMessage::close(sub_id),
-                RelaySendOptions::new(),
-            )
-            .await?;
-
-        res
+        time::timeout(Some(timeout.unwrap_or(self.timeout)), future)
+            .await
+            .ok_or(Error::Timeout)?
     }
 
     /// Completely shutdown
     pub async fn shutdown(self) -> Result<(), Error> {
-        Ok(self.pool.shutdown().await?)
+        Ok(self.relay.terminate().await?)
     }
 }
