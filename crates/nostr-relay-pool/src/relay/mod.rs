@@ -226,6 +226,28 @@ pub enum RelayEvent {
     Terminate,
 }
 
+/// Relay Notification
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum RelayNotification {
+    Event {
+        /// Event
+        event: Event,
+    },
+    Message {
+        /// Relay Message
+        message: RelayMessage,
+    },
+    /// Relay status changed
+    RelayStatus {
+        /// Relay Status
+        status: RelayStatus,
+    },
+    /// Stop
+    Stop,
+    /// Shutdown
+    Shutdown,
+}
+
 /// Internal Subscription ID
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum InternalSubscriptionId {
@@ -318,7 +340,8 @@ pub struct Relay {
     scheduled_for_termination: Arc<AtomicBool>,
     relay_sender: Sender<Message>,
     relay_receiver: Arc<Mutex<Receiver<Message>>>,
-    notification_sender: broadcast::Sender<RelayPoolNotification>,
+    internal_notification_sender: broadcast::Sender<RelayNotification>,
+    external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
     subscriptions: Arc<RwLock<HashMap<InternalSubscriptionId, ActiveSubscription>>>,
     limits: Limits,
 }
@@ -348,11 +371,11 @@ impl Relay {
     pub fn new(
         url: Url,
         database: Arc<DynNostrDatabase>,
-        notification_sender: broadcast::Sender<RelayPoolNotification>,
         opts: RelayOptions,
         limits: Limits,
     ) -> Self {
         let (relay_sender, relay_receiver) = mpsc::channel::<Message>(1024);
+        let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
 
         Self {
             url,
@@ -366,7 +389,8 @@ impl Relay {
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             relay_sender,
             relay_receiver: Arc::new(Mutex::new(relay_receiver)),
-            notification_sender,
+            internal_notification_sender: relay_notification_sender,
+            external_notification_sender: Arc::new(RwLock::new(None)),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             limits,
         }
@@ -395,12 +419,8 @@ impl Relay {
         *s = status;
 
         // Send notification
-        let _ = self
-            .notification_sender
-            .send(RelayPoolNotification::RelayStatus {
-                relay_url: self.url(),
-                status,
-            });
+        self.send_notification(RelayNotification::RelayStatus { status })
+            .await;
     }
 
     /// Get Relay Service Flags
@@ -482,6 +502,44 @@ impl Relay {
     fn schedule_for_termination(&self, value: bool) {
         self.scheduled_for_termination
             .store(value, Ordering::SeqCst);
+    }
+
+    /// Set external notification sender
+    pub async fn set_notification_sender(
+        &self,
+        notification_sender: Option<broadcast::Sender<RelayPoolNotification>>,
+    ) {
+        let mut external_notification_sender = self.external_notification_sender.write().await;
+        *external_notification_sender = notification_sender;
+    }
+
+    async fn send_notification(&self, notification: RelayNotification) {
+        // Send internal notification
+        let _ = self.internal_notification_sender.send(notification.clone());
+
+        let external_notification_sender = self.external_notification_sender.read().await;
+        if let Some(notification_sender) = external_notification_sender.as_ref() {
+            // Convert relay to notification to pool notification
+            let notification: RelayPoolNotification = match notification {
+                RelayNotification::Event { event } => RelayPoolNotification::Event {
+                    relay_url: self.url(),
+                    event,
+                },
+                RelayNotification::Message { message } => RelayPoolNotification::Message {
+                    relay_url: self.url(),
+                    message,
+                },
+                RelayNotification::RelayStatus { status } => RelayPoolNotification::RelayStatus {
+                    relay_url: self.url(),
+                    status,
+                },
+                RelayNotification::Shutdown => RelayPoolNotification::Shutdown,
+                RelayNotification::Stop => RelayPoolNotification::Stop,
+            };
+
+            // Send notification
+            let _ = notification_sender.send(notification);
+        }
     }
 
     /// Connect to relay and keep alive connection
@@ -819,12 +877,12 @@ impl Relay {
 
                         match relay.handle_relay_message(msg).await {
                             Ok(Some(msg)) => {
-                                let _ = relay.notification_sender.send(
-                                    RelayPoolNotification::Message {
-                                        relay_url: relay.url(),
+                                // Send notification
+                                relay
+                                    .send_notification(RelayNotification::Message {
                                         message: msg.clone(),
-                                    },
-                                );
+                                    })
+                                    .await;
 
                                 match msg {
                                     RelayMessage::Notice { message } => {
@@ -1047,10 +1105,11 @@ impl Relay {
 
                 // Check if seen
                 if !seen {
-                    let _ = self.notification_sender.send(RelayPoolNotification::Event {
-                        relay_url: self.url(),
+                    // Send notification
+                    self.send_notification(RelayNotification::Event {
                         event: event.clone(),
-                    });
+                    })
+                    .await;
                 }
 
                 Ok(Some(RelayMessage::Event {
@@ -1088,6 +1147,7 @@ impl Relay {
         if !status.is_disconnected() {
             self.send_relay_event(RelayEvent::Stop, None)?;
         }
+        self.send_notification(RelayNotification::Stop).await;
         Ok(())
     }
 
@@ -1098,6 +1158,7 @@ impl Relay {
         if !status.is_disconnected() {
             self.send_relay_event(RelayEvent::Terminate, None)?;
         }
+        self.send_notification(RelayNotification::Shutdown).await;
         Ok(())
     }
 
@@ -1174,10 +1235,10 @@ impl Relay {
                     let mut counter = 0;
                     let mut received_eose: bool = false;
 
-                    let mut notifications = relay.notification_sender.subscribe();
+                    let mut notifications = relay.internal_notification_sender.subscribe();
                     while let Ok(notification) = notifications.recv().await {
                         match notification {
-                            RelayPoolNotification::Message { message, .. } => match message {
+                            RelayNotification::Message { message, .. } => match message {
                                 RelayMessage::Event {
                                     subscription_id, ..
                                 } => {
@@ -1210,12 +1271,12 @@ impl Relay {
                                 }
                                 _ => (),
                             },
-                            RelayPoolNotification::RelayStatus { relay_url, status } => {
-                                if relay_url == relay.url && status.is_disconnected() {
+                            RelayNotification::RelayStatus { status } => {
+                                if status.is_disconnected() {
                                     return false; // No need to send CLOSE msg
                                 }
                             }
-                            RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => {
+                            RelayNotification::Stop | RelayNotification::Shutdown => {
                                 return false; // No need to send CLOSE msg
                             }
                             _ => (),
@@ -1226,13 +1287,12 @@ impl Relay {
                         time::timeout(Some(duration), async {
                             while let Ok(notification) = notifications.recv().await {
                                 match notification {
-                                    RelayPoolNotification::RelayStatus { relay_url, status } => {
-                                        if relay_url == relay.url && status.is_disconnected() {
+                                    RelayNotification::RelayStatus { status } => {
+                                        if status.is_disconnected() {
                                             return Ok(()); // No need to send CLOSE msg
                                         }
                                     }
-                                    RelayPoolNotification::Stop
-                                    | RelayPoolNotification::Shutdown => {
+                                    RelayNotification::Stop | RelayNotification::Shutdown => {
                                         return Ok(()); // No need to send CLOSE msg
                                     }
                                     _ => (),
@@ -1308,11 +1368,10 @@ impl Relay {
         time::timeout(Some(opts.timeout), async {
             let mut published: HashSet<EventId> = HashSet::new();
             let mut not_published: HashMap<EventId, String> = HashMap::new();
-            let mut notifications = self.notification_sender.subscribe();
+            let mut notifications = self.internal_notification_sender.subscribe();
             while let Ok(notification) = notifications.recv().await {
                 match notification {
-                    RelayPoolNotification::Message {
-                        relay_url,
+                    RelayNotification::Message {
                         message:
                             RelayMessage::Ok {
                                 event_id,
@@ -1320,7 +1379,7 @@ impl Relay {
                                 message,
                             },
                     } => {
-                        if self.url == relay_url && missing.remove(&event_id) {
+                        if missing.remove(&event_id) {
                             if events_len == 1 {
                                 if status {
                                     return Ok(());
@@ -1336,11 +1395,8 @@ impl Relay {
                             }
                         }
                     }
-                    RelayPoolNotification::RelayStatus { relay_url, status } => {
-                        if opts.skip_disconnected
-                            && relay_url == self.url
-                            && status.is_disconnected()
-                        {
+                    RelayNotification::RelayStatus { status } => {
+                        if opts.skip_disconnected && status.is_disconnected() {
                             return Err(Error::EventNotPublished(String::from(
                                 "relay not connected (status changed)",
                             )));
@@ -1503,11 +1559,11 @@ impl Relay {
         let mut counter = 0;
         let mut received_eose: bool = false;
 
-        let mut notifications = self.notification_sender.subscribe();
+        let mut notifications = self.internal_notification_sender.subscribe();
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 match notification {
-                    RelayPoolNotification::Message { message, .. } => match message {
+                    RelayNotification::Message { message, .. } => match message {
                         RelayMessage::Event {
                             subscription_id,
                             event,
@@ -1541,12 +1597,12 @@ impl Relay {
                         RelayMessage::Ok { .. } => (),
                         _ => (),
                     },
-                    RelayPoolNotification::RelayStatus { relay_url, status } => {
-                        if relay_url == self.url && status.is_disconnected() {
+                    RelayNotification::RelayStatus { status } => {
+                        if status.is_disconnected() {
                             return Err(Error::NotConnectedStatusChanged);
                         }
                     }
-                    RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => break,
+                    RelayNotification::Stop | RelayNotification::Shutdown => break,
                     _ => (),
                 }
             }
@@ -1560,7 +1616,7 @@ impl Relay {
             time::timeout(Some(duration), async {
                 while let Ok(notification) = notifications.recv().await {
                     match notification {
-                        RelayPoolNotification::Message {
+                        RelayNotification::Message {
                             message:
                                 RelayMessage::Event {
                                     subscription_id,
@@ -1572,12 +1628,12 @@ impl Relay {
                                 callback(*event).await;
                             }
                         }
-                        RelayPoolNotification::RelayStatus { relay_url, status } => {
-                            if relay_url == self.url && status.is_disconnected() {
+                        RelayNotification::RelayStatus { status } => {
+                            if status.is_disconnected() {
                                 return Err(Error::NotConnected);
                             }
                         }
-                        RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => break,
+                        RelayNotification::Stop | RelayNotification::Shutdown => break,
                         _ => (),
                     }
                 }
@@ -1697,11 +1753,10 @@ impl Relay {
 
         let mut count = 0;
 
-        let mut notifications = self.notification_sender.subscribe();
+        let mut notifications = self.internal_notification_sender.subscribe();
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Message {
-                    relay_url,
+                if let RelayNotification::Message {
                     message:
                         RelayMessage::Count {
                             subscription_id,
@@ -1709,7 +1764,7 @@ impl Relay {
                         },
                 } = notification
                 {
-                    if subscription_id == id && relay_url == self.url {
+                    if subscription_id == id {
                         count = c;
                         break;
                     }
@@ -1759,45 +1814,43 @@ impl Relay {
         let open_msg = ClientMessage::neg_open(&mut negentropy, &sub_id, filter)?;
         self.send_msg(open_msg, send_opts).await?;
 
-        let mut notifications = self.notification_sender.subscribe();
-        let mut temp_notifications = self.notification_sender.subscribe();
+        let mut notifications = self.internal_notification_sender.subscribe();
+        let mut temp_notifications = self.internal_notification_sender.subscribe();
 
         // Check if negentropy it's supported
         time::timeout(Some(opts.initial_timeout), async {
             while let Ok(notification) = temp_notifications.recv().await {
-                if let RelayPoolNotification::Message { relay_url, message } = notification {
-                    if relay_url == self.url {
-                        match message {
-                            RelayMessage::NegMsg {
-                                subscription_id, ..
-                            } => {
-                                if subscription_id == sub_id {
-                                    break;
-                                }
+                if let RelayNotification::Message { message } = notification {
+                    match message {
+                        RelayMessage::NegMsg {
+                            subscription_id, ..
+                        } => {
+                            if subscription_id == sub_id {
+                                break;
                             }
-                            RelayMessage::NegErr {
-                                subscription_id,
-                                code,
-                            } => {
-                                if subscription_id == sub_id {
-                                    return Err(Error::NegentropyReconciliation(code));
-                                }
-                            }
-                            RelayMessage::Notice { message } => {
-                                if message.contains("bad msg")
-                                    && (message.contains("unknown cmd")
-                                        || message.contains("negentropy")
-                                        || message.contains("NEG-"))
-                                {
-                                    return Err(Error::NegentropyNotSupported);
-                                } else if message.contains("bad msg: invalid message")
-                                    && message.contains("NEG-OPEN")
-                                {
-                                    return Err(Error::UnknownNegentropyError);
-                                }
-                            }
-                            _ => (),
                         }
+                        RelayMessage::NegErr {
+                            subscription_id,
+                            code,
+                        } => {
+                            if subscription_id == sub_id {
+                                return Err(Error::NegentropyReconciliation(code));
+                            }
+                        }
+                        RelayMessage::Notice { message } => {
+                            if message.contains("bad msg")
+                                && (message.contains("unknown cmd")
+                                    || message.contains("negentropy")
+                                    || message.contains("NEG-"))
+                            {
+                                return Err(Error::NegentropyNotSupported);
+                            } else if message.contains("bad msg: invalid message")
+                                && message.contains("NEG-OPEN")
+                            {
+                                return Err(Error::UnknownNegentropyError);
+                            }
+                        }
+                        _ => (),
                     }
                 }
             }
@@ -1819,148 +1872,141 @@ impl Relay {
         // Start reconciliation
         while let Ok(notification) = notifications.recv().await {
             match notification {
-                RelayPoolNotification::Message { relay_url, message } => {
-                    if relay_url == self.url {
-                        match message {
-                            RelayMessage::NegMsg {
-                                subscription_id,
-                                message,
-                            } => {
-                                if subscription_id == sub_id {
-                                    let query: Bytes = Bytes::from_hex(message)?;
-                                    let msg: Option<Bytes> = negentropy.reconcile_with_ids(
-                                        &query,
-                                        &mut have_ids,
-                                        &mut need_ids,
-                                    )?;
+                RelayNotification::Message { message } => {
+                    match message {
+                        RelayMessage::NegMsg {
+                            subscription_id,
+                            message,
+                        } => {
+                            if subscription_id == sub_id {
+                                let query: Bytes = Bytes::from_hex(message)?;
+                                let msg: Option<Bytes> = negentropy.reconcile_with_ids(
+                                    &query,
+                                    &mut have_ids,
+                                    &mut need_ids,
+                                )?;
 
-                                    if !do_up {
-                                        have_ids.clear();
-                                    }
+                                if !do_up {
+                                    have_ids.clear();
+                                }
 
-                                    if !do_down {
-                                        need_ids.clear();
-                                    }
+                                if !do_down {
+                                    need_ids.clear();
+                                }
 
-                                    match msg {
-                                        Some(query) => {
-                                            tracing::info!(
-                                                "Continue negentropy reconciliation with {}",
-                                                self.url
-                                            );
-                                            self.send_msg(
-                                                ClientMessage::NegMsg {
-                                                    subscription_id: sub_id.clone(),
-                                                    message: query.to_hex(),
-                                                },
-                                                send_opts,
-                                            )
-                                            .await?;
-                                        }
-                                        None => sync_done = true,
+                                match msg {
+                                    Some(query) => {
+                                        tracing::info!(
+                                            "Continue negentropy reconciliation with {}",
+                                            self.url
+                                        );
+                                        self.send_msg(
+                                            ClientMessage::NegMsg {
+                                                subscription_id: sub_id.clone(),
+                                                message: query.to_hex(),
+                                            },
+                                            send_opts,
+                                        )
+                                        .await?;
                                     }
+                                    None => sync_done = true,
                                 }
                             }
-                            RelayMessage::NegErr {
-                                subscription_id,
-                                code,
-                            } => {
-                                if subscription_id == sub_id {
-                                    return Err(Error::NegentropyReconciliation(code));
-                                }
-                            }
-                            RelayMessage::Ok {
-                                event_id,
-                                status,
-                                message,
-                            } => {
-                                if in_flight_up.remove(&event_id) && !status {
-                                    tracing::error!(
-                                        "Unable to upload event {event_id} to {}: {message}",
-                                        self.url
-                                    );
-                                }
-                            }
-                            RelayMessage::EndOfStoredEvents(id) => {
-                                if id == down_sub_id {
-                                    in_flight_down = false;
-                                }
-                            }
-                            _ => (),
                         }
-
-                        // Get/Send events
-                        if do_up
-                            && !have_ids.is_empty()
-                            && in_flight_up.len() <= NEGENTROPY_LOW_WATER_UP
-                        {
-                            let mut num_sent = 0;
-
-                            while !have_ids.is_empty()
-                                && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
-                            {
-                                if let Some(id) = have_ids.pop() {
-                                    if let Ok(event_id) = EventId::from_slice(&id) {
-                                        match self.database.event_by_id(event_id).await {
-                                            Ok(event) => {
-                                                in_flight_up.insert(event_id);
-                                                self.send_msg(
-                                                    ClientMessage::event(event),
-                                                    send_opts,
-                                                )
-                                                .await?;
-                                                num_sent += 1;
-                                            }
-                                            Err(e) => tracing::error!("Couldn't upload event: {e}"),
-                                        }
-                                    }
-                                }
+                        RelayMessage::NegErr {
+                            subscription_id,
+                            code,
+                        } => {
+                            if subscription_id == sub_id {
+                                return Err(Error::NegentropyReconciliation(code));
                             }
-
-                            if num_sent > 0 {
-                                tracing::info!(
-                                    "Negentropy UP: {} events ({} remaining)",
-                                    num_sent,
-                                    have_ids.len()
+                        }
+                        RelayMessage::Ok {
+                            event_id,
+                            status,
+                            message,
+                        } => {
+                            if in_flight_up.remove(&event_id) && !status {
+                                tracing::error!(
+                                    "Unable to upload event {event_id} to {}: {message}",
+                                    self.url
                                 );
                             }
                         }
+                        RelayMessage::EndOfStoredEvents(id) => {
+                            if id == down_sub_id {
+                                in_flight_down = false;
+                            }
+                        }
+                        _ => (),
+                    }
 
-                        if do_down && !need_ids.is_empty() && !in_flight_down {
-                            let mut ids: Vec<EventId> =
-                                Vec::with_capacity(NEGENTROPY_BATCH_SIZE_DOWN);
+                    // Get/Send events
+                    if do_up
+                        && !have_ids.is_empty()
+                        && in_flight_up.len() <= NEGENTROPY_LOW_WATER_UP
+                    {
+                        let mut num_sent = 0;
 
-                            while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
-                                if let Some(id) = need_ids.pop() {
-                                    if let Ok(event_id) = EventId::from_slice(&id) {
-                                        ids.push(event_id);
+                        while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
+                        {
+                            if let Some(id) = have_ids.pop() {
+                                if let Ok(event_id) = EventId::from_slice(&id) {
+                                    match self.database.event_by_id(event_id).await {
+                                        Ok(event) => {
+                                            in_flight_up.insert(event_id);
+                                            self.send_msg(ClientMessage::event(event), send_opts)
+                                                .await?;
+                                            num_sent += 1;
+                                        }
+                                        Err(e) => tracing::error!("Couldn't upload event: {e}"),
                                     }
                                 }
                             }
+                        }
 
+                        if num_sent > 0 {
                             tracing::info!(
-                                "Negentropy DOWN: {} events ({} remaining)",
-                                ids.len(),
-                                need_ids.len()
+                                "Negentropy UP: {} events ({} remaining)",
+                                num_sent,
+                                have_ids.len()
                             );
-
-                            let filter = Filter::new().ids(ids);
-                            self.send_msg(
-                                ClientMessage::req(down_sub_id.clone(), vec![filter]),
-                                send_opts,
-                            )
-                            .await?;
-
-                            in_flight_down = true
                         }
                     }
+
+                    if do_down && !need_ids.is_empty() && !in_flight_down {
+                        let mut ids: Vec<EventId> = Vec::with_capacity(NEGENTROPY_BATCH_SIZE_DOWN);
+
+                        while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
+                            if let Some(id) = need_ids.pop() {
+                                if let Ok(event_id) = EventId::from_slice(&id) {
+                                    ids.push(event_id);
+                                }
+                            }
+                        }
+
+                        tracing::info!(
+                            "Negentropy DOWN: {} events ({} remaining)",
+                            ids.len(),
+                            need_ids.len()
+                        );
+
+                        let filter = Filter::new().ids(ids);
+                        self.send_msg(
+                            ClientMessage::req(down_sub_id.clone(), vec![filter]),
+                            send_opts,
+                        )
+                        .await?;
+
+                        in_flight_down = true
+                    }
                 }
-                RelayPoolNotification::RelayStatus { relay_url, status } => {
-                    if relay_url == self.url && status.is_disconnected() {
+                RelayNotification::RelayStatus { status } => {
+                    if status.is_disconnected() {
                         return Err(Error::NotConnectedStatusChanged);
                     }
                 }
-                RelayPoolNotification::Stop | RelayPoolNotification::Shutdown => break,
+                RelayNotification::Stop | RelayNotification::Shutdown => break,
                 _ => (),
             };
 

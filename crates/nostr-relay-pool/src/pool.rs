@@ -272,13 +272,10 @@ impl RelayPool {
         let url: Url = url.try_into_url()?;
         let mut relays = self.relays.write().await;
         if !relays.contains_key(&url) {
-            let relay = Relay::new(
-                url,
-                self.database.clone(),
-                self.notification_sender.clone(),
-                opts,
-                Limits::default(),
-            );
+            let relay = Relay::new(url, self.database.clone(), opts, Limits::default());
+            relay
+                .set_notification_sender(Some(self.notification_sender.clone()))
+                .await;
             relays.insert(relay.url(), relay);
             Ok(true)
         } else {
