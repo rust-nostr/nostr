@@ -18,7 +18,7 @@ use tokio::sync::{broadcast, Mutex, RwLock};
 
 pub mod options;
 
-use self::options::RelayPoolOptions;
+pub use self::options::RelayPoolOptions;
 use crate::relay::limits::Limits;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Error as RelayError, InternalSubscriptionId, Relay, RelayStatus};

@@ -27,14 +27,15 @@ pub mod options;
 pub mod stats;
 mod status;
 
-use self::flags::AtomicRelayServiceFlags;
+pub use self::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 pub use self::internal::Error;
 use self::internal::InternalRelay;
-use self::limits::Limits;
-use self::options::{
-    FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, RequestOptions,
+pub use self::limits::Limits;
+pub use self::options::{
+    FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelaySendOptions,
+    RequestAutoCloseOptions, RequestOptions,
 };
-use self::stats::RelayConnectionStats;
+pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 use crate::pool::RelayPoolNotification;
 use crate::util::SaturatingUsize;

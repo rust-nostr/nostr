@@ -11,6 +11,7 @@
 #![allow(clippy::arc_with_non_send_sync)]
 
 pub mod pool;
+pub mod prelude;
 pub mod relay;
 mod util;
 
