@@ -221,7 +221,7 @@ impl RelayPool {
         Ok(())
     }
 
-    /// Get new notification listener
+    /// Get new **pool** notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.notification_sender.subscribe()
     }
@@ -272,7 +272,7 @@ impl RelayPool {
         let url: Url = url.try_into_url()?;
         let mut relays = self.relays.write().await;
         if !relays.contains_key(&url) {
-            let relay = Relay::new(url, self.database.clone(), opts, Limits::default());
+            let relay = Relay::custom(url, self.database.clone(), opts, Limits::default());
             relay
                 .set_notification_sender(Some(self.notification_sender.clone()))
                 .await;
