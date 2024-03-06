@@ -10,12 +10,11 @@
 #![allow(unknown_lints)]
 #![allow(clippy::arc_with_non_send_sync)]
 
-pub mod options;
 pub mod pool;
 pub mod relay;
 mod util;
 
-pub use self::options::RelayPoolOptions;
+pub use self::pool::options::RelayPoolOptions;
 pub use self::pool::{RelayPool, RelayPoolNotification};
 pub use self::relay::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 pub use self::relay::limits::Limits;
