@@ -24,7 +24,7 @@ use nostr::nips::nip47::{
 };
 use nostr::{Filter, Kind, SubscriptionId};
 use nostr_relay_pool::{
-    FilterOptions, RelayPool, RelayPoolNotification, RelaySendOptions, RequestAutoCloseOptions,
+    FilterOptions, Relay, RelayNotification, RelaySendOptions, RequestAutoCloseOptions,
     RequestOptions,
 };
 use nostr_zapper::{async_trait, NostrZapper, ZapperBackend};
@@ -42,7 +42,7 @@ const TIMEOUT: Duration = Duration::from_secs(10);
 #[derive(Debug, Clone)]
 pub struct NWC {
     uri: NostrWalletConnectURI,
-    pool: RelayPool,
+    relay: Relay,
 }
 
 impl NWC {
@@ -56,12 +56,11 @@ impl NWC {
         uri: NostrWalletConnectURI,
         opts: NostrWalletConnectOptions,
     ) -> Result<Self, Error> {
-        // Compose pool
-        let pool = RelayPool::default();
-        pool.add_relay(&uri.relay_url, opts.relay).await?;
-        pool.connect(Some(Duration::from_secs(10))).await;
+        // Compose relay
+        let relay = Relay::with_opts(uri.relay_url.clone(), opts.relay);
+        relay.connect(Some(Duration::from_secs(10))).await;
 
-        Ok(Self { uri, pool })
+        Ok(Self { uri, relay })
     }
 
     async fn send_request(&self, req: Request) -> Result<Response, Error> {
@@ -70,7 +69,6 @@ impl NWC {
         let event_id = event.id;
 
         // Subscribe
-        let relay = self.pool.relay(&self.uri.relay_url).await?;
         let id = SubscriptionId::generate();
         let filter = Filter::new()
             .author(self.uri.public_key)
@@ -84,18 +82,18 @@ impl NWC {
         let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
 
         // Subscribe
-        relay.send_req(id, vec![filter], req_opts).await?;
+        self.relay.send_req(id, vec![filter], req_opts).await?;
 
-        let mut notifications = self.pool.notifications();
+        let mut notifications = self.relay.notifications();
 
         // Send request
-        self.pool
-            .send_event_to([&self.uri.relay_url], event, RelaySendOptions::new())
+        self.relay
+            .send_event(event, RelaySendOptions::new())
             .await?;
 
         time::timeout(Some(TIMEOUT), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
+                if let RelayNotification::Event { event } = notification {
                     if event.kind() == Kind::WalletConnectResponse
                         && event.event_ids().next().copied() == Some(event_id)
                     {
@@ -182,7 +180,7 @@ impl NWC {
 
     /// Completely shutdown [NWC] client
     pub async fn shutdown(self) -> Result<(), Error> {
-        Ok(self.pool.shutdown().await?)
+        Ok(self.relay.terminate().await?)
     }
 }
 

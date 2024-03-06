@@ -20,9 +20,6 @@ pub enum Error {
     /// Relay
     #[error(transparent)]
     Relay(#[from] nostr_relay_pool::relay::Error),
-    /// Pool
-    #[error(transparent)]
-    Pool(#[from] nostr_relay_pool::pool::Error),
     /// Request timeout
     #[error("timeout")]
     Timeout,
