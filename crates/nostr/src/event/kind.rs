@@ -86,6 +86,38 @@ pub enum Kind {
     MuteList,
     /// Pin List (NIP51)
     PinList,
+    /// Bookmarks (NIP51)
+    Bookmarks,
+    /// Communities (NIP51)
+    Communities,
+    /// Public Chats (NIP51)
+    PublicChats,
+    /// Blocked Relays (NIP51)
+    BlockedRelays,
+    /// Search Relays (NIP51)
+    SearchRelays,
+    /// Simple Groups (NIP51)
+    SimpleGroups,
+    /// Interests (NIP51)
+    Interests,
+    /// Emojis (NIP51)
+    Emojis,
+    /// Follow Sets (NIP51)
+    FollowSets,
+    /// Relay Sets (NIP51)
+    RelaySets,
+    /// Bookmark Sets (NIP51)
+    BookmarkSets,
+    /// Articles Curation Sets (NIP51)
+    ArticlesCurationSets,
+    /// Videos Curation Sets (NIP51)
+    VideosCurationSets,
+    /// Interest Sets (NIP51)
+    InterestSets,
+    /// Emoji Sets (NIP51)
+    EmojiSets,
+    /// Release Artifact Sets (NIP51)
+    ReleaseArtifactSets,
     /// Relay List Metadata (NIP65)
     RelayList,
     /// Client Authentication (NIP42)
@@ -96,10 +128,6 @@ pub enum Kind {
     WalletConnectResponse,
     /// Nostr Connect (NIP46)
     NostrConnect,
-    /// Categorized People List (NIP51)
-    CategorizedPeopleList,
-    /// Categorized Bookmark List (NIP51)
-    CategorizedBookmarkList,
     /// Live Event (NIP53)
     LiveEvent,
     /// Live Event Message (NIP53)
@@ -271,13 +299,27 @@ impl From<u64> for Kind {
             9735 => Self::ZapReceipt,
             10000 => Self::MuteList,
             10001 => Self::PinList,
+            10003 => Self::Bookmarks,
+            10004 => Self::Communities,
+            10005 => Self::PublicChats,
+            10006 => Self::BlockedRelays,
+            10007 => Self::SearchRelays,
+            10009 => Self::SimpleGroups,
+            10015 => Self::Interests,
+            10030 => Self::Emojis,
             10002 => Self::RelayList,
             22242 => Self::Authentication,
             23194 => Self::WalletConnectRequest,
             23195 => Self::WalletConnectResponse,
             24133 => Self::NostrConnect,
-            30000 => Self::CategorizedPeopleList,
-            30001 => Self::CategorizedBookmarkList,
+            30000 => Self::FollowSets,
+            30002 => Self::RelaySets,
+            30003 => Self::BookmarkSets,
+            30004 => Self::ArticlesCurationSets,
+            30005 => Self::VideosCurationSets,
+            30015 => Self::InterestSets,
+            30030 => Self::EmojiSets,
+            30063 => Self::ReleaseArtifactSets,
             30311 => Self::LiveEvent,
             1311 => Self::LiveEventMessage,
             30008 => Self::ProfileBadges,
@@ -336,13 +378,27 @@ impl From<Kind> for u64 {
             Kind::ZapReceipt => 9735,
             Kind::MuteList => 10000,
             Kind::PinList => 10001,
+            Kind::Bookmarks => 10003,
+            Kind::Communities => 10004,
+            Kind::PublicChats => 10005,
+            Kind::BlockedRelays => 10006,
+            Kind::SearchRelays => 10007,
+            Kind::SimpleGroups => 10009,
+            Kind::Interests => 10015,
+            Kind::Emojis => 10030,
             Kind::RelayList => 10002,
             Kind::Authentication => 22242,
             Kind::WalletConnectRequest => 23194,
             Kind::WalletConnectResponse => 23195,
             Kind::NostrConnect => 24133,
-            Kind::CategorizedPeopleList => 30000,
-            Kind::CategorizedBookmarkList => 30001,
+            Kind::FollowSets => 30000,
+            Kind::RelaySets => 30002,
+            Kind::BookmarkSets => 30003,
+            Kind::ArticlesCurationSets => 30004,
+            Kind::VideosCurationSets => 30005,
+            Kind::InterestSets => 30015,
+            Kind::EmojiSets => 30030,
+            Kind::ReleaseArtifactSets => 30063,
             Kind::LiveEvent => 30311,
             Kind::LiveEventMessage => 1311,
             Kind::ProfileBadges => 30008,

@@ -27,6 +27,7 @@ use crate::nips::nip15::{ProductData, StallData};
 use crate::nips::nip44::{self, Version};
 #[cfg(all(feature = "std", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
+use crate::nips::nip51::{ArticlesCuration, Bookmarks, Emojis, Interests, MuteList};
 use crate::nips::nip53::LiveEvent;
 #[cfg(feature = "nip57")]
 use crate::nips::nip57::ZapRequestData;
@@ -1253,6 +1254,155 @@ impl EventBuilder {
         S: Into<String>,
     {
         Self::new(Kind::SealedDirect, message, [Tag::public_key(receiver)])
+    }
+
+    /// Mute list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn mute_list(list: MuteList) -> Self {
+        let tags: Vec<Tag> = list.into();
+        Self::new(Kind::MuteList, "", tags)
+    }
+
+    /// Pinned notes
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn pinned_notes<I>(ids: I) -> Self
+    where
+        I: IntoIterator<Item = EventId>,
+    {
+        let tags = ids.into_iter().map(Tag::event);
+        Self::new(Kind::PinList, "", tags)
+    }
+
+    /// Bookmarks
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn bookmarks(list: Bookmarks) -> Self {
+        let tags: Vec<Tag> = list.into();
+        Self::new(Kind::Bookmarks, "", tags)
+    }
+
+    /// Communities
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn communities<I>(communities: I) -> Self
+    where
+        I: IntoIterator<Item = Coordinate>,
+    {
+        let tags = communities.into_iter().map(Tag::from);
+        Self::new(Kind::Communities, "", tags)
+    }
+
+    /// Public chats
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn public_chats<I>(chat: I) -> Self
+    where
+        I: IntoIterator<Item = EventId>,
+    {
+        let tags = chat.into_iter().map(Tag::event);
+        Self::new(Kind::Communities, "", tags)
+    }
+
+    /// Blocked relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn blocked_relays<I>(relay: I) -> Self
+    where
+        I: IntoIterator<Item = UncheckedUrl>,
+    {
+        let tags = relay.into_iter().map(Tag::Relay);
+        Self::new(Kind::BlockedRelays, "", tags)
+    }
+
+    /// Search relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn search_relays<I>(relay: I) -> Self
+    where
+        I: IntoIterator<Item = UncheckedUrl>,
+    {
+        let tags = relay.into_iter().map(Tag::Relay);
+        Self::new(Kind::SearchRelays, "", tags)
+    }
+
+    /// Interests
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn interests(list: Interests) -> Self {
+        let tags: Vec<Tag> = list.into();
+        Self::new(Kind::Interests, "", tags)
+    }
+
+    /// Emojis
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn emojis(list: Emojis) -> Self {
+        let tags: Vec<Tag> = list.into();
+        Self::new(Kind::Emojis, "", tags)
+    }
+
+    /// Follow sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn follow_sets<I>(publick_key: I) -> Self
+    where
+        I: IntoIterator<Item = PublicKey>,
+    {
+        let tags = publick_key.into_iter().map(Tag::public_key);
+        Self::new(Kind::FollowSets, "", tags)
+    }
+
+    /// Relay sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn relay_sets<I>(relay: I) -> Self
+    where
+        I: IntoIterator<Item = UncheckedUrl>,
+    {
+        let tags = relay.into_iter().map(Tag::Relay);
+        Self::new(Kind::RelaySets, "", tags)
+    }
+
+    /// Bookmark sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn bookmarks_sets(list: Bookmarks) -> Self {
+        let tags: Vec<Tag> = list.into();
+        Self::new(Kind::BookmarkSets, "", tags)
+    }
+
+    /// Article Curation sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn articles_curation_sets(list: ArticlesCuration) -> Self {
+        let tags: Vec<Tag> = list.into();
+        Self::new(Kind::ArticlesCurationSets, "", tags)
+    }
+
+    /// Videos Curation sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn videos_curation_sets<I>(video: I) -> Self
+    where
+        I: IntoIterator<Item = Coordinate>,
+    {
+        let tags = video.into_iter().map(Tag::from);
+        Self::new(Kind::VideosCurationSets, "", tags)
+    }
+
+    /// Emoji sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn emoji_sets<I>(emoji: I) -> Self
+    where
+        I: IntoIterator<Item = (String, UncheckedUrl)>,
+    {
+        let tags = emoji
+            .into_iter()
+            .map(|(s, url)| Tag::Emoji { shortcode: s, url });
+        Self::new(Kind::VideosCurationSets, "", tags)
     }
 }
 

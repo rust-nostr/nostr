@@ -430,6 +430,8 @@ pub enum TagKind {
     Encrypted,
     /// Request (NIP90)
     Request,
+    /// Word
+    Word,
     /// Custom tag kind
     Custom(String),
 }
@@ -477,6 +479,7 @@ impl fmt::Display for TagKind {
             Self::Emoji => write!(f, "emoji"),
             Self::Encrypted => write!(f, "encrypted"),
             Self::Request => write!(f, "request"),
+            Self::Word => write!(f, "word"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -527,6 +530,7 @@ where
             "emoji" => Self::Emoji,
             "encrypted" => Self::Encrypted,
             "request" => Self::Request,
+            "word" => Self::Word,
             t => match SingleLetterTag::from_str(t) {
                 Ok(s) => Self::SingleLetter(s),
                 Err(..) => Self::Custom(t.to_owned()),
@@ -641,6 +645,7 @@ pub enum Tag {
         status: DataVendingMachineStatus,
         extra_info: Option<String>,
     },
+    Word(String),
 }
 
 impl Tag {
@@ -778,6 +783,7 @@ impl Tag {
                     msg: (!tag_1.is_empty()).then_some(tag_1.to_owned()),
                 }),
                 TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
+                TagKind::Word => Ok(Self::Word(tag_1.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![tag_1.to_owned()])),
             }
         } else if tag_len == 3 {
@@ -1119,6 +1125,7 @@ impl Tag {
             Self::Emoji { .. } => TagKind::Emoji,
             Self::Encrypted => TagKind::Encrypted,
             Self::Request(..) => TagKind::Request,
+            Self::Word(..) => TagKind::Word,
         }
     }
 
@@ -1199,6 +1206,7 @@ impl Tag {
             Self::Emoji { shortcode, .. } => Some(shortcode.into_generic_tag_value()),
             Self::Encrypted => None,
             Self::Request(val) => Some(val.as_json().into_generic_tag_value()),
+            Self::Word(val) => Some(val.into_generic_tag_value())
         }
     }
 }
@@ -1414,6 +1422,7 @@ impl From<Tag> for Vec<String> {
                 }
                 tag
             }
+            Tag::Word(word) => vec![TagKind::Word.to_string(), word],
         }
     }
 }

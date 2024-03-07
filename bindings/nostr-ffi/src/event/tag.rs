@@ -235,6 +235,7 @@ pub enum TagKind {
     /// Encrypted
     Encrypted,
     Request,
+    Word,
     Unknown {
         unknown: String,
     },
@@ -285,6 +286,7 @@ impl From<tag::TagKind> for TagKind {
             tag::TagKind::Emoji => Self::Emoji,
             tag::TagKind::Encrypted => Self::Encrypted,
             tag::TagKind::Request => Self::Request,
+            tag::TagKind::Word => Self::Word,
             tag::TagKind::Custom(unknown) => Self::Unknown { unknown },
         }
     }
@@ -333,6 +335,7 @@ impl From<TagKind> for tag::TagKind {
             TagKind::Emoji => Self::Emoji,
             TagKind::Encrypted => Self::Encrypted,
             TagKind::Request => Self::Request,
+            TagKind::Word => Self::Word,
             TagKind::Unknown { unknown } => Self::Custom(unknown),
         }
     }
@@ -534,6 +537,9 @@ pub enum TagEnum {
         status: DataVendingMachineStatus,
         extra_info: Option<String>,
     },
+    Word {
+        word: String,
+    },
 }
 
 impl From<tag::Tag> for TagEnum {
@@ -702,6 +708,7 @@ impl From<tag::Tag> for TagEnum {
                     extra_info,
                 }
             }
+            tag::Tag::Word(word) => Self::Word { word },
         }
     }
 }
@@ -844,6 +851,7 @@ impl TryFrom<TagEnum> for tag::Tag {
                     extra_info,
                 })
             }
+            TagEnum::Word { word } => Ok(Self::Word(word)),
         }
     }
 }
