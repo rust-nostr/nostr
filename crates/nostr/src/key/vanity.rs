@@ -17,6 +17,7 @@ use bitcoin::secp256k1::rand;
 use super::Keys;
 use crate::nips::nip19::{ToBech32, PREFIX_BECH32_PUBLIC_KEY};
 
+const BECH32_SPAN: usize = PREFIX_BECH32_PUBLIC_KEY.len() + 1;
 const BECH32_CHARS: &str = "023456789acdefghjklmnpqrstuvwxyz";
 const HEX_CHARS: &str = "0123456789abcdef";
 
@@ -97,9 +98,10 @@ impl Keys {
                             .public_key
                             .to_bech32()
                             .expect("Unable to convert key to bech32");
-                        if prefixes.iter().any(|prefix| {
-                            bech32_key.starts_with(&format!("{PREFIX_BECH32_PUBLIC_KEY}1{prefix}"))
-                        }) {
+                        if prefixes
+                            .iter()
+                            .any(|prefix| bech32_key[BECH32_SPAN..].starts_with(prefix))
+                        {
                             tx.send(keys).expect("Unable to send on channel");
                             let _ = found
                                 .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
