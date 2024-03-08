@@ -61,3 +61,22 @@ impl TryFrom<Bookmarks> for nip51::Bookmarks {
         })
     }
 }
+
+#[derive(Record)]
+pub struct Interests {
+    pub hashtags: Vec<String>,
+    pub coordinate: Vec<Arc<Coordinate>>,
+}
+
+impl From<Interests> for nip51::Interests {
+    fn from(value: Interests) -> Self {
+        Self {
+            hashtags: value.hashtags,
+            coordinate: value
+                .coordinate
+                .into_iter()
+                .map(|c| c.as_ref().into())
+                .collect(),
+        }
+    }
+}

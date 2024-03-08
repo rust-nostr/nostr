@@ -15,7 +15,7 @@ use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip15::{ProductData, StallData};
-use crate::nips::nip51::{Bookmarks, MuteList};
+use crate::nips::nip51::{Bookmarks, Interests, MuteList};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -508,5 +508,12 @@ impl EventBuilder {
         Self {
             inner: nostr::EventBuilder::search_relays(relay.into_iter().map(UncheckedUrl::from)),
         }
+    }
+
+    #[uniffi::constructor]
+    pub fn interests(list: Interests) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventBuilder::interests(list.into()),
+        })
     }
 }
