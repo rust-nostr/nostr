@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip51;
-use nostr::Url;
+use nostr::{UncheckedUrl, Url};
 use uniffi::Record;
 
 use super::nip01::Coordinate;
@@ -72,6 +72,39 @@ impl From<Interests> for nip51::Interests {
     fn from(value: Interests) -> Self {
         Self {
             hashtags: value.hashtags,
+            coordinate: value
+                .coordinate
+                .into_iter()
+                .map(|c| c.as_ref().into())
+                .collect(),
+        }
+    }
+}
+
+#[derive(Record)]
+pub struct EmojiInfo {
+    pub shortcode: String,
+    pub url: String,
+}
+
+impl From<EmojiInfo> for (String, UncheckedUrl) {
+    fn from(value: EmojiInfo) -> Self {
+        (value.shortcode, UncheckedUrl::from(value.url))
+    }
+}
+
+#[derive(Record)]
+pub struct Emojis {
+    /// Emojis
+    pub emojis: Vec<EmojiInfo>,
+    /// Coordinates
+    pub coordinate: Vec<Arc<Coordinate>>,
+}
+
+impl From<Emojis> for nip51::Emojis {
+    fn from(value: Emojis) -> Self {
+        Self {
+            emojis: value.emojis.into_iter().map(|e| e.into()).collect(),
             coordinate: value
                 .coordinate
                 .into_iter()
