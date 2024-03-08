@@ -488,4 +488,11 @@ impl EventBuilder {
             ),
         }
     }
+
+    #[uniffi::constructor]
+    pub fn public_chats(chat: Vec<Arc<EventId>>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::public_chats(chat.into_iter().map(|e| **e)),
+        }
+    }
 }

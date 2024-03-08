@@ -1302,7 +1302,7 @@ impl EventBuilder {
         I: IntoIterator<Item = EventId>,
     {
         let tags = chat.into_iter().map(Tag::event);
-        Self::new(Kind::Communities, "", tags)
+        Self::new(Kind::PublicChats, "", tags)
     }
 
     /// Blocked relays
