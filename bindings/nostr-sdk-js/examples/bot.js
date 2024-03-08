@@ -28,7 +28,7 @@ async function main() {
 
     const handle = {
         // Handle event
-        handleEvent: async (relayUrl, event) => {
+        handleEvent: async (relayUrl, subscriptionId, event) => {
             console.log("Received new event from ", relayUrl);
             if (event.kind == 4) {
                 try {

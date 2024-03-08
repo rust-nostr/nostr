@@ -150,8 +150,12 @@ impl Nip46Signer {
         let mut notifications = self.relay.notifications();
         time::timeout(Some(self.timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Event { event } = notification {
-                    if event.kind() == Kind::NostrConnect {
+                if let RelayNotification::Event {
+                    subscription_id,
+                    event,
+                } = notification
+                {
+                    if subscription_id == id && event.kind() == Kind::NostrConnect {
                         let msg: String =
                             nip04::decrypt(secret_key, event.author_ref(), event.content())?;
                         let msg = Message::from_json(msg)?;
@@ -198,7 +202,9 @@ impl Nip46Signer {
         let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
 
         // Subscribe
-        self.relay.send_req(sub_id, vec![filter], req_opts).await?;
+        self.relay
+            .send_req(sub_id.clone(), vec![filter], req_opts)
+            .await?;
 
         let mut notifications = self.relay.notifications();
 
@@ -209,8 +215,12 @@ impl Nip46Signer {
 
         let future = async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Event { event } = notification {
-                    if event.kind() == Kind::NostrConnect {
+                if let RelayNotification::Event {
+                    subscription_id,
+                    event,
+                } = notification
+                {
+                    if subscription_id == sub_id && event.kind() == Kind::NostrConnect {
                         let msg = nip04::decrypt(secret_key, event.author_ref(), event.content())?;
                         let msg = Message::from_json(msg)?;
 

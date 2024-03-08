@@ -452,10 +452,18 @@ impl Client {
                             })
                             .await;
                         }
-                        RelayPoolNotificationSdk::Event { relay_url, event } => {
+                        RelayPoolNotificationSdk::Event {
+                            relay_url,
+                            subscription_id,
+                            event,
+                        } => {
                             let h = handler.clone();
                             let _ = spawn_blocking(move || {
-                                h.handle(relay_url.to_string(), Arc::new(event.into()))
+                                h.handle(
+                                    relay_url.to_string(),
+                                    subscription_id.to_string(),
+                                    Arc::new((*event).into()),
+                                )
                             })
                             .await;
                         }
@@ -472,5 +480,5 @@ impl Client {
 #[uniffi::export(callback_interface)]
 pub trait HandleNotification: Send + Sync + Debug {
     fn handle_msg(&self, relay_url: String, msg: Arc<RelayMessage>);
-    fn handle(&self, relay_url: String, event: Arc<Event>);
+    fn handle(&self, relay_url: String, subscription_id: String, event: Arc<Event>);
 }

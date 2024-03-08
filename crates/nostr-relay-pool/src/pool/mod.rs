@@ -9,7 +9,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use atomic_destructor::AtomicDestructor;
-use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, Timestamp, TryIntoUrl, Url};
+use nostr::{
+    ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, TryIntoUrl, Url,
+};
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
@@ -29,8 +31,10 @@ pub enum RelayPoolNotification {
     Event {
         /// Relay url
         relay_url: Url,
+        /// Subscription ID
+        subscription_id: SubscriptionId,
         /// Event
-        event: Event,
+        event: Box<Event>,
     },
     /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
     Message {

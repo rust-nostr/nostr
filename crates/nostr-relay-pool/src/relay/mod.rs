@@ -43,8 +43,10 @@ use crate::pool::RelayPoolNotification;
 pub enum RelayNotification {
     /// Received an [`Event`]. Does not include events sent by this client.
     Event {
+        /// Subscription ID
+        subscription_id: SubscriptionId,
         /// Event
-        event: Event,
+        event: Box<Event>,
     },
     /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
     Message {

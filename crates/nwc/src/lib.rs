@@ -82,7 +82,9 @@ impl NWC {
         let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
 
         // Subscribe
-        self.relay.send_req(id, vec![filter], req_opts).await?;
+        self.relay
+            .send_req(id.clone(), vec![filter], req_opts)
+            .await?;
 
         let mut notifications = self.relay.notifications();
 
@@ -93,8 +95,13 @@ impl NWC {
 
         time::timeout(Some(TIMEOUT), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Event { event } = notification {
-                    if event.kind() == Kind::WalletConnectResponse
+                if let RelayNotification::Event {
+                    subscription_id,
+                    event,
+                } = notification
+                {
+                    if subscription_id == id
+                        && event.kind() == Kind::WalletConnectResponse
                         && event.event_ids().next().copied() == Some(event_id)
                     {
                         return Ok(Response::from_event(&self.uri, &event)?);

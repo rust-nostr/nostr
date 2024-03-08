@@ -372,8 +372,12 @@ impl InternalRelay {
         if let Some(notification_sender) = external_notification_sender.as_ref() {
             // Convert relay to notification to pool notification
             let notification: RelayPoolNotification = match notification {
-                RelayNotification::Event { event } => RelayPoolNotification::Event {
+                RelayNotification::Event {
+                    subscription_id,
+                    event,
+                } => RelayPoolNotification::Event {
                     relay_url: self.url(),
+                    subscription_id,
                     event,
                 },
                 RelayNotification::Message { message } => RelayPoolNotification::Message {
@@ -954,10 +958,14 @@ impl InternalRelay {
                 // Save event
                 self.database.save_event(&event).await?;
 
+                // Box event
+                let event: Box<Event> = Box::new(event);
+
                 // Check if seen
                 if !seen {
                     // Send notification
                     self.send_notification(RelayNotification::Event {
+                        subscription_id: SubscriptionId::new(&subscription_id),
                         event: event.clone(),
                     })
                     .await;
@@ -965,7 +973,7 @@ impl InternalRelay {
 
                 Ok(Some(RelayMessage::Event {
                     subscription_id: SubscriptionId::new(subscription_id),
-                    event: Box::new(event),
+                    event,
                 }))
             }
             m => Ok(Some(RelayMessage::try_from(m)?)),

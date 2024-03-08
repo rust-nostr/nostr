@@ -609,7 +609,7 @@ impl JsClient {
     ///
     /// const handle = {
     ///    // Handle event
-    ///    handleEvent: async (relayUrl, event) => {
+    ///    handleEvent: async (relayUrl, subscriptionId, event) => {
     ///        console.log("Received new event from", relayUrl);
     ///        if (event.kind == 4) {
     ///            try {
@@ -648,9 +648,9 @@ impl JsClient {
                             return Ok(true);
                         }
                     }
-                    RelayPoolNotification::Event { relay_url, event } => {
-                        let event: JsEvent = event.into();
-                        if callback.handle_event(relay_url.to_string(), event).await.as_bool().unwrap_or_default() {
+                    RelayPoolNotification::Event { relay_url, subscription_id, event } => {
+                        let event: JsEvent = (*event).into();
+                        if callback.handle_event(relay_url.to_string(), subscription_id.to_string(), event).await.as_bool().unwrap_or_default() {
                             tracing::info!("Received `true` in `handleEvent`: exiting from `handleNotifications`");
                             return Ok(true);
                         }
@@ -669,7 +669,7 @@ impl JsClient {
 #[wasm_bindgen(typescript_custom_section)]
 const HANDLE_NOTIFICATION: &'static str = r#"
 interface HandleNotification {
-    handleEvent: (relayUrl: string, event: Event) => Promise<boolean>;
+    handleEvent: (relayUrl: string, subscriptionId: string, event: Event) => Promise<boolean>;
     handleMsg: (relayUrl: string, message: RelayMessage) => Promise<boolean>;
 }
 "#;
@@ -683,6 +683,7 @@ extern "C" {
     pub async fn handle_event(
         this: &HandleNotification,
         relay_url: String,
+        subscription_id: String,
         event: JsEvent,
     ) -> JsValue;
 

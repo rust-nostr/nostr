@@ -26,7 +26,7 @@ nip59_filter = Filter().pubkey(pk).kind(1059).since(Timestamp.from_secs(Timestam
 client.subscribe([nip04_filter, nip59_filter])
 
 class NotificationHandler(HandleNotification):
-    def handle(self, relay_url, event):
+    def handle(self, relay_url, subscription_id, event):
         print(f"Received new event from {relay_url}: {event.as_json()}")
         if event.kind() == 4:
             print("Decrypting NIP04 event")
