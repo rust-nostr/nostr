@@ -96,6 +96,7 @@ pub trait FromMnemonic: Sized {
         C: Signing;
 }
 
+#[deprecated(since = "0.29.0")]
 #[allow(missing_docs)]
 pub trait GenerateMnemonic {
     type Err;
@@ -131,6 +132,7 @@ impl FromMnemonic for Keys {
     }
 }
 
+#[allow(deprecated)]
 impl GenerateMnemonic for Keys {
     type Err = Error;
 
