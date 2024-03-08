@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * pool: add `Relay::handle_notifications` ([Yuki Kishimoto])
 * cli: add command to serve `Nostr Connect` signer ([Yuki Kishimoto])
 * ffi(nostr): added `FilterRecord`, to allow to access fields in `Filter` ([Yuki Kishimoto])
+* ffi(nostr): add missing NIP51 constructors ([rustedmoon])
 * ffi(sdk): add `AbortHandle` ([Yuki Kishimoto])
 * ffi(sdk): add `sqlite` and `ndb` features ([Yuki Kishimoto])
 
@@ -73,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [Yuki Kishimoto]: https://yukikishimoto.com
 [DanConwayDev]: https://github.com/DanConwayDev
 [Daniel Cadenas]: https://github.com/dcadenas
+[rustedmoon]: https://github.com/rustedmoon
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.29.0...HEAD

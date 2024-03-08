@@ -15,7 +15,7 @@ use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip15::{ProductData, StallData};
-use crate::nips::nip51::{ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, MuteList};
+use crate::nips::nip51::{ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, {Bookmarks, MuteList}};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -48,11 +48,11 @@ impl Deref for EventBuilder {
 #[uniffi::export]
 impl EventBuilder {
     #[uniffi::constructor]
-    pub fn new(kind: &Kind, content: &str, tags: &[Arc<Tag>]) -> Result<Self> {
+    pub fn new(kind: &Kind, content: &str, tags: &[Arc<Tag>]) -> Self {
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
-        Ok(Self {
+        Self {
             inner: nostr::EventBuilder::new(**kind, content, tags),
-        })
+        }
     }
 
     /// Set a custom `created_at` UNIX timestamp
@@ -104,11 +104,11 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn text_note(content: &str, tags: &[Arc<Tag>]) -> Result<Self> {
+    pub fn text_note(content: &str, tags: &[Arc<Tag>]) -> Self {
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
-        Ok(Self {
+        Self {
             inner: nostr::EventBuilder::text_note(content, tags),
-        })
+        }
     }
 
     /// Text note reply
@@ -134,11 +134,11 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn long_form_text_note(content: &str, tags: &[Arc<Tag>]) -> Result<Self> {
+    pub fn long_form_text_note(content: &str, tags: &[Arc<Tag>]) -> Self {
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
-        Ok(Self {
+        Self {
             inner: nostr::EventBuilder::long_form_text_note(content, tags),
-        })
+        }
     }
 
     #[uniffi::constructor]
@@ -535,20 +535,20 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn interests(list: Interests) -> Result<Self> {
-        Ok(Self {
+    pub fn interests(list: Interests) -> Self {
+        Self {
             inner: nostr::EventBuilder::interests(list.into()),
-        })
+        }
     }
 
     /// Emojis
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn emojis(list: Emojis) -> Result<Self> {
-        Ok(Self {
+    pub fn emojis(list: Emojis) -> Self {
+        Self {
             inner: nostr::EventBuilder::emojis(list.into()),
-        })
+        }
     }
 
     /// Follow sets
