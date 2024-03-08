@@ -308,8 +308,23 @@ impl Relay {
 
     /// Send `REQ` to relay
     ///
-    /// Automatically close `REQ` if set in [RequestOptions]
+    /// Automatically close `REQ` if set in [RequestOptions].
+    ///
+    /// Internally generate a new random [SubscriptionId]. Check `send_req_with_id` method to use a custom [SubscriptionId].
     pub async fn send_req(
+        &self,
+        filters: Vec<Filter>,
+        opts: RequestOptions,
+    ) -> Result<SubscriptionId, Error> {
+        let id: SubscriptionId = SubscriptionId::generate();
+        self.inner.send_req(id.clone(), filters, opts).await?;
+        Ok(id)
+    }
+
+    /// Send `REQ` to relay with custom [SubscriptionId]
+    ///
+    /// Automatically close `REQ` if set in [RequestOptions]
+    pub async fn send_req_with_id(
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,

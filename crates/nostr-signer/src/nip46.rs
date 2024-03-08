@@ -131,7 +131,6 @@ impl Nip46Signer {
         let public_key = self.app_keys.public_key();
         let secret_key = self.app_keys.secret_key()?;
 
-        let id = SubscriptionId::generate();
         let filter = Filter::new()
             .pubkey(public_key)
             .kind(Kind::NostrConnect)
@@ -143,9 +142,7 @@ impl Nip46Signer {
         let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
 
         // Subscribe
-        self.relay
-            .send_req(id.clone(), vec![filter], req_opts)
-            .await?;
+        let id: SubscriptionId = self.relay.send_req(vec![filter], req_opts).await?;
 
         let mut notifications = self.relay.notifications();
         time::timeout(Some(self.timeout), async {
@@ -190,7 +187,6 @@ impl Nip46Signer {
         let event = EventBuilder::nostr_connect(&self.app_keys, signer_public_key, msg)?
             .to_event(&self.app_keys)?;
 
-        let sub_id = SubscriptionId::generate();
         let filter = Filter::new()
             .pubkey(public_key)
             .kind(Kind::NostrConnect)
@@ -202,9 +198,7 @@ impl Nip46Signer {
         let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
 
         // Subscribe
-        self.relay
-            .send_req(sub_id.clone(), vec![filter], req_opts)
-            .await?;
+        let sub_id: SubscriptionId = self.relay.send_req(vec![filter], req_opts).await?;
 
         let mut notifications = self.relay.notifications();
 

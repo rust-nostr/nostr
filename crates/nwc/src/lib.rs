@@ -69,7 +69,6 @@ impl NWC {
         let event_id = event.id;
 
         // Subscribe
-        let id = SubscriptionId::generate();
         let filter = Filter::new()
             .author(self.uri.public_key)
             .kind(Kind::WalletConnectResponse)
@@ -82,9 +81,7 @@ impl NWC {
         let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
 
         // Subscribe
-        self.relay
-            .send_req(id.clone(), vec![filter], req_opts)
-            .await?;
+        let id: SubscriptionId = self.relay.send_req(vec![filter], req_opts).await?;
 
         let mut notifications = self.relay.notifications();
 
