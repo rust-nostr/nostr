@@ -28,59 +28,53 @@ async fn main() -> Result<()> {
         .kind(Kind::Metadata)
         .since(Timestamp::now());
 
-    // Subscribe using`InternalSubscriptionId::Pool`
-    client.subscribe(vec![subscription]).await;
+    // Subscribe (auto generate subscription ID)
+    let sub_id_1 = client.subscribe(vec![subscription]).await;
 
-    // Subscribe using custom `InternalSubscriptionId`
-    // This not overwrite the previous subscription since has a different internal ID
-    let relay = client.relay("wss://relay.damus.io").await?;
-    let other_filters = Filter::new()
-        .kind(Kind::EncryptedDirectMessage)
-        .pubkey(public_key)
+    // Subscribe with custom ID
+    let sub_id_2 = SubscriptionId::new("other-id");
+    let filter = Filter::new()
+        .author(public_key)
+        .kind(Kind::TextNote)
         .since(Timestamp::now());
-    relay
-        .subscribe_with_internal_id(
-            InternalSubscriptionId::Custom(String::from("other-id")),
-            vec![other_filters],
-            RelaySendOptions::default(),
-        )
-        .await?;
+    client
+        .subscribe_with_id(sub_id_2.clone(), vec![filter])
+        .await;
+
+    // Overwrite previous subscription
+    let filter = Filter::new()
+        .author(public_key)
+        .kind(Kind::EncryptedDirectMessage)
+        .since(Timestamp::now());
+    client
+        .subscribe_with_id(sub_id_1.clone(), vec![filter])
+        .await;
 
     // Handle subscription notifications with `handle_notifications` method
     client
         .handle_notifications(|notification| async {
-            if let RelayPoolNotification::Event { event, .. } = notification {
+            if let RelayPoolNotification::Event {
+                subscription_id,
+                event,
+                ..
+            } = notification
+            {
+                // Check subscription ID
+                if subscription_id == sub_id_1 {
+                    // Handle (ex. update specific UI)
+                }
+
+                // Check kind
                 if event.kind() == Kind::EncryptedDirectMessage {
-                    if nip04::decrypt(keys.secret_key()?, event.author_ref(), event.content())
-                        .is_ok()
+                    if let Ok(msg) =
+                        nip04::decrypt(keys.secret_key()?, event.author_ref(), event.content())
                     {
-                        // Overwrite subscrption with `other-id` internal ID
-                        let relay = client.relay("wss://relay.damus.io").await?;
-                        let other_filters = Filter::new()
-                            .kind(Kind::TextNote)
-                            .author(public_key)
-                            .since(Timestamp::now());
-                        relay
-                            .subscribe_with_internal_id(
-                                InternalSubscriptionId::Custom(String::from("other-id")),
-                                vec![other_filters],
-                                RelaySendOptions::default(),
-                            )
-                            .await?;
+                        println!("DM: {msg}");
                     } else {
                         tracing::error!("Impossible to decrypt direct message");
                     }
                 } else if event.kind() == Kind::TextNote {
                     println!("TextNote: {:?}", event);
-                    let relay = client.relay("wss://relay.damus.io").await?;
-                    relay
-                        .unsubscribe_with_internal_id(
-                            InternalSubscriptionId::Custom(String::from("other-id")),
-                            RelaySendOptions::default(),
-                        )
-                        .await?;
-                    // OR
-                    // relay.unsubscribe_all(None).await?;
                 } else {
                     println!("{:?}", event);
                 }

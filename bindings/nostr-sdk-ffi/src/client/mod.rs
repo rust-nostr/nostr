@@ -15,7 +15,7 @@ use nostr_ffi::{
 };
 use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::pool::RelayPoolNotification as RelayPoolNotificationSdk;
-use nostr_sdk::{block_on, spawn_blocking, UncheckedUrl};
+use nostr_sdk::{block_on, spawn_blocking, SubscriptionId, UncheckedUrl};
 use uniffi::Object;
 
 mod builder;
@@ -131,21 +131,62 @@ impl Client {
         block_on(async move { Ok(self.inner.disconnect().await?) })
     }
 
-    pub fn subscribe(&self, filters: Vec<Arc<Filter>>) {
+    pub fn subscriptions(&self) -> HashMap<String, Vec<Arc<Filter>>> {
+        block_on(async move {
+            self.inner
+                .subscriptions()
+                .await
+                .into_iter()
+                .map(|(id, filters)| {
+                    (
+                        id.to_string(),
+                        filters.into_iter().map(|f| Arc::new(f.into())).collect(),
+                    )
+                })
+                .collect()
+        })
+    }
+
+    pub fn subscription(&self, id: String) -> Option<Vec<Arc<Filter>>> {
+        block_on(async move {
+            self.inner
+                .subscription(&SubscriptionId::new(id))
+                .await
+                .map(|filters| filters.into_iter().map(|f| Arc::new(f.into())).collect())
+        })
+    }
+
+    pub fn subscribe(&self, filters: Vec<Arc<Filter>>) -> String {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        block_on(async move { self.inner.subscribe(filters).await })
+        block_on(async move { self.inner.subscribe(filters).await.to_string() })
     }
 
-    // TODO: add subscribe_with_custom_wait
-
-    pub fn unsubscribe(&self) {
-        block_on(async move { self.inner.unsubscribe().await })
+    pub fn subscribe_with_id(&self, id: String, filters: Vec<Arc<Filter>>) {
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        block_on(async move {
+            self.inner
+                .subscribe_with_id(SubscriptionId::new(id), filters)
+                .await
+        })
     }
 
-    // TODO: add unsubscribe_with_custom_wait
+    pub fn unsubscribe(&self, subscription_id: String) {
+        block_on(async move {
+            self.inner
+                .unsubscribe(SubscriptionId::new(subscription_id))
+                .await
+        })
+    }
+
+    pub fn unsubscribe_all(&self) {
+        block_on(async move { self.inner.unsubscribe_all().await })
+    }
 
     pub fn get_events_of(
         &self,

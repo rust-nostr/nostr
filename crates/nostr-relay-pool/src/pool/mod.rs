@@ -120,9 +120,14 @@ impl RelayPool {
         self.inner.relay(url).await
     }
 
-    /// Get subscription filters
-    pub async fn subscription_filters(&self) -> Vec<Filter> {
-        self.inner.subscription_filters().await
+    /// Get subscriptions
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
+        self.inner.subscriptions().await
+    }
+
+    /// Get subscription
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
+        self.inner.subscription(id).await
     }
 
     /// Add new relay
@@ -150,8 +155,7 @@ impl RelayPool {
 
     /// Send client message
     pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
-        let relays = self.relays().await;
-        self.send_msg_to(relays.into_keys(), msg, opts).await
+        self.inner.send_msg(msg, opts).await
     }
 
     /// Send multiple client messages at once
@@ -160,8 +164,7 @@ impl RelayPool {
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        let relays = self.relays().await;
-        self.batch_msg_to(relays.into_keys(), msgs, opts).await
+        self.inner.batch_msg(msgs, opts).await
     }
 
     /// Send client message to specific relays
@@ -178,7 +181,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.batch_msg_to(urls, vec![msg], opts).await
+        self.inner.send_msg_to(urls, msg, opts).await
     }
 
     /// Send multiple client messages at once to specific relays
@@ -200,8 +203,7 @@ impl RelayPool {
 
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
-        let relays: HashMap<Url, Relay> = self.relays().await;
-        self.send_event_to(relays.into_keys(), event, opts).await
+        self.inner.send_event(event, opts).await
     }
 
     /// Send multiple [`Event`] at once
@@ -210,8 +212,7 @@ impl RelayPool {
         events: Vec<Event>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        let relays = self.relays().await;
-        self.batch_event_to(relays.into_keys(), events, opts).await
+        self.inner.batch_event(events, opts).await
     }
 
     /// Send event to a specific relays
@@ -226,9 +227,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let event_id: EventId = event.id;
-        self.batch_event_to(urls, vec![event], opts).await?;
-        Ok(event_id)
+        self.inner.send_event_to(urls, event, opts).await
     }
 
     /// Send event to a specific relays
@@ -247,17 +246,28 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
-    ///
-    /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
-    pub async fn subscribe(&self, filters: Vec<Filter>, opts: RelaySendOptions) {
+    pub async fn subscribe(&self, filters: Vec<Filter>, opts: RelaySendOptions) -> SubscriptionId {
         self.inner.subscribe(filters, opts).await
     }
 
+    /// Subscribe to filters with custom [SubscriptionId]
+    pub async fn subscribe_with_id(
+        &self,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+        opts: RelaySendOptions,
+    ) {
+        self.inner.subscribe_with_id(id, filters, opts).await
+    }
+
     /// Unsubscribe from filters
-    ///
-    /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
-    pub async fn unsubscribe(&self, opts: RelaySendOptions) {
-        self.inner.unsubscribe(opts).await
+    pub async fn unsubscribe(&self, id: SubscriptionId, opts: RelaySendOptions) {
+        self.inner.unsubscribe(id, opts).await
+    }
+
+    /// Unsubscribe from filters
+    pub async fn unsubscribe_all(&self, opts: RelaySendOptions) {
+        self.inner.unsubscribe_all(opts).await
     }
 
     /// Get events of filters
@@ -350,10 +360,18 @@ impl RelayPool {
     }
 
     /// Connect to relay
-    ///
-    /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
-    pub async fn connect_relay(&self, relay: &Relay, connection_timeout: Option<Duration>) {
-        self.inner.connect_relay(relay, connection_timeout).await
+    pub async fn connect_relay<U>(
+        &self,
+        url: U,
+        connection_timeout: Option<Duration>,
+    ) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let relay = self.relay(url).await?;
+        self.inner.connect_relay(&relay, connection_timeout).await;
+        Ok(())
     }
 
     /// Negentropy reconciliation

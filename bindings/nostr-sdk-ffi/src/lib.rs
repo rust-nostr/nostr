@@ -21,6 +21,6 @@ pub use crate::client::{Client, ClientBuilder, HandleNotification, Options};
 pub use crate::database::NostrDatabase;
 pub use crate::error::NostrSdkError;
 pub use crate::logger::{init_logger, LogLevel};
-pub use crate::relay::{ActiveSubscription, Relay, RelayConnectionStats, RelayStatus};
+pub use crate::relay::{Relay, RelayConnectionStats, RelayStatus};
 
 uniffi::setup_scaffolding!("nostr_sdk");

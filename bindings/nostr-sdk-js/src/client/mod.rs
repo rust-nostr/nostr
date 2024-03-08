@@ -147,14 +147,29 @@ impl JsClient {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&self, filters: Vec<JsFilter>) {
+    pub async fn subscribe(&self, filters: Vec<JsFilter>) -> String {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        self.inner.subscribe(filters).await;
+        self.inner.subscribe(filters).await.to_string()
+    }
+
+    /// Subscribe to filters with custom subscription ID
+    pub async fn subscribe_with_id(&self, id: &str, filters: Vec<JsFilter>) {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+        self.inner
+            .subscribe_with_id(SubscriptionId::new(id), filters)
+            .await
     }
 
     /// Unsubscribe
-    pub async fn unsubscribe(&self) {
-        self.inner.unsubscribe().await;
+    pub async fn unsubscribe(&self, subscription_id: &str) {
+        self.inner
+            .unsubscribe(SubscriptionId::new(subscription_id))
+            .await;
+    }
+
+    /// Unsubscribe
+    pub async fn unsubscribe_all(&self) {
+        self.inner.unsubscribe_all().await;
     }
 
     /// Get events of filters

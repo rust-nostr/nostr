@@ -12,7 +12,7 @@ use std::time::Duration;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
 use nostr::message::MessageHandleError;
-use nostr::{ClientMessage, Event, EventId, Filter, Timestamp, TryIntoUrl, Url};
+use nostr::{ClientMessage, Event, EventId, Filter, SubscriptionId, Timestamp, TryIntoUrl, Url};
 use nostr_database::{DatabaseError, DynNostrDatabase, IntoNostrDatabase, Order};
 use thiserror::Error;
 use tokio::sync::{broadcast, Mutex, RwLock};
@@ -21,9 +21,9 @@ use super::options::RelayPoolOptions;
 use super::RelayPoolNotification;
 use crate::relay::limits::Limits;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
-use crate::relay::{Error as RelayError, InternalSubscriptionId, Relay};
+use crate::relay::{Error as RelayError, Relay};
 
-/// [`RelayPool`] error
+/// [`RelayPool`](super::RelayPool) error
 #[derive(Debug, Error)]
 pub enum Error {
     /// Url parse error
@@ -66,7 +66,7 @@ pub struct InternalRelayPool {
     database: Arc<DynNostrDatabase>,
     relays: Arc<RwLock<HashMap<Url, Relay>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
-    filters: Arc<RwLock<Vec<Filter>>>,
+    subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
     // opts: RelayPoolOptions,
 }
 
@@ -96,14 +96,11 @@ impl InternalRelayPool {
             database: database.into_nostr_database(),
             relays: Arc::new(RwLock::new(HashMap::new())),
             notification_sender,
-            filters: Arc::new(RwLock::new(Vec::new())),
+            subscriptions: Arc::new(RwLock::new(HashMap::new())),
             //opts,
         }
     }
 
-    /// Stop
-    ///
-    /// Call `connect` to re-start relays connections
     pub async fn stop(&self) -> Result<(), Error> {
         let relays = self.relays().await;
         for relay in relays.values() {
@@ -115,7 +112,6 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    /// Completely shutdown pool
     pub async fn shutdown(&self) -> Result<(), Error> {
         // Disconnect all relays
         self.disconnect().await?;
@@ -133,17 +129,14 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    /// Get new **pool** notification listener
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.notification_sender.subscribe()
     }
 
-    /// Get database
     pub fn database(&self) -> Arc<DynNostrDatabase> {
         self.database.clone()
     }
 
-    /// Get relays
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         let relays = self.relays.read().await;
         relays.clone()
@@ -154,7 +147,6 @@ impl InternalRelayPool {
         relays.get(url).cloned().ok_or(Error::RelayNotFound)
     }
 
-    /// Get [`Relay`]
     pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
@@ -164,18 +156,33 @@ impl InternalRelayPool {
         self.internal_relay(&url).await
     }
 
-    /// Get subscription filters
-    pub async fn subscription_filters(&self) -> Vec<Filter> {
-        self.filters.read().await.clone()
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
+        self.subscriptions.read().await.clone()
     }
 
-    /// Update subscription filters
-    async fn update_subscription_filters(&self, filters: Vec<Filter>) {
-        let mut f = self.filters.write().await;
-        *f = filters;
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
+        let subscriptions = self.subscriptions.read().await;
+        subscriptions.get(id).cloned()
     }
 
-    /// Add new relay
+    async fn update_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
+        let mut subscriptions = self.subscriptions.write().await;
+        subscriptions
+            .entry(id)
+            .and_modify(|f| *f = filters.clone())
+            .or_insert(filters);
+    }
+
+    pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {
+        let mut subscriptions = self.subscriptions.write().await;
+        subscriptions.remove(id);
+    }
+
+    pub(crate) async fn remove_all_subscriptions(&self) {
+        let mut subscriptions = self.subscriptions.write().await;
+        subscriptions.clear();
+    }
+
     pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
@@ -195,7 +202,6 @@ impl InternalRelayPool {
         }
     }
 
-    /// Disconnect and remove relay
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
@@ -208,8 +214,6 @@ impl InternalRelayPool {
         }
         Ok(())
     }
-
-    /// Disconnect and remove all relays
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
         let mut relays = self.relays.write().await;
         for relay in relays.values() {
@@ -219,9 +223,34 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    /// Send multiple client messages at once to specific relays
-    ///
-    /// Note: **the relays must already be added!**
+    pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
+        let relays = self.relays().await;
+        self.send_msg_to(relays.into_keys(), msg, opts).await
+    }
+
+    pub async fn batch_msg(
+        &self,
+        msgs: Vec<ClientMessage>,
+        opts: RelaySendOptions,
+    ) -> Result<(), Error> {
+        let relays = self.relays().await;
+        self.batch_msg_to(relays.into_keys(), msgs, opts).await
+    }
+
+    pub async fn send_msg_to<I, U>(
+        &self,
+        urls: I,
+        msg: ClientMessage,
+        opts: RelaySendOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.batch_msg_to(urls, vec![msg], opts).await
+    }
+
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
@@ -298,7 +327,36 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    /// Send event to a specific relays
+    pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
+        let relays: HashMap<Url, Relay> = self.relays().await;
+        self.send_event_to(relays.into_keys(), event, opts).await
+    }
+
+    pub async fn batch_event(
+        &self,
+        events: Vec<Event>,
+        opts: RelaySendOptions,
+    ) -> Result<(), Error> {
+        let relays = self.relays().await;
+        self.batch_event_to(relays.into_keys(), events, opts).await
+    }
+
+    pub async fn send_event_to<I, U>(
+        &self,
+        urls: I,
+        event: Event,
+        opts: RelaySendOptions,
+    ) -> Result<EventId, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let event_id: EventId = event.id;
+        self.batch_event_to(urls, vec![event], opts).await?;
+        Ok(event_id)
+    }
+
     pub async fn batch_event_to<I, U>(
         &self,
         urls: I,
@@ -373,15 +431,28 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    /// Subscribe to filters
-    ///
-    /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
-    pub async fn subscribe(&self, filters: Vec<Filter>, opts: RelaySendOptions) {
+    pub async fn subscribe(&self, filters: Vec<Filter>, opts: RelaySendOptions) -> SubscriptionId {
+        let id: SubscriptionId = SubscriptionId::generate();
+        self.subscribe_with_id(id.clone(), filters, opts).await;
+        id
+    }
+
+    pub async fn subscribe_with_id(
+        &self,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+        opts: RelaySendOptions,
+    ) {
+        // Get relays
         let relays = self.relays().await;
-        self.update_subscription_filters(filters.clone()).await;
+
+        // Update pool subscriptions
+        self.update_subscription(id.clone(), filters.clone()).await;
+
+        // Subscribe
         for relay in relays.values() {
             if let Err(e) = relay
-                .subscribe_with_internal_id(InternalSubscriptionId::Pool, filters.clone(), opts)
+                .subscribe_with_id(id.clone(), filters.clone(), opts)
                 .await
             {
                 tracing::error!("{e}");
@@ -389,23 +460,26 @@ impl InternalRelayPool {
         }
     }
 
-    pub async fn unsubscribe(&self, opts: RelaySendOptions) {
+    pub async fn unsubscribe(&self, id: SubscriptionId, opts: RelaySendOptions) {
         let relays = self.relays().await;
+        self.remove_subscription(&id).await;
         for relay in relays.values() {
-            if let Err(e) = relay
-                .unsubscribe_with_internal_id(InternalSubscriptionId::Pool, opts)
-                .await
-            {
+            if let Err(e) = relay.unsubscribe(id.clone(), opts).await {
                 tracing::error!("{e}");
             }
         }
     }
 
-    /// Get events of filters from specific relays
-    ///
-    /// Get events both from **local database** and **relays**
-    ///
-    /// If no relay is specified, will be queried only the database.
+    pub async fn unsubscribe_all(&self, opts: RelaySendOptions) {
+        let relays = self.relays().await;
+        self.remove_all_subscriptions().await;
+        for relay in relays.values() {
+            if let Err(e) = relay.unsubscribe_all(opts).await {
+                tracing::error!("{e}");
+            }
+        }
+    }
+
     pub async fn get_events_from<I, U>(
         &self,
         urls: I,
@@ -488,7 +562,6 @@ impl InternalRelayPool {
         }
     }
 
-    /// Connect to all added relays and keep connection alive
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
         let relays: HashMap<Url, Relay> = self.relays().await;
 
@@ -515,7 +588,6 @@ impl InternalRelayPool {
         }
     }
 
-    /// Disconnect from all relays
     pub async fn disconnect(&self) -> Result<(), Error> {
         let relays = self.relays().await;
         for relay in relays.into_values() {
@@ -524,25 +596,20 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    /// Connect to relay
-    ///
-    /// Internal Subscription ID set to `InternalSubscriptionId::Pool`
-    pub async fn connect_relay(&self, relay: &Relay, connection_timeout: Option<Duration>) {
-        let filters: Vec<Filter> = self.subscription_filters().await;
-        relay
-            .update_subscription_filters(InternalSubscriptionId::Pool, filters)
-            .await;
+    pub(crate) async fn connect_relay(&self, relay: &Relay, connection_timeout: Option<Duration>) {
+        let subscriptions = self.subscriptions().await;
+        for (id, filters) in subscriptions.into_iter() {
+            relay.inner.update_subscription(id, filters).await;
+        }
         relay.connect(connection_timeout).await;
     }
 
-    /// Negentropy reconciliation
     pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
         let items: Vec<(EventId, Timestamp)> =
             self.database.negentropy_items(filter.clone()).await?;
         self.reconcile_with_items(filter, items, opts).await
     }
 
-    /// Negentropy reconciliation with custom items
     pub async fn reconcile_with_items(
         &self,
         filter: Filter,

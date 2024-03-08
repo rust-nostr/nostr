@@ -4,12 +4,12 @@
 
 //! Relay
 
+use std::cmp;
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{cmp, fmt};
 
 use async_wsocket::futures_util::Future;
 use atomic_destructor::AtomicDestructor;
@@ -64,88 +64,10 @@ pub enum RelayNotification {
     Shutdown,
 }
 
-/// Internal Subscription ID
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum InternalSubscriptionId {
-    /// Default
-    Default,
-    /// Pool
-    Pool,
-    /// Custom
-    Custom(String),
-}
-
-impl fmt::Display for InternalSubscriptionId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Default => write!(f, "default"),
-            Self::Pool => write!(f, "pool"),
-            Self::Custom(c) => write!(f, "{c}"),
-        }
-    }
-}
-
-impl<S> From<S> for InternalSubscriptionId
-where
-    S: Into<String>,
-{
-    fn from(s: S) -> Self {
-        let s: String = s.into();
-        match s.as_str() {
-            "default" => Self::Default,
-            "pool" => Self::Pool,
-            _ => Self::Custom(s),
-        }
-    }
-}
-
-/// Relay instance's actual subscription with its unique id
-#[derive(Debug, Clone)]
-pub struct ActiveSubscription {
-    /// SubscriptionId to update or cancel subscription
-    id: SubscriptionId,
-    /// Subscriptions filters
-    filters: Vec<Filter>,
-}
-
-impl Default for ActiveSubscription {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ActiveSubscription {
-    /// Create new empty [`ActiveSubscription`]
-    pub fn new() -> Self {
-        Self {
-            id: SubscriptionId::generate(),
-            filters: Vec::new(),
-        }
-    }
-
-    /// Create new empty [`ActiveSubscription`]
-    pub fn with_filters(filters: Vec<Filter>) -> Self {
-        Self {
-            id: SubscriptionId::generate(),
-            filters,
-        }
-    }
-
-    /// Get [`SubscriptionId`]
-    pub fn id(&self) -> SubscriptionId {
-        self.id.clone()
-    }
-
-    /// Get subscription filters
-    pub fn filters(&self) -> Vec<Filter> {
-        self.filters.clone()
-    }
-}
-
 /// Relay
 #[derive(Debug, Clone)]
 pub struct Relay {
-    inner: AtomicDestructor<InternalRelay>,
+    pub(crate) inner: AtomicDestructor<InternalRelay>,
 }
 
 impl PartialEq for Relay {
@@ -224,27 +146,14 @@ impl Relay {
         self.inner.document().await
     }
 
-    /// Get [`ActiveSubscription`]
-    pub async fn subscriptions(&self) -> HashMap<InternalSubscriptionId, ActiveSubscription> {
+    /// Get subscriptions
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
         self.inner.subscriptions().await
     }
 
-    /// Get [`ActiveSubscription`] by [`InternalSubscriptionId`]
-    pub async fn subscription(
-        &self,
-        internal_id: &InternalSubscriptionId,
-    ) -> Option<ActiveSubscription> {
-        self.inner.subscription(internal_id).await
-    }
-
-    pub(crate) async fn update_subscription_filters(
-        &self,
-        internal_id: InternalSubscriptionId,
-        filters: Vec<Filter>,
-    ) {
-        self.inner
-            .update_subscription_filters(internal_id, filters)
-            .await
+    /// Get filters by [SubscriptionId]
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
+        self.inner.subscription(id).await
     }
 
     /// Get [`RelayOptions`]
@@ -348,44 +257,31 @@ impl Relay {
     }
 
     /// Subscribe to filters
-    ///
-    /// Internal Subscription ID set to `InternalSubscriptionId::Default`
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<SubscriptionId, Error> {
         self.inner.subscribe(filters, opts).await
     }
 
-    /// Subscribe with custom internal ID
-    pub async fn subscribe_with_internal_id(
+    /// Subscribe with custom [SubscriptionId]
+    pub async fn subscribe_with_id(
         &self,
-        internal_id: InternalSubscriptionId,
+        id: SubscriptionId,
         filters: Vec<Filter>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.inner
-            .subscribe_with_internal_id(internal_id, filters, opts)
-            .await
+        self.inner.subscribe_with_id(id, filters, opts).await
     }
 
     /// Unsubscribe
-    ///
-    /// Internal Subscription ID set to `InternalSubscriptionId::Default`
-    pub async fn unsubscribe(&self, opts: RelaySendOptions) -> Result<(), Error> {
-        self.inner.unsubscribe(opts).await
-    }
-
-    /// Unsubscribe with custom internal id
-    pub async fn unsubscribe_with_internal_id(
+    pub async fn unsubscribe(
         &self,
-        internal_id: InternalSubscriptionId,
+        id: SubscriptionId,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        self.inner
-            .unsubscribe_with_internal_id(internal_id, opts)
-            .await
+        self.inner.unsubscribe(id, opts).await
     }
 
     /// Unsubscribe from all subscriptions

@@ -385,11 +385,10 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let relay: Relay = self.relay(url).await?;
-        self.pool
-            .connect_relay(&relay, self.opts.connection_timeout)
-            .await;
-        Ok(())
+        Ok(self
+            .pool
+            .connect_relay(url, self.opts.connection_timeout)
+            .await?)
     }
 
     /// Disconnect relay
@@ -452,6 +451,16 @@ impl Client {
         Ok(self.pool.disconnect().await?)
     }
 
+    /// Get pool subscriptions
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
+        self.pool.subscriptions().await
+    }
+
+    /// Get subscription
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
+        self.pool.subscription(id).await
+    }
+
     /// Subscribe to filters
     ///
     /// # Example
@@ -466,18 +475,48 @@ impl Client {
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
-    /// client.subscribe(vec![subscription]).await;
+    /// let sub_id = client.subscribe(vec![subscription]).await;
+    /// println!("Subscription ID: {sub_id}");
     /// # }
     /// ```
-    pub async fn subscribe(&self, filters: Vec<Filter>) {
+    pub async fn subscribe(&self, filters: Vec<Filter>) -> SubscriptionId {
         let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
-        self.pool.subscribe(filters, opts).await;
+        self.pool.subscribe(filters, opts).await
     }
 
-    /// Unsubscribe from filters
-    pub async fn unsubscribe(&self) {
+    /// Subscribe to filters with custom [SubscriptionId]
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Keys::generate();
+    /// #   let client = Client::new(&my_keys);
+    /// let id = SubscriptionId::new("myid");
+    /// let subscription = Filter::new()
+    ///     .pubkeys(vec![my_keys.public_key()])
+    ///     .since(Timestamp::now());
+    ///
+    /// client.subscribe_with_id(id, vec![subscription]).await;
+    /// # }
+    /// ```
+    pub async fn subscribe_with_id(&self, id: SubscriptionId, filters: Vec<Filter>) {
         let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
-        self.pool.unsubscribe(opts).await;
+        self.pool.subscribe_with_id(id, filters, opts).await
+    }
+
+    /// Unsubscribe
+    pub async fn unsubscribe(&self, id: SubscriptionId) {
+        let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+        self.pool.unsubscribe(id, opts).await;
+    }
+
+    /// Unsubscribe from all subscriptions
+    pub async fn unsubscribe_all(&self) {
+        let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+        self.pool.unsubscribe_all(opts).await;
     }
 
     /// Get events of filters

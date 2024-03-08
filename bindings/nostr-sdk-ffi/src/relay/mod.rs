@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument, Timestamp};
-use nostr_sdk::{block_on, pool, FilterOptions};
+use nostr_sdk::{block_on, pool, FilterOptions, SubscriptionId};
 use uniffi::{Enum, Object};
 
 pub mod options;
@@ -56,32 +56,6 @@ impl RelayConnectionStats {
 
     pub fn latency(&self) -> Option<Duration> {
         block_on(async move { self.inner.latency().await })
-    }
-}
-
-#[derive(Object)]
-pub struct ActiveSubscription {
-    inner: pool::ActiveSubscription,
-}
-
-impl From<pool::ActiveSubscription> for ActiveSubscription {
-    fn from(inner: pool::ActiveSubscription) -> Self {
-        Self { inner }
-    }
-}
-
-#[uniffi::export]
-impl ActiveSubscription {
-    pub fn id(&self) -> String {
-        self.inner.id().to_string()
-    }
-
-    pub fn filters(&self) -> Vec<Arc<Filter>> {
-        self.inner
-            .filters()
-            .into_iter()
-            .map(|f| Arc::new(f.into()))
-            .collect()
     }
 }
 
@@ -150,13 +124,18 @@ impl Relay {
         block_on(async move { Arc::new(self.inner.document().await.into()) })
     }
 
-    pub fn subscriptions(&self) -> HashMap<String, Arc<ActiveSubscription>> {
+    pub fn subscriptions(&self) -> HashMap<String, Vec<Arc<Filter>>> {
         block_on(async move {
             self.inner
                 .subscriptions()
                 .await
                 .into_iter()
-                .map(|(id, sub)| (id.to_string(), Arc::new(sub.into())))
+                .map(|(id, filters)| {
+                    (
+                        id.to_string(),
+                        filters.into_iter().map(|f| Arc::new(f.into())).collect(),
+                    )
+                })
                 .collect()
         })
     }
@@ -192,7 +171,11 @@ impl Relay {
         })
     }
 
-    pub fn subscribe(&self, filters: Vec<Arc<Filter>>, opts: Arc<RelaySendOptions>) -> Result<()> {
+    pub fn subscribe(
+        &self,
+        filters: Vec<Arc<Filter>>,
+        opts: Arc<RelaySendOptions>,
+    ) -> Result<String> {
         block_on(async move {
             Ok(self
                 .inner
@@ -203,12 +186,43 @@ impl Relay {
                         .collect(),
                     **opts,
                 )
+                .await?
+                .to_string())
+        })
+    }
+
+    pub fn subscribe_with_id(
+        &self,
+        id: String,
+        filters: Vec<Arc<Filter>>,
+        opts: Arc<RelaySendOptions>,
+    ) -> Result<()> {
+        block_on(async move {
+            Ok(self
+                .inner
+                .subscribe_with_id(
+                    SubscriptionId::new(id),
+                    filters
+                        .into_iter()
+                        .map(|f| f.as_ref().deref().clone())
+                        .collect(),
+                    **opts,
+                )
                 .await?)
         })
     }
 
-    pub fn unsubscribe(&self, opts: Arc<RelaySendOptions>) -> Result<()> {
-        block_on(async move { Ok(self.inner.unsubscribe(**opts).await?) })
+    pub fn unsubscribe(&self, id: String, opts: Arc<RelaySendOptions>) -> Result<()> {
+        block_on(async move {
+            Ok(self
+                .inner
+                .unsubscribe(SubscriptionId::new(id), **opts)
+                .await?)
+        })
+    }
+
+    pub fn unsubscribe_all(&self, opts: Arc<RelaySendOptions>) -> Result<()> {
+        block_on(async move { Ok(self.inner.unsubscribe_all(**opts).await?) })
     }
 
     pub fn get_events_of(

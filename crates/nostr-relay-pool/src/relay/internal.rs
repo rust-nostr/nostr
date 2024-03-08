@@ -42,7 +42,7 @@ use super::options::{
     NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP,
 };
 use super::stats::RelayConnectionStats;
-use super::{ActiveSubscription, InternalSubscriptionId, RelayNotification, RelayStatus};
+use super::{RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
@@ -52,7 +52,7 @@ const MIN_UPTIME: f64 = 0.90;
 #[cfg(not(target_arch = "wasm32"))]
 const PING_INTERVAL: u64 = 55;
 
-/// [`Relay`] error
+/// [`Relay`](super::Relay) error
 #[derive(Debug, Error)]
 pub enum Error {
     /// MessageHandle error
@@ -184,7 +184,7 @@ enum RelayEvent {
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct InternalRelay {
+pub(crate) struct InternalRelay {
     pub(super) url: Url,
     status: Arc<RwLock<RelayStatus>>,
     #[cfg(feature = "nip11")]
@@ -198,7 +198,7 @@ pub(super) struct InternalRelay {
     relay_receiver: Arc<Mutex<Receiver<Message>>>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
-    subscriptions: Arc<RwLock<HashMap<InternalSubscriptionId, ActiveSubscription>>>,
+    subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
     limits: Limits,
 }
 
@@ -218,7 +218,6 @@ impl AtomicDestroyer for InternalRelay {
 }
 
 impl InternalRelay {
-    /// Create new `Relay`
     pub fn new(
         url: Url,
         database: Arc<DynNostrDatabase>,
@@ -247,18 +246,15 @@ impl InternalRelay {
         }
     }
 
-    /// Get relay url
     pub fn url(&self) -> Url {
         self.url.clone()
     }
 
-    /// Get proxy
     #[cfg(not(target_arch = "wasm32"))]
     pub fn proxy(&self) -> Option<SocketAddr> {
         self.opts.proxy
     }
 
-    /// Get [`RelayStatus`]
     pub async fn status(&self) -> RelayStatus {
         let status = self.status.read().await;
         *status
@@ -274,17 +270,14 @@ impl InternalRelay {
             .await;
     }
 
-    /// Get Relay Service Flags
     pub fn flags(&self) -> AtomicRelayServiceFlags {
         self.opts.flags.clone()
     }
 
-    /// Check if [`Relay`] is connected
     pub async fn is_connected(&self) -> bool {
         self.status().await == RelayStatus::Connected
     }
 
-    /// Get [`RelayInformationDocument`]
     #[cfg(feature = "nip11")]
     pub async fn document(&self) -> RelayInformationDocument {
         let document = self.document.read().await;
@@ -297,43 +290,37 @@ impl InternalRelay {
         *d = document;
     }
 
-    /// Get [`ActiveSubscription`]
-    pub async fn subscriptions(&self) -> HashMap<InternalSubscriptionId, ActiveSubscription> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
         let subscription = self.subscriptions.read().await;
         subscription.clone()
     }
 
-    /// Get [`ActiveSubscription`] by [`InternalSubscriptionId`]
-    pub async fn subscription(
-        &self,
-        internal_id: &InternalSubscriptionId,
-    ) -> Option<ActiveSubscription> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
         let subscription = self.subscriptions.read().await;
-        subscription.get(internal_id).cloned()
+        subscription.get(id).cloned()
     }
 
-    pub(crate) async fn update_subscription_filters(
-        &self,
-        internal_id: InternalSubscriptionId,
-        filters: Vec<Filter>,
-    ) {
-        let mut s = self.subscriptions.write().await;
-        s.entry(internal_id)
-            .and_modify(|sub| sub.filters = filters.clone())
-            .or_insert_with(|| ActiveSubscription::with_filters(filters));
+    pub(crate) async fn update_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
+        let mut subscriptions = self.subscriptions.write().await;
+        subscriptions
+            .entry(id)
+            .and_modify(|f| *f = filters.clone())
+            .or_insert(filters);
     }
 
-    /// Get [`RelayOptions`]
+    pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {
+        let mut subscriptions = self.subscriptions.write().await;
+        subscriptions.remove(id);
+    }
+
     pub fn opts(&self) -> RelayOptions {
         self.opts.clone()
     }
 
-    /// Get [`RelayConnectionStats`]
     pub fn stats(&self) -> RelayConnectionStats {
         self.stats.clone()
     }
 
-    /// Get queue len
     pub fn queue(&self) -> usize {
         self.relay_sender.max_capacity() - self.relay_sender.capacity()
     }
@@ -355,7 +342,6 @@ impl InternalRelay {
             .store(value, Ordering::SeqCst);
     }
 
-    /// Set external notification sender
     pub async fn set_notification_sender(
         &self,
         notification_sender: Option<broadcast::Sender<RelayPoolNotification>>,
@@ -397,7 +383,6 @@ impl InternalRelay {
         }
     }
 
-    /// Connect to relay and keep alive connection
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
         self.schedule_for_stop(false);
         self.schedule_for_termination(false);
@@ -859,7 +844,6 @@ impl InternalRelay {
         };
     }
 
-    /// Handle relay message
     #[tracing::instrument(skip(self), level = "trace")]
     async fn handle_relay_message(
         &self,
@@ -990,7 +974,6 @@ impl InternalRelay {
             .map_err(|_| Error::MessageNotSent)
     }
 
-    /// Disconnect from relay and set status to 'Disconnected'
     async fn disconnect(&self) -> Result<(), Error> {
         let status = self.status().await;
         if !status.is_disconnected() {
@@ -999,7 +982,6 @@ impl InternalRelay {
         Ok(())
     }
 
-    /// Disconnect from relay and set status to 'Stopped'
     pub async fn stop(&self) -> Result<(), Error> {
         self.schedule_for_stop(true);
         let status = self.status().await;
@@ -1010,7 +992,6 @@ impl InternalRelay {
         Ok(())
     }
 
-    /// Disconnect from relay and set status to 'Terminated'
     pub async fn terminate(&self) -> Result<(), Error> {
         self.schedule_for_termination(true);
         let status = self.status().await;
@@ -1021,12 +1002,10 @@ impl InternalRelay {
         Ok(())
     }
 
-    /// Send msg to relay
     pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
         self.batch_msg(vec![msg], opts).await
     }
 
-    /// Send multiple [`ClientMessage`] at once
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
@@ -1069,15 +1048,16 @@ impl InternalRelay {
         }
     }
 
-    /// Send `REQ` to relay
-    ///
-    /// Automatically close `REQ` if set in [RequestOptions]
     pub async fn send_req(
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: RequestOptions,
     ) -> Result<(), Error> {
+        if !self.opts.flags.has_read() {
+            return Err(Error::ReadDisabled);
+        }
+
         self.send_msg(
             ClientMessage::req(id.clone(), filters),
             RelaySendOptions::new().skip_send_confirmation(false),
@@ -1282,61 +1262,34 @@ impl InternalRelay {
         .ok_or(Error::Timeout)?
     }
 
-    /// Subscribes relay with existing filter
     async fn resubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
 
         let subscriptions = self.subscriptions().await;
-
-        for (internal_id, sub) in subscriptions.into_iter() {
-            if !sub.filters.is_empty() {
-                self.send_msg(ClientMessage::req(sub.id.clone(), sub.filters), opts)
-                    .await?;
-            } else {
-                tracing::debug!("Subscription '{internal_id}' has empty filters");
+        for (id, filters) in subscriptions.into_iter() {
+            if !filters.is_empty() {
+                self.send_msg(ClientMessage::req(id, filters), opts).await?;
             }
         }
 
         Ok(())
     }
 
-    async fn resubscribe(
-        &self,
-        internal_id: InternalSubscriptionId,
-        opts: RelaySendOptions,
-    ) -> Result<(), Error> {
-        if !self.opts.flags.has_read() {
-            return Err(Error::ReadDisabled);
-        }
-
-        let sub: ActiveSubscription = self
-            .subscription(&internal_id)
-            .await
-            .ok_or(Error::InternalIdNotFound)?;
-        self.send_msg(ClientMessage::req(sub.id, sub.filters), opts)
-            .await?;
-
-        Ok(())
-    }
-
-    /// Subscribe to filters
-    ///
-    /// Internal Subscription ID set to `InternalSubscriptionId::Default`
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error> {
-        self.subscribe_with_internal_id(InternalSubscriptionId::Default, filters, opts)
-            .await
+    ) -> Result<SubscriptionId, Error> {
+        let id: SubscriptionId = SubscriptionId::generate();
+        self.subscribe_with_id(id.clone(), filters, opts).await?;
+        Ok(id)
     }
 
-    /// Subscribe with custom internal ID
-    pub async fn subscribe_with_internal_id(
+    pub async fn subscribe_with_id(
         &self,
-        internal_id: InternalSubscriptionId,
+        id: SubscriptionId,
         filters: Vec<Filter>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
@@ -1348,39 +1301,37 @@ impl InternalRelay {
             return Err(Error::FiltersEmpty);
         }
 
-        self.update_subscription_filters(internal_id.clone(), filters)
-            .await;
-        self.resubscribe(internal_id, opts).await
-    }
+        // Update subscription filters
+        self.update_subscription(id.clone(), filters).await;
 
-    /// Unsubscribe
-    ///
-    /// Internal Subscription ID set to `InternalSubscriptionId::Default`
-    pub async fn unsubscribe(&self, opts: RelaySendOptions) -> Result<(), Error> {
-        self.unsubscribe_with_internal_id(InternalSubscriptionId::Default, opts)
+        // Get filters
+        let filters: Vec<Filter> = self
+            .subscription(&id)
             .await
+            .ok_or(Error::InternalIdNotFound)?;
+
+        // Compose and send message
+        let msg: ClientMessage = ClientMessage::req(id, filters);
+        self.send_msg(msg, opts).await
     }
 
-    /// Unsubscribe with custom internal id
-    pub async fn unsubscribe_with_internal_id(
+    pub async fn unsubscribe(
         &self,
-        internal_id: InternalSubscriptionId,
+        id: SubscriptionId,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
 
-        let mut subscriptions = self.subscriptions().await;
-        let subscription = subscriptions
-            .remove(&internal_id)
-            .ok_or(Error::InternalIdNotFound)?;
-        self.send_msg(ClientMessage::close(subscription.id), opts)
-            .await?;
-        Ok(())
+        // Remove subscription
+        self.remove_subscription(&id).await;
+
+        // Send CLOSE message
+        let msg: ClientMessage = ClientMessage::close(id);
+        self.send_msg(msg, opts).await
     }
 
-    /// Unsubscribe from all subscriptions
     pub async fn unsubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
@@ -1388,9 +1339,13 @@ impl InternalRelay {
 
         let subscriptions = self.subscriptions().await;
 
-        for sub in subscriptions.into_values() {
-            self.send_msg(ClientMessage::close(sub.id.clone()), opts)
-                .await?;
+        for id in subscriptions.into_keys() {
+            // Remove subscription
+            self.remove_subscription(&id).await;
+
+            // Send CLOSE message
+            let msg: ClientMessage = ClientMessage::close(id);
+            self.send_msg(msg, opts).await?;
         }
 
         Ok(())
@@ -1503,7 +1458,6 @@ impl InternalRelay {
         Ok(())
     }
 
-    /// Get events of filters with custom callback
     pub(crate) async fn get_events_of_with_callback<F>(
         &self,
         filters: Vec<Filter>,
@@ -1532,9 +1486,6 @@ impl InternalRelay {
         Ok(())
     }
 
-    /// Get events of filters
-    ///
-    /// Get events from local database and relay
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
@@ -1555,8 +1506,6 @@ impl InternalRelay {
         Ok(events.into_inner().into_iter().rev().collect())
     }
 
-    /// Request events of filter. All events will be sent to notification listener,
-    /// until the EOSE "end of stored events" message is received from the relay.
     pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Duration, opts: FilterOptions) {
         if !self.opts.flags.has_read() {
             tracing::error!("{}", Error::ReadDisabled);
@@ -1597,7 +1546,6 @@ impl InternalRelay {
         });
     }
 
-    /// Count events of filters
     pub async fn count_events_of(
         &self,
         filters: Vec<Filter>,
@@ -1637,7 +1585,6 @@ impl InternalRelay {
         Ok(count)
     }
 
-    /// Negentropy reconciliation
     pub async fn reconcile(
         &self,
         filter: Filter,
@@ -1888,7 +1835,6 @@ impl InternalRelay {
         Ok(())
     }
 
-    /// Check if relay support negentropy protocol
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
         let pk = Keys::generate();
         let filter = Filter::new().author(pk.public_key());

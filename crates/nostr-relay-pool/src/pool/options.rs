@@ -30,7 +30,7 @@ impl RelayPoolOptions {
         self
     }
 
-    /// Shutdown on [`RelayPool`](super::pool::RelayPool) drop
+    /// Shutdown on [`RelayPool`](super::RelayPool) drop
     #[deprecated(since = "0.29.0", note = "No longer needed")]
     pub fn shutdown_on_drop(self, _value: bool) -> Self {
         self

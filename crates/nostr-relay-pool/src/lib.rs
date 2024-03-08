@@ -23,6 +23,4 @@ pub use self::relay::options::{
     RequestAutoCloseOptions, RequestOptions,
 };
 pub use self::relay::stats::RelayConnectionStats;
-pub use self::relay::{
-    ActiveSubscription, InternalSubscriptionId, Relay, RelayNotification, RelayStatus,
-};
+pub use self::relay::{Relay, RelayNotification, RelayStatus};
