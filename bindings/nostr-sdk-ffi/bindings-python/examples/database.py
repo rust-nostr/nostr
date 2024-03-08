@@ -1,4 +1,4 @@
-from nostr_sdk import Keys, Client, EventBuilder, Filter, ClientBuilder, NostrDatabase
+from nostr_sdk import Keys, Client, EventBuilder, Filter, ClientBuilder, NostrDatabase, NegentropyOptions
 from datetime import timedelta
 import time
 
@@ -14,7 +14,8 @@ client.connect()
 
 # Negentropy reconciliation
 filter = Filter().author(keys.public_key())
-client.reconcile(filter)
+opts = NegentropyOptions()
+client.reconcile(filter, opts)
 
 # Query events from database
 filter = Filter().author(keys.public_key()).limit(10)

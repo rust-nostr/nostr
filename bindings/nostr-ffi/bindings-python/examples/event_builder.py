@@ -1,4 +1,4 @@
-from nostr_protocol import Keys, PublicKey, EventBuilder, Event, Tag
+from nostr_protocol import Keys, PublicKey, EventBuilder, Event, Tag, Kind
 
 keys = Keys.generate()
 
@@ -12,7 +12,7 @@ event = EventBuilder.encrypted_direct_msg(keys, receiver_pk, "New note from Rust
 print(event.as_json())
 
 # Build a custom event
-kind = 1234
+kind = Kind(1234)
 content = "My custom content"
 tags = []
 builder = EventBuilder(kind, content, tags)
