@@ -13,6 +13,7 @@ use super::{Event, EventId, Kind};
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
+use crate::nips::nip01::Coordinate;
 use crate::nips::nip15::{ProductData, StallData};
 use crate::nips::nip51::{Bookmarks, MuteList};
 use crate::nips::nip53::LiveEvent;
@@ -477,5 +478,14 @@ impl EventBuilder {
         Ok(Self {
             inner: nostr::EventBuilder::bookmarks(list.try_into()?),
         })
+    }
+
+    #[uniffi::constructor]
+    pub fn communities(communities: Vec<Arc<Coordinate>>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::communities(
+                communities.into_iter().map(|c| c.as_ref().into()),
+            ),
+        }
     }
 }
