@@ -495,4 +495,11 @@ impl EventBuilder {
             inner: nostr::EventBuilder::public_chats(chat.into_iter().map(|e| **e)),
         }
     }
+
+    #[uniffi::constructor]
+    pub fn blocked_relays(relay: Vec<String>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::blocked_relays(relay.into_iter().map(UncheckedUrl::from)),
+        }
+    }
 }
