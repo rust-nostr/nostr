@@ -50,7 +50,7 @@ impl Coordinate {
         Ok(self.inner.to_nostr_uri()?)
     }
 
-    pub fn kind(&self) -> u64 {
+    pub fn kind(&self) -> Kind {
         self.inner.kind.into()
     }
 

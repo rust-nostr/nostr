@@ -12,7 +12,7 @@ use uniffi::Object;
 
 use super::EventId;
 use crate::error::Result;
-use crate::{Event, Keys, PublicKey, Tag, Timestamp};
+use crate::{Event, Keys, Kind, PublicKey, Tag, Timestamp};
 
 #[derive(Object)]
 pub struct UnsignedEvent {
@@ -46,7 +46,7 @@ impl UnsignedEvent {
         self.inner.created_at.into()
     }
 
-    pub fn kind(&self) -> u64 {
+    pub fn kind(&self) -> Kind {
         self.inner.kind.into()
     }
 
