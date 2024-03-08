@@ -3,7 +3,7 @@ const { Keys, Client, Filter, loadWasmAsync, Timestamp, Duration } = require("..
 async function main() {
     await loadWasmAsync();
 
-    let keys = Keys.fromSkStr("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
+    let keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
 
     let client = new Client();
     await client.addRelay("wss://relay.damus.io");
