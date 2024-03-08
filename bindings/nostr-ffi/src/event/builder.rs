@@ -502,4 +502,11 @@ impl EventBuilder {
             inner: nostr::EventBuilder::blocked_relays(relay.into_iter().map(UncheckedUrl::from)),
         }
     }
+
+    #[uniffi::constructor]
+    pub fn search_relays(relay: Vec<String>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::search_relays(relay.into_iter().map(UncheckedUrl::from)),
+        }
+    }
 }
