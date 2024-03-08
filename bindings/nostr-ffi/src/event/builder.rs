@@ -464,4 +464,11 @@ impl EventBuilder {
             inner: nostr::EventBuilder::mute_list(list.into()),
         }
     }
+
+    #[uniffi::constructor]
+    pub fn pinned_notes(ids: Vec<Arc<EventId>>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::pinned_notes(ids.into_iter().map(|e| **e)),
+        }
+    }
 }
