@@ -20,7 +20,7 @@ pub use self::relay::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 pub use self::relay::limits::Limits;
 pub use self::relay::options::{
     FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelaySendOptions,
-    RequestAutoCloseOptions, RequestOptions,
+    SubscribeAutoCloseOptions, SubscribeOptions,
 };
 pub use self::relay::stats::RelayConnectionStats;
 pub use self::relay::{Relay, RelayNotification, RelayStatus};

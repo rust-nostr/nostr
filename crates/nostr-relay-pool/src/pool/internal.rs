@@ -22,6 +22,7 @@ use super::RelayPoolNotification;
 use crate::relay::limits::Limits;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Error as RelayError, Relay};
+use crate::SubscribeOptions;
 
 /// [`RelayPool`](super::RelayPool) error
 #[derive(Debug, Error)]
@@ -431,7 +432,7 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    pub async fn subscribe(&self, filters: Vec<Filter>, opts: RelaySendOptions) -> SubscriptionId {
+    pub async fn subscribe(&self, filters: Vec<Filter>, opts: SubscribeOptions) -> SubscriptionId {
         let id: SubscriptionId = SubscriptionId::generate();
         self.subscribe_with_id(id.clone(), filters, opts).await;
         id
@@ -441,13 +442,16 @@ impl InternalRelayPool {
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,
-        opts: RelaySendOptions,
+        opts: SubscribeOptions,
     ) {
         // Get relays
         let relays = self.relays().await;
 
-        // Update pool subscriptions
-        self.update_subscription(id.clone(), filters.clone()).await;
+        // Check if isn't auto-closing subscription
+        if !opts.is_auto_closing() {
+            // Update pool subscriptions
+            self.update_subscription(id.clone(), filters.clone()).await;
+        }
 
         // Subscribe
         for relay in relays.values() {

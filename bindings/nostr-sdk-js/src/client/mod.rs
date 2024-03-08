@@ -26,7 +26,7 @@ use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
-use crate::relay::options::JsNegentropyOptions;
+use crate::relay::options::{JsNegentropyOptions, JsSubscribeAutoCloseOptions};
 use crate::relay::{JsRelay, JsRelayArray};
 
 #[wasm_bindgen(js_name = Client)]
@@ -147,16 +147,36 @@ impl JsClient {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&self, filters: Vec<JsFilter>) -> String {
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    pub async fn subscribe(
+        &self,
+        filters: Vec<JsFilter>,
+        opts: Option<JsSubscribeAutoCloseOptions>,
+    ) -> String {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        self.inner.subscribe(filters).await.to_string()
+        self.inner
+            .subscribe(filters, opts.map(|o| *o))
+            .await
+            .to_string()
     }
 
     /// Subscribe to filters with custom subscription ID
-    pub async fn subscribe_with_id(&self, id: &str, filters: Vec<JsFilter>) {
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    pub async fn subscribe_with_id(
+        &self,
+        id: &str,
+        filters: Vec<JsFilter>,
+        opts: Option<JsSubscribeAutoCloseOptions>,
+    ) {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
-            .subscribe_with_id(SubscriptionId::new(id), filters)
+            .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| *o))
             .await
     }
 
@@ -227,16 +247,6 @@ impl JsClient {
             .collect::<Array>()
             .unchecked_into();
         Ok(events)
-    }
-
-    /// Request events of filters.
-    /// All events will be received on notification listener
-    /// until the EOSE "end of stored events" message is received from the relay.
-    #[wasm_bindgen(js_name = reqEventsOf)]
-    pub async fn req_events_of(&self, filters: Vec<JsFilter>, timeout: Option<f64>) {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        let timeout = timeout.map(Duration::from_secs_f64);
-        self.inner.req_events_of(filters, timeout).await;
     }
 
     /// Send client message

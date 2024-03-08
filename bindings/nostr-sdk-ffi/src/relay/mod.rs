@@ -13,7 +13,7 @@ use uniffi::{Enum, Object};
 
 pub mod options;
 
-use self::options::RelaySendOptions;
+use self::options::{RelaySendOptions, SubscribeOptions};
 use crate::error::Result;
 
 #[derive(Object)]
@@ -171,11 +171,7 @@ impl Relay {
         })
     }
 
-    pub fn subscribe(
-        &self,
-        filters: Vec<Arc<Filter>>,
-        opts: Arc<RelaySendOptions>,
-    ) -> Result<String> {
+    pub fn subscribe(&self, filters: Vec<Arc<Filter>>, opts: &SubscribeOptions) -> Result<String> {
         block_on(async move {
             Ok(self
                 .inner
@@ -195,7 +191,7 @@ impl Relay {
         &self,
         id: String,
         filters: Vec<Arc<Filter>>,
-        opts: Arc<RelaySendOptions>,
+        opts: &SubscribeOptions,
     ) -> Result<()> {
         block_on(async move {
             Ok(self
@@ -243,14 +239,5 @@ impl Relay {
                 .map(|e| Arc::new(e.into()))
                 .collect())
         })
-    }
-
-    pub fn req_events_of(&self, filters: Vec<Arc<Filter>>, timeout: Duration) {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
-        self.inner
-            .req_events_of(filters, timeout, FilterOptions::ExitOnEOSE);
     }
 }

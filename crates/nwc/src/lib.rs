@@ -24,8 +24,8 @@ use nostr::nips::nip47::{
 };
 use nostr::{Filter, Kind, SubscriptionId};
 use nostr_relay_pool::{
-    FilterOptions, Relay, RelayNotification, RelaySendOptions, RequestAutoCloseOptions,
-    RequestOptions,
+    FilterOptions, Relay, RelayNotification, RelaySendOptions, SubscribeAutoCloseOptions,
+    SubscribeOptions,
 };
 use nostr_zapper::{async_trait, NostrZapper, ZapperBackend};
 
@@ -75,13 +75,12 @@ impl NWC {
             .event(event_id)
             .limit(1);
 
-        let auto_close_opts = RequestAutoCloseOptions::default()
+        let auto_close_opts = SubscribeAutoCloseOptions::default()
             .filter(FilterOptions::WaitForEventsAfterEOSE(1))
             .timeout(Some(TIMEOUT));
-        let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
+        let subscribe_opts = SubscribeOptions::default().close_on(Some(auto_close_opts));
 
-        // Subscribe
-        let id: SubscriptionId = self.relay.send_req(vec![filter], req_opts).await?;
+        let id: SubscriptionId = self.relay.subscribe(vec![filter], subscribe_opts).await?;
 
         let mut notifications = self.relay.notifications();
 

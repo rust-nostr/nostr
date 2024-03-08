@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
         .kind(Kind::EncryptedDirectMessage)
         .since(Timestamp::now());
 
-    client.subscribe(vec![subscription]).await;
+    client.subscribe(vec![subscription], None).await;
 
     client
         .handle_notifications(|notification| async {

@@ -32,7 +32,7 @@ use self::internal::InternalRelay;
 pub use self::limits::Limits;
 pub use self::options::{
     FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelaySendOptions,
-    RequestAutoCloseOptions, RequestOptions,
+    SubscribeAutoCloseOptions, SubscribeOptions,
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
@@ -215,33 +215,6 @@ impl Relay {
         self.inner.batch_msg(msgs, opts).await
     }
 
-    /// Send `REQ` to relay
-    ///
-    /// Automatically close `REQ` if set in [RequestOptions].
-    ///
-    /// Internally generate a new random [SubscriptionId]. Check `send_req_with_id` method to use a custom [SubscriptionId].
-    pub async fn send_req(
-        &self,
-        filters: Vec<Filter>,
-        opts: RequestOptions,
-    ) -> Result<SubscriptionId, Error> {
-        let id: SubscriptionId = SubscriptionId::generate();
-        self.inner.send_req(id.clone(), filters, opts).await?;
-        Ok(id)
-    }
-
-    /// Send `REQ` to relay with custom [SubscriptionId]
-    ///
-    /// Automatically close `REQ` if set in [RequestOptions]
-    pub async fn send_req_with_id(
-        &self,
-        id: SubscriptionId,
-        filters: Vec<Filter>,
-        opts: RequestOptions,
-    ) -> Result<(), Error> {
-        self.inner.send_req(id, filters, opts).await
-    }
-
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         self.inner.send_event(event, opts).await
@@ -257,20 +230,34 @@ impl Relay {
     }
 
     /// Subscribe to filters
+    ///
+    /// Internally generate a new random [SubscriptionId]. Check `subscribe_with_id` method to use a custom [SubscriptionId].
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
+    ///
+    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
-        opts: RelaySendOptions,
+        opts: SubscribeOptions,
     ) -> Result<SubscriptionId, Error> {
         self.inner.subscribe(filters, opts).await
     }
 
     /// Subscribe with custom [SubscriptionId]
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
+    ///
+    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,
-        opts: RelaySendOptions,
+        opts: SubscribeOptions,
     ) -> Result<(), Error> {
         self.inner.subscribe_with_id(id, filters, opts).await
     }
@@ -315,12 +302,6 @@ impl Relay {
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
         self.inner.get_events_of(filters, timeout, opts).await
-    }
-
-    /// Request events of filter. All events will be sent to notification listener,
-    /// until the EOSE "end of stored events" message is received from the relay.
-    pub fn req_events_of(&self, filters: Vec<Filter>, timeout: Duration, opts: FilterOptions) {
-        self.inner.req_events_of(filters, timeout, opts)
     }
 
     /// Count events of filters

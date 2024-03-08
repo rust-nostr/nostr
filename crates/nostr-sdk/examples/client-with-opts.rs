@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
         .pubkey(my_keys.public_key())
         .since(Timestamp::now());
 
-    client.subscribe(vec![subscription]).await;
+    client.subscribe(vec![subscription], None).await;
 
     // Handle subscription notifications with `handle_notifications` method
     client

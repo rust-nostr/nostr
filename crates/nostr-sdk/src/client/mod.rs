@@ -17,6 +17,7 @@ use nostr_relay_pool::pool::{self, Error as RelayPoolError, RelayPool};
 use nostr_relay_pool::relay::Error as RelayError;
 use nostr_relay_pool::{
     FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
+    SubscribeAutoCloseOptions, SubscribeOptions,
 };
 use nostr_signer::prelude::*;
 #[cfg(feature = "nip57")]
@@ -463,6 +464,16 @@ impl Client {
 
     /// Subscribe to filters
     ///
+    /// This method create a new subscription. None of the previous subscriptions will be edited/closed when you call this!
+    /// So remember to unsubscribe when you no longer need it. You can get all your active (non-auto-closing) subscriptions
+    /// by calling `client.subscriptions().await`
+    ///
+    /// # Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
+    ///
+    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
+    ///
     /// # Example
     /// ```rust,no_run
     /// use nostr_sdk::prelude::*;
@@ -475,16 +486,37 @@ impl Client {
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
-    /// let sub_id = client.subscribe(vec![subscription]).await;
+    /// // Subscribe
+    /// let sub_id = client.subscribe(vec![subscription], None).await;
     /// println!("Subscription ID: {sub_id}");
+    ///
+    /// // Auto-closing subscription
+    /// let id = SubscriptionId::generate();
+    /// let subscription = Filter::new().kind(Kind::TextNote).limit(10);
+    /// let opts = SubscribeAutoCloseOptions::default().filter(FilterOptions::ExitOnEOSE);
+    /// let sub_id = client.subscribe(vec![subscription], Some(opts)).await;
+    /// println!("Subscription ID: {sub_id} [auto-closing]");
     /// # }
     /// ```
-    pub async fn subscribe(&self, filters: Vec<Filter>) -> SubscriptionId {
-        let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+    pub async fn subscribe(
+        &self,
+        filters: Vec<Filter>,
+        opts: Option<SubscribeAutoCloseOptions>,
+    ) -> SubscriptionId {
+        let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+        let opts: SubscribeOptions = SubscribeOptions::default()
+            .close_on(opts)
+            .send_opts(send_opts);
         self.pool.subscribe(filters, opts).await
     }
 
     /// Subscribe to filters with custom [SubscriptionId]
+    ///
+    /// # Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
+    ///
+    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     ///
     /// # Example
     /// ```rust,no_run
@@ -499,11 +531,28 @@ impl Client {
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
-    /// client.subscribe_with_id(id, vec![subscription]).await;
+    /// // Subscribe
+    /// client.subscribe_with_id(id, vec![subscription], None).await;
+    ///
+    /// // Auto-closing subscription
+    /// let id = SubscriptionId::generate();
+    /// let subscription = Filter::new().kind(Kind::TextNote).limit(10);
+    /// let opts = SubscribeAutoCloseOptions::default().filter(FilterOptions::ExitOnEOSE);
+    /// client
+    ///     .subscribe_with_id(id, vec![subscription], Some(opts))
+    ///     .await;
     /// # }
     /// ```
-    pub async fn subscribe_with_id(&self, id: SubscriptionId, filters: Vec<Filter>) {
-        let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+    pub async fn subscribe_with_id(
+        &self,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+        opts: Option<SubscribeAutoCloseOptions>,
+    ) {
+        let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+        let opts: SubscribeOptions = SubscribeOptions::default()
+            .close_on(opts)
+            .send_opts(send_opts);
         self.pool.subscribe_with_id(id, filters, opts).await
     }
 
@@ -598,7 +647,9 @@ impl Client {
     /// until the EOSE "end of stored events" message is received from the relay.
     ///
     /// If timeout is set to `None`, the default from [`Options`] will be used.
+    #[deprecated(since = "0.29.0", note = "Use `subscribe` instead")]
     pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
+        #[allow(deprecated)]
         self.req_events_of_with_opts(filters, timeout, FilterOptions::ExitOnEOSE)
             .await
     }
@@ -606,6 +657,7 @@ impl Client {
     /// Request events of filters with [`FilterOptions`]
     ///
     /// If timeout is set to `None`, the default from [`Options`] will be used.
+    #[deprecated(since = "0.29.0", note = "Use `subscribe` instead")]
     pub async fn req_events_of_with_opts(
         &self,
         filters: Vec<Filter>,
@@ -613,7 +665,10 @@ impl Client {
         opts: FilterOptions,
     ) {
         let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-        self.pool.req_events_of(filters, timeout, opts).await;
+        let opts = SubscribeAutoCloseOptions::default()
+            .filter(opts)
+            .timeout(Some(timeout));
+        self.subscribe(filters, Some(opts)).await;
     }
 
     /// Request events of filters from specific relays
@@ -622,9 +677,10 @@ impl Client {
     /// until the EOSE "end of stored events" message is received from the relay.
     ///
     /// If timeout is set to `None`, the default from [`Options`] will be used.
+    #[deprecated(since = "0.29.0", note = "Use `subscribe` instead")]
     pub async fn req_events_from<I, U>(
         &self,
-        urls: I,
+        _urls: I,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<(), Error>
@@ -634,9 +690,10 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-        self.pool
-            .req_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
-            .await?;
+        let opts = SubscribeAutoCloseOptions::default()
+            .filter(FilterOptions::ExitOnEOSE)
+            .timeout(Some(timeout));
+        self.subscribe(filters, Some(opts)).await;
         Ok(())
     }
 

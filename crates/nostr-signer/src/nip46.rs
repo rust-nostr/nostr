@@ -15,7 +15,7 @@ use nostr::prelude::*;
 use nostr::{key, serde_json};
 use nostr_relay_pool::{
     FilterOptions, Relay, RelayNotification, RelayOptions, RelaySendOptions,
-    RequestAutoCloseOptions, RequestOptions,
+    SubscribeAutoCloseOptions, SubscribeOptions,
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
@@ -136,13 +136,13 @@ impl Nip46Signer {
             .kind(Kind::NostrConnect)
             .since(Timestamp::now());
 
-        let auto_close_opts = RequestAutoCloseOptions::default()
+        let auto_close_opts = SubscribeAutoCloseOptions::default()
             .filter(FilterOptions::WaitForEventsAfterEOSE(1))
             .timeout(Some(TIMEOUT));
-        let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
+        let subscribe_opts = SubscribeOptions::default().close_on(Some(auto_close_opts));
 
         // Subscribe
-        let id: SubscriptionId = self.relay.send_req(vec![filter], req_opts).await?;
+        let id: SubscriptionId = self.relay.subscribe(vec![filter], subscribe_opts).await?;
 
         let mut notifications = self.relay.notifications();
         time::timeout(Some(self.timeout), async {
@@ -192,13 +192,13 @@ impl Nip46Signer {
             .kind(Kind::NostrConnect)
             .since(Timestamp::now());
 
-        let auto_close_opts = RequestAutoCloseOptions::default()
+        let auto_close_opts = SubscribeAutoCloseOptions::default()
             .filter(FilterOptions::WaitForEventsAfterEOSE(1))
             .timeout(Some(TIMEOUT));
-        let req_opts = RequestOptions::default().close_on(Some(auto_close_opts));
+        let subscribe_opts = SubscribeOptions::default().close_on(Some(auto_close_opts));
 
         // Subscribe
-        let sub_id: SubscriptionId = self.relay.send_req(vec![filter], req_opts).await?;
+        let sub_id: SubscriptionId = self.relay.subscribe(vec![filter], subscribe_opts).await?;
 
         let mut notifications = self.relay.notifications();
 

@@ -4,7 +4,7 @@
 
 //! Relay Pool
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -23,6 +23,7 @@ use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayStatus};
+use crate::SubscribeOptions;
 
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -246,16 +247,28 @@ impl RelayPool {
     }
 
     /// Subscribe to filters
-    pub async fn subscribe(&self, filters: Vec<Filter>, opts: RelaySendOptions) -> SubscriptionId {
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
+    ///
+    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
+    pub async fn subscribe(&self, filters: Vec<Filter>, opts: SubscribeOptions) -> SubscriptionId {
         self.inner.subscribe(filters, opts).await
     }
 
     /// Subscribe to filters with custom [SubscriptionId]
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
+    ///
+    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,
-        opts: RelaySendOptions,
+        opts: SubscribeOptions,
     ) {
         self.inner.subscribe_with_id(id, filters, opts).await
     }
@@ -304,49 +317,6 @@ impl RelayPool {
         self.inner
             .get_events_from(urls, filters, timeout, opts)
             .await
-    }
-
-    /// Request events of filter.
-    ///
-    /// If the events aren't already stored in the database, will be sent to notification listener
-    /// until the EOSE "end of stored events" message is received from the relay.
-    pub async fn req_events_of(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Duration,
-        opts: FilterOptions,
-    ) {
-        let relays = self.relays().await;
-        for relay in relays.values() {
-            relay.req_events_of(filters.clone(), timeout, opts);
-        }
-    }
-
-    /// Request events of filter from specific relays.
-    ///
-    /// If the events aren't already stored in the database, will be sent to notification listener
-    /// until the EOSE "end of stored events" message is received from the relay.
-    pub async fn req_events_from<I, U>(
-        &self,
-        urls: I,
-        filters: Vec<Filter>,
-        timeout: Duration,
-        opts: FilterOptions,
-    ) -> Result<(), Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        let urls: HashSet<Url> = urls
-            .into_iter()
-            .map(|u| u.try_into_url())
-            .collect::<Result<_, _>>()?;
-        let relays: HashMap<Url, Relay> = self.relays().await;
-        for (_, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
-            relay.req_events_of(filters.clone(), timeout, opts);
-        }
-        Ok(())
     }
 
     /// Connect to all added relays and keep connection alive

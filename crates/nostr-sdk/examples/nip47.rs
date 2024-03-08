@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
         .event(req_event.id)
         .since(Timestamp::now());
 
-    client.subscribe(vec![subscription]).await;
+    client.subscribe(vec![subscription], None).await;
 
     client.send_event(req_event).await.unwrap();
 

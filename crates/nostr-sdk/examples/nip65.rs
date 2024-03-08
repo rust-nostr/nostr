@@ -18,7 +18,10 @@ async fn main() -> Result<()> {
 
     println!("Subscribing to Relay List Metadata");
     client
-        .subscribe(vec![Filter::new().author(public_key).kind(Kind::RelayList)])
+        .subscribe(
+            vec![Filter::new().author(public_key).kind(Kind::RelayList)],
+            None,
+        )
         .await;
 
     client

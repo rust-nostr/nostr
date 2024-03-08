@@ -26,7 +26,7 @@ pub use nostr_indexeddb::{IndexedDBError, WebDatabase};
 pub use nostr_relay_pool::{
     self as pool, AtomicRelayServiceFlags, FilterOptions, NegentropyDirection, NegentropyOptions,
     Relay, RelayConnectionStats, RelayOptions, RelayPool, RelayPoolNotification, RelayPoolOptions,
-    RelaySendOptions, RelayServiceFlags, RelayStatus,
+    RelaySendOptions, RelayServiceFlags, RelayStatus, SubscribeAutoCloseOptions, SubscribeOptions,
 };
 #[cfg(feature = "rocksdb")]
 pub use nostr_rocksdb::RocksDatabase;

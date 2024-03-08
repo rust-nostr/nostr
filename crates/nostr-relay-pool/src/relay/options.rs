@@ -227,14 +227,14 @@ impl RelaySendOptions {
     }
 }
 
-/// Relay `REQ` auto-close options
+/// Auto-closing subscribe options
 #[derive(Debug, Clone, Copy, Default)]
-pub struct RequestAutoCloseOptions {
+pub struct SubscribeAutoCloseOptions {
     pub(super) filter: FilterOptions,
     pub(super) timeout: Option<Duration>,
 }
 
-impl RequestAutoCloseOptions {
+impl SubscribeAutoCloseOptions {
     /// Close subscription when [FilterOptions] is satisfied
     pub fn filter(mut self, filter: FilterOptions) -> Self {
         self.filter = filter;
@@ -248,17 +248,28 @@ impl RequestAutoCloseOptions {
     }
 }
 
-/// Relay `REQ` options
+/// Subscribe options
 #[derive(Debug, Clone, Copy, Default)]
-pub struct RequestOptions {
-    pub(super) auto_close: Option<RequestAutoCloseOptions>,
+pub struct SubscribeOptions {
+    pub(super) auto_close: Option<SubscribeAutoCloseOptions>,
+    pub(super) send_opts: RelaySendOptions,
 }
 
-impl RequestOptions {
+impl SubscribeOptions {
     /// Set auto-close conditions
-    pub fn close_on(mut self, opts: Option<RequestAutoCloseOptions>) -> Self {
+    pub fn close_on(mut self, opts: Option<SubscribeAutoCloseOptions>) -> Self {
         self.auto_close = opts;
         self
+    }
+
+    /// Set [RelaySendOptions]
+    pub fn send_opts(mut self, opts: RelaySendOptions) -> Self {
+        self.send_opts = opts;
+        self
+    }
+
+    pub(crate) fn is_auto_closing(&self) -> bool {
+        self.auto_close.is_some()
     }
 }
 

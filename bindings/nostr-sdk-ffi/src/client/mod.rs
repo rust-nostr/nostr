@@ -28,7 +28,7 @@ pub use self::options::Options;
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
-use crate::relay::options::NegentropyOptions;
+use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
 use crate::{NostrDatabase, Relay};
 
 #[derive(Object)]
@@ -156,22 +156,46 @@ impl Client {
         })
     }
 
-    pub fn subscribe(&self, filters: Vec<Arc<Filter>>) -> String {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
-        block_on(async move { self.inner.subscribe(filters).await.to_string() })
-    }
-
-    pub fn subscribe_with_id(&self, id: String, filters: Vec<Arc<Filter>>) {
+    /// Subscribe to filters
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    pub fn subscribe(
+        &self,
+        filters: Vec<Arc<Filter>>,
+        opts: Option<Arc<SubscribeAutoCloseOptions>>,
+    ) -> String {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
         block_on(async move {
             self.inner
-                .subscribe_with_id(SubscriptionId::new(id), filters)
+                .subscribe(filters, opts.map(|o| **o))
+                .await
+                .to_string()
+        })
+    }
+
+    /// Subscribe to filters with custom subscription ID
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    pub fn subscribe_with_id(
+        &self,
+        id: String,
+        filters: Vec<Arc<Filter>>,
+        opts: Option<Arc<SubscribeAutoCloseOptions>>,
+    ) {
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        block_on(async move {
+            self.inner
+                .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| **o))
                 .await
         })
     }
@@ -208,8 +232,6 @@ impl Client {
         })
     }
 
-    // TODO: add get_events_of_with_opts
-
     /// Get events of filters from specific relays
     ///
     /// Get events both from **local database** and **relays**
@@ -235,16 +257,6 @@ impl Client {
                 .collect())
         })
     }
-
-    pub fn req_events_of(&self, filters: Vec<Arc<Filter>>, timeout: Option<Duration>) {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
-        block_on(async move { self.inner.req_events_of(filters, timeout).await })
-    }
-
-    // TODO: add req_events_of_with_opts
 
     pub fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<()> {
         block_on(async move { Ok(self.inner.send_msg(msg.as_ref().deref().clone()).await?) })
