@@ -14,7 +14,7 @@ use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip15::{ProductData, StallData};
-use crate::nips::nip51::MuteList;
+use crate::nips::nip51::{Bookmarks, MuteList};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -470,5 +470,12 @@ impl EventBuilder {
         Self {
             inner: nostr::EventBuilder::pinned_notes(ids.into_iter().map(|e| **e)),
         }
+    }
+
+    #[uniffi::constructor]
+    pub fn bookmarks(list: Bookmarks) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventBuilder::bookmarks(list.try_into()?),
+        })
     }
 }
