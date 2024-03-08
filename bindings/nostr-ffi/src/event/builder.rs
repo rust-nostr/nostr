@@ -14,6 +14,7 @@ use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip15::{ProductData, StallData};
+use crate::nips::nip51::MuteList;
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -454,6 +455,13 @@ impl EventBuilder {
     pub fn sealed_direct(receiver: &PublicKey, message: &str) -> Self {
         Self {
             inner: nostr::EventBuilder::sealed_direct(**receiver, message),
+        }
+    }
+
+    #[uniffi::constructor]
+    pub fn mute_list(list: MuteList) -> Self {
+        Self {
+            inner: nostr::EventBuilder::mute_list(list.into()),
         }
     }
 }
