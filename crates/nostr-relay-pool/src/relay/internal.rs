@@ -1518,7 +1518,12 @@ impl InternalRelay {
         Ok(count)
     }
 
-    pub async fn reconcile(
+    pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
+        let items = self.database.negentropy_items(filter.clone()).await?;
+        self.reconcile_with_items(filter, items, opts).await
+    }
+
+    pub async fn reconcile_with_items(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
@@ -1772,7 +1777,7 @@ impl InternalRelay {
         let pk = Keys::generate();
         let filter = Filter::new().author(pk.public_key());
         match self
-            .reconcile(
+            .reconcile_with_items(
                 filter,
                 Vec::new(),
                 NegentropyOptions::new().initial_timeout(Duration::from_secs(5)),

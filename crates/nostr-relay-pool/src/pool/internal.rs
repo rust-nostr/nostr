@@ -626,7 +626,7 @@ impl InternalRelayPool {
             let filter = filter.clone();
             let my_items = items.clone();
             let handle = thread::spawn(async move {
-                if let Err(e) = relay.reconcile(filter, my_items, opts).await {
+                if let Err(e) = relay.reconcile_with_items(filter, my_items, opts).await {
                     tracing::error!("Failed to get reconcile with {url}: {e}");
                 }
             })?;

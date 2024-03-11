@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
     let filter = Filter::new().author(public_key).limit(10);
     let relay = client.relay("wss://atl.purplerelay.com").await?;
     let opts = NegentropyOptions::default();
-    relay.reconcile(filter, my_items, opts).await?;
+    relay.reconcile_with_items(filter, my_items, opts).await?;
 
     Ok(())
 }
