@@ -13,7 +13,7 @@ use super::Kind;
 use crate::error::Result;
 use crate::{PublicKey, Tag, Timestamp};
 
-#[derive(Object)]
+#[derive(PartialEq, Eq, Hash, Object)]
 pub struct EventId {
     inner: nostr::EventId,
 }

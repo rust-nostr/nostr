@@ -10,7 +10,9 @@ pub mod client;
 pub mod database;
 pub mod error;
 pub mod logger;
+pub mod notifications;
 pub mod nwc;
+pub mod pool;
 pub mod profile;
 pub mod relay;
 
@@ -18,10 +20,11 @@ trait FromResult<T>: Sized {
     fn from_result(_: T) -> error::Result<Self>;
 }
 
-pub use crate::client::{Client, ClientBuilder, HandleNotification, Options};
-pub use crate::database::NostrDatabase;
-pub use crate::error::NostrSdkError;
-pub use crate::logger::{init_logger, LogLevel};
-pub use crate::relay::{Relay, RelayConnectionStats, RelayStatus};
+pub use self::client::{Client, ClientBuilder, Options};
+pub use self::database::NostrDatabase;
+pub use self::error::NostrSdkError;
+pub use self::logger::{init_logger, LogLevel};
+pub use self::notifications::HandleNotification;
+pub use self::relay::{Relay, RelayConnectionStats, RelayStatus};
 
 uniffi::setup_scaffolding!("nostr_sdk");

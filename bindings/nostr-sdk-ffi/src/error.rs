@@ -50,6 +50,12 @@ impl From<nostr_sdk::pool::relay::Error> for NostrSdkError {
     }
 }
 
+impl From<nostr_sdk::pool::pool::Error> for NostrSdkError {
+    fn from(e: nostr_sdk::pool::pool::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
 impl From<AddrParseError> for NostrSdkError {
     fn from(e: AddrParseError) -> NostrSdkError {
         Self::Generic(e.to_string())

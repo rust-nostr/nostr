@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, EventId, Filter, RelayInformationDocument};
+use nostr_ffi::{ClientMessage, Event, EventId, Filter, RelayInformationDocument, Timestamp};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{block_on, pool, FilterOptions, SubscriptionId, Url};
 use uniffi::Object;
@@ -145,7 +145,7 @@ impl Relay {
 
     /// Connect to relay and keep alive connection
     pub fn connect(&self, connection_timeout: Option<Duration>) {
-        block_on(self.inner.connect(connection_timeout))
+        block_on(async move { self.inner.connect(connection_timeout).await })
     }
 
     /// Disconnect from relay and set status to 'Stopped'
@@ -305,6 +305,22 @@ impl Relay {
     /// Use events stored in database
     pub fn reconcile(&self, filter: &Filter, opts: &NegentropyOptions) -> Result<()> {
         block_on(async move { Ok(self.inner.reconcile(filter.deref().clone(), **opts).await?) })
+    }
+
+    /// Negentropy reconciliation with custom items
+    pub fn reconcile_with_items(
+        &self,
+        filter: &Filter,
+        items: HashMap<Arc<EventId>, Arc<Timestamp>>,
+        opts: &NegentropyOptions,
+    ) -> Result<()> {
+        block_on(async move {
+            let items = items.into_iter().map(|(k, v)| (**k, **v)).collect();
+            Ok(self
+                .inner
+                .reconcile_with_items(filter.deref().clone(), items, **opts)
+                .await?)
+        })
     }
 
     // TODO: add reconcile_with_items

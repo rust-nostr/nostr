@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
@@ -11,7 +10,7 @@ use std::time::Duration;
 use async_utility::thread;
 use nostr_ffi::{
     ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
-    RelayMessage, Timestamp,
+    Timestamp,
 };
 use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::pool::RelayPoolNotification as RelayPoolNotificationSdk;
@@ -29,7 +28,7 @@ pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
-use crate::{NostrDatabase, Relay};
+use crate::{HandleNotification, NostrDatabase, Relay};
 
 #[derive(Object)]
 pub struct Client {
@@ -528,10 +527,4 @@ impl Client {
         })?;
         Ok(())
     }
-}
-
-#[uniffi::export(callback_interface)]
-pub trait HandleNotification: Send + Sync + Debug {
-    fn handle_msg(&self, relay_url: String, msg: Arc<RelayMessage>);
-    fn handle(&self, relay_url: String, subscription_id: String, event: Arc<Event>);
 }
