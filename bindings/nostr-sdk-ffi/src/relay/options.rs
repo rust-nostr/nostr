@@ -2,12 +2,134 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
 use uniffi::{Enum, Object};
+
+use crate::error::Result;
+
+/// `Relay` options
+#[derive(Clone, Object)]
+pub struct RelayOptions {
+    inner: nostr_sdk::RelayOptions,
+}
+
+impl Deref for RelayOptions {
+    type Target = nostr_sdk::RelayOptions;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl From<nostr_sdk::RelayOptions> for RelayOptions {
+    fn from(inner: nostr_sdk::RelayOptions) -> Self {
+        Self { inner }
+    }
+}
+
+#[uniffi::export]
+impl RelayOptions {
+    /// New default relay options
+    #[uniffi::constructor]
+    pub fn new() -> Self {
+        Self {
+            inner: nostr_sdk::RelayOptions::new(),
+        }
+    }
+
+    /// Set proxy
+    pub fn proxy(self: Arc<Self>, proxy: Option<String>) -> Result<Self> {
+        let mut builder = unwrap_or_clone_arc(self);
+        let proxy: Option<SocketAddr> = match proxy {
+            Some(proxy) => Some(proxy.parse()?),
+            None => None,
+        };
+        builder.inner = builder.inner.proxy(proxy);
+        Ok(builder)
+    }
+
+    /*/// Set Relay Service Flags
+    pub fn flags(mut self, flags: RelayServiceFlags) -> Self {
+        self.flags = AtomicRelayServiceFlags::new(flags);
+        self
+    }*/
+
+    /// Set read flag
+    pub fn read(self: Arc<Self>, read: bool) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.read(read);
+        builder
+    }
+
+    /// Set write flag
+    pub fn write(self: Arc<Self>, write: bool) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.write(write);
+        builder
+    }
+
+    /// Set ping flag
+    pub fn ping(self: Arc<Self>, ping: bool) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.ping(ping);
+        builder
+    }
+
+    /// Minimum POW for received events (default: 0)
+    pub fn pow(self: Arc<Self>, diffculty: u8) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.pow(diffculty);
+        builder
+    }
+
+    /// Update `pow` option
+    pub fn update_pow_difficulty(&self, diffculty: u8) {
+        self.inner.update_pow_difficulty(diffculty);
+    }
+
+    /// Enable/disable auto reconnection (default: true)
+    pub fn reconnect(self: Arc<Self>, reconnect: bool) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.reconnect(reconnect);
+        builder
+    }
+
+    /// Update `reconnect` option
+    pub fn update_reconnect(&self, reconnect: bool) {
+        self.inner.update_reconnect(reconnect);
+    }
+
+    /// Retry connection time (default: 10 sec)
+    ///
+    /// Are allowed values `>=` 5 secs
+    pub fn retry_sec(self: Arc<Self>, retry_sec: u64) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.retry_sec(retry_sec);
+        builder
+    }
+
+    /// Set retry_sec option
+    pub fn update_retry_sec(&self, retry_sec: u64) {
+        self.inner.update_retry_sec(retry_sec);
+    }
+
+    /// Automatically adjust retry seconds based on success/attempts (default: true)
+    pub fn adjust_retry_sec(self: Arc<Self>, adjust_retry_sec: bool) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.adjust_retry_sec(adjust_retry_sec);
+        builder
+    }
+
+    /// Set adjust_retry_sec option
+    pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
+        self.inner.update_adjust_retry_sec(adjust_retry_sec);
+    }
+}
 
 #[derive(Clone, Object)]
 pub struct RelaySendOptions {

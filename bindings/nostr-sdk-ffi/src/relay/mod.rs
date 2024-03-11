@@ -7,89 +7,23 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, Filter, RelayInformationDocument, Timestamp};
-use nostr_sdk::{block_on, pool, FilterOptions, SubscriptionId};
-use uniffi::{Enum, Object};
+use nostr_ffi::{ClientMessage, Event, EventId, Filter, RelayInformationDocument};
+use nostr_sdk::database::DynNostrDatabase;
+use nostr_sdk::{block_on, pool, FilterOptions, SubscriptionId, Url};
+use uniffi::Object;
 
+pub mod limits;
 pub mod options;
+pub mod stats;
+pub mod status;
 
-use self::options::{RelaySendOptions, SubscribeOptions};
+pub use self::limits::RelayLimits;
+use self::options::NegentropyOptions;
+pub use self::options::{RelayOptions, RelaySendOptions, SubscribeOptions};
+pub use self::stats::RelayConnectionStats;
+pub use self::status::RelayStatus;
 use crate::error::Result;
-
-#[derive(Object)]
-pub struct RelayConnectionStats {
-    inner: pool::RelayConnectionStats,
-}
-
-impl From<pool::RelayConnectionStats> for RelayConnectionStats {
-    fn from(inner: pool::RelayConnectionStats) -> Self {
-        Self { inner }
-    }
-}
-
-#[uniffi::export]
-impl RelayConnectionStats {
-    pub fn attempts(&self) -> u64 {
-        self.inner.attempts() as u64
-    }
-
-    pub fn success(&self) -> u64 {
-        self.inner.success() as u64
-    }
-
-    pub fn uptime(&self) -> f64 {
-        self.inner.uptime()
-    }
-
-    pub fn connected_at(&self) -> Timestamp {
-        let secs = self.inner.connected_at().as_u64();
-        Timestamp::from_secs(secs)
-    }
-
-    pub fn bytes_sent(&self) -> u64 {
-        self.inner.bytes_sent() as u64
-    }
-
-    pub fn bytes_received(&self) -> u64 {
-        self.inner.bytes_received() as u64
-    }
-
-    pub fn latency(&self) -> Option<Duration> {
-        block_on(async move { self.inner.latency().await })
-    }
-}
-
-#[derive(Enum)]
-pub enum RelayStatus {
-    /// Relay initialized
-    Initialized,
-    /// Pending
-    Pending,
-    /// Connecting
-    Connecting,
-    /// Relay connected
-    Connected,
-    /// Relay disconnected, will retry to connect again
-    Disconnected,
-    /// Stop
-    Stopped,
-    /// Relay completely disconnected
-    Terminated,
-}
-
-impl From<nostr_sdk::RelayStatus> for RelayStatus {
-    fn from(value: nostr_sdk::RelayStatus) -> Self {
-        match value {
-            nostr_sdk::RelayStatus::Initialized => Self::Initialized,
-            nostr_sdk::RelayStatus::Pending => Self::Pending,
-            nostr_sdk::RelayStatus::Connecting => Self::Connecting,
-            nostr_sdk::RelayStatus::Connected => Self::Connected,
-            nostr_sdk::RelayStatus::Disconnected => Self::Disconnected,
-            nostr_sdk::RelayStatus::Stopped => Self::Stopped,
-            nostr_sdk::RelayStatus::Terminated => Self::Terminated,
-        }
-    }
-}
+use crate::NostrDatabase;
 
 #[derive(Object)]
 pub struct Relay {
@@ -104,18 +38,62 @@ impl From<pool::Relay> for Relay {
 
 #[uniffi::export]
 impl Relay {
+    /// Create new `Relay` with **default** `options` and `limits` and `in-memory database`
+    #[uniffi::constructor]
+    pub fn new(url: String) -> Result<Self> {
+        let url: Url = Url::parse(&url)?;
+        Ok(Self {
+            inner: nostr_sdk::Relay::new(url),
+        })
+    }
+
+    /// Create new `Relay` with default `in-memory database` custom `options` and/or `limits`
+    #[uniffi::constructor]
+    pub fn with_opts(url: String, opts: &RelayOptions) -> Result<Self> {
+        let url: Url = Url::parse(&url)?;
+        let opts = opts.deref().clone();
+        Ok(Self {
+            inner: nostr_sdk::Relay::with_opts(url, opts),
+        })
+    }
+
+    /// Create new `Relay` with **custom** `options`, `database` and/or `limits`
+    #[uniffi::constructor]
+    pub fn custom(
+        url: String,
+        database: &NostrDatabase,
+        opts: &RelayOptions,
+        limits: &RelayLimits,
+    ) -> Result<Self> {
+        let url: Url = Url::parse(&url)?;
+        let database: Arc<DynNostrDatabase> = database.into();
+        let opts = opts.deref().clone();
+        Ok(Self {
+            inner: nostr_sdk::Relay::custom(url, database, opts, **limits),
+        })
+    }
+
+    /// Get relay url
     pub fn url(&self) -> String {
         self.inner.url().to_string()
     }
 
+    /// Get proxy
     pub fn proxy(&self) -> Option<String> {
         self.inner.proxy().map(|p| p.to_string())
     }
 
+    /// Get relay status
     pub fn status(&self) -> RelayStatus {
         block_on(async move { self.inner.status().await.into() })
     }
 
+    /* /// Get Relay Service Flags
+    pub fn flags(&self) -> AtomicRelayServiceFlags {
+        self.inner.flags()
+    } */
+
+    /// Check if `Relay` is connected
     pub fn is_connected(&self) -> bool {
         block_on(async move { self.inner.is_connected().await })
     }
@@ -140,7 +118,20 @@ impl Relay {
         })
     }
 
-    // TODO: add opts
+    /// Get filters by subscription ID
+    pub fn subscription(&self, id: String) -> Option<Vec<Arc<Filter>>> {
+        block_on(async move {
+            let id = SubscriptionId::new(id);
+            self.inner
+                .subscription(&id)
+                .await
+                .map(|f| f.into_iter().map(|f| Arc::new(f.into())).collect())
+        })
+    }
+
+    pub fn opts(&self) -> RelayOptions {
+        self.inner.opts().into()
+    }
 
     pub fn stats(&self) -> Arc<RelayConnectionStats> {
         Arc::new(self.inner.stats().into())
@@ -150,18 +141,24 @@ impl Relay {
         self.inner.queue() as u64
     }
 
+    // TODO: add notifications
+
+    /// Connect to relay and keep alive connection
     pub fn connect(&self, connection_timeout: Option<Duration>) {
         block_on(self.inner.connect(connection_timeout))
     }
 
+    /// Disconnect from relay and set status to 'Stopped'
     pub fn stop(&self) -> Result<()> {
         block_on(async move { Ok(self.inner.stop().await?) })
     }
 
+    /// Disconnect from relay and set status to 'Terminated'
     pub fn terminate(&self) -> Result<()> {
         block_on(async move { Ok(self.inner.terminate().await?) })
     }
 
+    /// Send msg to relay
     pub fn send_msg(&self, msg: Arc<ClientMessage>, opts: Arc<RelaySendOptions>) -> Result<()> {
         block_on(async move {
             Ok(self
@@ -171,6 +168,45 @@ impl Relay {
         })
     }
 
+    /// Send multiple `ClientMessage` at once
+    pub fn batch_msg(&self, msgs: Vec<Arc<ClientMessage>>, opts: &RelaySendOptions) -> Result<()> {
+        let msgs = msgs
+            .into_iter()
+            .map(|msg| msg.as_ref().deref().clone())
+            .collect();
+        block_on(async move { Ok(self.inner.batch_msg(msgs, **opts).await?) })
+    }
+
+    /// Send event and wait for `OK` relay msg
+    pub fn send_event(&self, event: &Event, opts: &RelaySendOptions) -> Result<Arc<EventId>> {
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner
+                    .send_event(event.deref().clone(), **opts)
+                    .await?
+                    .into(),
+            ))
+        })
+    }
+
+    /// Send multiple `Event` at once
+    pub fn batch_event(&self, events: Vec<Arc<Event>>, opts: &RelaySendOptions) -> Result<()> {
+        let events = events
+            .into_iter()
+            .map(|e| e.as_ref().deref().clone())
+            .collect();
+        block_on(async move { Ok(self.inner.batch_event(events, **opts).await?) })
+    }
+
+    /// Subscribe to filters
+    ///
+    /// Internally generate a new random subscription ID. Check `subscribe_with_id` method to use a custom subscription ID.
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
+    ///
+    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     pub fn subscribe(&self, filters: Vec<Arc<Filter>>, opts: &SubscribeOptions) -> Result<String> {
         block_on(async move {
             Ok(self
@@ -187,6 +223,13 @@ impl Relay {
         })
     }
 
+    /// Subscribe with custom subscription ID
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
+    ///
+    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     pub fn subscribe_with_id(
         &self,
         id: String,
@@ -208,6 +251,7 @@ impl Relay {
         })
     }
 
+    /// Unsubscribe
     pub fn unsubscribe(&self, id: String, opts: Arc<RelaySendOptions>) -> Result<()> {
         block_on(async move {
             Ok(self
@@ -217,10 +261,14 @@ impl Relay {
         })
     }
 
+    /// Unsubscribe from all subscriptions
     pub fn unsubscribe_all(&self, opts: Arc<RelaySendOptions>) -> Result<()> {
         block_on(async move { Ok(self.inner.unsubscribe_all(**opts).await?) })
     }
 
+    /// Get events of filters
+    ///
+    /// Get events from local database and relay
     pub fn get_events_of(
         &self,
         filters: Vec<Arc<Filter>>,
@@ -239,5 +287,30 @@ impl Relay {
                 .map(|e| Arc::new(e.into()))
                 .collect())
         })
+    }
+
+    /// Count events of filters
+    pub fn count_events_of(&self, filters: Vec<Arc<Filter>>, timeout: Duration) -> Result<u64> {
+        block_on(async move {
+            let filters = filters
+                .into_iter()
+                .map(|f| f.as_ref().deref().clone())
+                .collect();
+            Ok(self.inner.count_events_of(filters, timeout).await? as u64)
+        })
+    }
+
+    /// Negentropy reconciliation
+    ///
+    /// Use events stored in database
+    pub fn reconcile(&self, filter: &Filter, opts: &NegentropyOptions) -> Result<()> {
+        block_on(async move { Ok(self.inner.reconcile(filter.deref().clone(), **opts).await?) })
+    }
+
+    // TODO: add reconcile_with_items
+
+    /// Check if relay support negentropy protocol
+    pub fn support_negentropy(&self) -> Result<bool> {
+        block_on(async move { Ok(self.inner.support_negentropy().await?) })
     }
 }
