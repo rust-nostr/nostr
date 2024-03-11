@@ -359,6 +359,38 @@ impl NostrDatabase for SQLiteDatabase {
         Ok(self.indexes.negentropy_items(filter).await)
     }
 
+    async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
+        match self.indexes.delete(filter).await {
+            Some(ids) => {
+                let conn = self.acquire().await?;
+                let ids: Vec<EventId> = ids.into_iter().collect();
+                conn.interact(move |conn| {
+                    for chunk in ids.chunks(BATCH_SIZE) {
+                        let delete_query = format!(
+                            "DELETE FROM events WHERE {};",
+                            chunk
+                                .iter()
+                                .map(|id| format!("event_id = '{id}'"))
+                                .collect::<Vec<_>>()
+                                .join(" OR ")
+                        );
+                        conn.execute(&delete_query, [])?;
+                    }
+
+                    Ok::<(), Error>(())
+                })
+                .await??;
+            }
+            None => {
+                let conn = self.acquire().await?;
+                conn.interact(move |conn| conn.execute("DELETE FROM events;", []))
+                    .await??;
+            }
+        };
+
+        Ok(())
+    }
+
     async fn wipe(&self) -> Result<(), Self::Err> {
         let conn = self.acquire().await?;
 

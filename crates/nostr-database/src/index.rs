@@ -532,25 +532,7 @@ impl InternalDatabaseIndexes {
         }
 
         // Remove events
-        if !to_discard.is_empty() {
-            for id in to_discard.iter() {
-                if let Some(ev) = self.ids_index.remove(id) {
-                    self.index.remove(&ev);
-
-                    if ev.kind.is_parameterized_replaceable() {
-                        if let Some(identifier) = ev.tags.identifier() {
-                            self.kind_author_tags_index
-                                .remove(&(ev.kind, ev.pubkey, identifier));
-                        }
-                    }
-                }
-                self.deleted_ids.insert(*id);
-            }
-
-            if let Some(set) = self.kind_author_index.get_mut(&(kind, pubkey_prefix)) {
-                set.retain(|e| !to_discard.contains(&e.event_id));
-            }
-        }
+        self.discard_events(&to_discard);
 
         // Insert event
         if should_insert {
@@ -591,6 +573,28 @@ impl InternalDatabaseIndexes {
             to_store: should_insert,
             to_discard,
         })
+    }
+
+    fn discard_events(&mut self, ids: &HashSet<EventId>) {
+        if !ids.is_empty() {
+            for id in ids.iter() {
+                if let Some(ev) = self.ids_index.remove(id) {
+                    self.index.remove(&ev);
+
+                    if ev.kind.is_parameterized_replaceable() {
+                        if let Some(identifier) = ev.tags.identifier() {
+                            self.kind_author_tags_index
+                                .remove(&(ev.kind, ev.pubkey, identifier));
+                        }
+                    }
+
+                    if let Some(set) = self.kind_author_index.get_mut(&(ev.kind, ev.pubkey)) {
+                        set.remove(&ev);
+                    }
+                }
+                self.deleted_ids.insert(*id);
+            }
+        }
     }
 
     /// Index [`Event`]
@@ -796,6 +800,20 @@ impl InternalDatabaseIndexes {
         }
     }
 
+    pub fn delete(&mut self, filter: Filter) -> Option<HashSet<EventId>> {
+        match self.internal_query([filter]) {
+            InternalQueryResult::All => {
+                self.clear();
+                None
+            }
+            InternalQueryResult::Set(set) => {
+                let ids: HashSet<EventId> = set.into_iter().map(|ev| ev.event_id).collect();
+                self.discard_events(&ids);
+                Some(ids)
+            }
+        }
+    }
+
     /// Clear indexes
     pub fn clear(&mut self) {
         *self = Self::default();
@@ -889,6 +907,14 @@ impl DatabaseIndexes {
     ) -> bool {
         let inner = self.inner.read().await;
         inner.has_coordinate_been_deleted(coordinate, timestamp)
+    }
+
+    /// Delete all events that match [Filter]
+    ///
+    /// If return `None`, means that all events must be deleted from DB
+    pub async fn delete(&self, filter: Filter) -> Option<HashSet<EventId>> {
+        let mut inner = self.inner.write().await;
+        inner.delete(filter)
     }
 
     /// Clear indexes

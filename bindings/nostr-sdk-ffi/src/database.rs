@@ -86,6 +86,11 @@ impl NostrDatabase {
         })
     }
 
+    /// Delete all events that match the `Filter`
+    pub fn delete(&self, filter: &Filter) -> Result<()> {
+        block_on(async move { Ok(self.inner.delete(filter.deref().clone()).await?) })
+    }
+
     /// Wipe all data
     pub fn wipe(&self) -> Result<()> {
         block_on(async move { Ok(self.inner.wipe().await?) })

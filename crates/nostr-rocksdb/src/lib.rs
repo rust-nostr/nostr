@@ -345,6 +345,27 @@ impl NostrDatabase for RocksDatabase {
         Ok(self.indexes.negentropy_items(filter).await)
     }
 
+    async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
+        match self.indexes.delete(filter).await {
+            Some(ids) => {
+                let events_cf = self.cf_handle(EVENTS_CF)?;
+
+                // Prepare write batch
+                let mut batch = WriteBatchWithTransaction::default();
+
+                for id in ids.into_iter() {
+                    batch.delete_cf(&events_cf, id);
+                }
+
+                // Write batch changes
+                self.db.write(batch).map_err(DatabaseError::backend)?;
+
+                Ok(())
+            }
+            None => Err(DatabaseError::NotSupported),
+        }
+    }
+
     async fn wipe(&self) -> Result<(), Self::Err> {
         Err(DatabaseError::NotSupported)
     }

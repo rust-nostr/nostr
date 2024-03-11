@@ -460,6 +460,27 @@ impl_nostr_database!({
         Ok(self.indexes.negentropy_items(filter).await)
     }
 
+    async fn delete(&self, filter: Filter) -> Result<(), IndexedDBError> {
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
+        let store = tx.object_store(EVENTS_CF)?;
+
+        match self.indexes.delete(filter).await {
+            Some(ids) => {
+                for id in ids.into_iter() {
+                    let key = JsValue::from(id.to_hex());
+                    store.delete(&key)?.await?;
+                }
+            }
+            None => {
+                store.clear()?.await?;
+            }
+        };
+
+        Ok(())
+    }
+
     async fn wipe(&self) -> Result<(), IndexedDBError> {
         for store in ALL_STORES.iter() {
             let tx = self

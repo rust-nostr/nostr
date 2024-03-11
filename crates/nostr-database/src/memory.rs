@@ -248,7 +248,28 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
+    async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
+        let mut events = self.events.lock().await;
+
+        match self.indexes.delete(filter).await {
+            Some(ids) => {
+                for id in ids.into_iter() {
+                    events.pop(&id);
+                }
+            }
+            None => {
+                events.clear();
+            }
+        };
+
+        Ok(())
+    }
+
     async fn wipe(&self) -> Result<(), Self::Err> {
+        // Clear indexes
+        self.indexes.clear().await;
+
+        // Clear
         let mut seen_event_ids = self.seen_event_ids.lock().await;
         seen_event_ids.clear();
         let mut events = self.events.lock().await;

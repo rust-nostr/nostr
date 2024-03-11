@@ -174,6 +174,9 @@ pub trait NostrDatabase: AsyncTraitDeps {
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err>;
 
+    /// Delete all events that match the [Filter]
+    async fn delete(&self, filter: Filter) -> Result<(), Self::Err>;
+
     /// Wipe all data
     async fn wipe(&self) -> Result<(), Self::Err>;
 }
@@ -361,6 +364,10 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
         self.0.negentropy_items(filter).await.map_err(Into::into)
+    }
+
+    async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
+        self.0.delete(filter).await.map_err(Into::into)
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {
