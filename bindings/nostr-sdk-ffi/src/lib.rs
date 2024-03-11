@@ -6,12 +6,13 @@
 
 nostr_ffi::uniffi_reexport_scaffolding!();
 
-mod client;
-mod database;
-mod error;
-mod logger;
+pub mod client;
+pub mod database;
+pub mod error;
+pub mod logger;
+pub mod nwc;
 pub mod profile;
-mod relay;
+pub mod relay;
 
 trait FromResult<T>: Sized {
     fn from_result(_: T) -> error::Result<Self>;
