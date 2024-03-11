@@ -125,9 +125,7 @@ impl RelayOptions {
 
     /// Set `reconnect` option
     pub fn update_reconnect(&self, reconnect: bool) {
-        let _ = self
-            .reconnect
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(reconnect));
+        self.reconnect.store(reconnect, Ordering::SeqCst);
     }
 
     /// Retry connection time (default: 10 sec)
@@ -152,9 +150,7 @@ impl RelayOptions {
     /// Set retry_sec option
     pub fn update_retry_sec(&self, retry_sec: u64) {
         if retry_sec >= MIN_RETRY_SEC {
-            let _ = self
-                .retry_sec
-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(retry_sec));
+            self.retry_sec.store(retry_sec, Ordering::SeqCst);
         } else {
             tracing::warn!("Relay options: retry_sec it's less then the minimum value allowed (min: {MIN_RETRY_SEC} secs)");
         }
@@ -174,11 +170,8 @@ impl RelayOptions {
 
     /// Set adjust_retry_sec option
     pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
-        let _ = self
-            .adjust_retry_sec
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| {
-                Some(adjust_retry_sec)
-            });
+        self.adjust_retry_sec
+            .store(adjust_retry_sec, Ordering::SeqCst);
     }
 }
 
