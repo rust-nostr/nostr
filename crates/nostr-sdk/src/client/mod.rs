@@ -56,9 +56,6 @@ pub enum Error {
     /// Metadata error
     #[error(transparent)]
     Metadata(#[from] MetadataError),
-    /// Notification Handler error
-    #[error("notification handler error: {0}")]
-    Handler(String),
     /// Signer not configured
     #[error("signer not configured")]
     SignerNotConfigured,
@@ -1355,17 +1352,6 @@ impl Client {
         F: Fn(RelayPoolNotification) -> Fut,
         Fut: Future<Output = Result<bool>>,
     {
-        let mut notifications = self.notifications();
-        while let Ok(notification) = notifications.recv().await {
-            let stop: bool = RelayPoolNotification::Stop == notification;
-            let shutdown: bool = RelayPoolNotification::Shutdown == notification;
-            let exit: bool = func(notification)
-                .await
-                .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit || stop || shutdown {
-                break;
-            }
-        }
-        Ok(())
+        Ok(self.pool.handle_notifications(func).await?)
     }
 }

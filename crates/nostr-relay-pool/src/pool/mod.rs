@@ -5,12 +5,14 @@
 //! Relay Pool
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
 use atomic_destructor::AtomicDestructor;
 use nostr::{
-    ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, TryIntoUrl, Url,
+    ClientMessage, Event, EventId, Filter, RelayMessage, Result, SubscriptionId, Timestamp,
+    TryIntoUrl, Url,
 };
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
@@ -357,5 +359,25 @@ impl RelayPool {
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
         self.inner.reconcile_with_items(filter, items, opts).await
+    }
+
+    /// Handle notifications
+    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
+    where
+        F: Fn(RelayPoolNotification) -> Fut,
+        Fut: Future<Output = Result<bool>>,
+    {
+        let mut notifications = self.notifications();
+        while let Ok(notification) = notifications.recv().await {
+            let stop: bool = RelayPoolNotification::Stop == notification;
+            let shutdown: bool = RelayPoolNotification::Shutdown == notification;
+            let exit: bool = func(notification)
+                .await
+                .map_err(|e| Error::Handler(e.to_string()))?;
+            if exit || stop || shutdown {
+                break;
+            }
+        }
+        Ok(())
     }
 }

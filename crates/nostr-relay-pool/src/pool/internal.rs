@@ -60,6 +60,9 @@ pub enum Error {
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
+    /// Notification Handler error
+    #[error("notification handler error: {0}")]
+    Handler(String),
 }
 
 #[derive(Debug, Clone)]
