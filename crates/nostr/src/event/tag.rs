@@ -156,6 +156,8 @@ pub enum Marker {
     Root,
     /// Reply
     Reply,
+    /// Mention
+    Mention,
     /// Custom
     Custom(String),
 }
@@ -165,6 +167,7 @@ impl fmt::Display for Marker {
         match self {
             Self::Root => write!(f, "root"),
             Self::Reply => write!(f, "reply"),
+            Self::Mention => write!(f, "mention"),
             Self::Custom(m) => write!(f, "{m}"),
         }
     }
@@ -179,6 +182,7 @@ where
         match s.as_str() {
             "root" => Self::Root,
             "reply" => Self::Reply,
+            "mention" => Self::Mention,
             _ => Self::Custom(s),
         }
     }

@@ -29,6 +29,8 @@ pub enum Marker {
     Root,
     /// Reply
     Reply,
+    /// Mention
+    Mention,
     /// Custom
     Custom { custom: String },
 }
@@ -38,6 +40,7 @@ impl From<Marker> for tag::Marker {
         match value {
             Marker::Root => Self::Root,
             Marker::Reply => Self::Reply,
+            Marker::Mention => Self::Mention,
             Marker::Custom { custom } => Self::Custom(custom),
         }
     }
@@ -48,6 +51,7 @@ impl From<tag::Marker> for Marker {
         match value {
             tag::Marker::Root => Self::Root,
             tag::Marker::Reply => Self::Reply,
+            tag::Marker::Mention => Self::Mention,
             tag::Marker::Custom(custom) => Self::Custom { custom },
         }
     }
