@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
+use crate::Limits;
 
 /// Default send timeout
 pub const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
@@ -31,6 +32,7 @@ pub struct RelayOptions {
     reconnect: Arc<AtomicBool>,
     retry_sec: Arc<AtomicU64>,
     adjust_retry_sec: Arc<AtomicBool>,
+    pub(super) limits: Limits,
 }
 
 impl Default for RelayOptions {
@@ -43,6 +45,7 @@ impl Default for RelayOptions {
             reconnect: Arc::new(AtomicBool::new(true)),
             retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),
             adjust_retry_sec: Arc::new(AtomicBool::new(true)),
+            limits: Limits::default(),
         }
     }
 }
@@ -172,6 +175,12 @@ impl RelayOptions {
     pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
         self.adjust_retry_sec
             .store(adjust_retry_sec, Ordering::SeqCst);
+    }
+
+    /// Set custom limits
+    pub fn limits(mut self, limits: Limits) -> Self {
+        self.limits = limits;
+        self
     }
 }
 

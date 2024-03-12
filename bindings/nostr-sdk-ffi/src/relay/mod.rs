@@ -38,7 +38,7 @@ impl From<pool::Relay> for Relay {
 
 #[uniffi::export]
 impl Relay {
-    /// Create new `Relay` with **default** `options` and `limits` and `in-memory database`
+    /// Create new `Relay` with **default** `options` and `in-memory database`
     #[uniffi::constructor]
     pub fn new(url: String) -> Result<Self> {
         let url: Url = Url::parse(&url)?;
@@ -47,7 +47,7 @@ impl Relay {
         })
     }
 
-    /// Create new `Relay` with default `in-memory database` custom `options` and/or `limits`
+    /// Create new `Relay` with default `in-memory database` and custom `options`
     #[uniffi::constructor]
     pub fn with_opts(url: String, opts: &RelayOptions) -> Result<Self> {
         let url: Url = Url::parse(&url)?;
@@ -57,19 +57,14 @@ impl Relay {
         })
     }
 
-    /// Create new `Relay` with **custom** `options`, `database` and/or `limits`
+    /// Create new `Relay` with **custom** `options` and/or `database`
     #[uniffi::constructor]
-    pub fn custom(
-        url: String,
-        database: &NostrDatabase,
-        opts: &RelayOptions,
-        limits: &RelayLimits,
-    ) -> Result<Self> {
+    pub fn custom(url: String, database: &NostrDatabase, opts: &RelayOptions) -> Result<Self> {
         let url: Url = Url::parse(&url)?;
         let database: Arc<DynNostrDatabase> = database.into();
         let opts = opts.deref().clone();
         Ok(Self {
-            inner: nostr_sdk::Relay::custom(url, database, opts, **limits),
+            inner: nostr_sdk::Relay::custom(url, database, opts),
         })
     }
 

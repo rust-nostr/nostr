@@ -10,6 +10,7 @@ use std::time::Duration;
 use nostr_ffi::helper::unwrap_or_clone_arc;
 use uniffi::{Enum, Object};
 
+use super::RelayLimits;
 use crate::error::Result;
 
 /// `Relay` options
@@ -128,6 +129,13 @@ impl RelayOptions {
     /// Set adjust_retry_sec option
     pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
         self.inner.update_adjust_retry_sec(adjust_retry_sec);
+    }
+
+    /// Set custom limits
+    pub fn limits(self: Arc<Self>, limits: &RelayLimits) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.limits(**limits);
+        builder
     }
 }
 

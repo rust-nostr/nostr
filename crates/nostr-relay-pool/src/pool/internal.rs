@@ -19,7 +19,6 @@ use tokio::sync::{broadcast, Mutex, RwLock};
 
 use super::options::RelayPoolOptions;
 use super::RelayPoolNotification;
-use crate::relay::limits::Limits;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Error as RelayError, Relay};
 use crate::SubscribeOptions;
@@ -195,7 +194,7 @@ impl InternalRelayPool {
         let url: Url = url.try_into_url()?;
         let mut relays = self.relays.write().await;
         if !relays.contains_key(&url) {
-            let relay = Relay::custom(url, self.database.clone(), opts, Limits::default());
+            let relay = Relay::custom(url, self.database.clone(), opts);
             relay
                 .set_notification_sender(Some(self.notification_sender.clone()))
                 .await;

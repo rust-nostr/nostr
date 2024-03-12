@@ -35,7 +35,6 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
 use super::flags::AtomicRelayServiceFlags;
-use super::limits::Limits;
 use super::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions,
     SubscribeOptions, MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC, NEGENTROPY_BATCH_SIZE_DOWN,
@@ -196,7 +195,6 @@ pub(crate) struct InternalRelay {
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
-    limits: Limits,
 }
 
 impl AtomicDestroyer for InternalRelay {
@@ -215,12 +213,7 @@ impl AtomicDestroyer for InternalRelay {
 }
 
 impl InternalRelay {
-    pub fn new(
-        url: Url,
-        database: Arc<DynNostrDatabase>,
-        opts: RelayOptions,
-        limits: Limits,
-    ) -> Self {
+    pub fn new(url: Url, database: Arc<DynNostrDatabase>, opts: RelayOptions) -> Self {
         let (relay_sender, relay_receiver) = mpsc::channel::<Message>(1024);
         let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
 
@@ -239,7 +232,6 @@ impl InternalRelay {
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: Arc::new(RwLock::new(None)),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
-            limits,
         }
     }
 
@@ -683,7 +675,7 @@ impl InternalRelay {
 
                     async fn func(relay: &InternalRelay, data: Vec<u8>) -> Result<bool, Error> {
                         let size: usize = data.len();
-                        let max_size: usize = relay.limits.messages.max_size as usize;
+                        let max_size: usize = relay.opts.limits.messages.max_size as usize;
                         relay.stats.add_bytes_received(size);
 
                         if size > max_size {
@@ -696,14 +688,15 @@ impl InternalRelay {
                         if let RawRelayMessage::Event { event, .. } = &msg {
                             // Check event size
                             let size: usize = event.as_json().as_bytes().len();
-                            let max_size: usize = relay.limits.events.max_size as usize;
+                            let max_size: usize = relay.opts.limits.events.max_size as usize;
                             if size > max_size {
                                 return Err(Error::EventTooLarge { size, max_size });
                             }
 
                             // Check tags limit
                             let size: usize = event.tags.len();
-                            let max_num_tags: usize = relay.limits.events.max_num_tags as usize;
+                            let max_num_tags: usize =
+                                relay.opts.limits.events.max_num_tags as usize;
                             if size > max_num_tags {
                                 return Err(Error::TooManyTags {
                                     size,
