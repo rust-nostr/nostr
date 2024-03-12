@@ -29,7 +29,7 @@ mod status;
 pub use self::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 pub use self::internal::Error;
 use self::internal::InternalRelay;
-pub use self::limits::Limits;
+pub use self::limits::RelayLimits;
 pub use self::options::{
     FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelaySendOptions,
     SubscribeAutoCloseOptions, SubscribeOptions,

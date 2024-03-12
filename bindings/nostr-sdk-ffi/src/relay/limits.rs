@@ -6,17 +6,17 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
-use nostr_sdk::pool::relay::Limits;
+use nostr_sdk::pool::relay;
 use uniffi::Object;
 
 /// Relay Limits
 #[derive(Clone, Object)]
 pub struct RelayLimits {
-    inner: Limits,
+    inner: relay::RelayLimits,
 }
 
 impl Deref for RelayLimits {
-    type Target = Limits;
+    type Target = relay::RelayLimits;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -28,7 +28,7 @@ impl RelayLimits {
     #[uniffi::constructor]
     pub fn new() -> Self {
         Self {
-            inner: Limits::default(),
+            inner: relay::RelayLimits::default(),
         }
     }
 
