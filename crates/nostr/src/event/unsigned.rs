@@ -164,3 +164,16 @@ impl UnsignedEvent {
 impl JsonUtil for UnsignedEvent {
     type Err = Error;
 }
+
+impl From<Event> for UnsignedEvent {
+    fn from(event: Event) -> Self {
+        Self {
+            id: event.id,
+            pubkey: event.pubkey,
+            created_at: event.created_at,
+            kind: event.kind,
+            tags: event.tags.clone(),
+            content: event.content.clone(),
+        }
+    }
+}
