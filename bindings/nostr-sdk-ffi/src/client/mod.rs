@@ -28,6 +28,7 @@ pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
+use crate::relay::RelayOptions;
 use crate::{HandleNotification, NostrDatabase, Relay};
 
 #[derive(Object)]
@@ -114,8 +115,22 @@ impl Client {
         block_on(async move { Ok(self.inner.add_relay(url).await?) })
     }
 
+    /// Add new relay with custom `RelayOptions`
+    ///
+    /// Return `false` if the relay already exists.
+    ///
+    /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
+    pub fn add_relay_with_opts(&self, url: String, opts: &RelayOptions) -> Result<bool> {
+        block_on(async move {
+            Ok(self
+                .inner
+                .add_relay_with_opts(url, opts.deref().clone())
+                .await?)
+        })
+    }
+
     /// Add multiple relays
-    /// 
+    ///
     /// Connection is **NOT** automatically started with relays, remember to call `connect` method!
     pub fn add_relays(&self, relays: Vec<String>) -> Result<()> {
         block_on(async move { Ok(self.inner.add_relays(relays).await?) })
