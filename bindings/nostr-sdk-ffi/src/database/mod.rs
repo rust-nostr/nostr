@@ -10,6 +10,9 @@ use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt,
 use nostr_sdk::{block_on, SQLiteDatabase};
 use uniffi::Object;
 
+pub mod custom;
+
+use self::custom::{CustomNostrDatabase, IntermediateCustomNostrDatabase};
 use crate::error::Result;
 use crate::profile::Profile;
 
@@ -40,6 +43,15 @@ impl NostrDatabase {
                 inner: db.into_nostr_database(),
             })
         })
+    }
+
+    #[uniffi::constructor]
+    pub fn custom(database: Box<dyn CustomNostrDatabase>) -> Self {
+        let intermediate = IntermediateCustomNostrDatabase { inner: database };
+
+        Self {
+            inner: intermediate.into_nostr_database(),
+        }
     }
 
     /// Save [`Event`] into store
