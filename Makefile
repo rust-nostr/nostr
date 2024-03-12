@@ -1,4 +1,4 @@
-.PHONY: book
+.PHONY: book precommit check
 
 cli:
 	cargo build -p nostr-cli --release
