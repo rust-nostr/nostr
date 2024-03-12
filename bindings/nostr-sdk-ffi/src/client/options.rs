@@ -9,6 +9,8 @@ use std::time::Duration;
 use nostr_ffi::helper::unwrap_or_clone_arc;
 use uniffi::Object;
 
+use crate::relay::RelayLimits;
+
 #[derive(Clone, Object)]
 pub struct Options {
     inner: nostr_sdk::Options,
@@ -92,6 +94,13 @@ impl Options {
     pub fn send_timeout(self: Arc<Self>, send_timeout: Option<Duration>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.send_timeout(send_timeout);
+        builder
+    }
+
+    /// Set custom relay limits options
+    pub fn relay_limits(self: Arc<Self>, limits: &RelayLimits) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.relay_limits(**limits);
         builder
     }
 }

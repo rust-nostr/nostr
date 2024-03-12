@@ -247,11 +247,12 @@ impl Client {
 
     /// Add new relay
     ///
-    /// This method **NOT** automatically start connection with relay!
-    ///
     /// Return `false` if the relay already exists.
     ///
-    /// To use a proxy, see `Client::add_relay_with_opts`.
+    /// This method use perviously set or default [Options] to configure the [Relay] (ex. set proxy, set min POW, set relay limits, ...).
+    /// To use custom [RelayOptions], check `Client::add_relay_with_opts`.
+    ///
+    /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
     ///
     /// # Example
     /// ```rust,no_run
@@ -274,22 +275,24 @@ impl Client {
     {
         let opts: RelayOptions = RelayOptions::new();
 
-        // Add proxy
+        // Set proxy
         #[cfg(not(target_arch = "wasm32"))]
         let opts: RelayOptions = opts.proxy(self.opts.proxy);
 
-        // Add min POW difficulty
-        let opts: RelayOptions = opts.pow(self.opts.get_min_pow_difficulty());
+        // Set min POW difficulty and limits
+        let opts: RelayOptions = opts
+            .pow(self.opts.get_min_pow_difficulty())
+            .limits(self.opts.relay_limits);
 
         // Add relay
         self.add_relay_with_opts(url, opts).await
     }
 
-    /// Add new relay with [`RelayOptions`]
-    ///
-    /// This method **NOT** automatically start connection with relay!
+    /// Add new relay with custom [`RelayOptions`]
     ///
     /// Return `false` if the relay already exists.
+    ///
+    /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
     ///
     /// # Example
     /// ```rust,no_run
@@ -321,7 +324,7 @@ impl Client {
 
     /// Add multiple relays
     ///
-    /// This method **NOT** automatically start connection with relays!
+    /// Connection is **NOT** automatically started with relays, remember to call `client.connect()`!
     pub async fn add_relays<I, U>(&self, relays: I) -> Result<(), Error>
     where
         I: IntoIterator<Item = U>,

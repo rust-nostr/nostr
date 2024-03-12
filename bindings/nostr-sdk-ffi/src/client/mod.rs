@@ -102,10 +102,21 @@ impl Client {
         block_on(async move { Ok(Arc::new(self.inner.relay(url).await?.into())) })
     }
 
+    /// Add new relay
+    ///
+    /// Return `false` if the relay already exists.
+    ///
+    /// This method use perviously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
+    /// To use custom `RelayOptions`, check `add_relay_with_opts` method.
+    ///
+    /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
     pub fn add_relay(&self, url: String) -> Result<bool> {
         block_on(async move { Ok(self.inner.add_relay(url).await?) })
     }
 
+    /// Add multiple relays
+    /// 
+    /// Connection is **NOT** automatically started with relays, remember to call `connect` method!
     pub fn add_relays(&self, relays: Vec<String>) -> Result<()> {
         block_on(async move { Ok(self.inner.add_relays(relays).await?) })
     }

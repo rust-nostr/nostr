@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_relay_pool::relay::options::DEFAULT_SEND_TIMEOUT;
-use nostr_relay_pool::{RelayPoolOptions, RelaySendOptions};
+use nostr_relay_pool::{RelayLimits, RelayPoolOptions, RelaySendOptions};
 
 /// Options
 #[derive(Debug, Clone)]
@@ -41,6 +41,8 @@ pub struct Options {
     /// Proxy
     #[cfg(not(target_arch = "wasm32"))]
     pub proxy: Option<SocketAddr>,
+    /// Default limits for new added relays
+    pub relay_limits: RelayLimits,
     /// Pool Options
     pub pool: RelayPoolOptions,
 }
@@ -59,6 +61,7 @@ impl Default for Options {
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             #[cfg(not(target_arch = "wasm32"))]
             proxy: None,
+            relay_limits: RelayLimits::default(),
             pool: RelayPoolOptions::default(),
         }
     }
@@ -195,6 +198,12 @@ impl Options {
     /// Shutdown client on drop
     #[deprecated(since = "0.29.0", note = "No longer needed")]
     pub fn shutdown_on_drop(self, _value: bool) -> Self {
+        self
+    }
+
+    /// Set custom relay limits options
+    pub fn relay_limits(mut self, limits: RelayLimits) -> Self {
+        self.relay_limits = limits;
         self
     }
 
