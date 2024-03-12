@@ -102,9 +102,11 @@ impl JsClient {
 
     /// Add new relay
     ///
-    /// This method **NOT** automatically start connection with relay!
-    ///
     /// Return `false` if the relay already exists.
+    ///
+    /// This method use perviously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
+    ///
+    /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
     #[wasm_bindgen(js_name = addRelay)]
     pub async fn add_relay(&self, url: String) -> Result<bool> {
         self.inner.add_relay(url).await.map_err(into_err)
@@ -112,7 +114,7 @@ impl JsClient {
 
     /// Add multiple relays
     ///
-    /// This method **NOT** automatically start connection with relays!
+    /// Connection is **NOT** automatically started with relays, remember to call `connect` method!
     #[wasm_bindgen(js_name = addRelays)]
     pub async fn add_relays(&self, urls: Vec<String>) -> Result<()> {
         self.inner.add_relays(urls).await.map_err(into_err)
