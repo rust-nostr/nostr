@@ -7,6 +7,7 @@ use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 pub mod flags;
+pub mod limits;
 pub mod options;
 
 use self::flags::JsAtomicRelayServiceFlags;

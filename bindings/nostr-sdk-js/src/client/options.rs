@@ -8,6 +8,7 @@ use nostr_sdk::Options;
 use wasm_bindgen::prelude::*;
 
 use crate::duration::JsDuration;
+use crate::relay::limits::JsRelayLimits;
 
 #[wasm_bindgen(js_name = Options)]
 pub struct JsOptions {
@@ -86,5 +87,11 @@ impl JsOptions {
     #[wasm_bindgen(js_name = sendTimeout)]
     pub fn send_timeout(self, send_timeout: Option<JsDuration>) -> Self {
         self.inner.send_timeout(send_timeout.map(|d| *d)).into()
+    }
+
+    /// Set custom relay limits
+    #[wasm_bindgen(js_name = relayLimits)]
+    pub fn relay_limits(self, limits: &JsRelayLimits) -> Self {
+        self.inner.relay_limits(**limits).into()
     }
 }

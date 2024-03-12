@@ -201,7 +201,7 @@ impl Options {
         self
     }
 
-    /// Set custom relay limits options
+    /// Set custom relay limits
     pub fn relay_limits(mut self, limits: RelayLimits) -> Self {
         self.relay_limits = limits;
         self
