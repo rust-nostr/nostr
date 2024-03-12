@@ -1694,7 +1694,10 @@ impl InternalRelay {
                                                 .await?;
                                             num_sent += 1;
                                         }
-                                        Err(e) => tracing::error!("Couldn't upload event: {e}"),
+                                        Err(e) => tracing::error!(
+                                            "Couldn't upload event to {}: {e}",
+                                            self.url
+                                        ),
                                     }
                                 }
                             }
@@ -1702,7 +1705,8 @@ impl InternalRelay {
 
                         if num_sent > 0 {
                             tracing::info!(
-                                "Negentropy UP: {} events ({} remaining)",
+                                "Negentropy UP for '{}': {} events ({} remaining)",
+                                self.url,
                                 num_sent,
                                 have_ids.len()
                             );
@@ -1721,7 +1725,8 @@ impl InternalRelay {
                         }
 
                         tracing::info!(
-                            "Negentropy DOWN: {} events ({} remaining)",
+                            "Negentropy DOWN for '{}': {} events ({} remaining)",
+                            self.url,
                             ids.len(),
                             need_ids.len()
                         );
