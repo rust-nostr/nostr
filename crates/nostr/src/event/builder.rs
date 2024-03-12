@@ -1072,17 +1072,19 @@ impl EventBuilder {
     /// Set stall data
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
-    pub fn stall_data(data: &StallData) -> Self {
-        let tags: Vec<Tag> = data.clone().into();
-        Self::new(Kind::SetStall, data.as_json(), tags)
+    pub fn stall_data(data: StallData) -> Self {
+        let content: String = data.as_json();
+        let tags: Vec<Tag> = data.into();
+        Self::new(Kind::SetStall, content, tags)
     }
 
     /// Set product data
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
     pub fn product_data(data: ProductData) -> Self {
-        let tags: Vec<Tag> = data.clone().into();
-        Self::new(Kind::SetProduct, data.as_json(), tags)
+        let content: String = data.as_json();
+        let tags: Vec<Tag> = data.into();
+        Self::new(Kind::SetProduct, content, tags)
     }
 
     /// Seal

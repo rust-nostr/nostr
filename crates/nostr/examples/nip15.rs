@@ -14,7 +14,7 @@ fn main() -> Result<()> {
         .description("this is a test stall")
         .shipping(vec![shipping.clone()]);
 
-    let stall_event = EventBuilder::stall_data(&stall).to_event(&alice_keys)?;
+    let stall_event = EventBuilder::stall_data(stall).to_event(&alice_keys)?;
     println!("{}", stall_event.as_json());
 
     let product = ProductData::new("1", "123", "my test product", "USD")

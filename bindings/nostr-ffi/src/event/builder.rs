@@ -416,7 +416,7 @@ impl EventBuilder {
     #[uniffi::constructor]
     pub fn stall_data(data: &StallData) -> Self {
         Self {
-            inner: nostr::EventBuilder::stall_data(data.deref()),
+            inner: nostr::EventBuilder::stall_data(data.deref().clone()),
         }
     }
 
