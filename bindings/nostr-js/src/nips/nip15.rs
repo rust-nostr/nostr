@@ -63,9 +63,9 @@ impl JsShippingMethod {
         ShippingMethod::new(id, cost).into()
     }
 
-    #[wasm_bindgen(js_name = getShuppingCost)]
+    #[wasm_bindgen(js_name = getShippingCost)]
     pub fn get_shipping_cost(&self) -> JsShippingCost {
-        ShippingMethod::get_shipping_cost(self.deref()).into()
+        self.inner.get_shipping_cost().into()
     }
 
     #[wasm_bindgen(getter)]
