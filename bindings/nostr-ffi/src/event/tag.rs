@@ -883,6 +883,14 @@ impl Tag {
         })
     }
 
+    /// Compose `["e", "<event-id>"]` tag
+    #[uniffi::constructor]
+    pub fn event(event_id: &EventId) -> Self {
+        Self {
+            inner: tag::Tag::event(**event_id),
+        }
+    }
+
     /// Compose `["p", "<public-key>"]` tag
     #[uniffi::constructor]
     pub fn public_key(public_key: &PublicKey) -> Self {
@@ -891,12 +899,9 @@ impl Tag {
         }
     }
 
-    /// Compose `["e", "<event-id>"]` tag
-    #[uniffi::constructor]
-    pub fn event(event_id: &EventId) -> Self {
-        Self {
-            inner: tag::Tag::event(**event_id),
-        }
+    /// Check if `Tag` is an event `reply`
+    pub fn is_reply(&self) -> bool {
+        self.inner.is_reply()
     }
 
     pub fn as_enum(&self) -> TagEnum {

@@ -994,7 +994,21 @@ impl Tag {
         }
     }
 
+    /// Check if [Tag] is an event `reply`
+    #[inline]
+    pub fn is_reply(&self) -> bool {
+        matches!(
+            self,
+            Tag::Event {
+                marker: Some(Marker::Reply),
+                ..
+            }
+        )
+    }
+
     /// Get [`Tag`] as string vector
+    ///
+    /// Internally clone tag and convert it to `Vec<String>`. To avoid tag clone, use `Tag::to_vec`.
     #[inline]
     pub fn as_vec(&self) -> Vec<String> {
         self.clone().into()
@@ -1531,6 +1545,32 @@ impl From<Identity> for Vec<String> {
 mod tests {
     use super::*;
     use crate::{Event, JsonUtil, Timestamp};
+
+    #[test]
+    fn test_tag_is_reply() {
+        let tag = Tag::Relay(UncheckedUrl::new("wss://relay.damus.io"));
+        assert!(!tag.is_reply());
+
+        let tag = Tag::Event {
+            event_id: EventId::from_hex(
+                "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45",
+            )
+            .unwrap(),
+            relay_url: None,
+            marker: Some(Marker::Reply),
+        };
+        assert!(tag.is_reply());
+
+        let tag = Tag::Event {
+            event_id: EventId::from_hex(
+                "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45",
+            )
+            .unwrap(),
+            relay_url: None,
+            marker: Some(Marker::Root),
+        };
+        assert!(!tag.is_reply());
+    }
 
     #[test]
     fn test_deserialize_tag_from_event() {

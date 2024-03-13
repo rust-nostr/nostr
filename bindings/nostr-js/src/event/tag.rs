@@ -137,6 +137,11 @@ impl JsTag {
         })
     }
 
+    /// Check if `Tag` is an event `reply`
+    pub fn is_reply(&self) -> bool {
+        self.inner.is_reply()
+    }
+
     pub fn kind(&self) -> String {
         self.inner.kind().to_string()
     }
