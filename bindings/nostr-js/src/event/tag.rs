@@ -6,6 +6,8 @@ use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
+use crate::event::JsEventId;
+use crate::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = HttpMethod)]
 pub enum JsHttpMethod {
@@ -137,6 +139,20 @@ impl JsTag {
         })
     }
 
+    /// Compose `["e", "<event-id>"]` tag
+    pub fn event(event_id: &JsEventId) -> Self {
+        Self {
+            inner: Tag::event(**event_id),
+        }
+    }
+
+    /// Compose `["p", "<public-key>"]` tag
+    pub fn public_key(public_key: &JsPublicKey) -> Self {
+        Self {
+            inner: Tag::public_key(**public_key),
+        }
+    }
+
     /// Check if `Tag` is an event `reply`
     pub fn is_reply(&self) -> bool {
         self.inner.is_reply()
@@ -147,6 +163,8 @@ impl JsTag {
     }
 
     /// Get tag as vector of string
+    ///
+    /// Internally clone tag and convert it to `Vec<String>`. To avoid tag clone, use `toVec()`.
     #[wasm_bindgen(js_name = asVec)]
     pub fn as_vec(&self) -> Vec<String> {
         self.inner.as_vec()
