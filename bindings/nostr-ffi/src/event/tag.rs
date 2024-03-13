@@ -17,6 +17,7 @@ use uniffi::{Enum, Object, Record};
 
 use super::kind::KindEnum;
 use crate::error::{NostrError, Result};
+use crate::nips::nip01::Coordinate;
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::LiveEventMarker;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -433,9 +434,7 @@ pub enum TagEnum {
         identity: Identity,
     },
     A {
-        kind: Arc<Kind>,
-        public_key: Arc<PublicKey>,
-        identifier: String,
+        coordinate: Arc<Coordinate>,
         relay_url: Option<String>,
     },
     Kind {
@@ -636,14 +635,10 @@ impl From<tag::Tag> for TagEnum {
             tag::Tag::Geohash(g) => Self::Geohash { geohash: g },
             tag::Tag::Identifier(d) => Self::Identifier { identifier: d },
             tag::Tag::A {
-                kind,
-                public_key,
-                identifier,
+                coordinate,
                 relay_url,
             } => Self::A {
-                kind: Arc::new(kind.into()),
-                public_key: Arc::new(public_key.into()),
-                identifier,
+                coordinate: Arc::new(coordinate.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
             },
             tag::Tag::ExternalIdentity(identity) => Self::ExternalIdentityTag {
@@ -813,14 +808,10 @@ impl TryFrom<TagEnum> for tag::Tag {
                 Ok(Self::ExternalIdentity(identity.into()))
             }
             TagEnum::A {
-                kind,
-                public_key,
-                identifier,
+                coordinate,
                 relay_url,
             } => Ok(Self::A {
-                kind: **kind,
-                public_key: **public_key,
-                identifier,
+                coordinate: coordinate.as_ref().deref().clone(),
                 relay_url: relay_url.map(UncheckedUrl::from),
             }),
             TagEnum::Kind { kind } => Ok(Self::Kind(kind.into())),

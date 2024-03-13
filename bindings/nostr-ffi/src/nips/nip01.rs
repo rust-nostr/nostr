@@ -1,6 +1,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -16,6 +17,31 @@ use crate::{Kind, PublicKey};
 #[derive(Object)]
 pub struct Coordinate {
     inner: nip01::Coordinate,
+}
+
+impl Deref for Coordinate {
+    type Target = nip01::Coordinate;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl From<nip01::Coordinate> for Coordinate {
+    fn from(inner: nip01::Coordinate) -> Self {
+        Self { inner }
+    }
+}
+
+impl From<Coordinate> for nip01::Coordinate {
+    fn from(value: Coordinate) -> Self {
+        Self {
+            kind: value.inner.kind,
+            public_key: value.inner.public_key,
+            identifier: value.inner.identifier,
+            relays: value.inner.relays,
+        }
+    }
 }
 
 #[uniffi::export]
@@ -64,22 +90,5 @@ impl Coordinate {
 
     pub fn relays(&self) -> Vec<String> {
         self.inner.relays.clone()
-    }
-}
-
-impl From<Coordinate> for nip01::Coordinate {
-    fn from(value: Coordinate) -> Self {
-        Self {
-            kind: value.inner.kind,
-            public_key: value.inner.public_key,
-            identifier: value.inner.identifier,
-            relays: value.inner.relays,
-        }
-    }
-}
-
-impl From<nip01::Coordinate> for Coordinate {
-    fn from(inner: nip01::Coordinate) -> Self {
-        Self { inner }
     }
 }

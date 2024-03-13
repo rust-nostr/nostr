@@ -103,10 +103,8 @@ impl Coordinate {
 impl From<Coordinate> for Tag {
     fn from(value: Coordinate) -> Self {
         Self::A {
-            kind: value.kind,
-            public_key: value.public_key,
-            identifier: value.identifier,
-            relay_url: value.relays.first().map(UncheckedUrl::from),
+            relay_url: value.relays.first().cloned().map(UncheckedUrl::from),
+            coordinate: value,
         }
     }
 }
@@ -121,6 +119,25 @@ impl From<Coordinate> for Filter {
                 .author(value.public_key)
                 .identifier(value.identifier)
         }
+    }
+}
+
+impl From<&Coordinate> for Filter {
+    fn from(value: &Coordinate) -> Self {
+        if value.identifier.is_empty() {
+            Filter::new().kind(value.kind).author(value.public_key)
+        } else {
+            Filter::new()
+                .kind(value.kind)
+                .author(value.public_key)
+                .identifier(value.identifier.clone())
+        }
+    }
+}
+
+impl fmt::Display for Coordinate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}", self.kind, self.public_key, self.identifier)
     }
 }
 

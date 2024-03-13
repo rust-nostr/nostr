@@ -19,6 +19,7 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::id::{self, EventId};
+use crate::nips::nip01::{self, Coordinate};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
@@ -37,8 +38,6 @@ pub enum Error {
     UnknownReportType,
     /// Impossible to find tag kind
     KindNotFound,
-    /// Invalid length
-    InvalidLength,
     /// Invalid Zap Request
     InvalidZapRequest,
     /// Impossible to parse integer
@@ -51,6 +50,8 @@ pub enum Error {
     Url(ParseError),
     /// EventId error
     EventId(id::Error),
+    /// NIP01 error
+    NIP01(nip01::Error),
     /// NIP26 error
     NIP26(Nip26Error),
     /// NIP53 error
@@ -77,13 +78,13 @@ impl fmt::Display for Error {
             Self::MarkerParseError => write!(f, "Impossible to parse marker"),
             Self::UnknownReportType => write!(f, "Unknown report type"),
             Self::KindNotFound => write!(f, "Impossible to find tag kind"),
-            Self::InvalidLength => write!(f, "Invalid length"),
             Self::InvalidZapRequest => write!(f, "Invalid Zap request"),
             Self::ParseIntError(e) => write!(f, "Parse integer: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::Hex(e) => write!(f, "Hex: {e}"),
             Self::Url(e) => write!(f, "Url: {e}"),
             Self::EventId(e) => write!(f, "Event ID: {e}"),
+            Self::NIP01(e) => write!(f, "NIP01: {e}"),
             Self::NIP26(e) => write!(f, "NIP26: {e}"),
             Self::NIP53(e) => write!(f, "NIP53: {e}"),
             Self::Event(e) => write!(f, "Event: {e}"),
@@ -128,6 +129,12 @@ impl From<ParseError> for Error {
 impl From<id::Error> for Error {
     fn from(e: id::Error) -> Self {
         Self::EventId(e)
+    }
+}
+
+impl From<nip01::Error> for Error {
+    fn from(e: nip01::Error) -> Self {
+        Self::NIP01(e)
     }
 }
 
@@ -601,9 +608,7 @@ pub enum Tag {
     Identifier(String),
     ExternalIdentity(Identity),
     A {
-        kind: Kind,
-        public_key: PublicKey,
-        identifier: String,
+        coordinate: Coordinate,
         relay_url: Option<UncheckedUrl>,
     },
     Kind(Kind),
@@ -711,21 +716,10 @@ impl Tag {
             let tag_1: &str = tag[1].as_ref();
 
             match tag_kind {
-                TagKind::A => {
-                    let mut kpi = tag_1.split(':');
-                    if let (Some(kind_str), Some(pubkey_str), Some(identifier)) =
-                        (kpi.next(), kpi.next(), kpi.next())
-                    {
-                        Ok(Self::A {
-                            kind: Kind::from_str(kind_str)?,
-                            public_key: PublicKey::from_str(pubkey_str)?,
-                            identifier: identifier.to_owned(),
-                            relay_url: None,
-                        })
-                    } else {
-                        Err(Error::InvalidLength)
-                    }
-                }
+                TagKind::A => Ok(Self::A {
+                    coordinate: Coordinate::from_str(tag_1)?,
+                    relay_url: None,
+                }),
                 TagKind::P => Ok(Self::public_key(PublicKey::from_str(tag_1)?)),
                 TagKind::UpperP => {
                     let public_key = PublicKey::from_str(tag_1)?;
@@ -852,21 +846,10 @@ impl Tag {
                     nonce: tag_1.parse()?,
                     difficulty: tag_2.parse()?,
                 }),
-                TagKind::A => {
-                    let mut kpi = tag_1.split(':');
-                    if let (Some(kind_str), Some(pubkey_str), Some(identifier)) =
-                        (kpi.next(), kpi.next(), kpi.next())
-                    {
-                        Ok(Self::A {
-                            kind: Kind::from_str(kind_str)?,
-                            public_key: PublicKey::from_str(pubkey_str)?,
-                            identifier: identifier.to_owned(),
-                            relay_url: Some(UncheckedUrl::from(tag_2)),
-                        })
-                    } else {
-                        Err(Error::InvalidLength)
-                    }
-                }
+                TagKind::A => Ok(Self::A {
+                    coordinate: Coordinate::from_str(tag_1)?,
+                    relay_url: Some(UncheckedUrl::from(tag_2)),
+                }),
                 TagKind::Image => Ok(Self::Image(
                     UncheckedUrl::from(tag_1),
                     Some(ImageDimensions::from_str(tag_2)?),
@@ -1153,15 +1136,10 @@ impl From<Tag> for Vec<String> {
             Tag::Geohash(g) => vec![TagKind::G.to_string(), g],
             Tag::Identifier(d) => vec![TagKind::D.to_string(), d],
             Tag::A {
-                kind,
-                public_key,
-                identifier,
+                coordinate,
                 relay_url,
             } => {
-                let mut vec = vec![
-                    TagKind::A.to_string(),
-                    format!("{}:{public_key}:{identifier}", kind.as_u64()),
-                ];
+                let mut vec = vec![TagKind::A.to_string(), coordinate.to_string()];
                 if let Some(relay) = relay_url {
                     vec.push(relay.to_string());
                 }
@@ -1630,12 +1608,14 @@ mod tests {
                 "wss://relay.nostr.org"
             ],
             Tag::A {
-                kind: Kind::LongFormTextNote,
-                public_key: PublicKey::from_str(
-                    "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
+                coordinate: Coordinate::new(
+                    Kind::LongFormTextNote,
+                    PublicKey::from_str(
+                        "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
+                    )
+                    .unwrap()
                 )
-                .unwrap(),
-                identifier: String::from("ipsum"),
+                .identifier("ipsum"),
                 relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap())
             }
             .as_vec()
@@ -1943,12 +1923,14 @@ mod tests {
             ])
             .unwrap(),
             Tag::A {
-                kind: Kind::LongFormTextNote,
-                public_key: PublicKey::from_str(
-                    "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
+                coordinate: Coordinate::new(
+                    Kind::LongFormTextNote,
+                    PublicKey::from_str(
+                        "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
+                    )
+                    .unwrap()
                 )
-                .unwrap(),
-                identifier: String::from("ipsum"),
+                .identifier("ipsum"),
                 relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap())
             }
         );

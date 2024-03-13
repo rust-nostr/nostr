@@ -264,12 +264,12 @@ impl<'a> EventOrTempEvent<'a> {
         }
     }
 
-    fn coordinates(&self) -> Box<dyn Iterator<Item = Coordinate> + '_> {
+    fn coordinates(&self) -> Box<dyn Iterator<Item = &Coordinate> + '_> {
         match self {
             Self::Event(e) => Box::new(e.coordinates()),
             Self::EventOwned(e) => Box::new(e.coordinates()),
             #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => Box::new(r.coordinates.iter().cloned()),
+            Self::Temp(r) => Box::new(r.coordinates.iter()),
         }
     }
 

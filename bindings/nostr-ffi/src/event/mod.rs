@@ -175,6 +175,7 @@ impl Event {
     pub fn coordinates(&self) -> Vec<Arc<Coordinate>> {
         self.inner
             .coordinates()
+            .cloned()
             .map(|p| Arc::new(p.into()))
             .collect()
     }

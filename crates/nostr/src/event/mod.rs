@@ -427,19 +427,9 @@ impl Event {
 
     /// Extract coordinates from tags (`a` tag)
     #[inline]
-    pub fn coordinates(&self) -> impl Iterator<Item = Coordinate> + '_ {
+    pub fn coordinates(&self) -> impl Iterator<Item = &Coordinate> {
         self.iter_tags().filter_map(|t| match t {
-            Tag::A {
-                kind,
-                public_key,
-                identifier,
-                ..
-            } => Some(Coordinate {
-                kind: *kind,
-                public_key: *public_key,
-                identifier: identifier.clone(),
-                relays: Vec::new(),
-            }),
+            Tag::A { coordinate, .. } => Some(coordinate),
             _ => None,
         })
     }

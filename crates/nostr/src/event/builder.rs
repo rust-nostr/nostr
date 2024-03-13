@@ -19,6 +19,7 @@ use super::kind::{Kind, NIP90_JOB_REQUEST_RANGE, NIP90_JOB_RESULT_RANGE};
 use super::tag::ImageDimensions;
 use super::{Event, EventId, Marker, Tag, TagKind, UnsignedEvent};
 use crate::key::{self, Keys, PublicKey};
+use crate::nips::nip01::Coordinate;
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
 use crate::nips::nip15::{ProductData, StallData};
@@ -688,9 +689,7 @@ impl EventBuilder {
         S: Into<String>,
     {
         tags.push(Tag::A {
-            kind: Kind::LiveEvent,
-            public_key: live_event_host,
-            identifier: live_event_id.into(),
+            coordinate: Coordinate::new(Kind::LiveEvent, live_event_host).identifier(live_event_id),
             relay_url: relay_url.map(|u| u.into()),
         });
         Self::new(Kind::LiveEventMessage, content, tags)
@@ -880,9 +879,8 @@ impl EventBuilder {
 
         // Add identity tag
         tags.push(Tag::A {
-            kind: Kind::BadgeDefinition,
-            public_key: badge_definition.author(),
-            identifier: badge_id.clone(),
+            coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.author())
+                .identifier(badge_id),
             relay_url: None,
         });
 
@@ -940,7 +938,7 @@ impl EventBuilder {
         let badge_awards_identifiers = badge_awards.into_iter().filter_map(|event| {
             let (_, relay_url) = nip58::extract_awarded_public_key(event.tags(), pubkey_awarded)?;
             let (id, a_tag) = event.iter_tags().find_map(|t| match t {
-                Tag::A { identifier, .. } => Some((identifier.clone(), t.clone())),
+                Tag::A { coordinate, .. } => Some((coordinate.identifier.clone(), t.clone())),
                 _ => None,
             })?;
             Some((event, id, a_tag, relay_url))
