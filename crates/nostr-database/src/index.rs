@@ -35,7 +35,7 @@ type ArcEventIndex = Arc<EventIndex>;
 
 /// Event Index
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EventIndex {
+struct EventIndex {
     /// Timestamp (seconds)
     created_at: Timestamp,
     /// Event ID
@@ -101,9 +101,8 @@ impl From<[u8; 32]> for PublicKeyPrefix {
     }
 }
 
-/// Filter Index
 #[derive(Default)]
-pub struct FilterIndex {
+struct FilterIndex {
     ids: HashSet<EventId>,
     authors: HashSet<PublicKeyPrefix>,
     kinds: HashSet<Kind>,
@@ -144,7 +143,6 @@ impl FilterIndex {
         self.kinds.is_empty() || self.kinds.contains(kind)
     }
 
-    /// Determine if [`FilterIndex`] match given [`EventIndex`].
     pub fn match_event(&self, event: &EventIndex) -> bool {
         self.ids_match(event)
             && self.since.map_or(true, |t| event.created_at >= t)
