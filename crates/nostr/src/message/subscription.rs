@@ -9,6 +9,7 @@
 use alloc::collections::{BTreeMap as AllocMap, BTreeSet as AllocSet};
 use alloc::string::{String, ToString};
 use core::fmt;
+use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 
@@ -30,6 +31,8 @@ type GenericTags = AllocMap<SingleLetterTag, AllocSet<GenericTagValue>>;
 pub enum SingleLetterTagError {
     /// Invalid char
     InvalidChar,
+    /// Expected char
+    ExpectedChar,
 }
 
 #[cfg(feature = "std")]
@@ -39,6 +42,7 @@ impl fmt::Display for SingleLetterTagError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidChar => write!(f, "invalid alphabet char"),
+            Self::ExpectedChar => write!(f, "Expected char "),
         }
     }
 }
@@ -215,7 +219,20 @@ impl SingleLetterTag {
 
 impl fmt::Display for SingleLetterTag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "#{}", self.as_char())
+        write!(f, "{}", self.as_char())
+    }
+}
+
+impl FromStr for SingleLetterTag {
+    type Err = SingleLetterTagError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() == 1 {
+            let c: char = s.chars().next().ok_or(SingleLetterTagError::ExpectedChar)?;
+            Self::from_char(c)
+        } else {
+            Err(SingleLetterTagError::ExpectedChar)
+        }
     }
 }
 
@@ -760,7 +777,7 @@ where
 {
     let mut map = serializer.serialize_map(Some(generic_tags.len()))?;
     for (tag, values) in generic_tags.iter() {
-        map.serialize_entry(&tag.to_string(), values)?;
+        map.serialize_entry(&format!("#{tag}"), values)?;
     }
     map.end()
 }
@@ -852,8 +869,6 @@ where
 
 #[cfg(test)]
 mod test {
-    use core::str::FromStr;
-
     use super::*;
 
     #[test]
