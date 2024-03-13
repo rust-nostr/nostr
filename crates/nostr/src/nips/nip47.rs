@@ -977,7 +977,7 @@ impl<'a> Deserialize<'a> for NostrWalletConnectURI {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use core::str::FromStr;
 
     use super::*;

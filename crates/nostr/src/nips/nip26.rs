@@ -545,7 +545,7 @@ impl EventProperties {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use core::str::FromStr;
 
     use bitcoin::secp256k1::Secp256k1;

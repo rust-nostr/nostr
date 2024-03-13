@@ -8,7 +8,7 @@ use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
-use crate::event::JsEventId;
+use crate::event::{JsEvent, JsEventId};
 use crate::key::JsPublicKey;
 use crate::types::JsTimestamp;
 
@@ -298,5 +298,13 @@ impl JsFilter {
     #[wasm_bindgen(js_name = removeCustomTag)]
     pub fn remove_custom_tag(self, tag: &JsSingleLetterTag, values: Vec<String>) -> Self {
         self.inner.remove_custom_tag(**tag, values).into()
+    }
+
+    /// Determine if `Filter` match given `Event`.
+    ///
+    /// The `search` filed is not supported yet!
+    #[wasm_bindgen(js_name = matchEvent)]
+    pub fn match_event(&self, event: &JsEvent) -> bool {
+        self.inner.match_event(event.deref())
     }
 }

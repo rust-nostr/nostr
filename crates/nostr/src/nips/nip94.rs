@@ -214,7 +214,7 @@ impl TryFrom<Vec<Tag>> for FileMetadata {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use core::str::FromStr;
 
     use super::*;

@@ -23,7 +23,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::nips::nip01::Coordinate;
-use crate::{EventId, JsonUtil, Kind, PublicKey, Timestamp};
+use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
 type GenericTags = AllocMap<SingleLetterTag, AllocSet<GenericTagValue>>;
 
@@ -781,6 +781,73 @@ impl Filter {
     pub fn is_empty(&self) -> bool {
         self == &Filter::default()
     }
+
+    #[inline]
+    fn ids_match(&self, event: &Event) -> bool {
+        self.ids
+            .as_ref()
+            .map_or(true, |ids| ids.is_empty() || ids.contains(&event.id))
+    }
+
+    #[inline]
+    fn authors_match(&self, event: &Event) -> bool {
+        self.authors.as_ref().map_or(true, |authors| {
+            authors.is_empty() || authors.contains(&event.pubkey)
+        })
+    }
+
+    fn tag_match(&self, event: &Event) -> bool {
+        if self.generic_tags.is_empty() {
+            return true;
+        }
+
+        if event.tags.is_empty() {
+            return false;
+        }
+
+        // Build tags indexes
+        let mut idx: AllocMap<SingleLetterTag, AllocSet<GenericTagValue>> = AllocMap::new();
+        for (single_letter_tag, content) in event
+            .iter_tags()
+            .filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
+        {
+            idx.entry(single_letter_tag)
+                .and_modify(|set| {
+                    set.insert(content.clone());
+                })
+                .or_default()
+                .insert(content);
+        }
+
+        // Match
+        self.generic_tags.iter().all(|(tag_name, set)| {
+            if let Some(val_set) = idx.get(tag_name) {
+                set.iter().any(|t| val_set.contains(t))
+            } else {
+                false
+            }
+        })
+    }
+
+    #[inline]
+    fn kind_match(&self, event: &Event) -> bool {
+        self.kinds.as_ref().map_or(true, |kinds| {
+            kinds.is_empty() || kinds.contains(&event.kind)
+        })
+    }
+
+    /// Determine if [Filter] match given [Event].
+    ///
+    /// The `search` filed is not supported yet!
+    #[inline]
+    pub fn match_event(&self, event: &Event) -> bool {
+        self.ids_match(event)
+            && self.authors_match(event)
+            && self.kind_match(event)
+            && self.since.map_or(true, |t| event.created_at >= t)
+            && self.until.map_or(true, |t| event.created_at <= t)
+            && self.tag_match(event)
+    }
 }
 
 impl JsonUtil for Filter {
@@ -884,8 +951,11 @@ where
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
+    use bitcoin::secp256k1::schnorr::Signature;
+
     use super::*;
+    use crate::Tag;
 
     #[test]
     fn test_kind_concatenation() {
@@ -1019,5 +1089,148 @@ mod test {
 
         let filter = Filter::new();
         assert!(filter.is_empty());
+    }
+
+    #[test]
+    fn test_match_event() {
+        let event_id =
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap();
+        let pubkey =
+            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap();
+        let event =
+            Event::new(
+                event_id,
+                pubkey,
+                Timestamp::from(1612809991),
+                Kind::TextNote,
+                [
+                    Tag::public_key(PublicKey::from_str("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
+                    Tag::event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap()),
+                ],
+                "test",
+                Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
+            );
+        let event_with_empty_tags: Event = Event::new(
+            event_id,
+            pubkey,
+            Timestamp::from(1612809992),
+            Kind::TextNote,
+            [],
+            "test",
+            Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
+          );
+
+        // ID match
+        let filter: Filter = Filter::new().id(event_id);
+        assert!(filter.match_event(&event));
+
+        // Not match (kind)
+        let filter: Filter = Filter::new().id(event_id).kind(Kind::Metadata);
+        assert!(!filter.match_event(&event));
+
+        // Match (author, kind and since)
+        let filter: Filter = Filter::new()
+            .author(pubkey)
+            .kind(Kind::TextNote)
+            .since(Timestamp::from(1612808000));
+        assert!(filter.match_event(&event));
+
+        // Not match (since)
+        let filter: Filter = Filter::new()
+            .author(pubkey)
+            .kind(Kind::TextNote)
+            .since(Timestamp::from(1700000000));
+        assert!(!filter.match_event(&event));
+
+        // Match (#p tag and kind)
+        let filter: Filter = Filter::new()
+            .pubkey(
+                PublicKey::from_str(
+                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
+                )
+                .unwrap(),
+            )
+            .kind(Kind::TextNote);
+        assert!(filter.match_event(&event));
+
+        // Match (tags)
+        let filter: Filter = Filter::new()
+            .pubkey(
+                PublicKey::from_str(
+                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
+                )
+                .unwrap(),
+            )
+            .event(
+                EventId::from_hex(
+                    "7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96",
+                )
+                .unwrap(),
+            );
+        assert!(filter.match_event(&event));
+
+        // Match (tags)
+        let filter: Filter = Filter::new().events(vec![
+            EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")
+                .unwrap(),
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap(),
+        ]);
+        assert!(filter.match_event(&event));
+
+        // Not match (tags)
+        let filter: Filter = Filter::new().events(vec![EventId::from_hex(
+            "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
+        )
+        .unwrap()]);
+        assert!(!filter.match_event(&event));
+
+        // Not match (tags filter for events with empty tags)
+        let filter: Filter = Filter::new().hashtag("this-should-not-match");
+        assert!(!filter.match_event(&event));
+        assert!(!filter.match_event(&event_with_empty_tags));
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use core::str::FromStr;
+
+    use bitcoin::secp256k1::schnorr::Signature;
+    use test::{black_box, Bencher};
+
+    use super::*;
+    use crate::Tag;
+
+    #[bench]
+    pub fn filter_match_event(bh: &mut Bencher) {
+        // Event
+        let event =
+            Event::new(
+                EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap(),
+                PublicKey::from_hex("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+                .unwrap(),
+                Timestamp::from(1612809991),
+                Kind::TextNote,
+                [
+                    Tag::public_key(PublicKey::from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
+                    Tag::event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap()),
+                ],
+                "test",
+                Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
+            );
+
+        // Filter
+        let pk =
+            PublicKey::from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a")
+                .unwrap();
+        let filter = Filter::new().pubkey(pk).kind(Kind::TextNote);
+
+        bh.iter(|| {
+            black_box(filter.match_event(&event));
+        });
     }
 }

@@ -11,7 +11,7 @@ use uniffi::{Enum, Object};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::{EventId, Kind, PublicKey, Timestamp};
+use crate::{Event, EventId, Kind, PublicKey, Timestamp};
 
 #[derive(Enum)]
 pub enum Alphabet {
@@ -363,6 +363,13 @@ impl Filter {
 
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
+    }
+
+    /// Determine if `Filter` match given `Event`.
+    ///
+    /// The `search` filed is not supported yet!
+    pub fn match_event(&self, event: &Event) -> bool {
+        self.inner.match_event(event.deref())
     }
 
     #[uniffi::constructor]

@@ -681,7 +681,7 @@ impl fmt::Display for NostrConnectURI {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use core::str::FromStr;
 
     use super::*;
