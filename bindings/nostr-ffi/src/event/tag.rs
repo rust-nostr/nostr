@@ -17,11 +17,12 @@ use uniffi::{Enum, Object, Record};
 
 use super::kind::KindEnum;
 use crate::error::{NostrError, Result};
+use crate::message::subscription::SingleLetterTag;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::LiveEventMarker;
 use crate::nips::nip90::DataVendingMachineStatus;
-use crate::{Event, EventId, ImageDimensions, Kind, LiveEventStatus, PublicKey, Timestamp};
+use crate::{Event, EventId, ImageDimensions, LiveEventStatus, PublicKey, Timestamp};
 
 /// Marker
 #[derive(Enum)]
@@ -157,32 +158,9 @@ impl From<nostr::RelayMetadata> for RelayMetadata {
 
 #[derive(Enum)]
 pub enum TagKind {
-    /// Public key
-    P,
-    /// Public key
-    UpperP,
-    /// Event id
-    E,
-    /// Reference (URL, etc.)
-    R,
-    /// Hashtag
-    T,
-    /// Geohash
-    G,
-    /// Identifier
-    D,
-    /// Referencing and tagging
-    A,
-    /// External Identities
-    I,
-    /// MIME type
-    M,
-    /// Absolute URL
-    U,
-    /// SHA256
-    X,
-    /// Kind
-    K,
+    SingleLetter {
+        single_letter: Arc<SingleLetterTag>,
+    },
     /// Relay
     RelayUrl,
     /// Nonce
@@ -265,19 +243,9 @@ pub enum TagKind {
 impl From<tag::TagKind> for TagKind {
     fn from(value: tag::TagKind) -> Self {
         match value {
-            tag::TagKind::P => Self::P,
-            tag::TagKind::UpperP => Self::UpperP,
-            tag::TagKind::E => Self::E,
-            tag::TagKind::R => Self::R,
-            tag::TagKind::T => Self::T,
-            tag::TagKind::G => Self::G,
-            tag::TagKind::D => Self::D,
-            tag::TagKind::A => Self::A,
-            tag::TagKind::I => Self::I,
-            tag::TagKind::M => Self::M,
-            tag::TagKind::U => Self::U,
-            tag::TagKind::X => Self::X,
-            tag::TagKind::K => Self::K,
+            tag::TagKind::SingleLetter(single_letter) => Self::SingleLetter {
+                single_letter: Arc::new(single_letter.into()),
+            },
             tag::TagKind::Relay => Self::RelayUrl,
             tag::TagKind::Nonce => Self::Nonce,
             tag::TagKind::Delegation => Self::Delegation,
@@ -325,19 +293,7 @@ impl From<tag::TagKind> for TagKind {
 impl From<TagKind> for tag::TagKind {
     fn from(value: TagKind) -> Self {
         match value {
-            TagKind::P => Self::P,
-            TagKind::UpperP => Self::UpperP,
-            TagKind::E => Self::E,
-            TagKind::R => Self::R,
-            TagKind::T => Self::T,
-            TagKind::G => Self::G,
-            TagKind::D => Self::D,
-            TagKind::A => Self::A,
-            TagKind::I => Self::I,
-            TagKind::M => Self::M,
-            TagKind::U => Self::U,
-            TagKind::X => Self::X,
-            TagKind::K => Self::K,
+            TagKind::SingleLetter { single_letter } => Self::SingleLetter(**single_letter),
             TagKind::RelayUrl => Self::Relay,
             TagKind::Nonce => Self::Nonce,
             TagKind::Delegation => Self::Delegation,

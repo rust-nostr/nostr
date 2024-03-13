@@ -42,7 +42,7 @@ use crate::types::{Contact, Metadata, Timestamp};
 use crate::util::EventIdOrCoordinate;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{JsonUtil, RelayMetadata, UncheckedUrl, Url};
+use crate::{Alphabet, JsonUtil, RelayMetadata, SingleLetterTag, UncheckedUrl, Url};
 
 /// Wrong kind error
 #[derive(Debug)]
@@ -764,7 +764,13 @@ impl EventBuilder {
         // add e tag
         if let Some(tag) = zap_request
             .iter_tags()
-            .find(|t| t.kind() == TagKind::E)
+            .find(|t| {
+                t.kind()
+                    == TagKind::SingleLetter(SingleLetterTag {
+                        character: Alphabet::E,
+                        uppercase: false,
+                    })
+            })
             .cloned()
         {
             tags.push(tag);
@@ -773,7 +779,13 @@ impl EventBuilder {
         // add p tag
         if let Some(tag) = zap_request
             .iter_tags()
-            .find(|t| t.kind() == TagKind::P)
+            .find(|t| {
+                t.kind()
+                    == TagKind::SingleLetter(SingleLetterTag {
+                        character: Alphabet::P,
+                        uppercase: false,
+                    })
+            })
             .cloned()
         {
             tags.push(tag);
@@ -1000,7 +1012,12 @@ impl EventBuilder {
             let mut tags: Vec<Tag> = job_request
                 .iter_tags()
                 .filter_map(|t| {
-                    if t.kind() == TagKind::I {
+                    if t.kind()
+                        == TagKind::SingleLetter(SingleLetterTag {
+                            character: Alphabet::I,
+                            uppercase: false,
+                        })
+                    {
                         Some(t.clone())
                     } else {
                         None

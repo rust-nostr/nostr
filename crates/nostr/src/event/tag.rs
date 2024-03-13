@@ -25,7 +25,9 @@ use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::types::url::{ParseError, Url};
-use crate::{key, Event, JsonUtil, Kind, PublicKey, Timestamp, UncheckedUrl};
+use crate::{
+    key, Alphabet, Event, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp, UncheckedUrl,
+};
 
 /// [`Tag`] error
 #[derive(Debug)]
@@ -346,32 +348,8 @@ impl FromStr for RelayMetadata {
 /// Tag kind
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TagKind {
-    /// Public key
-    P,
-    /// Public key
-    UpperP,
-    /// Event id
-    E,
-    /// Reference (URL, etc.)
-    R,
-    /// Hashtag
-    T,
-    /// Geohash
-    G,
-    /// Identifier
-    D,
-    /// Referencing and tagging
-    A,
-    /// External Identities
-    I,
-    /// MIME type
-    M,
-    /// Absolute URL
-    U,
-    /// SHA256
-    X,
-    /// Kind
-    K,
+    /// Single letter
+    SingleLetter(SingleLetterTag),
     /// Relay
     Relay,
     /// Nonce
@@ -457,19 +435,7 @@ pub enum TagKind {
 impl fmt::Display for TagKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::P => write!(f, "p"),
-            Self::UpperP => write!(f, "P"),
-            Self::E => write!(f, "e"),
-            Self::R => write!(f, "r"),
-            Self::T => write!(f, "t"),
-            Self::G => write!(f, "g"),
-            Self::D => write!(f, "d"),
-            Self::A => write!(f, "a"),
-            Self::I => write!(f, "i"),
-            Self::M => write!(f, "m"),
-            Self::U => write!(f, "u"),
-            Self::X => write!(f, "x"),
-            Self::K => write!(f, "k"),
+            Self::SingleLetter(s) => write!(f, "{s}"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
@@ -520,19 +486,6 @@ where
 {
     fn from(tag: S) -> Self {
         match tag.as_ref() {
-            "p" => Self::P,
-            "P" => Self::UpperP,
-            "e" => Self::E,
-            "r" => Self::R,
-            "t" => Self::T,
-            "g" => Self::G,
-            "d" => Self::D,
-            "a" => Self::A,
-            "i" => Self::I,
-            "m" => Self::M,
-            "u" => Self::U,
-            "x" => Self::X,
-            "k" => Self::K,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,
@@ -572,7 +525,10 @@ where
             "emoji" => Self::Emoji,
             "encrypted" => Self::Encrypted,
             "request" => Self::Request,
-            t => Self::Custom(t.to_owned()),
+            t => match SingleLetterTag::from_str(t) {
+                Ok(s) => Self::SingleLetter(s),
+                Err(..) => Self::Custom(t.to_owned()),
+            },
         }
     }
 }
@@ -716,32 +672,67 @@ impl Tag {
             let tag_1: &str = tag[1].as_ref();
 
             match tag_kind {
-                TagKind::A => Ok(Self::A {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::A,
+                    uppercase: false,
+                }) => Ok(Self::A {
                     coordinate: Coordinate::from_str(tag_1)?,
                     relay_url: None,
                 }),
-                TagKind::P => Ok(Self::public_key(PublicKey::from_str(tag_1)?)),
-                TagKind::UpperP => {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::P,
+                    uppercase,
+                }) => {
                     let public_key = PublicKey::from_str(tag_1)?;
                     Ok(Self::PublicKey {
                         public_key,
                         relay_url: None,
                         alias: None,
-                        uppercase: true,
+                        uppercase,
                     })
                 }
-                TagKind::E => Ok(Self::event(EventId::from_hex(tag_1)?)),
-                TagKind::R => {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::E,
+                    uppercase: false,
+                }) => Ok(Self::event(EventId::from_hex(tag_1)?)),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::R,
+                    uppercase: false,
+                }) => {
                     if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
                         Ok(Self::RelayMetadata(UncheckedUrl::from(tag_1), None))
                     } else {
                         Ok(Self::Reference(tag_1.to_owned()))
                     }
                 }
-                TagKind::T => Ok(Self::Hashtag(tag_1.to_owned())),
-                TagKind::G => Ok(Self::Geohash(tag_1.to_owned())),
-                TagKind::D => Ok(Self::Identifier(tag_1.to_owned())),
-                TagKind::K => Ok(Self::Kind(Kind::from_str(tag_1)?)),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::T,
+                    uppercase: false,
+                }) => Ok(Self::Hashtag(tag_1.to_owned())),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::G,
+                    uppercase: false,
+                }) => Ok(Self::Geohash(tag_1.to_owned())),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::D,
+                    uppercase: false,
+                }) => Ok(Self::Identifier(tag_1.to_owned())),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::K,
+                    uppercase: false,
+                }) => Ok(Self::Kind(Kind::from_str(tag_1)?)),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::M,
+                    uppercase: false,
+                }) => Ok(Self::MimeType(tag_1.to_owned())),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::X,
+                    uppercase: false,
+                }) => Ok(Self::Sha256(Sha256Hash::from_str(tag_1)?)),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::U,
+                    uppercase: false,
+                }) => Ok(Self::AbsoluteURL(UncheckedUrl::from(tag_1))),
                 TagKind::Relay => Ok(Self::Relay(UncheckedUrl::from(tag_1))),
                 TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(tag_1.to_owned()),
@@ -764,8 +755,6 @@ impl Tag {
                 TagKind::Lnurl => Ok(Self::Lnurl(tag_1.to_owned())),
                 TagKind::Name => Ok(Self::Name(tag_1.to_owned())),
                 TagKind::Url => Ok(Self::Url(Url::parse(tag_1)?)),
-                TagKind::M => Ok(Self::MimeType(tag_1.to_owned())),
-                TagKind::X => Ok(Self::Sha256(Sha256Hash::from_str(tag_1)?)),
                 TagKind::Magnet => Ok(Self::Magnet(tag_1.to_owned())),
                 TagKind::Blurhash => Ok(Self::Blurhash(tag_1.to_owned())),
                 TagKind::Streaming => Ok(Self::Streaming(UncheckedUrl::from(tag_1))),
@@ -781,7 +770,6 @@ impl Tag {
                 },
                 TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(tag_1.parse()?)),
                 TagKind::TotalParticipants => Ok(Self::TotalParticipants(tag_1.parse()?)),
-                TagKind::U => Ok(Self::AbsoluteURL(UncheckedUrl::from(tag_1))),
                 TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
                 TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
                 TagKind::Anon => Ok(Self::Anon {
@@ -795,7 +783,10 @@ impl Tag {
             let tag_2: &str = tag[2].as_ref();
 
             match tag_kind {
-                TagKind::P => {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::P,
+                    uppercase: false,
+                }) => {
                     let public_key = PublicKey::from_str(tag_1)?;
                     if tag_2.is_empty() {
                         Ok(Self::PublicKey {
@@ -816,7 +807,10 @@ impl Tag {
                         }
                     }
                 }
-                TagKind::E => {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::E,
+                    uppercase: false,
+                }) => {
                     let event_id = EventId::from_hex(tag_1)?;
                     if tag_2.is_empty() {
                         Ok(Self::Event {
@@ -835,7 +829,10 @@ impl Tag {
                         }
                     }
                 }
-                TagKind::I => match Identity::new(tag_1, tag_2) {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::I,
+                    uppercase: false,
+                }) => match Identity::new(tag_1, tag_2) {
                     Ok(identity) => Ok(Self::ExternalIdentity(identity)),
                     Err(_) => Ok(Self::Generic(
                         tag_kind,
@@ -846,7 +843,10 @@ impl Tag {
                     nonce: tag_1.parse()?,
                     difficulty: tag_2.parse()?,
                 }),
-                TagKind::A => Ok(Self::A {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::A,
+                    uppercase: false,
+                }) => Ok(Self::A {
                     coordinate: Coordinate::from_str(tag_1)?,
                     relay_url: Some(UncheckedUrl::from(tag_2)),
                 }),
@@ -862,7 +862,10 @@ impl Tag {
                     key: tag_1.to_owned(),
                     iv: tag_2.to_owned(),
                 }),
-                TagKind::R => Ok(Self::RelayMetadata(
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::R,
+                    uppercase: false,
+                }) => Ok(Self::RelayMetadata(
                     UncheckedUrl::from(tag_1),
                     Some(RelayMetadata::from_str(tag_2)?),
                 )),
@@ -895,7 +898,10 @@ impl Tag {
             let tag_3: &str = tag[3].as_ref();
 
             match tag_kind {
-                TagKind::P | TagKind::UpperP => {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::P,
+                    uppercase,
+                }) => {
                     let public_key: PublicKey = PublicKey::from_str(tag_1)?;
                     let relay_url: Option<UncheckedUrl> = Some(UncheckedUrl::from(tag_2));
 
@@ -910,11 +916,14 @@ impl Tag {
                             public_key,
                             relay_url,
                             alias: Some(tag_3.to_string()),
-                            uppercase: tag_kind == TagKind::UpperP,
+                            uppercase,
                         }),
                     }
                 }
-                TagKind::E => Ok(Self::Event {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::E,
+                    uppercase: false,
+                }) => Ok(Self::Event {
                     event_id: EventId::from_hex(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
@@ -936,7 +945,10 @@ impl Tag {
             let tag_4: &str = tag[4].as_ref();
 
             match tag_kind {
-                TagKind::P | TagKind::UpperP => Ok(Self::PubKeyLiveEvent {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::P,
+                    ..
+                }) => Ok(Self::PubKeyLiveEvent {
                     public_key: PublicKey::from_str(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: LiveEventMarker::from_str(tag_3)?,
@@ -996,24 +1008,50 @@ impl Tag {
     pub fn kind(&self) -> TagKind {
         match self {
             Self::Generic(kind, ..) => kind.clone(),
-            Self::Event { .. } => TagKind::E,
-            Self::PublicKey {
-                uppercase: false, ..
-            } => TagKind::P,
-            Self::PublicKey {
-                uppercase: true, ..
-            } => TagKind::UpperP,
-            Self::EventReport(..) => TagKind::E,
-            Self::PubKeyReport(..) => TagKind::P,
-            Self::PubKeyLiveEvent { .. } => TagKind::P,
-            Self::Reference(..) => TagKind::R,
-            Self::RelayMetadata(..) => TagKind::R,
-            Self::Hashtag(..) => TagKind::T,
-            Self::Geohash(..) => TagKind::G,
-            Self::Identifier(..) => TagKind::D,
-            Self::ExternalIdentity(..) => TagKind::I,
-            Self::A { .. } => TagKind::A,
-            Self::Kind(..) => TagKind::K,
+            Self::Event { .. } | Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::E,
+                uppercase: false,
+            }),
+            Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::P,
+                uppercase: *uppercase,
+            }),
+            Self::PubKeyReport(..) | Self::PubKeyLiveEvent { .. } => {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::P,
+                    uppercase: false,
+                })
+            }
+            Self::Reference(..) | Self::RelayMetadata(..) => {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::R,
+                    uppercase: false,
+                })
+            }
+            Self::Hashtag(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::T,
+                uppercase: false,
+            }),
+            Self::Geohash(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::G,
+                uppercase: false,
+            }),
+            Self::Identifier(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::D,
+                uppercase: false,
+            }),
+            Self::ExternalIdentity(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::I,
+                uppercase: false,
+            }),
+            Self::A { .. } => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::A,
+                uppercase: false,
+            }),
+            Self::Kind(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::K,
+                uppercase: false,
+            }),
             Self::Relay(..) => TagKind::Relay,
             Self::POW { .. } => TagKind::Nonce,
             Self::Delegation { .. } => TagKind::Delegation,
@@ -1034,9 +1072,15 @@ impl Tag {
             Self::Name(..) => TagKind::Name,
             Self::Lnurl(..) => TagKind::Lnurl,
             Self::Url(..) => TagKind::Url,
-            Self::MimeType(..) => TagKind::M,
+            Self::MimeType(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::M,
+                uppercase: false,
+            }),
             Self::Aes256Gcm { .. } => TagKind::Aes256Gcm,
-            Self::Sha256(..) => TagKind::X,
+            Self::Sha256(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::X,
+                uppercase: false,
+            }),
             Self::Size(..) => TagKind::Size,
             Self::Dim(..) => TagKind::Dim,
             Self::Magnet(..) => TagKind::Magnet,
@@ -1048,7 +1092,10 @@ impl Tag {
             Self::LiveEventStatus(..) | Self::DataVendingMachineStatus { .. } => TagKind::Status,
             Self::CurrentParticipants(..) => TagKind::CurrentParticipants,
             Self::TotalParticipants(..) => TagKind::TotalParticipants,
-            Self::AbsoluteURL(..) => TagKind::U,
+            Self::AbsoluteURL(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::U,
+                uppercase: false,
+            }),
             Self::Method(..) => TagKind::Method,
             Self::Payload(..) => TagKind::Payload,
             Self::Anon { .. } => TagKind::Anon,
@@ -1061,15 +1108,17 @@ impl Tag {
 }
 
 impl From<Tag> for Vec<String> {
-    fn from(data: Tag) -> Self {
-        match data {
+    fn from(tag: Tag) -> Self {
+        let tag_kind: TagKind = tag.kind();
+
+        match tag {
             Tag::Generic(kind, data) => [vec![kind.to_string()], data].concat(),
             Tag::Event {
                 event_id,
                 relay_url,
                 marker,
             } => {
-                let mut tag = vec![TagKind::E.to_string(), event_id.to_hex()];
+                let mut tag = vec![tag_kind.to_string(), event_id.to_hex()];
                 if let Some(relay_url) = relay_url {
                     tag.push(relay_url.to_string());
                 }
@@ -1085,14 +1134,9 @@ impl From<Tag> for Vec<String> {
                 public_key,
                 relay_url,
                 alias,
-                uppercase,
+                ..
             } => {
-                let p_tag = if uppercase {
-                    TagKind::UpperP.to_string()
-                } else {
-                    TagKind::P.to_string()
-                };
-                let mut tag = vec![p_tag, public_key.to_string()];
+                let mut tag = vec![tag_kind.to_string(), public_key.to_string()];
                 if let Some(relay_url) = relay_url {
                     tag.push(relay_url.to_string());
                 }
@@ -1102,10 +1146,10 @@ impl From<Tag> for Vec<String> {
                 tag
             }
             Tag::EventReport(id, report) => {
-                vec![TagKind::E.to_string(), id.to_hex(), report.to_string()]
+                vec![tag_kind.to_string(), id.to_hex(), report.to_string()]
             }
             Tag::PubKeyReport(pk, report) => {
-                vec![TagKind::P.to_string(), pk.to_string(), report.to_string()]
+                vec![tag_kind.to_string(), pk.to_string(), report.to_string()]
             }
             Tag::PubKeyLiveEvent {
                 public_key,
@@ -1114,7 +1158,7 @@ impl From<Tag> for Vec<String> {
                 proof,
             } => {
                 let mut tag = vec![
-                    TagKind::P.to_string(),
+                    tag_kind.to_string(),
                     public_key.to_string(),
                     relay_url.map(|u| u.to_string()).unwrap_or_default(),
                     marker.to_string(),
@@ -1124,32 +1168,32 @@ impl From<Tag> for Vec<String> {
                 }
                 tag
             }
-            Tag::Reference(r) => vec![TagKind::R.to_string(), r],
+            Tag::Reference(r) => vec![tag_kind.to_string(), r],
             Tag::RelayMetadata(url, rw) => {
-                let mut tag = vec![TagKind::R.to_string(), url.to_string()];
+                let mut tag = vec![tag_kind.to_string(), url.to_string()];
                 if let Some(rw) = rw {
                     tag.push(rw.to_string());
                 }
                 tag
             }
-            Tag::Hashtag(t) => vec![TagKind::T.to_string(), t],
-            Tag::Geohash(g) => vec![TagKind::G.to_string(), g],
-            Tag::Identifier(d) => vec![TagKind::D.to_string(), d],
+            Tag::Hashtag(t) => vec![tag_kind.to_string(), t],
+            Tag::Geohash(g) => vec![tag_kind.to_string(), g],
+            Tag::Identifier(d) => vec![tag_kind.to_string(), d],
             Tag::A {
                 coordinate,
                 relay_url,
             } => {
-                let mut vec = vec![TagKind::A.to_string(), coordinate.to_string()];
+                let mut vec = vec![tag_kind.to_string(), coordinate.to_string()];
                 if let Some(relay) = relay_url {
                     vec.push(relay.to_string());
                 }
                 vec
             }
             Tag::ExternalIdentity(identity) => identity.into(),
-            Tag::Kind(kind) => vec![TagKind::K.to_string(), kind.to_string()],
-            Tag::Relay(url) => vec![TagKind::Relay.to_string(), url.to_string()],
+            Tag::Kind(kind) => vec![tag_kind.to_string(), kind.to_string()],
+            Tag::Relay(url) => vec![tag_kind.to_string(), url.to_string()],
             Tag::POW { nonce, difficulty } => vec![
-                TagKind::Nonce.to_string(),
+                tag_kind.to_string(),
                 nonce.to_string(),
                 difficulty.to_string(),
             ],
@@ -1158,117 +1202,117 @@ impl From<Tag> for Vec<String> {
                 conditions,
                 sig,
             } => vec![
-                TagKind::Delegation.to_string(),
+                tag_kind.to_string(),
                 delegator.to_string(),
                 conditions.to_string(),
                 sig.to_string(),
             ],
             Tag::ContentWarning { reason } => {
-                let mut tag = vec![TagKind::ContentWarning.to_string()];
+                let mut tag = vec![tag_kind.to_string()];
                 if let Some(reason) = reason {
                     tag.push(reason);
                 }
                 tag
             }
             Tag::Expiration(timestamp) => {
-                vec![TagKind::Expiration.to_string(), timestamp.to_string()]
+                vec![tag_kind.to_string(), timestamp.to_string()]
             }
-            Tag::Subject(sub) => vec![TagKind::Subject.to_string(), sub],
-            Tag::Challenge(challenge) => vec![TagKind::Challenge.to_string(), challenge],
-            Tag::Title(title) => vec![TagKind::Title.to_string(), title],
+            Tag::Subject(sub) => vec![tag_kind.to_string(), sub],
+            Tag::Challenge(challenge) => vec![tag_kind.to_string(), challenge],
+            Tag::Title(title) => vec![tag_kind.to_string(), title],
             Tag::Image(image, dimensions) => {
-                let mut tag = vec![TagKind::Image.to_string(), image.to_string()];
+                let mut tag = vec![tag_kind.to_string(), image.to_string()];
                 if let Some(dim) = dimensions {
                     tag.push(dim.to_string());
                 }
                 tag
             }
             Tag::Thumb(thumb, dimensions) => {
-                let mut tag = vec![TagKind::Thumb.to_string(), thumb.to_string()];
+                let mut tag = vec![tag_kind.to_string(), thumb.to_string()];
                 if let Some(dim) = dimensions {
                     tag.push(dim.to_string());
                 }
                 tag
             }
-            Tag::Summary(summary) => vec![TagKind::Summary.to_string(), summary],
+            Tag::Summary(summary) => vec![tag_kind.to_string(), summary],
             Tag::PublishedAt(timestamp) => {
-                vec![TagKind::PublishedAt.to_string(), timestamp.to_string()]
+                vec![tag_kind.to_string(), timestamp.to_string()]
             }
             Tag::Description(description) => {
-                vec![TagKind::Description.to_string(), description]
+                vec![tag_kind.to_string(), description]
             }
             Tag::Bolt11(bolt11) => {
-                vec![TagKind::Bolt11.to_string(), bolt11]
+                vec![tag_kind.to_string(), bolt11]
             }
             Tag::Preimage(preimage) => {
-                vec![TagKind::Preimage.to_string(), preimage]
+                vec![tag_kind.to_string(), preimage]
             }
-            Tag::Relays(relays) => vec![TagKind::Relays.to_string()]
+            Tag::Relays(relays) => vec![tag_kind.to_string()]
                 .into_iter()
                 .chain(relays.iter().map(|relay| relay.to_string()))
                 .collect::<Vec<_>>(),
             Tag::Amount { millisats, bolt11 } => {
-                let mut tag = vec![TagKind::Amount.to_string(), millisats.to_string()];
+                let mut tag = vec![tag_kind.to_string(), millisats.to_string()];
                 if let Some(bolt11) = bolt11 {
                     tag.push(bolt11);
                 }
                 tag
             }
             Tag::Name(name) => {
-                vec![TagKind::Name.to_string(), name]
+                vec![tag_kind.to_string(), name]
             }
             Tag::Lnurl(lnurl) => {
-                vec![TagKind::Lnurl.to_string(), lnurl]
+                vec![tag_kind.to_string(), lnurl]
             }
-            Tag::Url(url) => vec![TagKind::Url.to_string(), url.to_string()],
-            Tag::MimeType(mime) => vec![TagKind::M.to_string(), mime],
-            Tag::Aes256Gcm { key, iv } => vec![TagKind::Aes256Gcm.to_string(), key, iv],
-            Tag::Sha256(hash) => vec![TagKind::X.to_string(), hash.to_string()],
-            Tag::Size(bytes) => vec![TagKind::Size.to_string(), bytes.to_string()],
-            Tag::Dim(dim) => vec![TagKind::Dim.to_string(), dim.to_string()],
-            Tag::Magnet(uri) => vec![TagKind::Magnet.to_string(), uri],
-            Tag::Blurhash(data) => vec![TagKind::Blurhash.to_string(), data],
-            Tag::Streaming(url) => vec![TagKind::Streaming.to_string(), url.to_string()],
-            Tag::Recording(url) => vec![TagKind::Recording.to_string(), url.to_string()],
+            Tag::Url(url) => vec![tag_kind.to_string(), url.to_string()],
+            Tag::MimeType(mime) => vec![tag_kind.to_string(), mime],
+            Tag::Aes256Gcm { key, iv } => vec![tag_kind.to_string(), key, iv],
+            Tag::Sha256(hash) => vec![tag_kind.to_string(), hash.to_string()],
+            Tag::Size(bytes) => vec![tag_kind.to_string(), bytes.to_string()],
+            Tag::Dim(dim) => vec![tag_kind.to_string(), dim.to_string()],
+            Tag::Magnet(uri) => vec![tag_kind.to_string(), uri],
+            Tag::Blurhash(data) => vec![tag_kind.to_string(), data],
+            Tag::Streaming(url) => vec![tag_kind.to_string(), url.to_string()],
+            Tag::Recording(url) => vec![tag_kind.to_string(), url.to_string()],
             Tag::Starts(timestamp) => {
-                vec![TagKind::Starts.to_string(), timestamp.to_string()]
+                vec![tag_kind.to_string(), timestamp.to_string()]
             }
             Tag::Ends(timestamp) => {
-                vec![TagKind::Ends.to_string(), timestamp.to_string()]
+                vec![tag_kind.to_string(), timestamp.to_string()]
             }
             Tag::LiveEventStatus(s) => {
-                vec![TagKind::Status.to_string(), s.to_string()]
+                vec![tag_kind.to_string(), s.to_string()]
             }
             Tag::CurrentParticipants(num) => {
-                vec![TagKind::CurrentParticipants.to_string(), num.to_string()]
+                vec![tag_kind.to_string(), num.to_string()]
             }
             Tag::TotalParticipants(num) => {
-                vec![TagKind::TotalParticipants.to_string(), num.to_string()]
+                vec![tag_kind.to_string(), num.to_string()]
             }
             Tag::AbsoluteURL(url) => {
-                vec![TagKind::U.to_string(), url.to_string()]
+                vec![tag_kind.to_string(), url.to_string()]
             }
             Tag::Method(method) => {
-                vec![TagKind::Method.to_string(), method.to_string()]
+                vec![tag_kind.to_string(), method.to_string()]
             }
-            Tag::Payload(p) => vec![TagKind::Payload.to_string(), p.to_string()],
+            Tag::Payload(p) => vec![tag_kind.to_string(), p.to_string()],
             Tag::Anon { msg } => {
-                let mut tag = vec![TagKind::Anon.to_string()];
+                let mut tag = vec![tag_kind.to_string()];
                 if let Some(msg) = msg {
                     tag.push(msg);
                 }
                 tag
             }
             Tag::Proxy { id, protocol } => {
-                vec![TagKind::Proxy.to_string(), id, protocol.to_string()]
+                vec![tag_kind.to_string(), id, protocol.to_string()]
             }
             Tag::Emoji { shortcode, url } => {
-                vec![TagKind::Emoji.to_string(), shortcode, url.to_string()]
+                vec![tag_kind.to_string(), shortcode, url.to_string()]
             }
-            Tag::Encrypted => vec![TagKind::Encrypted.to_string()],
-            Tag::Request(event) => vec![TagKind::Request.to_string(), event.as_json()],
+            Tag::Encrypted => vec![tag_kind.to_string()],
+            Tag::Request(event) => vec![tag_kind.to_string(), event.as_json()],
             Tag::DataVendingMachineStatus { status, extra_info } => {
-                let mut tag = vec![TagKind::Status.to_string(), status.to_string()];
+                let mut tag = vec![tag_kind.to_string(), status.to_string()];
                 if let Some(extra_info) = extra_info {
                     tag.push(extra_info);
                 }
@@ -1390,7 +1434,11 @@ impl From<Identity> for Tag {
 impl From<Identity> for Vec<String> {
     fn from(value: Identity) -> Self {
         vec![
-            TagKind::I.to_string(),
+            TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::I,
+                uppercase: false,
+            })
+            .to_string(),
             format!("{}:{}", value.platform, value.ident),
             value.proof,
         ]

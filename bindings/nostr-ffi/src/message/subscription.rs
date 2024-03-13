@@ -89,6 +89,12 @@ impl Deref for SingleLetterTag {
     }
 }
 
+impl From<subscription::SingleLetterTag> for SingleLetterTag {
+    fn from(inner: subscription::SingleLetterTag) -> Self {
+        Self { inner }
+    }
+}
+
 #[uniffi::export]
 impl SingleLetterTag {
     #[uniffi::constructor]
