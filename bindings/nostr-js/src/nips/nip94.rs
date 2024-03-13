@@ -14,8 +14,10 @@ use crate::event::tag::JsImageDimensions;
 
 #[wasm_bindgen(js_name = Aes256Gcm)]
 pub struct JsAes256Gcm {
-    key: String,
-    iv: String,
+    #[wasm_bindgen(getter_with_clone)]
+    pub key: String,
+    #[wasm_bindgen(getter_with_clone)]
+    pub iv: String,
 }
 
 impl From<JsAes256Gcm> for (String, String) {
@@ -33,7 +35,9 @@ impl From<(String, String)> for JsAes256Gcm {
     }
 }
 
+#[wasm_bindgen(js_class = Aes256Gcm)]
 impl JsAes256Gcm {
+    #[wasm_bindgen(constructor)]
     pub fn new(key: String, iv: String) -> Self {
         Self { key, iv }
     }
@@ -60,12 +64,13 @@ impl Deref for JsFileMetadata {
 
 #[wasm_bindgen(js_class = FileMetadata)]
 impl JsFileMetadata {
+    #[wasm_bindgen(constructor)]
     pub fn new(url: &str, mime_type: String, hash: &str) -> Result<JsFileMetadata> {
         Ok(Self {
             inner: FileMetadata::new(
-                Url::from_str(&url).map_err(into_err)?,
+                Url::from_str(url).map_err(into_err)?,
                 mime_type,
-                Sha256Hash::from_str(&hash).map_err(into_err)?,
+                Sha256Hash::from_str(hash).map_err(into_err)?,
             ),
         })
     }

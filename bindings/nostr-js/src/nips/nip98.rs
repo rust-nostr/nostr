@@ -26,6 +26,7 @@ impl From<JsHttpData> for HttpData {
 
 #[wasm_bindgen(js_class = HttpData)]
 impl JsHttpData {
+    #[wasm_bindgen(constructor)]
     pub fn new(url: &str, method: JsHttpMethod) -> Self {
         HttpData::new(UncheckedUrl::from(url), method.into()).into()
     }

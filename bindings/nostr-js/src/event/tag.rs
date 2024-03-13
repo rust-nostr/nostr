@@ -39,8 +39,9 @@ impl From<JsHttpMethod> for HttpMethod {
 
 #[wasm_bindgen(js_name = Thumbnails)]
 pub struct JsThumbnails {
-    url: String,
-    dimensions: Option<JsImageDimensions>,
+    #[wasm_bindgen(getter_with_clone)]
+    pub url: String,
+    pub dimensions: Option<JsImageDimensions>,
 }
 
 impl From<JsThumbnails> for (UncheckedUrl, Option<ImageDimensions>) {
@@ -49,6 +50,14 @@ impl From<JsThumbnails> for (UncheckedUrl, Option<ImageDimensions>) {
             UncheckedUrl::from(value.url),
             value.dimensions.map(|r| r.into()),
         )
+    }
+}
+
+#[wasm_bindgen(js_class = Thumbnails)]
+impl JsThumbnails {
+    #[wasm_bindgen(constructor)]
+    pub fn new(url: String, dimensions: Option<JsImageDimensions>) -> Self {
+        Self { url, dimensions }
     }
 }
 

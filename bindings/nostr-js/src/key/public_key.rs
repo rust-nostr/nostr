@@ -9,6 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 
+#[derive(Clone, Copy)]
 #[wasm_bindgen(js_name = PublicKey)]
 pub struct JsPublicKey {
     pub(crate) inner: PublicKey,

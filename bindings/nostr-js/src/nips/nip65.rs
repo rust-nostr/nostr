@@ -12,8 +12,9 @@ use crate::event::JsEvent;
 
 #[wasm_bindgen(js_name = RelayListItem)]
 pub struct JsRelayListItem {
-    url: String,
-    metadata: Option<JsRelayMetadata>,
+    #[wasm_bindgen(getter_with_clone)]
+    pub url: String,
+    pub metadata: Option<JsRelayMetadata>,
 }
 
 impl From<JsRelayListItem> for (UncheckedUrl, Option<RelayMetadata>) {
@@ -27,18 +28,9 @@ impl From<JsRelayListItem> for (UncheckedUrl, Option<RelayMetadata>) {
 
 #[wasm_bindgen(js_class = RelayListItem)]
 impl JsRelayListItem {
+    #[wasm_bindgen(constructor)]
     pub fn new(url: String, metadata: Option<JsRelayMetadata>) -> Self {
         Self { url, metadata }
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn url(&self) -> String {
-        self.url.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn metadata(&self) -> Option<JsRelayMetadata> {
-        self.metadata
     }
 }
 

@@ -28,6 +28,7 @@ impl Deref for JsNostrWalletConnectURI {
 #[wasm_bindgen(js_class = NostrWalletConnectURI)]
 impl JsNostrWalletConnectURI {
     /// Create new Nostr Wallet Connect URI
+    #[wasm_bindgen(constructor)]
     pub fn new(
         public_key: &JsPublicKey,
         relay_url: &str,

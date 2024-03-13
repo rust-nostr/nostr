@@ -288,7 +288,7 @@ impl JsEventBuilder {
                 badge_id,
                 name,
                 description,
-                image.map(|url| UncheckedUrl::from(url)),
+                image.map(UncheckedUrl::from),
                 image_dimensions.map(|i| i.into()),
                 thumbnails.into_iter().map(|t| t.into()).collect(),
             ),
@@ -385,7 +385,7 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = stallData)]
-    pub fn stall_data(data: JsStallData) -> Self {
+    pub fn stall_data(data: &JsStallData) -> Self {
         Self {
             builder: EventBuilder::stall_data(data.deref().clone()),
         }

@@ -58,10 +58,12 @@ impl Deref for JsShippingMethod {
 
 #[wasm_bindgen(js_class = ShippingMethod)]
 impl JsShippingMethod {
+    #[wasm_bindgen(constructor)]
     pub fn new(id: &str, cost: f64) -> Self {
         ShippingMethod::new(id, cost).into()
     }
 
+    #[wasm_bindgen(js_name = getShuppingCost)]
     pub fn get_shipping_cost(&self) -> JsShippingCost {
         ShippingMethod::get_shipping_cost(self.deref()).into()
     }
@@ -108,6 +110,7 @@ impl Deref for JsStallData {
 
 #[wasm_bindgen(js_class = StallData)]
 impl JsStallData {
+    #[wasm_bindgen(constructor)]
     pub fn new(id: &str, name: &str, currency: &str) -> Self {
         StallData::new(id, name, currency).into()
     }
@@ -162,6 +165,7 @@ impl From<JsProductData> for ProductData {
 
 #[wasm_bindgen(js_class = ProductData)]
 impl JsProductData {
+    #[wasm_bindgen(constructor)]
     pub fn new(id: &str, stall_id: &str, name: &str, currency: &str) -> Self {
         ProductData::new(id, stall_id, name, currency).into()
     }

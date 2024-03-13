@@ -63,6 +63,7 @@ impl Deref for JsZapRequestData {
 
 #[wasm_bindgen(js_class = ZapRequestData)]
 impl JsZapRequestData {
+    #[wasm_bindgen(constructor)]
     pub fn new(
         public_key: &JsPublicKey,
         relays: Vec<String>,
@@ -79,7 +80,7 @@ impl JsZapRequestData {
                 message,
                 amount: amount.map(|n| n as u64),
                 lnurl,
-                event_id: event_id.map(|e| e.deref().clone()),
+                event_id: event_id.map(|e| *e.deref()),
                 event_coordinate: event_coordinate.map(|e| e.deref().clone()),
             },
         }

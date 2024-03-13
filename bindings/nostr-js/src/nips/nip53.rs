@@ -11,12 +11,13 @@ use crate::event::tag::JsImageDimensions;
 use crate::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = Image)]
-pub struct Image {
-    url: String,
-    dimensions: Option<JsImageDimensions>,
+pub struct JsImage {
+    #[wasm_bindgen(getter_with_clone)]
+    pub url: String,
+    pub dimensions: Option<JsImageDimensions>,
 }
 
-impl From<(UncheckedUrl, Option<ImageDimensions>)> for Image {
+impl From<(UncheckedUrl, Option<ImageDimensions>)> for JsImage {
     fn from(value: (UncheckedUrl, Option<ImageDimensions>)) -> Self {
         Self {
             url: value.0.to_string(),
@@ -25,23 +26,23 @@ impl From<(UncheckedUrl, Option<ImageDimensions>)> for Image {
     }
 }
 
-impl Image {
-    pub fn url(&self) -> String {
-        self.url.to_string()
-    }
-
-    pub fn dimensions(&self) -> Option<JsImageDimensions> {
-        self.dimensions.clone().map(|d| d.into())
+#[wasm_bindgen(js_class = Image)]
+impl JsImage {
+    #[wasm_bindgen(constructor)]
+    pub fn new(url: String, dimensions: Option<JsImageDimensions>) -> Self {
+        Self { url, dimensions }
     }
 }
 
 #[wasm_bindgen(js_name = User)]
-pub struct User {
-    public_key: JsPublicKey,
-    url: Option<String>,
+pub struct JsUser {
+    #[wasm_bindgen(js_name = publicKey)]
+    pub public_key: JsPublicKey,
+    #[wasm_bindgen(getter_with_clone)]
+    pub url: Option<String>,
 }
 
-impl From<(PublicKey, Option<UncheckedUrl>)> for User {
+impl From<(PublicKey, Option<UncheckedUrl>)> for JsUser {
     fn from(value: (PublicKey, Option<UncheckedUrl>)) -> Self {
         Self {
             public_key: value.0.into(),
@@ -50,13 +51,11 @@ impl From<(PublicKey, Option<UncheckedUrl>)> for User {
     }
 }
 
-impl User {
-    pub fn public_key(&self) -> JsPublicKey {
-        self.public_key.clone().into()
-    }
-
-    pub fn url(&self) -> Option<String> {
-        self.url.clone()
+#[wasm_bindgen(js_class = User)]
+impl JsUser {
+    #[wasm_bindgen(constructor)]
+    pub fn new(public_key: JsPublicKey, url: Option<String>) -> Self {
+        Self { public_key, url }
     }
 }
 
@@ -178,7 +177,7 @@ impl JsLiveEvent {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn image(&self) -> Option<Image> {
+    pub fn image(&self) -> Option<JsImage> {
         self.inner.image.clone().map(|i| i.into())
     }
 
@@ -199,12 +198,12 @@ impl JsLiveEvent {
 
     #[wasm_bindgen(getter)]
     pub fn starts(&self) -> Option<f64> {
-        self.inner.starts.clone().map(|t| t.as_i64() as f64)
+        self.inner.starts.map(|t| t.as_i64() as f64)
     }
 
     #[wasm_bindgen(getter)]
     pub fn ends(&self) -> Option<f64> {
-        self.inner.ends.clone().map(|t| t.as_i64() as f64)
+        self.inner.ends.map(|t| t.as_i64() as f64)
     }
 
     #[wasm_bindgen(getter)]
@@ -238,7 +237,7 @@ impl JsLiveEvent {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn speakers(&self) -> Vec<User> {
+    pub fn speakers(&self) -> Vec<JsUser> {
         self.inner
             .speakers
             .clone()
@@ -248,7 +247,7 @@ impl JsLiveEvent {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn participants(&self) -> Vec<User> {
+    pub fn participants(&self) -> Vec<JsUser> {
         self.inner
             .participants
             .clone()

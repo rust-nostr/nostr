@@ -30,6 +30,7 @@ impl From<Coordinate> for JsCoordinate {
 
 #[wasm_bindgen(js_class = Coordinate)]
 impl JsCoordinate {
+    #[wasm_bindgen(constructor)]
     pub fn new(
         kind: f64,
         public_key: &JsPublicKey,
