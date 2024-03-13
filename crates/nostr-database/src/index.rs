@@ -71,7 +71,7 @@ impl From<&Event> for EventIndex {
             event_id: e.id(),
             pubkey: PublicKeyPrefix::from(e.author_ref()),
             kind: e.kind(),
-            tags: TagIndexes::from(e.iter_tags().map(|t| t.as_vec())),
+            tags: TagIndexes::from(e.iter_tags()),
         }
     }
 }
@@ -239,8 +239,8 @@ impl<'a> EventOrTempEvent<'a> {
 
     fn tags(self) -> TagIndexes {
         match self {
-            Self::Event(e) => TagIndexes::from(e.iter_tags().map(|t| t.as_vec())),
-            Self::EventOwned(e) => TagIndexes::from(e.iter_tags().map(|t| t.as_vec())),
+            Self::Event(e) => TagIndexes::from(e.iter_tags()),
+            Self::EventOwned(e) => TagIndexes::from(e.iter_tags()),
             #[cfg(feature = "flatbuf")]
             Self::Temp(r) => r.tags,
         }

@@ -11,7 +11,7 @@ use std::ops::{Deref, DerefMut};
 use flatbuffers::{ForwardsUOffset, Vector};
 use nostr::hashes::siphash24::Hash as SipHash24;
 use nostr::hashes::Hash;
-use nostr::{Alphabet, GenericTagValue, SingleLetterTag};
+use nostr::{Alphabet, GenericTagValue, SingleLetterTag, Tag};
 
 #[cfg(feature = "flatbuf")]
 use crate::flatbuffers::StringVector;
@@ -50,6 +50,9 @@ impl TagIndexes {
                         let inner = hash(t.get(1));
                         tag_index
                             .entry(single_letter_tag)
+                            .and_modify(|set| {
+                                set.insert(inner);
+                            })
                             .or_default()
                             .insert(inner);
                     }
@@ -66,26 +69,29 @@ impl TagIndexes {
     }
 }
 
-impl<I, S> From<I> for TagIndexes
+impl<'a, I> From<I> for TagIndexes
 where
-    I: Iterator<Item = Vec<S>>,
-    S: AsRef<str>,
+    I: Iterator<Item = &'a Tag>,
 {
     fn from(iter: I) -> Self {
         let mut tag_index: TagIndexes = TagIndexes::default();
-        for t in iter.filter(|t| t.len() > 1) {
-            if let Some(single_letter_tag) = single_char_tagname(t[0].as_ref()) {
-                let inner = hash(t[1].as_ref());
-                tag_index
-                    .entry(single_letter_tag)
-                    .or_default()
-                    .insert(inner);
-            }
+        for (single_letter_tag, content) in
+            iter.filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
+        {
+            let inner = hash(content.to_string());
+            tag_index
+                .entry(single_letter_tag)
+                .and_modify(|set| {
+                    set.insert(inner);
+                })
+                .or_default()
+                .insert(inner);
         }
         tag_index
     }
 }
 
+#[cfg(feature = "flatbuf")]
 #[inline]
 fn single_char_tagname(tagname: &str) -> Option<SingleLetterTag> {
     tagname
