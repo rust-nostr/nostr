@@ -24,6 +24,9 @@ buildargs=(
 
 for arg in "${buildargs[@]}"; do
     echo  "Checking '$arg'"
-    cd bindings/$arg && make check && cd ../../
+    pushd "bindings/$arg"
+    cargo build
+    cargo clippy -- -D warnings
+    popd
     echo
 done
