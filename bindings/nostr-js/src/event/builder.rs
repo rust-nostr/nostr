@@ -3,13 +3,22 @@
 // Distributed under the MIT software license
 
 use core::ops::Deref;
+use std::str::FromStr;
 
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use super::tag::{JsImageDimensions, JsThumbnails};
 use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
+use crate::nips::nip15::{JsProductData, JsStallData};
+use crate::nips::nip53::JsLiveEvent;
+use crate::nips::nip57::JsZapRequestData;
+use crate::nips::nip65::JsRelayListItem;
+use crate::nips::nip90::JsDataVendingMachineStatus;
+use crate::nips::nip94::JsFileMetadata;
+use crate::nips::nip98::JsHttpData;
 use crate::types::{JsContact, JsMetadata, JsTimestamp};
 
 #[wasm_bindgen(js_name = EventBuilder)]
@@ -89,10 +98,24 @@ impl JsEventBuilder {
         }
     }
 
+    #[wasm_bindgen(js_name = relayList)]
+    pub fn relay_list(relays: Vec<JsRelayListItem>) -> Self {
+        Self {
+            builder: EventBuilder::relay_list(relays.into_iter().map(|r| r.into())),
+        }
+    }
+
     #[wasm_bindgen(js_name = textNote)]
     pub fn text_note(content: &str, tags: Vec<JsTag>) -> Self {
         Self {
             builder: EventBuilder::text_note(content, tags.into_iter().map(|t| t.into())),
+        }
+    }
+
+    #[wasm_bindgen(js_name = longFormTextNote)]
+    pub fn long_form_text_note(content: &str, tags: Vec<JsTag>) -> Self {
+        Self {
+            builder: EventBuilder::long_form_text_note(content, tags.into_iter().map(|t| t.into())),
         }
     }
 
@@ -199,6 +222,180 @@ impl JsEventBuilder {
         Ok(Self {
             builder: EventBuilder::auth(challenge, url),
         })
+    }
+
+    #[wasm_bindgen(js_name = liveEvent)]
+    pub fn live_event(live_event: JsLiveEvent) -> Self {
+        Self {
+            builder: EventBuilder::live_event(live_event.into()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = liveEventMsg)]
+    pub fn live_event_msg(
+        live_event_id: String,
+        live_event_host: JsPublicKey,
+        content: String,
+        relay_url: Option<String>,
+        tags: Vec<JsTag>,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::live_event_msg(
+                live_event_id,
+                live_event_host.deref().to_owned(),
+                content,
+                match relay_url {
+                    Some(url) => Some(Url::from_str(&url).map_err(into_err)?),
+                    None => None,
+                },
+                tags.into_iter().map(|t| t.into()).collect(),
+            ),
+        })
+    }
+
+    #[wasm_bindgen]
+    pub fn report(tags: Vec<JsTag>, content: String) -> Self {
+        Self {
+            builder: EventBuilder::report(tags.into_iter().map(|t| t.into()), content),
+        }
+    }
+
+    #[wasm_bindgen(js_name = publicZapRequest)]
+    pub fn public_zap_request(data: JsZapRequestData) -> Self {
+        Self {
+            builder: EventBuilder::public_zap_request(data.deref().clone()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = zapReceipt)]
+    pub fn zap_receipt(bolt11: String, preimage: Option<String>, zap_request: JsEvent) -> Self {
+        Self {
+            builder: EventBuilder::zap_receipt(bolt11, preimage, zap_request.deref().to_owned()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = defineBadge)]
+    pub fn define_badge(
+        badge_id: String,
+        name: Option<String>,
+        description: Option<String>,
+        image: Option<String>,
+        image_dimensions: Option<JsImageDimensions>,
+        thumbnails: Vec<JsThumbnails>,
+    ) -> Self {
+        Self {
+            builder: EventBuilder::define_badge(
+                badge_id,
+                name,
+                description,
+                image.map(UncheckedUrl::from),
+                image_dimensions.map(|i| i.into()),
+                thumbnails.into_iter().map(|t| t.into()).collect(),
+            ),
+        }
+    }
+
+    #[wasm_bindgen(js_name = awardBadge)]
+    pub fn award_badge(
+        badge_definition: &JsEvent,
+        awarded_pubkeys: Vec<JsTag>,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::award_badge(
+                badge_definition.deref(),
+                awarded_pubkeys.into_iter().map(|t| t.into()),
+            )
+            .map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = profileBadges)]
+    pub fn profile_badges(
+        badge_definitions: Vec<JsEvent>,
+        badge_awards: Vec<JsEvent>,
+        pubkey_awarded: &JsPublicKey,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::profile_badges(
+                badge_definitions.into_iter().map(|e| e.into()).collect(),
+                badge_awards.into_iter().map(|e| e.into()).collect(),
+                pubkey_awarded.deref(),
+            )
+            .map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = jobRequest)]
+    pub fn job_request(kind: f64, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::job_request(kind.into(), tags.into_iter().map(|t| t.into()))
+                .map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = jobResult)]
+    pub fn job_result(
+        job_request: &JsEvent,
+        amount_millisats: f64,
+        bolt11: Option<String>,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::job_result(
+                job_request.deref().clone(),
+                amount_millisats as u64,
+                bolt11,
+            )
+            .map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = jobFeedback)]
+    pub fn job_feedback(
+        job_request: &JsEvent,
+        status: JsDataVendingMachineStatus,
+        extra_info: Option<String>,
+        amount_millisats: u64,
+        bolt11: Option<String>,
+        payload: Option<String>,
+    ) -> Self {
+        Self {
+            builder: EventBuilder::job_feedback(
+                job_request.deref(),
+                status.into(),
+                extra_info,
+                amount_millisats,
+                bolt11,
+                payload,
+            ),
+        }
+    }
+
+    #[wasm_bindgen(js_name = fileMetadata)]
+    pub fn file_metadata(description: String, metadata: JsFileMetadata) -> Self {
+        Self {
+            builder: EventBuilder::file_metadata(description, metadata.deref().clone()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = httpAuth)]
+    pub fn http_auth(data: JsHttpData) -> Self {
+        Self {
+            builder: EventBuilder::http_auth(data.into()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = stallData)]
+    pub fn stall_data(data: &JsStallData) -> Self {
+        Self {
+            builder: EventBuilder::stall_data(data.deref().clone()),
+        }
+    }
+
+    #[wasm_bindgen(js_name = productData)]
+    pub fn product_data(data: JsProductData) -> Self {
+        Self {
+            builder: EventBuilder::product_data(data.into()),
+        }
     }
 
     /// Gift Wrap from seal

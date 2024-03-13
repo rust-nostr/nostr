@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 mod builder;
 mod id;
-mod tag;
+pub mod tag;
 mod unsigned;
 
 pub use self::builder::JsEventBuilder;
