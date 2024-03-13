@@ -22,6 +22,7 @@ use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
+use crate::nips::nip01::Coordinate;
 use crate::{EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
 type GenericTags = AllocMap<SingleLetterTag, AllocSet<GenericTagValue>>;
@@ -320,6 +321,8 @@ pub enum GenericTagValue {
     Pubkey(PublicKey),
     /// Event Id
     EventId(EventId),
+    /// Coordinate
+    Coordinate(Coordinate),
     /// Other (string)
     String(String),
 }
@@ -329,6 +332,7 @@ impl fmt::Display for GenericTagValue {
         match self {
             Self::Pubkey(inner) => write!(f, "{inner}"),
             Self::EventId(inner) => write!(f, "{inner}"),
+            Self::Coordinate(inner) => write!(f, "{inner}"),
             Self::String(inner) => write!(f, "{inner}"),
         }
     }
@@ -351,9 +355,21 @@ impl IntoGenericTagValue for EventId {
     }
 }
 
+impl IntoGenericTagValue for Coordinate {
+    fn into_generic_tag_value(self) -> GenericTagValue {
+        GenericTagValue::Coordinate(self)
+    }
+}
+
 impl IntoGenericTagValue for String {
     fn into_generic_tag_value(self) -> GenericTagValue {
         GenericTagValue::String(self)
+    }
+}
+
+impl IntoGenericTagValue for &String {
+    fn into_generic_tag_value(self) -> GenericTagValue {
+        GenericTagValue::String(self.clone())
     }
 }
 

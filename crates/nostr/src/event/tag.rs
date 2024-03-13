@@ -19,6 +19,7 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::id::{self, EventId};
+use crate::message::subscription::IntoGenericTagValue;
 use crate::nips::nip01::{self, Coordinate};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::nips::nip48::Protocol;
@@ -26,7 +27,8 @@ use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::types::url::{ParseError, Url};
 use crate::{
-    key, Alphabet, Event, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp, UncheckedUrl,
+    key, Alphabet, Event, GenericTagValue, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp,
+    UncheckedUrl,
 };
 
 /// [`Tag`] error
@@ -1004,7 +1006,7 @@ impl Tag {
         self.into()
     }
 
-    /// Get [`TagKind`]
+    /// Get tag kind
     pub fn kind(&self) -> TagKind {
         match self {
             Self::Generic(kind, ..) => kind.clone(),
@@ -1103,6 +1105,86 @@ impl Tag {
             Self::Emoji { .. } => TagKind::Emoji,
             Self::Encrypted => TagKind::Encrypted,
             Self::Request(..) => TagKind::Request,
+        }
+    }
+
+    /// Get [SingleLetterTag]
+    #[inline]
+    pub fn single_letter_tag(&self) -> Option<SingleLetterTag> {
+        match self.kind() {
+            TagKind::SingleLetter(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Return the **first** tag value (index `1`), if exists.
+    pub fn content(&self) -> Option<GenericTagValue> {
+        match self {
+            Self::Generic(_, l) => l
+                .first()
+                .cloned()
+                .and_then(|g| serde_json::from_str(&g).ok()),
+            Self::Event { event_id, .. } | Self::EventReport(event_id, ..) => {
+                Some((*event_id).into_generic_tag_value())
+            }
+            Self::PublicKey { public_key, .. }
+            | Self::PubKeyReport(public_key, ..)
+            | Self::PubKeyLiveEvent { public_key, .. } => {
+                Some((*public_key).into_generic_tag_value())
+            }
+            Self::Reference(val) => Some(val.into_generic_tag_value()),
+            Self::RelayMetadata(url, ..) => Some(url.to_string().into_generic_tag_value()),
+            Self::Hashtag(val) => Some(val.into_generic_tag_value()),
+            Self::Geohash(val, ..) => Some(val.into_generic_tag_value()),
+            Self::Identifier(val, ..) => Some(val.into_generic_tag_value()),
+            Self::ExternalIdentity(..) => None,
+            Self::A { coordinate, .. } => Some(coordinate.clone().into_generic_tag_value()),
+            Self::Kind(kind) => Some(kind.to_string().into_generic_tag_value()),
+            Self::Relay(url) => Some(url.to_string().into_generic_tag_value()),
+            Self::POW { nonce, .. } => Some(nonce.to_string().into_generic_tag_value()),
+            Self::Delegation { delegator, .. } => Some(delegator.into_generic_tag_value()),
+            Self::ContentWarning { reason } => reason.clone().map(GenericTagValue::String),
+            Self::Expiration(timestamp) => Some(timestamp.to_string().into_generic_tag_value()),
+            Self::Subject(val) => Some(val.into_generic_tag_value()),
+            Self::Challenge(val) => Some(val.into_generic_tag_value()),
+            Self::Title(val) => Some(val.into_generic_tag_value()),
+            Self::Image(url, ..) => Some(url.to_string().into_generic_tag_value()),
+            Self::Thumb(url, ..) => Some(url.to_string().into_generic_tag_value()),
+            Self::Summary(val) => Some(val.into_generic_tag_value()),
+            Self::PublishedAt(timestamp) => Some(timestamp.to_string().into_generic_tag_value()),
+            Self::Description(val) => Some(val.into_generic_tag_value()),
+            Self::Bolt11(val) => Some(val.into_generic_tag_value()),
+            Self::Preimage(val) => Some(val.into_generic_tag_value()),
+            Self::Relays(list) => list.first().map(|r| r.to_string().into_generic_tag_value()),
+            Self::Amount { millisats, .. } => Some(millisats.to_string().into_generic_tag_value()),
+            Self::Name(val) => Some(val.into_generic_tag_value()),
+            Self::Lnurl(val) => Some(val.into_generic_tag_value()),
+            Self::Url(url) => Some(url.to_string().into_generic_tag_value()),
+            Self::MimeType(val) => Some(val.into_generic_tag_value()),
+            Self::Aes256Gcm { key, .. } => Some(key.clone().into_generic_tag_value()),
+            Self::Sha256(val) => Some(val.to_string().into_generic_tag_value()),
+            Self::Size(val) => Some(val.to_string().into_generic_tag_value()),
+            Self::Dim(val) => Some(val.to_string().into_generic_tag_value()),
+            Self::Magnet(val) => Some(val.into_generic_tag_value()),
+            Self::Blurhash(val) => Some(val.into_generic_tag_value()),
+            Self::Streaming(url) => Some(url.to_string().into_generic_tag_value()),
+            Self::Recording(url) => Some(url.to_string().into_generic_tag_value()),
+            Self::Starts(timestamp) => Some(timestamp.to_string().into_generic_tag_value()),
+            Self::Ends(timestamp) => Some(timestamp.to_string().into_generic_tag_value()),
+            Self::LiveEventStatus(val) => Some(val.to_string().into_generic_tag_value()),
+            Self::DataVendingMachineStatus { status, .. } => {
+                Some(status.to_string().into_generic_tag_value())
+            }
+            Self::CurrentParticipants(num) => Some(num.to_string().into_generic_tag_value()),
+            Self::TotalParticipants(num) => Some(num.to_string().into_generic_tag_value()),
+            Self::AbsoluteURL(url) => Some(url.to_string().into_generic_tag_value()),
+            Self::Method(val) => Some(val.to_string().into_generic_tag_value()),
+            Self::Payload(val) => Some(val.to_string().into_generic_tag_value()),
+            Self::Anon { msg } => msg.clone().map(GenericTagValue::String),
+            Self::Proxy { id, .. } => Some(id.into_generic_tag_value()),
+            Self::Emoji { shortcode, .. } => Some(shortcode.into_generic_tag_value()),
+            Self::Encrypted => None,
+            Self::Request(val) => Some(val.as_json().into_generic_tag_value()),
         }
     }
 }
