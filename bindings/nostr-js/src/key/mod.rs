@@ -72,10 +72,25 @@ impl JsKeys {
     }
 
     /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
     #[wasm_bindgen(js_name = fromMnemonic)]
-    pub fn from_mnemonic(mnemonic: &str, passphrase: Option<String>) -> Result<JsKeys> {
+    pub fn from_mnemonic(
+        mnemonic: &str,
+        passphrase: Option<String>,
+        account: Option<u32>,
+        typ: Option<u32>,
+        index: Option<u32>,
+    ) -> Result<JsKeys> {
         Ok(Self {
-            inner: Keys::from_mnemonic(mnemonic, passphrase.as_deref()).map_err(into_err)?,
+            inner: Keys::from_mnemonic_advanced(
+                mnemonic,
+                passphrase.as_deref(),
+                account,
+                typ,
+                index,
+            )
+            .map_err(into_err)?,
         })
     }
 

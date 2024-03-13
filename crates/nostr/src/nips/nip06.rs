@@ -6,13 +6,13 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/06.md>
 
-#[cfg(feature = "std")]
-use alloc::string::String;
+use alloc::vec;
+use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
 use bip39::Mnemonic;
-use bitcoin::bip32::{DerivationPath, ExtendedPrivKey};
+use bitcoin::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey};
 use bitcoin::hashes::hmac::{Hmac, HmacEngine};
 use bitcoin::hashes::{sha512, Hash, HashEngine};
 #[cfg(feature = "std")]
@@ -24,6 +24,9 @@ use bitcoin::Network;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{Keys, SecretKey};
+
+const PURPOSE: u32 = 44;
+const COIN: u32 = 1237;
 
 /// `NIP06` error
 #[derive(Debug, Eq, PartialEq)]
@@ -58,20 +61,27 @@ impl From<bip39::Error> for Error {
     }
 }
 
-#[allow(missing_docs)]
+/// NIP06 utils
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/06.md>
 pub trait FromMnemonic: Sized {
+    /// Error
     type Err;
 
     /// Derive from BIP-39 mnemonics (ENGLISH wordlist).
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
     #[cfg(feature = "std")]
     fn from_mnemonic<S>(mnemonic: S, passphrase: Option<S>) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
         Self::from_mnemonic_with_account(mnemonic, passphrase, None)
     }
 
     /// Derive from BIP-39 mnemonics with **custom account** (ENGLISH wordlist).
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
     #[cfg(feature = "std")]
     fn from_mnemonic_with_account<S>(
         mnemonic: S,
@@ -79,21 +89,44 @@ pub trait FromMnemonic: Sized {
         account: Option<u32>,
     ) -> Result<Self, Self::Err>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        let passphrase: Option<String> = passphrase.map(|p| p.into());
-        Self::from_mnemonic_with_ctx(&SECP256K1, &mnemonic.into(), passphrase.as_deref(), account)
+        Self::from_mnemonic_advanced(mnemonic, passphrase, account, None, None)
+    }
+
+    /// Derive from BIP-39 mnemonics with **custom** `account`, `type` and/or `index` (ENGLISH wordlist).
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
+    #[cfg(feature = "std")]
+    fn from_mnemonic_advanced<S>(
+        mnemonic: S,
+        passphrase: Option<S>,
+        account: Option<u32>,
+        r#type: Option<u32>,
+        index: Option<u32>,
+    ) -> Result<Self, Self::Err>
+    where
+        S: AsRef<str>,
+    {
+        Self::from_mnemonic_with_ctx(&SECP256K1, mnemonic, passphrase, account, r#type, index)
     }
 
     /// Derive from BIP-39 mnemonics with **custom account** (ENGLISH wordlist).
-    fn from_mnemonic_with_ctx<C>(
+    ///
+    /// By default `account`, `type` and `index` are set to `0`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
+    fn from_mnemonic_with_ctx<C, S>(
         secp: &Secp256k1<C>,
-        mnemonic: &str,
-        passphrase: Option<&str>,
+        mnemonic: S,
+        passphrase: Option<S>,
         account: Option<u32>,
+        r#type: Option<u32>,
+        index: Option<u32>,
     ) -> Result<Self, Self::Err>
     where
-        C: Signing;
+        C: Signing,
+        S: AsRef<str>;
 }
 
 #[deprecated(since = "0.29.0")]
@@ -112,22 +145,48 @@ pub trait GenerateMnemonic {
 impl FromMnemonic for Keys {
     type Err = Error;
 
-    fn from_mnemonic_with_ctx<C>(
+    fn from_mnemonic_with_ctx<C, S>(
         secp: &Secp256k1<C>,
-        mnemonic: &str,
-        passphrase: Option<&str>,
+        mnemonic: S,
+        passphrase: Option<S>,
         account: Option<u32>,
+        r#type: Option<u32>,
+        index: Option<u32>,
     ) -> Result<Self, Self::Err>
     where
         C: Signing,
+        S: AsRef<str>,
     {
-        let mnemonic: Mnemonic = Mnemonic::from_str(mnemonic)?;
-        let seed: [u8; 64] = mnemonic.to_seed_normalized(passphrase.unwrap_or_default());
+        // Parse menmonic
+        let mnemonic: Mnemonic = Mnemonic::from_str(mnemonic.as_ref())?;
+
+        // Convert mnemonic to seed
+        let seed: [u8; 64] = mnemonic
+            .to_seed_normalized(passphrase.as_ref().map(|s| s.as_ref()).unwrap_or_default());
+
+        // Derive BIP32 root key
         let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)?;
+
+        // Unwrap idx
         let account: u32 = account.unwrap_or_default();
-        let path = DerivationPath::from_str(&format!("m/44'/1237'/{account}'/0/0"))?;
+        let _type: u32 = r#type.unwrap_or_default();
+        let index: u32 = index.unwrap_or_default();
+
+        // Compose derivation path
+        let path: Vec<ChildNumber> = vec![
+            ChildNumber::from_hardened_idx(PURPOSE)?,
+            ChildNumber::from_hardened_idx(COIN)?,
+            ChildNumber::from_hardened_idx(account)?,
+            ChildNumber::from_normal_idx(_type)?,
+            ChildNumber::from_normal_idx(index)?,
+        ];
+        let path = DerivationPath::from(path);
+
+        // Derive secret key
         let child_xprv = root_key.derive_priv(secp, &path)?;
         let secret_key = SecretKey::from(child_xprv.private_key);
+
+        // Compose keys
         Ok(Self::new_with_ctx(secp, secret_key))
     }
 }
@@ -172,7 +231,8 @@ mod tests {
         ];
 
         for (mnemonic, expected_secret_key) in list.into_iter() {
-            let keys = Keys::from_mnemonic_with_ctx(&secp, mnemonic, None, None).unwrap();
+            let keys =
+                Keys::from_mnemonic_with_ctx(&secp, mnemonic, None, None, None, None).unwrap();
             assert_eq!(
                 keys.secret_key().unwrap(),
                 &SecretKey::from_str(expected_secret_key).unwrap()
