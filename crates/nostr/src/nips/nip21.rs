@@ -170,6 +170,15 @@ impl Nip21 {
             Self::Coordinate(val) => Ok(val.to_bech32()?),
         }
     }
+
+    /// Get [EventId] if exists
+    pub fn event_id(&self) -> Option<EventId> {
+        match self {
+            Self::EventId(id) => Some(*id),
+            Self::Event(e) => Some(e.event_id),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
