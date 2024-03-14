@@ -551,4 +551,13 @@ impl EventBuilder {
             inner: nostr::EventBuilder::articles_curation_sets(list.into()),
         }
     }
+
+    #[uniffi::constructor]
+    pub fn videos_curation_sets(video: Vec<Arc<Coordinate>>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::videos_curation_sets(
+                video.into_iter().map(|c| c.as_ref().into()),
+            ),
+        }
+    }
 }
