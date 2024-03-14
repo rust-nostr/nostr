@@ -113,3 +113,24 @@ impl From<Emojis> for nip51::Emojis {
         }
     }
 }
+
+#[derive(Record)]
+pub struct ArticlesCuration {
+    /// Coordinates
+    pub coordinate: Vec<Arc<Coordinate>>,
+    /// Event IDs
+    pub event_ids: Vec<Arc<EventId>>,
+}
+
+impl From<ArticlesCuration> for nip51::ArticlesCuration {
+    fn from(value: ArticlesCuration) -> Self {
+        Self {
+            coordinate: value
+                .coordinate
+                .into_iter()
+                .map(|c| c.as_ref().into())
+                .collect(),
+            event_ids: value.event_ids.into_iter().map(|e| **e).collect(),
+        }
+    }
+}

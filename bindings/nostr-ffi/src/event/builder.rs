@@ -15,7 +15,7 @@ use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip15::{ProductData, StallData};
-use crate::nips::nip51::{Bookmarks, Emojis, Interests, MuteList};
+use crate::nips::nip51::{ArticlesCuration, Bookmarks, Emojis, Interests, MuteList};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -543,5 +543,12 @@ impl EventBuilder {
         Ok(Self {
             inner: nostr::EventBuilder::bookmarks_sets(list.try_into()?),
         })
+    }
+
+    #[uniffi::constructor]
+    pub fn articles_curation_sets(list: ArticlesCuration) -> Self {
+        Self {
+            inner: nostr::EventBuilder::articles_curation_sets(list.into()),
+        }
     }
 }
