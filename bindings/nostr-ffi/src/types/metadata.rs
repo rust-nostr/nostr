@@ -7,11 +7,66 @@ use std::sync::Arc;
 
 use nostr::serde_json::Value;
 use nostr::{JsonUtil, Url};
-use uniffi::Object;
+use uniffi::{Object, Record};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::JsonValue;
+
+#[derive(Record)]
+pub struct MetadataRecord {
+    /// Name
+    pub name: Option<String>,
+    /// Display name
+    pub display_name: Option<String>,
+    /// Description
+    pub about: Option<String>,
+    /// Website url
+    pub website: Option<String>,
+    /// Picture url
+    pub picture: Option<String>,
+    /// Banner url
+    pub banner: Option<String>,
+    /// NIP05 (ex. name@example.com)
+    pub nip05: Option<String>,
+    /// LNURL
+    pub lud06: Option<String>,
+    /// Lightning Address
+    pub lud16: Option<String>,
+}
+
+impl From<MetadataRecord> for nostr::Metadata {
+    fn from(value: MetadataRecord) -> Self {
+        Self {
+            name: value.name,
+            display_name: value.display_name,
+            about: value.about,
+            website: value.website,
+            picture: value.picture,
+            banner: value.banner,
+            nip05: value.nip05,
+            lud06: value.lud06,
+            lud16: value.lud16,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<nostr::Metadata> for MetadataRecord {
+    fn from(value: nostr::Metadata) -> Self {
+        Self {
+            name: value.name,
+            display_name: value.display_name,
+            about: value.about,
+            website: value.website,
+            picture: value.picture,
+            banner: value.banner,
+            nip05: value.nip05,
+            lud06: value.lud06,
+            lud16: value.lud16,
+        }
+    }
+}
 
 #[derive(Clone, Object)]
 pub struct Metadata {
@@ -42,10 +97,19 @@ impl Metadata {
     }
 
     #[uniffi::constructor]
+    pub fn from_record(r: MetadataRecord) -> Self {
+        Self { inner: r.into() }
+    }
+
+    #[uniffi::constructor]
     pub fn from_json(json: String) -> Result<Self> {
         Ok(Self {
             inner: nostr::Metadata::from_json(json)?,
         })
+    }
+
+    pub fn as_record(&self) -> MetadataRecord {
+        self.inner.clone().into()
     }
 
     pub fn as_json(&self) -> String {
