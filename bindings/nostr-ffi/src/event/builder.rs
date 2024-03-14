@@ -15,7 +15,7 @@ use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip15::{ProductData, StallData};
-use crate::nips::nip51::{ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, MuteList};
+use crate::nips::nip51::{ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, {Bookmarks, MuteList}};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
