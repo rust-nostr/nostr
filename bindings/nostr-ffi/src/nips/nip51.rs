@@ -12,6 +12,9 @@ use super::nip01::Coordinate;
 use crate::error::Result;
 use crate::{EventId, NostrError, PublicKey};
 
+/// Things the user doesn't want to see in their feeds
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[derive(Record)]
 pub struct MuteList {
     pub public_keys: Vec<Arc<PublicKey>>,
@@ -31,6 +34,9 @@ impl From<MuteList> for nip51::MuteList {
     }
 }
 
+/// Uncategorized, "global" list of things a user wants to save
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[derive(Record)]
 pub struct Bookmarks {
     pub event_ids: Vec<Arc<EventId>>,
@@ -62,6 +68,9 @@ impl TryFrom<Bookmarks> for nip51::Bookmarks {
     }
 }
 
+/// Topics a user may be interested in and pointers
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[derive(Record)]
 pub struct Interests {
     pub hashtags: Vec<String>,
@@ -81,6 +90,9 @@ impl From<Interests> for nip51::Interests {
     }
 }
 
+/// Emoji
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[derive(Record)]
 pub struct EmojiInfo {
     pub shortcode: String,
@@ -93,6 +105,9 @@ impl From<EmojiInfo> for (String, UncheckedUrl) {
     }
 }
 
+/// User preferred emojis and pointers to emoji sets
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[derive(Record)]
 pub struct Emojis {
     /// Emojis
@@ -114,6 +129,9 @@ impl From<Emojis> for nip51::Emojis {
     }
 }
 
+/// Groups of articles picked by users as interesting and/or belonging to the same category
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[derive(Record)]
 pub struct ArticlesCuration {
     /// Coordinates

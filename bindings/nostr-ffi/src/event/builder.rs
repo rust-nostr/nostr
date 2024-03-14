@@ -459,6 +459,9 @@ impl EventBuilder {
         }
     }
 
+    /// Mute list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn mute_list(list: MuteList) -> Self {
         Self {
@@ -466,6 +469,9 @@ impl EventBuilder {
         }
     }
 
+    /// Pinned notes
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn pinned_notes(ids: Vec<Arc<EventId>>) -> Self {
         Self {
@@ -473,6 +479,9 @@ impl EventBuilder {
         }
     }
 
+    /// Bookmarks
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn bookmarks(list: Bookmarks) -> Result<Self> {
         Ok(Self {
@@ -480,6 +489,9 @@ impl EventBuilder {
         })
     }
 
+    /// Communities
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn communities(communities: Vec<Arc<Coordinate>>) -> Self {
         Self {
@@ -489,6 +501,9 @@ impl EventBuilder {
         }
     }
 
+    /// Public chats
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn public_chats(chat: Vec<Arc<EventId>>) -> Self {
         Self {
@@ -496,6 +511,9 @@ impl EventBuilder {
         }
     }
 
+    /// Blocked relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn blocked_relays(relay: Vec<String>) -> Self {
         Self {
@@ -503,6 +521,9 @@ impl EventBuilder {
         }
     }
 
+    /// Search relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn search_relays(relay: Vec<String>) -> Self {
         Self {
@@ -510,6 +531,9 @@ impl EventBuilder {
         }
     }
 
+    /// Interests
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn interests(list: Interests) -> Result<Self> {
         Ok(Self {
@@ -517,6 +541,9 @@ impl EventBuilder {
         })
     }
 
+    /// Emojis
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn emojis(list: Emojis) -> Result<Self> {
         Ok(Self {
@@ -524,6 +551,9 @@ impl EventBuilder {
         })
     }
 
+    /// Follow sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn follow_sets(publick_key: Vec<Arc<PublicKey>>) -> Self {
         Self {
@@ -531,6 +561,9 @@ impl EventBuilder {
         }
     }
 
+    /// Relay sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn relay_sets(relay: Vec<String>) -> Self {
         Self {
@@ -538,6 +571,9 @@ impl EventBuilder {
         }
     }
 
+    /// Bookmark sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn bookmarks_sets(list: Bookmarks) -> Result<Self> {
         Ok(Self {
@@ -545,6 +581,9 @@ impl EventBuilder {
         })
     }
 
+    /// Article Curation sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn articles_curation_sets(list: ArticlesCuration) -> Self {
         Self {
@@ -552,6 +591,9 @@ impl EventBuilder {
         }
     }
 
+    /// Videos Curation sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn videos_curation_sets(video: Vec<Arc<Coordinate>>) -> Self {
         Self {
@@ -561,6 +603,9 @@ impl EventBuilder {
         }
     }
 
+    /// Emoji sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn emoji_sets(emojis: Vec<EmojiInfo>) -> Self {
         Self {
