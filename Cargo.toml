@@ -35,7 +35,7 @@ thiserror = "1.0"
 tokio = { version = "1", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = "0.3"
-uniffi = { git = "https://github.com/mozilla/uniffi-rs", rev = "0a5e2eb5760b4ce5549021ec91de546716de8db1" }
+uniffi = { git = "https://github.com/mozilla/uniffi-rs", rev = "442f2e4e8764a249beacd28fe849fd1936d5eb8b" }
 wasm-bindgen = { version = "0.2", default-features = false }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", default-features = false }
