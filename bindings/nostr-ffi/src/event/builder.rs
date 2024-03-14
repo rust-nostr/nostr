@@ -537,4 +537,11 @@ impl EventBuilder {
             inner: nostr::EventBuilder::relay_sets(relay.into_iter().map(UncheckedUrl::from)),
         }
     }
+
+    #[uniffi::constructor]
+    pub fn bookmarks_sets(list: Bookmarks) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventBuilder::bookmarks_sets(list.try_into()?),
+        })
+    }
 }
