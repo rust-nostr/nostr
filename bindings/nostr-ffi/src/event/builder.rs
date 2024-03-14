@@ -523,4 +523,11 @@ impl EventBuilder {
             inner: nostr::EventBuilder::emojis(list.into()),
         })
     }
+
+    #[uniffi::constructor]
+    pub fn follow_sets(publick_key: Vec<Arc<PublicKey>>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::follow_sets(publick_key.into_iter().map(|p| **p)),
+        }
+    }
 }
