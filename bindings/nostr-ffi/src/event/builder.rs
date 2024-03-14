@@ -530,4 +530,11 @@ impl EventBuilder {
             inner: nostr::EventBuilder::follow_sets(publick_key.into_iter().map(|p| **p)),
         }
     }
+
+    #[uniffi::constructor]
+    pub fn relay_sets(relay: Vec<String>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::relay_sets(relay.into_iter().map(UncheckedUrl::from)),
+        }
+    }
 }
