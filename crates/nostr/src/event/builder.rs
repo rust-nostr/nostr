@@ -1402,7 +1402,7 @@ impl EventBuilder {
         let tags = emoji
             .into_iter()
             .map(|(s, url)| Tag::Emoji { shortcode: s, url });
-        Self::new(Kind::VideosCurationSets, "", tags)
+        Self::new(Kind::EmojiSets, "", tags)
     }
 }
 

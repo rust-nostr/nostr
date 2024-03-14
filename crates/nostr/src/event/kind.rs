@@ -82,41 +82,77 @@ pub enum Kind {
     ZapRequest,
     /// Zap Receipt (NIP57)
     ZapReceipt,
-    /// Mute List (NIP51)
+    /// Mute List
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     MuteList,
-    /// Pin List (NIP51)
+    /// Pin List
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     PinList,
-    /// Bookmarks (NIP51)
+    /// Bookmarks
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     Bookmarks,
-    /// Communities (NIP51)
+    /// Communities
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     Communities,
-    /// Public Chats (NIP51)
+    /// Public Chats
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     PublicChats,
-    /// Blocked Relays (NIP51)
+    /// Blocked Relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     BlockedRelays,
-    /// Search Relays (NIP51)
+    /// Search Relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     SearchRelays,
-    /// Simple Groups (NIP51)
+    /// Simple Groups
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     SimpleGroups,
-    /// Interests (NIP51)
+    /// Interests
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     Interests,
-    /// Emojis (NIP51)
+    /// Emojis
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     Emojis,
-    /// Follow Sets (NIP51)
+    /// Follow Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     FollowSets,
-    /// Relay Sets (NIP51)
+    /// Relay Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     RelaySets,
-    /// Bookmark Sets (NIP51)
+    /// Bookmark Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     BookmarkSets,
-    /// Articles Curation Sets (NIP51)
+    /// Articles Curation Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     ArticlesCurationSets,
-    /// Videos Curation Sets (NIP51)
+    /// Videos Curation Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     VideosCurationSets,
-    /// Interest Sets (NIP51)
+    /// Interest Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     InterestSets,
-    /// Emoji Sets (NIP51)
+    /// Emoji Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     EmojiSets,
-    /// Release Artifact Sets (NIP51)
+    /// Release Artifact Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     ReleaseArtifactSets,
     /// Relay List Metadata (NIP65)
     RelayList,

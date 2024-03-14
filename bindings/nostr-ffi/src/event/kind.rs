@@ -124,10 +124,78 @@ pub enum KindEnum {
     ZapRequest,
     /// Zap Receipt (NIP57)
     ZapReceipt,
-    /// Mute List (NIP51)
+    /// Mute List
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     MuteList,
-    /// Pin List (NIP51)
+    /// Pin List
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     PinList,
+    /// Bookmarks
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    Bookmarks,
+    /// Communities
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    Communities,
+    /// Public Chats
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    PublicChats,
+    /// Blocked Relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    BlockedRelays,
+    /// Search Relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    SearchRelays,
+    /// Simple Groups
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    SimpleGroups,
+    /// Interests
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    Interests,
+    /// Emojis
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    Emojis,
+    /// Follow Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    FollowSets,
+    /// Relay Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    RelaySets,
+    /// Bookmark Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    BookmarkSets,
+    /// Articles Curation Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    ArticlesCurationSets,
+    /// Videos Curation Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    VideosCurationSets,
+    /// Interest Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    InterestSets,
+    /// Emoji Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    EmojiSets,
+    /// Release Artifact Sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    ReleaseArtifactSets,
     /// Relay List Metadata (NIP65)
     RelayList,
     /// Client Authentication (NIP42)
@@ -138,10 +206,6 @@ pub enum KindEnum {
     WalletConnectResponse,
     /// Nostr Connect (NIP46)
     NostrConnect,
-    /// Categorized People List (NIP51)
-    CategorizedPeopleList,
-    /// Categorized Bookmark List (NIP51)
-    CategorizedBookmarkList,
     /// Live Event (NIP53)
     LiveEvent,
     /// Live Event Message (NIP53)
@@ -224,13 +288,27 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::ZapReceipt => Self::ZapReceipt,
             nostr::Kind::MuteList => Self::MuteList,
             nostr::Kind::PinList => Self::PinList,
+            nostr::Kind::Bookmarks => Self::Bookmarks,
+            nostr::Kind::Communities => Self::Communities,
+            nostr::Kind::PublicChats => Self::PublicChats,
+            nostr::Kind::BlockedRelays => Self::BlockedRelays,
+            nostr::Kind::SearchRelays => Self::SearchRelays,
+            nostr::Kind::SimpleGroups => Self::SimpleGroups,
+            nostr::Kind::Interests => Self::Interests,
+            nostr::Kind::Emojis => Self::Emojis,
+            nostr::Kind::FollowSets => Self::FollowSets,
+            nostr::Kind::RelaySets => Self::RelaySets,
+            nostr::Kind::BookmarkSets => Self::BookmarkSets,
+            nostr::Kind::ArticlesCurationSets => Self::ArticlesCurationSets,
+            nostr::Kind::VideosCurationSets => Self::VideosCurationSets,
+            nostr::Kind::InterestSets => Self::InterestSets,
+            nostr::Kind::EmojiSets => Self::EmojiSets,
+            nostr::Kind::ReleaseArtifactSets => Self::ReleaseArtifactSets,
             nostr::Kind::RelayList => Self::RelayList,
             nostr::Kind::Authentication => Self::Authentication,
             nostr::Kind::WalletConnectRequest => Self::WalletConnectRequest,
             nostr::Kind::WalletConnectResponse => Self::WalletConnectResponse,
             nostr::Kind::NostrConnect => Self::NostrConnect,
-            nostr::Kind::CategorizedPeopleList => Self::CategorizedPeopleList,
-            nostr::Kind::CategorizedBookmarkList => Self::CategorizedBookmarkList,
             nostr::Kind::LiveEvent => Self::LiveEvent,
             nostr::Kind::LiveEventMessage => Self::LiveEventMessage,
             nostr::Kind::ProfileBadges => Self::ProfileBadges,
@@ -287,13 +365,27 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::ZapReceipt => Self::ZapReceipt,
             KindEnum::MuteList => Self::MuteList,
             KindEnum::PinList => Self::PinList,
+            KindEnum::Bookmarks => Self::Bookmarks,
+            KindEnum::Communities => Self::Communities,
+            KindEnum::PublicChats => Self::PublicChats,
+            KindEnum::BlockedRelays => Self::BlockedRelays,
+            KindEnum::SearchRelays => Self::SearchRelays,
+            KindEnum::SimpleGroups => Self::SimpleGroups,
+            KindEnum::Interests => Self::Interests,
+            KindEnum::Emojis => Self::Emojis,
+            KindEnum::FollowSets => Self::FollowSets,
+            KindEnum::RelaySets => Self::RelaySets,
+            KindEnum::BookmarkSets => Self::BookmarkSets,
+            KindEnum::ArticlesCurationSets => Self::ArticlesCurationSets,
+            KindEnum::VideosCurationSets => Self::VideosCurationSets,
+            KindEnum::InterestSets => Self::InterestSets,
+            KindEnum::EmojiSets => Self::EmojiSets,
+            KindEnum::ReleaseArtifactSets => Self::ReleaseArtifactSets,
             KindEnum::RelayList => Self::RelayList,
             KindEnum::Authentication => Self::Authentication,
             KindEnum::WalletConnectRequest => Self::WalletConnectRequest,
             KindEnum::WalletConnectResponse => Self::WalletConnectResponse,
             KindEnum::NostrConnect => Self::NostrConnect,
-            KindEnum::CategorizedPeopleList => Self::CategorizedPeopleList,
-            KindEnum::CategorizedBookmarkList => Self::CategorizedBookmarkList,
             KindEnum::LiveEvent => Self::LiveEvent,
             KindEnum::LiveEventMessage => Self::LiveEventMessage,
             KindEnum::ProfileBadges => Self::ProfileBadges,

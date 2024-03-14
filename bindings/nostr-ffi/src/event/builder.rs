@@ -15,7 +15,7 @@ use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip15::{ProductData, StallData};
-use crate::nips::nip51::{ArticlesCuration, Bookmarks, Emojis, Interests, MuteList};
+use crate::nips::nip51::{ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, MuteList};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -558,6 +558,13 @@ impl EventBuilder {
             inner: nostr::EventBuilder::videos_curation_sets(
                 video.into_iter().map(|c| c.as_ref().into()),
             ),
+        }
+    }
+
+    #[uniffi::constructor]
+    pub fn emoji_sets(emojis: Vec<EmojiInfo>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::emoji_sets(emojis.into_iter().map(|e| e.into())),
         }
     }
 }

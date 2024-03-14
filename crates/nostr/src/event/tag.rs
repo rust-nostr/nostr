@@ -1206,7 +1206,7 @@ impl Tag {
             Self::Emoji { shortcode, .. } => Some(shortcode.into_generic_tag_value()),
             Self::Encrypted => None,
             Self::Request(val) => Some(val.as_json().into_generic_tag_value()),
-            Self::Word(val) => Some(val.into_generic_tag_value())
+            Self::Word(val) => Some(val.into_generic_tag_value()),
         }
     }
 }
