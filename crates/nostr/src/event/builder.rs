@@ -396,6 +396,82 @@ impl EventBuilder {
         Self::new(Kind::TextNote, content, tags)
     }
 
+    /// Text note reply
+    ///
+    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
+    pub fn text_note_reply<S>(
+        content: S,
+        reply_to: &Event,
+        root: Option<&Event>,
+        relay_url: Option<UncheckedUrl>,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
+        let mut tags: Vec<Tag> = Vec::new();
+
+        // Add `e` and `p` tag of **root** event
+        match root {
+            Some(root) => {
+                // ID and author
+                tags.push(Tag::Event {
+                    event_id: root.id(),
+                    relay_url: relay_url.clone(),
+                    marker: Some(Marker::Root),
+                });
+                tags.push(Tag::public_key(root.author()));
+
+                // Add others `p` tags
+                tags.extend(
+                    root.iter_tags()
+                        .filter(|t| {
+                            t.kind()
+                                == TagKind::SingleLetter(SingleLetterTag {
+                                    character: Alphabet::P,
+                                    uppercase: false,
+                                })
+                        })
+                        .cloned(),
+                );
+            }
+            None => {
+                // No root event is passed, use `reply_to` event ID for `root` marker
+                tags.push(Tag::Event {
+                    event_id: reply_to.id(),
+                    relay_url: relay_url.clone(),
+                    marker: Some(Marker::Root),
+                });
+            }
+        }
+
+        // Add `e` and `p` tag of event author
+        tags.push(Tag::Event {
+            event_id: reply_to.id(),
+            relay_url,
+            marker: Some(Marker::Reply),
+        });
+        tags.push(Tag::public_key(reply_to.author()));
+
+        // Add others `p` tags of reply_to event
+        tags.extend(
+            reply_to
+                .iter_tags()
+                .filter(|t| {
+                    t.kind()
+                        == TagKind::SingleLetter(SingleLetterTag {
+                            character: Alphabet::P,
+                            uppercase: false,
+                        })
+                })
+                .cloned(),
+        );
+
+        // Compose event
+        Self::new(Kind::TextNote, content, tags)
+    }
+
     /// Long-form text note (generally referred to as "articles" or "blog posts").
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/23.md>

@@ -112,6 +112,28 @@ impl JsEventBuilder {
         }
     }
 
+    /// Text note reply
+    ///
+    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
+    #[wasm_bindgen(js_name = textNoteReply)]
+    pub fn text_note_reply(
+        content: &str,
+        reply_to: &JsEvent,
+        root: Option<JsEvent>,
+        relay_url: Option<String>,
+    ) -> Self {
+        Self {
+            builder: EventBuilder::text_note_reply(
+                content,
+                reply_to.deref(),
+                root.as_deref(),
+                relay_url.map(UncheckedUrl::from),
+            ),
+        }
+    }
+
     #[wasm_bindgen(js_name = longFormTextNote)]
     pub fn long_form_text_note(content: &str, tags: Vec<JsTag>) -> Self {
         Self {

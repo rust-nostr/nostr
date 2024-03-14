@@ -109,6 +109,28 @@ impl EventBuilder {
         })
     }
 
+    /// Text note reply
+    ///
+    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
+    #[uniffi::constructor]
+    pub fn text_note_reply(
+        content: String,
+        reply_to: &Event,
+        root: Option<Arc<Event>>,
+        relay_url: Option<String>,
+    ) -> Self {
+        Self {
+            inner: nostr::EventBuilder::text_note_reply(
+                content,
+                reply_to.deref(),
+                root.as_ref().map(|e| e.as_ref().deref()),
+                relay_url.map(UncheckedUrl::from),
+            ),
+        }
+    }
+
     #[uniffi::constructor]
     pub fn long_form_text_note(content: &str, tags: &[Arc<Tag>]) -> Result<Self> {
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
