@@ -1,6 +1,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -60,7 +61,7 @@ impl TryFrom<Bookmarks> for nip51::Bookmarks {
             coordinate: value
                 .coordinate
                 .into_iter()
-                .map(|c| c.as_ref().into())
+                .map(|c| c.as_ref().deref().clone())
                 .collect(),
             hashtags: value.hashtags,
             urls: url_list,
@@ -84,7 +85,7 @@ impl From<Interests> for nip51::Interests {
             coordinate: value
                 .coordinate
                 .into_iter()
-                .map(|c| c.as_ref().into())
+                .map(|c| c.as_ref().deref().clone())
                 .collect(),
         }
     }
@@ -123,7 +124,7 @@ impl From<Emojis> for nip51::Emojis {
             coordinate: value
                 .coordinate
                 .into_iter()
-                .map(|c| c.as_ref().into())
+                .map(|c| c.as_ref().deref().clone())
                 .collect(),
         }
     }
@@ -146,7 +147,7 @@ impl From<ArticlesCuration> for nip51::ArticlesCuration {
             coordinate: value
                 .coordinate
                 .into_iter()
-                .map(|c| c.as_ref().into())
+                .map(|c| c.as_ref().deref().clone())
                 .collect(),
             event_ids: value.event_ids.into_iter().map(|e| **e).collect(),
         }

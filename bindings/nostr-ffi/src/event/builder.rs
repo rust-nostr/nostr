@@ -496,7 +496,7 @@ impl EventBuilder {
     pub fn communities(communities: Vec<Arc<Coordinate>>) -> Self {
         Self {
             inner: nostr::EventBuilder::communities(
-                communities.into_iter().map(|c| c.as_ref().into()),
+                communities.into_iter().map(|c| c.as_ref().deref().clone()),
             ),
         }
     }
@@ -598,7 +598,7 @@ impl EventBuilder {
     pub fn videos_curation_sets(video: Vec<Arc<Coordinate>>) -> Self {
         Self {
             inner: nostr::EventBuilder::videos_curation_sets(
-                video.into_iter().map(|c| c.as_ref().into()),
+                video.into_iter().map(|c| c.as_ref().deref().clone()),
             ),
         }
     }
