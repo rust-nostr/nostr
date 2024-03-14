@@ -41,7 +41,7 @@ clean:
 	cd bindings/nostr-sdk-js && cargo clean
 
 book:
-	cd book && just serve
+	cd book && just serve || cargo install just
 
 flatbuf:
 	cd crates/nostr-database && make flatbuf
