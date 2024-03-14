@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, EventId, Filter, RelayInformationDocument, Timestamp};
+use nostr_ffi::{ClientMessage, Event, EventId, Filter, RelayInformationDocument};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{block_on, pool, FilterOptions, SubscriptionId, Url};
 use uniffi::Object;
@@ -23,6 +23,7 @@ pub use self::options::{RelayOptions, RelaySendOptions, SubscribeOptions};
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 use crate::error::Result;
+use crate::negentropy::NegentropyItem;
 use crate::NostrDatabase;
 
 #[derive(Object)]
@@ -306,19 +307,20 @@ impl Relay {
     pub fn reconcile_with_items(
         &self,
         filter: &Filter,
-        items: HashMap<Arc<EventId>, Arc<Timestamp>>,
+        items: Vec<NegentropyItem>,
         opts: &NegentropyOptions,
     ) -> Result<()> {
         block_on(async move {
-            let items = items.into_iter().map(|(k, v)| (**k, **v)).collect();
+            let items = items
+                .into_iter()
+                .map(|item| (**item.id, **item.timestamp))
+                .collect();
             Ok(self
                 .inner
                 .reconcile_with_items(filter.deref().clone(), items, **opts)
                 .await?)
         })
     }
-
-    // TODO: add reconcile_with_items
 
     /// Check if relay support negentropy protocol
     pub fn support_negentropy(&self) -> Result<bool> {

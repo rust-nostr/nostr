@@ -8,12 +8,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::thread;
-use nostr_ffi::{ClientMessage, Event, EventId, Filter, Timestamp};
+use nostr_ffi::{ClientMessage, Event, EventId, Filter};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{block_on, spawn_blocking, RelayPoolOptions, SubscriptionId};
 use uniffi::Object;
 
 use crate::error::Result;
+use crate::negentropy::NegentropyItem;
 use crate::relay::options::{FilterOptions, NegentropyOptions};
 use crate::relay::{RelayOptions, RelaySendOptions, SubscribeOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -360,11 +361,14 @@ impl RelayPool {
     pub fn reconcile_with_items(
         &self,
         filter: &Filter,
-        items: HashMap<Arc<EventId>, Arc<Timestamp>>,
+        items: Vec<NegentropyItem>,
         opts: &NegentropyOptions,
     ) -> Result<()> {
         block_on(async move {
-            let items = items.into_iter().map(|(k, v)| (**k, **v)).collect();
+            let items = items
+                .into_iter()
+                .map(|item| (**item.id, **item.timestamp))
+                .collect();
             Ok(self
                 .inner
                 .reconcile_with_items(filter.deref().clone(), items, **opts)
