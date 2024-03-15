@@ -9,7 +9,7 @@ buildscript {
 }
 
 plugins {
-    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
+    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
 }
 
 // library version is defined in gradle.properties
