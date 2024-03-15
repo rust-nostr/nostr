@@ -13,7 +13,7 @@ use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip15::{JsProductData, JsStallData};
-use crate::nips::nip51::JsMuteList;
+use crate::nips::nip51::{JsBookmarks, JsMuteList};
 use crate::nips::nip53::JsLiveEvent;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
@@ -501,5 +501,15 @@ impl JsEventBuilder {
         Self {
             builder: EventBuilder::pinned_notes(ids.into_iter().map(|e| e.into())),
         }
+    }
+
+    /// Bookmarks
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = bookmarks)]
+    pub fn bookmarks(list: JsBookmarks) -> Result<JsEventBuilder> {
+        Ok(Self {
+            builder: EventBuilder::bookmarks(list.try_into()?),
+        })
     }
 }

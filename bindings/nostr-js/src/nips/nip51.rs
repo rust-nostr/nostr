@@ -5,13 +5,22 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/51.md>
 
-use nostr::nips::nip51::MuteList;
+use std::ops::Deref;
+use std::str::FromStr;
+
+use js_sys::Error;
+use nostr::nips::nip51::{Bookmarks, MuteList};
+use nostr::Url;
 use wasm_bindgen::prelude::*;
 
+use super::nip01::JsCoordinate;
+use crate::error::{into_err, Result};
 use crate::event::JsEventId;
 use crate::key::JsPublicKey;
 
 /// Things the user doesn't want to see in their feeds
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[wasm_bindgen(js_name = MuteList)]
 pub struct JsMuteList {
     #[wasm_bindgen(getter_with_clone)]
@@ -32,5 +41,43 @@ impl From<JsMuteList> for MuteList {
             event_ids: value.event_ids.into_iter().map(|e| e.into()).collect(),
             words: value.words,
         }
+    }
+}
+
+/// Uncategorized, "global" list of things a user wants to save
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[wasm_bindgen(js_name = Bookmarks)]
+pub struct JsBookmarks {
+    #[wasm_bindgen(getter_with_clone)]
+    pub event_ids: Vec<JsEventId>,
+    #[wasm_bindgen(getter_with_clone)]
+    pub coordinate: Vec<JsCoordinate>,
+    #[wasm_bindgen(getter_with_clone)]
+    pub hashtags: Vec<String>,
+    #[wasm_bindgen(getter_with_clone)]
+    pub urls: Vec<String>,
+}
+
+impl TryFrom<JsBookmarks> for Bookmarks {
+    type Error = Error;
+
+    fn try_from(value: JsBookmarks) -> Result<Self, Self::Error> {
+        let mut url_list: Vec<Url> = Vec::with_capacity(value.urls.len());
+
+        for url in value.urls.into_iter() {
+            url_list.push(Url::from_str(&url).map_err(into_err)?)
+        }
+
+        Ok(Self {
+            event_ids: value.event_ids.into_iter().map(|e| e.into()).collect(),
+            coordinate: value
+                .coordinate
+                .into_iter()
+                .map(|c| c.deref().clone())
+                .collect(),
+            hashtags: value.hashtags,
+            urls: url_list,
+        })
     }
 }

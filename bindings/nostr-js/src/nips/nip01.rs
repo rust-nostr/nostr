@@ -10,6 +10,7 @@ use wasm_bindgen::prelude::*;
 use crate::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = Coordinate)]
+#[derive(Clone)]
 pub struct JsCoordinate {
     inner: Coordinate,
 }
