@@ -13,6 +13,7 @@ use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip15::{JsProductData, JsStallData};
+use crate::nips::nip51::JsMuteList;
 use crate::nips::nip53::JsLiveEvent;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
@@ -469,6 +470,16 @@ impl JsEventBuilder {
     pub fn sealed_direct(receiver: &JsPublicKey, message: &str) -> Self {
         Self {
             inner: EventBuilder::sealed_direct(**receiver, message),
+        }
+    }
+
+    /// Mute list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = muteList)]
+    pub fn mute_list(list: JsMuteList) -> Self {
+        Self {
+            inner: EventBuilder::mute_list(list.into()),
         }
     }
 
