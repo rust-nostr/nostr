@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk"
-version = "0.28.0"
+version = "0.29.0"
 edition = "2021"
 description = "High level Nostr client library."
 authors.workspace = true
@@ -44,19 +44,19 @@ nostr-database.workspace = true
 nostr-relay-pool.workspace = true
 nostr-signer.workspace = true
 nostr-zapper = { workspace = true, optional = true }
-nwc = { version = "0.28", path = "../nwc", optional = true }
+nwc = { version = "0.29", path = "../nwc", optional = true }
 once_cell = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["std", "attributes"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-nostr-rocksdb = { version = "0.28", path = "../nostr-rocksdb", optional = true }
-nostr-sqlite = { version = "0.28", path = "../nostr-sqlite", optional = true }
+nostr-rocksdb = { version = "0.29", path = "../nostr-rocksdb", optional = true }
+nostr-sqlite = { version = "0.29", path = "../nostr-sqlite", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-nostr-indexeddb = { version = "0.28", path = "../nostr-indexeddb", optional = true }
-nostr-webln = { version = "0.28", path = "../nostr-webln", optional = true }
+nostr-indexeddb = { version = "0.29", path = "../nostr-indexeddb", optional = true }
+nostr-webln = { version = "0.29", path = "../nostr-webln", optional = true }
 tokio = { workspace = true, features = ["rt", "macros", "sync"] }
 
 [dev-dependencies]

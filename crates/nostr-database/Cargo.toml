@@ -1,6 +1,6 @@
 [package]
 name = "nostr-database"
-version = "0.28.1"
+version = "0.29.0"
 edition = "2021"
 description = "Database for Nostr apps"
 authors.workspace = true
