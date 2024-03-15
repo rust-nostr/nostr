@@ -523,4 +523,14 @@ impl JsEventBuilder {
             builder: EventBuilder::communities(communities.into_iter().map(|c| c.deref().clone())),
         }
     }
+
+    /// Public chats
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = publicChats)]
+    pub fn public_chats(chat: Vec<JsEventId>) -> Self {
+        Self {
+            builder: EventBuilder::public_chats(chat.into_iter().map(|e| e.into())),
+        }
+    }
 }
