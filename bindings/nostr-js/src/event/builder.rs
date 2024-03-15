@@ -12,7 +12,11 @@ use super::tag::{JsImageDimensions, JsThumbnails};
 use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
+use crate::nips::nip01::JsCoordinate;
 use crate::nips::nip15::{JsProductData, JsStallData};
+use crate::nips::nip51::{
+    JsArticlesCuration, JsBookmarks, JsEmojiInfo, JsEmojis, JsInterests, JsMuteList,
+};
 use crate::nips::nip53::JsLiveEvent;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
@@ -469,6 +473,156 @@ impl JsEventBuilder {
     pub fn sealed_direct(receiver: &JsPublicKey, message: &str) -> Self {
         Self {
             inner: EventBuilder::sealed_direct(**receiver, message),
+        }
+    }
+
+    /// Mute list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = muteList)]
+    pub fn mute_list(list: JsMuteList) -> Self {
+        Self {
+            inner: EventBuilder::mute_list(list.into()),
+        }
+    }
+
+    /// Pinned notes
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = pinnedNotes)]
+    pub fn pinned_notes(ids: Vec<JsEventId>) -> Self {
+        Self {
+            inner: EventBuilder::pinned_notes(ids.into_iter().map(|e| e.into())),
+        }
+    }
+
+    /// Bookmarks
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = bookmarks)]
+    pub fn bookmarks(list: JsBookmarks) -> Result<JsEventBuilder> {
+        Ok(Self {
+            inner: EventBuilder::bookmarks(list.try_into()?),
+        })
+    }
+
+    /// Communities
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = communities)]
+    pub fn communities(communities: Vec<JsCoordinate>) -> Self {
+        Self {
+            inner: EventBuilder::communities(communities.into_iter().map(|c| c.deref().clone())),
+        }
+    }
+
+    /// Public chats
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = publicChats)]
+    pub fn public_chats(chat: Vec<JsEventId>) -> Self {
+        Self {
+            inner: EventBuilder::public_chats(chat.into_iter().map(|e| e.into())),
+        }
+    }
+
+    /// Blocked relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = blockedRelays)]
+    pub fn blocked_relays(relays: Vec<String>) -> Self {
+        Self {
+            inner: EventBuilder::blocked_relays(relays.into_iter().map(UncheckedUrl::from)),
+        }
+    }
+
+    /// Search relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = searchRelays)]
+    pub fn search_relays(relays: Vec<String>) -> Self {
+        Self {
+            inner: EventBuilder::search_relays(relays.into_iter().map(UncheckedUrl::from)),
+        }
+    }
+
+    /// Interests
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen]
+    pub fn interests(list: JsInterests) -> Self {
+        Self {
+            inner: EventBuilder::interests(list.into()),
+        }
+    }
+
+    /// Emojis
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen]
+    pub fn emojis(list: JsEmojis) -> Self {
+        Self {
+            inner: EventBuilder::emojis(list.into()),
+        }
+    }
+
+    /// Follow sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = followSets)]
+    pub fn follow_sets(public_keys: Vec<JsPublicKey>) -> Self {
+        Self {
+            inner: EventBuilder::follow_sets(public_keys.into_iter().map(|p| p.into())),
+        }
+    }
+
+    /// Relay sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = relaySets)]
+    pub fn relay_sets(relays: Vec<String>) -> Self {
+        Self {
+            inner: EventBuilder::relay_sets(relays.into_iter().map(UncheckedUrl::from)),
+        }
+    }
+
+    /// Bookmark sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = bookmarksSets)]
+    pub fn bookmarks_sets(list: JsBookmarks) -> Result<JsEventBuilder> {
+        Ok(Self {
+            inner: EventBuilder::bookmarks_sets(list.try_into()?),
+        })
+    }
+
+    /// Article Curation sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = articlesCurationSets)]
+    pub fn articles_curation_sets(list: JsArticlesCuration) -> Self {
+        Self {
+            inner: EventBuilder::articles_curation_sets(list.into()),
+        }
+    }
+
+    /// Videos Curation sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = videosCurationSets)]
+    pub fn videos_curation_sets(video: Vec<JsCoordinate>) -> Self {
+        Self {
+            inner: EventBuilder::videos_curation_sets(video.into_iter().map(|c| c.deref().clone())),
+        }
+    }
+
+    /// Emoji sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = emojiSets)]
+    pub fn emoji_sets(emoji: Vec<JsEmojiInfo>) -> Self {
+        Self {
+            inner: EventBuilder::emoji_sets(emoji.into_iter().map(|e| e.into())),
         }
     }
 

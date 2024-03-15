@@ -15,7 +15,7 @@ use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip15::{ProductData, StallData};
-use crate::nips::nip51::{ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, {Bookmarks, MuteList}};
+use crate::nips::nip51::{ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, MuteList};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -555,9 +555,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn follow_sets(publick_key: Vec<Arc<PublicKey>>) -> Self {
+    pub fn follow_sets(publick_keys: Vec<Arc<PublicKey>>) -> Self {
         Self {
-            inner: nostr::EventBuilder::follow_sets(publick_key.into_iter().map(|p| **p)),
+            inner: nostr::EventBuilder::follow_sets(publick_keys.into_iter().map(|p| **p)),
         }
     }
 

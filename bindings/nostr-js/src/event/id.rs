@@ -13,6 +13,7 @@ use crate::key::JsPublicKey;
 use crate::types::JsTimestamp;
 
 #[wasm_bindgen(js_name = EventId)]
+#[derive(Clone, Copy)]
 pub struct JsEventId {
     pub(crate) inner: EventId,
 }
