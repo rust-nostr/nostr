@@ -42,14 +42,14 @@ pub async fn quickstart() -> Result<()> {
 
     // ANCHOR: create-filter
     let filter = Filter::new().kind(Kind::Metadata);
-    client.subscribe(vec![filter]).await;
+    let sub_id: SubscriptionId = client.subscribe(vec![filter], None).await;
     // ANCHOR_END: create-filter
 
     // ANCHOR: notifications
     let mut notifications = client.notifications();
     while let Ok(notification) = notifications.recv().await {
-        if let RelayPoolNotification::Event { event, .. } = notification {
-            if event.kind == Kind::Metadata {
+        if let RelayPoolNotification::Event { subscription_id, event, .. } = notification {
+            if subscription_id == sub_id && event.kind == Kind::Metadata {
                 // handle the event
                 break; // Exit
             }

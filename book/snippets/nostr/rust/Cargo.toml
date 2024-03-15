@@ -8,4 +8,4 @@ edition = "2021"
 members = ["."]
 
 [dependencies]
-nostr = "0.28"
+nostr = "0.29"

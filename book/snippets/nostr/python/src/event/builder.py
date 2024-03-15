@@ -4,7 +4,7 @@ def event_builder():
     keys = Keys.generate()
 
     # Compose custom event
-    custom_event = EventBuilder(1111, "", []).to_event(keys)
+    custom_event = EventBuilder(Kind(1111), "", []).to_event(keys)
 
     # Compose text note
     textnote_event = EventBuilder.text_note("Hello", []).to_event(keys)
