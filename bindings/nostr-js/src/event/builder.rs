@@ -12,6 +12,7 @@ use super::tag::{JsImageDimensions, JsThumbnails};
 use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
+use crate::nips::nip01::JsCoordinate;
 use crate::nips::nip15::{JsProductData, JsStallData};
 use crate::nips::nip51::{JsBookmarks, JsMuteList};
 use crate::nips::nip53::JsLiveEvent;
@@ -511,5 +512,15 @@ impl JsEventBuilder {
         Ok(Self {
             builder: EventBuilder::bookmarks(list.try_into()?),
         })
+    }
+
+    /// Communities
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = communities)]
+    pub fn communities(communities: Vec<JsCoordinate>) -> Self {
+        Self {
+            builder: EventBuilder::communities(communities.into_iter().map(|c| c.deref().clone())),
+        }
     }
 }
