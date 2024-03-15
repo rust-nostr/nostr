@@ -492,4 +492,14 @@ impl JsEventBuilder {
             inner: EventBuilder::label(label_namespace, labels),
         }
     }
+
+    /// Pinned notes
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = pinnedNotes)]
+    pub fn pinned_notes(ids: Vec<JsEventId>) -> Self {
+        Self {
+            builder: EventBuilder::pinned_notes(ids.into_iter().map(|e| e.into())),
+        }
+    }
 }
