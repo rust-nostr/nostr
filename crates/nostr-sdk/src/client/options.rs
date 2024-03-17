@@ -195,12 +195,6 @@ impl Options {
         self
     }
 
-    /// Shutdown client on drop
-    #[deprecated(since = "0.29.0", note = "No longer needed")]
-    pub fn shutdown_on_drop(self, _value: bool) -> Self {
-        self
-    }
-
     /// Set custom relay limits
     pub fn relay_limits(mut self, limits: RelayLimits) -> Self {
         self.relay_limits = limits;

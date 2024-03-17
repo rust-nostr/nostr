@@ -28,10 +28,4 @@ impl NostrWalletConnectOptions {
             relay: self.relay.proxy(proxy),
         }
     }
-
-    /// Automatically shutdown relay pool on drop
-    #[deprecated(since = "0.29.0", note = "No longer needed")]
-    pub fn shutdown_on_drop(self, _shutdown_on_drop: bool) -> Self {
-        self
-    }
 }

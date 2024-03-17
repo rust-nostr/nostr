@@ -13,11 +13,6 @@ use core::str::FromStr;
 
 use bip39::Mnemonic;
 use bitcoin::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey};
-use bitcoin::hashes::hmac::{Hmac, HmacEngine};
-use bitcoin::hashes::{sha512, Hash, HashEngine};
-#[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::RngCore;
 use bitcoin::secp256k1::{Secp256k1, Signing};
 use bitcoin::Network;
 
@@ -129,19 +124,6 @@ pub trait FromMnemonic: Sized {
         S: AsRef<str>;
 }
 
-#[deprecated(since = "0.29.0")]
-#[allow(missing_docs)]
-pub trait GenerateMnemonic {
-    type Err;
-
-    #[cfg(feature = "std")]
-    fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err>;
-
-    fn generate_mnemonic_with_rng<R>(rng: &mut R, word_count: usize) -> Result<Mnemonic, Self::Err>
-    where
-        R: RngCore;
-}
-
 impl FromMnemonic for Keys {
     type Err = Error;
 
@@ -188,31 +170,6 @@ impl FromMnemonic for Keys {
 
         // Compose keys
         Ok(Self::new_with_ctx(secp, secret_key))
-    }
-}
-
-#[allow(deprecated)]
-impl GenerateMnemonic for Keys {
-    type Err = Error;
-
-    /// Generate new `mnemonic`
-    #[cfg(feature = "std")]
-    fn generate_mnemonic(word_count: usize) -> Result<Mnemonic, Self::Err> {
-        let mut rng = OsRng;
-        Self::generate_mnemonic_with_rng(&mut rng, word_count)
-    }
-
-    fn generate_mnemonic_with_rng<R>(rng: &mut R, word_count: usize) -> Result<Mnemonic, Self::Err>
-    where
-        R: RngCore,
-    {
-        let mut h = HmacEngine::<sha512::Hash>::new(b"nostr");
-        let mut os_random = [0u8; 32];
-        rng.fill_bytes(&mut os_random);
-        h.input(&os_random);
-        let entropy: [u8; 64] = Hmac::from_engine(h).to_byte_array();
-        let len: usize = word_count * 4 / 3;
-        Ok(Mnemonic::from_entropy(&entropy[0..len])?)
     }
 }
 

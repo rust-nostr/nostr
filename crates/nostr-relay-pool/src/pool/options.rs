@@ -29,10 +29,4 @@ impl RelayPoolOptions {
         self.notification_channel_size = size;
         self
     }
-
-    /// Shutdown on [`RelayPool`](super::RelayPool) drop
-    #[deprecated(since = "0.29.0", note = "No longer needed")]
-    pub fn shutdown_on_drop(self, _value: bool) -> Self {
-        self
-    }
 }

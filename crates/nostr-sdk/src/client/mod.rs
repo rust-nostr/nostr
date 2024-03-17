@@ -641,62 +641,6 @@ impl Client {
             .await?)
     }
 
-    /// Request events of filters
-    ///
-    /// All events will be received on notification listener (`client.notifications()`)
-    /// until the EOSE "end of stored events" message is received from the relay.
-    ///
-    /// If timeout is set to `None`, the default from [`Options`] will be used.
-    #[deprecated(since = "0.29.0", note = "Use `subscribe` instead")]
-    pub async fn req_events_of(&self, filters: Vec<Filter>, timeout: Option<Duration>) {
-        #[allow(deprecated)]
-        self.req_events_of_with_opts(filters, timeout, FilterOptions::ExitOnEOSE)
-            .await
-    }
-
-    /// Request events of filters with [`FilterOptions`]
-    ///
-    /// If timeout is set to `None`, the default from [`Options`] will be used.
-    #[deprecated(since = "0.29.0", note = "Use `subscribe` instead")]
-    pub async fn req_events_of_with_opts(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Option<Duration>,
-        opts: FilterOptions,
-    ) {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-        let opts = SubscribeAutoCloseOptions::default()
-            .filter(opts)
-            .timeout(Some(timeout));
-        self.subscribe(filters, Some(opts)).await;
-    }
-
-    /// Request events of filters from specific relays
-    ///
-    /// All events will be received on notification listener (`client.notifications()`)
-    /// until the EOSE "end of stored events" message is received from the relay.
-    ///
-    /// If timeout is set to `None`, the default from [`Options`] will be used.
-    #[deprecated(since = "0.29.0", note = "Use `subscribe` instead")]
-    pub async fn req_events_from<I, U>(
-        &self,
-        _urls: I,
-        filters: Vec<Filter>,
-        timeout: Option<Duration>,
-    ) -> Result<(), Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-        let opts = SubscribeAutoCloseOptions::default()
-            .filter(FilterOptions::ExitOnEOSE)
-            .timeout(Some(timeout));
-        self.subscribe(filters, Some(opts)).await;
-        Ok(())
-    }
-
     /// Send client message to **all relays**
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
