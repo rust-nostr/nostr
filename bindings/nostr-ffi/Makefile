@@ -68,7 +68,7 @@ bindings-android: sdk-root kotlin
 	cp -r ffi/kotlin/jniLibs bindings-android/lib/src/main
 	mkdir -p bindings-android/lib/src/main/kotlin/
 	cp -r ffi/kotlin/rust bindings-android/lib/src/main/kotlin/
-	cd bindings-android && ./gradlew assemble
+	cd bindings-android && ./gradlew assembleRelease
 	mkdir -p ffi/android
 	cp bindings-android/lib/build/outputs/aar/lib-release.aar ffi/android
 
