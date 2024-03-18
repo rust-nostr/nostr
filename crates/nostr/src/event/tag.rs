@@ -650,8 +650,8 @@ pub enum Tag {
 }
 
 impl Tag {
-    /// Parse [`Tag`] from string vector
-    pub fn parse<S>(tag: Vec<S>) -> Result<Self, Error>
+    /// Parse [`Tag`] from slice of string
+    pub fn parse<S>(tag: &[S]) -> Result<Self, Error>
     where
         S: AsRef<str>,
     {
@@ -1448,8 +1448,8 @@ impl<'de> Deserialize<'de> for Tag {
         D: Deserializer<'de>,
     {
         type Data = Vec<String>;
-        let vec: Vec<String> = Data::deserialize(deserializer)?;
-        Self::parse(vec).map_err(DeserializerError::custom)
+        let tag: Vec<String> = Data::deserialize(deserializer)?;
+        Self::parse(&tag).map_err(DeserializerError::custom)
     }
 }
 
@@ -1916,18 +1916,18 @@ mod tests {
 
     #[test]
     fn test_tag_parser() {
-        match Tag::parse::<String>(vec![]) {
+        match Tag::parse::<String>(&[]) {
             Err(Error::KindNotFound) => (),
             _ => panic!(),
         }
 
         assert_eq!(
-            Tag::parse(vec!["content-warning"]).unwrap(),
+            Tag::parse(&["content-warning"]).unwrap(),
             Tag::ContentWarning { reason: None }
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ])
@@ -1941,7 +1941,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
             ])
@@ -1955,24 +1955,24 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec!["expiration", "1600000000"]).unwrap(),
+            Tag::parse(&["expiration", "1600000000"]).unwrap(),
             Tag::Expiration(Timestamp::from(1600000000))
         );
 
         assert_eq!(
-            Tag::parse(vec!["content-warning", "reason"]).unwrap(),
+            Tag::parse(&["content-warning", "reason"]).unwrap(),
             Tag::ContentWarning {
                 reason: Some(String::from("reason"))
             }
         );
 
         assert_eq!(
-            Tag::parse(vec!["subject", "textnote with subject"]).unwrap(),
+            Tag::parse(&["subject", "textnote with subject"]).unwrap(),
             Tag::Subject(String::from("textnote with subject"))
         );
 
         assert_eq!(
-            Tag::parse(vec!["client", "nostr-sdk"]).unwrap(),
+            Tag::parse(&["client", "nostr-sdk"]).unwrap(),
             Tag::Generic(
                 TagKind::Custom("client".to_string()),
                 vec!["nostr-sdk".to_string()]
@@ -1980,22 +1980,22 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec!["d", "test"]).unwrap(),
+            Tag::parse(&["d", "test"]).unwrap(),
             Tag::Identifier("test".to_string())
         );
 
         assert_eq!(
-            Tag::parse(vec!["r", "https://example.com",]).unwrap(),
+            Tag::parse(&["r", "https://example.com",]).unwrap(),
             Tag::Reference(String::from("https://example.com"),)
         );
 
         assert_eq!(
-            Tag::parse(vec!["r", "wss://alicerelay.example.com",]).unwrap(),
+            Tag::parse(&["r", "wss://alicerelay.example.com",]).unwrap(),
             Tag::RelayMetadata(UncheckedUrl::from("wss://alicerelay.example.com"), None)
         );
 
         assert_eq!(
-            Tag::parse(vec!["i", "github:12345678", "abcdefghijklmnop"]).unwrap(),
+            Tag::parse(&["i", "github:12345678", "abcdefghijklmnop"]).unwrap(),
             Tag::ExternalIdentity(Identity {
                 platform: ExternalIdentity::GitHub,
                 ident: "12345678".to_string(),
@@ -2004,7 +2004,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
                 "wss://relay.damus.io"
@@ -2022,7 +2022,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 ""
@@ -2039,7 +2039,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 "wss://relay.damus.io"
@@ -2056,7 +2056,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
                 "impersonation"
@@ -2072,7 +2072,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 "profanity"
@@ -2088,7 +2088,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec!["nonce", "1", "20"]).unwrap(),
+            Tag::parse(&["nonce", "1", "20"]).unwrap(),
             Tag::POW {
                 nonce: 1,
                 difficulty: 20
@@ -2096,7 +2096,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "a",
                 "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
                 "wss://relay.nostr.org"
@@ -2116,7 +2116,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec!["r", "wss://alicerelay.example.com", "read"]).unwrap(),
+            Tag::parse(&["r", "wss://alicerelay.example.com", "read"]).unwrap(),
             Tag::RelayMetadata(
                 UncheckedUrl::from("wss://alicerelay.example.com"),
                 Some(RelayMetadata::Read)
@@ -2124,7 +2124,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
                 "wss://relay.damus.io",
@@ -2143,7 +2143,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 "",
@@ -2161,7 +2161,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "delegation",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
                 "kind=1",
@@ -2173,7 +2173,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "relays",
                 "wss://relay.damus.io/",
                 "wss://nostr-relay.wlvs.space/",
@@ -2190,14 +2190,14 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "bolt11",
                 "lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0"]).unwrap(),
                 Tag::Bolt11("lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0".to_string())
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "preimage",
                 "5d006d2cf1e73c7148e7519a4c68adc81642ce0e25a432b2434c99f97344c15f"
             ])
@@ -2208,7 +2208,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec![
+            Tag::parse(&[
                 "description",
                 "{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}"
             ]).unwrap(),
@@ -2216,7 +2216,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(vec!["amount", "10000"]).unwrap(),
+            Tag::parse(&["amount", "10000"]).unwrap(),
             Tag::Amount {
                 millisats: 10_000,
                 bolt11: None
@@ -2233,7 +2233,7 @@ mod benches {
 
     #[bench]
     pub fn parse_p_tag(bh: &mut Bencher) {
-        let tag = vec![
+        let tag = &[
             "p",
             "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
         ];
@@ -2244,7 +2244,7 @@ mod benches {
 
     #[bench]
     pub fn parse_e_tag(bh: &mut Bencher) {
-        let tag = vec![
+        let tag = &[
             "e",
             "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
             "wss://relay.damus.io",
@@ -2256,7 +2256,7 @@ mod benches {
 
     #[bench]
     pub fn parse_a_tag(bh: &mut Bencher) {
-        let tag = vec![
+        let tag = &[
             "a",
             "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
             "wss://relay.nostr.org",

@@ -878,7 +878,7 @@ impl From<tag::Tag> for Tag {
 #[uniffi::export]
 impl Tag {
     #[uniffi::constructor]
-    pub fn parse(data: Vec<String>) -> Result<Self> {
+    pub fn parse(data: &[String]) -> Result<Self> {
         Ok(Self {
             inner: tag::Tag::parse(data)?,
         })

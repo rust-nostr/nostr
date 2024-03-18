@@ -109,7 +109,7 @@ impl PartialEvent {
     pub fn merge(&self, missing: MissingPartialEvent) -> Result<Event, Error> {
         let mut tags: Vec<Tag> = Vec::with_capacity(missing.tags.len());
         for tag in missing.tags.into_iter() {
-            tags.push(Tag::parse(tag)?);
+            tags.push(Tag::parse(&tag)?);
         }
 
         Ok(Event::new(
