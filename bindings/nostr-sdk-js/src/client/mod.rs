@@ -640,9 +640,9 @@ impl JsClient {
     ///        console.log("Received new event from", relayUrl);
     ///        if (event.kind == 4) {
     ///            try {
-    ///                let content = nip04_decrypt(keys.secretKey, event.pubkey, event.content);
+    ///                let content = nip04Decrypt(keys.secretKey, event.author, event.content);
     ///                console.log("Message:", content);
-    ///                await client.sendDirectMsg(event.pubkey, "Echo: " + content);
+    ///                await client.sendDirectMsg(event.author, "Echo: " + content);
     ///
     ///                if (content == "stop") {
     ///                    return true;
