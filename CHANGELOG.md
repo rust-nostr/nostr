@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 * nostr: bump `bitcoin` to `0.31` ([Yuki Kishimoto])
+* sdk: bump `lnurl-pay` to `0.4` ([Yuki Kishimoto])
 * js(nostr): consume `JsEventBuilder` when building `Event` or `UnsignedEvent` ([Yuki Kishimoto])
 
 ### Added

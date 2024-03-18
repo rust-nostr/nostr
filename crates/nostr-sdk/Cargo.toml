@@ -38,7 +38,7 @@ nip59 = ["nostr/nip59"]
 
 [dependencies]
 async-utility.workspace = true
-lnurl-pay = { version = "0.3", features = ["api"], optional = true }
+lnurl-pay = { version = "0.4", features = ["api"], optional = true }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 nostr-relay-pool.workspace = true
