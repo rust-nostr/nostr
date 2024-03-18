@@ -23,20 +23,20 @@ use crate::types::{JsContact, JsMetadata, JsTimestamp};
 
 #[wasm_bindgen(js_name = EventBuilder)]
 pub struct JsEventBuilder {
-    builder: EventBuilder,
+    inner: EventBuilder,
 }
 
 impl Deref for JsEventBuilder {
     type Target = EventBuilder;
 
     fn deref(&self) -> &Self::Target {
-        &self.builder
+        &self.inner
     }
 }
 
 impl From<EventBuilder> for JsEventBuilder {
-    fn from(builder: EventBuilder) -> Self {
-        Self { builder }
+    fn from(inner: EventBuilder) -> Self {
+        Self { inner }
     }
 }
 
@@ -45,14 +45,14 @@ impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
     pub fn new(kind: f64, content: &str, tags: Vec<JsTag>) -> Self {
         Self {
-            builder: EventBuilder::new(kind.into(), content, tags.into_iter().map(|t| t.into())),
+            inner: EventBuilder::new(kind.into(), content, tags.into_iter().map(|t| t.into())),
         }
     }
 
     /// Set a custom `created_at` UNIX timestamp
     #[wasm_bindgen(js_name = customCreatedAt)]
     pub fn custom_created_at(self, created_at: JsTimestamp) -> Self {
-        self.builder.custom_created_at(*created_at).into()
+        self.inner.custom_created_at(*created_at).into()
     }
 
     /// Build `Event`
@@ -60,7 +60,7 @@ impl JsEventBuilder {
     /// **This method consume the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = toEvent)]
     pub fn to_event(self, keys: &JsKeys) -> Result<JsEvent> {
-        let event = self.builder.to_event(keys.deref()).map_err(into_err)?;
+        let event = self.inner.to_event(keys.deref()).map_err(into_err)?;
         Ok(event.into())
     }
 
@@ -69,7 +69,7 @@ impl JsEventBuilder {
     /// **This method consume the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = toUnsignedEvent)]
     pub fn to_unsigned_event(self, public_key: &JsPublicKey) -> JsUnsignedEvent {
-        self.builder.to_unsigned_event(**public_key).into()
+        self.inner.to_unsigned_event(**public_key).into()
     }
 
     /// Build POW `Event`
@@ -78,7 +78,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = toPowEvent)]
     pub fn to_pow_event(self, keys: &JsKeys, difficulty: u8) -> Result<JsEvent> {
         Ok(self
-            .builder
+            .inner
             .to_pow_event(keys.deref(), difficulty)
             .map_err(into_err)?
             .into())
@@ -93,28 +93,28 @@ impl JsEventBuilder {
         public_key: &JsPublicKey,
         difficulty: u8,
     ) -> JsUnsignedEvent {
-        self.builder
+        self.inner
             .to_unsigned_pow_event(**public_key, difficulty)
             .into()
     }
 
     pub fn metadata(metadata: &JsMetadata) -> Self {
         Self {
-            builder: EventBuilder::metadata(metadata.deref()),
+            inner: EventBuilder::metadata(metadata.deref()),
         }
     }
 
     #[wasm_bindgen(js_name = relayList)]
     pub fn relay_list(relays: Vec<JsRelayListItem>) -> Self {
         Self {
-            builder: EventBuilder::relay_list(relays.into_iter().map(|r| r.into())),
+            inner: EventBuilder::relay_list(relays.into_iter().map(|r| r.into())),
         }
     }
 
     #[wasm_bindgen(js_name = textNote)]
     pub fn text_note(content: &str, tags: Vec<JsTag>) -> Self {
         Self {
-            builder: EventBuilder::text_note(content, tags.into_iter().map(|t| t.into())),
+            inner: EventBuilder::text_note(content, tags.into_iter().map(|t| t.into())),
         }
     }
 
@@ -131,7 +131,7 @@ impl JsEventBuilder {
         relay_url: Option<String>,
     ) -> Self {
         Self {
-            builder: EventBuilder::text_note_reply(
+            inner: EventBuilder::text_note_reply(
                 content,
                 reply_to.deref(),
                 root.as_deref(),
@@ -143,7 +143,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = longFormTextNote)]
     pub fn long_form_text_note(content: &str, tags: Vec<JsTag>) -> Self {
         Self {
-            builder: EventBuilder::long_form_text_note(content, tags.into_iter().map(|t| t.into())),
+            inner: EventBuilder::long_form_text_note(content, tags.into_iter().map(|t| t.into())),
         }
     }
 
@@ -151,7 +151,7 @@ impl JsEventBuilder {
     pub fn contact_list(list: Vec<JsContact>) -> Self {
         let list = list.into_iter().map(|c| c.inner());
         Self {
-            builder: EventBuilder::contact_list(list),
+            inner: EventBuilder::contact_list(list),
         }
     }
 
@@ -163,7 +163,7 @@ impl JsEventBuilder {
         reply_to: Option<JsEventId>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
-            builder: EventBuilder::encrypted_direct_msg(
+            inner: EventBuilder::encrypted_direct_msg(
                 sender_keys.deref(),
                 receiver_pubkey.into(),
                 content,
@@ -176,7 +176,7 @@ impl JsEventBuilder {
     /// Repost
     pub fn repost(event: &JsEvent, relay_url: Option<String>) -> Self {
         Self {
-            builder: EventBuilder::repost(event.deref(), relay_url.map(UncheckedUrl::from)),
+            inner: EventBuilder::repost(event.deref(), relay_url.map(UncheckedUrl::from)),
         }
     }
 
@@ -184,7 +184,7 @@ impl JsEventBuilder {
     pub fn delete(ids: Vec<JsEventId>, reason: Option<String>) -> Self {
         let ids = ids.into_iter().map(|id| id.inner);
         Self {
-            builder: match reason {
+            inner: match reason {
                 Some(reason) => EventBuilder::delete_with_reason(ids, reason),
                 None => EventBuilder::delete(ids),
             },
@@ -193,13 +193,13 @@ impl JsEventBuilder {
 
     pub fn reaction(event: &JsEvent, reaction: &str) -> Self {
         Self {
-            builder: EventBuilder::reaction(event.deref(), reaction),
+            inner: EventBuilder::reaction(event.deref(), reaction),
         }
     }
 
     pub fn channel(metadata: &JsMetadata) -> Self {
         Self {
-            builder: EventBuilder::channel(metadata.deref()),
+            inner: EventBuilder::channel(metadata.deref()),
         }
     }
 
@@ -214,7 +214,7 @@ impl JsEventBuilder {
             None => None,
         };
         Ok(Self {
-            builder: EventBuilder::channel_metadata(channel_id.into(), relay_url, metadata.deref()),
+            inner: EventBuilder::channel_metadata(channel_id.into(), relay_url, metadata.deref()),
         })
     }
 
@@ -226,21 +226,21 @@ impl JsEventBuilder {
     ) -> Result<JsEventBuilder> {
         let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
         Ok(Self {
-            builder: EventBuilder::channel_msg(channel_id.into(), relay_url, content),
+            inner: EventBuilder::channel_msg(channel_id.into(), relay_url, content),
         })
     }
 
     #[wasm_bindgen(js_name = hideChannelMsg)]
     pub fn hide_channel_msg(message_id: &JsEventId, reason: Option<String>) -> Self {
         Self {
-            builder: EventBuilder::hide_channel_msg(message_id.into(), reason),
+            inner: EventBuilder::hide_channel_msg(message_id.into(), reason),
         }
     }
 
     #[wasm_bindgen(js_name = muteChannelUser)]
     pub fn mute_channel_user(pubkey: &JsPublicKey, reason: Option<String>) -> Self {
         Self {
-            builder: EventBuilder::mute_channel_user(pubkey.into(), reason),
+            inner: EventBuilder::mute_channel_user(pubkey.into(), reason),
         }
     }
 
@@ -248,14 +248,14 @@ impl JsEventBuilder {
     pub fn auth(challenge: &str, relay: &str) -> Result<JsEventBuilder> {
         let url = Url::parse(relay).map_err(into_err)?;
         Ok(Self {
-            builder: EventBuilder::auth(challenge, url),
+            inner: EventBuilder::auth(challenge, url),
         })
     }
 
     #[wasm_bindgen(js_name = liveEvent)]
     pub fn live_event(live_event: JsLiveEvent) -> Self {
         Self {
-            builder: EventBuilder::live_event(live_event.into()),
+            inner: EventBuilder::live_event(live_event.into()),
         }
     }
 
@@ -268,7 +268,7 @@ impl JsEventBuilder {
         tags: Vec<JsTag>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
-            builder: EventBuilder::live_event_msg(
+            inner: EventBuilder::live_event_msg(
                 live_event_id,
                 live_event_host.deref().to_owned(),
                 content,
@@ -284,21 +284,21 @@ impl JsEventBuilder {
     #[wasm_bindgen]
     pub fn report(tags: Vec<JsTag>, content: String) -> Self {
         Self {
-            builder: EventBuilder::report(tags.into_iter().map(|t| t.into()), content),
+            inner: EventBuilder::report(tags.into_iter().map(|t| t.into()), content),
         }
     }
 
     #[wasm_bindgen(js_name = publicZapRequest)]
     pub fn public_zap_request(data: JsZapRequestData) -> Self {
         Self {
-            builder: EventBuilder::public_zap_request(data.deref().clone()),
+            inner: EventBuilder::public_zap_request(data.deref().clone()),
         }
     }
 
     #[wasm_bindgen(js_name = zapReceipt)]
     pub fn zap_receipt(bolt11: String, preimage: Option<String>, zap_request: JsEvent) -> Self {
         Self {
-            builder: EventBuilder::zap_receipt(bolt11, preimage, zap_request.deref().to_owned()),
+            inner: EventBuilder::zap_receipt(bolt11, preimage, zap_request.deref().to_owned()),
         }
     }
 
@@ -312,7 +312,7 @@ impl JsEventBuilder {
         thumbnails: Vec<JsThumbnails>,
     ) -> Self {
         Self {
-            builder: EventBuilder::define_badge(
+            inner: EventBuilder::define_badge(
                 badge_id,
                 name,
                 description,
@@ -329,7 +329,7 @@ impl JsEventBuilder {
         awarded_pubkeys: Vec<JsTag>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
-            builder: EventBuilder::award_badge(
+            inner: EventBuilder::award_badge(
                 badge_definition.deref(),
                 awarded_pubkeys.into_iter().map(|t| t.into()),
             )
@@ -344,7 +344,7 @@ impl JsEventBuilder {
         pubkey_awarded: &JsPublicKey,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
-            builder: EventBuilder::profile_badges(
+            inner: EventBuilder::profile_badges(
                 badge_definitions.into_iter().map(|e| e.into()).collect(),
                 badge_awards.into_iter().map(|e| e.into()).collect(),
                 pubkey_awarded.deref(),
@@ -356,7 +356,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = jobRequest)]
     pub fn job_request(kind: f64, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
         Ok(Self {
-            builder: EventBuilder::job_request(kind.into(), tags.into_iter().map(|t| t.into()))
+            inner: EventBuilder::job_request(kind.into(), tags.into_iter().map(|t| t.into()))
                 .map_err(into_err)?,
         })
     }
@@ -368,7 +368,7 @@ impl JsEventBuilder {
         bolt11: Option<String>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
-            builder: EventBuilder::job_result(
+            inner: EventBuilder::job_result(
                 job_request.deref().clone(),
                 amount_millisats as u64,
                 bolt11,
@@ -387,7 +387,7 @@ impl JsEventBuilder {
         payload: Option<String>,
     ) -> Self {
         Self {
-            builder: EventBuilder::job_feedback(
+            inner: EventBuilder::job_feedback(
                 job_request.deref(),
                 status.into(),
                 extra_info,
@@ -401,28 +401,28 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = fileMetadata)]
     pub fn file_metadata(description: String, metadata: JsFileMetadata) -> Self {
         Self {
-            builder: EventBuilder::file_metadata(description, metadata.deref().clone()),
+            inner: EventBuilder::file_metadata(description, metadata.deref().clone()),
         }
     }
 
     #[wasm_bindgen(js_name = httpAuth)]
     pub fn http_auth(data: JsHttpData) -> Self {
         Self {
-            builder: EventBuilder::http_auth(data.into()),
+            inner: EventBuilder::http_auth(data.into()),
         }
     }
 
     #[wasm_bindgen(js_name = stallData)]
     pub fn stall_data(data: &JsStallData) -> Self {
         Self {
-            builder: EventBuilder::stall_data(data.deref().clone()),
+            inner: EventBuilder::stall_data(data.deref().clone()),
         }
     }
 
     #[wasm_bindgen(js_name = productData)]
     pub fn product_data(data: JsProductData) -> Self {
         Self {
-            builder: EventBuilder::product_data(data.into()),
+            inner: EventBuilder::product_data(data.into()),
         }
     }
 
@@ -468,7 +468,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = sealedDirect)]
     pub fn sealed_direct(receiver: &JsPublicKey, message: &str) -> Self {
         Self {
-            builder: EventBuilder::sealed_direct(**receiver, message),
+            inner: EventBuilder::sealed_direct(**receiver, message),
         }
     }
 }
