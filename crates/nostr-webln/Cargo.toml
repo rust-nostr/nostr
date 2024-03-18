@@ -13,4 +13,4 @@ keywords = ["nostr", "zapper", "webln"]
 
 [dependencies]
 nostr-zapper.workspace = true
-webln = "0.1"
+webln = "0.2"

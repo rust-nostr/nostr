@@ -73,7 +73,7 @@ impl_nostr_zapper!({
 
     async fn pay(&self, invoice: String) -> Result<(), ZapperError> {
         self.inner
-            .send_payment(invoice)
+            .send_payment(&invoice)
             .await
             .map_err(ZapperError::backend)?;
         Ok(())
