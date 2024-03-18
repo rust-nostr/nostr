@@ -9,6 +9,10 @@
 <!-- In this section you can include notes directed to the reviewers, like explaining why some parts
 of the PR were done in a specific way -->
 
+### Changelog notice
+
+<!-- Add the changelog -->
+
 ### Checklists
 
 #### All Submissions:
