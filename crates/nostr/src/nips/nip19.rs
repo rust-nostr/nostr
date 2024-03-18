@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
+use bitcoin::bech32::{self, Bech32, Hrp};
 use bitcoin::hashes::Hash;
 
 use super::nip01::Coordinate;
@@ -29,7 +29,16 @@ pub const PREFIX_BECH32_PUBLIC_KEY: &str = "npub";
 pub const PREFIX_BECH32_NOTE_ID: &str = "note";
 pub const PREFIX_BECH32_PROFILE: &str = "nprofile";
 pub const PREFIX_BECH32_EVENT: &str = "nevent";
-pub const PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT: &str = "naddr";
+pub const PREFIX_BECH32_COORDINATE: &str = "naddr";
+
+const HRP_SECRET_KEY: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_SECRET_KEY);
+#[cfg(feature = "nip49")]
+const HRP_SECRET_KEY_ENCRYPTED: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_SECRET_KEY_ENCRYPTED);
+const HRP_PUBLIC_KEY: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_PUBLIC_KEY);
+const HRP_NOTE_ID: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_NOTE_ID);
+const HRP_PROFILE: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_PROFILE);
+const HRP_EVENT: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_EVENT);
+const HRP_COORDINATE: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_COORDINATE);
 
 pub const SPECIAL: u8 = 0;
 pub const RELAY: u8 = 1;
@@ -39,14 +48,16 @@ pub const KIND: u8 = 3;
 /// `NIP19` error
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
+    /// Fmt error.
+    Fmt(fmt::Error),
     /// Url parse error
     Url(url::ParseError),
     /// Bech32 error.
-    Bech32(bech32::Error),
+    Bech32(bech32::DecodeError),
     /// UFT-8 error
     UTF8(FromUtf8Error),
     /// Hash error
-    Hash(bitcoin::hashes::Error),
+    Hash(bitcoin::hashes::FromSliceError),
     /// Keys error
     Keys(key::Error),
     /// EventId error
@@ -56,8 +67,6 @@ pub enum Error {
     NIP49(nip49::Error),
     /// Wrong prefix or variant
     WrongPrefixOrVariant,
-    /// Not implemented
-    NotImplemented,
     /// Field missing
     FieldMissing(String),
     /// TLV error
@@ -72,6 +81,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Fmt(e) => write!(f, "{e}"),
             Self::Url(e) => write!(f, "Url: {e}"),
             Self::Bech32(e) => write!(f, "Bech32: {e}"),
             Self::UTF8(e) => write!(f, "UTF8: {e}"),
@@ -84,8 +94,13 @@ impl fmt::Display for Error {
             Self::FieldMissing(name) => write!(f, "Field missing: {name}"),
             Self::TLV => write!(f, "TLV (type-length-value) error"),
             Self::TryFromSlice => write!(f, "Impossible to perform conversion from slice"),
-            Self::NotImplemented => write!(f, "Not implemented"),
         }
+    }
+}
+
+impl From<fmt::Error> for Error {
+    fn from(e: fmt::Error) -> Self {
+        Self::Fmt(e)
     }
 }
 
@@ -95,8 +110,8 @@ impl From<url::ParseError> for Error {
     }
 }
 
-impl From<bech32::Error> for Error {
-    fn from(e: bech32::Error) -> Self {
+impl From<bech32::DecodeError> for Error {
+    fn from(e: bech32::DecodeError) -> Self {
         Self::Bech32(e)
     }
 }
@@ -107,11 +122,11 @@ impl From<FromUtf8Error> for Error {
     }
 }
 
-impl From<bitcoin::hashes::Error> for Error {
+/* impl From<bitcoin::hashes::Error> for Error {
     fn from(e: bitcoin::hashes::Error) -> Self {
         Self::Hash(e)
     }
-}
+} */
 
 impl From<key::Error> for Error {
     fn from(e: key::Error) -> Self {
@@ -151,7 +166,6 @@ enum Nip19Prefix {
     NAddr,
 }
 
-/// Convert NIP19 prefixes to [`Nip19Prefix`]
 impl FromStr for Nip19Prefix {
     type Err = Error;
 
@@ -164,7 +178,7 @@ impl FromStr for Nip19Prefix {
             PREFIX_BECH32_NOTE_ID => Ok(Nip19Prefix::Note),
             PREFIX_BECH32_PROFILE => Ok(Nip19Prefix::NProfile),
             PREFIX_BECH32_EVENT => Ok(Nip19Prefix::NEvent),
-            PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT => Ok(Nip19Prefix::NAddr),
+            PREFIX_BECH32_COORDINATE => Ok(Nip19Prefix::NAddr),
             _ => Err(Error::WrongPrefixOrVariant),
         }
     }
@@ -211,14 +225,8 @@ impl FromBech32 for Nip19 {
     where
         S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(hash.as_ref())?;
-        let prefix: Nip19Prefix = Nip19Prefix::from_str(&hrp)?;
-
-        if checksum != Variant::Bech32 {
-            return Err(Error::WrongPrefixOrVariant);
-        }
-
-        let data: Vec<u8> = Vec::<u8>::from_base32(&data)?;
+        let (hrp, data) = bech32::decode(hash.as_ref())?;
+        let prefix: Nip19Prefix = Nip19Prefix::from_str(&hrp.to_string())?;
 
         match prefix {
             Nip19Prefix::NSec => Ok(Self::Secret(SecretKey::from_slice(data.as_slice())?)),
@@ -259,13 +267,12 @@ impl FromBech32 for SecretKey {
     where
         S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(secret_key.as_ref())?;
+        let (hrp, data) = bech32::decode(secret_key.as_ref())?;
 
-        if hrp != PREFIX_BECH32_SECRET_KEY || checksum != Variant::Bech32 {
+        if hrp != HRP_SECRET_KEY {
             return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data)?;
         Ok(Self::from_slice(data.as_slice())?)
     }
 }
@@ -274,12 +281,8 @@ impl ToBech32 for SecretKey {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let data = self.secret_bytes().to_base32();
-        Ok(bech32::encode(
-            PREFIX_BECH32_SECRET_KEY,
-            data,
-            Variant::Bech32,
-        )?)
+        let data = self.as_secret_bytes();
+        Ok(bech32::encode::<Bech32>(HRP_SECRET_KEY, data)?)
     }
 }
 
@@ -291,13 +294,12 @@ impl FromBech32 for EncryptedSecretKey {
     where
         S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(secret_key.as_ref())?;
+        let (hrp, data) = bech32::decode(secret_key.as_ref())?;
 
-        if hrp != PREFIX_BECH32_SECRET_KEY_ENCRYPTED || checksum != Variant::Bech32 {
+        if hrp != HRP_SECRET_KEY_ENCRYPTED {
             return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data)?;
         Ok(Self::from_slice(data.as_slice())?)
     }
 }
@@ -307,12 +309,8 @@ impl ToBech32 for EncryptedSecretKey {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let data = self.as_vec().to_base32();
-        Ok(bech32::encode(
-            PREFIX_BECH32_SECRET_KEY_ENCRYPTED,
-            data,
-            Variant::Bech32,
-        )?)
+        let data = self.as_vec();
+        Ok(bech32::encode::<Bech32>(HRP_SECRET_KEY_ENCRYPTED, &data)?)
     }
 }
 
@@ -323,13 +321,12 @@ impl FromBech32 for PublicKey {
     where
         S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(public_key.as_ref())?;
+        let (hrp, data) = bech32::decode(public_key.as_ref())?;
 
-        if hrp != PREFIX_BECH32_PUBLIC_KEY || checksum != Variant::Bech32 {
+        if hrp != HRP_PUBLIC_KEY {
             return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data = Vec::<u8>::from_base32(&data)?;
         Ok(Self::from_slice(data.as_slice())?)
     }
 }
@@ -338,12 +335,7 @@ impl ToBech32 for PublicKey {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let data = self.serialize().to_base32();
-        Ok(bech32::encode(
-            PREFIX_BECH32_PUBLIC_KEY,
-            data,
-            Variant::Bech32,
-        )?)
+        Ok(bech32::encode::<Bech32>(HRP_PUBLIC_KEY, &self.serialize())?)
     }
 }
 
@@ -354,13 +346,12 @@ impl FromBech32 for EventId {
     where
         S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(hash.as_ref())?;
+        let (hrp, data) = bech32::decode(hash.as_ref())?;
 
-        if hrp != PREFIX_BECH32_NOTE_ID || checksum != Variant::Bech32 {
+        if hrp != HRP_NOTE_ID {
             return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data: Vec<u8> = Vec::<u8>::from_base32(&data)?;
         Ok(Self::from_slice(data.as_slice())?)
     }
 }
@@ -369,12 +360,7 @@ impl ToBech32 for EventId {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let data = self.to_base32();
-        Ok(bech32::encode(
-            PREFIX_BECH32_NOTE_ID,
-            data,
-            Variant::Bech32,
-        )?)
+        Ok(bech32::encode::<Bech32>(HRP_NOTE_ID, self.as_bytes())?)
     }
 }
 
@@ -447,13 +433,12 @@ impl FromBech32 for Nip19Event {
     where
         S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(s.as_ref())?;
+        let (hrp, data) = bech32::decode(s.as_ref())?;
 
-        if hrp != PREFIX_BECH32_EVENT || checksum != Variant::Bech32 {
+        if hrp != HRP_EVENT {
             return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data: Vec<u8> = Vec::from_base32(&data)?;
         Self::from_bech32_data(data)
     }
 }
@@ -470,8 +455,7 @@ impl ToBech32 for Nip19Event {
             bytes.extend(relay.as_bytes());
         }
 
-        let data = bytes.to_base32();
-        Ok(bech32::encode(PREFIX_BECH32_EVENT, data, Variant::Bech32)?)
+        Ok(bech32::encode::<Bech32>(HRP_EVENT, &bytes)?)
     }
 }
 
@@ -544,12 +528,7 @@ impl ToBech32 for Nip19Profile {
             bytes.extend(relay.as_ref().as_bytes());
         }
 
-        let data = bytes.to_base32();
-        Ok(bech32::encode(
-            PREFIX_BECH32_PROFILE,
-            data,
-            Variant::Bech32,
-        )?)
+        Ok(bech32::encode::<Bech32>(HRP_PROFILE, &bytes)?)
     }
 }
 
@@ -560,13 +539,12 @@ impl FromBech32 for Nip19Profile {
     where
         S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(s.as_ref())?;
+        let (hrp, data) = bech32::decode(s.as_ref())?;
 
-        if hrp != PREFIX_BECH32_PROFILE || checksum != Variant::Bech32 {
+        if hrp != HRP_PROFILE {
             return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data: Vec<u8> = Vec::from_base32(&data)?;
         Self::from_bech32_data(data)
     }
 }
@@ -629,13 +607,12 @@ impl FromBech32 for Coordinate {
     where
         S: AsRef<str>,
     {
-        let (hrp, data, checksum) = bech32::decode(s.as_ref())?;
+        let (hrp, data) = bech32::decode(s.as_ref())?;
 
-        if hrp != PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT || checksum != Variant::Bech32 {
+        if hrp != HRP_COORDINATE {
             return Err(Error::WrongPrefixOrVariant);
         }
 
-        let data: Vec<u8> = Vec::from_base32(&data)?;
         Self::from_bech32_data(data)
     }
 }
@@ -663,12 +640,7 @@ impl ToBech32 for Coordinate {
         bytes.extend([KIND, 4]);
         bytes.extend(self.kind.as_u32().to_be_bytes());
 
-        let data = bytes.to_base32();
-        Ok(bech32::encode(
-            PREFIX_BECH32_PARAMETERIZED_REPLACEABLE_EVENT,
-            data,
-            Variant::Bech32,
-        )?)
+        Ok(bech32::encode::<Bech32>(HRP_COORDINATE, &bytes)?)
     }
 }
 

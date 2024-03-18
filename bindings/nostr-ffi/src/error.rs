@@ -194,8 +194,8 @@ impl From<nostr::types::url::ParseError> for NostrError {
     }
 }
 
-impl From<nostr::hashes::hex::Error> for NostrError {
-    fn from(e: nostr::hashes::hex::Error) -> NostrError {
+impl From<nostr::hashes::hex::HexToArrayError> for NostrError {
+    fn from(e: nostr::hashes::hex::HexToArrayError) -> NostrError {
         Self::Generic(e.to_string())
     }
 }

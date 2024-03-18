@@ -100,7 +100,7 @@ impl PartialEvent {
         C: Verification,
     {
         // Verify signature
-        let message = Message::from_slice(self.id.as_bytes())?;
+        let message: Message = Message::from_digest_slice(self.id.as_bytes())?;
         secp.verify_schnorr(&self.sig, &message, &self.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }

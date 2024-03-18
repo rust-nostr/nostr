@@ -120,7 +120,7 @@ impl UnsignedEvent {
         C: Signing,
         R: Rng + CryptoRng,
     {
-        let message = Message::from_slice(self.id.as_bytes())?;
+        let message: Message = Message::from_digest_slice(self.id.as_bytes())?;
         Ok(Event::new(
             self.id,
             self.pubkey,

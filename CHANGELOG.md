@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+* nostr: bump `bitcoin` to `0.31` ([Yuki Kishimoto])
 * js(nostr): consume `JsEventBuilder` when building `Event` or `UnsignedEvent` ([Yuki Kishimoto])
 
 ### Added
@@ -24,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Removed deprecated ([Yuki Kishimoto])
 
 <!-- Contributors -->
-[Yuki Kishimoto]: https://github.com/yukibtc
+[Yuki Kishimoto]: https://yukikishimoto.com
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.29.0...HEAD

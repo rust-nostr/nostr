@@ -51,8 +51,6 @@ pub enum Error {
     Json(String),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
-    /// Hex decoding error
-    Hex(bitcoin::hashes::hex::Error),
 }
 
 #[cfg(feature = "std")]
@@ -65,7 +63,6 @@ impl fmt::Display for Error {
             Self::InvalidId => write!(f, "Invalid event id"),
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
-            Self::Hex(e) => write!(f, "Hex: {e}"),
         }
     }
 }
@@ -79,12 +76,6 @@ impl From<serde_json::Error> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
-    }
-}
-
-impl From<bitcoin::hashes::hex::Error> for Error {
-    fn from(e: bitcoin::hashes::hex::Error) -> Self {
-        Self::Hex(e)
     }
 }
 
@@ -286,7 +277,7 @@ impl Event {
     where
         C: Verification,
     {
-        let message = Message::from_slice(self.inner.id.as_bytes())?;
+        let message: Message = Message::from_digest_slice(self.inner.id.as_bytes())?;
         secp.verify_schnorr(&self.inner.sig, &message, &self.inner.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }

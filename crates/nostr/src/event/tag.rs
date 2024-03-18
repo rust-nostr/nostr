@@ -12,6 +12,7 @@ use core::num::ParseIntError;
 use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use bitcoin::hex::HexToArrayError;
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::schnorr::Signature;
 use serde::de::Error as DeserializerError;
@@ -49,7 +50,7 @@ pub enum Error {
     /// Secp256k1
     Secp256k1(secp256k1::Error),
     /// Hex decoding error
-    Hex(bitcoin::hashes::hex::Error),
+    Hex(HexToArrayError),
     /// Url parse error
     Url(ParseError),
     /// EventId error
@@ -118,8 +119,8 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-impl From<bitcoin::hashes::hex::Error> for Error {
-    fn from(e: bitcoin::hashes::hex::Error) -> Self {
+impl From<HexToArrayError> for Error {
+    fn from(e: HexToArrayError) -> Self {
         Self::Hex(e)
     }
 }

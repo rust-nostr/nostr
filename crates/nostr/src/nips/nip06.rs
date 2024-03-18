@@ -12,7 +12,7 @@ use core::fmt;
 use core::str::FromStr;
 
 use bip39::Mnemonic;
-use bitcoin::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey};
+use bitcoin::bip32::{ChildNumber, DerivationPath, Xpriv};
 use bitcoin::secp256k1::{Secp256k1, Signing};
 use bitcoin::Network;
 
@@ -147,7 +147,7 @@ impl FromMnemonic for Keys {
             .to_seed_normalized(passphrase.as_ref().map(|s| s.as_ref()).unwrap_or_default());
 
         // Derive BIP32 root key
-        let root_key = ExtendedPrivKey::new_master(Network::Bitcoin, &seed)?;
+        let root_key = Xpriv::new_master(Network::Bitcoin, &seed)?;
 
         // Unwrap idx
         let account: u32 = account.unwrap_or_default();

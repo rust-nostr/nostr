@@ -88,6 +88,11 @@ impl SecretKey {
     }
 
     /// Get secret key as `bytes`
+    pub fn as_secret_bytes(&self) -> &[u8] {
+        self.inner.as_ref()
+    }
+
+    /// Get secret key as `bytes`
     pub fn to_secret_bytes(&self) -> [u8; 32] {
         self.inner.secret_bytes()
     }

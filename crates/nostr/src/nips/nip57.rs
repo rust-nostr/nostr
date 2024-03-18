@@ -13,7 +13,7 @@ use core::fmt;
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
-use bitcoin::bech32::{self, FromBase32, ToBase32, Variant};
+use bitcoin::bech32::{self, Bech32, Hrp};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
 #[cfg(feature = "std")]
@@ -38,16 +38,17 @@ use crate::{
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
 
-const PRIVATE_ZAP_MSG_BECH32_PREFIX: &str = "pzap";
-const PRIVATE_ZAP_IV_BECH32_PREFIX: &str = "iv";
+const PRIVATE_ZAP_MSG_BECH32_PREFIX: Hrp = Hrp::parse_unchecked("pzap");
+const PRIVATE_ZAP_IV_BECH32_PREFIX: Hrp = Hrp::parse_unchecked("iv");
 
 #[allow(missing_docs)]
 #[derive(Debug)]
 pub enum Error {
+    Fmt(fmt::Error),
     Key(KeyError),
     Builder(BuilderError),
     Event(event::Error),
-    Bech32(bech32::Error),
+    Bech32(bech32::DecodeError),
     Secp256k1(secp256k1::Error),
     InvalidPrivateZapMessage,
     PrivateZapMessageNotFound,
@@ -63,6 +64,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Fmt(e) => write!(f, "{e}"),
             Self::Key(e) => write!(f, "{e}"),
             Self::Builder(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
@@ -76,6 +78,12 @@ impl fmt::Display for Error {
                 "Wrong encryption block mode. The content must be encrypted using CBC mode!"
             ),
         }
+    }
+}
+
+impl From<fmt::Error> for Error {
+    fn from(e: fmt::Error) -> Self {
+        Self::Fmt(e)
     }
 }
 
@@ -97,8 +105,8 @@ impl From<event::Error> for Error {
     }
 }
 
-impl From<bech32::Error> for Error {
-    fn from(e: bech32::Error) -> Self {
+impl From<bech32::DecodeError> for Error {
+    fn from(e: bech32::DecodeError) -> Self {
         Self::Bech32(e)
     }
 }
@@ -327,16 +335,14 @@ where
     rng.fill_bytes(&mut iv);
 
     let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
-    let result: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(msg.as_ref());
+    let msg: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(msg.as_ref());
 
     // Bech32 msg
-    let data = result.to_base32();
-    let encrypted_bech32_msg =
-        bech32::encode(PRIVATE_ZAP_MSG_BECH32_PREFIX, data, Variant::Bech32)?;
+    let encrypted_bech32_msg: String =
+        bech32::encode::<Bech32>(PRIVATE_ZAP_MSG_BECH32_PREFIX, &msg)?;
 
     // Bech32 IV
-    let data = iv.to_base32();
-    let iv_bech32 = bech32::encode(PRIVATE_ZAP_IV_BECH32_PREFIX, data, Variant::Bech32)?;
+    let iv_bech32: String = bech32::encode::<Bech32>(PRIVATE_ZAP_IV_BECH32_PREFIX, &iv)?;
 
     Ok(format!("{encrypted_bech32_msg}_{iv_bech32}"))
 }
@@ -383,18 +389,16 @@ fn decrypt_private_zap_message(key: [u8; 32], private_zap_event: &Event) -> Resu
     let iv: &str = splitted.next().ok_or(Error::InvalidPrivateZapMessage)?;
 
     // IV
-    let (hrp, data, checksum) = bech32::decode(iv)?;
-    if hrp != PRIVATE_ZAP_IV_BECH32_PREFIX || checksum != Variant::Bech32 {
+    let (hrp, iv) = bech32::decode(iv)?;
+    if hrp != PRIVATE_ZAP_IV_BECH32_PREFIX {
         return Err(Error::WrongBech32PrefixOrVariant);
     }
-    let iv: Vec<u8> = Vec::from_base32(&data)?;
 
     // Msg
-    let (hrp, data, checksum) = bech32::decode(msg)?;
-    if hrp != PRIVATE_ZAP_MSG_BECH32_PREFIX || checksum != Variant::Bech32 {
+    let (hrp, msg) = bech32::decode(msg)?;
+    if hrp != PRIVATE_ZAP_MSG_BECH32_PREFIX {
         return Err(Error::WrongBech32PrefixOrVariant);
     }
-    let msg: Vec<u8> = Vec::from_base32(&data)?;
 
     // Decrypt
     let cipher = Aes256CbcDec::new(&key.into(), iv.as_slice().into());

@@ -38,7 +38,7 @@ impl fmt::Display for RequiredTags {
 #[derive(Debug)]
 pub enum Error {
     /// Hex decoding error
-    Hex(bitcoin::hashes::hex::Error),
+    Hex(bitcoin::hashes::hex::HexToBytesError),
     /// Tag missing when parsing
     MissingTag(RequiredTags),
 }
@@ -55,8 +55,8 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<bitcoin::hashes::hex::Error> for Error {
-    fn from(e: bitcoin::hashes::hex::Error) -> Self {
+impl From<bitcoin::hashes::hex::HexToBytesError> for Error {
+    fn from(e: bitcoin::hashes::hex::HexToBytesError) -> Self {
         Self::Hex(e)
     }
 }

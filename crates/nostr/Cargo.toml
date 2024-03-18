@@ -41,7 +41,7 @@ alloc = [
     "cbc?/alloc",
     "chacha20poly1305?/alloc",
     "base64?/alloc",
-    "bitcoin/no-std",
+"bitcoin/no-std",
     "serde/alloc",
     "serde_json/alloc",
 ]
@@ -64,7 +64,7 @@ nip59 = ["nip44"]
 aes = { version = "0.8", optional = true }
 base64 = { version = "0.21", default-features = false, optional = true }
 bip39 = { version = "2.0", default-features = false, optional = true }
-bitcoin = { version = "0.30", default-features = false, features = ["rand", "serde"] }
+bitcoin = { version = "0.31", default-features = false, features = ["rand", "serde"] }
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }

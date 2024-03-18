@@ -12,13 +12,11 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng, RngCore};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message as Secp256k1Message, Secp256k1, Signing};
+use bitcoin::secp256k1::{self, Secp256k1, Signing};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -257,12 +255,7 @@ impl Request {
                 let decrypted_content = nip04::decrypt(keys.secret_key()?, &public_key, text)?;
                 Some(Response::Nip04Decrypt(decrypted_content))
             }
-            Self::SignSchnorr(value) => {
-                let hash = Sha256Hash::hash(value.as_bytes());
-                let message = Secp256k1Message::from(hash);
-                let sig: Signature = keys.sign_schnorr_with_ctx(secp, &message, rng)?;
-                Some(Response::SignSchnorr(sig))
-            }
+            Self::SignSchnorr(..) => None,
         };
         Ok(res)
     }

@@ -15,7 +15,7 @@ use core::{fmt, iter};
 
 use bitcoin::hashes::hmac::{Hmac, HmacEngine};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::{self, Hash, HashEngine};
+use bitcoin::hashes::{FromSliceError, Hash, HashEngine};
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::RngCore;
@@ -38,8 +38,8 @@ const MESSAGES_KEYS_AUTH_RANGE: Range<usize> =
 /// Error
 #[derive(Debug, PartialEq, Eq)]
 pub enum ErrorV2 {
-    /// Hash error
-    Hash(hashes::Error),
+    /// From slice error
+    FromSlice(FromSliceError),
     /// Error while encoding to UTF-8
     Utf8Encode(FromUtf8Error),
     /// Try from slice
@@ -62,7 +62,7 @@ impl std::error::Error for ErrorV2 {}
 impl fmt::Display for ErrorV2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Hash(e) => write!(f, "hash error {e}"),
+            Self::FromSlice(e) => write!(f, "{e}"),
             Self::Utf8Encode(e) => write!(f, "error while encoding to UTF-8: {e}"),
             Self::TryFromSlice(e) => write!(f, "try from slice error: {e}"),
             Self::HkdfLength(size) => write!(f, "invalid Length for HKDF: {size}"),
@@ -74,9 +74,9 @@ impl fmt::Display for ErrorV2 {
     }
 }
 
-impl From<hashes::Error> for ErrorV2 {
-    fn from(e: hashes::Error) -> Self {
-        Self::Hash(e)
+impl From<FromSliceError> for ErrorV2 {
+    fn from(e: FromSliceError) -> Self {
+        Self::FromSlice(e)
     }
 }
 

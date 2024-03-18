@@ -13,7 +13,7 @@ use core::str::FromStr;
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, KeyPair, Message, Secp256k1, Signing, XOnlyPublicKey};
+use bitcoin::secp256k1::{self, Keypair, Message, Secp256k1, Signing, XOnlyPublicKey};
 
 pub mod public_key;
 pub mod secret_key;
@@ -65,7 +65,7 @@ impl From<secp256k1::Error> for Error {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keys {
     public_key: PublicKey,
-    key_pair: Option<KeyPair>,
+    key_pair: Option<Keypair>,
     secret_key: Option<SecretKey>,
 }
 
@@ -97,7 +97,8 @@ impl Keys {
         Self::generate_with_ctx(&SECP256K1, rng)
     }
 
-    /// Generate random [`Keys`] with custom [`Rng`] and without [`KeyPair`]
+    /// Generate random [`Keys`] with custom [`Rng`] and without [`Keypair`]
+    ///
     /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
     pub fn generate_without_keypair<R>(rng: &mut R) -> Self
     where
@@ -118,7 +119,7 @@ impl Keys {
     where
         C: Signing,
     {
-        let key_pair = KeyPair::from_secret_key(secp, &secret_key);
+        let key_pair = Keypair::from_secret_key(secp, &secret_key);
         let public_key = XOnlyPublicKey::from_keypair(&key_pair).0;
 
         Self {
@@ -157,7 +158,7 @@ impl Keys {
         Self::new_with_ctx(secp, SecretKey::from(secret_key))
     }
 
-    /// Generate random [`Keys`] with custom [`Rng`] and without [`KeyPair`]
+    /// Generate random [`Keys`] with custom [`Rng`] and without [`Keypair`]
     /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
     pub fn generate_without_keypair_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
@@ -190,7 +191,7 @@ impl Keys {
     /// Get keypair
     ///
     /// If not exists, will be created
-    pub fn key_pair<C>(&self, secp: &Secp256k1<C>) -> Result<KeyPair, Error>
+    pub fn key_pair<C>(&self, secp: &Secp256k1<C>) -> Result<Keypair, Error>
     where
         C: Signing,
     {
@@ -198,7 +199,7 @@ impl Keys {
             Ok(key_pair)
         } else {
             let secret_key = self.secret_key()?;
-            Ok(KeyPair::from_secret_key(secp, secret_key))
+            Ok(Keypair::from_secret_key(secp, secret_key))
         }
     }
 
@@ -213,7 +214,7 @@ impl Keys {
         C: Signing,
         R: Rng + CryptoRng,
     {
-        let keypair: &KeyPair = &self.key_pair(secp)?;
+        let keypair: &Keypair = &self.key_pair(secp)?;
         Ok(secp.sign_schnorr_with_rng(message, keypair, rng))
     }
 }

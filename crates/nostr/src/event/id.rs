@@ -9,7 +9,8 @@ use core::fmt;
 use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
+use bitcoin::hashes::{FromSliceError, Hash};
+use bitcoin::hex::HexToArrayError;
 use serde_json::{json, Value};
 
 use super::{Kind, Tag};
@@ -20,10 +21,10 @@ use crate::{PublicKey, Timestamp};
 /// [`EventId`] error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    /// Hex error
-    Hex(bitcoin::hashes::hex::Error),
-    /// Hash error
-    Hash(bitcoin::hashes::Error),
+    /// Hex decode error
+    FromSlice(FromSliceError),
+    /// Hex decode error
+    HexToArray(HexToArrayError),
     /// Invalid event ID
     InvalidEventId,
 }
@@ -34,22 +35,22 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Hex(e) => write!(f, "Hex: {e}"),
-            Self::Hash(e) => write!(f, "Hash: {e}"),
+            Self::FromSlice(e) => write!(f, "{e}"),
+            Self::HexToArray(e) => write!(f, "Hex: {e}"),
             Self::InvalidEventId => write!(f, "Invalid event ID"),
         }
     }
 }
 
-impl From<bitcoin::hashes::hex::Error> for Error {
-    fn from(e: bitcoin::hashes::hex::Error) -> Self {
-        Self::Hex(e)
+impl From<FromSliceError> for Error {
+    fn from(e: FromSliceError) -> Self {
+        Self::FromSlice(e)
     }
 }
 
-impl From<bitcoin::hashes::Error> for Error {
-    fn from(e: bitcoin::hashes::Error) -> Self {
-        Self::Hash(e)
+impl From<HexToArrayError> for Error {
+    fn from(e: HexToArrayError) -> Self {
+        Self::HexToArray(e)
     }
 }
 

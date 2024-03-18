@@ -123,7 +123,7 @@ impl Keys {
     }
 
     pub fn sign_schnorr(&self, message: &[u8]) -> Result<String> {
-        let message = Message::from_slice(message)?;
+        let message: Message = Message::from_digest_slice(message)?;
         Ok(self.inner.sign_schnorr(&message)?.to_string())
     }
 }
