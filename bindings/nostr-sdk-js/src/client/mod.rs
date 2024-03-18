@@ -170,6 +170,7 @@ impl JsClient {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    #[wasm_bindgen(js_name = subscribeWithId)]
     pub async fn subscribe_with_id(
         &self,
         id: &str,
@@ -190,6 +191,7 @@ impl JsClient {
     }
 
     /// Unsubscribe
+    #[wasm_bindgen(js_name = unsubscribeAll)]
     pub async fn unsubscribe_all(&self) {
         self.inner.unsubscribe_all().await;
     }
@@ -369,49 +371,6 @@ impl JsClient {
             .map_err(into_err)
             .map(|id| id.into())
     }
-
-    // /// Get contact list
-    //
-    // <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    // #[wasm_bindgen(js_name = getContactList)]
-    // pub async fn get_contact_list(&self, timeout: Option<u64>) -> Result<Vec<JsContact>> {
-    // let timeout = timeout.map(|t| Duration::from_secs(t as u64));
-    // self.inner
-    // .get_contact_list(timeout)
-    // .await
-    // .map_err(into_err)
-    // .map(|vec| vec.into_iter().map(|c| c.into()).collect())
-    // }
-    //
-    // Get contact list public keys
-    //
-    // <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    // #[wasm_bindgen(js_name = getContactListPublicKeys)]
-    // pub async fn get_contact_list_public_keys(
-    // &self,
-    // timeout: Option<u64>,
-    // ) -> Result<Vec<JsPublicKey>> {
-    // let timeout = timeout.map(|t| Duration::from_secs(t as u64));
-    // self.inner
-    // .get_contact_list_public_keys(timeout)
-    // .await
-    // .map_err(into_err)
-    // .map(|vec| vec.into_iter().map(|c| c.into()).collect())
-    // }
-
-    // /// Get contact list [`Metadata`]
-    // #[wasm_bindgen(js_name = getContactListMetadata)]
-    // pub async fn get_contact_list_metadata(
-    // &self,
-    // timeout: Option<u64>,
-    // ) -> Result<HashMap<JsPublicKey, JsMetadata>> {
-    // let timeout = timeout.map(|t| Duration::from_secs(t as u64));
-    // self.inner
-    // .get_contact_list_public_keys(timeout)
-    // .await
-    // .map_err(into_err)
-    // .map(|vec| vec.into_iter().map(|c| c.into()).collect())
-    // }
 
     /// Send encrypted direct message
     ///
