@@ -55,39 +55,45 @@ impl JsEventBuilder {
         self.builder.custom_created_at(*created_at).into()
     }
 
+    /// Build `Event`
+    ///
+    /// **This method consume the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = toEvent)]
-    pub fn to_event(&self, keys: &JsKeys) -> Result<JsEvent> {
-        let event = self
-            .builder
-            .clone()
-            .to_event(keys.deref())
-            .map_err(into_err)?;
+    pub fn to_event(self, keys: &JsKeys) -> Result<JsEvent> {
+        let event = self.builder.to_event(keys.deref()).map_err(into_err)?;
         Ok(event.into())
     }
 
+    /// Build `UnsignedEvent`
+    ///
+    /// **This method consume the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = toUnsignedEvent)]
-    pub fn to_unsigned_event(&self, public_key: &JsPublicKey) -> JsUnsignedEvent {
-        self.builder.clone().to_unsigned_event(**public_key).into()
+    pub fn to_unsigned_event(self, public_key: &JsPublicKey) -> JsUnsignedEvent {
+        self.builder.to_unsigned_event(**public_key).into()
     }
 
+    /// Build POW `Event`
+    ///
+    /// **This method consume the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = toPowEvent)]
-    pub fn to_pow_event(&self, keys: &JsKeys, difficulty: u8) -> Result<JsEvent> {
+    pub fn to_pow_event(self, keys: &JsKeys, difficulty: u8) -> Result<JsEvent> {
         Ok(self
             .builder
-            .clone()
             .to_pow_event(keys.deref(), difficulty)
             .map_err(into_err)?
             .into())
     }
 
+    /// Build Unisgned POW Event
+    ///
+    /// **This method consume the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = toUnsignedPowEvent)]
     pub fn to_unsigned_pow_event(
-        &self,
+        self,
         public_key: &JsPublicKey,
         difficulty: u8,
     ) -> JsUnsignedEvent {
         self.builder
-            .clone()
             .to_unsigned_pow_event(**public_key, difficulty)
             .into()
     }
