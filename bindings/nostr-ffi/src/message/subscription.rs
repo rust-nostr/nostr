@@ -5,9 +5,9 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::message::subscription;
+use nostr::message::subscription::{self, IntoGenericTagValue};
 use nostr::JsonUtil;
-use uniffi::{Enum, Object};
+use uniffi::{Enum, Object, Record};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
@@ -373,6 +373,17 @@ impl Filter {
     }
 
     #[uniffi::constructor]
+    pub fn from_record(record: FilterRecord) -> Self {
+        Self {
+            inner: record.into(),
+        }
+    }
+
+    pub fn as_record(&self) -> FilterRecord {
+        self.inner.clone().into()
+    }
+
+    #[uniffi::constructor]
     pub fn from_json(json: String) -> Result<Self> {
         Ok(Self {
             inner: nostr::Filter::from_json(json)?,
@@ -381,5 +392,89 @@ impl Filter {
 
     pub fn as_json(&self) -> String {
         self.inner.as_json()
+    }
+}
+
+#[derive(Record)]
+pub struct GenericTag {
+    pub key: Arc<SingleLetterTag>,
+    pub value: Vec<String>,
+}
+
+#[derive(Record)]
+pub struct FilterRecord {
+    pub ids: Option<Vec<Arc<EventId>>>,
+    pub authors: Option<Vec<Arc<PublicKey>>>,
+    pub kinds: Option<Vec<Arc<Kind>>>,
+    /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
+    pub search: Option<String>,
+    /// An integer unix timestamp, events must be newer than this to pass
+    pub since: Option<Arc<Timestamp>>,
+    /// An integer unix timestamp, events must be older than this to pass
+    pub until: Option<Arc<Timestamp>>,
+    /// Maximum number of events to be returned in the initial query
+    pub limit: Option<u64>,
+    /// Generic tag queries
+    pub generic_tags: Vec<GenericTag>,
+}
+
+impl From<nostr::Filter> for FilterRecord {
+    fn from(f: nostr::Filter) -> Self {
+        Self {
+            ids: f
+                .ids
+                .map(|ids| ids.into_iter().map(|v| Arc::new(v.into())).collect()),
+            authors: f
+                .authors
+                .map(|authors| authors.into_iter().map(|v| Arc::new(v.into())).collect()),
+            kinds: f
+                .kinds
+                .map(|kinds| kinds.into_iter().map(|v| Arc::new(v.into())).collect()),
+            search: f.search,
+            since: f.since.map(|t| Arc::new(t.into())),
+            until: f.until.map(|t| Arc::new(t.into())),
+            limit: f.limit.map(|l| l as u64),
+            generic_tags: f
+                .generic_tags
+                .into_iter()
+                .map(|(k, v)| GenericTag {
+                    key: Arc::new(k.into()),
+                    value: v.into_iter().map(|v| v.to_string()).collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<FilterRecord> for nostr::Filter {
+    fn from(f: FilterRecord) -> Self {
+        Self {
+            ids: f.ids.map(|ids| ids.into_iter().map(|v| **v).collect()),
+            authors: f
+                .authors
+                .map(|authors| authors.into_iter().map(|v| **v).collect()),
+            kinds: f
+                .kinds
+                .map(|kinds| kinds.into_iter().map(|v| **v).collect()),
+            search: f.search,
+            since: f.since.map(|t| **t),
+            until: f.until.map(|t| **t),
+            limit: f.limit.map(|l| l as usize),
+            generic_tags: f
+                .generic_tags
+                .into_iter()
+                .map(|GenericTag { key, value }| {
+                    (
+                        **key,
+                        value
+                            .into_iter()
+                            .map(|v| v.into_generic_tag_value())
+                            .collect(),
+                    )
+                })
+                .collect(),
+        }
     }
 }
