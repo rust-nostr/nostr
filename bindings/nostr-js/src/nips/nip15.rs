@@ -7,11 +7,7 @@ use js_sys::Array;
 use nostr::nips::nip15::{ProductData, ShippingCost, ShippingMethod, StallData};
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(typescript_type = "string[]")]
-    pub type JsStringArray;
-}
+use crate::JsStringArray;
 
 #[wasm_bindgen(js_name = ShippingCost)]
 pub struct JsShippingCost {

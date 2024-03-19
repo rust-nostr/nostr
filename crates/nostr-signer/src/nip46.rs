@@ -6,21 +6,21 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/46.md>
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::time;
-use nostr::nips::nip46::{self, Message, NostrConnectMetadata, NostrConnectURI, Request, Response};
+use nostr::nips::nip46::{
+    self, Message, NostrConnectMetadata, NostrConnectURI, Request, ResponseResult,
+};
 use nostr::prelude::*;
 use nostr::{key, serde_json};
 use nostr_relay_pool::{
-    FilterOptions, Relay, RelayNotification, RelayOptions, RelaySendOptions,
-    SubscribeAutoCloseOptions, SubscribeOptions,
+    RelayOptions, RelayPool, RelayPoolNotification, RelaySendOptions, SubscribeOptions,
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
-
-const TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Nostr Connect error
 #[derive(Debug, Error)]
@@ -43,9 +43,9 @@ pub enum Error {
     /// Relay
     #[error(transparent)]
     Relay(#[from] nostr_relay_pool::relay::Error),
-    /// Generic NIP46 error
-    #[error("generic error")]
-    Generic,
+    /// Pool
+    #[error(transparent)]
+    Pool(#[from] nostr_relay_pool::pool::Error),
     /// NIP46 response error
     #[error("response error: {0}")]
     Response(String),
@@ -60,53 +60,59 @@ pub enum Error {
 /// NIP46 Signer
 #[derive(Debug, Clone)]
 pub struct Nip46Signer {
+    uri: NostrConnectURI,
     app_keys: Keys,
     signer_public_key: Arc<Mutex<Option<PublicKey>>>,
-    relay: Relay,
+    pool: RelayPool,
     timeout: Duration,
 }
 
 impl Nip46Signer {
     /// New NIP46 remote signer
     pub async fn new(
-        relay_url: Url,
-        app_keys: Keys,
-        signer_public_key: Option<PublicKey>,
+        uri: NostrConnectURI,
+        app_keys: Option<Keys>,
         timeout: Duration,
-    ) -> Result<Self, Error> {
-        Self::with_opts(
-            relay_url,
-            app_keys,
-            signer_public_key,
-            timeout,
-            RelayOptions::default(),
-        )
-        .await
-    }
-
-    /// New NIP46 remote signer
-    pub async fn with_opts(
-        relay_url: Url,
-        app_keys: Keys,
-        signer_public_key: Option<PublicKey>,
-        timeout: Duration,
-        opts: RelayOptions,
+        opts: Option<RelayOptions>,
     ) -> Result<Self, Error> {
         // Compose pool
-        let relay = Relay::with_opts(relay_url, opts);
-        relay.connect(Some(Duration::from_secs(10))).await;
+        let pool: RelayPool = RelayPool::default();
 
-        Ok(Self {
+        let opts: RelayOptions = opts.unwrap_or_default();
+        for url in uri.relays().into_iter() {
+            pool.add_relay(url, opts.clone()).await?;
+        }
+
+        pool.connect(Some(Duration::from_secs(10))).await;
+
+        let app_keys: Keys = match app_keys {
+            Some(keys) => keys,
+            None => Keys::generate(),
+        };
+        let signer_public_key: Option<PublicKey> = uri.signer_public_key();
+
+        let this = Self {
+            uri,
             app_keys,
             signer_public_key: Arc::new(Mutex::new(signer_public_key)),
-            relay,
+            pool,
             timeout,
-        })
+        };
+
+        this.subscribe().await;
+        this.connect().await?;
+
+        Ok(this)
     }
 
-    /// Get signer relay [`Url`]
-    pub fn relay_url(&self) -> Url {
-        self.relay.url()
+    /// Get local app keys
+    pub fn local_keys(&self) -> &Keys {
+        &self.app_keys
+    }
+
+    /// Get signer relays
+    pub async fn relays(&self) -> Vec<Url> {
+        self.pool.relays().await.into_keys().collect()
     }
 
     /// Get signer [PublicKey]
@@ -123,41 +129,177 @@ impl Nip46Signer {
     }
 
     /// Compose Nostr Connect URI
-    pub fn nostr_connect_uri(&self, metadata: NostrConnectMetadata) -> NostrConnectURI {
-        NostrConnectURI::with_metadata(self.app_keys.public_key(), self.relay_url(), metadata)
+    pub async fn nostr_connect_uri(&self, metadata: NostrConnectMetadata) -> NostrConnectURI {
+        NostrConnectURI::Client {
+            public_key: self.app_keys.public_key(),
+            relays: self.relays().await,
+            metadata,
+        }
     }
 
-    async fn get_signer_public_key(&self) -> Result<PublicKey, Error> {
-        let public_key = self.app_keys.public_key();
-        let secret_key = self.app_keys.secret_key()?;
+    async fn subscribe(&self) {
+        let public_key: PublicKey = self.app_keys.public_key();
 
         let filter = Filter::new()
             .pubkey(public_key)
             .kind(Kind::NostrConnect)
             .since(Timestamp::now());
 
-        let auto_close_opts = SubscribeAutoCloseOptions::default()
-            .filter(FilterOptions::WaitForEventsAfterEOSE(1))
-            .timeout(Some(TIMEOUT));
-        let subscribe_opts = SubscribeOptions::default().close_on(Some(auto_close_opts));
-
         // Subscribe
-        let id: SubscriptionId = self.relay.subscribe(vec![filter], subscribe_opts).await?;
+        self.pool
+            .subscribe(vec![filter], SubscribeOptions::default())
+            .await;
+    }
 
-        let mut notifications = self.relay.notifications();
+    async fn send_request(&self, req: Request) -> Result<ResponseResult, Error> {
+        let secret_key: &SecretKey = self.app_keys.secret_key()?;
+        let signer_public_key: PublicKey = self.signer_public_key().await?;
+
+        // Convert request to event
+        let msg = Message::request(req);
+        tracing::debug!("Sending '{msg}' NIP46 message");
+
+        let req_id = msg.id().to_string();
+        let event: Event = EventBuilder::nostr_connect(&self.app_keys, signer_public_key, msg)?
+            .to_event(&self.app_keys)?;
+
+        let mut notifications = self.pool.notifications();
+
+        // Send request
+        self.pool.send_event(event, RelaySendOptions::new()).await?;
+
         time::timeout(Some(self.timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Event {
-                    subscription_id,
-                    event,
-                } = notification
-                {
-                    if subscription_id == id && event.kind() == Kind::NostrConnect {
+                if let RelayPoolNotification::Event { event, .. } = notification {
+                    if event.kind() == Kind::NostrConnect {
+                        let msg = nip04::decrypt(secret_key, event.author_ref(), event.content())?;
+                        let msg = Message::from_json(msg)?;
+
+                        tracing::debug!("Received NIP46 message: '{msg}'");
+
+                        if let Message::Response { id, result, error } = &msg {
+                            if &req_id == id {
+                                if msg.is_auth_url() {
+                                    tracing::warn!("Received 'auth_url': {error:?}");
+                                } else {
+                                    if let Some(result) = result {
+                                        return Ok(result.clone());
+                                    }
+
+                                    if let Some(error) = error {
+                                        return Err(Error::Response(error.to_owned()));
+                                    }
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Err(Error::Timeout)
+        })
+        .await
+        .ok_or(Error::Timeout)?
+    }
+
+    /// Connect msg
+    async fn connect(&self) -> Result<(), Error> {
+        let req = Request::Connect {
+            public_key: self.app_keys.public_key(),
+            secret: self.uri.secret(),
+        };
+        let res = self.send_request(req).await?;
+        Ok(res.to_connect()?)
+    }
+
+    /// Sign an [UnsignedEvent]
+    pub async fn get_relays(&self) -> Result<HashMap<Url, RelayPermissions>, Error> {
+        let req = Request::GetRelays;
+        let res = self.send_request(req).await?;
+        Ok(res.to_get_relays()?)
+    }
+
+    /// Sign an [UnsignedEvent]
+    pub async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Error> {
+        let req = Request::SignEvent(unsigned);
+        let res = self.send_request(req).await?;
+        Ok(res.to_sign_event()?)
+    }
+
+    /// NIP04 encrypt
+    pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    where
+        T: AsRef<[u8]>,
+    {
+        let content: &[u8] = content.as_ref();
+        let req = Request::Nip04Encrypt {
+            public_key,
+            text: String::from_utf8_lossy(content).to_string(),
+        };
+        let res = self.send_request(req).await?;
+        Ok(res.to_encrypt_decrypt()?)
+    }
+
+    /// NIP04 decrypt
+    pub async fn nip04_decrypt<S>(
+        &self,
+        public_key: PublicKey,
+        ciphertext: S,
+    ) -> Result<String, Error>
+    where
+        S: Into<String>,
+    {
+        let req = Request::Nip04Decrypt {
+            public_key,
+            ciphertext: ciphertext.into(),
+        };
+        let res = self.send_request(req).await?;
+        Ok(res.to_encrypt_decrypt()?)
+    }
+
+    /// NIP44 encrypt
+    pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    where
+        T: AsRef<[u8]>,
+    {
+        let content: &[u8] = content.as_ref();
+        let req = Request::Nip44Encrypt {
+            public_key,
+            text: String::from_utf8_lossy(content).to_string(),
+        };
+        let res = self.send_request(req).await?;
+        Ok(res.to_encrypt_decrypt()?)
+    }
+
+    /// NIP44 decrypt
+    pub async fn nip44_decrypt<T>(&self, public_key: PublicKey, payload: T) -> Result<String, Error>
+    where
+        T: AsRef<[u8]>,
+    {
+        let payload: &[u8] = payload.as_ref();
+        let req = Request::Nip44Decrypt {
+            public_key,
+            ciphertext: String::from_utf8_lossy(payload).to_string(),
+        };
+        let res = self.send_request(req).await?;
+        Ok(res.to_encrypt_decrypt()?)
+    }
+
+    async fn get_signer_public_key(&self) -> Result<PublicKey, Error> {
+        let secret_key = self.app_keys.secret_key()?;
+
+        let mut notifications = self.pool.notifications();
+        time::timeout(Some(self.timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayPoolNotification::Event { event, .. } = notification {
+                    if event.kind() == Kind::NostrConnect {
                         let msg: String =
                             nip04::decrypt(secret_key, event.author_ref(), event.content())?;
                         let msg = Message::from_json(msg)?;
-                        if let Ok(Request::Connect(pk)) = msg.to_request() {
-                            return Ok(pk);
+                        if let Ok(Request::Connect { public_key, .. }) = msg.to_request() {
+                            return Ok(public_key);
                         }
                     }
                 }
@@ -169,109 +311,8 @@ impl Nip46Signer {
         .ok_or(Error::Timeout)?
     }
 
-    /// Send NIP46 [`Request`] to signer
-    pub async fn send_req_to_signer(
-        &self,
-        req: Request,
-        timeout: Option<Duration>,
-    ) -> Result<Response, Error> {
-        let msg = Message::request(req.clone());
-        let req_id = msg.id();
-
-        let public_key = self.app_keys.public_key();
-        let secret_key = self.app_keys.secret_key()?;
-
-        let signer_public_key: PublicKey = self.signer_public_key().await?;
-
-        // Build request
-        let event = EventBuilder::nostr_connect(&self.app_keys, signer_public_key, msg)?
-            .to_event(&self.app_keys)?;
-
-        let filter = Filter::new()
-            .pubkey(public_key)
-            .kind(Kind::NostrConnect)
-            .since(Timestamp::now());
-
-        let auto_close_opts = SubscribeAutoCloseOptions::default()
-            .filter(FilterOptions::WaitForEventsAfterEOSE(1))
-            .timeout(Some(TIMEOUT));
-        let subscribe_opts = SubscribeOptions::default().close_on(Some(auto_close_opts));
-
-        // Subscribe
-        let sub_id: SubscriptionId = self.relay.subscribe(vec![filter], subscribe_opts).await?;
-
-        let mut notifications = self.relay.notifications();
-
-        // Send request
-        self.relay
-            .send_event(event, RelaySendOptions::new())
-            .await?;
-
-        let future = async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Event {
-                    subscription_id,
-                    event,
-                } = notification
-                {
-                    if subscription_id == sub_id && event.kind() == Kind::NostrConnect {
-                        let msg = nip04::decrypt(secret_key, event.author_ref(), event.content())?;
-                        let msg = Message::from_json(msg)?;
-
-                        if let Message::Response { id, result, error } = &msg {
-                            if &req_id == id {
-                                if let Some(result) = result {
-                                    let res = match req {
-                                        Request::Describe => Response::Describe(
-                                            serde_json::from_value(result.to_owned())?,
-                                        ),
-                                        Request::GetPublicKey => {
-                                            let pubkey = serde_json::from_value(result.to_owned())?;
-                                            Response::GetPublicKey(pubkey)
-                                        }
-                                        Request::SignEvent(_) => {
-                                            let sig = serde_json::from_value(result.to_owned())?;
-                                            Response::SignEvent(sig)
-                                        }
-                                        Request::Delegate { .. } => Response::Delegate(
-                                            serde_json::from_value(result.to_owned())?,
-                                        ),
-                                        Request::Nip04Encrypt { .. } => Response::Nip04Encrypt(
-                                            serde_json::from_value(result.to_owned())?,
-                                        ),
-                                        Request::Nip04Decrypt { .. } => Response::Nip04Decrypt(
-                                            serde_json::from_value(result.to_owned())?,
-                                        ),
-                                        Request::SignSchnorr { .. } => Response::SignSchnorr(
-                                            serde_json::from_value(result.to_owned())?,
-                                        ),
-                                        _ => break,
-                                    };
-
-                                    return Ok(res);
-                                }
-
-                                if let Some(error) = error {
-                                    return Err(Error::Response(error.to_owned()));
-                                }
-
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            Err(Error::Generic)
-        };
-
-        time::timeout(Some(timeout.unwrap_or(self.timeout)), future)
-            .await
-            .ok_or(Error::Timeout)?
-    }
-
     /// Completely shutdown
     pub async fn shutdown(self) -> Result<(), Error> {
-        Ok(self.relay.terminate().await?)
+        Ok(self.pool.shutdown().await?)
     }
 }

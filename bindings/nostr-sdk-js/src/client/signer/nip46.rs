@@ -4,11 +4,12 @@
 
 use core::ops::Deref;
 
+use js_sys::Array;
 use nostr_js::error::{into_err, Result};
 use nostr_js::key::{JsKeys, JsPublicKey};
 use nostr_js::nips::nip46::{JsNostrConnectMetadata, JsNostrConnectURI};
+use nostr_js::JsStringArray;
 use nostr_sdk::signer::Nip46Signer;
-use nostr_sdk::Url;
 use wasm_bindgen::prelude::*;
 
 use crate::duration::JsDuration;
@@ -37,28 +38,32 @@ impl JsNip46Signer {
     /// New NIP46 remote signer
     #[wasm_bindgen(constructor)]
     pub async fn new(
-        relay_url: String,
-        app_keys: &JsKeys,
-        signer_public_key: Option<JsPublicKey>,
-        timeout: JsDuration,
+        uri: &JsNostrConnectURI,
+        app_keys: Option<JsKeys>,
+        timeout: &JsDuration,
     ) -> Result<JsNip46Signer> {
-        let relay_url: Url = Url::parse(&relay_url).map_err(into_err)?;
         Ok(Self {
             inner: Nip46Signer::new(
-                relay_url,
-                app_keys.deref().clone(),
-                signer_public_key.map(|p| *p),
-                *timeout,
+                uri.deref().clone(),
+                app_keys.map(|k| k.deref().clone()),
+                **timeout,
+                None,
             )
             .await
             .map_err(into_err)?,
         })
     }
 
-    /// Get signer relay url
-    #[wasm_bindgen(js_name = relayUrl)]
-    pub fn relay_url(&self) -> String {
-        self.inner.relay_url().to_string()
+    /// Get signer relays
+    #[wasm_bindgen]
+    pub async fn relays(&self) -> JsStringArray {
+        self.inner
+            .relays()
+            .await
+            .into_iter()
+            .map(|u| JsValue::from(u.to_string()))
+            .collect::<Array>()
+            .unchecked_into()
     }
 
     /// Get signer public key
@@ -73,9 +78,10 @@ impl JsNip46Signer {
     }
 
     #[wasm_bindgen(js_name = nostrConnectUri)]
-    pub fn nostr_connect_uri(&self, metadata: &JsNostrConnectMetadata) -> JsNostrConnectURI {
+    pub async fn nostr_connect_uri(&self, metadata: &JsNostrConnectMetadata) -> JsNostrConnectURI {
         self.inner
             .nostr_connect_uri(metadata.deref().clone())
+            .await
             .into()
     }
 }

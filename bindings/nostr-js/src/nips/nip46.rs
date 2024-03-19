@@ -3,14 +3,12 @@
 // Distributed under the MIT software license
 
 use core::ops::Deref;
-use core::str::FromStr;
 
 use nostr::nips::nip46::{NostrConnectMetadata, NostrConnectURI};
 use nostr::Url;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
-use crate::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = NostrConnectMetadata)]
 pub struct JsNostrConnectMetadata {
@@ -88,32 +86,15 @@ impl From<NostrConnectURI> for JsNostrConnectURI {
 
 #[wasm_bindgen(js_class = NostrConnectURI)]
 impl JsNostrConnectURI {
-    #[wasm_bindgen(constructor)]
-    pub fn parse(uri: String) -> Result<JsNostrConnectURI> {
+    #[wasm_bindgen]
+    pub fn parse(uri: &str) -> Result<JsNostrConnectURI> {
         Ok(Self {
-            inner: NostrConnectURI::from_str(&uri).map_err(into_err)?,
+            inner: NostrConnectURI::parse(uri).map_err(into_err)?,
         })
     }
 
-    #[wasm_bindgen(js_name = publicKey)]
-    pub fn public_key(&self) -> JsPublicKey {
-        self.inner.public_key.into()
-    }
-
-    #[wasm_bindgen(js_name = relayUrl)]
-    pub fn relay_url(&self) -> String {
-        self.inner.relay_url.to_string()
-    }
-
-    pub fn name(&self) -> String {
-        self.inner.metadata.name.clone()
-    }
-
-    pub fn url(&self) -> Option<String> {
-        self.inner.metadata.url.as_ref().map(|u| u.to_string())
-    }
-
-    pub fn description(&self) -> Option<String> {
-        self.inner.metadata.description.clone()
+    #[wasm_bindgen(js_name = asString)]
+    pub fn as_string(&self) -> String {
+        self.inner.to_string()
     }
 }

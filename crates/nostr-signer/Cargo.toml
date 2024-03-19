@@ -16,7 +16,7 @@ default = ["nip04", "nip07", "nip44", "nip46"]
 nip04 = ["nostr/nip04"]
 nip07 = ["nostr/nip07"]
 nip44 = ["nostr/nip44"]
-nip46 = ["nostr/nip46", "dep:nostr-relay-pool"]
+nip46 = ["nostr/nip46", "dep:nostr-relay-pool", "dep:tracing"]
 
 [dependencies]
 async-utility.workspace = true
@@ -24,3 +24,4 @@ nostr = { workspace = true, features = ["std"] }
 nostr-relay-pool = { workspace = true, optional = true }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true, features = ["std", "attributes"], optional = true }

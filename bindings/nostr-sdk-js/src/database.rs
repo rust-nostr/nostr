@@ -9,17 +9,12 @@ use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventArray, JsEventId};
 use nostr_js::key::JsPublicKey;
 use nostr_js::message::JsFilter;
+use nostr_js::JsStringArray;
 use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt, Order};
 use nostr_sdk::WebDatabase;
 use wasm_bindgen::prelude::*;
 
 use crate::profile::JsProfile;
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(typescript_type = "string[]")]
-    pub type JsStringArray;
-}
 
 #[wasm_bindgen(js_name = NostrDatabase)]
 pub struct JsNostrDatabase {

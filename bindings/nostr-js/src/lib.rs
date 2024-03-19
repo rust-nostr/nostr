@@ -15,6 +15,12 @@ pub mod message;
 pub mod nips;
 pub mod types;
 
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "string[]")]
+    pub type JsStringArray;
+}
+
 /// Run some stuff when the Wasm module is instantiated.
 ///
 /// Right now, it does the following:

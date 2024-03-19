@@ -6,13 +6,13 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use nostr::nips::nip46;
+use nostr::nips::nip46::{self, Method, Request, ResponseResult};
 use nostr::Url;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::{JsonValue, NostrError, PublicKey};
+use crate::NostrError;
 
 #[derive(Clone, Object)]
 pub struct NostrConnectMetadata {
@@ -91,30 +91,14 @@ impl Deref for NostrConnectURI {
 #[uniffi::export]
 impl NostrConnectURI {
     #[uniffi::constructor]
-    pub fn from_string(uri: String) -> Result<Self> {
+    pub fn parse(uri: &str) -> Result<Self> {
         Ok(Self {
-            inner: nip46::NostrConnectURI::from_str(&uri)?,
+            inner: nip46::NostrConnectURI::parse(uri)?,
         })
     }
 
-    pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.public_key.into())
-    }
-
-    pub fn relay_url(&self) -> String {
-        self.inner.relay_url.to_string()
-    }
-
-    pub fn name(&self) -> String {
-        self.inner.metadata.name.clone()
-    }
-
-    pub fn url(&self) -> Option<String> {
-        self.inner.metadata.url.as_ref().map(|u| u.to_string())
-    }
-
-    pub fn description(&self) -> Option<String> {
-        self.inner.metadata.description.clone()
+    pub fn as_string(&self) -> String {
+        self.inner.to_string()
     }
 }
 
@@ -123,11 +107,11 @@ pub enum NostrConnectMessage {
     Request {
         id: String,
         method: String,
-        params: Vec<JsonValue>,
+        params: Vec<String>,
     },
     Response {
         id: String,
-        result: Option<JsonValue>,
+        result: Option<String>,
         error: Option<String>,
     },
 }
@@ -137,18 +121,17 @@ impl TryFrom<NostrConnectMessage> for nip46::Message {
 
     fn try_from(value: NostrConnectMessage) -> Result<Self, Self::Error> {
         Ok(match value {
-            NostrConnectMessage::Request { id, method, params } => Self::Request {
-                id,
-                method,
-                params: params
-                    .into_iter()
-                    .filter_map(|v| v.try_into().ok())
-                    .collect(),
-            },
+            NostrConnectMessage::Request { id, method, params } => {
+                let method: Method = Method::from_str(&method)?;
+                Self::Request {
+                    id,
+                    req: Request::from_message(method, params)?,
+                }
+            }
             NostrConnectMessage::Response { id, result, error } => Self::Response {
                 id,
                 result: match result {
-                    Some(a) => Some(a.try_into()?),
+                    Some(a) => Some(ResponseResult::parse(&a)?),
                     None => None,
                 },
                 error,

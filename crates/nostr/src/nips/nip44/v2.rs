@@ -116,7 +116,7 @@ impl MessageKeys {
 }
 
 /// NIP44 v2 Conversation Key
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ConversationKey(Hmac<Sha256Hash>);
 
 impl fmt::Debug for ConversationKey {

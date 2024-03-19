@@ -22,6 +22,7 @@ use nostr_relay_pool::{
 use nostr_signer::prelude::*;
 #[cfg(feature = "nip57")]
 use nostr_zapper::{DynNostrZapper, IntoNostrZapper, ZapperError};
+use thiserror::Error;
 use tokio::sync::{broadcast, RwLock};
 
 pub mod builder;
@@ -35,7 +36,7 @@ pub use self::options::Options;
 pub use self::zapper::{ZapDetails, ZapEntity};
 
 /// [`Client`] error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
 pub enum Error {
     /// [`Relay`] error
     #[error("relay error: {0}")]

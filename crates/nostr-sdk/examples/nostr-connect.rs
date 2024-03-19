@@ -13,18 +13,9 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     // Compose signer
-    let secret_key = SecretKey::from_bech32(APP_SECRET_KEY)?;
-    let app_keys = Keys::new(secret_key);
-    let relay_url = Url::parse("wss://relay.rip")?;
-    let signer =
-        Nip46Signer::new(relay_url.clone(), app_keys, None, Duration::from_secs(60)).await?;
-
-    let metadata = NostrConnectMetadata::new("Nostr SDK").url(Url::parse("https://example.com")?);
-    let nostr_connect_uri: NostrConnectURI = signer.nostr_connect_uri(metadata);
-
-    println!("\n###############################################\n");
-    println!("Nostr Connect URI: {nostr_connect_uri}");
-    println!("\n###############################################\n");
+    let uri = NostrConnectURI::parse("bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app")?;
+    let app_keys = Keys::parse(APP_SECRET_KEY)?;
+    let signer = Nip46Signer::new(uri, Some(app_keys), Duration::from_secs(60), None).await?;
 
     // Compose client
     let client = Client::new(signer);
@@ -33,14 +24,14 @@ async fn main() -> Result<()> {
 
     // Publish events
     let id = client
-        .publish_text_note("Testing nostr-sdk nostr-connect client", [])
+        .publish_text_note("Testing rust-nostr NIP46 signer [bunker]", [])
         .await?;
     println!("Published text note: {id}\n");
 
     let receiver =
         PublicKey::from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")?;
     client
-        .send_direct_msg(receiver, "Hello from nostr-sdk", None)
+        .send_sealed_msg(receiver, "Hello from rust-nostr", None)
         .await?;
     println!("Sent DM: {id}");
 

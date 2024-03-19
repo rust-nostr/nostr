@@ -35,14 +35,11 @@ async fn main() -> Result<()> {
     client.connect().await;
     println!("Connected to relay {}", nwc_uri.relay_url);
 
-    let req = nip47::Request {
-        method: Method::PayInvoice,
-        params: RequestParams::PayInvoice(PayInvoiceRequestParams {
-            id: None,
-            invoice,
-            amount: None,
-        }),
-    };
+    let req = nip47::Request::pay_invoice(PayInvoiceRequestParams {
+        id: None,
+        invoice,
+        amount: None,
+    });
     let req_event = req.to_event(&nwc_uri).unwrap();
 
     let subscription = Filter::new()

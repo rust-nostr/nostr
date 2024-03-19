@@ -46,23 +46,6 @@ pub enum Error {
     #[cfg(feature = "nip46")]
     #[error(transparent)]
     NIP46(#[from] nip46::Error),
-    /// Response not match to the request
-    #[cfg(feature = "nip46")]
-    #[error("response not match to the request")]
-    ResponseNotMatchRequest,
-    /// Not supported yet
-    #[error("{0}")]
-    Unsupported(String),
-}
-
-#[cfg(feature = "nip44")]
-impl Error {
-    fn unsupported<S>(message: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::Unsupported(message.into())
-    }
 }
 
 /// Nostr Signer Type
@@ -154,16 +137,7 @@ impl NostrSigner {
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(nip07) => Ok(nip07.sign_event(unsigned).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(nip46) => {
-                let res = nip46
-                    .send_req_to_signer(nostr::nips::nip46::Request::SignEvent(unsigned), None)
-                    .await?;
-                if let nostr::nips::nip46::Response::SignEvent(event) = res {
-                    Ok(event)
-                } else {
-                    Err(Error::ResponseNotMatchRequest)
-                }
-            }
+            Self::NIP46(nip46) => Ok(nip46.sign_event(unsigned).await?),
         }
     }
 
@@ -179,19 +153,7 @@ impl NostrSigner {
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(signer) => {
-                let req = nostr::nips::nip46::Request::Nip04Encrypt {
-                    public_key,
-                    text: String::from_utf8_lossy(content).to_string(),
-                };
-                let res: nostr::nips::nip46::Response =
-                    signer.send_req_to_signer(req, None).await?;
-                if let nostr::nips::nip46::Response::Nip04Encrypt(ciphertext) = res {
-                    Ok(ciphertext)
-                } else {
-                    Err(Error::ResponseNotMatchRequest)
-                }
-            }
+            Self::NIP46(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
         }
     }
 
@@ -215,19 +177,7 @@ impl NostrSigner {
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip04_decrypt(public_key, encrypted_content).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(signer) => {
-                let req = nostr::nips::nip46::Request::Nip04Decrypt {
-                    public_key,
-                    text: encrypted_content.to_string(),
-                };
-                let res: nostr::nips::nip46::Response =
-                    signer.send_req_to_signer(req, None).await?;
-                if let nostr::nips::nip46::Response::Nip04Decrypt(content) = res {
-                    Ok(content)
-                } else {
-                    Err(Error::ResponseNotMatchRequest)
-                }
-            }
+            Self::NIP46(signer) => Ok(signer.nip04_decrypt(public_key, encrypted_content).await?),
         }
     }
 
@@ -248,9 +198,7 @@ impl NostrSigner {
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip44_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(..) => Err(Error::unsupported(
-                "NIP44 encryption not supported with NIP46 signer yet!",
-            )),
+            Self::NIP46(signer) => Ok(signer.nip44_encrypt(public_key, content).await?),
         }
     }
 
@@ -266,9 +214,7 @@ impl NostrSigner {
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip44_decrypt(public_key, payload).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(..) => Err(Error::unsupported(
-                "NIP44 decryption not supported with NIP46 signer yet!",
-            )),
+            Self::NIP46(signer) => Ok(signer.nip44_decrypt(public_key, payload).await?),
         }
     }
 }

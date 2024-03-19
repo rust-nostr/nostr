@@ -8,10 +8,11 @@ use std::time::Duration;
 
 use nostr_ffi::nips::nip46::{NostrConnectMetadata, NostrConnectURI};
 use nostr_ffi::{Keys, PublicKey};
-use nostr_sdk::{block_on, signer, Url};
+use nostr_sdk::{block_on, signer};
 use uniffi::Object;
 
 use crate::error::Result;
+use crate::relay::RelayOptions;
 
 #[derive(Object)]
 pub struct Nip46Signer {
@@ -37,28 +38,34 @@ impl Nip46Signer {
     /// New NIP46 remote signer
     #[uniffi::constructor]
     pub fn new(
-        relay_url: String,
-        app_keys: &Keys,
-        signer_public_key: Option<Arc<PublicKey>>,
+        uri: &NostrConnectURI,
+        app_keys: Option<Arc<Keys>>,
         timeout: Duration,
+        opts: Option<Arc<RelayOptions>>,
     ) -> Result<Self> {
         block_on(async move {
-            let relay_url: Url = Url::parse(&relay_url)?;
             Ok(Self {
                 inner: signer::Nip46Signer::new(
-                    relay_url,
-                    app_keys.deref().clone(),
-                    signer_public_key.map(|p| **p),
+                    uri.deref().clone(),
+                    app_keys.map(|k| k.as_ref().deref().clone()),
                     timeout,
+                    opts.map(|k| k.as_ref().deref().clone()),
                 )
                 .await?,
             })
         })
     }
 
-    /// Get signer relay [`Url`]
-    pub fn relay_url(&self) -> String {
-        self.inner.relay_url().to_string()
+    /// Get signer relays
+    pub fn relays(&self) -> Vec<String> {
+        block_on(async move {
+            self.inner
+                .relays()
+                .await
+                .into_iter()
+                .map(|u| u.to_string())
+                .collect()
+        })
     }
 
     /// Get signer public key
@@ -67,8 +74,11 @@ impl Nip46Signer {
     }
 
     pub fn nostr_connect_uri(&self, metadata: &NostrConnectMetadata) -> NostrConnectURI {
-        self.inner
-            .nostr_connect_uri(metadata.deref().clone())
-            .into()
+        block_on(async move {
+            self.inner
+                .nostr_connect_uri(metadata.deref().clone())
+                .await
+                .into()
+        })
     }
 }

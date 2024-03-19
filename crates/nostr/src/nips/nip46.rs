@@ -11,24 +11,23 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
+use std::collections::HashMap;
 
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand;
-use bitcoin::secp256k1::rand::{CryptoRng, Rng, RngCore};
-use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Secp256k1, Signing};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use bitcoin::secp256k1::rand::RngCore;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::json;
 
-use super::nip04;
-use super::nip26::{self, sign_delegation_with_ctx, Conditions};
-use crate::event::unsigned::{self, UnsignedEvent};
-use crate::key::{self, Keys};
+use crate::event::unsigned::UnsignedEvent;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{ParseError, Url};
-#[cfg(feature = "std")]
-use crate::SECP256K1;
-use crate::{Event, JsonUtil, PublicKey};
+use crate::{key, Event, JsonUtil, PublicKey};
+
+/// NIP46 URI Scheme
+pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";
+/// NIP46 bunker URI Scheme
+pub const NOSTR_CONNECT_BUNKER_URI_SCHEME: &str = "bunker";
 
 /// NIP46 error
 #[derive(Debug)]
@@ -39,14 +38,6 @@ pub enum Error {
     Json(serde_json::Error),
     /// Url parse error
     Url(ParseError),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
-    /// NIP04 error
-    NIP04(nip04::Error),
-    /// NIP26 error
-    NIP26(nip26::Error),
-    /// Unsigned event error
-    UnsignedEvent(unsigned::Error),
     /// Invalid request
     InvalidRequest,
     /// Too many/few params
@@ -57,6 +48,10 @@ pub enum Error {
     InvalidURI,
     /// Invalid URI scheme
     InvalidURIScheme,
+    /// Not request
+    NotRequest,
+    /// Unexpected result
+    UnexpectedResult,
 }
 
 #[cfg(feature = "std")]
@@ -68,15 +63,13 @@ impl fmt::Display for Error {
             Self::Key(e) => write!(f, "Key: {e}"),
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Url(e) => write!(f, "Url: {e}"),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
-            Self::NIP04(e) => write!(f, "NIP04: {e}"),
-            Self::NIP26(e) => write!(f, "NIP26: {e}"),
-            Self::UnsignedEvent(e) => write!(f, "{e}"),
             Self::InvalidRequest => write!(f, "Invalid request"),
             Self::InvalidParamsLength => write!(f, "Too many/few params"),
             Self::UnsupportedMethod(name) => write!(f, "Unsupported method: {name}"),
             Self::InvalidURI => write!(f, "Invalid uri"),
             Self::InvalidURIScheme => write!(f, "Invalid uri scheme"),
+            Self::NotRequest => write!(f, "This message is not a request"),
+            Self::UnexpectedResult => write!(f, "Unexpected result"),
         }
     }
 }
@@ -99,50 +92,99 @@ impl From<ParseError> for Error {
     }
 }
 
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
+/// NIP46 method
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Method {
+    /// Connect
+    Connect,
+    /// Get public key
+    GetPublicKey,
+    /// Sign event
+    SignEvent,
+    /// Get relays
+    GetRelays,
+    /// Encrypt text (NIP04)
+    Nip04Encrypt,
+    /// Decrypt (NIP04)
+    Nip04Decrypt,
+    /// Encrypt text (NIP44)
+    Nip44Encrypt,
+    /// Decrypt (NIP44)
+    Nip44Decrypt,
+    /// Ping
+    Ping,
+}
+
+impl fmt::Display for Method {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Connect => write!(f, "connect"),
+            Self::GetPublicKey => write!(f, "get_public_key"),
+            Self::SignEvent => write!(f, "sign_event"),
+            Self::GetRelays => write!(f, "get_relays"),
+            Self::Nip04Encrypt => write!(f, "nip04_encrypt"),
+            Self::Nip04Decrypt => write!(f, "nip04_decrypt"),
+            Self::Nip44Encrypt => write!(f, "nip44_encrypt"),
+            Self::Nip44Decrypt => write!(f, "nip44_decrypt"),
+            Self::Ping => write!(f, "ping"),
+        }
     }
 }
 
-impl From<nip04::Error> for Error {
-    fn from(e: nip04::Error) -> Self {
-        Self::NIP04(e)
+impl FromStr for Method {
+    type Err = Error;
+
+    fn from_str(method: &str) -> Result<Self, Self::Err> {
+        match method {
+            "connect" => Ok(Self::Connect),
+            "get_public_key" => Ok(Self::GetPublicKey),
+            "sign_event" => Ok(Self::SignEvent),
+            "get_relays" => Ok(Self::GetRelays),
+            "nip04_encrypt" => Ok(Self::Nip04Encrypt),
+            "nip04_decrypt" => Ok(Self::Nip04Decrypt),
+            "nip44_encrypt" => Ok(Self::Nip44Encrypt),
+            "nip44_decrypt" => Ok(Self::Nip44Decrypt),
+            "ping" => Ok(Self::Ping),
+            other => Err(Error::UnsupportedMethod(other.to_string())),
+        }
     }
 }
 
-impl From<nip26::Error> for Error {
-    fn from(e: nip26::Error) -> Self {
-        Self::NIP26(e)
+impl Serialize for Method {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
     }
 }
 
-impl From<unsigned::Error> for Error {
-    fn from(e: unsigned::Error) -> Self {
-        Self::UnsignedEvent(e)
+impl<'de> Deserialize<'de> for Method {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let method: String = String::deserialize(deserializer)?;
+        Self::from_str(&method).map_err(serde::de::Error::custom)
     }
 }
 
 /// Request
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Request {
-    /// Describe
-    Describe,
+    /// Connect
+    Connect {
+        /// Remote public key
+        public_key: PublicKey,
+        /// Optional secret
+        secret: Option<String>,
+    },
     /// Get public key
     GetPublicKey,
     /// Sign [`UnsignedEvent`]
     SignEvent(UnsignedEvent),
-    /// Connect
-    Connect(PublicKey),
-    /// Disconnect
-    Disconnect,
-    /// Delegate
-    Delegate {
-        /// Pubkey
-        public_key: PublicKey,
-        /// NIP26 conditions
-        conditions: Conditions,
-    },
+    /// Get relays
+    GetRelays,
     /// Encrypt text (NIP04)
     Nip04Encrypt {
         /// Pubkey
@@ -155,166 +197,295 @@ pub enum Request {
         /// Pubkey
         public_key: PublicKey,
         /// Ciphertext
+        ciphertext: String,
+    },
+    /// Encrypt text (NIP44)
+    Nip44Encrypt {
+        /// Pubkey
+        public_key: PublicKey,
+        /// Plain text
         text: String,
     },
-    /// Sign Schnorr
-    SignSchnorr(String),
+    /// Decrypt (NIP44)
+    Nip44Decrypt {
+        /// Pubkey
+        public_key: PublicKey,
+        /// Ciphertext
+        ciphertext: String,
+    },
+    /// Ping
+    Ping,
 }
 
 impl Request {
+    /// Compose [Request] from message details
+    pub fn from_message(method: Method, params: Vec<String>) -> Result<Self, Error> {
+        match method {
+            Method::Connect => {
+                let public_key = params.first().ok_or(Error::InvalidRequest)?;
+                let public_key: PublicKey = serde_json::from_str(public_key)?;
+                let secret: Option<String> =
+                    params.get(1).and_then(|s| serde_json::from_str(s).ok());
+                Ok(Self::Connect { public_key, secret })
+            }
+            Method::GetPublicKey => Ok(Self::GetPublicKey),
+            Method::SignEvent => {
+                let unsigned: &String = params.first().ok_or(Error::InvalidRequest)?;
+                let unsigned_event: UnsignedEvent = serde_json::from_str(unsigned)?;
+                Ok(Self::SignEvent(unsigned_event))
+            }
+            Method::GetRelays => Ok(Self::GetRelays),
+            Method::Nip04Encrypt => {
+                if params.len() != 2 {
+                    return Err(Error::InvalidParamsLength);
+                }
+
+                Ok(Self::Nip04Encrypt {
+                    public_key: serde_json::from_str(&params[0])?,
+                    text: serde_json::from_str(&params[1])?,
+                })
+            }
+            Method::Nip04Decrypt => {
+                if params.len() != 2 {
+                    return Err(Error::InvalidParamsLength);
+                }
+
+                Ok(Self::Nip04Decrypt {
+                    public_key: serde_json::from_str(&params[0])?,
+                    ciphertext: serde_json::from_str(&params[1])?,
+                })
+            }
+            Method::Nip44Encrypt => {
+                if params.len() != 2 {
+                    return Err(Error::InvalidParamsLength);
+                }
+
+                Ok(Self::Nip44Encrypt {
+                    public_key: serde_json::from_str(&params[0])?,
+                    text: serde_json::from_str(&params[1])?,
+                })
+            }
+            Method::Nip44Decrypt => {
+                if params.len() != 2 {
+                    return Err(Error::InvalidParamsLength);
+                }
+
+                Ok(Self::Nip44Decrypt {
+                    public_key: serde_json::from_str(&params[0])?,
+                    ciphertext: serde_json::from_str(&params[1])?,
+                })
+            }
+            Method::Ping => Ok(Self::Ping),
+        }
+    }
+
     /// Get req method
-    pub fn method(&self) -> String {
+    pub fn method(&self) -> Method {
         match self {
-            Self::Describe => "describe".to_string(),
-            Self::GetPublicKey => "get_public_key".to_string(),
-            Self::SignEvent(_) => "sign_event".to_string(),
-            Self::Connect(_) => "connect".to_string(),
-            Self::Disconnect => "disconnect".to_string(),
-            Self::Delegate { .. } => "delegate".to_string(),
-            Self::Nip04Encrypt { .. } => "nip04_encrypt".to_string(),
-            Self::Nip04Decrypt { .. } => "nip04_decrypt".to_string(),
-            Self::SignSchnorr(_) => "sign_schnorr".to_string(),
+            Self::Connect { .. } => Method::Connect,
+            Self::GetPublicKey => Method::GetPublicKey,
+            Self::SignEvent(_) => Method::SignEvent,
+            Self::GetRelays => Method::GetRelays,
+            Self::Nip04Encrypt { .. } => Method::Nip04Encrypt,
+            Self::Nip04Decrypt { .. } => Method::Nip04Decrypt,
+            Self::Nip44Encrypt { .. } => Method::Nip44Encrypt,
+            Self::Nip44Decrypt { .. } => Method::Nip44Decrypt,
+            Self::Ping => Method::Ping,
         }
     }
 
     /// Get req params
-    pub fn params(&self) -> Vec<Value> {
+    pub fn params(&self) -> Vec<String> {
         match self {
-            Self::Describe => Vec::new(),
+            Self::Connect { public_key, secret } => {
+                let mut params = vec![public_key.to_hex()];
+                if let Some(secret) = secret {
+                    params.push(secret.to_owned());
+                }
+                params
+            }
             Self::GetPublicKey => Vec::new(),
-            Self::SignEvent(event) => vec![json!(event)],
-            Self::Connect(pubkey) => vec![json!(pubkey)],
-            Self::Disconnect => Vec::new(),
-            Self::Delegate {
+            Self::SignEvent(event) => vec![event.as_json()],
+            Self::GetRelays => Vec::new(),
+            Self::Nip04Encrypt { public_key, text } | Self::Nip44Encrypt { public_key, text } => {
+                vec![public_key.to_hex(), text.to_owned()]
+            }
+            Self::Nip04Decrypt {
                 public_key,
-                conditions,
-            } => vec![json!(public_key), json!(conditions)],
-            Self::Nip04Encrypt { public_key, text } => vec![json!(public_key), json!(text)],
-            Self::Nip04Decrypt { public_key, text } => vec![json!(public_key), json!(text)],
-            Self::SignSchnorr(value) => vec![json!(value)],
+                ciphertext,
+            }
+            | Self::Nip44Decrypt {
+                public_key,
+                ciphertext,
+            } => vec![public_key.to_hex(), ciphertext.to_owned()],
+            Self::Ping => Vec::new(),
         }
-    }
-
-    /// Generate [`Response`] message for [`Request`]
-    #[cfg(feature = "std")]
-    pub fn generate_response(self, keys: &Keys) -> Result<Option<Response>, Error> {
-        self.generate_response_with_ctx(&SECP256K1, &mut rand::thread_rng(), keys)
-    }
-
-    /// Generate [`Response`] message for [`Request`]
-    pub fn generate_response_with_ctx<C, R>(
-        self,
-        secp: &Secp256k1<C>,
-        rng: &mut R,
-        keys: &Keys,
-    ) -> Result<Option<Response>, Error>
-    where
-        C: Signing,
-        R: Rng + CryptoRng,
-    {
-        let res: Option<Response> = match self {
-            Self::Describe => Some(Response::Describe(vec![
-                String::from("describe"),
-                String::from("get_public_key"),
-                String::from("sign_event"),
-                String::from("connect"),
-                String::from("disconnect"),
-                String::from("delegate"),
-                String::from("nip04_encrypt"),
-                String::from("nip04_decrypt"),
-                String::from("sign_schnorr"),
-            ])),
-            Self::GetPublicKey => Some(Response::GetPublicKey(keys.public_key())),
-            Self::SignEvent(unsigned_event) => {
-                let signed_event = unsigned_event.sign_with_ctx(secp, rng, keys)?;
-                Some(Response::SignEvent(signed_event))
-            }
-            Self::Connect(_) => None,
-            Self::Disconnect => None,
-            Self::Delegate {
-                public_key,
-                conditions,
-            } => {
-                let sig =
-                    sign_delegation_with_ctx(secp, rng, keys, public_key, conditions.clone())?;
-                let delegation_result = DelegationResult {
-                    from: keys.public_key(),
-                    to: public_key,
-                    cond: conditions,
-                    sig,
-                };
-
-                Some(Response::Delegate(delegation_result))
-            }
-            Self::Nip04Encrypt { public_key, text } => {
-                let encrypted_content =
-                    nip04::encrypt_with_rng(rng, keys.secret_key()?, &public_key, text)?;
-                Some(Response::Nip04Encrypt(encrypted_content))
-            }
-            Self::Nip04Decrypt { public_key, text } => {
-                let decrypted_content = nip04::decrypt(keys.secret_key()?, &public_key, text)?;
-                Some(Response::Nip04Decrypt(decrypted_content))
-            }
-            Self::SignSchnorr(..) => None,
-        };
-        Ok(res)
     }
 }
 
-/// Delegation Response Result
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct DelegationResult {
-    /// Pubkey of Delegator
-    pub from: PublicKey,
-    /// Pubkey of Delegatee
-    pub to: PublicKey,
-    /// Conditions of delegation
-    pub cond: Conditions,
-    /// Signature of Delegation Token
-    pub sig: Signature,
+/// Relay permission
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RelayPermissions {
+    /// Read
+    pub read: bool,
+    /// Write
+    pub write: bool,
 }
 
 /// Response
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub enum Response {
-    /// Describe
-    Describe(Vec<String>),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResponseResult {
+    /// Connect ACK
+    Connect,
     /// Get public key
     GetPublicKey(PublicKey),
     /// Sign event
     SignEvent(Event),
-    /// Delegation
-    Delegate(DelegationResult),
-    /// Encrypted content (NIP04)
-    Nip04Encrypt(String),
-    /// Decrypted content (NIP04)
-    Nip04Decrypt(String),
-    /// Sign Schnorr
-    SignSchnorr(Signature),
+    /// Get relays
+    GetRelays(HashMap<Url, RelayPermissions>),
+    /// NIP04/NIP44 encryption/decryption
+    EncryptionDecryption(String),
+    /// Pong
+    Pong,
+    /// Auth Challenges
+    AuthUrl,
+    /// Error
+    Error,
+}
+
+impl fmt::Display for ResponseResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Connect => write!(f, "ack"),
+            Self::Pong => write!(f, "pong"),
+            Self::AuthUrl => write!(f, "auth_url"),
+            Self::Error => write!(f, "error"),
+            Self::GetPublicKey(public_key) => write!(f, "{public_key}"),
+            Self::SignEvent(event) => write!(f, "{}", event.as_json()),
+            Self::GetRelays(map) => write!(f, "{}", json!(map)),
+            Self::EncryptionDecryption(val) => write!(f, "{val}"),
+        }
+    }
+}
+
+#[allow(missing_docs)]
+impl ResponseResult {
+    pub fn parse(res: &str) -> Result<Self, Error> {
+        match res {
+            "ack" => Ok(Self::Connect),
+            "pong" => Ok(Self::Pong),
+            "auth_url" => Ok(Self::AuthUrl),
+            "error" => Ok(Self::Error),
+            other => {
+                if let Ok(public_key) = PublicKey::from_hex(other) {
+                    Ok(Self::GetPublicKey(public_key))
+                } else if let Ok(event) = Event::from_json(other) {
+                    Ok(Self::SignEvent(event))
+                } else if let Ok(map) = serde_json::from_str(other) {
+                    Ok(Self::GetRelays(map))
+                } else {
+                    Ok(Self::EncryptionDecryption(other.to_string()))
+                }
+            }
+        }
+    }
+    pub fn is_auth_url(&self) -> bool {
+        matches!(self, Self::AuthUrl)
+    }
+
+    pub fn is_error(&self) -> bool {
+        matches!(self, Self::Error)
+    }
+
+    pub fn to_connect(self) -> Result<(), Error> {
+        if let Self::Connect = self {
+            Ok(())
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+
+    pub fn to_get_public_key(self) -> Result<PublicKey, Error> {
+        if let Self::GetPublicKey(val) = self {
+            Ok(val)
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+
+    pub fn to_get_relays(self) -> Result<HashMap<Url, RelayPermissions>, Error> {
+        if let Self::GetRelays(val) = self {
+            Ok(val)
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+
+    pub fn to_sign_event(self) -> Result<Event, Error> {
+        if let Self::SignEvent(val) = self {
+            Ok(val)
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+
+    pub fn to_pong(self) -> Result<(), Error> {
+        if let Self::Pong = self {
+            Ok(())
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+
+    pub fn to_encrypt_decrypt(self) -> Result<String, Error> {
+        if let Self::EncryptionDecryption(val) = self {
+            Ok(val)
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum MessageIntermediate {
+    Request {
+        id: String,
+        method: Method,
+        params: Vec<String>,
+    },
+    Response {
+        id: String,
+        result: Option<String>,
+        error: Option<String>,
+    },
 }
 
 /// Message
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
     /// Request
     Request {
         /// Request id
         id: String,
-        /// Method
-        method: String,
-        /// params
-        params: Vec<Value>,
+        /// Request
+        req: Request,
     },
     /// Response
     Response {
         /// Request id
         id: String,
         /// Result
-        result: Option<Value>,
+        result: Option<ResponseResult>,
         /// Reason, if failed
         error: Option<String>,
     },
+}
+
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_json())
+    }
 }
 
 impl Message {
@@ -331,27 +502,18 @@ impl Message {
     {
         Self::Request {
             id: rng.next_u32().to_string(),
-            method: req.method(),
-            params: req.params(),
+            req,
         }
     }
 
     /// Compose `Response` message
-    pub fn response<S>(req_id: S, res: Option<Response>, error: Option<S>) -> Self
+    pub fn response<S>(req_id: S, result: Option<ResponseResult>, error: Option<S>) -> Self
     where
         S: Into<String>,
     {
         Self::Response {
             id: req_id.into(),
-            result: res.map(|res| match res {
-                Response::Describe(v) => json!(v),
-                Response::GetPublicKey(pubkey) => json!(pubkey),
-                Response::SignEvent(sig) => json!(sig),
-                Response::Delegate(delegation_result) => json!(delegation_result),
-                Response::Nip04Encrypt(encrypted_content) => json!(encrypted_content),
-                Response::Nip04Decrypt(decrypted_content) => json!(decrypted_content),
-                Response::SignSchnorr(sig) => json!(sig),
-            }),
+            result,
             error: error.map(|e| e.into()),
         }
     }
@@ -364,84 +526,30 @@ impl Message {
         }
     }
 
-    /// Get [`Message`] id
-    pub fn id(&self) -> String {
+    /* pub fn as_request(&self) -> Result<&Request, Error> {
         match self {
-            Self::Request { id, .. } => id.to_owned(),
-            Self::Response { id, .. } => id.to_owned(),
+            Self::Request { req, .. } => Ok(req),
+            _ => Err(Error::NotRequest)
+        }
+    } */
+
+    /// Consume [Message] and return [Request]
+    pub fn to_request(self) -> Result<Request, Error> {
+        match self {
+            Self::Request { req, .. } => Ok(req),
+            _ => Err(Error::NotRequest),
         }
     }
 
-    /// Convert [`Message`] to [`Request`]
-    pub fn to_request(&self) -> Result<Request, Error> {
-        if let Message::Request { method, params, .. } = self {
-            match method.as_str() {
-                "describe" => Ok(Request::Describe),
-                "get_public_key" => Ok(Request::GetPublicKey),
-                "sign_event" => {
-                    if let Some(value) = params.first() {
-                        let unsigned_event: UnsignedEvent =
-                            serde_json::from_value(value.to_owned())?;
-                        Ok(Request::SignEvent(unsigned_event))
-                    } else {
-                        Err(Error::InvalidRequest)
-                    }
-                }
-                "connect" => {
-                    if params.len() != 1 {
-                        return Err(Error::InvalidParamsLength);
-                    }
-
-                    let pubkey: PublicKey = serde_json::from_value(params[0].to_owned())?;
-                    Ok(Request::Connect(pubkey))
-                }
-                "disconnect" => Ok(Request::Disconnect),
-                "delegate" => {
-                    if params.len() != 2 {
-                        return Err(Error::InvalidParamsLength);
-                    }
-
-                    Ok(Request::Delegate {
-                        public_key: serde_json::from_value(params[0].clone())?,
-                        conditions: serde_json::from_value(params[1].clone())?,
-                    })
-                }
-                "nip04_encrypt" => {
-                    if params.len() != 2 {
-                        return Err(Error::InvalidParamsLength);
-                    }
-
-                    Ok(Request::Nip04Encrypt {
-                        public_key: serde_json::from_value(params[0].clone())?,
-                        text: serde_json::from_value(params[1].clone())?,
-                    })
-                }
-                "nip04_decrypt" => {
-                    if params.len() != 2 {
-                        return Err(Error::InvalidParamsLength);
-                    }
-
-                    Ok(Request::Nip04Decrypt {
-                        public_key: serde_json::from_value(params[0].clone())?,
-                        text: serde_json::from_value(params[1].clone())?,
-                    })
-                }
-                "sign_schnorr" => {
-                    if params.len() != 1 {
-                        return Err(Error::InvalidParamsLength);
-                    }
-
-                    let value: String = serde_json::from_value(params[0].clone())?;
-                    Ok(Request::SignSchnorr(value))
-                }
-                other => Err(Error::UnsupportedMethod(other.to_string())),
-            }
-        } else {
-            Err(Error::InvalidRequest)
+    /// Get [`Message`] id
+    pub fn id(&self) -> &str {
+        match self {
+            Self::Request { id, .. } => id,
+            Self::Response { id, .. } => id,
         }
     }
 
-    /// Generate [`Response`] message for [`Request`]
+    /* /// Generate [`Response`] message for [`Request`]
     #[cfg(feature = "std")]
     pub fn generate_response(&self, keys: &Keys) -> Result<Option<Self>, Error> {
         self.generate_response_wit_ctx(&SECP256K1, &mut rand::thread_rng(), keys)
@@ -458,23 +566,92 @@ impl Message {
         C: Signing,
         R: Rng + CryptoRng,
     {
-        let req = self.to_request()?;
+        let req = self.as_request()?;
         // TODO: remove if let Some(res) = ...
         if let Some(res) = req.generate_response_with_ctx(secp, rng, keys)? {
             Ok(Some(Self::response(self.id(), Some(res), None)))
         } else {
             Ok(None)
         }
-    }
+    } */
 
     /// Generate error [`Response`] message for [`Request`]
     pub fn generate_error_response<S>(&self, error: S) -> Result<Self, Error>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
         // Check if Message is a Request
-        let _req: Request = self.to_request()?;
-        Ok(Self::response(self.id(), None, Some(error.into())))
+        if self.is_request() {
+            let error: &str = error.as_ref();
+            Ok(Self::response(self.id(), None, Some(error)))
+        } else {
+            Err(Error::NotRequest)
+        }
+    }
+
+    /// Check if result response is `auth_url`
+    pub fn is_auth_url(&self) -> bool {
+        match self {
+            Self::Request { .. } => false,
+            Self::Response { result, .. } => match result {
+                Some(result) => result.is_auth_url(),
+                None => false,
+            },
+        }
+    }
+}
+
+impl Serialize for Message {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let intermediate: MessageIntermediate = match self {
+            Self::Request { id, req } => MessageIntermediate::Request {
+                id: id.to_owned(),
+                method: req.method(),
+                params: req.params(),
+            },
+            Self::Response { id, result, error } => MessageIntermediate::Response {
+                id: id.to_owned(),
+                result: result.as_ref().map(|res| res.to_string()),
+                error: error.clone(),
+            },
+        };
+        intermediate.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Message {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let intermediate: MessageIntermediate = MessageIntermediate::deserialize(deserializer)?;
+        match intermediate {
+            MessageIntermediate::Request { id, method, params } => Ok(Self::Request {
+                id,
+                req: Request::from_message(method, params).map_err(serde::de::Error::custom)?,
+            }),
+            MessageIntermediate::Response { id, result, error } => {
+                let result: Option<ResponseResult> = match result {
+                    Some(res) => {
+                        // Deserialize response
+                        let res: ResponseResult =
+                            ResponseResult::parse(&res).map_err(serde::de::Error::custom)?;
+
+                        // Check if is error
+                        if res.is_error() {
+                            None
+                        } else {
+                            Some(res)
+                        }
+                    }
+                    None => None,
+                };
+                Ok(Self::Response { id, result, error })
+            }
+        }
     }
 }
 
@@ -488,9 +665,6 @@ where
 {
     byte_serialize(data.as_ref()).collect()
 }
-
-/// NIP46 URI Scheme
-pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";
 
 /// Nostr Connect Metadata
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -557,61 +731,143 @@ impl NostrConnectMetadata {
 
 /// Nostr Connect URI
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NostrConnectURI {
-    /// App Pubkey
-    pub public_key: PublicKey,
-    /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.
-    pub relay_url: Url,
-    /// Metadata
-    pub metadata: NostrConnectMetadata,
+pub enum NostrConnectURI {
+    /// Direct connection initiated by remote signer
+    Bunker {
+        /// Signer public key
+        signer_public_key: PublicKey,
+        /// List of relays to use
+        relays: Vec<Url>,
+        /// Optional secret
+        secret: Option<String>,
+    },
+    /// Direct connection initiated by the client
+    Client {
+        /// App Pubkey
+        public_key: PublicKey,
+        /// URLs of the relays of choice where the `App` is connected and the `Signer` must send and listen for messages.
+        relays: Vec<Url>,
+        /// Metadata
+        metadata: NostrConnectMetadata,
+    },
 }
 
 impl NostrConnectURI {
-    /// Create new [`NostrConnectURI`]
-    pub fn new<S>(public_key: PublicKey, relay_url: Url, app_name: S) -> Self
+    /// Construct [NostrConnectURI] initiated by the client
+    pub fn client<I, S>(public_key: PublicKey, relays: I, app_name: S) -> Self
     where
+        I: IntoIterator<Item = Url>,
         S: Into<String>,
     {
-        Self::with_metadata(public_key, relay_url, NostrConnectMetadata::new(app_name))
-    }
-
-    /// Create new [`NostrConnectURI`]
-    pub fn with_metadata(
-        public_key: PublicKey,
-        relay_url: Url,
-        metadata: NostrConnectMetadata,
-    ) -> Self {
-        Self {
+        Self::Client {
             public_key,
-            relay_url,
-            metadata,
+            relays: relays.into_iter().collect(),
+            metadata: NostrConnectMetadata::new(app_name),
         }
     }
 
-    /// Set url
-    pub fn url(self, url: Url) -> Self {
-        Self {
-            metadata: self.metadata.url(url),
-            ..self
-        }
-    }
-
-    /// Set description
-    pub fn description<S>(self, description: S) -> Self
+    /// Parse Nostr Connect URI
+    pub fn parse<S>(uri: S) -> Result<Self, Error>
     where
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        Self {
-            metadata: self.metadata.description(description),
-            ..self
+        let uri: &str = uri.as_ref();
+        let uri: Url = Url::parse(uri)?;
+
+        match uri.scheme() {
+            NOSTR_CONNECT_BUNKER_URI_SCHEME => {
+                if let Some(pubkey) = uri.domain() {
+                    let public_key = PublicKey::from_hex(pubkey)?;
+
+                    let mut relays: Vec<Url> = Vec::new();
+                    let mut secret: Option<String> = None;
+
+                    for (key, value) in uri.query_pairs() {
+                        match key {
+                            Cow::Borrowed("relay") => {
+                                let value = value.to_string();
+                                relays.push(Url::parse(&value)?);
+                            }
+                            Cow::Borrowed("secret") => {
+                                secret = Some(value.to_string());
+                            }
+                            _ => (),
+                        }
+                    }
+
+                    return Ok(Self::Bunker {
+                        signer_public_key: public_key,
+                        relays,
+                        secret,
+                    });
+                }
+
+                Err(Error::InvalidURI)
+            }
+            NOSTR_CONNECT_URI_SCHEME => {
+                if let Some(pubkey) = uri.domain() {
+                    let public_key = PublicKey::from_hex(pubkey)?;
+
+                    let mut relays: Vec<Url> = Vec::new();
+                    let mut metadata: Option<NostrConnectMetadata> = None;
+
+                    for (key, value) in uri.query_pairs() {
+                        match key {
+                            Cow::Borrowed("relay") => {
+                                let value = value.to_string();
+                                relays.push(Url::parse(&value)?);
+                            }
+                            Cow::Borrowed("metadata") => {
+                                let value = value.to_string();
+                                metadata = Some(serde_json::from_str(&value)?);
+                            }
+                            _ => (),
+                        }
+                    }
+
+                    if let Some(metadata) = metadata {
+                        return Ok(Self::Client {
+                            public_key,
+                            relays,
+                            metadata,
+                        });
+                    }
+                }
+
+                Err(Error::InvalidURI)
+            }
+            _ => Err(Error::InvalidURIScheme),
         }
     }
 
-    /// Set icons
-    pub fn icons(self, icons: Vec<Url>) -> Self {
-        Self {
-            metadata: self.metadata.icons(icons),
-            ..self
+    /// Check if is `bunker` URI
+    pub fn is_bunker(&self) -> bool {
+        matches!(self, Self::Bunker { .. })
+    }
+
+    /// Get signer public key, if exists.
+    pub fn signer_public_key(&self) -> Option<PublicKey> {
+        match self {
+            Self::Bunker {
+                signer_public_key, ..
+            } => Some(*signer_public_key),
+            Self::Client { .. } => None,
+        }
+    }
+
+    /// Get relays
+    pub fn relays(&self) -> Vec<Url> {
+        match self {
+            Self::Bunker { relays, .. } => relays.clone(),
+            Self::Client { relays, .. } => relays.clone(),
+        }
+    }
+
+    /// Get optional secret
+    pub fn secret(&self) -> Option<String> {
+        match self {
+            Self::Bunker { secret, .. } => secret.clone(),
+            Self::Client { .. } => None,
         }
     }
 }
@@ -620,89 +876,205 @@ impl FromStr for NostrConnectURI {
     type Err = Error;
 
     fn from_str(uri: &str) -> Result<Self, Self::Err> {
-        let url = Url::parse(uri)?;
-
-        if url.scheme() != NOSTR_CONNECT_URI_SCHEME {
-            return Err(Error::InvalidURIScheme);
-        }
-
-        if let Some(pubkey) = url.domain() {
-            let public_key = PublicKey::from_str(pubkey)?;
-
-            let mut relay_url: Option<Url> = None;
-            let mut metadata: Option<NostrConnectMetadata> = None;
-
-            for (key, value) in url.query_pairs() {
-                match key {
-                    Cow::Borrowed("relay") => {
-                        let value = value.to_string();
-                        relay_url = Some(Url::parse(&value)?);
-                    }
-                    Cow::Borrowed("metadata") => {
-                        let value = value.to_string();
-                        metadata = Some(serde_json::from_str(&value)?);
-                    }
-                    _ => (),
-                }
-            }
-
-            if let Some(relay_url) = relay_url {
-                if let Some(metadata) = metadata {
-                    return Ok(Self {
-                        public_key,
-                        relay_url,
-                        metadata,
-                    });
-                }
-            }
-        }
-
-        Err(Error::InvalidURI)
+        Self::parse(uri)
     }
 }
 
 impl fmt::Display for NostrConnectURI {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{NOSTR_CONNECT_URI_SCHEME}://{}?relay={}&metadata={}",
-            self.public_key,
-            url_encode(self.relay_url.to_string()),
-            url_encode(self.metadata.as_json())
-        )
+        match self {
+            Self::Bunker {
+                signer_public_key,
+                relays,
+                secret,
+            } => {
+                let mut query: String = String::new();
+
+                for relay_url in relays.iter() {
+                    let relay_url = relay_url.to_string();
+                    let relay_url = relay_url.strip_suffix('/').unwrap_or(&relay_url);
+
+                    if !query.is_empty() {
+                        query.push('&');
+                    }
+
+                    query.push_str(relay_url);
+                }
+
+                if let Some(secret) = secret {
+                    if !query.is_empty() {
+                        query.push('&');
+                    }
+
+                    query.push_str(secret);
+                }
+
+                if query.is_empty() {
+                    write!(f, "{NOSTR_CONNECT_BUNKER_URI_SCHEME}://{signer_public_key}")
+                } else {
+                    write!(
+                        f,
+                        "{NOSTR_CONNECT_BUNKER_URI_SCHEME}://{signer_public_key}?{query}"
+                    )
+                }
+            }
+            Self::Client {
+                public_key,
+                relays,
+                metadata,
+            } => {
+                let mut relays_str: String = String::new();
+
+                for relay_url in relays.iter() {
+                    let relay_url = relay_url.to_string();
+                    let relay_url = relay_url.strip_suffix('/').unwrap_or(&relay_url);
+
+                    relays_str.push('&');
+                    relays_str.push_str(relay_url);
+                }
+
+                write!(
+                    f,
+                    "{NOSTR_CONNECT_URI_SCHEME}://{}?metadata={}{relays_str}",
+                    public_key,
+                    url_encode(metadata.as_json())
+                )
+            }
+        }
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use core::str::FromStr;
-
+mod test {
     use super::*;
 
     #[test]
-    fn test_uri() {
-        let pubkey =
-            PublicKey::from_str("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
+    fn test_parse_bunker_uri() {
+        let uri = "bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app";
+        let uri = NostrConnectURI::parse(uri).unwrap();
+
+        let signer_public_key =
+            PublicKey::parse("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3")
                 .unwrap();
-        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
-        let app_name = "Example";
-        let uri = NostrConnectURI::new(pubkey, relay_url, app_name);
+        let relay_url = Url::parse("wss://relay.nsec.app").unwrap();
         assert_eq!(
-            uri.to_string(),
-            "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&metadata=%7B%22name%22%3A%22Example%22%7D".to_string()
+            uri,
+            NostrConnectURI::Bunker {
+                signer_public_key,
+                relays: vec![relay_url],
+                secret: None
+            }
         );
     }
 
     #[test]
-    fn test_parse_uri() {
-        let uri = "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&metadata=%7B%22name%22%3A%22Example%22%7D";
-        let uri = NostrConnectURI::from_str(uri).unwrap();
+    fn test_parse_client_uri() {
+        let uri = "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata=%7B%22name%22%3A%22Example%22%7D&relay=wss%3A%2F%2Frelay.damus.io";
+        let uri = NostrConnectURI::parse(uri).unwrap();
 
         let pubkey =
-            PublicKey::from_str("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
+            PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
                 .unwrap();
         let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
-        assert_eq!(uri, NostrConnectURI::new(pubkey, relay_url, app_name));
+        assert_eq!(uri, NostrConnectURI::client(pubkey, [relay_url], app_name));
+    }
+
+    #[test]
+    fn test_parse_response_result() {
+        let res: ResponseResult = ResponseResult::parse("ack").unwrap();
+        assert_eq!(res, ResponseResult::Connect);
+
+        let pubkey =
+            PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
+                .unwrap();
+        let res: ResponseResult = ResponseResult::parse(
+            "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
+        )
+        .unwrap();
+        assert_eq!(res, ResponseResult::GetPublicKey(pubkey));
+
+        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
+        let event = Event::from_json(&json).unwrap();
+        let res: ResponseResult = ResponseResult::parse(json).unwrap();
+        assert_eq!(res, ResponseResult::SignEvent(event));
+
+        let res: ResponseResult = ResponseResult::parse("pong").unwrap();
+        assert_eq!(res, ResponseResult::Pong);
+    }
+
+    #[test]
+    fn test_message_serialization() {
+        // Error
+        let message = Message::response(
+            "2581081643",
+            Some(ResponseResult::Error),
+            Some("Empty response"),
+        );
+        let json = r#"{"id":"2581081643","result":"error","error":"Empty response"}"#;
+        assert_eq!(message.as_json(), json);
+
+        // Sign event
+        let unsigned = UnsignedEvent::from_json(r#"{"created_at":1710854115,"content":"Testing rust-nostr NIP46 signer [bunker]","tags":[],"kind":1,"pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","id":"236ad3390704e1bf435f40143fb3de163723aeaa8f25c3bf12a0ac4d9a4b56a7"}"#).unwrap();
+        let json = r#"{"id":"3047714669","method":"sign_event","params":["{\"id\":\"236ad3390704e1bf435f40143fb3de163723aeaa8f25c3bf12a0ac4d9a4b56a7\",\"pubkey\":\"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3\",\"created_at\":1710854115,\"kind\":1,\"tags\":[],\"content\":\"Testing rust-nostr NIP46 signer [bunker]\"}"]}"#;
+        let message = Message::Request {
+            id: String::from("3047714669"),
+            req: Request::SignEvent(unsigned),
+        };
+        assert_eq!(message.as_json(), json);
+    }
+
+    #[test]
+    fn test_message_deserialization() {
+        // Connect
+        let json = r#"{"id":"2581081643","result":"ack","error":null}"#;
+        let message = Message::from_json(json).unwrap();
+        assert_eq!(
+            message,
+            Message::response("2581081643", Some(ResponseResult::Connect), None)
+        );
+
+        // Error
+        let json = r#"{"id":"2581081643","result":"error","error":"Empty response"}"#;
+        let message = Message::from_json(json).unwrap();
+        assert_eq!(
+            message,
+            Message::response("2581081643", None, Some("Empty response"))
+        );
+
+        // Sign event
+        let event = Event::from_json(r#"{"created_at":1710854115,"content":"Testing rust-nostr NIP46 signer [bunker]","tags":[],"kind":1,"pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","id":"236ad3390704e1bf435f40143fb3de163723aeaa8f25c3bf12a0ac4d9a4b56a7","sig":"509b8fe51c1e4c4cc55a0b2032b70bfb683f1da6c62e4e5b0da7175eab99b18c67862deaaea80cf31acedb9ad3022ebf54fd0cb6c9d1297a96541848d2035d92"}"#).unwrap();
+        let json = r#"{"id":"3047714669","result":"{\"created_at\":1710854115,\"content\":\"Testing rust-nostr NIP46 signer [bunker]\",\"tags\":[],\"kind\":1,\"pubkey\":\"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3\",\"id\":\"236ad3390704e1bf435f40143fb3de163723aeaa8f25c3bf12a0ac4d9a4b56a7\",\"sig\":\"509b8fe51c1e4c4cc55a0b2032b70bfb683f1da6c62e4e5b0da7175eab99b18c67862deaaea80cf31acedb9ad3022ebf54fd0cb6c9d1297a96541848d2035d92\"}","error":null}"#;
+        let message = Message::from_json(json).unwrap();
+        assert_eq!(
+            message,
+            Message::response("3047714669", Some(ResponseResult::SignEvent(event)), None)
+        );
+
+        // Encryption
+        let ciphertext = "ArY1I2xC2yDwIbuNHN/1ynXdGgzHLqdCrXUPMwELJPc7s7JqlCMJBAIIjfkpHReBPXeoMCyuClwgbT419jUWU1PwaNl4FEQYKCDKVJz+97Mp3K+Q2YGa77B6gpxB/lr1QgoqpDf7wDVrDmOqGoiPjWDqy8KzLueKDcm9BVP8xeTJIxs=";
+        let json = r#"{"id":"3047714669","result":"ArY1I2xC2yDwIbuNHN/1ynXdGgzHLqdCrXUPMwELJPc7s7JqlCMJBAIIjfkpHReBPXeoMCyuClwgbT419jUWU1PwaNl4FEQYKCDKVJz+97Mp3K+Q2YGa77B6gpxB/lr1QgoqpDf7wDVrDmOqGoiPjWDqy8KzLueKDcm9BVP8xeTJIxs=","error":null}"#;
+        let message = Message::from_json(json).unwrap();
+        assert_eq!(
+            message,
+            Message::response(
+                "3047714669",
+                Some(ResponseResult::EncryptionDecryption(ciphertext.to_string())),
+                None
+            )
+        );
+
+        // Decryption
+        let plaintext = "Hello world!";
+        let json = r#"{"id":"3047714669","result":"Hello world!","error":null}"#;
+        let message = Message::from_json(json).unwrap();
+        assert_eq!(
+            message,
+            Message::response(
+                "3047714669",
+                Some(ResponseResult::EncryptionDecryption(plaintext.to_string())),
+                None
+            )
+        );
     }
 }
