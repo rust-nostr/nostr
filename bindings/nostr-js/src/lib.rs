@@ -5,6 +5,8 @@
 #![allow(clippy::drop_non_drop)]
 #![allow(non_snake_case)]
 #![allow(clippy::new_without_default)]
+// rust-analyzer not work well with multiple different targets in workspace
+#![cfg(target_arch = "wasm32")]
 
 use wasm_bindgen::prelude::*;
 

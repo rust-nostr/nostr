@@ -9,10 +9,10 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 console_error_panic_hook = "0.1"
-js-sys = "0.3"
-nostr = { path = "../../crates/nostr", features = ["std", "all-nips"] }
-wasm-bindgen = { version = "0.2", features = ["std"] }
-wasm-bindgen-futures = "0.4"
+js-sys.workspace = true
+nostr = { workspace = true, features = ["std", "all-nips"] }
+wasm-bindgen = { workspace = true, features = ["std"] }
+wasm-bindgen-futures.workspace = true
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = true

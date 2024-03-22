@@ -8,13 +8,13 @@ publish = false
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
-js-sys = "0.3"
+js-sys.workspace = true
 nostr-js = { path = "../nostr-js" }
 nostr-sdk = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "indexeddb", "webln"] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+wasm-bindgen = { workspace = true, features = ["std"] }
+wasm-bindgen-futures.workspace = true
 
 [package.metadata.wasm-pack.profile.profiling]
 wasm-opt = true

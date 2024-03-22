@@ -7,6 +7,8 @@
 #![allow(clippy::new_without_default)]
 #![allow(clippy::drop_non_drop)]
 #![allow(non_snake_case)]
+// rust-analyzer not work well with multiple different targets in workspace
+#![cfg(target_arch = "wasm32")]
 
 pub use nostr_js;
 

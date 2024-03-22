@@ -1689,6 +1689,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-js"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "js-sys",
+ "nostr",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "nostr-ots"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1764,6 +1775,19 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uniffi",
+]
+
+[[package]]
+name = "nostr-sdk-js"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "nostr-js",
+ "nostr-sdk",
+ "tracing",
+ "tracing-subscriber",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
