@@ -2268,7 +2268,7 @@ mod benches {
             "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
         ];
         bh.iter(|| {
-            black_box(Tag::parse(tag.clone())).unwrap();
+            black_box(Tag::parse(tag)).unwrap();
         });
     }
 
@@ -2280,7 +2280,7 @@ mod benches {
             "wss://relay.damus.io",
         ];
         bh.iter(|| {
-            black_box(Tag::parse(tag.clone())).unwrap();
+            black_box(Tag::parse(tag)).unwrap();
         });
     }
 
@@ -2292,7 +2292,7 @@ mod benches {
             "wss://relay.nostr.org",
         ];
         bh.iter(|| {
-            black_box(Tag::parse(tag.clone())).unwrap();
+            black_box(Tag::parse(tag)).unwrap();
         });
     }
 }
