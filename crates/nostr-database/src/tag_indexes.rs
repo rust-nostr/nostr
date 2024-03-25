@@ -50,9 +50,6 @@ impl TagIndexes {
                         let inner = hash(t.get(1));
                         tag_index
                             .entry(single_letter_tag)
-                            .and_modify(|set| {
-                                set.insert(inner);
-                            })
                             .or_default()
                             .insert(inner);
                     }
@@ -81,9 +78,6 @@ where
             let inner = hash(content.to_string());
             tag_index
                 .entry(single_letter_tag)
-                .and_modify(|set| {
-                    set.insert(inner);
-                })
                 .or_default()
                 .insert(inner);
         }

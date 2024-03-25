@@ -170,10 +170,8 @@ impl InternalRelayPool {
 
     async fn update_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
         let mut subscriptions = self.subscriptions.write().await;
-        subscriptions
-            .entry(id)
-            .and_modify(|f| *f = filters.clone())
-            .or_insert(filters);
+        let current: &mut Vec<Filter> = subscriptions.entry(id).or_default();
+        *current = filters;
     }
 
     pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {

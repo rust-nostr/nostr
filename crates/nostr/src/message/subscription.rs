@@ -781,12 +781,7 @@ impl Filter {
             .into_iter()
             .map(|v| v.into_generic_tag_value())
             .collect();
-        self.generic_tags
-            .entry(tag)
-            .and_modify(|list| {
-                list.extend(values.clone());
-            })
-            .or_insert(values);
+        self.generic_tags.entry(tag).or_default().extend(values);
         self
     }
 
@@ -848,12 +843,7 @@ impl Filter {
             .iter_tags()
             .filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
         {
-            idx.entry(single_letter_tag)
-                .and_modify(|set| {
-                    set.insert(content.clone());
-                })
-                .or_default()
-                .insert(content);
+            idx.entry(single_letter_tag).or_default().insert(content);
         }
 
         // Match

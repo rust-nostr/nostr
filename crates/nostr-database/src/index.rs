@@ -559,9 +559,6 @@ impl InternalDatabaseIndexes {
             } else {
                 self.kind_author_index
                     .entry((kind, pubkey_prefix))
-                    .and_modify(|set| {
-                        set.insert(e.clone());
-                    })
                     .or_default()
                     .insert(e);
             }
