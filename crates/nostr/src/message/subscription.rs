@@ -23,6 +23,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::nips::nip01::Coordinate;
+use crate::util::hex;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
 type GenericTags = AllocMap<SingleLetterTag, AllocSet<GenericTagValue>>;
@@ -314,13 +315,10 @@ impl<'de> Deserialize<'de> for SubscriptionId {
 }
 
 /// Generic Tag Value
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GenericTagValue {
-    /// Public Key
-    Pubkey(PublicKey),
-    /// Event Id
-    EventId(EventId),
+    /// Fixed 32 bytes (event ID, public key, ..)
+    Fixed32Bytes([u8; 32]),
     /// Coordinate
     Coordinate(Coordinate),
     /// Other (string)
@@ -330,8 +328,7 @@ pub enum GenericTagValue {
 impl fmt::Display for GenericTagValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Pubkey(inner) => write!(f, "{inner}"),
-            Self::EventId(inner) => write!(f, "{inner}"),
+            Self::Fixed32Bytes(inner) => write!(f, "{}", hex::encode(inner)),
             Self::Coordinate(inner) => write!(f, "{inner}"),
             Self::String(inner) => write!(f, "{inner}"),
         }
@@ -345,14 +342,10 @@ where
     fn from(value: S) -> Self {
         let value: &str = value.as_ref();
 
-        // TODO: fix this
-        if let Ok(public_key) = PublicKey::from_hex(value) {
-            return Self::Pubkey(public_key);
-        }
-
-        // TODO: fix this
-        if let Ok(event_id) = EventId::from_hex(value) {
-            return Self::EventId(event_id);
+        if let Ok(bytes) = hex::decode(value) {
+            if let Ok(fixed) = bytes.try_into() {
+                return Self::Fixed32Bytes(fixed);
+            }
         }
 
         if let Ok(coordinate) = Coordinate::from_str(value) {
@@ -363,6 +356,25 @@ where
     }
 }
 
+impl Serialize for GenericTagValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for GenericTagValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value: String = String::deserialize(deserializer)?;
+        Ok(Self::from(value))
+    }
+}
+
 #[allow(missing_docs)]
 pub trait IntoGenericTagValue {
     fn into_generic_tag_value(self) -> GenericTagValue;
@@ -370,13 +382,13 @@ pub trait IntoGenericTagValue {
 
 impl IntoGenericTagValue for PublicKey {
     fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::Pubkey(self)
+        GenericTagValue::Fixed32Bytes(self.to_bytes())
     }
 }
 
 impl IntoGenericTagValue for EventId {
     fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::EventId(self)
+        GenericTagValue::Fixed32Bytes(self.to_bytes())
     }
 }
 
@@ -915,19 +927,8 @@ where
                         SingleLetterTag::from_char(ch).map_err(serde::de::Error::custom)?;
                     let mut values: AllocSet<GenericTagValue> = map.next_value()?;
 
-                    // Check if char is lowercase
-                    if tag.is_lowercase() {
-                        match tag.character {
-                            Alphabet::P => {
-                                values.retain(|v| matches!(v, GenericTagValue::Pubkey(_)))
-                            }
-                            Alphabet::E => {
-                                values.retain(|v| matches!(v, GenericTagValue::EventId(_)))
-                            }
-                            _ => {}
-                        }
-                    } else if tag.character == Alphabet::P {
-                        values.retain(|v| matches!(v, GenericTagValue::Pubkey(_)))
+                    if let Alphabet::P | Alphabet::E = tag.character {
+                        values.retain(|v| matches!(v, GenericTagValue::Fixed32Bytes(_)))
                     }
 
                     generic_tags.insert(tag, values);
@@ -1078,13 +1079,13 @@ mod tests {
 
     #[test]
     fn test_filter_deserialization() {
-        let json = r##"{"#a":["...", "test"],"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],"search":"test","ids":["70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5"]}"##;
+        let json = r##"{"#a":["...", "test"],"#e":["70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5"],"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],"search":"test","ids":["70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5"]}"##;
         let filter = Filter::from_json(json).unwrap();
         let event_id =
             EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
                 .unwrap();
         let pubkey =
-            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
+            PublicKey::from_hex("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
                 .unwrap();
         assert_eq!(
             filter,
@@ -1095,6 +1096,7 @@ mod tests {
                     SingleLetterTag::lowercase(Alphabet::A),
                     ["...".to_string(), "test".to_string()]
                 )
+                .event(event_id)
                 .pubkey(pubkey)
         );
 
@@ -1216,6 +1218,54 @@ mod tests {
         let filter: Filter = Filter::new().hashtag("this-should-not-match");
         assert!(!filter.match_event(&event));
         assert!(!filter.match_event(&event_with_empty_tags));
+    }
+
+    #[test]
+    fn test_generic_tag_value_deserialization() {
+        // Hex 32 bytes
+        assert!(matches!(
+            GenericTagValue::from(
+                "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5"
+            ),
+            GenericTagValue::Fixed32Bytes(_)
+        ));
+        assert!(matches!(
+            GenericTagValue::from(
+                "7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96"
+            ),
+            GenericTagValue::Fixed32Bytes(_)
+        ));
+        assert!(matches!(
+            GenericTagValue::from(
+                "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a"
+            ),
+            GenericTagValue::Fixed32Bytes(_)
+        ));
+
+        // Hex with NOT 32 bytes len
+        assert_eq!(
+            GenericTagValue::from("70b10f"),
+            GenericTagValue::String(String::from("70b10f"))
+        );
+
+        // Coordinates
+        assert_eq!(
+            GenericTagValue::from(
+                "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"
+            ),
+            GenericTagValue::Coordinate(
+                Coordinate::from_str(
+                    "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"
+                )
+                .unwrap()
+            )
+        );
+
+        // String
+        assert_eq!(
+            GenericTagValue::from("30023"),
+            GenericTagValue::String(String::from("30023"))
+        );
     }
 }
 
