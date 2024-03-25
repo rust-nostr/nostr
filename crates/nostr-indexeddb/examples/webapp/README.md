@@ -8,7 +8,7 @@ The rest of this guide assumes a typical Rust installation which contains both `
 ### Initialization
 
 ```bash
-make init
+just init
 ```
 
 That's it, we're done!
@@ -16,7 +16,7 @@ That's it, we're done!
 ### Running
 
 ```bash
-make serve
+just serve
 ```
 
 Rebuilds the app whenever a change is detected and runs a local server to host it.

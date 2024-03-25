@@ -68,7 +68,9 @@ jobs:
       run: rustup default nightly
     - name: Set profile
       run: rustup set profile minimal
+    - name: Install just
+      run: cargo install just
     - name: Init
-      run: sudo apt update && make init
+      run: sudo apt update && just init
     - name: Build
-      run: make
+      run: just build
