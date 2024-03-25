@@ -31,7 +31,7 @@ impl From<nostr::PublicKey> for PublicKey {
 
 #[uniffi::export]
 impl PublicKey {
-    /// Try to parse public key from `hex` or `bech32`
+    /// Try to parse public key from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     #[uniffi::constructor]
     pub fn parse(public_key: &str) -> Result<Self> {
         Ok(Self {

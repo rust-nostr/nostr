@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Adapted NIP46 to last changes ([Yuki Kishimoto])
 * nostr: change `Tag::parse` arg from `Vec<S>` to `&[S]` ([Yuki Kishimoto])
+* nostr: allow to parse public key from NIP21 uri with `PublicKey::parse` ([Yuki Kishimoto])
 * nostr: bump `bitcoin` to `0.31` ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `0.4` ([Yuki Kishimoto])
 * js(nostr): consume `JsEventBuilder` when building `Event` or `UnsignedEvent` ([Yuki Kishimoto])

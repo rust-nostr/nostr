@@ -43,7 +43,7 @@ impl From<&JsPublicKey> for PublicKey {
 
 #[wasm_bindgen(js_class = PublicKey)]
 impl JsPublicKey {
-    /// Try to parse public key from `hex` or `bech32`
+    /// Try to parse public key from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     pub fn parse(public_key: &str) -> Result<JsPublicKey> {
         Ok(Self {
             inner: PublicKey::parse(public_key).map_err(into_err)?,

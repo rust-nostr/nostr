@@ -122,12 +122,6 @@ impl From<FromUtf8Error> for Error {
     }
 }
 
-/* impl From<bitcoin::hashes::Error> for Error {
-    fn from(e: bitcoin::hashes::Error) -> Self {
-        Self::Hash(e)
-    }
-} */
-
 impl From<key::Error> for Error {
     fn from(e: key::Error) -> Self {
         Self::Keys(e)
