@@ -21,8 +21,10 @@ client.add_relay("wss://nostr.mom")
 client.add_relay("wss://nostr.oxtr.dev")
 client.connect()
 
-nip04_filter = Filter().pubkey(pk).kind(Kind.from_enum(KindEnum.ENCRYPTED_DIRECT_MESSAGE())).since(Timestamp.now())
-nip59_filter = Filter().pubkey(pk).kind(Kind.from_enum(KindEnum.GIFT_WRAP())).since(Timestamp.from_secs(Timestamp.now().as_secs() - 60 * 60 * 24 * 7)) # NIP59 have a tweaked timestamp (in the past)
+now = Timestamp.now()
+
+nip04_filter = Filter().pubkey(pk).kind(Kind.from_enum(KindEnum.ENCRYPTED_DIRECT_MESSAGE())).since(now)
+nip59_filter = Filter().pubkey(pk).kind(Kind.from_enum(KindEnum.GIFT_WRAP())).since(Timestamp.from_secs(now.as_secs() - 60 * 60 * 24 * 7)) # NIP59 have a tweaked timestamp (in the past)
 client.subscribe([nip04_filter, nip59_filter], None)
 
 class NotificationHandler(HandleNotification):
@@ -39,13 +41,17 @@ class NotificationHandler(HandleNotification):
         elif event.kind().match_enum(KindEnum.GIFT_WRAP()):
             print("Decrypting NIP59 event")
             try:
+                # Extract rumor
                 rumor: UnsignedEvent = nip59_extract_rumor(keys, event)
-                if rumor.kind().match_enum(KindEnum.SEALED_DIRECT()):
-                    msg = rumor.content()
-                    print(f"Received new msg [sealed]: {msg}")
-                    client.send_sealed_msg(rumor.author(), f"Echo: {msg}", None)
-                else:
-                    print(f"{rumor.as_json()}")
+
+                # Check timestamp of rumor
+                if rumor.created_at().as_secs() >= now.as_secs():
+                    if rumor.kind().match_enum(KindEnum.SEALED_DIRECT()):
+                        msg = rumor.content()
+                        print(f"Received new msg [sealed]: {msg}")
+                        client.send_sealed_msg(rumor.author(), f"Echo: {msg}", None)
+                    else:
+                        print(f"{rumor.as_json()}")
             except Exception as e:
                 print(f"Error during content NIP59 decryption: {e}")
 
