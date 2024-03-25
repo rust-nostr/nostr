@@ -22,11 +22,8 @@ use nostr::nips::nip47::{
     MakeInvoiceResponseResult, NostrWalletConnectURI, PayInvoiceRequestParams,
     PayInvoiceResponseResult, PayKeysendRequestParams, PayKeysendResponseResult, Request, Response,
 };
-use nostr::{Filter, Kind, SubscriptionId};
-use nostr_relay_pool::{
-    FilterOptions, Relay, RelayNotification, RelaySendOptions, SubscribeAutoCloseOptions,
-    SubscribeOptions,
-};
+use nostr::{Event, EventId, Filter, Kind, Timestamp};
+use nostr_relay_pool::{Relay, RelayNotification, RelaySendOptions, SubscribeOptions};
 use nostr_zapper::{async_trait, NostrZapper, ZapperBackend};
 
 pub mod error;
@@ -60,27 +57,32 @@ impl NWC {
         let relay = Relay::with_opts(uri.relay_url.clone(), opts.relay);
         relay.connect(Some(Duration::from_secs(10))).await;
 
-        Ok(Self { uri, relay })
+        let this = Self { uri, relay };
+
+        // Subscribe
+        this.subscribe().await?;
+
+        Ok(this)
+    }
+
+    async fn subscribe(&self) -> Result<(), Error> {
+        let filter = Filter::new()
+            .author(self.uri.public_key)
+            .kind(Kind::WalletConnectResponse)
+            .since(Timestamp::now());
+
+        // Subscribe
+        self.relay
+            .subscribe(vec![filter], SubscribeOptions::default())
+            .await?;
+
+        Ok(())
     }
 
     async fn send_request(&self, req: Request) -> Result<Response, Error> {
         // Convert request to event
-        let event = req.to_event(&self.uri)?;
-        let event_id = event.id;
-
-        // Subscribe
-        let filter = Filter::new()
-            .author(self.uri.public_key)
-            .kind(Kind::WalletConnectResponse)
-            .event(event_id)
-            .limit(1);
-
-        let auto_close_opts = SubscribeAutoCloseOptions::default()
-            .filter(FilterOptions::WaitForEventsAfterEOSE(1))
-            .timeout(Some(TIMEOUT));
-        let subscribe_opts = SubscribeOptions::default().close_on(Some(auto_close_opts));
-
-        let id: SubscriptionId = self.relay.subscribe(vec![filter], subscribe_opts).await?;
+        let event: Event = req.to_event(&self.uri)?;
+        let event_id: EventId = event.id;
 
         let mut notifications = self.relay.notifications();
 
@@ -91,13 +93,8 @@ impl NWC {
 
         time::timeout(Some(TIMEOUT), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Event {
-                    subscription_id,
-                    event,
-                } = notification
-                {
-                    if subscription_id == id
-                        && event.kind() == Kind::WalletConnectResponse
+                if let RelayNotification::Event { event, .. } = notification {
+                    if event.kind() == Kind::WalletConnectResponse
                         && event.event_ids().next().copied() == Some(event_id)
                     {
                         return Ok(Response::from_event(&self.uri, &event)?);
