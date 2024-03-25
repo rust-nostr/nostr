@@ -3,7 +3,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Subscription filters
+//! Filters
 
 #[cfg(not(feature = "std"))]
 use alloc::collections::{BTreeMap as AllocMap, BTreeSet as AllocSet};
@@ -13,11 +13,6 @@ use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
-#[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::RngCore;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
@@ -254,63 +249,6 @@ impl<'de> Deserialize<'de> for SingleLetterTag {
     {
         let character: char = char::deserialize(deserializer)?;
         Self::from_char(character).map_err(serde::de::Error::custom)
-    }
-}
-
-/// Subscription ID
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SubscriptionId(String);
-
-impl SubscriptionId {
-    /// Create new [`SubscriptionId`]
-    pub fn new<S>(id: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self(id.into())
-    }
-
-    /// Generate new random [`SubscriptionId`]
-    #[cfg(feature = "std")]
-    pub fn generate() -> Self {
-        let mut rng = OsRng;
-        Self::generate_with_rng(&mut rng)
-    }
-
-    /// Generate new random [`SubscriptionId`]
-    pub fn generate_with_rng<R>(rng: &mut R) -> Self
-    where
-        R: RngCore,
-    {
-        let mut os_random = [0u8; 32];
-        rng.fill_bytes(&mut os_random);
-        let hash = Sha256Hash::hash(&os_random).to_string();
-        Self::new(&hash[..32])
-    }
-}
-
-impl fmt::Display for SubscriptionId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl Serialize for SubscriptionId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for SubscriptionId {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let id: String = String::deserialize(deserializer)?;
-        Ok(Self::new(id))
     }
 }
 

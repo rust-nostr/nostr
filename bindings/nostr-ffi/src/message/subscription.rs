@@ -5,7 +5,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::message::subscription::{self, IntoGenericTagValue};
+use nostr::types::filter::{self, IntoGenericTagValue};
 use nostr::JsonUtil;
 use uniffi::{Enum, Object, Record};
 
@@ -43,7 +43,7 @@ pub enum Alphabet {
     Z,
 }
 
-impl From<Alphabet> for subscription::Alphabet {
+impl From<Alphabet> for filter::Alphabet {
     fn from(value: Alphabet) -> Self {
         match value {
             Alphabet::A => Self::A,
@@ -78,19 +78,19 @@ impl From<Alphabet> for subscription::Alphabet {
 
 #[derive(Object)]
 pub struct SingleLetterTag {
-    inner: subscription::SingleLetterTag,
+    inner: filter::SingleLetterTag,
 }
 
 impl Deref for SingleLetterTag {
-    type Target = subscription::SingleLetterTag;
+    type Target = filter::SingleLetterTag;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl From<subscription::SingleLetterTag> for SingleLetterTag {
-    fn from(inner: subscription::SingleLetterTag) -> Self {
+impl From<filter::SingleLetterTag> for SingleLetterTag {
+    fn from(inner: filter::SingleLetterTag) -> Self {
         Self { inner }
     }
 }
@@ -100,14 +100,14 @@ impl SingleLetterTag {
     #[uniffi::constructor]
     pub fn lowercase(character: Alphabet) -> Self {
         Self {
-            inner: subscription::SingleLetterTag::lowercase(character.into()),
+            inner: filter::SingleLetterTag::lowercase(character.into()),
         }
     }
 
     #[uniffi::constructor]
     pub fn uppercase(character: Alphabet) -> Self {
         Self {
-            inner: subscription::SingleLetterTag::uppercase(character.into()),
+            inner: filter::SingleLetterTag::uppercase(character.into()),
         }
     }
 

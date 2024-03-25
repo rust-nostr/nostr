@@ -58,12 +58,12 @@ pub use self::event::{
     Event, EventBuilder, EventId, Kind, MissingPartialEvent, PartialEvent, UnsignedEvent,
 };
 pub use self::key::{Keys, PublicKey, SecretKey};
-pub use self::message::{
-    Alphabet, ClientMessage, Filter, GenericTagValue, RawRelayMessage, RelayMessage,
-    SingleLetterTag, SubscriptionId,
-};
+pub use self::message::{ClientMessage, RawRelayMessage, RelayMessage, SubscriptionId};
 pub use self::nips::nip19::{FromBech32, ToBech32};
-pub use self::types::{Contact, Metadata, Timestamp, TryIntoUrl, UncheckedUrl, Url};
+pub use self::types::{
+    Alphabet, Contact, Filter, GenericTagValue, Metadata, SingleLetterTag, Timestamp, TryIntoUrl,
+    UncheckedUrl, Url,
+};
 pub use self::util::JsonUtil;
 #[cfg(feature = "std")]
 pub use self::util::SECP256K1;

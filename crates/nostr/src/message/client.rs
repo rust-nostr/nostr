@@ -13,8 +13,8 @@ use negentropy::{Bytes, Negentropy};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
-use super::{Filter, MessageHandleError, SubscriptionId};
-use crate::{Event, JsonUtil};
+use super::MessageHandleError;
+use crate::{Event, Filter, JsonUtil, SubscriptionId};
 
 /// Messages sent by clients, received by relays
 #[derive(Debug, Clone, PartialEq, Eq)]

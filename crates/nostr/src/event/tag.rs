@@ -20,12 +20,12 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::id::{self, EventId};
-use crate::message::subscription::IntoGenericTagValue;
 use crate::nips::nip01::{self, Coordinate};
 use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
 use crate::nips::nip90::DataVendingMachineStatus;
+use crate::types::filter::IntoGenericTagValue;
 use crate::types::url::{ParseError, Url};
 use crate::{
     key, Alphabet, Event, GenericTagValue, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp,
