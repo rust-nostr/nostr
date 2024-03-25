@@ -1157,7 +1157,7 @@ impl Tag {
             Self::Geohash(val, ..) => Some(val.into_generic_tag_value()),
             Self::Identifier(val, ..) => Some(val.into_generic_tag_value()),
             Self::ExternalIdentity(..) => None,
-            Self::A { coordinate, .. } => Some(coordinate.clone().into_generic_tag_value()),
+            Self::A { coordinate, .. } => Some(coordinate.to_string().into_generic_tag_value()),
             Self::Kind(kind) => Some(kind.to_string().into_generic_tag_value()),
             Self::Relay(url) => Some(url.to_string().into_generic_tag_value()),
             Self::POW { nonce, .. } => Some(nonce.to_string().into_generic_tag_value()),
@@ -1595,13 +1595,9 @@ mod tests {
         .unwrap();
         assert_eq!(
             t.content(),
-            Some(GenericTagValue::Fixed32Bytes(
-                PublicKey::from_hex(
-                    "f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785"
-                )
-                .unwrap()
-                .to_bytes()
-            ))
+            Some(GenericTagValue::String(String::from(
+                "f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785"
+            )))
         );
 
         // Test extract event ID
@@ -1612,13 +1608,9 @@ mod tests {
         .unwrap();
         assert_eq!(
             t.content(),
-            Some(GenericTagValue::Fixed32Bytes(
-                EventId::from_hex(
-                    "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45"
-                )
-                .unwrap()
-                .to_bytes()
-            ))
+            Some(GenericTagValue::String(String::from(
+                "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45"
+            )))
         );
     }
 
