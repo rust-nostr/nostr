@@ -1142,10 +1142,7 @@ impl Tag {
     /// Return the **first** tag value (index `1`), if exists.
     pub fn content(&self) -> Option<GenericTagValue> {
         match self {
-            Self::Generic(_, l) => l
-                .first()
-                .cloned()
-                .and_then(|g| serde_json::from_str(&g).ok()),
+            Self::Generic(_, l) => l.first().map(|v| v.into_generic_tag_value()),
             Self::Event { event_id, .. } | Self::EventReport(event_id, ..) => {
                 Some((*event_id).into_generic_tag_value())
             }
@@ -1580,6 +1577,39 @@ mod tests {
             marker: Some(Marker::Root),
         };
         assert!(!tag.is_reply());
+    }
+
+    #[test]
+    fn test_extract_tag_content() {
+        let t: Tag = Tag::parse(&["aaaaaa", "bbbbbb"]).unwrap();
+        assert_eq!(
+            t.content(),
+            Some(GenericTagValue::String(String::from("bbbbbb")))
+        );
+
+        // Test extract public key
+        let t: Tag = Tag::parse(&[
+            "custom-p",
+            "f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785",
+        ])
+        .unwrap();
+        assert_eq!(
+            t.content(),
+            Some(GenericTagValue::Pubkey(
+                PublicKey::from_hex(
+                    "f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785"
+                )
+                .unwrap()
+            ))
+        );
+
+        // TODO: fix this
+        // // Test extract event ID
+        // let t: Tag = Tag::parse(&["custom-e", "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45"]).unwrap();
+        // assert_eq!(
+        //     t.content(),
+        //     Some(GenericTagValue::EventId(EventId::from_hex("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45").unwrap()))
+        // );
     }
 
     #[test]

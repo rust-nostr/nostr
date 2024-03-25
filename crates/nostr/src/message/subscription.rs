@@ -338,6 +338,31 @@ impl fmt::Display for GenericTagValue {
     }
 }
 
+impl<S> From<S> for GenericTagValue
+where
+    S: AsRef<str>,
+{
+    fn from(value: S) -> Self {
+        let value: &str = value.as_ref();
+
+        // TODO: fix this
+        if let Ok(public_key) = PublicKey::from_hex(value) {
+            return Self::Pubkey(public_key);
+        }
+
+        // TODO: fix this
+        if let Ok(event_id) = EventId::from_hex(value) {
+            return Self::EventId(event_id);
+        }
+
+        if let Ok(coordinate) = Coordinate::from_str(value) {
+            return Self::Coordinate(coordinate);
+        }
+
+        Self::String(value.to_string())
+    }
+}
+
 #[allow(missing_docs)]
 pub trait IntoGenericTagValue {
     fn into_generic_tag_value(self) -> GenericTagValue;
@@ -363,19 +388,19 @@ impl IntoGenericTagValue for Coordinate {
 
 impl IntoGenericTagValue for String {
     fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::String(self)
+        GenericTagValue::from(self)
     }
 }
 
 impl IntoGenericTagValue for &String {
     fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::String(self.clone())
+        GenericTagValue::from(self)
     }
 }
 
 impl IntoGenericTagValue for &str {
     fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::String(self.to_string())
+        GenericTagValue::from(self)
     }
 }
 
