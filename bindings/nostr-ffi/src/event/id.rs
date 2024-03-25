@@ -54,7 +54,7 @@ impl EventId {
         })
     }
 
-    /// Try to parse event ID from `hex` or `bech32`
+    /// Try to parse event ID from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     #[uniffi::constructor]
     pub fn parse(id: &str) -> Result<Self> {
         Ok(Self {

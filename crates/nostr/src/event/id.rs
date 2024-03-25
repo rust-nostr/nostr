@@ -16,6 +16,7 @@ use serde_json::{json, Value};
 use super::{Kind, Tag};
 use crate::nips::nip13;
 use crate::nips::nip19::FromBech32;
+use crate::nips::nip21::NostrURI;
 use crate::{PublicKey, Timestamp};
 
 /// [`EventId`] error
@@ -76,17 +77,20 @@ impl EventId {
         Self(Sha256Hash::hash(event_str.as_bytes()))
     }
 
-    /// Try to parse [EventId] from `hex` or `bech32`
+    /// Try to parse [EventId] from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     pub fn parse<S>(id: S) -> Result<Self, Error>
     where
         S: AsRef<str>,
     {
         let id: &str = id.as_ref();
-        match Self::from_hex(id) {
+        match Self::from_nostr_uri(id) {
             Ok(id) => Ok(id),
-            Err(_) => match Self::from_bech32(id) {
+            Err(_) => match Self::from_hex(id) {
                 Ok(id) => Ok(id),
-                Err(_) => Err(Error::InvalidEventId),
+                Err(_) => match Self::from_bech32(id) {
+                    Ok(id) => Ok(id),
+                    Err(_) => Err(Error::InvalidEventId),
+                },
             },
         }
     }

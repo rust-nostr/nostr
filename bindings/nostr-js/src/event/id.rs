@@ -60,7 +60,7 @@ impl JsEventId {
         }
     }
 
-    /// Try to parse event ID from `hex` or `bech32`
+    /// Try to parse event ID from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     pub fn parse(id: &str) -> Result<JsEventId> {
         Ok(Self {
             inner: EventId::parse(id).map_err(into_err)?,
