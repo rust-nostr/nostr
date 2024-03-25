@@ -5,6 +5,7 @@
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::time::Duration;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
 use nostr_sdk::nwc;
@@ -45,5 +46,12 @@ impl NostrWalletConnectOptions {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.proxy(proxy);
         Ok(builder)
+    }
+
+    /// Set NWC requests timeout (default: 10 secs)
+    pub fn timeout(self: Arc<Self>, timeout: Duration) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.timeout(timeout);
+        builder
     }
 }

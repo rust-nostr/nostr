@@ -33,13 +33,12 @@ pub mod prelude;
 pub use self::error::Error;
 pub use self::options::NostrWalletConnectOptions;
 
-const TIMEOUT: Duration = Duration::from_secs(10);
-
 /// Nostr Wallet Connect client
 #[derive(Debug, Clone)]
 pub struct NWC {
     uri: NostrWalletConnectURI,
     relay: Relay,
+    opts: NostrWalletConnectOptions,
 }
 
 impl NWC {
@@ -54,10 +53,10 @@ impl NWC {
         opts: NostrWalletConnectOptions,
     ) -> Result<Self, Error> {
         // Compose relay
-        let relay = Relay::with_opts(uri.relay_url.clone(), opts.relay);
+        let relay = Relay::with_opts(uri.relay_url.clone(), opts.relay.clone());
         relay.connect(Some(Duration::from_secs(10))).await;
 
-        let this = Self { uri, relay };
+        let this = Self { uri, relay, opts };
 
         // Subscribe
         this.subscribe().await?;
@@ -91,7 +90,7 @@ impl NWC {
             .send_event(event, RelaySendOptions::new())
             .await?;
 
-        time::timeout(Some(TIMEOUT), async {
+        time::timeout(Some(self.opts.timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayNotification::Event { event, .. } = notification {
                     if event.kind() == Kind::WalletConnectResponse
