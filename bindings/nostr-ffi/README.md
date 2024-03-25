@@ -1,6 +1,8 @@
 # Nostr FFI
 
 ## Prerequisites
+
+* `just`: https://just.systems/man/en/
 * When building for Android:
   * Set the `ANDROID_SDK_ROOT` env variable
   * Set the `ANDROID_NDK_HOME` env variable
@@ -9,8 +11,8 @@
 
 On first usage you will need to run:
 
-```
-make init
+```bash
+just init
 ```
 
 ### Python
@@ -21,16 +23,8 @@ If you want to compile from source or need more options, read on.
 
 ### Wheel
 
-#### Unix
-
-```
-make python
-```
-
-#### Windows
-
-```
-make python-win
+```bash
+just python
 ```
 
 ### Kotlin
@@ -44,16 +38,16 @@ If you want to compile from source or need more options, read on.
 This command will build libraries for different platforms in `target/` folder and copy them to `ffi/kotlin/jniLibs`.
 In addition it will generate Kotlin bindings in `ffi/kotlin/nostr`.
 
-```
-make kotlin
+```bash
+just kotlin
 ```
 
 #### Android Archive (AAR)
 
 This command will build an AAR file in `ffi/android/lib-release.aar`:
 
-```
-make bindings-android
+```bash
+just bindings-android
 ```
 
 See [Add your AAR or JAR as a dependency](https://developer.android.com/studio/projects/android-library#psd-add-aar-jar-dependency) in Android's docs for more information on how to integrate such an archive into your project.
@@ -68,12 +62,12 @@ If you want to compile from source or need more options, read on.
 
 These commands will build libraries for different architectures in `../../target/` and generate Swift bindings as well as Swift module artifacts in `ffi/swift-ios/` and `ffi/swift-darwin/` respectively:
 
-```
-make swift-ios
+```bash
+just swift-ios
 ```
 
-```
-make swift-darwin
+```bash
+just swift-darwin
 ```
 
 #### Swift Package
@@ -81,8 +75,8 @@ make swift-darwin
 This command will produce a fully configured Swift Package in `bindings-swift/`.
 See [Adding package dependencies to your app](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) in Apple's docs for more information on how to integrate such a package into your project.
 
-```
-make bindings-swift
+```bash
+just bindings-swift
 ```
 
 ## License

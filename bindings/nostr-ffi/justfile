@@ -1,67 +1,60 @@
-CURRENT_DIR := $(shell pwd)
-SOURCES=$(sort $(wildcard ./src/*.rs ./src/**/*.rs))
+#!/usr/bin/env just --justfile
 
-ifeq ($(OS),Windows_NT)
-    # Windows
-    LIB_UNIFFI_EXT := dll
-else
-    UNAME_S := $(shell uname -s)
-    ifeq ($(UNAME_S),Linux)
-        # Linux
-        LIB_UNIFFI_EXT := so
-
-    endif
-    ifeq ($(UNAME_S),Darwin)
-        # macOS
-        LIB_UNIFFI_EXT := a
-    endif
-endif
-
-.PHONY: init
-init:
-	rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
-	rustup target add aarch64-apple-darwin x86_64-apple-darwin
-	rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
-	@if [ $$(uname) == "Darwin" ] ; then cargo install cargo-lipo ; fi
-	cargo install cbindgen
-	cargo install cargo-ndk
-
-.PHONY: ndk-home
+# Check if ANDROID_NDK_HOME env is set
+[private]
 ndk-home:
 	@if [ ! -d "${ANDROID_NDK_HOME}" ] ; then \
 		echo "Error: Please, set the ANDROID_NDK_HOME env variable to point to your NDK folder" ; \
 		exit 1 ; \
 	fi
 
-.PHONY: sdk-root
+# Check if ANDROID_SDK_ROOT env is set
+[private]
 sdk-root:
 	@if [ ! -d "${ANDROID_SDK_ROOT}" ] ; then \
 		echo "Error: Please, set the ANDROID_SDK_ROOT env variable to point to your SDK folder" ; \
 		exit 1 ; \
 	fi
 
+# Get toolchain targets and required binaries for compilation
+init:
+	rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
+	rustup target add aarch64-apple-darwin x86_64-apple-darwin
+	rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+	#@if os() == "macos" { cargo install cargo-lipo }
+	cargo install cargo-lipo
+	cargo install cbindgen
+	cargo install cargo-ndk
+
+[private]
 clean-android:
 	rm -rf ffi/android
 	rm -rf ffi/kotlin
+
+[private]
+aarch64-linux-android: ndk-home
+	cargo ndk -t aarch64-linux-android -o ffi/kotlin/jniLibs build --release
+
+[private]
+armv7-linux-androideabi: ndk-home
+	cargo ndk -t armv7-linux-androideabi -o ffi/kotlin/jniLibs build --release
+
+[private]
+i686-linux-android: ndk-home
+	cargo ndk -t i686-linux-android -o ffi/kotlin/jniLibs build --release
+
+[private]
+x86_64-linux-android: ndk-home
+	cargo ndk -t x86_64-linux-android -o ffi/kotlin/jniLibs build --release
+
+[private]
+android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
 kotlin: clean-android android
 	find ./ffi/kotlin/jniLibs -name libnostr_sdk_ffi.so -type f -delete
 	cargo run -p uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_ffi.so --language kotlin --no-format -o ffi/kotlin
 
-android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
-
-aarch64-linux-android: $(SOURCES) ndk-home
-	cargo ndk -t aarch64-linux-android -o ffi/kotlin/jniLibs build --release	
-
-armv7-linux-androideabi: $(SOURCES) ndk-home
-	cargo ndk -t armv7-linux-androideabi -o ffi/kotlin/jniLibs build --release	
-
-i686-linux-android: $(SOURCES) ndk-home
-	cargo ndk -t i686-linux-android -o ffi/kotlin/jniLibs build --release	
-
-x86_64-linux-android: $(SOURCES) ndk-home
-	cargo ndk -t x86_64-linux-android -o ffi/kotlin/jniLibs build --release
-
+# Compile and build Android Archive (AAR)
 bindings-android: sdk-root kotlin
 	rm -rf bindings-android/lib/src/main/jniLibs
 	rm -rf bindings-android/lib/src/main/kotlin
@@ -72,10 +65,13 @@ bindings-android: sdk-root kotlin
 	mkdir -p ffi/android
 	cp bindings-android/lib/build/outputs/aar/lib-release.aar ffi/android
 
+# Publish android bindings
+[confirm]
 publish-android: bindings-android
 	cd bindings-android && ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
 
-ios-universal: $(SOURCES)		
+[private]
+ios-universal:
 	mkdir -p ../../target/ios-universal/release
 	mkdir -p ../../target/ios-universal-sim/release
 	cargo build --release --target aarch64-apple-ios
@@ -84,7 +80,8 @@ ios-universal: $(SOURCES)
 	lipo -create -output ../../target/ios-universal/release/libnostr_ffi.a ../../target/aarch64-apple-ios/release/libnostr_ffi.a ../../target/x86_64-apple-ios/release/libnostr_ffi.a
 	lipo -create -output ../../target/ios-universal-sim/release/libnostr_ffi.a ../../target/aarch64-apple-ios-sim/release/libnostr_ffi.a ../../target/x86_64-apple-ios/release/libnostr_ffi.a
 
-darwin-universal: $(SOURCES)
+[private]
+darwin-universal:
 	mkdir -p ../../target/darwin-universal/release
 	cargo lipo --release --targets aarch64-apple-darwin
 	cargo lipo --release --targets x86_64-apple-darwin
@@ -101,6 +98,7 @@ swift-darwin: darwin-universal
 	cp ../../target/darwin-universal/release/libnostr_ffi.dylib ffi/swift-darwin
 	cd ffi/swift-darwin && "swiftc" "-emit-module" "-module-name" "nostr_ffi"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-darwin/nostrFFI.modulemap" "-I" "."  "-L" "." "-lnostr_ffi" nostr.swift
 
+# Compile and build Swift Package
 bindings-swift: ios-universal darwin-universal
 	mkdir -p bindings-swift/Sources/Nostr
 	cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_ffi.a --no-format --language swift --out-dir bindings-swift/Sources/Nostr
@@ -114,20 +112,31 @@ bindings-swift: ios-universal darwin-universal
 	rm bindings-swift/Sources/Nostr/*.h
 	rm bindings-swift/Sources/Nostr/*.modulemap
 
+[linux]
 python:
 	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt --break-system-packages
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.$(LIB_UNIFFI_EXT) --language python --no-format -o bindings-python/src/nostr/
-	cp ../../target/release/libnostr_ffi.so bindings-python/src/nostr/ | true
-	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/ | true
+	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.so --language python --no-format -o bindings-python/src/nostr/
+	cp ../../target/release/libnostr_ffi.so bindings-python/src/nostr/
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall --break-system-packages
 
-python-win:
+[macos]
+python:
+	rm -rf bindings-python/dist
+	pip install -r bindings-python/requirements.txt --break-system-packages
+	cargo build --release
+	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.a --language python --no-format -o bindings-python/src/nostr/
+	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/
+	cd bindings-python && python setup.py --verbose bdist_wheel
+	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall --break-system-packages
+
+[windows]
+python:
 	pip install -r bindings-python\requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ..\..\target\release\nostr_ffi.dll --language python --no-format -o bindings-python/src/nostr/
+	cargo run -p uniffi-bindgen generate --library ..\..\target\release\nostr_ffi.dll --language python --no-format -o bindings-python\src\nostr\
 	copy ..\..\target\release\nostr_ffi.dll bindings-python\src\nostr
 	del /F /Q bindings-python\dist\* 2>nul || exit /b 0
 	cd bindings-python && python setup.py --verbose bdist_wheel
