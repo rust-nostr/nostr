@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Needed to exit from script on error
-set -e
+set -euo pipefail
 
 # Check bindings
 buildargs=(
