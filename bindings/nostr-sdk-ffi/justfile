@@ -118,8 +118,8 @@ python:
 	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt --break-system-packages
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.so --language python --no-format -o bindings-python/src/nostr/
-	cp ../../target/release/libnostr_sdk_ffi.so bindings-python/src/nostr/
+	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.so --language python --no-format -o bindings-python/src/nostr-sdk/
+	cp ../../target/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr_sdk*.whl --force-reinstall --break-system-packages
 
@@ -128,8 +128,8 @@ python:
 	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt --break-system-packages
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.a --language python --no-format -o bindings-python/src/nostr/
-	cp ../../target/release/libnostr_sdk_ffi.dylib bindings-python/src/nostr/
+	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.a --language python --no-format -o bindings-python/src/nostr-sdk/
+	cp ../../target/release/libnostr_sdk_ffi.dylib bindings-python/src/nostr-sdk/
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr_sdk*.whl --force-reinstall --break-system-packages
 
@@ -137,8 +137,8 @@ python:
 python:
 	pip install -r bindings-python\requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ..\..\target\release\nostr_sdk_ffi.dll --language python --no-format -o bindings-python\src\nostr\
-	copy ..\..\target\release\nostr_sdk_ffi.dll bindings-python\src\nostr
+	cargo run -p uniffi-bindgen generate --library ..\..\target\release\nostr_sdk_ffi.dll --language python --no-format -o bindings-python\src\nostr-sdk\
+	copy ..\..\target\release\nostr_sdk_ffi.dll bindings-python\src\nostr-sdk
 	del /F /Q bindings-python\dist\* 2>nul || exit /b 0
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	FOR %%i in (.\bindings-python\dist\*.whl) DO pip install %i --force-reinstall
