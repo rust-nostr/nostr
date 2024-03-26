@@ -527,7 +527,7 @@ impl InternalRelay {
                                     break;
                                 }
 
-                                let nonce: u64 = rand::thread_rng().gen();
+                                let nonce: u64 = rand::random();
                                 relay.stats.ping.set_last_nonce(nonce);
                                 relay.stats.ping.set_replied(false);
 
@@ -1065,7 +1065,7 @@ impl InternalRelay {
         // Batch send messages
         self.batch_msg(msgs, opts).await?;
 
-        // Hanlde responses
+        // Handle responses
         time::timeout(Some(opts.timeout), async {
             let mut published: HashSet<EventId> = HashSet::new();
             let mut not_published: HashMap<EventId, String> = HashMap::new();
@@ -1081,10 +1081,10 @@ impl InternalRelay {
                     } => {
                         if missing.remove(&event_id) {
                             if events_len == 1 {
-                                if status {
-                                    return Ok(());
+                                return if status {
+                                    Ok(())
                                 } else {
-                                    return Err(Error::EventNotPublished(message));
+                                    Err(Error::EventNotPublished(message))
                                 }
                             }
 
@@ -1254,13 +1254,10 @@ impl InternalRelay {
                 .await;
 
                 // Check if CLOSE needed
-                let to_close: bool = match res {
-                    Some(val) => val,
-                    None => {
-                        tracing::warn!("Timeout reached for REQ {sub_id}, auto-closing.");
-                        true
-                    }
-                };
+                let to_close: bool = res.unwrap_or_else(|| {
+                    tracing::warn!("Timeout reached for REQ {sub_id}, auto-closing.");
+                    true
+                });
 
                 if to_close {
                     // Unsubscribe
@@ -1319,9 +1316,9 @@ impl InternalRelay {
         Ok(())
     }
 
-    async fn handle_events_of<F>(
+    pub(crate) async fn get_events_of_with_callback<F>(
         &self,
-        id: SubscriptionId,
+        filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
         callback: impl Fn(Event) -> F,
@@ -1329,6 +1326,7 @@ impl InternalRelay {
     where
         F: Future<Output = ()>,
     {
+        // Check if relay is connected
         if !self.is_connected().await
             && self.stats.attempts() > MIN_ATTEMPTS
             && self.stats.uptime() < MIN_UPTIME
@@ -1336,10 +1334,22 @@ impl InternalRelay {
             return Err(Error::NotConnected);
         }
 
-        let mut counter = 0;
+        // Compose options
+        let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
+            .filter(opts)
+            .timeout(Some(timeout));
+        let subscribe_opts: SubscribeOptions =
+            SubscribeOptions::default().close_on(Some(auto_close_opts));
+
+        // Subscribe to channel
+        let mut notifications = self.internal_notification_sender.subscribe();
+
+        // Subscribe with auto-close
+        let id: SubscriptionId = self.subscribe(filters, subscribe_opts).await?;
+
+        let mut counter: u16 = 0;
         let mut received_eose: bool = false;
 
-        let mut notifications = self.internal_notification_sender.subscribe();
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 match notification {
@@ -1422,31 +1432,6 @@ impl InternalRelay {
             })
             .await;
         }
-
-        Ok(())
-    }
-
-    pub(crate) async fn get_events_of_with_callback<F>(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Duration,
-        opts: FilterOptions,
-        callback: impl Fn(Event) -> F,
-    ) -> Result<(), Error>
-    where
-        F: Future<Output = ()>,
-    {
-        // Compose options
-        let auto_close_opts = SubscribeAutoCloseOptions::default()
-            .filter(opts)
-            .timeout(Some(timeout));
-        let subscribe_opts = SubscribeOptions::default().close_on(Some(auto_close_opts));
-
-        // Subscribe with auto-close
-        let id: SubscriptionId = self.subscribe(filters, subscribe_opts).await?;
-
-        // Handle events
-        self.handle_events_of(id, timeout, opts, callback).await?;
 
         Ok(())
     }
