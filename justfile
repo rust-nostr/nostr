@@ -5,10 +5,12 @@ cli:
 	cargo build -p nostr-cli --release
 
 # Execute a partial check (MSRV is not checked)
-precommit: fmt check-crates check-bindings check-docs
+precommit:
+    @bash contrib/scripts/precommit.sh
 
 # Execute a full check
-check: fmt check-crates check-crates-msrv check-bindings check-docs
+check:
+    @bash contrib/scripts/check.sh
 
 # Format the entire Rust code
 fmt:
