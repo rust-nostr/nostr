@@ -6,6 +6,7 @@
 
 nostr_ffi::uniffi_reexport_scaffolding!();
 
+pub mod abortable;
 pub mod client;
 pub mod database;
 pub mod error;

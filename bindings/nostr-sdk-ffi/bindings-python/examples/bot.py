@@ -58,7 +58,9 @@ class NotificationHandler(HandleNotification):
     def handle_msg(self, relay_url, msg):
         None
     
-client.handle_notifications(NotificationHandler())
+abortable = client.handle_notifications(NotificationHandler())
+# Optionally, to abort handle notifications look, call abortable.abort()
 
 while True:
     time.sleep(5.0)
+    # abortable.abort()

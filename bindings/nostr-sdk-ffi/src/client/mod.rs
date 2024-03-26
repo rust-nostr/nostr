@@ -26,6 +26,7 @@ pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
+use crate::abortable::AbortHandle;
 use crate::error::Result;
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
 use crate::relay::RelayOptions;
@@ -514,11 +515,14 @@ impl Client {
         })
     }
 
+    /// Handle notifications
+    ///
+    /// **This method spawn a thread**, so ensure to keep up the app after calling this (if needed).
     pub fn handle_notifications(
         self: Arc<Self>,
         handler: Box<dyn HandleNotification>,
-    ) -> Result<()> {
-        thread::spawn(async move {
+    ) -> Result<Arc<AbortHandle>> {
+        let handle = thread::abortable(async move {
             let handler = Arc::new(handler);
             self.inner
                 .handle_notifications(|notification| async {
@@ -551,6 +555,6 @@ impl Client {
                 })
                 .await
         })?;
-        Ok(())
+        Ok(Arc::new(handle.into()))
     }
 }

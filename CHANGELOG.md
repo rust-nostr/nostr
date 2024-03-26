@@ -25,10 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 * ffi(nostr): added `FilterRecord`, to allow to access fields in `Filter` ([Yuki Kishimoto])
+* ffi(sdk): add `AbortHandle` ([Yuki Kishimoto])
 
 ### Fixed
 
-* nostr: `Tag::content` return always `None` when `Tag::Generic` ([Yuki Kishimoto])
+* nostr: fix `Tag::content` return always `None` when `Tag::Generic` ([Yuki Kishimoto])
 
 ### Removed
 

@@ -585,7 +585,7 @@ impl JsClient {
     ///
     /// **This method spawn a thread**, so ensure to keep up the app after calling this (if needed).
     ///
-    /// To exit from the handle notifications loop, return `true`, the
+    /// To exit from the handle notifications loop, return `true` or call `abortable.abort();`.
     ///
     /// # Example
     /// ```javascript

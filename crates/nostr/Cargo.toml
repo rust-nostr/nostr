@@ -41,7 +41,7 @@ alloc = [
     "cbc?/alloc",
     "chacha20poly1305?/alloc",
     "base64?/alloc",
-"bitcoin/no-std",
+    "bitcoin/no-std",
     "serde/alloc",
     "serde_json/alloc",
 ]
