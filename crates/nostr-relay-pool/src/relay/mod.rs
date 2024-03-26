@@ -110,68 +110,81 @@ impl Relay {
     }
 
     /// Get relay url
+    #[inline]
     pub fn url(&self) -> Url {
         self.inner.url()
     }
 
     /// Get proxy
+    #[inline]
     #[cfg(not(target_arch = "wasm32"))]
     pub fn proxy(&self) -> Option<SocketAddr> {
         self.inner.proxy()
     }
 
     /// Get [`RelayStatus`]
+    #[inline]
     pub async fn status(&self) -> RelayStatus {
         self.inner.status().await
     }
 
     /// Get Relay Service Flags
+    #[inline]
     pub fn flags(&self) -> AtomicRelayServiceFlags {
         self.inner.flags()
     }
 
     /// Check if [`Relay`] is connected
+    #[inline]
     pub async fn is_connected(&self) -> bool {
         self.inner.is_connected().await
     }
 
     /// Get [`RelayInformationDocument`]
+    #[inline]
     #[cfg(feature = "nip11")]
     pub async fn document(&self) -> RelayInformationDocument {
         self.inner.document().await
     }
 
     /// Get subscriptions
+    #[inline]
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
         self.inner.subscriptions().await
     }
 
     /// Get filters by [SubscriptionId]
+    #[inline]
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
         self.inner.subscription(id).await
     }
 
     /// Get [`RelayOptions`]
+    #[inline]
     pub fn opts(&self) -> RelayOptions {
         self.inner.opts()
     }
 
     /// Get [`RelayConnectionStats`]
+    #[inline]
     pub fn stats(&self) -> RelayConnectionStats {
         self.inner.stats()
     }
 
     /// Get queue len
+    #[inline]
     pub fn queue(&self) -> usize {
         self.inner.queue()
     }
 
     /// Get new **relay** notification listener
+    #[inline]
     pub fn notifications(&self) -> broadcast::Receiver<RelayNotification> {
         self.inner.internal_notification_sender.subscribe()
     }
 
     /// Set external notification sender
+    #[inline]
     pub async fn set_notification_sender(
         &self,
         notification_sender: Option<broadcast::Sender<RelayPoolNotification>>,
@@ -182,26 +195,31 @@ impl Relay {
     }
 
     /// Connect to relay and keep alive connection
+    #[inline]
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
         self.inner.connect(connection_timeout).await
     }
 
     /// Disconnect from relay and set status to 'Stopped'
+    #[inline]
     pub async fn stop(&self) -> Result<(), Error> {
         self.inner.stop().await
     }
 
     /// Disconnect from relay and set status to 'Terminated'
+    #[inline]
     pub async fn terminate(&self) -> Result<(), Error> {
         self.inner.terminate().await
     }
 
     /// Send msg to relay
+    #[inline]
     pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
         self.batch_msg(vec![msg], opts).await
     }
 
     /// Send multiple [`ClientMessage`] at once
+    #[inline]
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
@@ -211,11 +229,13 @@ impl Relay {
     }
 
     /// Send event and wait for `OK` relay msg
+    #[inline]
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         self.inner.send_event(event, opts).await
     }
 
     /// Send multiple [`Event`] at once
+    #[inline]
     pub async fn batch_event(
         &self,
         events: Vec<Event>,
@@ -233,6 +253,7 @@ impl Relay {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
+    #[inline]
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
@@ -248,6 +269,7 @@ impl Relay {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
+    #[inline]
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
@@ -258,6 +280,7 @@ impl Relay {
     }
 
     /// Unsubscribe
+    #[inline]
     pub async fn unsubscribe(
         &self,
         id: SubscriptionId,
@@ -267,11 +290,13 @@ impl Relay {
     }
 
     /// Unsubscribe from all subscriptions
+    #[inline]
     pub async fn unsubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
         self.inner.unsubscribe_all(opts).await
     }
 
     /// Get events of filters with custom callback
+    #[inline]
     pub(crate) async fn get_events_of_with_callback<F>(
         &self,
         filters: Vec<Filter>,
@@ -290,6 +315,7 @@ impl Relay {
     /// Get events of filters
     ///
     /// Get events from local database and relay
+    #[inline]
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
@@ -300,6 +326,7 @@ impl Relay {
     }
 
     /// Count events of filters
+    #[inline]
     pub async fn count_events_of(
         &self,
         filters: Vec<Filter>,
@@ -311,11 +338,13 @@ impl Relay {
     /// Negentropy reconciliation
     ///
     /// Use events stored in database
+    #[inline]
     pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
         self.inner.reconcile(filter, opts).await
     }
 
     /// Negentropy reconciliation
+    #[inline]
     pub async fn reconcile_with_items(
         &self,
         filter: Filter,
@@ -326,6 +355,7 @@ impl Relay {
     }
 
     /// Check if relay support negentropy protocol
+    #[inline]
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
         self.inner.support_negentropy().await
     }
