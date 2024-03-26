@@ -7,9 +7,9 @@ use core::ops::Deref;
 use nostr::{ClientMessage, JsonUtil, SubscriptionId};
 use wasm_bindgen::prelude::*;
 
-use super::JsFilter;
 use crate::error::{into_err, Result};
 use crate::event::JsEvent;
+use crate::types::JsFilter;
 
 #[wasm_bindgen(js_name = ClientMessage)]
 pub struct JsClientMessage {

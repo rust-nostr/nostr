@@ -4,8 +4,6 @@
 
 mod client;
 mod relay;
-mod subscription;
 
 pub use self::client::JsClientMessage;
 pub use self::relay::JsRelayMessage;
-pub use self::subscription::{JsFilter, JsSubscriptionId};
