@@ -35,8 +35,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Removed deprecated ([Yuki Kishimoto])
 
+## v0.29.1
+
+### Fixed
+
+* pool: fix spurious send_event timeout error ([DanConwayDev] in https://github.com/rust-nostr/nostr/pull/375)
+
 <!-- Contributors -->
 [Yuki Kishimoto]: https://yukikishimoto.com
+[DanConwayDev]: https://github.com/DanConwayDev
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.29.0...HEAD
