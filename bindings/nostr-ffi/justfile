@@ -91,12 +91,12 @@ darwin-universal:
 swift-ios: ios-universal
 	cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_ffi.a --language swift -o ffi/swift-ios
 	cp ../../target/ios-universal/release/libnostr_ffi.a ffi/swift-ios
-	cd ffi/swift-ios && "swiftc" "-emit-module" "-module-name" "nostr_ffi"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-ios/nostrFFI.modulemap" "-I" "."  "-L" "." "-lnostr_ffi" nostr.swift
+	cd ffi/swift-ios && "swiftc" "-emit-module" "-module-name" "nostr_ffi"  "-Xcc" "-fmodule-map-file={{invocation_directory()}}/ffi/swift-ios/nostrFFI.modulemap" "-I" "."  "-L" "." "-lnostr_ffi" nostr.swift
 
 swift-darwin: darwin-universal
 	cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-darwin/release/libnostr_ffi.a --language swift -o ffi/swift-darwin
 	cp ../../target/darwin-universal/release/libnostr_ffi.dylib ffi/swift-darwin
-	cd ffi/swift-darwin && "swiftc" "-emit-module" "-module-name" "nostr_ffi"  "-Xcc" "-fmodule-map-file=$(CURRENT_DIR)/ffi/swift-darwin/nostrFFI.modulemap" "-I" "."  "-L" "." "-lnostr_ffi" nostr.swift
+	cd ffi/swift-darwin && "swiftc" "-emit-module" "-module-name" "nostr_ffi"  "-Xcc" "-fmodule-map-file={{invocation_directory()}}/ffi/swift-darwin/nostrFFI.modulemap" "-I" "."  "-L" "." "-lnostr_ffi" nostr.swift
 
 # Compile and build Swift Package
 bindings-swift: ios-universal darwin-universal
