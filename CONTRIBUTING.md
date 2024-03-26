@@ -73,7 +73,7 @@ NACK - Disagree with the code changes/concept. Should be accompanied by an expla
 
 ## Coding Conventions
 
-Use `make check` to format code and check the code before committing.
+Use `just check` to format code and check the code before committing.
 This is also enforced by the CI.
 
 ## Going further

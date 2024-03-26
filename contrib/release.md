@@ -1,6 +1,6 @@
 # Release Checks
 
-* Run `make check` to verify that eveything compile
+* Run `just check` to verify that everything compile
 
 * Try to compile `kotlin` bindings (`nostr-ffi` and `nostr-sdk-ffi`) since compilation could fail during gradlew due to enumerations names.
 
@@ -15,7 +15,7 @@
     * `rust: bump to X.X.X`
 
 * Release crates and bindings
-    * Publish crates with `make release` or `bash ./contrib/scripts/release.sh`
+    * Publish crates with `just release` or `bash ./contrib/scripts/release.sh`
     * Publish `kotlin` bindings
     * Publish `python` bindings
     * Publish `JS` bindings
@@ -23,7 +23,7 @@
 
 * Bump versions in `book` (**without commit**, commit in next step)
     * Update examples
-    * Rust book tests: `make check-book`
+    * Rust book tests: `just check-book`
 
 * Commit and push (**WITH tag**)
     * `Release vX.X.X`

@@ -18,7 +18,7 @@ of the PR were done in a specific way -->
 #### All Submissions:
 
 * [ ] I followed the [contribution guidelines](https://github.com/rust-nostr/nostr/blob/master/CONTRIBUTING.md)
-* [ ] I ran `make precommit` before committing
+* [ ] I ran `just precommit` or `just check` before committing
 
 #### New Features:
 
