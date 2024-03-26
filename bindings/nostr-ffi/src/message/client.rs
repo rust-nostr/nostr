@@ -8,8 +8,8 @@ use std::sync::Arc;
 use nostr::{JsonUtil, SubscriptionId};
 use uniffi::{Enum, Object};
 
-use super::subscription::Filter;
 use crate::error::Result;
+use crate::types::filter::Filter;
 use crate::Event;
 
 /// Messages sent by clients, received by relays

@@ -17,11 +17,11 @@ use uniffi::{Enum, Object, Record};
 
 use super::kind::KindEnum;
 use crate::error::{NostrError, Result};
-use crate::message::subscription::SingleLetterTag;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::LiveEventMarker;
 use crate::nips::nip90::DataVendingMachineStatus;
+use crate::types::filter::SingleLetterTag;
 use crate::{Event, EventId, ImageDimensions, LiveEventStatus, PublicKey, Timestamp};
 
 /// Marker

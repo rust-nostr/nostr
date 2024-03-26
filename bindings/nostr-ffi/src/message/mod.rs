@@ -4,8 +4,6 @@
 
 pub mod client;
 pub mod relay;
-pub mod subscription;
 
 pub use self::client::{ClientMessage, ClientMessageEnum};
 pub use self::relay::{RelayMessage, RelayMessageEnum};
-pub use self::subscription::{Alphabet, Filter};
