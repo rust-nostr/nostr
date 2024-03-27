@@ -12,19 +12,23 @@ use crate::nips::nip19::Nip19Profile;
 use crate::PublicKey;
 
 #[uniffi::export]
-pub fn verify_nip05(public_key: &PublicKey, nip05: String, proxy: Option<String>) -> Result<()> {
+pub async fn verify_nip05(
+    public_key: &PublicKey,
+    nip05: String,
+    proxy: Option<String>,
+) -> Result<()> {
     let proxy: Option<SocketAddr> = match proxy {
         Some(proxy) => Some(proxy.parse()?),
         None => None,
     };
-    Ok(nip05::verify_blocking(**public_key, nip05, proxy)?)
+    Ok(nip05::verify(**public_key, nip05, proxy).await?)
 }
 
 #[uniffi::export]
-pub fn get_nip05_profile(nip05: String, proxy: Option<String>) -> Result<Arc<Nip19Profile>> {
+pub async fn get_nip05_profile(nip05: String, proxy: Option<String>) -> Result<Arc<Nip19Profile>> {
     let proxy: Option<SocketAddr> = match proxy {
         Some(proxy) => Some(proxy.parse()?),
         None => None,
     };
-    Ok(Arc::new(nip05::get_profile_blocking(nip05, proxy)?.into()))
+    Ok(Arc::new(nip05::get_profile(nip05, proxy).await?.into()))
 }
