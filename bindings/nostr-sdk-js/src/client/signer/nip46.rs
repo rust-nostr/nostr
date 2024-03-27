@@ -7,7 +7,7 @@ use core::ops::Deref;
 use js_sys::Array;
 use nostr_js::error::{into_err, Result};
 use nostr_js::key::{JsKeys, JsPublicKey};
-use nostr_js::nips::nip46::{JsNostrConnectMetadata, JsNostrConnectURI};
+use nostr_js::nips::nip46::JsNostrConnectURI;
 use nostr_js::JsStringArray;
 use nostr_sdk::signer::Nip46Signer;
 use wasm_bindgen::prelude::*;
@@ -39,13 +39,13 @@ impl JsNip46Signer {
     #[wasm_bindgen(constructor)]
     pub async fn new(
         uri: &JsNostrConnectURI,
-        app_keys: Option<JsKeys>,
+        app_keys: &JsKeys,
         timeout: &JsDuration,
     ) -> Result<JsNip46Signer> {
         Ok(Self {
             inner: Nip46Signer::new(
                 uri.deref().clone(),
-                app_keys.map(|k| k.deref().clone()),
+                app_keys.deref().clone(),
                 **timeout,
                 None,
             )
@@ -68,20 +68,13 @@ impl JsNip46Signer {
 
     /// Get signer public key
     #[wasm_bindgen(js_name = signerPublicKey)]
-    pub async fn signer_public_key(&self) -> Result<JsPublicKey> {
-        Ok(self
-            .inner
-            .signer_public_key()
-            .await
-            .map_err(into_err)?
-            .into())
+    pub fn signer_public_key(&self) -> JsPublicKey {
+        self.inner.signer_public_key().into()
     }
 
+    /// Get Nostr Connect URI in **bunker** format.
     #[wasm_bindgen(js_name = nostrConnectUri)]
-    pub async fn nostr_connect_uri(&self, metadata: &JsNostrConnectMetadata) -> JsNostrConnectURI {
-        self.inner
-            .nostr_connect_uri(metadata.deref().clone())
-            .await
-            .into()
+    pub async fn nostr_connect_uri(&self) -> JsNostrConnectURI {
+        self.inner.nostr_connect_uri().await.into()
     }
 }

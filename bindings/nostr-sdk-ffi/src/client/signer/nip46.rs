@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::nips::nip46::{NostrConnectMetadata, NostrConnectURI};
+use nostr_ffi::nips::nip46::NostrConnectURI;
 use nostr_ffi::{Keys, PublicKey};
 use nostr_sdk::{block_on, signer};
 use uniffi::Object;
@@ -39,7 +39,7 @@ impl Nip46Signer {
     #[uniffi::constructor]
     pub fn new(
         uri: &NostrConnectURI,
-        app_keys: Option<Arc<Keys>>,
+        app_keys: &Keys,
         timeout: Duration,
         opts: Option<Arc<RelayOptions>>,
     ) -> Result<Self> {
@@ -47,7 +47,7 @@ impl Nip46Signer {
             Ok(Self {
                 inner: signer::Nip46Signer::new(
                     uri.deref().clone(),
-                    app_keys.map(|k| k.as_ref().deref().clone()),
+                    app_keys.deref().clone(),
                     timeout,
                     opts.map(|k| k.as_ref().deref().clone()),
                 )
@@ -69,16 +69,12 @@ impl Nip46Signer {
     }
 
     /// Get signer public key
-    pub fn signer_public_key(&self) -> Result<PublicKey> {
-        block_on(async move { Ok(self.inner.signer_public_key().await?.into()) })
+    pub fn signer_public_key(&self) -> PublicKey {
+        self.inner.signer_public_key().into()
     }
 
-    pub fn nostr_connect_uri(&self, metadata: &NostrConnectMetadata) -> NostrConnectURI {
-        block_on(async move {
-            self.inner
-                .nostr_connect_uri(metadata.deref().clone())
-                .await
-                .into()
-        })
+    /// Get Nostr Connect URI in **bunker** format.
+    pub fn nostr_connect_uri(&self) -> NostrConnectURI {
+        block_on(async move { self.inner.nostr_connect_uri().await.into() })
     }
 }

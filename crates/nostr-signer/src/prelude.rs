@@ -8,6 +8,8 @@
 #![allow(ambiguous_glob_reexports)]
 #![doc(hidden)]
 
+pub use nostr::prelude::*;
+
 #[cfg(feature = "nip46")]
-pub use crate::nip46::Nip46Signer;
+pub use crate::nip46::*;
 pub use crate::*;

@@ -2,105 +2,82 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Nostr Connect (NIP46)
-//!
-//! <https://github.com/nostr-protocol/nips/blob/master/46.md>
+//! Nostr Connect client
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::time;
-use nostr::nips::nip46::{
-    self, Message, NostrConnectMetadata, NostrConnectURI, Request, ResponseResult,
-};
+use nostr::nips::nip46::{Message, NostrConnectURI, Request, ResponseResult};
 use nostr::prelude::*;
-use nostr::{key, serde_json};
 use nostr_relay_pool::{
     RelayOptions, RelayPool, RelayPoolNotification, RelaySendOptions, SubscribeOptions,
 };
-use thiserror::Error;
-use tokio::sync::Mutex;
+use tokio::sync::broadcast::Receiver;
 
-/// Nostr Connect error
-#[derive(Debug, Error)]
-pub enum Error {
-    /// Json
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
-    /// Keys error
-    #[error(transparent)]
-    Keys(#[from] key::Error),
-    /// Event builder error
-    #[error(transparent)]
-    Builder(#[from] builder::Error),
-    /// NIP04 error
-    #[error(transparent)]
-    NIP04(#[from] nip04::Error),
-    /// NIP46 error
-    #[error(transparent)]
-    NIP46(#[from] nip46::Error),
-    /// Relay
-    #[error(transparent)]
-    Relay(#[from] nostr_relay_pool::relay::Error),
-    /// Pool
-    #[error(transparent)]
-    Pool(#[from] nostr_relay_pool::pool::Error),
-    /// NIP46 response error
-    #[error("response error: {0}")]
-    Response(String),
-    /// Signer public key not found
-    #[error("signer public key not found")]
-    SignerPublicKeyNotFound,
-    /// Request timeout
-    #[error("timeout")]
-    Timeout,
-}
+use super::Error;
 
-/// NIP46 Signer
+/// Nostr Connect Client
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/46.md>
 #[derive(Debug, Clone)]
 pub struct Nip46Signer {
-    uri: NostrConnectURI,
     app_keys: Keys,
-    signer_public_key: Arc<Mutex<Option<PublicKey>>>,
+    signer_public_key: PublicKey,
     pool: RelayPool,
     timeout: Duration,
+    secret: Option<String>,
 }
 
 impl Nip46Signer {
-    /// New NIP46 remote signer
+    /// Construct Nostr Connect client
     pub async fn new(
         uri: NostrConnectURI,
-        app_keys: Option<Keys>,
+        app_keys: Keys,
         timeout: Duration,
         opts: Option<RelayOptions>,
     ) -> Result<Self, Error> {
+        // Check app keys
+        if let NostrConnectURI::Client { public_key, .. } = &uri {
+            if *public_key != app_keys.public_key() {
+                return Err(Error::PublicKeyNotMatchAppKeys);
+            }
+        }
+
         // Compose pool
         let pool: RelayPool = RelayPool::default();
 
+        // Add relays
         let opts: RelayOptions = opts.unwrap_or_default();
         for url in uri.relays().into_iter() {
             pool.add_relay(url, opts.clone()).await?;
         }
 
+        // Connect to relays
         pool.connect(Some(Duration::from_secs(10))).await;
 
-        let app_keys: Keys = match app_keys {
-            Some(keys) => keys,
-            None => Keys::generate(),
-        };
-        let signer_public_key: Option<PublicKey> = uri.signer_public_key();
+        // Subscribe
+        let notifications = subscribe(&app_keys, &pool).await;
 
+        // Get signer public key
+        let signer_public_key: PublicKey = match uri.signer_public_key() {
+            Some(public_key) => public_key,
+            None => get_signer_public_key(&app_keys, notifications, timeout).await?,
+        };
+
+        // Compose
         let this = Self {
-            uri,
             app_keys,
-            signer_public_key: Arc::new(Mutex::new(signer_public_key)),
+            signer_public_key,
             pool,
             timeout,
+            secret: uri.secret(),
         };
 
-        this.subscribe().await;
-        this.connect().await?;
+        // Send `connect` command if bunker URI
+        if uri.is_bunker() {
+            this.connect().await?;
+        }
 
         Ok(this)
     }
@@ -116,44 +93,22 @@ impl Nip46Signer {
     }
 
     /// Get signer [PublicKey]
-    pub async fn signer_public_key(&self) -> Result<PublicKey, Error> {
-        let mut signer_public_key = self.signer_public_key.lock().await;
-        match *signer_public_key {
-            Some(p) => Ok(p),
-            None => {
-                let public_key: PublicKey = self.get_signer_public_key().await?;
-                *signer_public_key = Some(public_key);
-                Ok(public_key)
-            }
-        }
+    pub fn signer_public_key(&self) -> PublicKey {
+        self.signer_public_key
     }
 
-    /// Compose Nostr Connect URI
-    pub async fn nostr_connect_uri(&self, metadata: NostrConnectMetadata) -> NostrConnectURI {
-        NostrConnectURI::Client {
-            public_key: self.app_keys.public_key(),
+    /// Get Nostr Connect URI in **bunker** format.
+    pub async fn nostr_connect_uri(&self) -> NostrConnectURI {
+        NostrConnectURI::Bunker {
+            signer_public_key: self.signer_public_key,
             relays: self.relays().await,
-            metadata,
+            secret: self.secret.clone(),
         }
-    }
-
-    async fn subscribe(&self) {
-        let public_key: PublicKey = self.app_keys.public_key();
-
-        let filter = Filter::new()
-            .pubkey(public_key)
-            .kind(Kind::NostrConnect)
-            .since(Timestamp::now());
-
-        // Subscribe
-        self.pool
-            .subscribe(vec![filter], SubscribeOptions::default())
-            .await;
     }
 
     async fn send_request(&self, req: Request) -> Result<ResponseResult, Error> {
         let secret_key: &SecretKey = self.app_keys.secret_key()?;
-        let signer_public_key: PublicKey = self.signer_public_key().await?;
+        let signer_public_key: PublicKey = self.signer_public_key();
 
         // Convert request to event
         let msg = Message::request(req);
@@ -207,8 +162,8 @@ impl Nip46Signer {
     /// Connect msg
     async fn connect(&self) -> Result<(), Error> {
         let req = Request::Connect {
-            public_key: self.app_keys.public_key(),
-            secret: self.uri.secret(),
+            public_key: self.signer_public_key(),
+            secret: self.secret.clone(),
         };
         let res = self.send_request(req).await?;
         Ok(res.to_connect()?)
@@ -287,32 +242,52 @@ impl Nip46Signer {
         Ok(res.to_encrypt_decrypt()?)
     }
 
-    async fn get_signer_public_key(&self) -> Result<PublicKey, Error> {
-        let secret_key = self.app_keys.secret_key()?;
-
-        let mut notifications = self.pool.notifications();
-        time::timeout(Some(self.timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind() == Kind::NostrConnect {
-                        let msg: String =
-                            nip04::decrypt(secret_key, event.author_ref(), event.content())?;
-                        let msg = Message::from_json(msg)?;
-                        if let Ok(Request::Connect { public_key, .. }) = msg.to_request() {
-                            return Ok(public_key);
-                        }
-                    }
-                }
-            }
-
-            Err(Error::SignerPublicKeyNotFound)
-        })
-        .await
-        .ok_or(Error::Timeout)?
-    }
-
     /// Completely shutdown
     pub async fn shutdown(self) -> Result<(), Error> {
         Ok(self.pool.shutdown().await?)
     }
+}
+
+async fn subscribe(app_keys: &Keys, pool: &RelayPool) -> Receiver<RelayPoolNotification> {
+    let public_key: PublicKey = app_keys.public_key();
+
+    let filter = Filter::new()
+        .pubkey(public_key)
+        .kind(Kind::NostrConnect)
+        .since(Timestamp::now());
+
+    let notifications = pool.notifications();
+
+    // Subscribe
+    pool.subscribe(vec![filter], SubscribeOptions::default())
+        .await;
+
+    notifications
+}
+
+async fn get_signer_public_key(
+    app_keys: &Keys,
+    mut notifications: Receiver<RelayPoolNotification>,
+    timeout: Duration,
+) -> Result<PublicKey, Error> {
+    let secret_key = app_keys.secret_key()?;
+    time::timeout(Some(timeout), async {
+        while let Ok(notification) = notifications.recv().await {
+            if let RelayPoolNotification::Event { event, .. } = notification {
+                if event.kind() == Kind::NostrConnect {
+                    let msg: String =
+                        nip04::decrypt(secret_key, event.author_ref(), event.content())?;
+                    tracing::debug!("New Nostr Connect message received: {msg}");
+                    let msg = Message::from_json(msg)?;
+                    if let Ok(Request::Connect { public_key, .. }) = msg.to_request() {
+                        return Ok(public_key);
+                    }
+                }
+            }
+        }
+
+        Err(Error::SignerPublicKeyNotFound)
+    })
+    .await
+    .ok_or(Error::Timeout)?
 }
