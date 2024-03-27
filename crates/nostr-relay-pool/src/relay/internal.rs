@@ -16,19 +16,18 @@ use async_utility::{futures_util, thread, time};
 use async_wsocket::futures_util::{Future, SinkExt, StreamExt};
 use async_wsocket::{Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
-use nostr::message::relay::NegentropyErrorCode;
+#[cfg(not(target_arch = "wasm32"))]
 use nostr::message::MessageHandleError;
-use nostr::negentropy::{self, Bytes, Negentropy};
+use nostr::negentropy::{Bytes, Negentropy};
 use nostr::nips::nip01::Coordinate;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr::{
-    event, ClientMessage, Event, EventId, Filter, JsonUtil, Keys, MissingPartialEvent,
-    PartialEvent, RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
+    ClientMessage, Event, EventId, Filter, JsonUtil, Keys, MissingPartialEvent, PartialEvent,
+    RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
-use nostr_database::{DatabaseError, DynNostrDatabase, Order};
-use thiserror::Error;
+use nostr_database::{DynNostrDatabase, Order};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
@@ -39,7 +38,7 @@ use super::options::{
     NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP,
 };
 use super::stats::RelayConnectionStats;
-use super::{RelayNotification, RelayStatus};
+use super::{Error, RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
@@ -48,115 +47,6 @@ const MIN_ATTEMPTS: usize = 1;
 const MIN_UPTIME: f64 = 0.90;
 #[cfg(not(target_arch = "wasm32"))]
 const PING_INTERVAL: u64 = 55;
-
-/// [`Relay`](super::Relay) error
-#[derive(Debug, Error)]
-pub enum Error {
-    /// MessageHandle error
-    #[error(transparent)]
-    MessageHandle(#[from] MessageHandleError),
-    /// Event error
-    #[error(transparent)]
-    Event(#[from] event::Error),
-    /// Partial Event error
-    #[error(transparent)]
-    PartialEvent(#[from] event::partial::Error),
-    /// Negentropy error
-    #[error(transparent)]
-    Negentropy(#[from] negentropy::Error),
-    /// Database error
-    #[error(transparent)]
-    Database(#[from] DatabaseError),
-    /// Thread error
-    #[error(transparent)]
-    Thread(#[from] thread::Error),
-    /// Message response timeout
-    #[error("recv message response timeout")]
-    RecvTimeout,
-    /// Generic timeout
-    #[error("timeout")]
-    Timeout,
-    /// Message not sent
-    #[error("message not sent")]
-    MessageNotSent,
-    /// Relay not connected
-    #[error("relay not connected")]
-    NotConnected,
-    /// Relay not connected
-    #[error("relay not connected (status changed)")]
-    NotConnectedStatusChanged,
-    /// Event not published
-    #[error("event not published: {0}")]
-    EventNotPublished(String),
-    /// No event is published
-    #[error("events not published: {0:?}")]
-    EventsNotPublished(HashMap<EventId, String>),
-    /// Only some events
-    #[error("partial publish: published={}, missing={}", published.len(), not_published.len())]
-    PartialPublish {
-        /// Published events
-        published: Vec<EventId>,
-        /// Not published events
-        not_published: HashMap<EventId, String>,
-    },
-    /// Batch event empty
-    #[error("batch event cannot be empty")]
-    BatchEventEmpty,
-    /// Impossible to receive oneshot message
-    #[error("impossible to recv msg")]
-    OneShotRecvError,
-    /// Read actions disabled
-    #[error("read actions are disabled for this relay")]
-    ReadDisabled,
-    /// Write actions disabled
-    #[error("write actions are disabled for this relay")]
-    WriteDisabled,
-    /// Filters empty
-    #[error("filters empty")]
-    FiltersEmpty,
-    /// Reconciliation error
-    #[error("negentropy reconciliation error: {0}")]
-    NegentropyReconciliation(NegentropyErrorCode),
-    /// Negentropy not supported
-    #[error("negentropy not supported")]
-    NegentropyNotSupported,
-    /// Unknown negentropy error
-    #[error("unknown negentropy error")]
-    UnknownNegentropyError,
-    /// Relay message too large
-    #[error("Received message too large: size={size}, max_size={max_size}")]
-    RelayMessageTooLarge {
-        /// Message size
-        size: usize,
-        /// Max message size
-        max_size: usize,
-    },
-    /// Event too large
-    #[error("Received event too large: size={size}, max_size={max_size}")]
-    EventTooLarge {
-        /// Event size
-        size: usize,
-        /// Max event size
-        max_size: usize,
-    },
-    /// Too many tags
-    #[error("Received event with too many tags: tags={size}, max_tags={max_size}")]
-    TooManyTags {
-        /// Tags num
-        size: usize,
-        /// Max tags num
-        max_size: usize,
-    },
-    /// Event expired
-    #[error("event expired")]
-    EventExpired,
-    /// POW diffculty too low
-    #[error("POW difficulty too low (min. {min})")]
-    PowDifficultyTooLow {
-        /// Min. difficulty
-        min: u8,
-    },
-}
 
 /// Relay event
 #[derive(Debug)]

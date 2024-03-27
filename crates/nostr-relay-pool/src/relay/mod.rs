@@ -19,6 +19,7 @@ use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId,
 use nostr_database::{DynNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
+mod error;
 pub mod flags;
 mod internal;
 pub mod limits;
@@ -26,8 +27,8 @@ pub mod options;
 pub mod stats;
 mod status;
 
+pub use self::error::Error;
 pub use self::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
-pub use self::internal::Error;
 use self::internal::InternalRelay;
 pub use self::limits::RelayLimits;
 pub use self::options::{
