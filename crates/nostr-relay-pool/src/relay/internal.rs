@@ -123,6 +123,7 @@ impl InternalRelay {
         }
     }
 
+    #[inline]
     pub fn url(&self) -> Url {
         self.url.clone()
     }
@@ -152,10 +153,12 @@ impl InternalRelay {
             .await;
     }
 
+    #[inline]
     pub fn flags(&self) -> AtomicRelayServiceFlags {
         self.opts.flags.clone()
     }
 
+    #[inline]
     pub async fn is_connected(&self) -> bool {
         self.status().await == RelayStatus::Connected
     }
@@ -193,30 +196,37 @@ impl InternalRelay {
         subscriptions.remove(id);
     }
 
+    #[inline]
     pub fn opts(&self) -> RelayOptions {
         self.opts.clone()
     }
 
+    #[inline]
     pub fn stats(&self) -> RelayConnectionStats {
         self.stats.clone()
     }
 
+    #[inline]
     pub fn queue(&self) -> usize {
         self.relay_sender.max_capacity() - self.relay_sender.capacity()
     }
 
+    #[inline]
     fn is_scheduled_for_stop(&self) -> bool {
         self.scheduled_for_stop.load(Ordering::SeqCst)
     }
 
+    #[inline]
     fn schedule_for_stop(&self, value: bool) {
         self.scheduled_for_stop.store(value, Ordering::SeqCst);
     }
 
+    #[inline]
     fn is_scheduled_for_termination(&self) -> bool {
         self.scheduled_for_termination.load(Ordering::SeqCst)
     }
 
+    #[inline]
     fn schedule_for_termination(&self, value: bool) {
         self.scheduled_for_termination
             .store(value, Ordering::SeqCst);
@@ -408,6 +418,7 @@ impl InternalRelay {
         .ok()
     }
 
+    #[inline]
     #[cfg(target_arch = "wasm32")]
     fn spawn_pinger(&self) -> Option<AbortHandle> {
         None
@@ -880,6 +891,7 @@ impl InternalRelay {
         Ok(())
     }
 
+    #[inline]
     pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
         self.batch_msg(vec![msg], opts).await
     }
@@ -926,6 +938,7 @@ impl InternalRelay {
         }
     }
 
+    #[inline]
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         let id: EventId = event.id();
         self.batch_event(vec![event], opts).await?;
@@ -1030,6 +1043,7 @@ impl InternalRelay {
         Ok(())
     }
 
+    #[inline]
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
