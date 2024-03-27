@@ -19,7 +19,7 @@ use bitcoin::secp256k1::rand::RngCore;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 
-use crate::event::unsigned::UnsignedEvent;
+use crate::event::unsigned::{self, UnsignedEvent};
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{ParseError, Url};
 use crate::{key, Event, JsonUtil, PublicKey};
@@ -38,6 +38,8 @@ pub enum Error {
     Json(serde_json::Error),
     /// Url parse error
     Url(ParseError),
+    /// Unsigned event error
+    Unsigned(unsigned::Error),
     /// Invalid request
     InvalidRequest,
     /// Too many/few params
@@ -63,6 +65,7 @@ impl fmt::Display for Error {
             Self::Key(e) => write!(f, "Key: {e}"),
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Url(e) => write!(f, "Url: {e}"),
+            Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
             Self::InvalidRequest => write!(f, "Invalid request"),
             Self::InvalidParamsLength => write!(f, "Too many/few params"),
             Self::UnsupportedMethod(name) => write!(f, "Unsupported method: {name}"),
@@ -89,6 +92,12 @@ impl From<serde_json::Error> for Error {
 impl From<ParseError> for Error {
     fn from(e: ParseError) -> Self {
         Self::Url(e)
+    }
+}
+
+impl From<unsigned::Error> for Error {
+    fn from(e: unsigned::Error) -> Self {
+        Self::Unsigned(e)
     }
 }
 
@@ -223,15 +232,14 @@ impl Request {
         match method {
             Method::Connect => {
                 let public_key = params.first().ok_or(Error::InvalidRequest)?;
-                let public_key: PublicKey = serde_json::from_str(public_key)?;
-                let secret: Option<String> =
-                    params.get(1).and_then(|s| serde_json::from_str(s).ok());
+                let public_key: PublicKey = PublicKey::from_hex(public_key)?;
+                let secret: Option<String> = params.get(1).cloned();
                 Ok(Self::Connect { public_key, secret })
             }
             Method::GetPublicKey => Ok(Self::GetPublicKey),
             Method::SignEvent => {
                 let unsigned: &String = params.first().ok_or(Error::InvalidRequest)?;
-                let unsigned_event: UnsignedEvent = serde_json::from_str(unsigned)?;
+                let unsigned_event: UnsignedEvent = UnsignedEvent::from_json(unsigned)?;
                 Ok(Self::SignEvent(unsigned_event))
             }
             Method::GetRelays => Ok(Self::GetRelays),
@@ -241,8 +249,8 @@ impl Request {
                 }
 
                 Ok(Self::Nip04Encrypt {
-                    public_key: serde_json::from_str(&params[0])?,
-                    text: serde_json::from_str(&params[1])?,
+                    public_key: PublicKey::from_hex(&params[0])?,
+                    text: params[1].to_owned(),
                 })
             }
             Method::Nip04Decrypt => {
@@ -251,8 +259,8 @@ impl Request {
                 }
 
                 Ok(Self::Nip04Decrypt {
-                    public_key: serde_json::from_str(&params[0])?,
-                    ciphertext: serde_json::from_str(&params[1])?,
+                    public_key: PublicKey::from_hex(&params[0])?,
+                    ciphertext: params[1].to_owned(),
                 })
             }
             Method::Nip44Encrypt => {
@@ -261,8 +269,8 @@ impl Request {
                 }
 
                 Ok(Self::Nip44Encrypt {
-                    public_key: serde_json::from_str(&params[0])?,
-                    text: serde_json::from_str(&params[1])?,
+                    public_key: PublicKey::from_hex(&params[0])?,
+                    text: params[1].to_owned(),
                 })
             }
             Method::Nip44Decrypt => {
@@ -271,8 +279,8 @@ impl Request {
                 }
 
                 Ok(Self::Nip44Decrypt {
-                    public_key: serde_json::from_str(&params[0])?,
-                    ciphertext: serde_json::from_str(&params[1])?,
+                    public_key: PublicKey::from_hex(&params[0])?,
+                    ciphertext: params[1].to_owned(),
                 })
             }
             Method::Ping => Ok(Self::Ping),
@@ -1063,6 +1071,23 @@ mod test {
     #[test]
     fn test_message_deserialization() {
         // Connect
+        let json = r#"{"id":"2845841889","method":"connect","params":["79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3"]}"#;
+        let message = Message::from_json(json).unwrap();
+        assert_eq!(
+            message,
+            Message::Request {
+                id: String::from("2845841889"),
+                req: Request::Connect {
+                    public_key: PublicKey::from_hex(
+                        "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3"
+                    )
+                    .unwrap(),
+                    secret: None
+                }
+            }
+        );
+
+        // Connect ACK
         let json = r#"{"id":"2581081643","result":"ack","error":null}"#;
         let message = Message::from_json(json).unwrap();
         assert_eq!(
