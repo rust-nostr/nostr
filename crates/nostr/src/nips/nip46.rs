@@ -898,7 +898,8 @@ impl fmt::Display for NostrConnectURI {
                         query.push('&');
                     }
 
-                    query.push_str(relay_url);
+                    query.push_str("relay=");
+                    query.push_str(&url_encode(relay_url));
                 }
 
                 if let Some(secret) = secret {
@@ -906,6 +907,7 @@ impl fmt::Display for NostrConnectURI {
                         query.push('&');
                     }
 
+                    query.push_str("secret=");
                     query.push_str(secret);
                 }
 
@@ -929,8 +931,8 @@ impl fmt::Display for NostrConnectURI {
                     let relay_url = relay_url.to_string();
                     let relay_url = relay_url.strip_suffix('/').unwrap_or(&relay_url);
 
-                    relays_str.push('&');
-                    relays_str.push_str(relay_url);
+                    relays_str.push_str("&relay=");
+                    relays_str.push_str(&url_encode(relay_url));
                 }
 
                 write!(
@@ -978,6 +980,40 @@ mod test {
         let relay_url = Url::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
         assert_eq!(uri, NostrConnectURI::client(pubkey, [relay_url], app_name));
+    }
+
+    #[test]
+    fn test_bunker_uri_serialization() {
+        let uri = "bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss%3A%2F%2Frelay.nsec.app&secret=abcd";
+
+        let signer_public_key =
+            PublicKey::parse("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3")
+                .unwrap();
+        let relay_url = Url::parse("wss://relay.nsec.app").unwrap();
+        assert_eq!(
+            NostrConnectURI::Bunker {
+                signer_public_key,
+                relays: vec![relay_url],
+                secret: Some(String::from("abcd"))
+            }
+            .to_string(),
+            uri
+        );
+    }
+
+    #[test]
+    fn test_client_uri_serialization() {
+        let uri = "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata=%7B%22name%22%3A%22Example%22%7D&relay=wss%3A%2F%2Frelay.damus.io";
+
+        let pubkey =
+            PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
+                .unwrap();
+        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
+        let app_name = "Example";
+        assert_eq!(
+            NostrConnectURI::client(pubkey, [relay_url], app_name).to_string(),
+            uri
+        );
     }
 
     #[test]

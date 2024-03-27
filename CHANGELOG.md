@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 * nostr: fix `Tag::content` return always `None` when `Tag::Generic` ([Yuki Kishimoto])
+* nostr: fix `NostrConnectURI` serialization ([Yuki Kishimoto])
 
 ### Removed
 
