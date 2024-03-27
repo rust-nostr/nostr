@@ -83,7 +83,7 @@ url-fork = { version = "3.0", default-features = false, features = ["serde"], op
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
-instant = { version = "0.1", features = [ "wasm-bindgen", "inaccurate" ] }
+instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
 js-sys = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 wasm-bindgen-futures = { workspace = true, optional = true }
@@ -91,6 +91,7 @@ web-sys = { workspace = true, features = ["Window"], optional = true }
 
 [dev-dependencies]
 num_cpus = "1.15"
+tokio = { workspace = true, features = ["full"] }
 
 [[example]]
 name = "keys"

@@ -147,31 +147,6 @@ where
     Ok(verify_json(public_key, &json, name))
 }
 
-/// Verify NIP05
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "blocking")]
-pub fn verify_blocking<S>(
-    public_key: &PublicKey,
-    nip05: S,
-    proxy: Option<SocketAddr>,
-) -> Result<bool, Error>
-where
-    S: AsRef<str>,
-{
-    use reqwest::blocking::Client;
-
-    let (url, name) = compose_url(nip05)?;
-    let mut builder = Client::builder();
-    if let Some(proxy) = proxy {
-        let proxy = format!("socks5h://{proxy}");
-        builder = builder.proxy(Proxy::all(proxy)?);
-    }
-    let client: Client = builder.build()?;
-    let res = client.get(url).send()?;
-    let json: Value = serde_json::from_str(&res.text()?)?;
-    Ok(verify_json(public_key, &json, name))
-}
-
 /// Get [Nip19Profile] from NIP05 (public key and list of advertised relays)
 ///
 /// **Proxy is ignored for WASM targets!**
@@ -198,31 +173,6 @@ where
 
     let res = client.get(url).send().await?;
     let json: Value = serde_json::from_str(&res.text().await?)?;
-
-    let public_key = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
-    let relays = get_relays_from_json(json, public_key);
-
-    Ok(Nip19Profile { public_key, relays })
-}
-
-/// Get [Nip19Profile] from NIP05 (public key and list of advertised relays)
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "blocking")]
-pub fn get_profile_blocking<S>(nip05: S, proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
-where
-    S: AsRef<str>,
-{
-    use reqwest::blocking::Client;
-
-    let (url, name) = compose_url(nip05)?;
-    let mut builder = Client::builder();
-    if let Some(proxy) = proxy {
-        let proxy = format!("socks5h://{proxy}");
-        builder = builder.proxy(Proxy::all(proxy)?);
-    }
-    let client: Client = builder.build()?;
-    let res = client.get(url).send()?;
-    let json: Value = serde_json::from_str(&res.text()?)?;
 
     let public_key = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
     let relays = get_relays_from_json(json, public_key);
