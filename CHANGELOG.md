@@ -63,6 +63,7 @@
 
 * nostr: remove `verify_blocking` and `get_profile_blocking` functions ([Yuki Kishimoto])
 * nostr: remove `RelayInformationDocument::get_blocking` ([Yuki Kishimoto])
+* nostr: remove `blocking` feature ([Yuki Kishimoto])
 * sqlite: removed `deadpool-sqlite` dep ([Yuki Kishimoto])
 * ffi(nostr): remove `Keys::from_mnemonic_with_account` and `Keys::from_mnemonic_advanced` ([Yuki Kishimoto])
 

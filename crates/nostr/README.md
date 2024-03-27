@@ -96,7 +96,6 @@ The following crate feature flags are available:
 |------------|:-------:|----------------------------------------------------------------------------------------------|
 | `std`      |   Yes   | Enable `std` library                                                                         |
 | `alloc`    |   No    | Needed to use this library in `no_std` context                                               |
-| `blocking` |   No    | Needed to use `NIP-05` and `NIP-11` features in not async/await context                      |
 | `all-nips` |   Yes   | Enable all NIPs                                                                              |
 | `nip03`    |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                        |
 | `nip04`    |   Yes   | Enable NIP-04: Encrypted Direct Message                                                      |

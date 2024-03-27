@@ -9,7 +9,7 @@ name = "nostr_ffi"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
-nostr = { workspace = true, features = ["std", "blocking", "all-nips"] }
+nostr = { workspace = true, features = ["std", "all-nips"] }
 uniffi.workspace = true
 
 [dev-dependencies]
