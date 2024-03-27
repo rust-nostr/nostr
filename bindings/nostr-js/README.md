@@ -26,12 +26,12 @@ async function main() {
     let keys = Keys.generate();
 
     // Hex keys
-    console.log("Public key (hex): ", keys.publicKey().toHex());
-    console.log("Secret key (hex): ", keys.secretKey().toHex());
+    console.log("Public key (hex): ", keys.publicKey.toHex());
+    console.log("Secret key (hex): ", keys.secretKey.toHex());
 
     // Bech32 keys
-    console.log("Public key (bech32): ", keys.publicKey().toBech32());
-    console.log("Secret key (bech32): ", keys.secretKey().toBech32());
+    console.log("Public key (bech32): ", keys.publicKey.toBech32());
+    console.log("Secret key (bech32): ", keys.secretKey.toBech32());
 }
 
 main();
