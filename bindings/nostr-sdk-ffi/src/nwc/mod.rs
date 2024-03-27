@@ -9,7 +9,7 @@ use nostr_ffi::nips::nip47::{
     LookupInvoiceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult,
     NostrWalletConnectURI, PayKeysendRequestParams, PayKeysendResponseResult,
 };
-use nostr_sdk::{block_on, nwc};
+use nostr_sdk::nwc;
 use uniffi::Object;
 
 pub mod options;
@@ -23,75 +23,80 @@ pub struct NWC {
     inner: nwc::NWC,
 }
 
-#[uniffi::export]
+impl Deref for NWC {
+    type Target = nwc::NWC;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+#[uniffi::export(async_runtime = "tokio")]
 impl NWC {
     /// Compose new `NWC` client
     #[uniffi::constructor]
-    pub fn new(uri: &NostrWalletConnectURI) -> Result<Self> {
-        block_on(async move {
-            Ok(Self {
-                inner: nwc::NWC::new(uri.deref().clone()).await?,
-            })
+    pub async fn new(uri: &NostrWalletConnectURI) -> Result<Self> {
+        Ok(Self {
+            inner: nwc::NWC::new(uri.deref().clone()).await?,
         })
     }
 
     /// Compose new `NWC` client with `NostrWalletConnectOptions`
     #[uniffi::constructor]
-    pub fn with_opts(
+    pub async fn with_opts(
         uri: &NostrWalletConnectURI,
         opts: &NostrWalletConnectOptions,
     ) -> Result<Self> {
-        block_on(async move {
-            Ok(Self {
-                inner: nwc::NWC::with_opts(uri.deref().clone(), opts.deref().clone()).await?,
-            })
+        Ok(Self {
+            inner: nwc::NWC::with_opts(uri.deref().clone(), opts.deref().clone()).await?,
         })
     }
 
     /// Pay invoice
-    pub fn pay_invoice(&self, invoice: String) -> Result<String> {
-        block_on(async move { Ok(self.inner.pay_invoice(invoice).await?) })
+    pub async fn pay_invoice(&self, invoice: String) -> Result<String> {
+        Ok(self.inner.pay_invoice(invoice).await?)
     }
 
     /// Pay keysend
-    pub fn pay_keysend(&self, params: PayKeysendRequestParams) -> Result<PayKeysendResponseResult> {
-        block_on(async move { Ok(self.inner.pay_keysend(params.into()).await?.into()) })
+    pub async fn pay_keysend(
+        &self,
+        params: PayKeysendRequestParams,
+    ) -> Result<PayKeysendResponseResult> {
+        Ok(self.inner.pay_keysend(params.into()).await?.into())
     }
 
     /// Create invoice
-    pub fn make_invoice(
+    pub async fn make_invoice(
         &self,
         params: MakeInvoiceRequestParams,
     ) -> Result<MakeInvoiceResponseResult> {
-        block_on(async move { Ok(self.inner.make_invoice(params.into()).await?.into()) })
+        Ok(self.inner.make_invoice(params.into()).await?.into())
     }
 
     /// Lookup invoice
-    pub fn lookup_invoice(
+    pub async fn lookup_invoice(
         &self,
         params: LookupInvoiceRequestParams,
     ) -> Result<LookupInvoiceResponseResult> {
-        block_on(async move { Ok(self.inner.lookup_invoice(params.into()).await?.into()) })
+        Ok(self.inner.lookup_invoice(params.into()).await?.into())
     }
 
     /// List transactions
-    pub fn list_transactions(
+    pub async fn list_transactions(
         &self,
         params: ListTransactionsRequestParams,
     ) -> Result<Vec<LookupInvoiceResponseResult>> {
-        block_on(async move {
-            let list = self.inner.list_transactions(params.into()).await?;
-            Ok(list.into_iter().map(|l| l.into()).collect())
-        })
+        let list = self.inner.list_transactions(params.into()).await?;
+        Ok(list.into_iter().map(|l| l.into()).collect())
     }
 
     /// Get balance
-    pub fn get_balance(&self) -> Result<u64> {
-        block_on(async move { Ok(self.inner.get_balance().await?) })
+    pub async fn get_balance(&self) -> Result<u64> {
+        Ok(self.inner.get_balance().await?)
     }
 
     /// Get info
-    pub fn get_info(&self) -> Result<GetInfoResponseResult> {
-        block_on(async move { Ok(self.inner.get_info().await?.into()) })
+    pub async fn get_info(&self) -> Result<GetInfoResponseResult> {
+        Ok(self.inner.get_info().await?.into())
     }
 }

@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use nostr_ffi::nips::nip46::NostrConnectURI;
 use nostr_ffi::{Keys, PublicKey};
-use nostr_sdk::{block_on, signer};
+use nostr_sdk::signer;
 use uniffi::Object;
 
 use crate::error::Result;
@@ -33,39 +33,35 @@ impl From<signer::Nip46Signer> for Nip46Signer {
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl Nip46Signer {
     /// New NIP46 remote signer
     #[uniffi::constructor]
-    pub fn new(
+    pub async fn new(
         uri: &NostrConnectURI,
         app_keys: &Keys,
         timeout: Duration,
         opts: Option<Arc<RelayOptions>>,
     ) -> Result<Self> {
-        block_on(async move {
-            Ok(Self {
-                inner: signer::Nip46Signer::new(
-                    uri.deref().clone(),
-                    app_keys.deref().clone(),
-                    timeout,
-                    opts.map(|k| k.as_ref().deref().clone()),
-                )
-                .await?,
-            })
+        Ok(Self {
+            inner: signer::Nip46Signer::new(
+                uri.deref().clone(),
+                app_keys.deref().clone(),
+                timeout,
+                opts.map(|k| k.as_ref().deref().clone()),
+            )
+            .await?,
         })
     }
 
     /// Get signer relays
-    pub fn relays(&self) -> Vec<String> {
-        block_on(async move {
-            self.inner
-                .relays()
-                .await
-                .into_iter()
-                .map(|u| u.to_string())
-                .collect()
-        })
+    pub async fn relays(&self) -> Vec<String> {
+        self.inner
+            .relays()
+            .await
+            .into_iter()
+            .map(|u| u.to_string())
+            .collect()
     }
 
     /// Get signer public key
@@ -74,7 +70,7 @@ impl Nip46Signer {
     }
 
     /// Get Nostr Connect URI in **bunker** format.
-    pub fn nostr_connect_uri(&self) -> NostrConnectURI {
-        block_on(async move { self.inner.nostr_connect_uri().await.into() })
+    pub async fn nostr_connect_uri(&self) -> NostrConnectURI {
+        self.inner.nostr_connect_uri().await.into()
     }
 }
