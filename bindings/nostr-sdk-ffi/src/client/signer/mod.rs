@@ -5,7 +5,7 @@
 use std::ops::Deref;
 
 use nostr_ffi::{Event, EventBuilder, Keys, PublicKey, UnsignedEvent};
-use nostr_sdk::{block_on, signer};
+use nostr_sdk::signer;
 use uniffi::Object;
 
 pub mod nip46;
@@ -32,7 +32,7 @@ impl From<signer::NostrSigner> for NostrSigner {
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl NostrSigner {
     #[uniffi::constructor]
     pub fn keys(keys: &Keys) -> Self {
@@ -49,52 +49,46 @@ impl NostrSigner {
     }
 
     /// Get signer public key
-    pub fn public_key(&self) -> Result<PublicKey> {
-        block_on(async move { Ok(self.inner.public_key().await?.into()) })
+    pub async fn public_key(&self) -> Result<PublicKey> {
+        Ok(self.inner.public_key().await?.into())
     }
 
-    pub fn sign_event_builder(&self, builder: &EventBuilder) -> Result<Event> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .sign_event_builder(builder.deref().clone())
-                .await?
-                .into())
-        })
+    pub async fn sign_event_builder(&self, builder: &EventBuilder) -> Result<Event> {
+        Ok(self
+            .inner
+            .sign_event_builder(builder.deref().clone())
+            .await?
+            .into())
     }
 
-    pub fn sign_event(&self, unsigned_event: &UnsignedEvent) -> Result<Event> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .sign_event(unsigned_event.deref().clone())
-                .await?
-                .into())
-        })
+    pub async fn sign_event(&self, unsigned_event: &UnsignedEvent) -> Result<Event> {
+        Ok(self
+            .inner
+            .sign_event(unsigned_event.deref().clone())
+            .await?
+            .into())
     }
 
-    pub fn nip04_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
-        block_on(async move { Ok(self.inner.nip04_encrypt(**public_key, content).await?) })
+    pub async fn nip04_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
+        Ok(self.inner.nip04_encrypt(**public_key, content).await?)
     }
 
-    pub fn nip04_decrypt(
+    pub async fn nip04_decrypt(
         &self,
         public_key: &PublicKey,
         encrypted_content: String,
     ) -> Result<String> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .nip04_decrypt(**public_key, encrypted_content)
-                .await?)
-        })
+        Ok(self
+            .inner
+            .nip04_decrypt(**public_key, encrypted_content)
+            .await?)
     }
 
-    pub fn nip44_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
-        block_on(async move { Ok(self.inner.nip44_encrypt(**public_key, content).await?) })
+    pub async fn nip44_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
+        Ok(self.inner.nip44_encrypt(**public_key, content).await?)
     }
 
-    pub fn nip44_decrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
-        block_on(async move { Ok(self.inner.nip44_decrypt(**public_key, content).await?) })
+    pub async fn nip44_decrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
+        Ok(self.inner.nip44_decrypt(**public_key, content).await?)
     }
 }

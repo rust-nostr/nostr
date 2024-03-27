@@ -6,12 +6,13 @@ use core::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
-use nostr_ffi::nips::nip47::NostrWalletConnectURI;
 use nostr_ffi::nips::nip57::ZapType;
 use nostr_ffi::{EventId, PublicKey};
 use nostr_sdk::zapper::{DynNostrZapper, IntoNostrZapper};
-use nostr_sdk::{client, NWC};
+use nostr_sdk::{client, nwc};
 use uniffi::Object;
+
+use crate::nwc::NWC;
 
 /// Zap entity
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
@@ -68,8 +69,8 @@ impl From<Arc<DynNostrZapper>> for NostrZapper {
 #[uniffi::export]
 impl NostrZapper {
     #[uniffi::constructor]
-    pub fn nwc(uri: &NostrWalletConnectURI) -> Self {
-        let zapper: NWC = NWC::new(uri.deref().clone());
+    pub fn nwc(client: &NWC) -> Self {
+        let zapper: nwc::NWC = client.deref().clone();
         Self {
             inner: zapper.into_nostr_zapper(),
         }

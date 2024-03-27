@@ -1,84 +1,91 @@
+import asyncio
 from nostr_sdk import Keys, Filter, ClientBuilder, CustomNostrDatabase, NostrDatabase, NegentropyOptions, Event, \
-    init_logger, LogLevel
+    init_logger, LogLevel, uniffi_set_event_loop
 from typing import List, Optional, Set
 
 init_logger(LogLevel.INFO)
 
 
-# Example of custom in-memory database
-class MyDatabase(CustomNostrDatabase):
-    def __init__(self):
-        self.seen_event_ids = {}
-        self.events = {}
+async def main():
+    uniffi_set_event_loop(asyncio.get_running_loop())
 
-    def backend(self) -> str:
-        return "my-in-memory-backend"
+    # Example of custom in-memory database
+    class MyDatabase(CustomNostrDatabase):
+        def __init__(self):
+            self.seen_event_ids = {}
+            self.events = {}
 
-    def save_event(self, event: Event) -> bool:
-        self.events[event.id()] = event
-        return True
+        def backend(self) -> str:
+            return "my-in-memory-backend"
 
-    def has_event_already_been_saved(self, event_id) -> bool:
-        return event_id in self.events
+        async def save_event(self, e: Event) -> bool:
+            self.events[e.id()] = e
+            return True
 
-    def has_event_already_been_seen(self, event_id) -> bool:
-        return event_id in self.seen_event_ids
+        async def has_event_already_been_saved(self, event_id) -> bool:
+            return event_id in self.events
 
-    def has_event_id_been_deleted(self, event_id) -> bool:
-        return False
+        async def has_event_already_been_seen(self, event_id) -> bool:
+            return event_id in self.seen_event_ids
 
-    def has_coordinate_been_deleted(self, coordinate, timestamp) -> bool:
-        return False
+        async def has_event_id_been_deleted(self, event_id) -> bool:
+            return False
 
-    def event_id_seen(self, event_id, relay_url: str):
-        if event_id in self.seen_event_ids:
-            self.seen_event_ids[event_id].add(relay_url)
-        else:
-            new_set = {relay_url}
-            self.seen_event_ids[event_id] = new_set
+        async def has_coordinate_been_deleted(self, coordinate, timestamp) -> bool:
+            return False
 
-    def event_seen_on_relays(self, event_id) -> Optional[Set[str]]:
-        return self.seen_event_ids.get(event_id)
+        async def event_id_seen(self, event_id, relay_url: str):
+            if event_id in self.seen_event_ids:
+                self.seen_event_ids[event_id].add(relay_url)
+            else:
+                new_set = {relay_url}
+                self.seen_event_ids[event_id] = new_set
 
-    def event_by_id(self, event_id) -> Event:
-        return self.events.get(event_id, None)
+        async def event_seen_on_relays(self, event_id) -> Optional[Set[str]]:
+            return self.seen_event_ids.get(event_id)
 
-    def count(self, filters) -> int:
-        return 0
+        async def event_by_id(self, event_id) -> Event:
+            return self.events.get(event_id, None)
 
-    def query(self, filters) -> List[Event]:
-        # Fake algorithm
-        return list(self.events.values())[:10]
+        async def count(self, filters) -> int:
+            return 0
 
-    def delete(self, filter):
-        return
+        async def query(self, filters) -> List[Event]:
+            # Fake algorithm
+            return list(self.events.values())[:10]
 
-    def wipe(self):
-        self.seen_event_ids.clear()
-        self.events.clear()
+        async def delete(self, f: Filter):
+            return
+
+        async def wipe(self):
+            self.seen_event_ids.clear()
+            self.events.clear()
+
+    my_db = MyDatabase()
+    database = NostrDatabase.custom(my_db)
+    client = ClientBuilder().database(database).build()
+
+    await client.add_relay("wss://relay.damus.io")
+    await client.add_relay("wss://atl.purplerelay.com")
+    await client.connect()
+
+    keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
+    print(keys.public_key().to_bech32())
+
+    # Negentropy reconciliation
+    f = Filter().author(keys.public_key())
+    opts = NegentropyOptions()
+    await client.reconcile(f, opts)
+
+    # Query events from database
+    f = Filter().author(keys.public_key()).limit(10)
+    events = await client.database().query([f])
+    if len(events) == 0:
+        print("Query not found any event")
+    else:
+        for event in events:
+            print(event.as_json())
 
 
-my_db = MyDatabase()
-database = NostrDatabase.custom(my_db)
-client = ClientBuilder().database(database).build()
-
-client.add_relay("wss://relay.damus.io")
-client.add_relay("wss://atl.purplerelay.com")
-client.connect()
-
-keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
-print(keys.public_key().to_bech32())
-
-# Negentropy reconciliation
-f = Filter().author(keys.public_key())
-opts = NegentropyOptions()
-client.reconcile(f, opts)
-
-# Query events from database
-f = Filter().author(keys.public_key()).limit(10)
-events = client.database().query([f])
-if len(events) == 0:
-    print("Query not found any event")
-else:
-    for event in events:
-        print(event.as_json())
+if __name__ == '__main__':
+    asyncio.run(main())

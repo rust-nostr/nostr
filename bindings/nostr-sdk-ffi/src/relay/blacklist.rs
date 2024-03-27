@@ -6,7 +6,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::{EventId, PublicKey};
-use nostr_sdk::block_on;
 use nostr_sdk::pool::relay;
 use uniffi::Object;
 
@@ -29,7 +28,7 @@ impl From<relay::RelayBlacklist> for RelayBlacklist {
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl RelayBlacklist {
     #[uniffi::constructor(default(ids = [], public_keys = []))]
     pub fn new(ids: Vec<Arc<EventId>>, public_keys: Vec<Arc<PublicKey>>) -> Self {
@@ -50,59 +49,53 @@ impl RelayBlacklist {
     }
 
     /// Add event IDs to blacklist
-    pub fn add_ids(&self, ids: Vec<Arc<EventId>>) {
-        block_on(async { self.inner.add_ids(ids.into_iter().map(|id| **id)).await })
+    pub async fn add_ids(&self, ids: Vec<Arc<EventId>>) {
+        self.inner.add_ids(ids.into_iter().map(|id| **id)).await
     }
 
     /// Remove event IDs from blacklist
-    pub fn remove_ids(&self, ids: &[Arc<EventId>]) {
-        block_on(async {
-            self.inner
-                .remove_ids(ids.iter().map(|id| id.as_ref().deref()))
-                .await
-        })
+    pub async fn remove_ids(&self, ids: &[Arc<EventId>]) {
+        self.inner
+            .remove_ids(ids.iter().map(|id| id.as_ref().deref()))
+            .await
     }
 
     /// Remove event ID from blacklist
-    pub fn remove_id(&self, id: &EventId) {
-        block_on(async { self.inner.remove_id(id.deref()).await })
+    pub async fn remove_id(&self, id: &EventId) {
+        self.inner.remove_id(id.deref()).await
     }
 
     /// Check if blacklist contains event ID
-    pub fn has_id(&self, id: &EventId) -> bool {
-        block_on(async { self.inner.has_id(id.deref()).await })
+    pub async fn has_id(&self, id: &EventId) -> bool {
+        self.inner.has_id(id.deref()).await
     }
 
     /// Add public keys to blacklist
-    pub fn add_public_keys(&self, public_keys: Vec<Arc<PublicKey>>) {
-        block_on(async {
-            self.inner
-                .add_public_keys(public_keys.into_iter().map(|p| **p))
-                .await
-        })
+    pub async fn add_public_keys(&self, public_keys: Vec<Arc<PublicKey>>) {
+        self.inner
+            .add_public_keys(public_keys.into_iter().map(|p| **p))
+            .await
     }
 
     /// Remove event IDs from blacklist
-    pub fn remove_public_keys(&self, ids: &[Arc<PublicKey>]) {
-        block_on(async {
-            self.inner
-                .remove_public_keys(ids.iter().map(|p| p.as_ref().deref()))
-                .await
-        })
+    pub async fn remove_public_keys(&self, ids: &[Arc<PublicKey>]) {
+        self.inner
+            .remove_public_keys(ids.iter().map(|p| p.as_ref().deref()))
+            .await
     }
 
     /// Remove public key from blacklist
-    pub fn remove_public_key(&self, public_key: &PublicKey) {
-        block_on(async { self.inner.remove_public_key(public_key.deref()).await })
+    pub async fn remove_public_key(&self, public_key: &PublicKey) {
+        self.inner.remove_public_key(public_key.deref()).await
     }
 
     /// Check if blacklist contains public key
-    pub fn has_public_key(&self, public_key: &PublicKey) -> bool {
-        block_on(async { self.inner.has_public_key(public_key.deref()).await })
+    pub async fn has_public_key(&self, public_key: &PublicKey) -> bool {
+        self.inner.has_public_key(public_key.deref()).await
     }
 
     /// Remove everything
-    pub fn clear(&self) {
-        block_on(async { self.inner.clear().await })
+    pub async fn clear(&self) {
+        self.inner.clear().await
     }
 }

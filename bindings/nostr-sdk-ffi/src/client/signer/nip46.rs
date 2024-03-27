@@ -9,7 +9,7 @@ use std::time::Duration;
 use nostr_ffi::nips::nip46::{Nip46Request, NostrConnectURI};
 use nostr_ffi::{Keys, PublicKey, SecretKey};
 use nostr_sdk::nostr::nips::nip46::Request;
-use nostr_sdk::{block_on, signer};
+use nostr_sdk::signer;
 use uniffi::Object;
 
 use crate::error::Result;
@@ -34,39 +34,36 @@ impl From<signer::Nip46Signer> for Nip46Signer {
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl Nip46Signer {
-    /// New NIP46 remote signer
+    // TODO: change again to `new` (currently python not support async constructor)
+    /// Construct Nostr Connect client
     #[uniffi::constructor]
-    pub fn new(
+    pub async fn init(
         uri: &NostrConnectURI,
         app_keys: &Keys,
         timeout: Duration,
         opts: Option<Arc<RelayOptions>>,
     ) -> Result<Self> {
-        block_on(async move {
-            Ok(Self {
-                inner: signer::Nip46Signer::new(
-                    uri.deref().clone(),
-                    app_keys.deref().clone(),
-                    timeout,
-                    opts.map(|k| k.as_ref().deref().clone()),
-                )
-                .await?,
-            })
+        Ok(Self {
+            inner: signer::Nip46Signer::new(
+                uri.deref().clone(),
+                app_keys.deref().clone(),
+                timeout,
+                opts.map(|k| k.as_ref().deref().clone()),
+            )
+            .await?,
         })
     }
 
     /// Get signer relays
-    pub fn relays(&self) -> Vec<String> {
-        block_on(async move {
-            self.inner
-                .relays()
-                .await
-                .into_iter()
-                .map(|u| u.to_string())
-                .collect()
-        })
+    pub async fn relays(&self) -> Vec<String> {
+        self.inner
+            .relays()
+            .await
+            .into_iter()
+            .map(|u| u.to_string())
+            .collect()
     }
 
     /// Get signer public key
@@ -75,8 +72,8 @@ impl Nip46Signer {
     }
 
     /// Get Nostr Connect URI in **bunker** format.
-    pub fn nostr_connect_uri(&self) -> NostrConnectURI {
-        block_on(async move { self.inner.nostr_connect_uri().await.into() })
+    pub async fn nostr_connect_uri(&self) -> NostrConnectURI {
+        self.inner.nostr_connect_uri().await.into()
     }
 }
 
@@ -90,72 +87,65 @@ pub struct NostrConnectRemoteSigner {
     inner: signer::NostrConnectRemoteSigner,
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl NostrConnectRemoteSigner {
+    // TODO: change again to `new` (currently python not support async constructor)
     #[uniffi::constructor(default(secret = None, opts = None))]
-    pub fn new(
+    pub async fn init(
         secret_key: &SecretKey,
         relays: Vec<String>,
         secret: Option<String>,
         opts: Option<Arc<RelayOptions>>,
     ) -> Result<Self> {
-        block_on(async move {
-            Ok(Self {
-                inner: signer::NostrConnectRemoteSigner::new(
-                    secret_key.deref().clone(),
-                    relays,
-                    secret,
-                    opts.map(|o| o.as_ref().deref().clone()),
-                )
-                .await?,
-            })
+        Ok(Self {
+            inner: signer::NostrConnectRemoteSigner::new(
+                secret_key.deref().clone(),
+                relays,
+                secret,
+                opts.map(|o| o.as_ref().deref().clone()),
+            )
+            .await?,
         })
     }
 
     /// Construct remote signer from client URI (`nostrconnect://..`)
     #[uniffi::constructor(default(secret = None, opts = None))]
-    pub fn from_uri(
+    pub async fn from_uri(
         uri: &NostrConnectURI,
         secret_key: &SecretKey,
         secret: Option<String>,
         opts: Option<Arc<RelayOptions>>,
     ) -> Result<Self> {
-        block_on(async move {
-            Ok(Self {
-                inner: signer::NostrConnectRemoteSigner::from_uri(
-                    uri.deref().clone(),
-                    secret_key.deref().clone(),
-                    secret,
-                    opts.map(|o| o.as_ref().deref().clone()),
-                )
-                .await?,
-            })
+        Ok(Self {
+            inner: signer::NostrConnectRemoteSigner::from_uri(
+                uri.deref().clone(),
+                secret_key.deref().clone(),
+                secret,
+                opts.map(|o| o.as_ref().deref().clone()),
+            )
+            .await?,
         })
     }
 
     /// Get signer relays
-    pub fn relays(&self) -> Vec<String> {
-        block_on(async move {
-            self.inner
-                .relays()
-                .await
-                .into_iter()
-                .map(|r| r.to_string())
-                .collect()
-        })
+    pub async fn relays(&self) -> Vec<String> {
+        self.inner
+            .relays()
+            .await
+            .into_iter()
+            .map(|r| r.to_string())
+            .collect()
     }
 
     /// Get Nostr Connect URI
-    pub fn nostr_connect_uri(&self) -> NostrConnectURI {
-        block_on(async move { self.inner.nostr_connect_uri().await.into() })
+    pub async fn nostr_connect_uri(&self) -> NostrConnectURI {
+        self.inner.nostr_connect_uri().await.into()
     }
 
     /// Serve signer
-    pub fn serve(&self, actions: Arc<dyn NostrConnectSignerActions>) -> Result<()> {
-        block_on(async move {
-            let actions = FFINostrConnectSignerActions(actions);
-            Ok(self.inner.serve(actions).await?)
-        })
+    pub async fn serve(&self, actions: Arc<dyn NostrConnectSignerActions>) -> Result<()> {
+        let actions = FFINostrConnectSignerActions(actions);
+        Ok(self.inner.serve(actions).await?)
     }
 }
 

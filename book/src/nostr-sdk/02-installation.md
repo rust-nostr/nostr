@@ -52,25 +52,37 @@ Import the library in your code:
 from nostr_sdk import *
 ```
 
-### Support matrix
+## Support matrix
 
 The wheels are distributed for the following python `versions` and `platforms`.
 If your `version`/`platform` is not currently supported, you can compile the wheel by your self following [these instructions](https://github.com/rust-nostr/nostr/blob/master/bindings/nostr-sdk-ffi/README.md#python).
 
-#### Python version
+### Python version
 
 | 3.8 | 3.9 | 3.10 | 3.11 | 3.12 | 3.13 |
 | --- | --- | ---- | ---- | ---- | ---- |
 | ❌  | ✅  |  ✅  |  ✅  |  ✅  |  ❌  |
 
-#### Platform support
+### Platform support
 
-|   OS       | i686 | x64 | aarch64 | arm |
-| ---------- | ---- | --- | ------- | --- |
-| Linux      | ❌   | ✅  | ✅      | ❌  |
-| macOS      | ❌   | ✅  | ✅      | ❌  |
-| Windows    | ❌   | ✅  | ❌      | ❌  |
+|   OS       | x64 | aarch64 | arm | i686 |
+| ---------- | --- | ------- | --- |------|
+| Linux      | ✅  | ✅      | ❌  | ❌   |
+| macOS      | ✅  | ✅      | ❌  | ❌   |
+| Windows    | ✅  | ❌      | ❌  | ❌   |
 
+## Known issues
+
+### No running event loop
+
+If you receive `no running event loop` error at runtime, add the following line to your code:
+
+```python
+import asyncio
+from nostr_sdk import uniffi_set_event_loop
+
+uniffi_set_event_loop(asyncio.get_running_loop())
+```
 
 </section>
 

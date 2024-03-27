@@ -7,14 +7,13 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::thread;
 use nostr_ffi::{
     ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
     Timestamp,
 };
 use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::pool::RelayPoolNotification as RelayPoolNotificationSdk;
-use nostr_sdk::{block_on, spawn_blocking, SubscriptionId, UncheckedUrl};
+use nostr_sdk::{SubscriptionId, UncheckedUrl};
 use uniffi::Object;
 
 mod builder;
@@ -26,7 +25,6 @@ pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
-use crate::abortable::AbortHandle;
 use crate::error::Result;
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
 use crate::relay::{RelayBlacklist, RelayOptions};
@@ -43,7 +41,7 @@ impl From<ClientSdk> for Client {
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl Client {
     #[uniffi::constructor(default(signer = None))]
     pub fn new(signer: Option<Arc<NostrSigner>>) -> Self {
@@ -79,8 +77,8 @@ impl Client {
         self.inner.update_min_pow_difficulty(difficulty);
     }
 
-    pub fn signer(&self) -> Result<NostrSigner> {
-        block_on(async move { Ok(self.inner.signer().await?.into()) })
+    pub async fn signer(&self) -> Result<NostrSigner> {
+        Ok(self.inner.signer().await?.into())
     }
 
     pub fn database(&self) -> Arc<NostrDatabase> {
@@ -97,8 +95,8 @@ impl Client {
     /// Add event IDs to blacklist
     ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
-    pub fn mute_ids(&self, ids: Vec<Arc<EventId>>) {
-        block_on(async { self.inner.mute_ids(ids.into_iter().map(|id| **id)).await })
+    pub async fn mute_ids(&self, ids: Vec<Arc<EventId>>) {
+        self.inner.mute_ids(ids.into_iter().map(|id| **id)).await
     }
 
     /// Unmute event IDs
@@ -106,12 +104,10 @@ impl Client {
     /// Remove event IDs from blacklist
     ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
-    pub fn unmute_ids(&self, ids: &[Arc<EventId>]) {
-        block_on(async {
-            self.inner
-                .unmute_ids(ids.iter().map(|id| id.as_ref().deref()))
-                .await
-        })
+    pub async fn unmute_ids(&self, ids: &[Arc<EventId>]) {
+        self.inner
+            .unmute_ids(ids.iter().map(|id| id.as_ref().deref()))
+            .await
     }
 
     /// Mute public keys
@@ -119,12 +115,10 @@ impl Client {
     /// Add public keys to blacklist
     ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
-    pub fn mute_public_keys(&self, public_keys: Vec<Arc<PublicKey>>) {
-        block_on(async {
-            self.inner
-                .mute_public_keys(public_keys.into_iter().map(|p| **p))
-                .await
-        })
+    pub async fn mute_public_keys(&self, public_keys: Vec<Arc<PublicKey>>) {
+        self.inner
+            .mute_public_keys(public_keys.into_iter().map(|p| **p))
+            .await
     }
 
     /// Unmute public keys
@@ -132,39 +126,35 @@ impl Client {
     /// Remove public keys from blacklist
     ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
-    pub fn unmute_public_keys(&self, public_keys: &[Arc<PublicKey>]) {
-        block_on(async {
-            self.inner
-                .unmute_public_keys(public_keys.iter().map(|p| p.as_ref().deref()))
-                .await
-        })
+    pub async fn unmute_public_keys(&self, public_keys: &[Arc<PublicKey>]) {
+        self.inner
+            .unmute_public_keys(public_keys.iter().map(|p| p.as_ref().deref()))
+            .await
     }
 
-    pub fn start(&self) {
-        block_on(async move { self.inner.start().await })
+    pub async fn start(&self) {
+        self.inner.start().await
     }
 
-    pub fn stop(&self) -> Result<()> {
-        block_on(async move { Ok(self.inner.stop().await?) })
+    pub async fn stop(&self) -> Result<()> {
+        Ok(self.inner.stop().await?)
     }
 
-    pub fn shutdown(&self) -> Result<()> {
-        block_on(async move { Ok(self.inner.clone().shutdown().await?) })
+    pub async fn shutdown(&self) -> Result<()> {
+        Ok(self.inner.clone().shutdown().await?)
     }
 
-    pub fn relays(&self) -> HashMap<String, Arc<Relay>> {
-        block_on(async move {
-            self.inner
-                .relays()
-                .await
-                .into_iter()
-                .map(|(u, r)| (u.to_string(), Arc::new(r.into())))
-                .collect()
-        })
+    pub async fn relays(&self) -> HashMap<String, Arc<Relay>> {
+        self.inner
+            .relays()
+            .await
+            .into_iter()
+            .map(|(u, r)| (u.to_string(), Arc::new(r.into())))
+            .collect()
     }
 
-    pub fn relay(&self, url: String) -> Result<Arc<Relay>> {
-        block_on(async move { Ok(Arc::new(self.inner.relay(url).await?.into())) })
+    pub async fn relay(&self, url: String) -> Result<Arc<Relay>> {
+        Ok(Arc::new(self.inner.relay(url).await?.into()))
     }
 
     /// Add new relay
@@ -178,8 +168,8 @@ impl Client {
     /// To use custom `RelayOptions`, check `add_relay_with_opts` method.
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
-    pub fn add_relay(&self, url: String) -> Result<bool> {
-        block_on(async move { Ok(self.inner.add_relay(url).await?) })
+    pub async fn add_relay(&self, url: String) -> Result<bool> {
+        Ok(self.inner.add_relay(url).await?)
     }
 
     /// Add new relay with custom `RelayOptions`
@@ -190,13 +180,11 @@ impl Client {
     /// to avoid to set pool subscriptions.
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
-    pub fn add_relay_with_opts(&self, url: String, opts: &RelayOptions) -> Result<bool> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .add_relay_with_opts(url, opts.deref().clone())
-                .await?)
-        })
+    pub async fn add_relay_with_opts(&self, url: String, opts: &RelayOptions) -> Result<bool> {
+        Ok(self
+            .inner
+            .add_relay_with_opts(url, opts.deref().clone())
+            .await?)
     }
 
     /// Add multiple relays
@@ -205,26 +193,26 @@ impl Client {
     /// to avoid to set pool subscriptions.
     ///
     /// Connection is **NOT** automatically started with relays, remember to call `connect` method!
-    pub fn add_relays(&self, relays: Vec<String>) -> Result<()> {
-        block_on(async move { Ok(self.inner.add_relays(relays).await?) })
+    pub async fn add_relays(&self, relays: Vec<String>) -> Result<()> {
+        Ok(self.inner.add_relays(relays).await?)
     }
 
-    pub fn remove_relay(&self, url: String) -> Result<()> {
-        block_on(async move { Ok(self.inner.remove_relay(url).await?) })
+    pub async fn remove_relay(&self, url: String) -> Result<()> {
+        Ok(self.inner.remove_relay(url).await?)
     }
 
     /// Connect to a previously added relay
-    pub fn connect_relay(&self, url: String) -> Result<()> {
-        block_on(async move { Ok(self.inner.connect_relay(url).await?) })
+    pub async fn connect_relay(&self, url: String) -> Result<()> {
+        Ok(self.inner.connect_relay(url).await?)
     }
 
-    pub fn disconnect_relay(&self, url: String) -> Result<()> {
-        block_on(async move { Ok(self.inner.disconnect_relay(url).await?) })
+    pub async fn disconnect_relay(&self, url: String) -> Result<()> {
+        Ok(self.inner.disconnect_relay(url).await?)
     }
 
     /// Connect to all added relays
-    pub fn connect(&self) {
-        block_on(async move { self.inner.connect().await })
+    pub async fn connect(&self) {
+        self.inner.connect().await
     }
 
     /// Connect to all added relays
@@ -232,37 +220,33 @@ impl Client {
     /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
     /// The code continues if the `timeout` is reached or if all relays connect.
     #[inline]
-    pub fn connect_with_timeout(&self, timeout: Duration) {
-        block_on(async move { self.inner.connect_with_timeout(timeout).await })
+    pub async fn connect_with_timeout(&self, timeout: Duration) {
+        self.inner.connect_with_timeout(timeout).await
     }
 
-    pub fn disconnect(&self) -> Result<()> {
-        block_on(async move { Ok(self.inner.disconnect().await?) })
+    pub async fn disconnect(&self) -> Result<()> {
+        Ok(self.inner.disconnect().await?)
     }
 
-    pub fn subscriptions(&self) -> HashMap<String, Vec<Arc<Filter>>> {
-        block_on(async move {
-            self.inner
-                .subscriptions()
-                .await
-                .into_iter()
-                .map(|(id, filters)| {
-                    (
-                        id.to_string(),
-                        filters.into_iter().map(|f| Arc::new(f.into())).collect(),
-                    )
-                })
-                .collect()
-        })
+    pub async fn subscriptions(&self) -> HashMap<String, Vec<Arc<Filter>>> {
+        self.inner
+            .subscriptions()
+            .await
+            .into_iter()
+            .map(|(id, filters)| {
+                (
+                    id.to_string(),
+                    filters.into_iter().map(|f| Arc::new(f.into())).collect(),
+                )
+            })
+            .collect()
     }
 
-    pub fn subscription(&self, id: String) -> Option<Vec<Arc<Filter>>> {
-        block_on(async move {
-            self.inner
-                .subscription(&SubscriptionId::new(id))
-                .await
-                .map(|filters| filters.into_iter().map(|f| Arc::new(f.into())).collect())
-        })
+    pub async fn subscription(&self, id: String) -> Option<Vec<Arc<Filter>>> {
+        self.inner
+            .subscription(&SubscriptionId::new(id))
+            .await
+            .map(|filters| filters.into_iter().map(|f| Arc::new(f.into())).collect())
     }
 
     /// Subscribe to filters to all connected relays
@@ -271,7 +255,7 @@ impl Client {
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
     #[uniffi::method(default(opts = None))]
-    pub fn subscribe(
+    pub async fn subscribe(
         &self,
         filters: Vec<Arc<Filter>>,
         opts: Option<Arc<SubscribeAutoCloseOptions>>,
@@ -280,12 +264,11 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        block_on(async move {
-            self.inner
-                .subscribe(filters, opts.map(|o| **o))
-                .await
-                .to_string()
-        })
+
+        self.inner
+            .subscribe(filters, opts.map(|o| **o))
+            .await
+            .to_string()
     }
 
     /// Subscribe to filters with custom subscription ID to all connected relays
@@ -294,7 +277,7 @@ impl Client {
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
     #[uniffi::method(default(opts = None))]
-    pub fn subscribe_with_id(
+    pub async fn subscribe_with_id(
         &self,
         id: String,
         filters: Vec<Arc<Filter>>,
@@ -304,11 +287,10 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        block_on(async move {
-            self.inner
-                .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| **o))
-                .await
-        })
+
+        self.inner
+            .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| **o))
+            .await
     }
 
     /// Subscribe to filters to specific relays
@@ -317,7 +299,7 @@ impl Client {
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
     #[uniffi::method(default(opts = None))]
-    pub fn subscribe_to(
+    pub async fn subscribe_to(
         &self,
         urls: Vec<String>,
         filters: Vec<Arc<Filter>>,
@@ -327,13 +309,11 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        block_on(async move {
-            Ok(self
-                .inner
-                .subscribe_to(urls, filters, opts.map(|o| **o))
-                .await?
-                .to_string())
-        })
+        Ok(self
+            .inner
+            .subscribe_to(urls, filters, opts.map(|o| **o))
+            .await?
+            .to_string())
     }
 
     /// Subscribe to filters with custom subscription ID to specific relays
@@ -342,7 +322,7 @@ impl Client {
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
     #[uniffi::method(default(opts = None))]
-    pub fn subscribe_with_id_to(
+    pub async fn subscribe_with_id_to(
         &self,
         urls: Vec<String>,
         id: String,
@@ -353,27 +333,23 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        block_on(async move {
-            Ok(self
-                .inner
-                .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, opts.map(|o| **o))
-                .await?)
-        })
+        Ok(self
+            .inner
+            .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, opts.map(|o| **o))
+            .await?)
     }
 
-    pub fn unsubscribe(&self, subscription_id: String) {
-        block_on(async move {
-            self.inner
-                .unsubscribe(SubscriptionId::new(subscription_id))
-                .await
-        })
+    pub async fn unsubscribe(&self, subscription_id: String) {
+        self.inner
+            .unsubscribe(SubscriptionId::new(subscription_id))
+            .await
     }
 
-    pub fn unsubscribe_all(&self) {
-        block_on(async move { self.inner.unsubscribe_all().await })
+    pub async fn unsubscribe_all(&self) {
+        self.inner.unsubscribe_all().await
     }
 
-    pub fn get_events_of(
+    pub async fn get_events_of(
         &self,
         filters: Vec<Arc<Filter>>,
         timeout: Option<Duration>,
@@ -382,21 +358,20 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        block_on(async move {
-            Ok(self
-                .inner
-                .get_events_of(filters, timeout)
-                .await?
-                .into_iter()
-                .map(|e| Arc::new(e.into()))
-                .collect())
-        })
+
+        Ok(self
+            .inner
+            .get_events_of(filters, timeout)
+            .await?
+            .into_iter()
+            .map(|e| Arc::new(e.into()))
+            .collect())
     }
 
     /// Get events of filters from specific relays
     ///
     /// Get events both from **local database** and **relays**
-    pub fn get_events_from(
+    pub async fn get_events_from(
         &self,
         urls: Vec<String>,
         filters: Vec<Arc<Filter>>,
@@ -406,105 +381,93 @@ impl Client {
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        block_on(async move {
-            Ok(self
-                .inner
-                .get_events_from(urls, filters, timeout)
+        Ok(self
+            .inner
+            .get_events_from(urls, filters, timeout)
+            .await?
+            .into_iter()
+            .map(|e| Arc::new(e.into()))
+            .collect())
+    }
+
+    pub async fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<()> {
+        Ok(self.inner.send_msg(msg.as_ref().deref().clone()).await?)
+    }
+
+    pub async fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<()> {
+        Ok(self
+            .inner
+            .send_msg_to(urls, msg.as_ref().deref().clone())
+            .await?)
+    }
+
+    pub async fn send_event(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .send_event(event.as_ref().deref().clone())
                 .await?
-                .into_iter()
-                .map(|e| Arc::new(e.into()))
-                .collect())
-        })
+                .into(),
+        ))
     }
 
-    pub fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<()> {
-        block_on(async move { Ok(self.inner.send_msg(msg.as_ref().deref().clone()).await?) })
-    }
-
-    pub fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<()> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .send_msg_to(urls, msg.as_ref().deref().clone())
-                .await?)
-        })
-    }
-
-    pub fn send_event(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .send_event(event.as_ref().deref().clone())
-                    .await?
-                    .into(),
-            ))
-        })
-    }
-
-    pub fn send_event_to(&self, urls: Vec<String>, event: Arc<Event>) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .send_event_to(urls, event.as_ref().deref().clone())
-                    .await?
-                    .into(),
-            ))
-        })
+    pub async fn send_event_to(
+        &self,
+        urls: Vec<String>,
+        event: Arc<Event>,
+    ) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .send_event_to(urls, event.as_ref().deref().clone())
+                .await?
+                .into(),
+        ))
     }
 
     /// Signs the `EventBuilder` into an `Event` using the `NostrSigner`
-    pub fn sign_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<Event>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .sign_event_builder(builder.as_ref().deref().clone())
-                    .await?
-                    .into(),
-            ))
-        })
+    pub async fn sign_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<Event>> {
+        Ok(Arc::new(
+            self.inner
+                .sign_event_builder(builder.as_ref().deref().clone())
+                .await?
+                .into(),
+        ))
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to all relays.
     ///
     /// Rise an error if the [`NostrSigner`] is not set.
-    pub fn send_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .send_event_builder(builder.as_ref().deref().clone())
-                    .await?
-                    .into(),
-            ))
-        })
+    pub async fn send_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .send_event_builder(builder.as_ref().deref().clone())
+                .await?
+                .into(),
+        ))
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
     ///
     /// Rise an error if the [`NostrSigner`] is not set.
-    pub fn send_event_builder_to(
+    pub async fn send_event_builder_to(
         &self,
         urls: Vec<String>,
         builder: Arc<EventBuilder>,
     ) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .send_event_builder_to(urls, builder.as_ref().deref().clone())
-                    .await?
-                    .into(),
-            ))
-        })
+        Ok(Arc::new(
+            self.inner
+                .send_event_builder_to(urls, builder.as_ref().deref().clone())
+                .await?
+                .into(),
+        ))
     }
 
-    pub fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .set_metadata(metadata.as_ref().deref())
-                    .await?
-                    .into(),
-            ))
-        })
+    pub async fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .set_metadata(metadata.as_ref().deref())
+                .await?
+                .into(),
+        ))
     }
 
     /// Encrypted direct msg
@@ -512,189 +475,161 @@ impl Client {
     /// <div class="warning"><strong>Unsecure!</strong> Use `send_private_msg` instead!</div>
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
-    pub fn send_direct_msg(
+    pub async fn send_direct_msg(
         &self,
         receiver: &PublicKey,
         msg: String,
         reply: Option<Arc<EventId>>,
     ) -> Result<Arc<EventId>> {
         #[allow(deprecated)]
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .send_direct_msg(**receiver, msg, reply.map(|r| **r))
-                    .await?
-                    .into(),
-            ))
-        })
+        Ok(Arc::new(
+            self.inner
+                .send_direct_msg(**receiver, msg, reply.map(|r| **r))
+                .await?
+                .into(),
+        ))
     }
 
     /// Send private direct message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[uniffi::method(default(reply_to = None))]
-    pub fn send_private_msg(
+    pub async fn send_private_msg(
         &self,
         receiver: &PublicKey,
         message: String,
         reply_to: Option<Arc<EventId>>,
     ) -> Result<()> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .send_private_msg(**receiver, message, reply_to.map(|t| **t))
-                .await?)
-        })
+        Ok(self
+            .inner
+            .send_private_msg(**receiver, message, reply_to.map(|t| **t))
+            .await?)
     }
 
     /// Repost
-    pub fn repost(&self, event: Arc<Event>, relay_url: Option<String>) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .repost(event.as_ref().deref(), relay_url.map(UncheckedUrl::from))
-                    .await?
-                    .into(),
-            ))
-        })
+    pub async fn repost(
+        &self,
+        event: Arc<Event>,
+        relay_url: Option<String>,
+    ) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .repost(event.as_ref().deref(), relay_url.map(UncheckedUrl::from))
+                .await?
+                .into(),
+        ))
     }
 
     /// Like event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub fn like(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner.like(event.as_ref().deref()).await?.into(),
-            ))
-        })
+    pub async fn like(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner.like(event.as_ref().deref()).await?.into(),
+        ))
     }
 
     /// Disike event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub fn dislike(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner.dislike(event.as_ref().deref()).await?.into(),
-            ))
-        })
+    pub async fn dislike(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner.dislike(event.as_ref().deref()).await?.into(),
+        ))
     }
 
     /// React to an [`Event`]
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub fn reaction(&self, event: Arc<Event>, reaction: String) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .reaction(event.as_ref().deref(), reaction)
-                    .await?
-                    .into(),
-            ))
-        })
+    pub async fn reaction(&self, event: Arc<Event>, reaction: String) -> Result<Arc<EventId>> {
+        Ok(Arc::new(
+            self.inner
+                .reaction(event.as_ref().deref(), reaction)
+                .await?
+                .into(),
+        ))
     }
 
     /// Send a Zap!
-    pub fn zap(
+    pub async fn zap(
         &self,
         to: &ZapEntity,
         satoshi: u64,
         details: Option<Arc<ZapDetails>>,
     ) -> Result<()> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .zap(**to, satoshi, details.map(|d| d.as_ref().deref().clone()))
-                .await?)
-        })
+        Ok(self
+            .inner
+            .zap(**to, satoshi, details.map(|d| d.as_ref().deref().clone()))
+            .await?)
     }
 
     /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    pub fn gift_wrap(
+    pub async fn gift_wrap(
         &self,
         receiver: &PublicKey,
         rumor: Arc<EventBuilder>,
         expiration: Option<Arc<Timestamp>>,
     ) -> Result<()> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .gift_wrap(
-                    **receiver,
-                    rumor.as_ref().deref().clone(),
-                    expiration.map(|t| **t),
-                )
-                .await?)
-        })
+        Ok(self
+            .inner
+            .gift_wrap(
+                **receiver,
+                rumor.as_ref().deref().clone(),
+                expiration.map(|t| **t),
+            )
+            .await?)
     }
 
-    pub fn file_metadata(
+    pub async fn file_metadata(
         &self,
         description: String,
         metadata: Arc<FileMetadata>,
     ) -> Result<Arc<EventId>> {
-        block_on(async move {
-            Ok(Arc::new(
-                self.inner
-                    .file_metadata(description, metadata.as_ref().deref().clone())
-                    .await?
-                    .into(),
-            ))
-        })
+        Ok(Arc::new(
+            self.inner
+                .file_metadata(description, metadata.as_ref().deref().clone())
+                .await?
+                .into(),
+        ))
     }
 
-    pub fn reconcile(&self, filter: Arc<Filter>, opts: Arc<NegentropyOptions>) -> Result<()> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .reconcile(filter.as_ref().deref().clone(), **opts)
-                .await?)
-        })
+    pub async fn reconcile(&self, filter: Arc<Filter>, opts: Arc<NegentropyOptions>) -> Result<()> {
+        Ok(self
+            .inner
+            .reconcile(filter.as_ref().deref().clone(), **opts)
+            .await?)
     }
 
     /// Handle notifications
-    ///
-    /// **This method spawn a thread**, so ensure to keep up the app after calling this (if needed).
-    pub fn handle_notifications(
-        self: Arc<Self>,
-        handler: Box<dyn HandleNotification>,
-    ) -> Result<Arc<AbortHandle>> {
-        let handle = thread::abortable(async move {
-            let handler = Arc::new(handler);
-            self.inner
-                .handle_notifications(|notification| async {
-                    match notification {
-                        RelayPoolNotificationSdk::Message { relay_url, message } => {
-                            let h = handler.clone();
-                            let _ = spawn_blocking(move || {
-                                h.handle_msg(relay_url.to_string(), Arc::new(message.into()))
-                            })
+    pub async fn handle_notifications(&self, handler: Arc<dyn HandleNotification>) -> Result<()> {
+        Ok(self
+            .inner
+            .handle_notifications(|notification| async {
+                match notification {
+                    RelayPoolNotificationSdk::Message { relay_url, message } => {
+                        handler
+                            .handle_msg(relay_url.to_string(), Arc::new(message.into()))
                             .await;
-                        }
-                        RelayPoolNotificationSdk::Event {
-                            relay_url,
-                            subscription_id,
-                            event,
-                        } => {
-                            let h = handler.clone();
-                            let _ = spawn_blocking(move || {
-                                h.handle(
-                                    relay_url.to_string(),
-                                    subscription_id.to_string(),
-                                    Arc::new((*event).into()),
-                                )
-                            })
-                            .await;
-                        }
-                        _ => (),
                     }
-                    Ok(false)
-                })
-                .await
-        })?;
-        Ok(Arc::new(handle.into()))
+                    RelayPoolNotificationSdk::Event {
+                        relay_url,
+                        subscription_id,
+                        event,
+                    } => {
+                        handler
+                            .handle(
+                                relay_url.to_string(),
+                                subscription_id.to_string(),
+                                Arc::new((*event).into()),
+                            )
+                            .await;
+                    }
+                    _ => (),
+                }
+                Ok(false)
+            })
+            .await?)
     }
 }

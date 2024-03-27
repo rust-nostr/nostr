@@ -1,16 +1,24 @@
+import asyncio
+
 from nostr_sdk import init_logger, LogLevel, NostrWalletConnectUri, Nwc
 
-# Init logger
-init_logger(LogLevel.INFO)
 
-# Parse NWC uri
-uri = NostrWalletConnectUri.parse("nostr+walletconnect://..")
+async def main():
+    # Init logger
+    init_logger(LogLevel.INFO)
 
-# Initialize NWC client
-nwc = Nwc(uri)
+    # Parse NWC uri
+    uri = NostrWalletConnectUri.parse("nostr+walletconnect://..")
 
-info = nwc.get_info()
-print(info)
+    # Initialize NWC client
+    nwc = Nwc(uri)
 
-balance = nwc.get_balance()
-print(f"Balance: {balance} SAT")
+    info = await nwc.get_info()
+    print(info)
+
+    balance = await nwc.get_balance()
+    print(f"Balance: {balance} SAT")
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

@@ -36,6 +36,8 @@
 * ffi(nostr): convert `verify_nip05` and `get_nip05_profile` to async functions ([Yuki Kishimoto])
 * ffi(nostr): convert `RelayInformationDocument::get` to async ([Yuki Kishimoto])
 * ffi(nostr): merge `Keys::from_mnemonic_*` constructors into `Keys::from_menmonic` ([Yuki Kishimoto])
+* ffi(sdk): add `async/future` support (convert from blocking to async) ([Yuki Kishimoto])
+* ffi(sdk): no longer spawn a thread when calling `handle_notifications` ([Yuki Kishimoto])
 * js(sdk): change `JsNostrZapper::nwc` fingerprint ([Yuki Kishimoto])
 * js(sdk): rename `JsNip46Signer::new` to `JsNip46Signer::init` ([Yuki Kishimoto])
 

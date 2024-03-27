@@ -46,19 +46,23 @@ impl Deref for Event {
 
 #[uniffi::export]
 impl Event {
+    #[inline]
     pub fn id(&self) -> EventId {
         self.inner.id().into()
     }
 
     /// Get event author (`pubkey` field)
+    #[inline]
     pub fn author(&self) -> PublicKey {
         self.inner.author().into()
     }
 
+    #[inline]
     pub fn created_at(&self) -> Timestamp {
         self.inner.created_at().into()
     }
 
+    #[inline]
     pub fn kind(&self) -> Kind {
         self.inner.kind().into()
     }
@@ -71,25 +75,30 @@ impl Event {
             .collect()
     }
 
+    #[inline]
     pub fn content(&self) -> String {
         self.inner.content().to_string()
     }
 
+    #[inline]
     pub fn signature(&self) -> String {
         self.inner.signature().to_string()
     }
 
     /// Verify both `EventId` and `Signature`
+    #[inline]
     pub fn verify(&self) -> bool {
         self.inner.verify().is_ok()
     }
 
     /// Verify if the `EventId` it's composed correctly
+    #[inline]
     pub fn verify_id(&self) -> Result<()> {
         Ok(self.inner.verify_id()?)
     }
 
     /// Verify only event `Signature`
+    #[inline]
     pub fn verify_signature(&self) -> Result<()> {
         Ok(self.inner.verify_signature()?)
     }
@@ -103,6 +112,7 @@ impl Event {
     /// If an event has no `Expiration` tag, then it will return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    #[inline]
     pub fn is_expired(&self) -> bool {
         self.inner.is_expired()
     }
@@ -110,6 +120,7 @@ impl Event {
     /// Check if `Kind` is a NIP90 job request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
     pub fn is_job_request(&self) -> bool {
         self.inner.is_job_request()
     }
@@ -117,6 +128,7 @@ impl Event {
     /// Check if `Kind` is a NIP90 job result
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
     pub fn is_job_result(&self) -> bool {
         self.inner.is_job_result()
     }
@@ -124,6 +136,7 @@ impl Event {
     /// Check if event `Kind` is `Regular`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
     pub fn is_regular(&self) -> bool {
         self.inner.is_regular()
     }
@@ -131,6 +144,7 @@ impl Event {
     /// Check if event `Kind` is `Replaceable`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
     pub fn is_replaceable(&self) -> bool {
         self.inner.is_replaceable()
     }
@@ -138,6 +152,7 @@ impl Event {
     /// Check if event `Kind` is `Ephemeral`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
     pub fn is_ephemeral(&self) -> bool {
         self.inner.is_ephemeral()
     }
@@ -145,11 +160,13 @@ impl Event {
     /// Check if event `Kind` is `Parameterized replaceable`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
     pub fn is_parameterized_replaceable(&self) -> bool {
         self.inner.is_parameterized_replaceable()
     }
 
     /// Extract identifier (`d` tag), if exists.
+    #[inline]
     pub fn identifier(&self) -> Option<String> {
         self.inner.identifier().map(|i| i.to_string())
     }
@@ -187,13 +204,15 @@ impl Event {
             .collect()
     }
 
+    #[inline]
     #[uniffi::constructor]
-    pub fn from_json(json: String) -> Result<Self> {
+    pub fn from_json(json: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::Event::from_json(json)?,
         })
     }
 
+    #[inline]
     pub fn as_json(&self) -> Result<String> {
         Ok(self.inner.try_as_json()?)
     }

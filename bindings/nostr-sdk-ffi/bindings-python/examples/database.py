@@ -1,30 +1,36 @@
+import asyncio
 from nostr_sdk import Keys, Filter, ClientBuilder, NostrDatabase, NegentropyOptions, init_logger, LogLevel
 
 init_logger(LogLevel.INFO)
 
-keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
-print(keys.public_key().to_bech32())
 
-# Create/open SQLite database
-database = NostrDatabase.sqlite("nostr.db")
+async def main():
+    keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
+    print(keys.public_key().to_bech32())
 
-# NOT AVAILABLE ON WINDOWS AT THE MOMENT!
-# Create/open nostrdb database
-# database = NostrDatabase.ndb("ndb")
+    # Create/open SQLite database
+    database = await NostrDatabase.sqlite("nostr.db")
 
-client = ClientBuilder().database(database).build()
+    # NOT AVAILABLE ON WINDOWS AT THE MOMENT!
+    # Create/open nostrdb database
+    # database = NostrDatabase.ndb("ndb")
 
-client.add_relay("wss://relay.damus.io")
-client.add_relay("wss://atl.purplerelay.com")
-client.connect()
+    client = ClientBuilder().database(database).build()
 
-# Negentropy reconciliation
-f = Filter().author(keys.public_key())
-opts = NegentropyOptions()
-client.reconcile(f, opts)
+    await client.add_relay("wss://relay.damus.io")
+    await client.add_relay("wss://atl.purplerelay.com")
+    await client.connect()
 
-# Query events from database
-f = Filter().author(keys.public_key()).limit(10)
-events = client.database().query([f])
-for event in events:
-    print(event.as_json())
+    # Negentropy reconciliation
+    f = Filter().author(keys.public_key())
+    opts = NegentropyOptions()
+    await client.reconcile(f, opts)
+
+    # Query events from database
+    f = Filter().author(keys.public_key()).limit(10)
+    events = await client.database().query([f])
+    for event in events:
+        print(event.as_json())
+
+if __name__ == '__main__':
+    asyncio.run(main())

@@ -173,6 +173,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-compat"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f68a707c1feb095d8c07f8a65b9f506b117d30af431cab89374357de7c11461b"
+dependencies = [
+ "futures-core",
+ "futures-io",
+ "once_cell",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.80"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1813,7 +1826,6 @@ dependencies = [
  "nostr-webln",
  "nostr-zapper",
  "nwc",
- "once_cell",
  "thiserror",
  "tokio",
  "tracing",
@@ -1824,6 +1836,7 @@ dependencies = [
 name = "nostr-sdk-ffi"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "async-utility",
  "nostr-ffi",
  "nostr-sdk",
@@ -2283,7 +2296,6 @@ checksum = "2d66674f2b6fb864665eea7a3c1ac4e3dfacd2fda83cf6f935a612e01b0e3338"
 dependencies = [
  "base64",
  "bytes",
- "futures-channel",
  "futures-core",
  "futures-util",
  "http",
@@ -3182,6 +3194,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52fcb15ab907c37fe50163f05f97d497bc4400d8bfbdb7ef56b3a9ef777188d4"
 dependencies = [
  "anyhow",
+ "async-compat",
  "bytes",
  "camino",
  "log",
