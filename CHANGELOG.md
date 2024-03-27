@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+* Bump `uniffi` to `v0.27` ([Yuki Kishimoto])
 * Adapted NIP46 to last changes ([Yuki Kishimoto])
 * nostr: change `Tag::parse` arg from `Vec<S>` to `&[S]` ([Yuki Kishimoto])
 * nostr: allow to parse public key from NIP21 uri with `PublicKey::parse` ([Yuki Kishimoto])
