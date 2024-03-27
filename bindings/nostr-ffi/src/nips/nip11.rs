@@ -35,14 +35,14 @@ impl RelayInformationDocument {
     }
 
     #[uniffi::constructor(default(proxy = None))]
-    pub fn get(url: String, proxy: Option<String>) -> Result<Self> {
-        let url: Url = Url::parse(&url)?;
+    pub async fn get(url: &str, proxy: Option<String>) -> Result<Self> {
+        let url: Url = Url::parse(url)?;
         let proxy: Option<SocketAddr> = match proxy {
             Some(proxy) => Some(proxy.parse()?),
             None => None,
         };
         Ok(Self {
-            inner: nip11::RelayInformationDocument::get_blocking(url, proxy)?,
+            inner: nip11::RelayInformationDocument::get(url, proxy).await?,
         })
     }
 

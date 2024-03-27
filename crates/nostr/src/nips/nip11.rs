@@ -221,35 +221,6 @@ impl RelayInformationDocument {
         }
     }
 
-    /// Get Relay Information Document
-    #[cfg(not(target_arch = "wasm32"))]
-    #[cfg(feature = "blocking")]
-    pub fn get_blocking(url: Url, proxy: Option<SocketAddr>) -> Result<Self, Error> {
-        use reqwest::blocking::Client;
-
-        let mut builder = Client::builder();
-        if let Some(proxy) = proxy {
-            let proxy = format!("socks5h://{proxy}");
-            builder = builder.proxy(Proxy::all(proxy)?);
-        }
-        let client: Client = builder.build()?;
-        let url = Self::with_http_scheme(url)?;
-        let req = client
-            .get(url.to_string())
-            .header("Accept", "application/nostr+json");
-        match req.send() {
-            Ok(response) => {
-                let json: String = response.text()?;
-                tracing::debug!("Response: {json}");
-                match serde_json::from_slice(json.as_bytes()) {
-                    Ok(json) => Ok(json),
-                    Err(_) => Err(Error::InvalidInformationDocument),
-                }
-            }
-            Err(_) => Err(Error::InaccessibleInformationDocument),
-        }
-    }
-
     /// Returns new URL with scheme substituted to HTTP(S) if WS(S) was provided,
     /// other schemes leaves untouched.
     fn with_http_scheme(url: Url) -> Result<Url, Error> {
@@ -278,7 +249,7 @@ mod tests {
         let got = serde_json::to_string(&kinds).unwrap();
         let expected = "[0,1,[5,7],[40,49]]".to_string();
 
-        assert!(got == expected, "got: {}, expected: {}", got, expected);
+        assert_eq!(got, expected, "got: {}, expected: {}", got, expected);
     }
 
     #[test]
@@ -292,6 +263,6 @@ mod tests {
             RetentionKind::Range(40, 49),
         ];
 
-        assert!(got == expected, "got: {:?}, expected: {:?}", got, expected);
+        assert_eq!(got, expected, "got: {:?}, expected: {:?}", got, expected);
     }
 }
