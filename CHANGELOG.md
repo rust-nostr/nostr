@@ -40,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Removed deprecated ([Yuki Kishimoto])
 
+## v0.29.2
+
+### Fixed
+
+* pool: fix `get_events_of` issues ([Yuki Kishimoto])
+
 ## v0.29.1
 
 ### Fixed
