@@ -17,7 +17,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["all-nips"]
-blocking = ["dep:once_cell", "nostr/blocking"]
 rocksdb = ["dep:nostr-rocksdb"]
 sqlite = ["dep:nostr-sqlite"]
 indexeddb = ["dep:nostr-indexeddb"]
@@ -45,7 +44,6 @@ nostr-relay-pool.workspace = true
 nostr-signer.workspace = true
 nostr-zapper = { workspace = true, optional = true }
 nwc = { version = "0.29", path = "../nwc", optional = true }
-once_cell = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["std", "attributes"] }
 

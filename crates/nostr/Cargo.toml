@@ -45,7 +45,6 @@ alloc = [
     "serde/alloc",
     "serde_json/alloc",
 ]
-blocking = ["reqwest?/blocking"]
 all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59"]
 nip03 = ["dep:nostr-ots"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
@@ -82,7 +81,7 @@ url-fork = { version = "3.0", default-features = false, features = ["serde"], op
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
-instant = { version = "0.1", features = [ "wasm-bindgen", "inaccurate" ] }
+instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
 js-sys = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 wasm-bindgen-futures = { workspace = true, optional = true }
@@ -90,6 +89,7 @@ web-sys = { workspace = true, features = ["Window"], optional = true }
 
 [dev-dependencies]
 num_cpus = "1.15"
+tokio = { workspace = true, features = ["full"] }
 
 [[example]]
 name = "keys"
@@ -105,7 +105,7 @@ required-features = ["std", "nip04"]
 
 [[example]]
 name = "nip05"
-required-features = ["std", "nip05", "blocking"]
+required-features = ["std", "nip05"]
 
 [[example]]
 name = "nip06"
@@ -117,7 +117,7 @@ required-features = ["std"]
 
 [[example]]
 name = "nip11"
-required-features = ["std", "nip11", "blocking"]
+required-features = ["std", "nip11"]
 
 [[example]]
 name = "nip13"

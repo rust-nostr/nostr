@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use nostr_ffi::Timestamp;
-use nostr_sdk::{block_on, pool};
+use nostr_sdk::pool;
 use uniffi::Object;
 
 #[derive(Object)]
@@ -19,7 +19,7 @@ impl From<pool::RelayConnectionStats> for RelayConnectionStats {
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl RelayConnectionStats {
     /// The number of times a connection has been attempted
     pub fn attempts(&self) -> u64 {
@@ -56,7 +56,7 @@ impl RelayConnectionStats {
         self.inner.first_connection_timestamp().into()
     }
 
-    pub fn latency(&self) -> Option<Duration> {
-        block_on(async move { self.inner.latency().await })
+    pub async fn latency(&self) -> Option<Duration> {
+        self.inner.latency().await
     }
 }

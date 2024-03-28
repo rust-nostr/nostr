@@ -1,24 +1,28 @@
-from nostr_sdk import Keys, Client, EventBuilder, Filter, ClientBuilder, NostrDatabase, NegentropyOptions
-from datetime import timedelta
-import time
+import asyncio
+from nostr_sdk import Keys, Filter, ClientBuilder, NostrDatabase, NegentropyOptions
 
-keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
-print(keys.public_key().to_bech32())
 
-database = NostrDatabase.sqlite("nostr.db")
-client = ClientBuilder().database(database).build()
+async def main():
+    keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
+    print(keys.public_key().to_bech32())
 
-client.add_relay("wss://relay.damus.io")
-client.add_relay("wss://atl.purplerelay.com")
-client.connect()
+    database = await NostrDatabase.sqlite("nostr.db")
+    client = ClientBuilder().database(database).build()
 
-# Negentropy reconciliation
-filter = Filter().author(keys.public_key())
-opts = NegentropyOptions()
-client.reconcile(filter, opts)
+    await client.add_relay("wss://relay.damus.io")
+    await client.add_relay("wss://atl.purplerelay.com")
+    await client.connect()
 
-# Query events from database
-filter = Filter().author(keys.public_key()).limit(10)
-events = client.database().query([filter])
-for event in events:
-    print(event.as_json())
+    # Negentropy reconciliation
+    f = Filter().author(keys.public_key())
+    opts = NegentropyOptions()
+    await client.reconcile(f, opts)
+
+    # Query events from database
+    f = Filter().author(keys.public_key()).limit(10)
+    events = await client.database().query([f])
+    for event in events:
+        print(event.as_json())
+
+
+asyncio.run(main())

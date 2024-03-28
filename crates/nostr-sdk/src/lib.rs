@@ -15,9 +15,6 @@
     doc = include_str!("../README.md")
 )]
 
-#[cfg(all(target_arch = "wasm32", feature = "blocking"))]
-compile_error!("`blocking` feature can't be enabled for WASM targets");
-
 pub use async_utility;
 pub use nostr::{self, *};
 pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
@@ -39,28 +36,8 @@ pub use nostr_webln::WebLNZapper;
 pub use nostr_zapper::{self as zapper, NostrZapper, ZapperBackend, ZapperError};
 #[cfg(feature = "nip47")]
 pub use nwc::{self, NostrWalletConnectOptions, NWC};
-#[cfg(feature = "blocking")]
-use once_cell::sync::Lazy;
-#[cfg(feature = "blocking")]
-use tokio::runtime::Runtime;
-#[doc(hidden)]
-#[cfg(feature = "blocking")]
-pub use tokio::task::spawn_blocking;
 
 pub mod client;
 pub mod prelude;
 
 pub use self::client::{Client, ClientBuilder, Options};
-
-#[cfg(feature = "blocking")]
-static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Can't start Tokio runtime"));
-
-#[doc(hidden)]
-#[allow(missing_docs)]
-#[cfg(feature = "blocking")]
-pub fn block_on<F>(future: F) -> F::Output
-where
-    F: core::future::Future,
-{
-    RUNTIME.block_on(future)
-}
