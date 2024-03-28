@@ -45,13 +45,9 @@ impl JsNostrDatabase {
         })
     }
 
-    // /// Save [`Event`] into store
-    //
-    // Return `true` if event was successfully saved into database.
-    // pub fn save_event(&self, event: &JsEvent) -> Result<bool> {
-    // block_on(async move { Ok(self.inner.save_event(event.as_ref().deref()).await?) })
-    // }
-
+    pub async fn save_event(&self, event: &JsEvent) -> Result<bool> {
+        self.inner.save_event(event).await.map_err(into_err)
+    }
     /// Get list of relays that have seen the [`EventId`]
     #[wasm_bindgen(js_name = eventSeenOnRelays)]
     pub async fn event_seen_on_relays(
