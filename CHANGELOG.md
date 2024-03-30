@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: bump `bitcoin` to `0.31` ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `0.4` ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `0.4` ([Yuki Kishimoto])
+* pool: return error if `urls` arg is empty in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * signer: re-work `nip46` module ([Yuki Kishimoto])
 * nwc: avoid to open and close subscription for every request ([Yuki Kishimoto])
 * nwc: allow to customize requests timeout ([Yuki Kishimoto])

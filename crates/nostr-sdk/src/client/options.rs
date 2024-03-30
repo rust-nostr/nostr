@@ -30,7 +30,7 @@ pub struct Options {
     skip_disconnected_relays: Arc<AtomicBool>,
     /// Timeout (default: 60)
     ///
-    /// Used in `get_events_of`, `req_events_of` and similar as default timeout.
+    /// Used in `get_events_of` and similar methods as default timeout.
     pub timeout: Duration,
     /// Relay connection timeout (default: None)
     ///

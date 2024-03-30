@@ -269,7 +269,7 @@ impl InternalRelayPool {
             .map(|u| u.try_into_url())
             .collect::<Result<_, _>>()?;
 
-        // Check if urls set isn't empty
+        // Check if urls set is empty
         if urls.is_empty() {
             return Err(Error::NoRelaysSpecified);
         }
@@ -375,7 +375,7 @@ impl InternalRelayPool {
             .map(|u| u.try_into_url())
             .collect::<Result<_, _>>()?;
 
-        // Check if urls set isn't empty
+        // Check if urls set is empty
         if urls.is_empty() {
             return Err(Error::NoRelaysSpecified);
         }
@@ -501,9 +501,12 @@ impl InternalRelayPool {
             .map(|u| u.try_into_url())
             .collect::<Result<_, _>>()?;
 
+        // Check if urls set is empty
         if urls.is_empty() {
-            Ok(self.database.query(filters, Order::Desc).await?)
-        } else if urls.len() == 1 {
+            return Err(Error::NoRelaysSpecified);
+        }
+
+        if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: Relay = self.internal_relay(&url).await?;
             Ok(relay.get_events_of(filters, timeout, opts).await?)

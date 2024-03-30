@@ -261,8 +261,6 @@ impl Client {
     /// Get events of filters from specific relays
     ///
     /// Get events both from **local database** and **relays**
-    ///
-    /// If no relay is specified, will be queried only the database.
     pub fn get_events_from(
         &self,
         urls: Vec<String>,

@@ -226,8 +226,6 @@ impl JsClient {
     /// Get events of filters from specific relays
     ///
     /// Get events both from **local database** and **relays**
-    ///
-    /// If no relay is specified, will be queried only the database.
     #[wasm_bindgen(js_name = getEventsFrom)]
     pub async fn get_events_from(
         &self,
