@@ -970,8 +970,9 @@ mod tests {
             .custom_tag(
                 SingleLetterTag::lowercase(Alphabet::P),
                 ["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],
-            );
-        let json = r##"{"search":"test","#d":["identifier"],"#j":["test1"],"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}"##;
+            )
+            .custom_tag(SingleLetterTag::lowercase(Alphabet::Z), ["rating"]);
+        let json = r##"{"search":"test","#d":["identifier"],"#j":["test1"],"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],"#z":["rating"]}"##;
         assert_eq!(filter.as_json(), json.to_string());
     }
 
