@@ -728,7 +728,7 @@ impl Tag {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::K,
                     uppercase: false,
-                }) => Ok(Self::Kind(Kind::from_str(tag_1)?)),
+                }) => Ok(parse_or_generic::<Kind>(tag_kind, tag_1)),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::M,
                     uppercase: false,
@@ -736,7 +736,7 @@ impl Tag {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::X,
                     uppercase: false,
-                }) => Ok(Self::Sha256(Sha256Hash::from_str(tag_1)?)),
+                }) => Ok(parse_or_generic::<Sha256Hash>(tag_kind, tag_1)),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::U,
                     uppercase: false,
@@ -1545,6 +1545,30 @@ impl From<Identity> for Vec<String> {
             format!("{}:{}", value.platform, value.ident),
             value.proof,
         ]
+    }
+}
+
+/// Try to parse string. If fails, return `Tag::Generic`
+#[inline]
+fn parse_or_generic<T>(kind: TagKind, val: &str) -> Tag
+where
+    T: FromStr + Into<Tag>,
+{
+    match T::from_str(val) {
+        Ok(res) => res.into(),
+        Err(..) => Tag::Generic(kind, vec![val.to_string()]),
+    }
+}
+
+impl From<Kind> for Tag {
+    fn from(value: Kind) -> Self {
+        Self::Kind(value)
+    }
+}
+
+impl From<Sha256Hash> for Tag {
+    fn from(value: Sha256Hash) -> Self {
+        Self::Sha256(value)
     }
 }
 
