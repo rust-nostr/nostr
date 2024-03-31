@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+* nostr: fix deserialization issues for events with non-standard `k` and `x` tags ([Yuki Kishimoto])
 * pool: fix spurious send_event timeout error ([DanConwayDev] in https://github.com/rust-nostr/nostr/pull/375)
 
 <!-- Contributors -->
