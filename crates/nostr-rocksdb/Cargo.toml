@@ -22,7 +22,7 @@ tracing = { workspace = true, features = ["std", "attributes"] }
 
 [build-dependencies]
 # PIN for MSRV 1.64.0
-jobserver = "=0.1.26"
+jobserver = "=0.1.28"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
