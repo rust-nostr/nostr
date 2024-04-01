@@ -11,7 +11,7 @@ once_cell.workspace = true
 prettytable-rs = "0.10"
 rayon = "1.9"
 regex = "=1.9.6" # PIN for MSRV 1.64.0
-rustyline = { version = "12.0", default-features = false }
+rustyline = { version = "13.0", default-features = false }
 serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["full"] }
 tracing-subscriber.workspace = true
