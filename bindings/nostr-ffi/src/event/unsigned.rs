@@ -34,8 +34,8 @@ impl From<nostr::UnsignedEvent> for UnsignedEvent {
 
 #[uniffi::export]
 impl UnsignedEvent {
-    pub fn id(&self) -> EventId {
-        self.inner.id.into()
+    pub fn id(&self) -> Option<Arc<EventId>> {
+        self.inner.id.map(|id| Arc::new(id.into()))
     }
 
     pub fn author(&self) -> PublicKey {
@@ -63,11 +63,16 @@ impl UnsignedEvent {
         self.inner.content.clone()
     }
 
+    /// Sign an unsigned event
+    ///
+    /// Internally: calculate event ID (if not set), sign it, compose and verify event.
     pub fn sign(&self, keys: &Keys) -> Result<Event> {
         Ok(Event::from(self.inner.clone().sign(keys.deref())?))
     }
 
-    /// Add signature to [`UnsignedEvent`]
+    /// Add signature to unsigned event
+    ///
+    /// Internally verify the event.
     pub fn add_signature(&self, sig: &str) -> Result<Event> {
         let sig = Signature::from_str(sig)?;
         Ok(Event::from(self.inner.clone().add_signature(sig)?))

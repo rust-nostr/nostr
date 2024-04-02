@@ -162,27 +162,31 @@ impl Nip07Signer {
             .collect();
 
         let unsigned_obj = Object::new();
-        Reflect::set(
-            &unsigned_obj,
-            &JsValue::from_str("id"),
-            &unsigned.id.to_hex().into(),
-        )?;
+
+        if let Some(id) = unsigned.id {
+            Reflect::set(&unsigned_obj, &JsValue::from_str("id"), &id.to_hex().into())?;
+        }
+
         Reflect::set(
             &unsigned_obj,
             &JsValue::from_str("pubkey"),
             &unsigned.pubkey.to_string().into(),
         )?;
+
         Reflect::set(
             &unsigned_obj,
             &JsValue::from_str("created_at"),
             &(unsigned.created_at.as_u64() as f64).into(),
         )?;
+
         Reflect::set(
             &unsigned_obj,
             &JsValue::from_str("kind"),
             &(unsigned.kind.as_u64() as f64).into(),
         )?;
+
         Reflect::set(&unsigned_obj, &JsValue::from_str("tags"), &tags.into())?;
+
         Reflect::set(
             &unsigned_obj,
             &JsValue::from_str("content"),
@@ -200,13 +204,8 @@ impl Nip07Signer {
             .ok_or_else(|| Error::TypeMismatch(String::from("expected a hex string")))?;
         let sig: Signature = Signature::from_str(&sig)?;
 
-        // Add signature to unsigned event
-        let event: Event = unsigned.add_signature(sig)?;
-
-        // Verify event (both ID and signature)
-        event.verify()?;
-
-        Ok(event)
+        // Add signature
+        Ok(unsigned.add_signature(sig)?)
     }
 
     // TODO: add `signSchnorr`

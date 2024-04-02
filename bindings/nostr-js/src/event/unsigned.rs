@@ -43,8 +43,8 @@ impl From<JsUnsignedEvent> for UnsignedEvent {
 #[wasm_bindgen(js_class = UnsignedEvent)]
 impl JsUnsignedEvent {
     #[wasm_bindgen(getter)]
-    pub fn id(&self) -> JsEventId {
-        self.inner.id.into()
+    pub fn id(&self) -> Option<JsEventId> {
+        self.inner.id.map(|id| id.into())
     }
 
     #[wasm_bindgen(getter)]
@@ -84,12 +84,16 @@ impl JsUnsignedEvent {
         self.inner.as_json()
     }
 
-    /// Sign
+    /// Sign an unsigned event
+    ///
+    /// Internally: calculate event ID (if not set), sign it, compose and verify event.
     pub fn sign(self, keys: &JsKeys) -> Result<JsEvent> {
         Ok(self.inner.sign(keys.deref()).map_err(into_err)?.into())
     }
 
-    /// Add signature
+    /// Add signature to unsigned event
+    ///
+    /// Internally verify the event.
     #[wasm_bindgen(js_name = addSignature)]
     pub fn add_signature(self, sig: &str) -> Result<JsEvent> {
         let sig: Signature = Signature::from_str(sig).map_err(into_err)?;

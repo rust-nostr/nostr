@@ -12,7 +12,7 @@ use core::ops::Range;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
-use bitcoin::secp256k1::{self, Secp256k1, Signing};
+use bitcoin::secp256k1::{self, Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
 use super::kind::{Kind, NIP90_JOB_REQUEST_RANGE, NIP90_JOB_RESULT_RANGE};
@@ -208,7 +208,7 @@ impl EventBuilder {
         keys: &Keys,
     ) -> Result<Event, Error>
     where
-        C: Signing,
+        C: Signing + Verification,
         R: Rng + CryptoRng,
         T: TimeSupplier,
     {
@@ -227,14 +227,12 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        let created_at: Timestamp = self
-            .custom_created_at
-            .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
-        let id = EventId::new(&pubkey, created_at, &self.kind, &self.tags, &self.content);
         UnsignedEvent {
-            id,
+            id: None,
             pubkey,
-            created_at,
+            created_at: self
+                .custom_created_at
+                .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
             kind: self.kind,
             tags: self.tags,
             content: self.content,
@@ -251,7 +249,7 @@ impl EventBuilder {
         difficulty: u8,
     ) -> Result<Event, Error>
     where
-        C: Signing,
+        C: Signing + Verification,
         R: Rng + CryptoRng,
         T: TimeSupplier,
     {
@@ -285,7 +283,7 @@ impl EventBuilder {
             let created_at: Timestamp = self
                 .custom_created_at
                 .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
-            let id = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
+            let id: EventId = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
                 #[cfg(feature = "std")]
@@ -297,7 +295,7 @@ impl EventBuilder {
                 );
 
                 return UnsignedEvent {
-                    id,
+                    id: Some(id),
                     pubkey,
                     created_at,
                     kind: self.kind,

@@ -19,7 +19,7 @@ use bitcoin::hashes::Hash;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, RngCore};
-use bitcoin::secp256k1::{self, Secp256k1, Signing};
+use bitcoin::secp256k1::{self, Secp256k1, Signing, Verification};
 use cbc::{Decryptor, Encryptor};
 
 use super::nip01::Coordinate;
@@ -277,7 +277,7 @@ pub fn private_zap_request_with_ctx<C, R, T>(
     keys: &Keys,
 ) -> Result<Event, Error>
 where
-    C: Signing,
+    C: Signing + Verification,
     R: RngCore + CryptoRng,
     T: TimeSupplier,
 {
