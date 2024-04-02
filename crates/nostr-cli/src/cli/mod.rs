@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use nostr_sdk::prelude::*;
 
+pub mod io;
 pub mod parser;
 
 #[derive(Debug, Parser)]
@@ -21,6 +22,10 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum CliCommand {
     Open,
+    /// Serve Nostr Connect signer
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
+    ServeSigner,
 }
 
 #[derive(Debug, Parser)]

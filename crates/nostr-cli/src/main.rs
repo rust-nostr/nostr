@@ -18,7 +18,7 @@ use tracing_subscriber::fmt::format::FmtSpan;
 mod cli;
 mod util;
 
-use self::cli::{parser, Cli, CliCommand, Command};
+use self::cli::{io, parser, Cli, CliCommand, Command};
 
 #[tokio::main]
 async fn main() {
@@ -72,6 +72,34 @@ async fn run() -> Result<()> {
                     }
                 }
             }
+
+            Ok(())
+        }
+        CliCommand::ServeSigner => {
+            // Ask secret key
+            let secret_key: SecretKey = io::get_secret_key()?;
+
+            // Ask URI
+            let uri: Option<String> = cli::io::get_optional_input("Nostr Connect URI")?;
+
+            // Compose signer
+            let signer: NostrConnectRemoteSigner = match uri {
+                Some(uri) => {
+                    let uri: NostrConnectURI = NostrConnectURI::parse(&uri)?;
+                    NostrConnectRemoteSigner::from_uri(uri, secret_key, None, None).await?
+                }
+                None => {
+                    NostrConnectRemoteSigner::new(secret_key, ["wss://relay.nsec.app"], None, None)
+                        .await?
+                }
+            };
+
+            // Print bunker URI
+            let uri = signer.nostr_connect_uri().await;
+            println!("\nBunker URI: {uri}\n");
+
+            // Serve signer
+            signer.serve(Box::new(CustomActions)).await?;
 
             Ok(())
         }
@@ -199,5 +227,14 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
         },
         Command::Dev {} => Ok(()),
         Command::Exit => std::process::exit(0x01),
+    }
+}
+
+struct CustomActions;
+
+impl NostrConnectSignerActions for CustomActions {
+    fn approve(&self, req: &nip46::Request) -> bool {
+        println!("{req:#?}\n");
+        io::ask("Approve request?").unwrap_or_default()
     }
 }
