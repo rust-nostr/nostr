@@ -49,6 +49,10 @@ release:
 bench:
 	RUSTFLAGS='--cfg=bench' cargo +nightly bench -p nostr
 
+# Check cargo duplicate dependencies
+dup:
+    cargo tree -d
+
 # Remove artifacts that cargo has generated
 clean:
 	cargo clean
