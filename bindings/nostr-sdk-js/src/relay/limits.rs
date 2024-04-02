@@ -23,6 +23,7 @@ impl Deref for JsRelayLimits {
 
 #[wasm_bindgen(js_class = RelayLimits)]
 impl JsRelayLimits {
+    /// Construct with default limits
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
@@ -30,23 +31,30 @@ impl JsRelayLimits {
         }
     }
 
+    /// Disable all limits
+    pub fn disable() -> Self {
+        Self {
+            inner: RelayLimits::disable(),
+        }
+    }
+
     /// Maximum size of normalised JSON, in bytes (default: 5_250_000)
     #[wasm_bindgen(js_name = messageMaxSize)]
-    pub fn message_max_size(mut self, max_size: u32) -> Self {
+    pub fn message_max_size(mut self, max_size: Option<u32>) -> Self {
         self.inner.messages.max_size = max_size;
         self
     }
 
     /// Maximum size of normalised JSON, in bytes (default: 70_000)
     #[wasm_bindgen(js_name = eventMaxSize)]
-    pub fn event_max_size(mut self, max_size: u32) -> Self {
+    pub fn event_max_size(mut self, max_size: Option<u32>) -> Self {
         self.inner.events.max_size = max_size;
         self
     }
 
     /// Maximum number of tags allowed (default: 2_000)
     #[wasm_bindgen(js_name = eventMaxNumTags)]
-    pub fn event_max_num_tags(mut self, max_num_tags: u16) -> Self {
+    pub fn event_max_num_tags(mut self, max_num_tags: Option<u16>) -> Self {
         self.inner.events.max_num_tags = max_num_tags;
         self
     }

@@ -540,11 +540,13 @@ impl InternalRelay {
 
             async fn func(relay: &InternalRelay, data: Vec<u8>) -> Result<bool, Error> {
                 let size: usize = data.len();
-                let max_size: usize = relay.opts.limits.messages.max_size as usize;
                 relay.stats.add_bytes_received(size);
 
-                if size > max_size {
-                    return Err(Error::RelayMessageTooLarge { size, max_size });
+                if let Some(max_size) = relay.opts.limits.messages.max_size {
+                    let max_size: usize = max_size as usize;
+                    if size > max_size {
+                        return Err(Error::RelayMessageTooLarge { size, max_size });
+                    }
                 }
 
                 let msg = RawRelayMessage::from_json(&data)?;
@@ -552,20 +554,24 @@ impl InternalRelay {
 
                 if let RawRelayMessage::Event { event, .. } = &msg {
                     // Check event size
-                    let size: usize = event.as_json().as_bytes().len();
-                    let max_size: usize = relay.opts.limits.events.max_size as usize;
-                    if size > max_size {
-                        return Err(Error::EventTooLarge { size, max_size });
+                    if let Some(max_size) = relay.opts.limits.events.max_size {
+                        let size: usize = event.as_json().as_bytes().len();
+                        let max_size: usize = max_size as usize;
+                        if size > max_size {
+                            return Err(Error::EventTooLarge { size, max_size });
+                        }
                     }
 
                     // Check tags limit
-                    let size: usize = event.tags.len();
-                    let max_num_tags: usize = relay.opts.limits.events.max_num_tags as usize;
-                    if size > max_num_tags {
-                        return Err(Error::TooManyTags {
-                            size,
-                            max_size: max_num_tags,
-                        });
+                    if let Some(max_num_tags) = relay.opts.limits.events.max_num_tags {
+                        let size: usize = event.tags.len();
+                        let max_num_tags: usize = max_num_tags as usize;
+                        if size > max_num_tags {
+                            return Err(Error::TooManyTags {
+                                size,
+                                max_size: max_num_tags,
+                            });
+                        }
                     }
                 }
 

@@ -10,8 +10,11 @@ async fn main() -> Result<()> {
 
     // Customize relay limits
     let mut limits = RelayLimits::default();
-    limits.messages.max_size = 10_000;
-    limits.events.max_size = 3_000;
+    limits.messages.max_size = Some(10_000);
+    limits.events.max_size = Some(3_000);
+
+    // OR, disable all limits
+    let limits = RelayLimits::disable();
 
     // Compose options and limits
     let opts = Options::new().relay_limits(limits);
