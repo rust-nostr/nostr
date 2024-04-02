@@ -67,7 +67,7 @@ pub enum Error {
     /// NIP57 error
     #[cfg(feature = "nip57")]
     #[error(transparent)]
-    NIP57(#[from] nostr::nips::nip57::Error),
+    NIP57(#[from] nip57::Error),
     /// LNURL Pay
     #[cfg(feature = "nip57")]
     #[error(transparent)]
