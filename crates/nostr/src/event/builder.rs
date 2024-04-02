@@ -194,12 +194,14 @@ impl EventBuilder {
     }
 
     /// Set a custom `created_at` UNIX timestamp
+    #[inline]
     pub fn custom_created_at(mut self, created_at: Timestamp) -> Self {
         self.custom_created_at = Some(created_at);
         self
     }
 
     /// Build [`Event`]
+    #[inline]
     pub fn to_event_with_ctx<C, R, T>(
         self,
         secp: &Secp256k1<C>,
@@ -219,6 +221,7 @@ impl EventBuilder {
     }
 
     /// Build [`UnsignedEvent`]
+    #[inline]
     pub fn to_unsigned_event_with_supplier<T>(
         self,
         supplier: &T,
@@ -240,6 +243,7 @@ impl EventBuilder {
     }
 
     /// Build POW [`Event`]
+    #[inline]
     pub fn to_pow_event_with_ctx<C, R, T>(
         self,
         secp: &Secp256k1<C>,
@@ -311,18 +315,21 @@ impl EventBuilder {
 
 impl EventBuilder {
     /// Build [`Event`]
+    #[inline]
     #[cfg(feature = "std")]
     pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
         self.to_event_with_ctx(&SECP256K1, &mut rand::thread_rng(), &Instant::now(), keys)
     }
 
     /// Build [`UnsignedEvent`]
+    #[inline]
     #[cfg(feature = "std")]
     pub fn to_unsigned_event(self, pubkey: PublicKey) -> UnsignedEvent {
         self.to_unsigned_event_with_supplier(&Instant::now(), pubkey)
     }
 
     /// Build POW [`Event`]
+    #[inline]
     #[cfg(feature = "std")]
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
         self.to_pow_event_with_ctx(
@@ -335,6 +342,7 @@ impl EventBuilder {
     }
 
     /// Build unsigned POW [`Event`]
+    #[inline]
     #[cfg(feature = "std")]
     pub fn to_unsigned_pow_event(self, pubkey: PublicKey, difficulty: u8) -> UnsignedEvent {
         self.to_unsigned_pow_event_with_supplier(&Instant::now(), pubkey, difficulty)
@@ -360,6 +368,7 @@ impl EventBuilder {
     ///
     /// let builder = EventBuilder::metadata(&metadata);
     /// ```
+    #[inline]
     pub fn metadata(metadata: &Metadata) -> Self {
         Self::new(Kind::Metadata, metadata.as_json(), [])
     }
@@ -387,6 +396,7 @@ impl EventBuilder {
     ///
     /// let builder = EventBuilder::text_note("My first text note from Nostr SDK!", []);
     /// ```
+    #[inline]
     pub fn text_note<S, I>(content: S, tags: I) -> Self
     where
         S: Into<String>,
@@ -492,6 +502,7 @@ impl EventBuilder {
     /// ];
     /// let builder = EventBuilder::long_form_text_note("My first text note from Nostr SDK!", []);
     /// ```
+    #[inline]
     pub fn long_form_text_note<S, I>(content: S, tags: I) -> Self
     where
         S: Into<String>,
@@ -591,6 +602,7 @@ impl EventBuilder {
     }
 
     /// Create delete event
+    #[inline]
     pub fn delete<I, T>(ids: I) -> Self
     where
         I: IntoIterator<Item = T>,
@@ -632,6 +644,7 @@ impl EventBuilder {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[inline]
     pub fn channel(metadata: &Metadata) -> Self {
         Self::new(Kind::ChannelCreation, metadata.as_json(), [])
     }
@@ -773,6 +786,7 @@ impl EventBuilder {
     /// Create report event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    #[inline]
     pub fn report<I, S>(tags: I, content: S) -> Self
     where
         I: IntoIterator<Item = Tag>,
@@ -1246,6 +1260,7 @@ impl EventBuilder {
     }
 
     /// GiftWrapped Sealed Direct message
+    #[inline]
     #[cfg(feature = "nip59")]
     pub fn sealed_direct<S>(receiver: PublicKey, message: S) -> Self
     where
@@ -1708,5 +1723,20 @@ mod tests {
 
         assert_eq!(profile_badges.kind(), Kind::ProfileBadges);
         assert_eq!(profile_badges.tags(), example_event.tags());
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+
+    #[bench]
+    pub fn builder_to_event(bh: &mut Bencher) {
+        let keys = Keys::generate();
+        bh.iter(|| {
+            black_box(EventBuilder::text_note("hello", []).to_event(&keys)).unwrap();
+        });
     }
 }
