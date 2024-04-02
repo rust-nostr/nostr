@@ -83,16 +83,23 @@ impl EventId {
         S: AsRef<str>,
     {
         let id: &str = id.as_ref();
-        match Self::from_nostr_uri(id) {
-            Ok(id) => Ok(id),
-            Err(_) => match Self::from_hex(id) {
-                Ok(id) => Ok(id),
-                Err(_) => match Self::from_bech32(id) {
-                    Ok(id) => Ok(id),
-                    Err(_) => Err(Error::InvalidEventId),
-                },
-            },
+
+        // Try from hex
+        if let Ok(id) = Self::from_hex(id) {
+            return Ok(id);
         }
+
+        // Try from bech32
+        if let Ok(id) = Self::from_bech32(id) {
+            return Ok(id);
+        }
+
+        // Try from NIP21 URI
+        if let Ok(id) = Self::from_nostr_uri(id) {
+            return Ok(id);
+        }
+
+        Err(Error::InvalidEventId)
     }
 
     /// [`EventId`] hex string

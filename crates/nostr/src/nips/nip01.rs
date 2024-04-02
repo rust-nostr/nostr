@@ -13,6 +13,8 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
+use super::nip19::FromBech32;
+use super::nip21::NostrURI;
 use crate::event::id;
 use crate::{key, Filter, Kind, PublicKey, Tag, UncheckedUrl};
 
@@ -88,6 +90,52 @@ impl Coordinate {
         }
     }
 
+    /// Try to parse [Coordinate] from `<kind>:<pubkey>:[<d-tag>]` format, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    pub fn parse<S>(coordinate: S) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        let coordinate: &str = coordinate.as_ref();
+
+        // Try from hex
+        if let Ok(coordinate) = Self::from_kpi_format(coordinate) {
+            return Ok(coordinate);
+        }
+
+        // Try from bech32
+        if let Ok(coordinate) = Self::from_bech32(coordinate) {
+            return Ok(coordinate);
+        }
+
+        // Try from NIP21 URI
+        if let Ok(coordinate) = Self::from_nostr_uri(coordinate) {
+            return Ok(coordinate);
+        }
+
+        Err(Error::InvalidCoordinate)
+    }
+
+    /// Try to parse from `<kind>:<pubkey>:[<d-tag>]` format
+    pub fn from_kpi_format<S>(coordinate: S) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        let coordinate: &str = coordinate.as_ref();
+        let mut kpi = coordinate.split(':');
+        if let (Some(kind_str), Some(public_key_str), Some(identifier)) =
+            (kpi.next(), kpi.next(), kpi.next())
+        {
+            Ok(Self {
+                kind: Kind::from_str(kind_str)?,
+                public_key: PublicKey::from_hex(public_key_str)?,
+                identifier: identifier.to_owned(),
+                relays: Vec::new(),
+            })
+        } else {
+            Err(Error::InvalidCoordinate)
+        }
+    }
+
     /// Set a `d` tag identifier
     ///
     /// Needed for a parametrized replaceable event.
@@ -144,19 +192,8 @@ impl fmt::Display for Coordinate {
 impl FromStr for Coordinate {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut kpi = s.split(':');
-        if let (Some(kind_str), Some(public_key_str), Some(identifier)) =
-            (kpi.next(), kpi.next(), kpi.next())
-        {
-            Ok(Self {
-                kind: Kind::from_str(kind_str)?,
-                public_key: PublicKey::from_str(public_key_str)?,
-                identifier: identifier.to_owned(),
-                relays: Vec::new(),
-            })
-        } else {
-            Err(Error::InvalidCoordinate)
-        }
+    /// Try to parse [Coordinate] from `<kind>:<pubkey>:[<d-tag>]` format, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    fn from_str(coordinate: &str) -> Result<Self, Self::Err> {
+        Self::parse(coordinate)
     }
 }

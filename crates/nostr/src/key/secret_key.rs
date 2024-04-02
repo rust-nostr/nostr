@@ -56,13 +56,18 @@ impl SecretKey {
         S: AsRef<str>,
     {
         let secret_key: &str = secret_key.as_ref();
-        match Self::from_hex(secret_key) {
-            Ok(secret_key) => Ok(secret_key),
-            Err(_) => match Self::from_bech32(secret_key) {
-                Ok(secret_key) => Ok(secret_key),
-                Err(_) => Err(Error::InvalidSecretKey),
-            },
+
+        // Try from hex
+        if let Ok(secret_key) = Self::from_hex(secret_key) {
+            return Ok(secret_key);
         }
+
+        // Try from bech32
+        if let Ok(secret_key) = Self::from_bech32(secret_key) {
+            return Ok(secret_key);
+        }
+
+        Err(Error::InvalidSecretKey)
     }
 
     /// Parse [SecretKey] from `bytes`

@@ -49,16 +49,23 @@ impl PublicKey {
         S: AsRef<str>,
     {
         let public_key: &str = public_key.as_ref();
-        match Self::from_nostr_uri(public_key) {
-            Ok(public_key) => Ok(public_key),
-            Err(_) => match Self::from_hex(public_key) {
-                Ok(public_key) => Ok(public_key),
-                Err(_) => match Self::from_bech32(public_key) {
-                    Ok(public_key) => Ok(public_key),
-                    Err(_) => Err(Error::InvalidPublicKey),
-                },
-            },
+
+        // Try from hex
+        if let Ok(public_key) = Self::from_hex(public_key) {
+            return Ok(public_key);
         }
+
+        // Try from bech32
+        if let Ok(public_key) = Self::from_bech32(public_key) {
+            return Ok(public_key);
+        }
+
+        // Try from NIP21 URI
+        if let Ok(public_key) = Self::from_nostr_uri(public_key) {
+            return Ok(public_key);
+        }
+
+        Err(Error::InvalidPublicKey)
     }
 
     /// Parse [PublicKey] from `bytes`
@@ -112,8 +119,8 @@ impl<'de> Deserialize<'de> for PublicKey {
     where
         D: Deserializer<'de>,
     {
-        let hex: String = String::deserialize(deserializer)?;
-        Self::parse(hex).map_err(serde::de::Error::custom)
+        let public_key: String = String::deserialize(deserializer)?;
+        Self::parse(public_key).map_err(serde::de::Error::custom)
     }
 }
 
