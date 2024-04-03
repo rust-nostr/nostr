@@ -612,4 +612,14 @@ impl EventBuilder {
             inner: nostr::EventBuilder::emoji_sets(emojis.into_iter().map(|e| e.into())),
         }
     }
+
+    /// Label
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
+    #[uniffi::constructor]
+    pub fn label(label_namespace: String, labels: Vec<String>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::label(label_namespace, labels),
+        }
+    }
 }

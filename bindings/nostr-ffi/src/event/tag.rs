@@ -540,6 +540,12 @@ pub enum TagEnum {
     Word {
         word: String,
     },
+    LabelNamespace {
+        namespace: String,
+    },
+    Label {
+        label: Vec<String>,
+    },
 }
 
 impl From<tag::Tag> for TagEnum {
@@ -709,6 +715,8 @@ impl From<tag::Tag> for TagEnum {
                 }
             }
             tag::Tag::Word(word) => Self::Word { word },
+            tag::Tag::LabelNamespace(label) => Self::LabelNamespace { namespace: label },
+            tag::Tag::Label(labels) => Self::Label { label: labels },
         }
     }
 }
@@ -852,6 +860,8 @@ impl TryFrom<TagEnum> for tag::Tag {
                 })
             }
             TagEnum::Word { word } => Ok(Self::Word(word)),
+            TagEnum::LabelNamespace { namespace } => Ok(Self::LabelNamespace(namespace)),
+            TagEnum::Label { label } => Ok(Self::Label(label)),
         }
     }
 }

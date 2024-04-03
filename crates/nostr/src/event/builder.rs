@@ -1417,6 +1417,23 @@ impl EventBuilder {
             .map(|(s, url)| Tag::Emoji { shortcode: s, url });
         Self::new(Kind::EmojiSets, "", tags)
     }
+
+    /// Label
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
+    pub fn label<S, I>(namespace: S, labels: I) -> Self
+    where
+        S: Into<String>,
+        I: IntoIterator<Item = String>,
+    {
+        let namespace: String = namespace.into();
+        let labels: Vec<String> = labels.into_iter().chain(vec![namespace.clone()]).collect();
+        Self::new(
+            Kind::Label,
+            "",
+            [Tag::LabelNamespace(namespace), Tag::Label(labels)],
+        )
+    }
 }
 
 #[cfg(test)]

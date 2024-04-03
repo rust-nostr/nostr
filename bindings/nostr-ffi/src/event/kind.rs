@@ -114,6 +114,10 @@ pub enum KindEnum {
     PublicChatReserved48,
     /// Public Chat Reserved (NIP28)
     PublicChatReserved49,
+    /// Label
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
+    Label,
     /// Wallet Service Info (NIP47)
     WalletConnectInfo,
     /// Reporting (NIP56)
@@ -281,6 +285,7 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::PublicChatReserved47 => Self::PublicChatReserved47,
             nostr::Kind::PublicChatReserved48 => Self::PublicChatReserved48,
             nostr::Kind::PublicChatReserved49 => Self::PublicChatReserved49,
+            nostr::Kind::Label => Self::Label,
             nostr::Kind::WalletConnectInfo => Self::WalletConnectInfo,
             nostr::Kind::Reporting => Self::Reporting,
             nostr::Kind::ZapPrivateMessage => Self::ZapPrivateMessage,
@@ -358,6 +363,7 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::PublicChatReserved47 => Self::PublicChatReserved47,
             KindEnum::PublicChatReserved48 => Self::PublicChatReserved48,
             KindEnum::PublicChatReserved49 => Self::PublicChatReserved49,
+            KindEnum::Label => Self::Label,
             KindEnum::WalletConnectInfo => Self::WalletConnectInfo,
             KindEnum::Reporting => Self::Reporting,
             KindEnum::ZapPrivateMessage => Self::ZapPrivateMessage,

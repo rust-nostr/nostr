@@ -647,6 +647,14 @@ pub enum Tag {
         extra_info: Option<String>,
     },
     Word(String),
+    /// Label namespace
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
+    LabelNamespace(String),
+    /// Label
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
+    Label(Vec<String>),
 }
 
 impl Tag {
@@ -669,6 +677,12 @@ impl Tag {
                 .map(|u| UncheckedUrl::from(u.as_ref()))
                 .collect::<Vec<UncheckedUrl>>();
             Ok(Self::Relays(urls))
+        } else if tag_kind.eq(&TagKind::SingleLetter(SingleLetterTag {
+            character: Alphabet::L,
+            uppercase: false,
+        })) {
+            let labels = tag.iter().skip(1).map(|u| u.as_ref().to_string()).collect();
+            Ok(Self::Label(labels))
         } else if tag_len == 1 {
             match tag_kind {
                 TagKind::ContentWarning => Ok(Self::ContentWarning { reason: None }),
@@ -785,6 +799,10 @@ impl Tag {
                 }),
                 TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
                 TagKind::Word => Ok(Self::Word(tag_1.to_string())),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::L,
+                    uppercase: true,
+                }) => Ok(Self::LabelNamespace(tag_1.to_string())),
                 _ => Ok(Self::Generic(tag_kind, vec![tag_1.to_owned()])),
             }
         } else if tag_len == 3 {
@@ -1127,6 +1145,14 @@ impl Tag {
             Self::Encrypted => TagKind::Encrypted,
             Self::Request(..) => TagKind::Request,
             Self::Word(..) => TagKind::Word,
+            Self::LabelNamespace(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::L,
+                uppercase: true,
+            }),
+            Self::Label(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::L,
+                uppercase: false,
+            }),
         }
     }
 
@@ -1205,6 +1231,8 @@ impl Tag {
             Self::Encrypted => None,
             Self::Request(val) => Some(val.as_json().into_generic_tag_value()),
             Self::Word(val) => Some(val.into_generic_tag_value()),
+            Self::LabelNamespace(val) => Some(val.into_generic_tag_value()),
+            Self::Label(l) => l.first().map(|v| v.into_generic_tag_value()),
         }
     }
 }
@@ -1421,6 +1449,26 @@ impl From<Tag> for Vec<String> {
                 tag
             }
             Tag::Word(word) => vec![TagKind::Word.to_string(), word],
+            Tag::LabelNamespace(n) => vec![
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::L,
+                    uppercase: true,
+                })
+                .to_string(),
+                n,
+            ],
+            Tag::Label(l) => {
+                let mut tag = Vec::with_capacity(1 + l.len());
+                tag.push(
+                    TagKind::SingleLetter(SingleLetterTag {
+                        character: Alphabet::L,
+                        uppercase: false,
+                    })
+                    .to_string(),
+                );
+                tag.extend(l);
+                tag
+            }
         }
     }
 }
@@ -1968,6 +2016,21 @@ mod tests {
             }
             .as_vec()
         );
+
+        assert_eq!(
+            vec!["L", "#t"],
+            Tag::LabelNamespace("#t".to_string()).as_vec()
+        );
+
+        assert_eq!(
+            vec!["l", "IT-MI"],
+            Tag::Label(vec!["IT-MI".to_string()]).as_vec()
+        );
+
+        assert_eq!(
+            vec!["l", "IT-MI", "ISO-3166-2"],
+            Tag::Label(vec!["IT-MI".to_string(), "ISO-3166-2".to_string()]).as_vec()
+        );
     }
 
     #[test]
@@ -2277,6 +2340,21 @@ mod tests {
                 millisats: 10_000,
                 bolt11: None
             }
+        );
+
+        assert_eq!(
+            Tag::parse(&["L", "#t"]).unwrap(),
+            Tag::LabelNamespace("#t".to_string())
+        );
+
+        assert_eq!(
+            Tag::parse(&["l", "IT-MI"]).unwrap(),
+            Tag::Label(vec!["IT-MI".to_string()])
+        );
+
+        assert_eq!(
+            Tag::parse(&["l", "IT-MI", "ISO-3166-2"]).unwrap(),
+            Tag::Label(vec!["IT-MI".to_string(), "ISO-3166-2".to_string()])
         );
     }
 }
