@@ -90,9 +90,9 @@ impl JsEncryptedSecretKey {
     }
 
     #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(encrypted_secret_key: String) -> Result<JsEncryptedSecretKey> {
+    pub fn from_bech32(bech32: &str) -> Result<JsEncryptedSecretKey> {
         Ok(Self {
-            inner: EncryptedSecretKey::from_bech32(encrypted_secret_key).map_err(into_err)?,
+            inner: EncryptedSecretKey::from_bech32(bech32).map_err(into_err)?,
         })
     }
 

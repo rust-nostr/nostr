@@ -59,12 +59,12 @@ impl Coordinate {
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(bech32: String) -> Result<Self> {
+    pub fn from_bech32(bech32: &str) -> Result<Self> {
         Ok(nip01::Coordinate::from_bech32(bech32)?.into())
     }
 
     #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: String) -> Result<Self> {
+    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
         Ok(nip01::Coordinate::from_nostr_uri(uri)?.into())
     }
 

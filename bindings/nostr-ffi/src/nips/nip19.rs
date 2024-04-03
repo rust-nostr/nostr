@@ -76,8 +76,8 @@ impl From<nip19::Nip19> for Nip19 {
 #[uniffi::export]
 impl Nip19 {
     #[uniffi::constructor]
-    pub fn from_bech32(string: String) -> Result<Self> {
-        Ok(nip19::Nip19::from_bech32(string)?.into())
+    pub fn from_bech32(bech32: &str) -> Result<Self> {
+        Ok(nip19::Nip19::from_bech32(bech32)?.into())
     }
 
     pub fn as_enum(&self) -> Nip19Enum {
@@ -110,14 +110,14 @@ impl Nip19Event {
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(bech32: String) -> Result<Self> {
+    pub fn from_bech32(bech32: &str) -> Result<Self> {
         Ok(Self {
             inner: nip19::Nip19Event::from_bech32(bech32)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: String) -> Result<Self> {
+    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
         Ok(Self {
             inner: nip19::Nip19Event::from_nostr_uri(uri)?,
         })
@@ -166,14 +166,14 @@ impl Nip19Profile {
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(bech32: String) -> Result<Self> {
+    pub fn from_bech32(bech32: &str) -> Result<Self> {
         Ok(Self {
             inner: nip19::Nip19Profile::from_bech32(bech32)?,
         })
     }
 
     #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: String) -> Result<Self> {
+    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
         Ok(Self {
             inner: nip19::Nip19Profile::from_nostr_uri(uri)?,
         })

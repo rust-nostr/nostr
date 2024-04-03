@@ -202,7 +202,7 @@ pub enum Nip19 {
 
 pub trait FromBech32: Sized {
     type Err;
-    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
+    fn from_bech32<S>(bech32: S) -> Result<Self, Self::Err>
     where
         S: AsRef<str>;
 }

@@ -82,9 +82,9 @@ impl JsEventId {
     }
 
     #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(id: &str) -> Result<JsEventId> {
+    pub fn from_bech32(bech32: &str) -> Result<JsEventId> {
         Ok(Self {
-            inner: EventId::from_bech32(id).map_err(into_err)?,
+            inner: EventId::from_bech32(bech32).map_err(into_err)?,
         })
     }
 

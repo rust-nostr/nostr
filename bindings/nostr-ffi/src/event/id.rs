@@ -77,9 +77,9 @@ impl EventId {
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(id: &str) -> Result<Self> {
+    pub fn from_bech32(bech32: &str) -> Result<Self> {
         Ok(Self {
-            inner: nostr::EventId::from_bech32(id)?,
+            inner: nostr::EventId::from_bech32(bech32)?,
         })
     }
 

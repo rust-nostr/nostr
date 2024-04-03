@@ -90,9 +90,9 @@ impl EncryptedSecretKey {
     }
 
     #[uniffi::constructor]
-    pub fn from_bech32(encrypted_secret_key: String) -> Result<Self> {
+    pub fn from_bech32(bech32: &str) -> Result<Self> {
         Ok(Self {
-            inner: nip49::EncryptedSecretKey::from_bech32(encrypted_secret_key)?,
+            inner: nip49::EncryptedSecretKey::from_bech32(bech32)?,
         })
     }
 
