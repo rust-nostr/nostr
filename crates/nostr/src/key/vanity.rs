@@ -103,16 +103,14 @@ impl Keys {
                             .any(|prefix| bech32_key[BECH32_SPAN..].starts_with(prefix))
                         {
                             tx.send(keys).expect("Unable to send on channel");
-                            let _ = found
-                                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                            found.store(true, Ordering::SeqCst);
                             break;
                         }
                     } else {
                         let pubkey = keys.public_key.to_string();
                         if prefixes.iter().any(|prefix| pubkey.starts_with(prefix)) {
                             tx.send(keys).expect("Unable to send on channel");
-                            let _ = found
-                                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| Some(true));
+                            found.store(true, Ordering::SeqCst);
                             break;
                         }
                     }
