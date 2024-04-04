@@ -24,6 +24,7 @@
         * [NIP-19](./nostr/06-nip19.md)
         * [NIP-21](./nostr/06-nip21.md)
         * [NIP-44](./nostr/06-nip44.md)
+        * [NIP-59](./nostr/06-nip59.md)
         * [NIP-65](./nostr/06-nip65.md)
         
 * [Nostr SDK](./nostr-sdk/01-index.md)
