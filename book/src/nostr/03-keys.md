@@ -48,7 +48,7 @@ TODO
 </section>
 </custom-tabs>
 
-## Restore from **hex** and/or **bech32** secret key
+## Restore from hex and/or bech32 secret key
 
 <custom-tabs category="lang">
 
@@ -101,6 +101,52 @@ keys = Keys.parse("hex or bech32 secret key")
 <section>
 
 TODO
+
+</section>
+
+<div slot="title">Kotlin</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">Swift</div>
+<section>
+
+TODO
+
+</section>
+</custom-tabs>
+
+## Generate vanity keys
+
+<custom-tabs category="lang">
+
+<div slot="title">Rust</div>
+<section>
+
+```rust,ignore
+{{#include ../../snippets/nostr/rust/src/vanity.rs}}
+```
+
+</section>
+
+<div slot="title">Python</div>
+<section>
+
+```python,ignore
+{{#include ../../snippets/nostr/python/src/vanity.py}}
+```
+
+</section>
+
+<div slot="title">JavaScript</div>
+<section>
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/vanity.js}}
+```
 
 </section>
 

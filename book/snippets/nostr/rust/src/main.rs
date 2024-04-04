@@ -7,6 +7,7 @@ mod keys;
 mod messages;
 mod nip01;
 mod nip44;
+mod vanity;
 
 fn main() -> Result<()> {
     keys::keys()?;
@@ -18,6 +19,8 @@ fn main() -> Result<()> {
 
     nip01::nip01()?;
     nip44::run()?;
+
+    vanity::run()?;
 
     Ok(())
 }
