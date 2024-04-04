@@ -7,10 +7,10 @@ use core::ops::Deref;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-mod builder;
-mod id;
+pub mod builder;
+pub mod id;
 pub mod tag;
-mod unsigned;
+pub mod unsigned;
 
 pub use self::builder::JsEventBuilder;
 pub use self::id::JsEventId;
