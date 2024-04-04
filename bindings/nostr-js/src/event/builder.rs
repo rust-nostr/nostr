@@ -533,6 +533,15 @@ impl JsEventBuilder {
         }
     }
 
+    /// Search relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn search_relays(relays: Vec<String>) -> Self {
+        Self {
+            inner: EventBuilder::search_relays(relays.into_iter().map(UncheckedUrl::from)),
+        }
+    }
+
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
