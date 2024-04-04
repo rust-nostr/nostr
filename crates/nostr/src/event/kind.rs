@@ -111,6 +111,7 @@ kind_variants! {
     PublicChatReserved49 => 49, "Public Chat Reserved (NIP28)",
     WalletConnectInfo => 13194, "Wallet Service Info (NIP47)",
     Reporting => 1984, "Reporting (NIP56)",
+    Label => 1985, "Label <https://github.com/nostr-protocol/nips/blob/master/32.md>",
     ZapPrivateMessage => 9733, "Zap Private Message (NIP57)",
     ZapRequest => 9734, "Zap Request (NIP57)",
     ZapReceipt => 9735, "Zap Receipt (NIP57)",

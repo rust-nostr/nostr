@@ -471,4 +471,14 @@ impl JsEventBuilder {
             inner: EventBuilder::sealed_direct(**receiver, message),
         }
     }
+
+    /// Label
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
+    #[wasm_bindgen]
+    pub fn label(label_namespace: String, labels: Vec<String>) -> Self {
+        Self {
+            inner: EventBuilder::label(label_namespace, labels),
+        }
+    }
 }
