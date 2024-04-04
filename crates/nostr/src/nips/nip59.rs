@@ -85,6 +85,7 @@ impl UnwrappedGift {
     /// Unwrap Gift Wrap event
     ///
     /// Internally verify the `seal` event
+    #[inline]
     #[cfg(feature = "std")]
     pub fn from_gift_wrap(receiver_keys: &Keys, gift_wrap: &Event) -> Result<Self, Error> {
         Self::from_gift_wrap_with_ctx(&SECP256K1, receiver_keys, gift_wrap)
@@ -124,6 +125,7 @@ impl UnwrappedGift {
 }
 
 /// Extract `rumor` from Gift Wrap event
+#[inline]
 #[cfg(feature = "std")]
 pub fn extract_rumor(receiver_keys: &Keys, gift_wrap: &Event) -> Result<UnwrappedGift, Error> {
     UnwrappedGift::from_gift_wrap(receiver_keys, gift_wrap)
