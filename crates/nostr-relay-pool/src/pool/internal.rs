@@ -4,7 +4,9 @@
 
 //! Relay Pool
 
+use std::collections::btree_set::IntoIter;
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::iter::Rev;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -559,13 +561,21 @@ impl InternalRelayPool {
                 handle.join().await?;
             }
 
-            Ok(events
-                .lock_owned()
-                .await
-                .clone()
-                .into_iter()
-                .rev()
-                .collect())
+            // Lock events, iterate set and revert order (events are sorted in ascending order in the BTreeSet)
+            let events: BTreeSet<Event> = events.lock().await.clone();
+            let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
+
+            // Check how many filters are passed and return the limit
+            let limit: Option<usize> = match (filters.len(), filters.first()) {
+                (1, Some(filter)) => filter.limit,
+                _ => None,
+            };
+
+            // Check limit
+            match limit {
+                Some(limit) => Ok(iter.take(limit).collect()),
+                None => Ok(iter.collect()),
+            }
         }
     }
 
