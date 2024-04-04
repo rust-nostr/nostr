@@ -1001,6 +1001,18 @@ impl Tag {
         }
     }
 
+    /// Compose custom tag
+    ///
+    /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
+    #[inline]
+    pub fn custom<I, S>(kind: TagKind, values: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        Self::Generic(kind, values.into_iter().map(|v| v.into()).collect())
+    }
+
     /// Check if [Tag] is an event `reply`
     #[inline]
     pub fn is_reply(&self) -> bool {
