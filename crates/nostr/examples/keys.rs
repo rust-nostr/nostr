@@ -11,9 +11,9 @@ fn main() -> Result<()> {
     let secret_key = keys.secret_key()?;
 
     println!("Public key: {}", public_key);
-    println!("Public key bech32: {}", public_key.to_bech32()?);
+    println!("Public key bech32: {}", public_key.to_bech32());
     println!("Secret key: {}", keys.secret_key()?.to_secret_hex());
-    println!("Secret key bech32: {}", secret_key.to_bech32()?);
+    println!("Secret key bech32: {}", secret_key.to_bech32());
 
     // Bech32 keys
     let secret_key =

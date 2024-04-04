@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
         .send_timeout(Some(Duration::from_secs(5)));
     let client = Client::with_opts(&keys, opts);
 
-    println!("Bot public key: {}", keys.public_key().to_bech32()?);
+    println!("Bot public key: {}", keys.public_key().to_bech32());
 
     client.add_relay("wss://nostr.oxtr.dev").await?;
     client.add_relay("wss://relay.damus.io").await?;

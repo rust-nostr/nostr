@@ -350,7 +350,7 @@ impl Serialize for EncryptedSecretKey {
     where
         S: Serializer,
     {
-        let cryptsec: String = self.to_bech32().map_err(serde::ser::Error::custom)?;
+        let cryptsec: String = self.to_bech32();
         serializer.serialize_str(&cryptsec)
     }
 }
@@ -399,7 +399,7 @@ mod tests {
     #[test]
     fn test_encrypted_secret_key_serialization() {
         let encrypted_secret_key = EncryptedSecretKey::from_bech32(CRYPTSEC).unwrap();
-        assert_eq!(encrypted_secret_key.to_bech32().unwrap(), CRYPTSEC)
+        assert_eq!(encrypted_secret_key.to_bech32(), CRYPTSEC)
     }
 
     #[test]

@@ -76,7 +76,7 @@ impl Nip21 {
     }
 
     /// Serialize to NIP21 nostr URI
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        Ok(self.inner.to_nostr_uri()?)
+    pub fn to_nostr_uri(&self) -> String {
+        self.inner.to_nostr_uri()
     }
 }

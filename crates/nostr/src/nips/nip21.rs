@@ -75,12 +75,11 @@ fn split_uri(uri: &str) -> Result<&str, Error> {
 /// Nostr URI trait
 pub trait NostrURI: Sized + ToBech32 + FromBech32
 where
-    Error: From<<Self as ToBech32>::Err>,
     Error: From<<Self as FromBech32>::Err>,
 {
     /// Get nostr URI
-    fn to_nostr_uri(&self) -> Result<String, Error> {
-        Ok(format!("{SCHEME}:{}", self.to_bech32()?))
+    fn to_nostr_uri(&self) -> String {
+        format!("{SCHEME}:{}", self.to_bech32())
     }
 
     /// From `nostr` URI
@@ -161,13 +160,13 @@ impl Nip21 {
     }
 
     /// Serialize to NIP21 nostr URI
-    pub fn to_nostr_uri(&self) -> Result<String, Error> {
+    pub fn to_nostr_uri(&self) -> String {
         match self {
-            Self::Pubkey(val) => Ok(val.to_bech32()?),
-            Self::Profile(val) => Ok(val.to_bech32()?),
-            Self::EventId(val) => Ok(val.to_bech32()?),
-            Self::Event(val) => Ok(val.to_bech32()?),
-            Self::Coordinate(val) => Ok(val.to_bech32()?),
+            Self::Pubkey(val) => val.to_bech32(),
+            Self::Profile(val) => val.to_bech32(),
+            Self::EventId(val) => val.to_bech32(),
+            Self::Event(val) => val.to_bech32(),
+            Self::Coordinate(val) => val.to_bech32(),
         }
     }
 
@@ -193,7 +192,7 @@ mod tests {
             PublicKey::from_str("aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4")
                 .unwrap();
         assert_eq!(
-            pubkey.to_nostr_uri().unwrap(),
+            pubkey.to_nostr_uri(),
             String::from("nostr:npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
         );
     }

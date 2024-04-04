@@ -45,13 +45,13 @@ impl JsNip19Event {
     }
 
     #[wasm_bindgen(js_name = toBech32)]
-    pub fn to_bech32(&self) -> Result<String> {
-        self.inner.to_bech32().map_err(into_err)
+    pub fn to_bech32(&self) -> String {
+        self.inner.to_bech32()
     }
 
     #[wasm_bindgen(js_name = toNostrUri)]
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        self.inner.to_nostr_uri().map_err(into_err)
+    pub fn to_nostr_uri(&self) -> String {
+        self.inner.to_nostr_uri()
     }
 
     #[wasm_bindgen(js_name = eventId)]
@@ -104,13 +104,13 @@ impl JsNip19Profile {
     }
 
     #[wasm_bindgen(js_name = toBech32)]
-    pub fn to_bech32(&self) -> Result<String> {
-        self.inner.to_bech32().map_err(into_err)
+    pub fn to_bech32(&self) -> String {
+        self.inner.to_bech32()
     }
 
     #[wasm_bindgen(js_name = toNostrUri)]
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        self.inner.to_nostr_uri().map_err(into_err)
+    pub fn to_nostr_uri(&self) -> String {
+        self.inner.to_nostr_uri()
     }
 
     #[wasm_bindgen(js_name = publicKey)]

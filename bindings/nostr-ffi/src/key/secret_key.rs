@@ -64,8 +64,8 @@ impl SecretKey {
         self.inner.to_secret_hex()
     }
 
-    pub fn to_bech32(&self) -> Result<String> {
-        Ok(self.inner.to_bech32()?)
+    pub fn to_bech32(&self) -> String {
+        self.inner.to_bech32()
     }
 
     /// Encrypt `SecretKey`

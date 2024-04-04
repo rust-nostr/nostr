@@ -10,7 +10,7 @@ const MNEMONIC_PHRASE: &str = "equal dragon fabric refuse stable cherry smoke al
 
 fn main() -> Result<()> {
     let keys = Keys::from_mnemonic(MNEMONIC_PHRASE, Some("mypassphrase"))?;
-    println!("{}", keys.secret_key()?.to_bech32()?);
+    println!("{}", keys.secret_key()?.to_bech32());
 
     Ok(())
 }

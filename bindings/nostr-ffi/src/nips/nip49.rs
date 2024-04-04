@@ -111,7 +111,7 @@ impl EncryptedSecretKey {
         Ok(Arc::new(self.inner.to_secret_key(password)?.into()))
     }
 
-    pub fn to_bech32(&self) -> Result<String> {
-        Ok(self.inner.to_bech32()?)
+    pub fn to_bech32(&self) -> String {
+        self.inner.to_bech32()
     }
 }

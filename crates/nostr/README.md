@@ -33,7 +33,7 @@ fn main() -> Result<()> {
     let my_keys = Keys::parse("hex-or-bech32-secret-key")?;
 
     // Show bech32 public key
-    let bech32_pubkey: String = my_keys.public_key().to_bech32()?;
+    let bech32_pubkey: String = my_keys.public_key().to_bech32();
     println!("Bech32 PubKey: {}", bech32_pubkey);
 
     let metadata = Metadata::new()

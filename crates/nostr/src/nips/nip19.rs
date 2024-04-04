@@ -208,8 +208,7 @@ pub trait FromBech32: Sized {
 }
 
 pub trait ToBech32 {
-    type Err;
-    fn to_bech32(&self) -> Result<String, Self::Err>;
+    fn to_bech32(&self) -> String;
 }
 
 impl FromBech32 for Nip19 {
@@ -238,9 +237,7 @@ impl FromBech32 for Nip19 {
 }
 
 impl ToBech32 for Nip19 {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
+    fn to_bech32(&self) -> String {
         match self {
             Nip19::Secret(sec) => sec.to_bech32(),
             #[cfg(feature = "nip49")]
@@ -272,11 +269,9 @@ impl FromBech32 for SecretKey {
 }
 
 impl ToBech32 for SecretKey {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
+    fn to_bech32(&self) -> String {
         let data = self.as_secret_bytes();
-        Ok(bech32::encode::<Bech32>(HRP_SECRET_KEY, data)?)
+        bech32::encode::<Bech32>(HRP_SECRET_KEY, data).expect("valid hrp")
     }
 }
 
@@ -300,11 +295,9 @@ impl FromBech32 for EncryptedSecretKey {
 
 #[cfg(feature = "nip49")]
 impl ToBech32 for EncryptedSecretKey {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
+    fn to_bech32(&self) -> String {
         let data = self.as_vec();
-        Ok(bech32::encode::<Bech32>(HRP_SECRET_KEY_ENCRYPTED, &data)?)
+        bech32::encode::<Bech32>(HRP_SECRET_KEY_ENCRYPTED, &data).expect("valid hrp")
     }
 }
 
@@ -326,10 +319,8 @@ impl FromBech32 for PublicKey {
 }
 
 impl ToBech32 for PublicKey {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
-        Ok(bech32::encode::<Bech32>(HRP_PUBLIC_KEY, &self.serialize())?)
+    fn to_bech32(&self) -> String {
+        bech32::encode::<Bech32>(HRP_PUBLIC_KEY, &self.serialize()).expect("valid hrp")
     }
 }
 
@@ -351,10 +342,8 @@ impl FromBech32 for EventId {
 }
 
 impl ToBech32 for EventId {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
-        Ok(bech32::encode::<Bech32>(HRP_NOTE_ID, self.as_bytes())?)
+    fn to_bech32(&self) -> String {
+        bech32::encode::<Bech32>(HRP_NOTE_ID, self.as_bytes()).expect("valid hrp")
     }
 }
 
@@ -438,9 +427,7 @@ impl FromBech32 for Nip19Event {
 }
 
 impl ToBech32 for Nip19Event {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
+    fn to_bech32(&self) -> String {
         let mut bytes: Vec<u8> = vec![SPECIAL, 32];
         bytes.extend(self.event_id.inner().as_byte_array());
 
@@ -449,7 +436,7 @@ impl ToBech32 for Nip19Event {
             bytes.extend(relay.as_bytes());
         }
 
-        Ok(bech32::encode::<Bech32>(HRP_EVENT, &bytes)?)
+        bech32::encode::<Bech32>(HRP_EVENT, &bytes).expect("valid hrp")
     }
 }
 
@@ -511,9 +498,7 @@ impl Nip19Profile {
 }
 
 impl ToBech32 for Nip19Profile {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
+    fn to_bech32(&self) -> String {
         let mut bytes: Vec<u8> = vec![SPECIAL, 32];
         bytes.extend(self.public_key.serialize());
 
@@ -522,7 +507,7 @@ impl ToBech32 for Nip19Profile {
             bytes.extend(relay.as_ref().as_bytes());
         }
 
-        Ok(bech32::encode::<Bech32>(HRP_PROFILE, &bytes)?)
+        bech32::encode::<Bech32>(HRP_PROFILE, &bytes).expect("valid hrp")
     }
 }
 
@@ -612,9 +597,7 @@ impl FromBech32 for Coordinate {
 }
 
 impl ToBech32 for Coordinate {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
+    fn to_bech32(&self) -> String {
         let mut bytes: Vec<u8> = Vec::new();
 
         // Identifier
@@ -634,7 +617,7 @@ impl ToBech32 for Coordinate {
         bytes.extend([KIND, 4]);
         bytes.extend(self.kind.as_u32().to_be_bytes());
 
-        Ok(bech32::encode::<Bech32>(HRP_COORDINATE, &bytes)?)
+        bech32::encode::<Bech32>(HRP_COORDINATE, &bytes).expect("valid hrp")
     }
 }
 
@@ -651,7 +634,7 @@ mod tests {
                 .unwrap();
         assert_eq!(
             "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy".to_string(),
-            public_key.to_bech32().unwrap()
+            public_key.to_bech32()
         );
     }
 
@@ -662,7 +645,7 @@ mod tests {
                 .unwrap();
         assert_eq!(
             "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99".to_string(),
-            secret_key.to_bech32().unwrap()
+            secret_key.to_bech32()
         );
     }
 
@@ -673,7 +656,7 @@ mod tests {
                 .unwrap();
         assert_eq!(
             "note1m99r7nwc0wdrkzldrqan96gklg5usqspq7z9696j6unf0ljnpxjspqfw99".to_string(),
-            event_id.to_bech32().unwrap()
+            event_id.to_bech32()
         );
     }
 
@@ -704,7 +687,7 @@ mod tests {
             nip19
         );
 
-        assert_eq!(nip19.to_bech32().unwrap(), nprofile);
+        assert_eq!(nip19.to_bech32(), nprofile);
     }
 
     #[test]

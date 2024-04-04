@@ -15,10 +15,10 @@ use core::panic::PanicInfo;
 use alloc_cortex_m::CortexMHeap;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
+use nostr::nips::nip06::FromMnemonic;
 use nostr::secp256k1::rand::{self, RngCore};
 use nostr::secp256k1::Secp256k1;
-use nostr::{FromBech32, Keys, ToBech32, SecretKey};
-use nostr::nips::nip06::FromMnemonic;
+use nostr::{FromBech32, Keys, SecretKey, ToBech32};
 
 // this is the allocator the application will use
 #[global_allocator]
@@ -92,14 +92,10 @@ fn print_keys(keys: &Keys) {
     hprintln!("- Public Key (hex): {}", keys.public_key()).unwrap();
     hprintln!(
         "- Secret Key (bech32): {}",
-        keys.secret_key().unwrap().to_bech32().unwrap()
+        keys.secret_key().unwrap().to_bech32()
     )
     .unwrap();
-    hprintln!(
-        "- Public Key (bech32): {}",
-        keys.public_key().to_bech32().unwrap()
-    )
-    .unwrap();
+    hprintln!("- Public Key (bech32): {}", keys.public_key().to_bech32()).unwrap();
 }
 
 #[inline(never)]

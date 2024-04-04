@@ -68,12 +68,12 @@ impl Coordinate {
         Ok(nip01::Coordinate::from_nostr_uri(uri)?.into())
     }
 
-    pub fn to_bech32(&self) -> Result<String> {
-        Ok(self.inner.to_bech32()?)
+    pub fn to_bech32(&self) -> String {
+        self.inner.to_bech32()
     }
 
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        Ok(self.inner.to_nostr_uri()?)
+    pub fn to_nostr_uri(&self) -> String {
+        self.inner.to_nostr_uri()
     }
 
     pub fn kind(&self) -> Kind {

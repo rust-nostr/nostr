@@ -123,12 +123,12 @@ impl Nip19Event {
         })
     }
 
-    pub fn to_bech32(&self) -> Result<String> {
-        Ok(self.inner.to_bech32()?)
+    pub fn to_bech32(&self) -> String {
+        self.inner.to_bech32()
     }
 
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        Ok(self.inner.to_nostr_uri()?)
+    pub fn to_nostr_uri(&self) -> String {
+        self.inner.to_nostr_uri()
     }
 
     pub fn event_id(&self) -> Arc<EventId> {
@@ -179,12 +179,12 @@ impl Nip19Profile {
         })
     }
 
-    pub fn to_bech32(&self) -> Result<String> {
-        Ok(self.inner.to_bech32()?)
+    pub fn to_bech32(&self) -> String {
+        self.inner.to_bech32()
     }
 
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        Ok(self.inner.to_nostr_uri()?)
+    pub fn to_nostr_uri(&self) -> String {
+        self.inner.to_nostr_uri()
     }
 
     pub fn public_key(&self) -> Arc<PublicKey> {

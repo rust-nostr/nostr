@@ -92,10 +92,7 @@ impl Keys {
                     let keys = Keys::generate_without_keypair(&mut rng);
 
                     if bech32 {
-                        let bech32_key = keys
-                            .public_key
-                            .to_bech32()
-                            .expect("Unable to convert key to bech32");
+                        let bech32_key = keys.public_key.to_bech32();
                         if prefixes
                             .iter()
                             .any(|prefix| bech32_key[BECH32_SPAN..].starts_with(prefix))

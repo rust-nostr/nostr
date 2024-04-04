@@ -120,7 +120,7 @@ impl JsEncryptedSecretKey {
     }
 
     #[wasm_bindgen(js_name = toBech32)]
-    pub fn to_bech32(&self) -> Result<String> {
-        self.inner.to_bech32().map_err(into_err)
+    pub fn to_bech32(&self) -> String {
+        self.inner.to_bech32()
     }
 }
