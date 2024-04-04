@@ -74,6 +74,8 @@ pub enum Report {
     Spam,
     /// Someone pretending to be someone else
     Impersonation,
+    /// Reports that don't fit in the above categories
+    Other,
 }
 
 impl From<Report> for tag::Report {
@@ -84,6 +86,7 @@ impl From<Report> for tag::Report {
             Report::Illegal => Self::Illegal,
             Report::Spam => Self::Spam,
             Report::Impersonation => Self::Impersonation,
+            Report::Other => Self::Other,
         }
     }
 }
@@ -96,6 +99,7 @@ impl From<tag::Report> for Report {
             tag::Report::Illegal => Self::Illegal,
             tag::Report::Spam => Self::Spam,
             tag::Report::Impersonation => Self::Impersonation,
+            tag::Report::Other => Self::Other,
         }
     }
 }

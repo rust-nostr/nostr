@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+* nostr: add `Report::Other` variant ([Daniel Cadenas])
 * cli: add command to serve `Nostr Connect` signer ([Yuki Kishimoto])
 * ffi(nostr): added `FilterRecord`, to allow to access fields in `Filter` ([Yuki Kishimoto])
 * ffi(sdk): add `AbortHandle` ([Yuki Kishimoto])
@@ -64,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- Contributors -->
 [Yuki Kishimoto]: https://yukikishimoto.com
 [DanConwayDev]: https://github.com/DanConwayDev
+[Daniel Cadenas]: https://github.com/dcadenas
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.29.0...HEAD
