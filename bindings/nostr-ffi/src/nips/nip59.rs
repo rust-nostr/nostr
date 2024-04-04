@@ -6,10 +6,14 @@ use std::sync::Arc;
 
 use nostr::nips::nip59;
 use nostr::EventBuilder;
+use uniffi::Object;
 
 use crate::error::Result;
 use crate::{Event, Keys, PublicKey, Timestamp, UnsignedEvent};
 
+/// Build Gift Wrap
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/59.md>
 #[uniffi::export]
 pub fn gift_wrap(
     sender_keys: &Keys,
@@ -26,10 +30,33 @@ pub fn gift_wrap(
     .into())
 }
 
-/// Extract `rumor` from `gift wrap`
+/// Unwrapped Gift Wrap
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+#[derive(Object)]
+pub struct UnwrappedGift {
+    inner: nip59::UnwrappedGift,
+}
+
 #[uniffi::export]
-pub fn nip59_extract_rumor(keys: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent> {
-    Ok(nip59::extract_rumor(keys.deref(), gift_wrap.deref())?
-        .rumor
-        .into())
+impl UnwrappedGift {
+    /// Unwrap Gift Wrap event
+    ///
+    /// Internally verify the `seal` event
+    #[uniffi::constructor]
+    pub fn from_gift_wrap(receiver_keys: &Keys, gift_wrap: &Event) -> Result<Self> {
+        Ok(Self {
+            inner: nip59::UnwrappedGift::from_gift_wrap(receiver_keys.deref(), gift_wrap.deref())?,
+        })
+    }
+
+    /// Get sender public key
+    pub fn sender(&self) -> PublicKey {
+        self.inner.sender.into()
+    }
+
+    /// Get rumor
+    pub fn rumor(&self) -> UnsignedEvent {
+        self.inner.rumor.clone().into()
+    }
 }
