@@ -484,23 +484,13 @@ impl JsEventBuilder {
         }
     }
 
-    /// Label
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
-    #[wasm_bindgen]
-    pub fn label(label_namespace: String, labels: Vec<String>) -> Self {
-        Self {
-            inner: EventBuilder::label(label_namespace, labels),
-        }
-    }
-
     /// Pinned notes
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = pinnedNotes)]
     pub fn pinned_notes(ids: Vec<JsEventId>) -> Self {
         Self {
-            builder: EventBuilder::pinned_notes(ids.into_iter().map(|e| e.into())),
+            inner: EventBuilder::pinned_notes(ids.into_iter().map(|e| e.into())),
         }
     }
 
@@ -510,7 +500,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = bookmarks)]
     pub fn bookmarks(list: JsBookmarks) -> Result<JsEventBuilder> {
         Ok(Self {
-            builder: EventBuilder::bookmarks(list.try_into()?),
+            inner: EventBuilder::bookmarks(list.try_into()?),
         })
     }
 
@@ -520,7 +510,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = communities)]
     pub fn communities(communities: Vec<JsCoordinate>) -> Self {
         Self {
-            builder: EventBuilder::communities(communities.into_iter().map(|c| c.deref().clone())),
+            inner: EventBuilder::communities(communities.into_iter().map(|c| c.deref().clone())),
         }
     }
 
@@ -530,7 +520,26 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = publicChats)]
     pub fn public_chats(chat: Vec<JsEventId>) -> Self {
         Self {
-            builder: EventBuilder::public_chats(chat.into_iter().map(|e| e.into())),
+            inner: EventBuilder::public_chats(chat.into_iter().map(|e| e.into())),
+        }
+    }
+
+    /// Blocked relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn blocked_relays(relays: Vec<String>) -> Self {
+        Self {
+            inner: EventBuilder::blocked_relays(relays.into_iter().map(UncheckedUrl::from)),
+        }
+    }
+
+    /// Label
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
+    #[wasm_bindgen]
+    pub fn label(label_namespace: String, labels: Vec<String>) -> Self {
+        Self {
+            inner: EventBuilder::label(label_namespace, labels),
         }
     }
 }
