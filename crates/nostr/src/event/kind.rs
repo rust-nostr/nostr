@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 //! Kind
-
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -27,185 +26,131 @@ pub const EPHEMERAL_RANGE: Range<u64> = 20_000..30_000;
 /// Parameterized replaceable range
 pub const PARAMETERIZED_REPLACEABLE_RANGE: Range<u64> = 30_000..40_000;
 
-/// Event [`Kind`]
-#[derive(Debug, Clone, Copy)]
-pub enum Kind {
-    /// Metadata (NIP01 and NIP05)
-    Metadata,
-    /// Short Text Note (NIP01)
-    TextNote,
-    /// Recommend Relay (NIP01 - deprecated)
-    RecommendRelay,
-    /// Contacts (NIP02)
-    ContactList,
-    /// OpenTimestamps Attestations (NIP03)
-    OpenTimestamps,
-    /// Encrypted Direct Messages (NIP04)
-    EncryptedDirectMessage,
-    /// Event Deletion (NIP09)
-    EventDeletion,
-    /// Repost (NIP18)
-    Repost,
-    /// Generic Repost (NIP18)
-    GenericRepost,
-    /// Reaction (NIP25)
-    Reaction,
-    /// Badge Award (NIP58)
-    BadgeAward,
-    /// Channel Creation (NIP28)
-    ChannelCreation,
-    /// Channel Metadata (NIP28)
-    ChannelMetadata,
-    /// Channel Message (NIP28)
-    ChannelMessage,
-    /// Channel Hide Message (NIP28)
-    ChannelHideMessage,
-    /// Channel Mute User (NIP28)
-    ChannelMuteUser,
-    /// Public Chat Reserved (NIP28)
-    PublicChatReserved45,
-    /// Public Chat Reserved (NIP28)
-    PublicChatReserved46,
-    /// Public Chat Reserved (NIP28)
-    PublicChatReserved47,
-    /// Public Chat Reserved (NIP28)
-    PublicChatReserved48,
-    /// Public Chat Reserved (NIP28)
-    PublicChatReserved49,
-    /// Wallet Service Info (NIP47)
-    WalletConnectInfo,
-    /// Reporting (NIP56)
-    Reporting,
-    /// Zap Private Message (NIP57)
-    ZapPrivateMessage,
-    /// Zap Request (NIP57)
-    ZapRequest,
-    /// Zap Receipt (NIP57)
-    ZapReceipt,
-    /// Mute List
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    MuteList,
-    /// Pin List
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    PinList,
-    /// Bookmarks
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    Bookmarks,
-    /// Communities
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    Communities,
-    /// Public Chats
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    PublicChats,
-    /// Blocked Relays
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    BlockedRelays,
-    /// Search Relays
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    SearchRelays,
-    /// Simple Groups
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    SimpleGroups,
-    /// Interests
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    Interests,
-    /// Emojis
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    Emojis,
-    /// Follow Sets
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    FollowSets,
-    /// Relay Sets
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    RelaySets,
-    /// Bookmark Sets
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    BookmarkSets,
-    /// Articles Curation Sets
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    ArticlesCurationSets,
-    /// Videos Curation Sets
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    VideosCurationSets,
-    /// Interest Sets
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    InterestSets,
-    /// Emoji Sets
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    EmojiSets,
-    /// Release Artifact Sets
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    ReleaseArtifactSets,
-    /// Relay List Metadata (NIP65)
-    RelayList,
-    /// Client Authentication (NIP42)
-    Authentication,
-    /// Wallet Connect Request (NIP47)
-    WalletConnectRequest,
-    /// Wallet Connect Response (NIP47)
-    WalletConnectResponse,
-    /// Nostr Connect (NIP46)
-    NostrConnect,
-    /// Live Event (NIP53)
-    LiveEvent,
-    /// Live Event Message (NIP53)
-    LiveEventMessage,
-    /// Profile Badges (NIP58)
-    ProfileBadges,
-    /// Badge Definition (NIP58)
-    BadgeDefinition,
-    /// Seal (NIP59)
-    Seal,
-    /// Gift Wrap (NIP59)
-    GiftWrap,
-    /// GiftWrapped Sealed Direct message
-    SealedDirect,
-    /// Long-form Text Note (NIP23)
-    LongFormTextNote,
-    /// Application-specific Data (NIP78)
-    ApplicationSpecificData,
-    /// File Metadata (NIP94)
-    FileMetadata,
-    /// HTTP Auth (NIP98)
-    HttpAuth,
-    /// Set stall (NIP15)
-    SetStall,
-    /// Set product (NIP15)
-    SetProduct,
-    /// Job Feedback (NIP90)
-    JobFeedback,
-    /// Regular Events (must be between 5000 and <=5999)
-    JobRequest(u16),
-    /// Regular Events (must be between 6000 and <=6999)
-    JobResult(u16),
-    /// Regular Events (must be between 1000 and <=9999)
-    Regular(u16),
-    /// Replaceable event (must be between 10000 and <20000)
-    Replaceable(u16),
-    /// Ephemeral event (must be between 20000 and <30000)
-    Ephemeral(u16),
-    /// Parameterized replaceable event (must be between 30000 and <40000)
-    ParameterizedReplaceable(u16),
-    /// Custom
-    Custom(u64),
+macro_rules! kind_variants {
+    ($($name:ident => $value:expr, $doc:expr),* $(,)?) => {
+        /// Event [`Kind`]
+        #[derive(Debug, Clone, Copy)]
+        pub enum Kind {
+            $(
+                #[doc = $doc]
+                $name,
+            )*
+            /// Represents a job request event (NIP90).
+            JobRequest(u16),
+            /// Represents a job result event (NIP90).
+            JobResult(u16),
+            /// Represents a regular event.
+            Regular(u16),
+            /// Represents a replaceable event.
+            Replaceable(u16),
+            /// Represents an ephemeral event.
+            Ephemeral(u16),
+            /// Represents a parameterized replaceable event.
+            ParameterizedReplaceable(u16),
+            /// Represents a custom event.
+            Custom(u64),
+        }
+
+        impl From<u64> for Kind {
+            fn from(u: u64) -> Self {
+                match u {
+                    $(
+                        $value => Self::$name,
+                    )*
+                    x if (NIP90_JOB_REQUEST_RANGE).contains(&x) => Self::JobRequest(x as u16),
+                    x if (NIP90_JOB_RESULT_RANGE).contains(&x) => Self::JobResult(x as u16),
+                    x if (REGULAR_RANGE).contains(&x) => Self::Regular(x as u16),
+                    x if (REPLACEABLE_RANGE).contains(&x) => Self::Replaceable(x as u16),
+                    x if (EPHEMERAL_RANGE).contains(&x) => Self::Ephemeral(x as u16),
+                    x if (PARAMETERIZED_REPLACEABLE_RANGE).contains(&x) => Self::ParameterizedReplaceable(x as u16),
+                    x => Self::Custom(x),
+                }
+            }
+        }
+
+        impl From<Kind> for u64 {
+            fn from(e: Kind) -> u64 {
+                match e {
+                    $(
+                        Kind::$name => $value,
+                    )*
+                    Kind::JobRequest(u) => u as u64,
+                    Kind::JobResult(u) => u as u64,
+                    Kind::Regular(u) => u as u64,
+                    Kind::Replaceable(u) => u as u64,
+                    Kind::Ephemeral(u) => u as u64,
+                    Kind::ParameterizedReplaceable(u) => u as u64,
+                    Kind::Custom(u) => u,
+                }
+            }
+        }
+    };
+}
+
+kind_variants! {
+    Metadata => 0, "Metadata (NIP01 and NIP05)",
+    TextNote => 1, "Short Text Note (NIP01)",
+    RecommendRelay => 2, "Recommend Relay (NIP01 - deprecated)",
+    ContactList => 3, "Contacts (NIP02)",
+    OpenTimestamps => 1040, "OpenTimestamps Attestations (NIP03)",
+    EncryptedDirectMessage => 4, "Encrypted Direct Messages (NIP04)",
+    EventDeletion => 5, "Event Deletion (NIP09)",
+    Repost => 6, "Repost (NIP18)",
+    GenericRepost => 16, "Generic Repost (NIP18)",
+    Reaction => 7, "Reaction (NIP25)",
+    BadgeAward => 8, "Badge Award (NIP58)",
+    ChannelCreation => 40, "Channel Creation (NIP28)",
+    ChannelMetadata => 41, "Channel Metadata (NIP28)",
+    ChannelMessage => 42, "Channel Message (NIP28)",
+    ChannelHideMessage => 43, "Channel Hide Message (NIP28)",
+    ChannelMuteUser => 44, "Channel Mute User (NIP28)",
+    PublicChatReserved45 => 45, "Public Chat Reserved (NIP28)",
+    PublicChatReserved46 => 46, "Public Chat Reserved (NIP28)",
+    PublicChatReserved47 => 47, "Public Chat Reserved (NIP28)",
+    PublicChatReserved48 => 48, "Public Chat Reserved (NIP28)",
+    PublicChatReserved49 => 49, "Public Chat Reserved (NIP28)",
+    WalletConnectInfo => 13194, "Wallet Service Info (NIP47)",
+    Reporting => 1984, "Reporting (NIP56)",
+    ZapPrivateMessage => 9733, "Zap Private Message (NIP57)",
+    ZapRequest => 9734, "Zap Request (NIP57)",
+    ZapReceipt => 9735, "Zap Receipt (NIP57)",
+    MuteList => 10000, "Mute List <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    PinList => 10001, "Pin List <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    Bookmarks => 10003, "Bookmarks <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    Communities => 10004, "Communities <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    PublicChats => 10005, "Public Chats <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    BlockedRelays => 10006, "Blocked Relays <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    SearchRelays => 10007, "Search Relays <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    SimpleGroups => 10009, "Simple Groups <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    Interests => 10015, "Interests <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    Emojis => 10030, "Emojis <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    RelayList => 10002, "Relay List Metadata (NIP65)",
+    Authentication => 22242, "Client Authentication (NIP42)",
+    WalletConnectRequest => 23194, "Wallet Connect Request (NIP47)",
+    WalletConnectResponse => 23195, "Wallet Connect Response (NIP47)",
+    NostrConnect => 24133, "Nostr Connect (NIP46)",
+    LiveEvent => 30311, "Live Event (NIP53)",
+    LiveEventMessage => 1311, "Live Event Message (NIP53)",
+    ProfileBadges => 30008, "Profile Badges (NIP58)",
+    BadgeDefinition => 30009, "Badge Definition (NIP58)",
+    Seal => 13, "Seal (NIP59)",
+    GiftWrap => 1059, "Gift Wrap (NIP59)",
+    SealedDirect => 14, "GiftWrapped Sealed Direct message",
+    SetStall => 30017, "Set stall (NIP15)",
+    SetProduct => 30018, "Set product (NIP15)",
+    JobFeedback => 7000, "Job Feedback (NIP90)",
+    FollowSets => 30000, "Follow Sets <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    RelaySets => 30002, "Relay Sets <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    BookmarkSets => 30003, "Bookmark Sets <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    ArticlesCurationSets => 30004, "Articles Curation Sets <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    VideosCurationSets => 30005, "Videos Curation Sets <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    InterestSets => 30015, "Interest Sets <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    EmojiSets => 30030, "Emoji Sets <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    ReleaseArtifactSets => 30063, "Release Artifact Sets <https://github.com/nostr-protocol/nips/blob/master/51.md>",
+    LongFormTextNote => 30023, "Long-form Text Note (NIP23)",
+    FileMetadata => 1063, "File Metadata (NIP94)",
+    HttpAuth => 27235, "HTTP Auth (NIP98)",
+    ApplicationSpecificData => 30078, "Application-specific Data (NIP78)",
 }
 
 impl PartialEq<Kind> for Kind {
@@ -300,163 +245,6 @@ impl Kind {
 impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_u64())
-    }
-}
-
-impl From<u64> for Kind {
-    #[inline]
-    fn from(u: u64) -> Self {
-        match u {
-            0 => Self::Metadata,
-            1 => Self::TextNote,
-            2 => Self::RecommendRelay,
-            3 => Self::ContactList,
-            1040 => Self::OpenTimestamps,
-            4 => Self::EncryptedDirectMessage,
-            5 => Self::EventDeletion,
-            6 => Self::Repost,
-            16 => Self::GenericRepost,
-            7 => Self::Reaction,
-            8 => Self::BadgeAward,
-            40 => Self::ChannelCreation,
-            41 => Self::ChannelMetadata,
-            42 => Self::ChannelMessage,
-            43 => Self::ChannelHideMessage,
-            44 => Self::ChannelMuteUser,
-            45 => Self::PublicChatReserved45,
-            46 => Self::PublicChatReserved46,
-            47 => Self::PublicChatReserved47,
-            48 => Self::PublicChatReserved48,
-            49 => Self::PublicChatReserved49,
-            13194 => Self::WalletConnectInfo,
-            1984 => Self::Reporting,
-            9733 => Self::ZapPrivateMessage,
-            9734 => Self::ZapRequest,
-            9735 => Self::ZapReceipt,
-            10000 => Self::MuteList,
-            10001 => Self::PinList,
-            10003 => Self::Bookmarks,
-            10004 => Self::Communities,
-            10005 => Self::PublicChats,
-            10006 => Self::BlockedRelays,
-            10007 => Self::SearchRelays,
-            10009 => Self::SimpleGroups,
-            10015 => Self::Interests,
-            10030 => Self::Emojis,
-            10002 => Self::RelayList,
-            22242 => Self::Authentication,
-            23194 => Self::WalletConnectRequest,
-            23195 => Self::WalletConnectResponse,
-            24133 => Self::NostrConnect,
-            30000 => Self::FollowSets,
-            30002 => Self::RelaySets,
-            30003 => Self::BookmarkSets,
-            30004 => Self::ArticlesCurationSets,
-            30005 => Self::VideosCurationSets,
-            30015 => Self::InterestSets,
-            30030 => Self::EmojiSets,
-            30063 => Self::ReleaseArtifactSets,
-            30311 => Self::LiveEvent,
-            1311 => Self::LiveEventMessage,
-            30008 => Self::ProfileBadges,
-            30009 => Self::BadgeDefinition,
-            13 => Self::Seal,
-            1059 => Self::GiftWrap,
-            14 => Self::SealedDirect,
-            30017 => Self::SetStall,
-            30018 => Self::SetProduct,
-            30023 => Self::LongFormTextNote,
-            30078 => Self::ApplicationSpecificData,
-            1063 => Self::FileMetadata,
-            27235 => Self::HttpAuth,
-            7000 => Self::JobFeedback,
-            x if (NIP90_JOB_REQUEST_RANGE).contains(&x) => Self::JobRequest(x as u16),
-            x if (NIP90_JOB_RESULT_RANGE).contains(&x) => Self::JobResult(x as u16),
-            x if (REGULAR_RANGE).contains(&x) => Self::Regular(x as u16),
-            x if (REPLACEABLE_RANGE).contains(&x) => Self::Replaceable(x as u16),
-            x if (EPHEMERAL_RANGE).contains(&x) => Self::Ephemeral(x as u16),
-            x if (PARAMETERIZED_REPLACEABLE_RANGE).contains(&x) => {
-                Self::ParameterizedReplaceable(x as u16)
-            }
-            x => Self::Custom(x),
-        }
-    }
-}
-
-impl From<Kind> for u64 {
-    fn from(e: Kind) -> u64 {
-        match e {
-            Kind::Metadata => 0,
-            Kind::TextNote => 1,
-            Kind::RecommendRelay => 2,
-            Kind::ContactList => 3,
-            Kind::OpenTimestamps => 1040,
-            Kind::EncryptedDirectMessage => 4,
-            Kind::EventDeletion => 5,
-            Kind::Repost => 6,
-            Kind::GenericRepost => 16,
-            Kind::Reaction => 7,
-            Kind::BadgeAward => 8,
-            Kind::ChannelCreation => 40,
-            Kind::ChannelMetadata => 41,
-            Kind::ChannelMessage => 42,
-            Kind::ChannelHideMessage => 43,
-            Kind::ChannelMuteUser => 44,
-            Kind::PublicChatReserved45 => 45,
-            Kind::PublicChatReserved46 => 46,
-            Kind::PublicChatReserved47 => 47,
-            Kind::PublicChatReserved48 => 48,
-            Kind::PublicChatReserved49 => 49,
-            Kind::WalletConnectInfo => 13194,
-            Kind::Reporting => 1984,
-            Kind::ZapPrivateMessage => 9733,
-            Kind::ZapRequest => 9734,
-            Kind::ZapReceipt => 9735,
-            Kind::MuteList => 10000,
-            Kind::PinList => 10001,
-            Kind::Bookmarks => 10003,
-            Kind::Communities => 10004,
-            Kind::PublicChats => 10005,
-            Kind::BlockedRelays => 10006,
-            Kind::SearchRelays => 10007,
-            Kind::SimpleGroups => 10009,
-            Kind::Interests => 10015,
-            Kind::Emojis => 10030,
-            Kind::RelayList => 10002,
-            Kind::Authentication => 22242,
-            Kind::WalletConnectRequest => 23194,
-            Kind::WalletConnectResponse => 23195,
-            Kind::NostrConnect => 24133,
-            Kind::FollowSets => 30000,
-            Kind::RelaySets => 30002,
-            Kind::BookmarkSets => 30003,
-            Kind::ArticlesCurationSets => 30004,
-            Kind::VideosCurationSets => 30005,
-            Kind::InterestSets => 30015,
-            Kind::EmojiSets => 30030,
-            Kind::ReleaseArtifactSets => 30063,
-            Kind::LiveEvent => 30311,
-            Kind::LiveEventMessage => 1311,
-            Kind::ProfileBadges => 30008,
-            Kind::BadgeDefinition => 30009,
-            Kind::Seal => 13,
-            Kind::GiftWrap => 1059,
-            Kind::SealedDirect => 14,
-            Kind::SetStall => 30017,
-            Kind::SetProduct => 30018,
-            Kind::LongFormTextNote => 30023,
-            Kind::ApplicationSpecificData => 30078,
-            Kind::FileMetadata => 1063,
-            Kind::HttpAuth => 27235,
-            Kind::JobFeedback => 7000,
-            Kind::JobRequest(u) => u as u64,
-            Kind::JobResult(u) => u as u64,
-            Kind::Regular(u) => u as u64,
-            Kind::Replaceable(u) => u as u64,
-            Kind::Ephemeral(u) => u as u64,
-            Kind::ParameterizedReplaceable(u) => u as u64,
-            Kind::Custom(u) => u,
-        }
     }
 }
 
