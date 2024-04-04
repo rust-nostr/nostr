@@ -1,4 +1,4 @@
-const { Keys, EventBuilder, EventId, PublicKey, Tag, loadWasmSync, Timestamp } = require("../");
+const { Keys, EventBuilder, Tag, loadWasmSync, Timestamp } = require("../");
 
 function main() {
     loadWasmSync();

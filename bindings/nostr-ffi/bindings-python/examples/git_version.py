@@ -1,4 +1,4 @@
 from nostr_protocol import NostrLibrary
 
-hash = NostrLibrary().git_hash_version()
-print(hash)
+git_hash = NostrLibrary().git_hash_version()
+print(git_hash)

@@ -1,4 +1,4 @@
-const { loadWasmAsync, Nip07Signer } = require("../");
+const { loadWasmAsync, EventBuilder, Nip07Signer } = require("../");
 
 // NOTE: this code work only on browser!
 
