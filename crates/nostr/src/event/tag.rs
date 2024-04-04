@@ -215,6 +215,8 @@ pub enum Report {
     Spam,
     /// Someone pretending to be someone else
     Impersonation,
+    ///  Reports that don't fit in the above categories
+    Other,
 }
 
 impl fmt::Display for Report {
@@ -225,6 +227,7 @@ impl fmt::Display for Report {
             Self::Illegal => write!(f, "illegal"),
             Self::Spam => write!(f, "spam"),
             Self::Impersonation => write!(f, "impersonation"),
+            Self::Other => write!(f, "other"),
         }
     }
 }
@@ -239,6 +242,7 @@ impl FromStr for Report {
             "illegal" => Ok(Self::Illegal),
             "spam" => Ok(Self::Spam),
             "impersonation" => Ok(Self::Impersonation),
+            "other" => Ok(Self::Other),
             _ => Err(Error::UnknownReportType),
         }
     }
@@ -2199,6 +2203,22 @@ mod tests {
                 )
                 .unwrap(),
                 Report::Impersonation
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(&[
+                "p",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+                "other"
+            ])
+            .unwrap(),
+            Tag::PubKeyReport(
+                PublicKey::from_str(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )
+                .unwrap(),
+                Report::Other
             )
         );
 
