@@ -560,6 +560,15 @@ impl JsEventBuilder {
         }
     }
 
+    /// Follow sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn follow_sets(public_key: Vec<JsPublicKey>) -> Self {
+        Self {
+            inner: EventBuilder::follow_sets(public_key.into_iter().map(|p| p.into())),
+        }
+    }
+
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>

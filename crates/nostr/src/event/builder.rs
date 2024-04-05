@@ -1359,11 +1359,11 @@ impl EventBuilder {
     /// Follow sets
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    pub fn follow_sets<I>(publick_key: I) -> Self
+    pub fn follow_sets<I>(public_key: I) -> Self
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        let tags = publick_key.into_iter().map(Tag::public_key);
+        let tags = public_key.into_iter().map(Tag::public_key);
         Self::new(Kind::FollowSets, "", tags)
     }
 
