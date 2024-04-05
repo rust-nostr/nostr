@@ -527,6 +527,7 @@ impl JsEventBuilder {
     /// Blocked relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = blockedRelays)]
     pub fn blocked_relays(relays: Vec<String>) -> Self {
         Self {
             inner: EventBuilder::blocked_relays(relays.into_iter().map(UncheckedUrl::from)),
@@ -536,6 +537,7 @@ impl JsEventBuilder {
     /// Search relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = searchRelays)]
     pub fn search_relays(relays: Vec<String>) -> Self {
         Self {
             inner: EventBuilder::search_relays(relays.into_iter().map(UncheckedUrl::from)),
@@ -545,6 +547,7 @@ impl JsEventBuilder {
     /// Interests
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen]
     pub fn interests(list: JsInterests) -> Self {
         Self {
             inner: EventBuilder::interests(list.into()),
@@ -554,6 +557,7 @@ impl JsEventBuilder {
     /// Emojis
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen]
     pub fn emojis(list: JsEmojis) -> Self {
         Self {
             inner: EventBuilder::emojis(list.into()),
@@ -563,9 +567,20 @@ impl JsEventBuilder {
     /// Follow sets
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = followSets)]
     pub fn follow_sets(public_key: Vec<JsPublicKey>) -> Self {
         Self {
             inner: EventBuilder::follow_sets(public_key.into_iter().map(|p| p.into())),
+        }
+    }
+
+    /// Relay sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = relaySets)]
+    pub fn relay_sets(relays: Vec<String>) -> Self {
+        Self {
+            inner: EventBuilder::relay_sets(relays.into_iter().map(UncheckedUrl::from)),
         }
     }
 
