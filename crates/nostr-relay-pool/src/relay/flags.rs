@@ -21,16 +21,25 @@ impl Default for RelayServiceFlags {
 
 impl RelayServiceFlags {
     /// NONE means no services supported.
-    pub const NONE: Self = Self(0);
+    pub const NONE: Self = Self(0); // 0
 
     /// READ means that client will perform read operations with relay.
-    pub const READ: Self = Self(1 << 0);
+    pub const READ: Self = Self(1 << 0); // 1
 
     /// WRITE means that client will perform write operations with relay.
-    pub const WRITE: Self = Self(1 << 1);
+    pub const WRITE: Self = Self(1 << 1); // 2
 
-    /// PING means that
-    pub const PING: Self = Self(1 << 2);
+    /// PING means that client will ping relay to keep connection up
+    pub const PING: Self = Self(1 << 2); // 4
+
+    /// INBOX means READ of kind 10002
+    pub const INBOX: Self = Self(1 << 3); // 8
+
+    /// OUTBOX means WRITE of kind 10002
+    pub const OUTBOX: Self = Self(1 << 4); // 16
+
+    /// DISCOVERY means that relay has role to get metadata (i.e. events with kind 0 or 10002) of public keys
+    pub const DISCOVERY: Self = Self(1 << 5); // 32
 
     /// Add [RelayServiceFlags] together.
     pub fn add(&mut self, other: Self) -> Self {
@@ -144,6 +153,21 @@ impl AtomicRelayServiceFlags {
     pub fn has_ping(&self) -> bool {
         self.has(RelayServiceFlags::PING)
     }
+
+    /// Check if `INBOX` service is enabled
+    pub fn has_inbox(&self) -> bool {
+        self.has(RelayServiceFlags::INBOX)
+    }
+
+    /// Check if `OUTBOX` service is enabled
+    pub fn has_outbox(&self) -> bool {
+        self.has(RelayServiceFlags::OUTBOX)
+    }
+
+    /// Check if `DISCOVERY` service is enabled
+    pub fn has_discovery(&self) -> bool {
+        self.has(RelayServiceFlags::DISCOVERY)
+    }
 }
 
 #[cfg(test)]
@@ -167,6 +191,9 @@ mod tests {
         assert!(flags.has(RelayServiceFlags::READ));
         assert!(flags.has(RelayServiceFlags::WRITE));
         assert!(!flags.has(RelayServiceFlags::PING));
+        assert!(!flags.has(RelayServiceFlags::INBOX));
+        assert!(!flags.has(RelayServiceFlags::OUTBOX));
+        assert!(!flags.has(RelayServiceFlags::DISCOVERY));
 
         // Try to add flag
         flags.add(RelayServiceFlags::PING);
@@ -181,5 +208,21 @@ mod tests {
         flags.add(RelayServiceFlags::PING);
         assert!(flags.has(RelayServiceFlags::READ));
         assert!(flags.has(RelayServiceFlags::PING));
+
+        // Try to add flag
+        flags.add(RelayServiceFlags::INBOX);
+        assert!(flags.has(RelayServiceFlags::INBOX));
+
+        // Try to add flag
+        flags.add(RelayServiceFlags::OUTBOX);
+        assert!(flags.has(RelayServiceFlags::OUTBOX));
+
+        // Try to add flag
+        flags.add(RelayServiceFlags::DISCOVERY);
+        assert!(flags.has(RelayServiceFlags::DISCOVERY));
+
+        let flags = RelayServiceFlags::READ | RelayServiceFlags::INBOX | RelayServiceFlags::PING;
+        assert!(flags.has(RelayServiceFlags::READ | RelayServiceFlags::INBOX));
+        assert!(!flags.has(RelayServiceFlags::READ | RelayServiceFlags::WRITE));
     }
 }
