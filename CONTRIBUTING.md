@@ -2,36 +2,81 @@
 
 ##  Contribution Workflow
 
-The codebase is maintained using the "contributor workflow" where everyone
-without exception contributes patch proposals using "pull requests". This
-facilitates social contribution, easy testing and peer review.
+To contribute a patch:
 
-To contribute a patch, the workflow is a as follows:
+* Fork Repository 
+* Create topic branch 
+* Commit patches (PR, emails, ...)
 
-  1. Fork Repository
-  2. Create topic branch
-  3. Commit patches
+In general commits should be atomic and diffs **should be easy to read**.
 
-In general commits should be atomic and diffs should be easy to read.
-For this reason do not mix any formatting fixes or code moves with actual code
-changes. Further, each commit, individually, should compile and pass tests, in
-order to ensure git bisect and other automated tools function properly.
+## Code style guide
 
-When adding a new feature, thought must be given to the long term technical
-debt.
-Every new feature should be covered by unit tests where possible.
+Before writing code, please read [our code style](./CODE_STYLE.md).
 
-When refactoring, structure your PR to make it easy to review and don't
-hesitate to split it into multiple small, focused PRs.
+## Commit format
 
-Commits should cover both the issue fixed and the solution's rationale.
-These [guidelines](https://chris.beams.io/posts/git-commit/) should be kept in mind.
+The commit **must** be formatted in the following way:
 
-To facilitate communication with other contributors, the project is making use
-of GitHub's "assignee" field. First check that no one is assigned and then
-comment suggesting that you're working on it. If someone is already assigned,
-don't hesitate to ask if the assigned party or previous commenters are still
-working on it if it has been awhile.
+```
+<context>: <short descriptrion>
+
+<optional description explaining better what happened in the commit>
+```
+
+If applicable, link the `issue`/`PR` to be closed with:
+
+* Closes <url>
+* Fixes <url>
+
+The `context` name should be:
+
+* `nostr` if changes are related to the main Rust `nostr` crate (or `protocol`?)
+* `sdk`, `cli`, `pool`, `signer`, `nwc` and so on for the others Rust crates (so basically remove the `nostr-` prefix)
+* `ffi(<name>)` for `UniFFI` and `js(<name>)` for `JavaScript` bindings (follow same above rules for the `<name>`)
+* `book` if changes are related to the `book`
+* `doc` for the `.md` files (except for `CHANGELOG.md`?)
+
+Anything that haven't a specific context, can be left without the `<context>:` prefix (ex. change to main `justfile` commands, change to `CHANGELOG.md`?)
+
+### Examples
+
+```
+nostr: add NIP32 support
+
+Added kinds, tags and EventBuilder constructors to support NIP32.
+
+Closes https://<domain>.com/rust-nostr/nostr/issue/1234
+```
+
+```
+pool: fix connection issues
+
+Long description...
+
+Fixes https://<domain>.com/rust-nostr/nostr/issue/5612
+```
+
+```
+nwc: add `pay_multiple_invoices` support
+
+Closes https://<domain>.com/rust-nostr/nostr/issue/2222
+```
+
+```
+ffi(nostr): add `EventBuilder::mute_list`
+```
+
+```
+ffi(sdk): add `AbortHandle`
+
+* Return `AbortHandle` in `Client::handle_notifications`
+* Another change...
+```
+
+```
+js(sdk): replace log `file path` with `module path`
+```
 
 ## Deprecation policy
 
@@ -51,34 +96,6 @@ and send a follow-up to remove it as part of the next release cycle.
 
 Usage of `.unwrap()` or `.expect("...")` methods is allowed **only** in `examples` or `tests`.
 
-## Peer review
-
-Anyone may participate in peer review which is expressed by comments in the
-pull request. Typically reviewers will review the code for obvious errors, as
-well as test out the patch set and opine on the technical merits of the patch.
-PR should be reviewed first on the conceptual level before focusing on code
-style or grammar fixes.
-
-### Terminology
-
-Concept ACK - Agree with the idea and overall direction, but haven't reviewed the code changes or tested them.
-
-utACK (untested ACK) - Reviewed and agree with the code changes but haven't actually tested them.
-
-tACK (tested ACK) - Reviewed the code changes and have verified the functionality or bug fix.
-
-ACK - A loose ACK can be confusing. It's best to avoid them unless it's a documentation/comment only change in which case there is nothing to test/verify; therefore the tested/untested distinction is not there.
-
-NACK - Disagree with the code changes/concept. Should be accompanied by an explanation.
-
 ## Coding Conventions
 
-Use `just check` to format code and check the code before committing.
-This is also enforced by the CI.
-
-## Going further
-
-You may be interested by Jon Atacks guide on [How to review Bitcoin Core PRs](https://github.com/jonatack/bitcoin-development/blob/master/how-to-review-bitcoin-core-prs.md)
-and [How to make Bitcoin Core PRs](https://github.com/jonatack/bitcoin-development/blob/master/how-to-make-bitcoin-core-prs.md).
-While there are differences between the projects in terms of context and
-maturity, many of the suggestions offered apply to this project.
+Use `just precommit` or `just check` to format and check the code before committing. This is also enforced by the CI.
