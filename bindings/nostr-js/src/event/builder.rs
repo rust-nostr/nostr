@@ -604,6 +604,16 @@ impl JsEventBuilder {
         }
     }
 
+    /// Videos Curation sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = videosCurationSets)]
+    pub fn videos_curation_sets(video: Vec<JsCoordinate>) -> Self {
+        Self {
+            inner: EventBuilder::videos_curation_sets(video.into_iter().map(|c| c.deref().clone())),
+        }
+    }
+
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
