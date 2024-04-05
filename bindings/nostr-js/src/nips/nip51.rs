@@ -9,7 +9,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use js_sys::Error;
-use nostr::nips::nip51::{Bookmarks, MuteList};
+use nostr::nips::nip51::{Bookmarks, Interests, MuteList};
 use nostr::Url;
 use wasm_bindgen::prelude::*;
 
@@ -79,5 +79,29 @@ impl TryFrom<JsBookmarks> for Bookmarks {
             hashtags: value.hashtags,
             urls: url_list,
         })
+    }
+}
+
+/// Topics a user may be interested in and pointers
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[wasm_bindgen(js_name = Interests)]
+pub struct JsInterests {
+    #[wasm_bindgen(getter_with_clone)]
+    pub hashtags: Vec<String>,
+    #[wasm_bindgen(getter_with_clone)]
+    pub coordinate: Vec<JsCoordinate>,
+}
+
+impl From<JsInterests> for Interests {
+    fn from(value: JsInterests) -> Self {
+        Self {
+            hashtags: value.hashtags,
+            coordinate: value
+                .coordinate
+                .into_iter()
+                .map(|c| c.deref().clone())
+                .collect(),
+        }
     }
 }

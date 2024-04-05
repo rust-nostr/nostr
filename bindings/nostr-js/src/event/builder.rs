@@ -14,7 +14,7 @@ use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip01::JsCoordinate;
 use crate::nips::nip15::{JsProductData, JsStallData};
-use crate::nips::nip51::{JsBookmarks, JsMuteList};
+use crate::nips::nip51::{JsBookmarks, JsInterests, JsMuteList};
 use crate::nips::nip53::JsLiveEvent;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
@@ -539,6 +539,15 @@ impl JsEventBuilder {
     pub fn search_relays(relays: Vec<String>) -> Self {
         Self {
             inner: EventBuilder::search_relays(relays.into_iter().map(UncheckedUrl::from)),
+        }
+    }
+
+    /// Interests
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn interests(list: JsInterests) -> Self {
+        Self {
+            inner: EventBuilder::interests(list.into()),
         }
     }
 
