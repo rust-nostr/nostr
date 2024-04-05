@@ -555,9 +555,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn follow_sets(publick_key: Vec<Arc<PublicKey>>) -> Self {
+    pub fn follow_sets(publick_keys: Vec<Arc<PublicKey>>) -> Self {
         Self {
-            inner: nostr::EventBuilder::follow_sets(publick_key.into_iter().map(|p| **p)),
+            inner: nostr::EventBuilder::follow_sets(publick_keys.into_iter().map(|p| **p)),
         }
     }
 

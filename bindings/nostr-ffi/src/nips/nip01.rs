@@ -44,12 +44,6 @@ impl From<Coordinate> for nip01::Coordinate {
     }
 }
 
-impl From<&Coordinate> for nip01::Coordinate {
-    fn from(value: &Coordinate) -> Self {
-        value.inner.clone()
-    }
-}
-
 #[uniffi::export]
 impl Coordinate {
     #[uniffi::constructor]

@@ -14,7 +14,9 @@ use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip01::JsCoordinate;
 use crate::nips::nip15::{JsProductData, JsStallData};
-use crate::nips::nip51::{JsArticlesCuration, JsBookmarks, JsEmojis, JsInterests, JsMuteList};
+use crate::nips::nip51::{
+    JsArticlesCuration, JsBookmarks, JsEmojiInfo, JsEmojis, JsInterests, JsMuteList,
+};
 use crate::nips::nip53::JsLiveEvent;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
@@ -568,9 +570,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = followSets)]
-    pub fn follow_sets(public_key: Vec<JsPublicKey>) -> Self {
+    pub fn follow_sets(public_keys: Vec<JsPublicKey>) -> Self {
         Self {
-            inner: EventBuilder::follow_sets(public_key.into_iter().map(|p| p.into())),
+            inner: EventBuilder::follow_sets(public_keys.into_iter().map(|p| p.into())),
         }
     }
 
@@ -611,6 +613,16 @@ impl JsEventBuilder {
     pub fn videos_curation_sets(video: Vec<JsCoordinate>) -> Self {
         Self {
             inner: EventBuilder::videos_curation_sets(video.into_iter().map(|c| c.deref().clone())),
+        }
+    }
+
+    /// Emoji sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = emojiSets)]
+    pub fn emoji_sets(emoji: Vec<JsEmojiInfo>) -> Self {
+        Self {
+            inner: EventBuilder::emoji_sets(emoji.into_iter().map(|e| e.into())),
         }
     }
 
