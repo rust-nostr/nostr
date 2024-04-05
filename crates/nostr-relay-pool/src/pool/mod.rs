@@ -17,10 +17,11 @@ use nostr::{
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
+mod error;
 mod internal;
 pub mod options;
 
-pub use self::internal::Error;
+pub use self::error::Error;
 use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};

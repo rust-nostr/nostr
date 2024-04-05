@@ -13,58 +13,15 @@ use std::time::Duration;
 
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
-use nostr::message::MessageHandleError;
 use nostr::{ClientMessage, Event, EventId, Filter, SubscriptionId, Timestamp, TryIntoUrl, Url};
-use nostr_database::{DatabaseError, DynNostrDatabase, IntoNostrDatabase, Order};
-use thiserror::Error;
+use nostr_database::{DynNostrDatabase, IntoNostrDatabase, Order};
 use tokio::sync::{broadcast, Mutex, RwLock};
 
 use super::options::RelayPoolOptions;
-use super::RelayPoolNotification;
+use super::{Error, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
-use crate::relay::{Error as RelayError, Relay};
+use crate::relay::Relay;
 use crate::SubscribeOptions;
-
-/// [`RelayPool`](super::RelayPool) error
-#[derive(Debug, Error)]
-pub enum Error {
-    /// Url parse error
-    #[error("impossible to parse URL: {0}")]
-    Url(#[from] nostr::types::url::ParseError),
-    /// Relay error
-    #[error(transparent)]
-    Relay(#[from] RelayError),
-    /// Message handler error
-    #[error(transparent)]
-    MessageHandler(#[from] MessageHandleError),
-    /// Database error
-    #[error(transparent)]
-    Database(#[from] DatabaseError),
-    /// Thread error
-    #[error(transparent)]
-    Thread(#[from] thread::Error),
-    /// No relays
-    #[error("no relays")]
-    NoRelays,
-    /// No relays specified
-    #[error("no relays sepcified")]
-    NoRelaysSpecified,
-    /// Msg not sent
-    #[error("message not sent")]
-    MsgNotSent,
-    /// Msgs not sent
-    #[error("messages not sent")]
-    MsgsNotSent,
-    /// Event/s not published
-    #[error("event/s not published")]
-    EventNotPublished,
-    /// Relay not found
-    #[error("relay not found")]
-    RelayNotFound,
-    /// Notification Handler error
-    #[error("notification handler error: {0}")]
-    Handler(String),
-}
 
 #[derive(Debug, Clone)]
 pub struct InternalRelayPool {
