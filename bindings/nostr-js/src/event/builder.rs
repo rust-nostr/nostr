@@ -14,7 +14,7 @@ use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip01::JsCoordinate;
 use crate::nips::nip15::{JsProductData, JsStallData};
-use crate::nips::nip51::{JsBookmarks, JsEmojis, JsInterests, JsMuteList};
+use crate::nips::nip51::{JsArticlesCuration, JsBookmarks, JsEmojis, JsInterests, JsMuteList};
 use crate::nips::nip53::JsLiveEvent;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
@@ -592,6 +592,16 @@ impl JsEventBuilder {
         Ok(Self {
             inner: EventBuilder::bookmarks_sets(list.try_into()?),
         })
+    }
+
+    /// Article Curation sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = articlesCurationSets)]
+    pub fn articles_curation_sets(list: JsArticlesCuration) -> Self {
+        Self {
+            inner: EventBuilder::articles_curation_sets(list.into()),
+        }
     }
 
     /// Label

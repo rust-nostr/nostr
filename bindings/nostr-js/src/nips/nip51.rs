@@ -9,7 +9,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use js_sys::Error;
-use nostr::nips::nip51::{Bookmarks, Emojis, Interests, MuteList};
+use nostr::nips::nip51::{ArticlesCuration, Bookmarks, Emojis, Interests, MuteList};
 use nostr::{UncheckedUrl, Url};
 use wasm_bindgen::prelude::*;
 
@@ -144,6 +144,30 @@ impl From<JsEmojis> for Emojis {
                 .into_iter()
                 .map(|c| c.deref().clone())
                 .collect(),
+        }
+    }
+}
+
+/// Groups of articles picked by users as interesting and/or belonging to the same category
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[wasm_bindgen(js_name = ArticlesCuration)]
+pub struct JsArticlesCuration {
+    #[wasm_bindgen(getter_with_clone)]
+    pub coordinate: Vec<JsCoordinate>,
+    #[wasm_bindgen(getter_with_clone)]
+    pub event_ids: Vec<JsEventId>,
+}
+
+impl From<JsArticlesCuration> for ArticlesCuration {
+    fn from(value: JsArticlesCuration) -> Self {
+        Self {
+            coordinate: value
+                .coordinate
+                .into_iter()
+                .map(|c| c.deref().clone())
+                .collect(),
+            event_ids: value.event_ids.into_iter().map(|e| e.into()).collect(),
         }
     }
 }
