@@ -584,6 +584,16 @@ impl JsEventBuilder {
         }
     }
 
+    /// Bookmark sets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = bookmarksSets)]
+    pub fn bookmarks_sets(list: JsBookmarks) -> Result<JsEventBuilder> {
+        Ok(Self {
+            inner: EventBuilder::bookmarks_sets(list.try_into()?),
+        })
+    }
+
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
