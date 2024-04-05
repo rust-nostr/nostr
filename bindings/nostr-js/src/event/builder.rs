@@ -14,7 +14,7 @@ use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip01::JsCoordinate;
 use crate::nips::nip15::{JsProductData, JsStallData};
-use crate::nips::nip51::{JsBookmarks, JsInterests, JsMuteList};
+use crate::nips::nip51::{JsBookmarks, JsEmojis, JsInterests, JsMuteList};
 use crate::nips::nip53::JsLiveEvent;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
@@ -548,6 +548,15 @@ impl JsEventBuilder {
     pub fn interests(list: JsInterests) -> Self {
         Self {
             inner: EventBuilder::interests(list.into()),
+        }
+    }
+
+    /// Emojis
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    pub fn emojis(list: JsEmojis) -> Self {
+        Self {
+            inner: EventBuilder::emojis(list.into()),
         }
     }
 

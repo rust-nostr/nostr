@@ -9,8 +9,8 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use js_sys::Error;
-use nostr::nips::nip51::{Bookmarks, Interests, MuteList};
-use nostr::Url;
+use nostr::nips::nip51::{Bookmarks, Emojis, Interests, MuteList};
+use nostr::{UncheckedUrl, Url};
 use wasm_bindgen::prelude::*;
 
 use super::nip01::JsCoordinate;
@@ -97,6 +97,48 @@ impl From<JsInterests> for Interests {
     fn from(value: JsInterests) -> Self {
         Self {
             hashtags: value.hashtags,
+            coordinate: value
+                .coordinate
+                .into_iter()
+                .map(|c| c.deref().clone())
+                .collect(),
+        }
+    }
+}
+
+/// Emoji
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[derive(Clone)]
+#[wasm_bindgen(js_name = EmojiInfo)]
+pub struct JsEmojiInfo {
+    #[wasm_bindgen(getter_with_clone)]
+    pub shortcode: String,
+    #[wasm_bindgen(getter_with_clone)]
+    pub url: String,
+}
+
+impl From<JsEmojiInfo> for (String, UncheckedUrl) {
+    fn from(value: JsEmojiInfo) -> Self {
+        (value.shortcode, UncheckedUrl::from(value.url))
+    }
+}
+
+/// User preferred emojis and pointers to emoji sets
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[wasm_bindgen(js_name = Emojis)]
+pub struct JsEmojis {
+    #[wasm_bindgen(getter_with_clone)]
+    pub emojis: Vec<JsEmojiInfo>,
+    #[wasm_bindgen(getter_with_clone)]
+    pub coordinate: Vec<JsCoordinate>,
+}
+
+impl From<JsEmojis> for Emojis {
+    fn from(value: JsEmojis) -> Self {
+        Self {
+            emojis: value.emojis.into_iter().map(|e| e.into()).collect(),
             coordinate: value
                 .coordinate
                 .into_iter()
