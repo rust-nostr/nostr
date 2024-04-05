@@ -118,4 +118,7 @@ pub enum Error {
         /// Min. difficulty
         min: u8,
     },
+    /// Notification Handler error
+    #[error("notification handler error: {0}")]
+    Handler(String),
 }

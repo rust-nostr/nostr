@@ -15,7 +15,9 @@ use async_wsocket::futures_util::Future;
 use atomic_destructor::AtomicDestructor;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
-use nostr::{ClientMessage, Event, EventId, Filter, RelayMessage, SubscriptionId, Timestamp, Url};
+use nostr::{
+    ClientMessage, Event, EventId, Filter, RelayMessage, Result, SubscriptionId, Timestamp, Url,
+};
 use nostr_database::{DynNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
@@ -359,5 +361,25 @@ impl Relay {
     #[inline]
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
         self.inner.support_negentropy().await
+    }
+
+    /// Handle notifications
+    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
+    where
+        F: Fn(RelayNotification) -> Fut,
+        Fut: Future<Output = Result<bool>>,
+    {
+        let mut notifications = self.notifications();
+        while let Ok(notification) = notifications.recv().await {
+            let stop: bool = RelayNotification::Stop == notification;
+            let shutdown: bool = RelayNotification::Shutdown == notification;
+            let exit: bool = func(notification)
+                .await
+                .map_err(|e| Error::Handler(e.to_string()))?;
+            if exit || stop || shutdown {
+                break;
+            }
+        }
+        Ok(())
     }
 }

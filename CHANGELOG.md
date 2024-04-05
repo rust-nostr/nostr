@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 * nostr: add `Report::Other` variant ([Daniel Cadenas])
+* pool: add `Relay::handle_notifications` ([Yuki Kishimoto])
 * cli: add command to serve `Nostr Connect` signer ([Yuki Kishimoto])
 * ffi(nostr): added `FilterRecord`, to allow to access fields in `Filter` ([Yuki Kishimoto])
 * ffi(sdk): add `AbortHandle` ([Yuki Kishimoto])
