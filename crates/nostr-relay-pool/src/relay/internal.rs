@@ -1079,6 +1079,10 @@ impl InternalRelay {
         events: Vec<Event>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
+        if !self.opts.flags.has_write() {
+            return Err(Error::WriteDisabled);
+        }
+
         if events.is_empty() {
             return Err(Error::BatchEventEmpty);
         }
@@ -1365,6 +1369,11 @@ impl InternalRelay {
     where
         F: Future<Output = ()>,
     {
+        // Check if relay has READ flags disabled
+        if !self.opts.flags.has_read() {
+            return Err(Error::ReadDisabled);
+        }
+
         // Check if relay is connected
         if !self.is_connected().await
             && self.stats.attempts() > MIN_ATTEMPTS
