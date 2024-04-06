@@ -1093,6 +1093,10 @@ impl InternalRelay {
         events: Vec<Event>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
+        if !self.opts.flags.has_write() {
+            return Err(Error::WriteDisabled);
+        }
+
         if events.is_empty() {
             return Err(Error::BatchEventEmpty);
         }
@@ -1441,6 +1445,11 @@ impl InternalRelay {
     {
         // Check if relay is ready
         self.check_ready().await?;
+
+        // Check if relay has READ flags disabled
+        if !self.opts.flags.has_read() {
+            return Err(Error::ReadDisabled);
+        }
 
         // Compose options
         let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()

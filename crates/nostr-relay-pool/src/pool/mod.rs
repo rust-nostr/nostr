@@ -29,7 +29,7 @@ pub use self::options::RelayPoolOptions;
 pub use self::result::Output;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist, RelayStatus};
-use crate::{Reconciliation, SubscribeOptions};
+use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
 
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,6 +137,11 @@ impl RelayPool {
     #[inline]
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         self.inner.relays().await
+    }
+
+    /// Get relays that have a certain [RelayServiceFlag] enabled
+    pub async fn relays_with_flag(&self, flag: RelayServiceFlags) -> HashMap<Url, Relay> {
+        self.inner.relays_with_flag(flag).await
     }
 
     /// Get [`Relay`]

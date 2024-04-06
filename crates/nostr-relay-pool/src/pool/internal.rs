@@ -22,7 +22,7 @@ use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Reconciliation, Relay, RelayBlacklist};
-use crate::{util, SubscribeOptions};
+use crate::{util, RelayServiceFlags, SubscribeOptions};
 
 type Relays = HashMap<Url, Relay>;
 
@@ -100,6 +100,16 @@ impl InternalRelayPool {
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         let relays = self.relays.read().await;
         relays.clone()
+    }
+
+    /// Get relays that have a certain [RelayServiceFlag] enabled
+    pub async fn relays_with_flag(&self, flag: RelayServiceFlags) -> HashMap<Url, Relay> {
+        let relays = self.relays.read().await;
+        relays
+            .iter()
+            .filter(|(_, r)| r.flags().has(flag))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 
     /// Method to get **all** relays urls
