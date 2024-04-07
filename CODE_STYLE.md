@@ -76,7 +76,7 @@ impl<'a> AnswerCallbackQuery<'a> {
 
 **Rationale:** `Self` is generally shorter and it's easier to copy-paste code or rename the type.
 
-## Deriving traits
+## Deriving traits (apply only to libraries)
 
 Derive `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq` and `Hash` for public types when possible (in this order).
 
