@@ -46,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Removed deprecated ([Yuki Kishimoto])
 
+## v0.29.4
+
+* pool: fix `InternalRelay::get_events_of_with_callback` timeout ([Yuki Kishimoto])
+
 ## v0.29.3
 
 * pool: check filter limit in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
