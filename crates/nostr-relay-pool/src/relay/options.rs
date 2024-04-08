@@ -14,6 +14,7 @@ use super::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 use crate::RelayLimits;
 
 /// Default send timeout
+// IF CHANGED, REMEMBER TO UPDATE THE DOCS!
 pub const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
 pub(super) const DEFAULT_RETRY_SEC: u64 = 10;
 pub(super) const MIN_RETRY_SEC: u64 = 5;
@@ -220,7 +221,7 @@ impl RelaySendOptions {
         self
     }
 
-    /// Timeout for sending event (default: 10 secs)
+    /// Timeout for sending event (default: 20 secs)
     ///
     /// If `None`, the default timeout will be used
     pub fn timeout(mut self, timeout: Option<Duration>) -> Self {

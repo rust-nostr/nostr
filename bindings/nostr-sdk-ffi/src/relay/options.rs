@@ -176,7 +176,7 @@ impl RelaySendOptions {
         builder
     }
 
-    /// Timeout for sending event (default: 10 secs)
+    /// Timeout for sending event (default: 20 secs)
     ///
     /// If `None`, the default timeout will be used
     pub fn timeout(self: Arc<Self>, timeout: Option<Duration>) -> Self {

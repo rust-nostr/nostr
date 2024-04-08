@@ -1248,8 +1248,10 @@ impl InternalRelay {
         let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
             .filter(opts)
             .timeout(Some(timeout));
-        let subscribe_opts: SubscribeOptions =
-            SubscribeOptions::default().close_on(Some(auto_close_opts));
+        let send_opts: RelaySendOptions = RelaySendOptions::default().timeout(Some(timeout));
+        let subscribe_opts: SubscribeOptions = SubscribeOptions::default()
+            .send_opts(send_opts)
+            .close_on(Some(auto_close_opts));
 
         // Subscribe to channel
         let mut notifications = self.internal_notification_sender.subscribe();
