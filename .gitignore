@@ -5,5 +5,7 @@ db/
 *.db-shm
 *.db-wal
 *.mdb
+many-events.json
+many-events.json.zst
 .idea/
 .vscode/

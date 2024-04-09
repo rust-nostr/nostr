@@ -65,6 +65,11 @@ book:
 flatbuf:
 	cd crates/nostr-database && just flatbuf
 
+# Get many-events.json to test database performance
+many-events:
+	curl https://cdn.jb55.com/s/many-events.json.zst -o many-events.json.zst
+	zstd -d many-events.json.zst
+
 # Count the lines of codes of this project
 loc:
 	@echo "--- Counting lines of .rs files (LOC):" && find crates/ bindings/ -type f -name "*.rs" -not -path "*/target/*" -exec cat {} \; | wc -l
