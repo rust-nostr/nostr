@@ -29,7 +29,7 @@ pub fn extract_relay_list(event: &JsEvent) -> Vec<JsRelayListItem> {
     nip65::extract_relay_list(event.deref())
         .map(|(s, r)| JsRelayListItem {
             url: s.to_string(),
-            metadata: r.clone().map(|r| r.into()),
+            metadata: r.map(|r| r.into()),
         })
         .collect()
 }

@@ -31,7 +31,7 @@ impl fmt::Display for Error {
 }
 
 /// Relay Metadata
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RelayMetadata {
     /// Read
     Read,

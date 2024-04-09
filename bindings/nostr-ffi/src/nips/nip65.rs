@@ -39,6 +39,6 @@ impl From<nip65::RelayMetadata> for RelayMetadata {
 #[uniffi::export]
 pub fn extract_relay_list(event: &Event) -> HashMap<String, Option<RelayMetadata>> {
     nip65::extract_relay_list(event.deref())
-        .map(|(s, r)| (s.to_string(), r.clone().map(|r| r.into())))
+        .map(|(s, r)| (s.to_string(), r.map(|r| r.into())))
         .collect()
 }

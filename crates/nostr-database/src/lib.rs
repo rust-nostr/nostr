@@ -10,12 +10,13 @@
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
 
 use core::fmt;
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 pub use async_trait::async_trait;
 pub use nostr;
 use nostr::nips::nip01::Coordinate;
+use nostr::nips::nip65::{self, RelayMetadata};
 use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, PublicKey, Timestamp, Url};
 
 mod error;
@@ -242,6 +243,30 @@ pub trait NostrDatabaseExt: NostrDatabase {
                 Ok(contacts.into_iter().collect())
             }
             None => Ok(BTreeSet::new()),
+        }
+    }
+
+    /// Get relays list for [PublicKey]
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn relay_list(
+        &self,
+        public_key: PublicKey,
+    ) -> Result<HashMap<Url, Option<RelayMetadata>>, DatabaseError> {
+        // Query
+        let filter: Filter = Filter::default()
+            .author(public_key)
+            .kind(Kind::RelayList)
+            .limit(1);
+        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+
+        // Extract relay list (NIP65)
+        match events.first() {
+            Some(event) => Ok(nip65::extract_relay_list(event)
+                .map(|(u, m)| (u.clone(), *m))
+                .collect()),
+            None => Ok(HashMap::new()),
         }
     }
 }
