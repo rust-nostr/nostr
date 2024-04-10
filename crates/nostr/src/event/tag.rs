@@ -667,12 +667,30 @@ impl Tag {
     where
         S: AsRef<str>,
     {
-        let tag_len: usize = tag.len();
         let tag_kind: TagKind = match tag.first() {
             Some(kind) => TagKind::from(kind),
             None => return Err(Error::KindNotFound),
         };
 
+        match Self::inaternal_parse(&tag_kind, tag) {
+            Ok(Some(tag)) => Ok(tag),
+            _ => Ok(Self::custom(
+                tag_kind,
+                tag.get(1..)
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|s| s.as_ref().to_owned()),
+            )),
+        }
+    }
+
+    fn inaternal_parse<S>(tag_kind: &TagKind, tag: &[S]) -> Result<Option<Self>, Error>
+    where
+        S: AsRef<str>,
+    {
+        let tag_len: usize = tag.len();
+
+        // Check `relays` tag
         if tag_kind.eq(&TagKind::Relays) {
             // Relays vec is of unknown length so checked here based on kind
             let urls = tag
@@ -680,161 +698,170 @@ impl Tag {
                 .skip(1)
                 .map(|u| UncheckedUrl::from(u.as_ref()))
                 .collect::<Vec<UncheckedUrl>>();
-            Ok(Self::Relays(urls))
-        } else if tag_kind.eq(&TagKind::SingleLetter(SingleLetterTag {
+            return Ok(Some(Self::Relays(urls)));
+        }
+
+        // Check `l` tag
+        if tag_kind.eq(&TagKind::SingleLetter(SingleLetterTag {
             character: Alphabet::L,
             uppercase: false,
         })) {
             let labels = tag.iter().skip(1).map(|u| u.as_ref().to_string()).collect();
-            Ok(Self::Label(labels))
-        } else if tag_len == 1 {
-            match tag_kind {
-                TagKind::ContentWarning => Ok(Self::ContentWarning { reason: None }),
-                TagKind::Anon => Ok(Self::Anon { msg: None }),
-                TagKind::Encrypted => Ok(Self::Encrypted),
-                _ => Ok(Self::Generic(tag_kind, Vec::new())),
-            }
-        } else if tag_len == 2 {
+            return Ok(Some(Self::Label(labels)));
+        }
+
+        if tag_len == 1 {
+            return match tag_kind {
+                TagKind::ContentWarning => Ok(Some(Self::ContentWarning { reason: None })),
+                TagKind::Anon => Ok(Some(Self::Anon { msg: None })),
+                TagKind::Encrypted => Ok(Some(Self::Encrypted)),
+                _ => Ok(None),
+            };
+        }
+
+        if tag_len == 2 {
             let tag_1: &str = tag[1].as_ref();
 
-            match tag_kind {
+            return match tag_kind {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::A,
                     uppercase: false,
-                }) => Ok(Self::A {
+                }) => Ok(Some(Self::A {
                     coordinate: Coordinate::from_str(tag_1)?,
                     relay_url: None,
-                }),
+                })),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::P,
                     uppercase,
                 }) => {
                     let public_key = PublicKey::from_str(tag_1)?;
-                    Ok(Self::PublicKey {
+                    Ok(Some(Self::PublicKey {
                         public_key,
                         relay_url: None,
                         alias: None,
-                        uppercase,
-                    })
+                        uppercase: *uppercase,
+                    }))
                 }
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::E,
                     uppercase: false,
-                }) => Ok(Self::event(EventId::from_hex(tag_1)?)),
+                }) => Ok(Some(Self::event(EventId::from_hex(tag_1)?))),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::R,
                     uppercase: false,
                 }) => {
                     if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
-                        Ok(Self::RelayMetadata(UncheckedUrl::from(tag_1), None))
+                        Ok(Some(Self::RelayMetadata(UncheckedUrl::from(tag_1), None)))
                     } else {
-                        Ok(Self::Reference(tag_1.to_owned()))
+                        Ok(Some(Self::Reference(tag_1.to_owned())))
                     }
                 }
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::T,
                     uppercase: false,
-                }) => Ok(Self::Hashtag(tag_1.to_owned())),
+                }) => Ok(Some(Self::Hashtag(tag_1.to_owned()))),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::G,
                     uppercase: false,
-                }) => Ok(Self::Geohash(tag_1.to_owned())),
+                }) => Ok(Some(Self::Geohash(tag_1.to_owned()))),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::D,
                     uppercase: false,
-                }) => Ok(Self::Identifier(tag_1.to_owned())),
+                }) => Ok(Some(Self::Identifier(tag_1.to_owned()))),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::K,
                     uppercase: false,
-                }) => Ok(parse_or_generic::<Kind>(tag_kind, tag_1)),
+                }) => Ok(Some(Self::Kind(Kind::from_str(tag_1)?))),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::M,
                     uppercase: false,
-                }) => Ok(Self::MimeType(tag_1.to_owned())),
+                }) => Ok(Some(Self::MimeType(tag_1.to_owned()))),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::X,
                     uppercase: false,
-                }) => Ok(parse_or_generic::<Sha256Hash>(tag_kind, tag_1)),
+                }) => Ok(Some(Self::Sha256(Sha256Hash::from_str(tag_1)?))),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::U,
                     uppercase: false,
-                }) => Ok(Self::AbsoluteURL(UncheckedUrl::from(tag_1))),
-                TagKind::Relay => Ok(Self::Relay(UncheckedUrl::from(tag_1))),
-                TagKind::ContentWarning => Ok(Self::ContentWarning {
+                }) => Ok(Some(Self::AbsoluteURL(UncheckedUrl::from(tag_1)))),
+                TagKind::Relay => Ok(Some(Self::Relay(UncheckedUrl::from(tag_1)))),
+                TagKind::ContentWarning => Ok(Some(Self::ContentWarning {
                     reason: Some(tag_1.to_owned()),
-                }),
-                TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
-                TagKind::Subject => Ok(Self::Subject(tag_1.to_owned())),
-                TagKind::Challenge => Ok(Self::Challenge(tag_1.to_owned())),
-                TagKind::Title => Ok(Self::Title(tag_1.to_owned())),
-                TagKind::Image => Ok(Self::Image(UncheckedUrl::from(tag_1), None)),
-                TagKind::Thumb => Ok(Self::Thumb(UncheckedUrl::from(tag_1), None)),
-                TagKind::Summary => Ok(Self::Summary(tag_1.to_owned())),
-                TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(tag_1)?)),
-                TagKind::Description => Ok(Self::Description(tag_1.to_owned())),
-                TagKind::Bolt11 => Ok(Self::Bolt11(tag_1.to_owned())),
-                TagKind::Preimage => Ok(Self::Preimage(tag_1.to_owned())),
-                TagKind::Amount => Ok(Self::Amount {
+                })),
+                TagKind::Expiration => Ok(Some(Self::Expiration(Timestamp::from_str(tag_1)?))),
+                TagKind::Subject => Ok(Some(Self::Subject(tag_1.to_owned()))),
+                TagKind::Challenge => Ok(Some(Self::Challenge(tag_1.to_owned()))),
+                TagKind::Title => Ok(Some(Self::Title(tag_1.to_owned()))),
+                TagKind::Image => Ok(Some(Self::Image(UncheckedUrl::from(tag_1), None))),
+                TagKind::Thumb => Ok(Some(Self::Thumb(UncheckedUrl::from(tag_1), None))),
+                TagKind::Summary => Ok(Some(Self::Summary(tag_1.to_owned()))),
+                TagKind::PublishedAt => Ok(Some(Self::PublishedAt(Timestamp::from_str(tag_1)?))),
+                TagKind::Description => Ok(Some(Self::Description(tag_1.to_owned()))),
+                TagKind::Bolt11 => Ok(Some(Self::Bolt11(tag_1.to_owned()))),
+                TagKind::Preimage => Ok(Some(Self::Preimage(tag_1.to_owned()))),
+                TagKind::Amount => Ok(Some(Self::Amount {
                     millisats: tag_1.parse()?,
                     bolt11: None,
-                }),
-                TagKind::Lnurl => Ok(Self::Lnurl(tag_1.to_owned())),
-                TagKind::Name => Ok(Self::Name(tag_1.to_owned())),
-                TagKind::Url => Ok(Self::Url(Url::parse(tag_1)?)),
-                TagKind::Magnet => Ok(Self::Magnet(tag_1.to_owned())),
-                TagKind::Blurhash => Ok(Self::Blurhash(tag_1.to_owned())),
-                TagKind::Streaming => Ok(Self::Streaming(UncheckedUrl::from(tag_1))),
-                TagKind::Recording => Ok(Self::Recording(UncheckedUrl::from(tag_1))),
-                TagKind::Starts => Ok(Self::Starts(Timestamp::from_str(tag_1)?)),
-                TagKind::Ends => Ok(Self::Ends(Timestamp::from_str(tag_1)?)),
+                })),
+                TagKind::Lnurl => Ok(Some(Self::Lnurl(tag_1.to_owned()))),
+                TagKind::Name => Ok(Some(Self::Name(tag_1.to_owned()))),
+                TagKind::Url => Ok(Some(Self::Url(Url::parse(tag_1)?))),
+                TagKind::Magnet => Ok(Some(Self::Magnet(tag_1.to_owned()))),
+                TagKind::Blurhash => Ok(Some(Self::Blurhash(tag_1.to_owned()))),
+                TagKind::Streaming => Ok(Some(Self::Streaming(UncheckedUrl::from(tag_1)))),
+                TagKind::Recording => Ok(Some(Self::Recording(UncheckedUrl::from(tag_1)))),
+                TagKind::Starts => Ok(Some(Self::Starts(Timestamp::from_str(tag_1)?))),
+                TagKind::Ends => Ok(Some(Self::Ends(Timestamp::from_str(tag_1)?))),
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
-                    Ok(status) => Ok(Self::DataVendingMachineStatus {
+                    Ok(status) => Ok(Some(Self::DataVendingMachineStatus {
                         status,
                         extra_info: None,
-                    }),
-                    Err(_) => Ok(Self::LiveEventStatus(LiveEventStatus::from(tag_1))), /* TODO: check if unknown status error? */
+                    })),
+                    Err(_) => Ok(Some(Self::LiveEventStatus(LiveEventStatus::from(tag_1)))), /* TODO: check if unknown status error? */
                 },
-                TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(tag_1.parse()?)),
-                TagKind::TotalParticipants => Ok(Self::TotalParticipants(tag_1.parse()?)),
-                TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
-                TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
-                TagKind::Anon => Ok(Self::Anon {
+                TagKind::CurrentParticipants => Ok(Some(Self::CurrentParticipants(tag_1.parse()?))),
+                TagKind::TotalParticipants => Ok(Some(Self::TotalParticipants(tag_1.parse()?))),
+                TagKind::Method => Ok(Some(Self::Method(HttpMethod::from_str(tag_1)?))),
+                TagKind::Payload => Ok(Some(Self::Payload(Sha256Hash::from_str(tag_1)?))),
+                TagKind::Anon => Ok(Some(Self::Anon {
                     msg: (!tag_1.is_empty()).then_some(tag_1.to_owned()),
-                }),
-                TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
-                TagKind::Word => Ok(Self::Word(tag_1.to_string())),
+                })),
+                TagKind::Request => Ok(Some(Self::Request(Event::from_json(tag_1)?))),
+                TagKind::Word => Ok(Some(Self::Word(tag_1.to_string()))),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::L,
                     uppercase: true,
-                }) => Ok(Self::LabelNamespace(tag_1.to_string())),
-                _ => Ok(Self::Generic(tag_kind, vec![tag_1.to_owned()])),
-            }
-        } else if tag_len == 3 {
+                }) => Ok(Some(Self::LabelNamespace(tag_1.to_string()))),
+                _ => Ok(None),
+            };
+        }
+
+        if tag_len == 3 {
             let tag_1: &str = tag[1].as_ref();
             let tag_2: &str = tag[2].as_ref();
 
-            match tag_kind {
+            return match tag_kind {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::P,
                     uppercase: false,
                 }) => {
                     let public_key = PublicKey::from_str(tag_1)?;
                     if tag_2.is_empty() {
-                        Ok(Self::PublicKey {
+                        Ok(Some(Self::PublicKey {
                             public_key,
                             relay_url: Some(UncheckedUrl::empty()),
                             alias: None,
                             uppercase: false,
-                        })
+                        }))
                     } else {
                         match Report::from_str(tag_2) {
-                            Ok(report) => Ok(Self::PubKeyReport(public_key, report)),
-                            Err(_) => Ok(Self::PublicKey {
+                            Ok(report) => Ok(Some(Self::PubKeyReport(public_key, report))),
+                            Err(_) => Ok(Some(Self::PublicKey {
                                 public_key,
                                 relay_url: Some(UncheckedUrl::from(tag_2)),
                                 alias: None,
                                 uppercase: false,
-                            }),
+                            })),
                         }
                     }
                 }
@@ -844,91 +871,89 @@ impl Tag {
                 }) => {
                     let event_id = EventId::from_hex(tag_1)?;
                     if tag_2.is_empty() {
-                        Ok(Self::Event {
+                        Ok(Some(Self::Event {
                             event_id,
                             relay_url: Some(UncheckedUrl::empty()),
                             marker: None,
-                        })
+                        }))
                     } else {
                         match Report::from_str(tag_2) {
-                            Ok(report) => Ok(Self::EventReport(event_id, report)),
-                            Err(_) => Ok(Self::Event {
+                            Ok(report) => Ok(Some(Self::EventReport(event_id, report))),
+                            Err(_) => Ok(Some(Self::Event {
                                 event_id,
                                 relay_url: Some(UncheckedUrl::from(tag_2)),
                                 marker: None,
-                            }),
+                            })),
                         }
                     }
                 }
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::I,
                     uppercase: false,
-                }) => match Identity::new(tag_1, tag_2) {
-                    Ok(identity) => Ok(Self::ExternalIdentity(identity)),
-                    Err(_) => Ok(Self::Generic(
-                        tag_kind,
-                        tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
-                    )),
-                },
-                TagKind::Nonce => Ok(Self::POW {
+                }) => Ok(Some(Self::ExternalIdentity(Identity::new(tag_1, tag_2)?))),
+                TagKind::Nonce => Ok(Some(Self::POW {
                     nonce: tag_1.parse()?,
                     difficulty: tag_2.parse()?,
-                }),
+                })),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::A,
                     uppercase: false,
-                }) => Ok(Self::A {
+                }) => Ok(Some(Self::A {
                     coordinate: Coordinate::from_str(tag_1)?,
                     relay_url: Some(UncheckedUrl::from(tag_2)),
-                }),
-                TagKind::Image => Ok(Self::Image(
+                })),
+                TagKind::Image => Ok(Some(Self::Image(
                     UncheckedUrl::from(tag_1),
                     Some(ImageDimensions::from_str(tag_2)?),
-                )),
-                TagKind::Thumb => Ok(Self::Thumb(
+                ))),
+                TagKind::Thumb => Ok(Some(Self::Thumb(
                     UncheckedUrl::from(tag_1),
                     Some(ImageDimensions::from_str(tag_2)?),
-                )),
-                TagKind::Aes256Gcm => Ok(Self::Aes256Gcm {
+                ))),
+                TagKind::Aes256Gcm => Ok(Some(Self::Aes256Gcm {
                     key: tag_1.to_owned(),
                     iv: tag_2.to_owned(),
-                }),
+                })),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::R,
                     uppercase: false,
-                }) => Ok(Self::RelayMetadata(
-                    UncheckedUrl::from(tag_1),
-                    Some(RelayMetadata::from_str(tag_2)?),
-                )),
-                TagKind::Proxy => Ok(Self::Proxy {
+                }) => {
+                    if (tag_1.starts_with("ws://") || tag_1.starts_with("wss://"))
+                        && !tag_2.is_empty()
+                    {
+                        Ok(Some(Self::RelayMetadata(
+                            UncheckedUrl::from(tag_1),
+                            Some(RelayMetadata::from_str(tag_2)?),
+                        )))
+                    } else {
+                        Ok(None)
+                    }
+                }
+                TagKind::Proxy => Ok(Some(Self::Proxy {
                     id: tag_1.to_owned(),
                     protocol: Protocol::from(tag_2),
-                }),
-                TagKind::Emoji => Ok(Self::Emoji {
+                })),
+                TagKind::Emoji => Ok(Some(Self::Emoji {
                     shortcode: tag_1.to_owned(),
                     url: UncheckedUrl::from(tag_2),
-                }),
+                })),
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
-                    Ok(status) => Ok(Self::DataVendingMachineStatus {
+                    Ok(status) => Ok(Some(Self::DataVendingMachineStatus {
                         status,
                         extra_info: Some(tag_2.to_string()),
-                    }),
-                    Err(_) => Ok(Self::Generic(
-                        tag_kind,
-                        tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
-                    )),
+                    })),
+                    Err(_) => Ok(None),
                 },
-                _ => Ok(Self::Generic(
-                    tag_kind,
-                    tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
-                )),
-            }
-        } else if tag_len == 4 {
+                _ => Ok(None),
+            };
+        }
+
+        if tag_len == 4 {
             let tag_1: &str = tag[1].as_ref();
             let tag_2: &str = tag[2].as_ref();
             let tag_3: &str = tag[3].as_ref();
 
-            match tag_kind {
+            return match tag_kind {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::P,
                     uppercase,
@@ -937,65 +962,58 @@ impl Tag {
                     let relay_url: Option<UncheckedUrl> = Some(UncheckedUrl::from(tag_2));
 
                     match LiveEventMarker::from_str(tag_3) {
-                        Ok(marker) => Ok(Self::PubKeyLiveEvent {
+                        Ok(marker) => Ok(Some(Self::PubKeyLiveEvent {
                             public_key,
                             relay_url,
                             marker,
                             proof: None,
-                        }),
-                        Err(_) => Ok(Self::PublicKey {
+                        })),
+                        Err(_) => Ok(Some(Self::PublicKey {
                             public_key,
                             relay_url,
                             alias: Some(tag_3.to_string()),
-                            uppercase,
-                        }),
+                            uppercase: *uppercase,
+                        })),
                     }
                 }
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::E,
                     uppercase: false,
-                }) => Ok(Self::Event {
+                }) => Ok(Some(Self::Event {
                     event_id: EventId::from_hex(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
-                }),
-                TagKind::Delegation => Ok(Self::Delegation {
+                })),
+                TagKind::Delegation => Ok(Some(Self::Delegation {
                     delegator: PublicKey::from_str(tag_1)?,
                     conditions: Conditions::from_str(tag_2)?,
                     sig: Signature::from_str(tag_3)?,
-                }),
-                _ => Ok(Self::Generic(
-                    tag_kind,
-                    tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
-                )),
-            }
-        } else if tag_len == 5 {
+                })),
+                _ => Ok(None),
+            };
+        }
+
+        if tag_len == 5 {
             let tag_1: &str = tag[1].as_ref();
             let tag_2: &str = tag[2].as_ref();
             let tag_3: &str = tag[3].as_ref();
             let tag_4: &str = tag[4].as_ref();
 
-            match tag_kind {
+            return match tag_kind {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::P,
                     ..
-                }) => Ok(Self::PubKeyLiveEvent {
+                }) => Ok(Some(Self::PubKeyLiveEvent {
                     public_key: PublicKey::from_str(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: LiveEventMarker::from_str(tag_3)?,
                     proof: Signature::from_str(tag_4).ok(),
-                }),
-                _ => Ok(Self::Generic(
-                    tag_kind,
-                    tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
-                )),
-            }
-        } else {
-            Ok(Self::Generic(
-                tag_kind,
-                tag[1..].iter().map(|s| s.as_ref().to_owned()).collect(),
-            ))
+                })),
+                _ => Ok(None),
+            };
         }
+
+        Ok(None)
     }
 
     /// Compose `Tag::Event` without `relay_url` and `marker`
@@ -1612,30 +1630,6 @@ impl From<Identity> for Vec<String> {
     }
 }
 
-/// Try to parse string. If fails, return `Tag::Generic`
-#[inline]
-fn parse_or_generic<T>(kind: TagKind, val: &str) -> Tag
-where
-    T: FromStr + Into<Tag>,
-{
-    match T::from_str(val) {
-        Ok(res) => res.into(),
-        Err(..) => Tag::Generic(kind, vec![val.to_string()]),
-    }
-}
-
-impl From<Kind> for Tag {
-    fn from(value: Kind) -> Self {
-        Self::Kind(value)
-    }
-}
-
-impl From<Sha256Hash> for Tag {
-    fn from(value: Sha256Hash) -> Self {
-        Self::Sha256(value)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2047,6 +2041,54 @@ mod tests {
             vec!["l", "IT-MI", "ISO-3166-2"],
             Tag::Label(vec!["IT-MI".to_string(), "ISO-3166-2".to_string()]).as_vec()
         );
+
+        assert_eq!(
+            vec!["r", "wss://atlas.nostr.land"],
+            Tag::RelayMetadata(UncheckedUrl::new("wss://atlas.nostr.land"), None).as_vec()
+        );
+
+        assert_eq!(
+            vec!["r", "wss://atlas.nostr.land", "read"],
+            Tag::RelayMetadata(
+                UncheckedUrl::new("wss://atlas.nostr.land"),
+                Some(RelayMetadata::Read)
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec!["r", "wss://atlas.nostr.land", "write"],
+            Tag::RelayMetadata(
+                UncheckedUrl::new("wss://atlas.nostr.land"),
+                Some(RelayMetadata::Write)
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec!["r", "wss://atlas.nostr.land", ""],
+            Tag::custom(
+                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
+                ["wss://atlas.nostr.land", ""]
+            )
+            .as_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "r",
+                "3dbee968d1ddcdf07521e246e405e1fbb549080f1f4ef4e42526c4528f124220",
+                ""
+            ],
+            Tag::custom(
+                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
+                [
+                    "3dbee968d1ddcdf07521e246e405e1fbb549080f1f4ef4e42526c4528f124220",
+                    ""
+                ]
+            )
+            .as_vec()
+        );
     }
 
     #[test]
@@ -2271,6 +2313,51 @@ mod tests {
             Tag::RelayMetadata(
                 UncheckedUrl::from("wss://alicerelay.example.com"),
                 Some(RelayMetadata::Read)
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(&["r", "wss://atlas.nostr.land"]).unwrap(),
+            Tag::RelayMetadata(UncheckedUrl::new("wss://atlas.nostr.land"), None)
+        );
+
+        assert_eq!(
+            Tag::parse(&["r", "wss://atlas.nostr.land", "read"]).unwrap(),
+            Tag::RelayMetadata(
+                UncheckedUrl::new("wss://atlas.nostr.land"),
+                Some(RelayMetadata::Read)
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(&["r", "wss://atlas.nostr.land", "write"]).unwrap(),
+            Tag::RelayMetadata(
+                UncheckedUrl::new("wss://atlas.nostr.land"),
+                Some(RelayMetadata::Write)
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(&["r", "wss://atlas.nostr.land", ""]).unwrap(),
+            Tag::custom(
+                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
+                ["wss://atlas.nostr.land", ""]
+            )
+        );
+
+        assert_eq!(
+            Tag::parse(&[
+                "r",
+                "3dbee968d1ddcdf07521e246e405e1fbb549080f1f4ef4e42526c4528f124220",
+                ""
+            ])
+            .unwrap(),
+            Tag::custom(
+                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
+                [
+                    "3dbee968d1ddcdf07521e246e405e1fbb549080f1f4ef4e42526c4528f124220",
+                    ""
+                ]
             )
         );
 
