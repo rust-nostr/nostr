@@ -92,8 +92,7 @@ impl NostrDatabase for NdbDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
-        // TODO: avoid `event.clone()`
-        let msg = RelayMessage::event(SubscriptionId::new("ndb"), event.clone());
+        let msg = RelayMessage::event(SubscriptionId::new("ndb"), event);
         let json: String = msg.as_json();
         self.db
             .process_event(&json)
@@ -104,7 +103,7 @@ impl NostrDatabase for NdbDatabase {
     #[tracing::instrument(skip_all, level = "trace")]
     async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
         for event in events.into_iter() {
-            let msg = RelayMessage::event(SubscriptionId::new("ndb"), event);
+            let msg = RelayMessage::event(SubscriptionId::new("ndb"), &event);
             let json: String = msg.as_json();
             self.db
                 .process_event(&json)

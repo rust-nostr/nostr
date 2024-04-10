@@ -179,10 +179,7 @@ impl RelayMessage {
     #[uniffi::constructor]
     pub fn event(subscription_id: &str, event: &Event) -> Self {
         Self {
-            inner: nostr::RelayMessage::event(
-                SubscriptionId::new(subscription_id),
-                event.deref().clone(),
-            ),
+            inner: nostr::RelayMessage::event(SubscriptionId::new(subscription_id), event),
         }
     }
 

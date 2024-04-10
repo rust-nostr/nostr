@@ -2,8 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use core::ops::Deref;
-
 use nostr::{JsonUtil, RelayMessage, SubscriptionId};
 use wasm_bindgen::prelude::*;
 
@@ -26,7 +24,7 @@ impl JsRelayMessage {
     /// Create new `EVENT` message
     pub fn event(subscription_id: &str, event: &JsEvent) -> Self {
         Self {
-            inner: RelayMessage::event(SubscriptionId::new(subscription_id), event.deref().clone()),
+            inner: RelayMessage::event(SubscriptionId::new(subscription_id), event),
         }
     }
 
