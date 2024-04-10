@@ -126,10 +126,7 @@ mod y;
 // Finally, the internal crate modules and submodules
 use crate::{};
 use super::{};
-
-// Re-exports are treated as item definitions rather than imports, so they go
-// after imports and modules. Use them sparingly.
-pub use crate::x::Z;
+use self::y::Y;
 ```
 
 ## Import Style
@@ -148,6 +145,20 @@ impl fmt::Display for RenameError {
 impl core::fmt::Display for RenameError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result { .. }
 }
+```
+
+When imports sub-modules:
+
+```rust
+// GOOD
+mod x;
+
+use self::x::Y;
+
+// BAD
+mod x;
+
+use x::Y;
 ```
 
 ## If-let
@@ -184,4 +195,42 @@ match this.as_ref() {
     },
     None => (),
 }
+```
+
+## Sub-modules
+
+Avoid the `mod x { .. }` construct if possible. Instead, crate a file `x.rs` and define it with `mod x;`
+
+**This applies to all sub-modules except `tests` and `benches`.**
+
+```rust
+// GOOD
+mod x;
+
+// BAD
+mod x {
+    ..
+}
+```
+
+```rust
+// GOOD
+#[cfg(test)]
+mod tests {
+    ..
+}
+
+// BAD
+mod tests;
+```
+
+```rust
+// GOOD
+#[cfg(bench)]
+mod benches {
+    ..
+}
+
+// BAD
+mod benches;
 ```
