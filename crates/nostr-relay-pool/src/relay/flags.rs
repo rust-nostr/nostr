@@ -138,7 +138,7 @@ impl AtomicRelayServiceFlags {
         let f: RelayServiceFlags = RelayServiceFlags(_f);
         f.has(flags)
     }
-    
+
     /// Check if `READ` service is enabled
     pub fn has_read(&self) -> bool {
         self.has(RelayServiceFlags::READ)

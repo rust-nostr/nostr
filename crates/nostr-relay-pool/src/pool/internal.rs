@@ -13,7 +13,11 @@ use std::time::Duration;
 use async_utility::thread::JoinHandle;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
-use nostr::{ClientMessage, Event, EventId, Filter, SubscriptionId, Timestamp, TryIntoUrl, Url};
+use nostr::nips::nip65::{self, RelayMetadata};
+use nostr::{
+    ClientMessage, Event, EventId, Filter, Kind, PublicKey, SubscriptionId, Timestamp, TryIntoUrl,
+    Url,
+};
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, Order};
 use tokio::sync::{broadcast, Mutex, RwLock};
 
@@ -30,7 +34,7 @@ pub struct InternalRelayPool {
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
     blacklist: RelayBlacklist,
-    // opts: RelayPoolOptions,
+    opts: RelayPoolOptions,
 }
 
 impl AtomicDestroyer for InternalRelayPool {
@@ -61,7 +65,7 @@ impl InternalRelayPool {
             notification_sender,
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             blacklist: RelayBlacklist::empty(),
-            //opts,
+            opts,
         }
     }
 
@@ -846,5 +850,81 @@ impl InternalRelayPool {
 
             Ok(result)
         }
+    }
+}
+
+// Gossip methods
+impl InternalRelayPool {
+    pub async fn add_discovery_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Compose flags
+        let mut flags: RelayServiceFlags = RelayServiceFlags::NONE;
+        flags.add(RelayServiceFlags::DISCOVERY);
+
+        // Add relay
+        let opts: RelayOptions = RelayOptions::default().flags(flags);
+        self.add_relay(url, opts).await
+    }
+
+    pub async fn add_inbox_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Compose flags
+        let mut flags: RelayServiceFlags = RelayServiceFlags::NONE;
+        flags.add(RelayServiceFlags::READ);
+        flags.add(RelayServiceFlags::INBOX);
+
+        // Add relay
+        let opts: RelayOptions = RelayOptions::default().flags(flags);
+        self.add_relay(url, opts).await
+    }
+
+    pub async fn add_outbox_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Compose flags
+        let mut flags: RelayServiceFlags = RelayServiceFlags::NONE;
+        flags.add(RelayServiceFlags::WRITE);
+        flags.add(RelayServiceFlags::OUTBOX);
+
+        // Add relay
+        let opts: RelayOptions = RelayOptions::default().flags(flags);
+        self.add_relay(url, opts).await
+    }
+
+    pub async fn get_relays_for_public_key(
+        &self,
+        public_key: PublicKey,
+        timeout: Duration,
+    ) -> Result<HashMap<Url, Option<RelayMetadata>>, Error> {
+        // Get discovery relays
+        let relays = self
+            .relays_with_flag(RelayServiceFlags::DISCOVERY)
+            .await
+            .into_keys();
+
+        // Get events
+        let filter: Filter = Filter::default()
+            .author(public_key)
+            .kind(Kind::RelayList)
+            .limit(1);
+        let events: Vec<Event> = self
+            .get_events_from(relays, vec![filter], timeout, FilterOptions::ExitOnEOSE)
+            .await?;
+
+        // Extract relay list (NIP65)
+        let event: &Event = events
+            .first()
+            .ok_or(Error::RelayMetadataNotFound(public_key))?;
+        Ok(nip65::extract_relay_list(event)
+            .map(|(u, m)| (u.clone(), *m))
+            .collect())
     }
 }
