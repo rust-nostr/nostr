@@ -17,6 +17,7 @@ use nostr::{
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
+mod constants;
 mod error;
 mod internal;
 pub mod options;
