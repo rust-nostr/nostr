@@ -10,10 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use atomic_destructor::{AtomicDestructor, StealthClone};
-use nostr::{
-    ClientMessage, Event, EventId, Filter, RelayMessage, Result, SubscriptionId, Timestamp,
-    TryIntoUrl, Url,
-};
+use nostr::prelude::*;
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 pub use tokio_stream::wrappers::ReceiverStream;
@@ -27,6 +24,7 @@ pub use self::error::Error;
 use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
 pub use self::result::Output;
+use crate::relay::flags::FlagCheck;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist, RelayStatus};
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
@@ -133,15 +131,28 @@ impl RelayPool {
         self.inner.blacklist()
     }
 
-    /// Get relays
+    /// Get all relays
+    ///
+    /// This method return all relays added to the pool, including the ones for gossip protocol or other services.
+    #[inline]
+    pub async fn all_relays(&self) -> HashMap<Url, Relay> {
+        self.inner.all_relays().await
+    }
+
+    /// Get relays with `READ` or `WRITE` flags
     #[inline]
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         self.inner.relays().await
     }
 
     /// Get relays that have a certain [RelayServiceFlag] enabled
-    pub async fn relays_with_flag(&self, flag: RelayServiceFlags) -> HashMap<Url, Relay> {
-        self.inner.relays_with_flag(flag).await
+    #[inline]
+    pub async fn relays_with_flag(
+        &self,
+        flag: RelayServiceFlags,
+        check: FlagCheck,
+    ) -> HashMap<Url, Relay> {
+        self.inner.relays_with_flag(flag, check).await
     }
 
     /// Get [`Relay`]

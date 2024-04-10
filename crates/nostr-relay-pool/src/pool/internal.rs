@@ -13,7 +13,7 @@ use std::time::Duration;
 use async_utility::thread::JoinHandle;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
-use nostr::{ClientMessage, Event, EventId, Filter, SubscriptionId, Timestamp, TryIntoUrl, Url};
+use nostr::prelude::*;
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
 use tokio_stream::wrappers::ReceiverStream;
@@ -21,7 +21,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
-use crate::relay::{Reconciliation, Relay, RelayBlacklist};
+use crate::relay::{FlagCheck, Reconciliation, Relay, RelayBlacklist};
 use crate::{util, RelayServiceFlags, SubscribeOptions};
 
 type Relays = HashMap<Url, Relay>;
@@ -33,7 +33,7 @@ pub struct InternalRelayPool {
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
     blacklist: RelayBlacklist,
-    // opts: RelayPoolOptions,
+    //opts: RelayPoolOptions,
 }
 
 impl AtomicDestroyer for InternalRelayPool {
@@ -97,17 +97,31 @@ impl InternalRelayPool {
         self.blacklist.clone()
     }
 
-    pub async fn relays(&self) -> HashMap<Url, Relay> {
+    pub async fn all_relays(&self) -> HashMap<Url, Relay> {
         let relays = self.relays.read().await;
         relays.clone()
     }
 
+    /// Get relays that has `READ` or `WRITE` flags
+    #[inline]
+    pub async fn relays(&self) -> HashMap<Url, Relay> {
+        self.relays_with_flag(
+            RelayServiceFlags::READ | RelayServiceFlags::WRITE,
+            FlagCheck::Any,
+        )
+        .await
+    }
+
     /// Get relays that have a certain [RelayServiceFlag] enabled
-    pub async fn relays_with_flag(&self, flag: RelayServiceFlags) -> HashMap<Url, Relay> {
+    pub async fn relays_with_flag(
+        &self,
+        flag: RelayServiceFlags,
+        check: FlagCheck,
+    ) -> HashMap<Url, Relay> {
         let relays = self.relays.read().await;
         relays
             .iter()
-            .filter(|(_, r)| r.flags().has(flag))
+            .filter(|(_, r)| r.flags_ref().has(flag, check))
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
     }

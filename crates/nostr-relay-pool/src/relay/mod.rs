@@ -32,7 +32,7 @@ mod status;
 
 pub use self::blacklist::RelayBlacklist;
 pub use self::error::Error;
-pub use self::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
+pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::internal::InternalRelay;
 pub use self::limits::RelayLimits;
 pub use self::options::{
@@ -180,6 +180,11 @@ impl Relay {
     #[inline]
     pub fn flags(&self) -> AtomicRelayServiceFlags {
         self.inner.flags()
+    }
+
+    #[inline]
+    pub(crate) fn flags_ref(&self) -> &AtomicRelayServiceFlags {
+        self.inner.flags_ref()
     }
 
     /// Get blacklist

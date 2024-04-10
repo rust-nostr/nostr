@@ -33,7 +33,8 @@ async fn main() -> Result<()> {
         .await?;
 
     // Add relay with custom flags
-    let flags = RelayServiceFlags::default().remove(RelayServiceFlags::WRITE); // Use default flags and remove one
+    let mut flags = RelayServiceFlags::default();
+    flags.remove(RelayServiceFlags::WRITE); // Use default flags and remove one
     let _flags = RelayServiceFlags::READ | RelayServiceFlags::PING; // Or, explicit set the flags to use
     let opts = RelayOptions::new().flags(flags);
     client.add_relay_with_opts("wss://nostr.mom", opts).await?;

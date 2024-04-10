@@ -254,6 +254,11 @@ impl InternalRelay {
     }
 
     #[inline]
+    pub(crate) fn flags_ref(&self) -> &AtomicRelayServiceFlags {
+        &self.opts.flags
+    }
+
+    #[inline]
     pub fn blacklist(&self) -> RelayBlacklist {
         self.blacklist.clone()
     }
@@ -1267,7 +1272,7 @@ impl InternalRelay {
         filters: Vec<Filter>,
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
-        // Check if relay has READ flags disabled
+        // Check if relay can read
         if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
@@ -1446,7 +1451,7 @@ impl InternalRelay {
         // Check if relay is ready
         self.check_ready().await?;
 
-        // Check if relay has READ flags disabled
+        // Check if relay can read
         if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
@@ -1627,7 +1632,7 @@ impl InternalRelay {
         // Check if relay is ready
         self.check_ready().await?;
 
-        // Check if read option is disabled
+        // Check if relay can read
         if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }

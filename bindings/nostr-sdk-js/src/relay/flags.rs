@@ -4,8 +4,26 @@
 
 use std::ops::Deref;
 
-use nostr_sdk::{AtomicRelayServiceFlags, RelayServiceFlags};
+use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
+
+/// Flag checks
+#[wasm_bindgen(js_name = FlagCheck)]
+pub enum JsFlagCheck {
+    /// Use `OR` logic operator
+    Any,
+    /// Use `AND` logic operator
+    All,
+}
+
+impl From<JsFlagCheck> for FlagCheck {
+    fn from(value: JsFlagCheck) -> Self {
+        match value {
+            JsFlagCheck::Any => Self::Any,
+            JsFlagCheck::All => Self::All,
+        }
+    }
+}
 
 #[wasm_bindgen(js_name = RelayServiceFlags)]
 pub struct JsRelayServiceFlags {
@@ -61,13 +79,13 @@ impl JsRelayServiceFlags {
     }
 
     /// Add `RelayServiceFlags` together.
-    pub fn add(&mut self, other: &JsRelayServiceFlags) -> Self {
-        self.inner.add(**other).into()
+    pub fn add(&mut self, other: &JsRelayServiceFlags) {
+        self.inner.add(**other);
     }
 
     /// Remove `RelayServiceFlags` from this.
-    pub fn remove(&mut self, other: &JsRelayServiceFlags) -> Self {
-        self.inner.remove(**other).into()
+    pub fn remove(&mut self, other: &JsRelayServiceFlags) {
+        self.inner.remove(**other);
     }
 }
 
@@ -99,8 +117,8 @@ impl JsAtomicRelayServiceFlags {
     }
 
     /// Check whether `RelayServiceFlags` are included in this one.
-    pub fn has(&self, flags: &JsRelayServiceFlags) -> bool {
-        self.inner.has(**flags)
+    pub fn has(&self, flags: &JsRelayServiceFlags, check: JsFlagCheck) -> bool {
+        self.inner.has(**flags, check.into())
     }
 
     /// Check if `READ` service is enabled

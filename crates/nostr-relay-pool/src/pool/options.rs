@@ -5,7 +5,7 @@
 //! Pool options
 
 /// Relay Pool Options
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RelayPoolOptions {
     pub(super) notification_channel_size: usize,
 }
@@ -20,11 +20,13 @@ impl Default for RelayPoolOptions {
 
 impl RelayPoolOptions {
     /// New default options
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Notification channel size (default: 4096)
+    #[inline]
     pub fn notification_channel_size(mut self, size: usize) -> Self {
         self.notification_channel_size = size;
         self

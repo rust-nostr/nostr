@@ -8,6 +8,15 @@ use std::ops::{BitOr, BitOrAssign, BitXor, BitXorAssign};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
+/// Flag checks
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum FlagCheck {
+    /// Use `OR` logic operator
+    Any,
+    /// Use `AND` logic operator
+    All,
+}
+
 /// Relay Service Flags
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RelayServiceFlags(u64);
@@ -42,21 +51,26 @@ impl RelayServiceFlags {
     pub const DISCOVERY: Self = Self(1 << 5); // 32
 
     /// Add [RelayServiceFlags] together.
-    pub fn add(&mut self, other: Self) -> Self {
+    #[inline]
+    pub fn add(&mut self, other: Self) {
         self.0 |= other.0;
-        *self
     }
 
     /// Remove [RelayServiceFlags] from this.
-    pub fn remove(&mut self, other: Self) -> Self {
+    #[inline]
+    pub fn remove(&mut self, other: Self) {
         self.0 ^= other.0;
-        *self
     }
 
-    fn has(self, flags: Self) -> bool {
-        (self.0 | flags.0) == self.0
+    #[inline]
+    fn has(self, flags: Self, check: FlagCheck) -> bool {
+        match check {
+            FlagCheck::Any => (self.0 & flags.0) != 0,
+            FlagCheck::All => (self.0 | flags.0) == self.0,
+        }
     }
 
+    #[inline]
     fn to_u64(self) -> u64 {
         self.0
     }
@@ -66,7 +80,8 @@ impl BitOr for RelayServiceFlags {
     type Output = Self;
 
     fn bitor(mut self, rhs: Self) -> Self {
-        self.add(rhs)
+        self.add(rhs);
+        self
     }
 }
 
@@ -80,7 +95,8 @@ impl BitXor for RelayServiceFlags {
     type Output = Self;
 
     fn bitxor(mut self, rhs: Self) -> Self {
-        self.remove(rhs)
+        self.remove(rhs);
+        self
     }
 }
 
@@ -104,6 +120,7 @@ impl Default for AtomicRelayServiceFlags {
 
 impl AtomicRelayServiceFlags {
     /// Compose new from [RelayServiceFlags]
+    #[inline]
     pub fn new(flags: RelayServiceFlags) -> Self {
         Self {
             flags: Arc::new(AtomicU64::new(flags.to_u64())),
@@ -116,8 +133,8 @@ impl AtomicRelayServiceFlags {
             .flags
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |f| {
                 let mut f: RelayServiceFlags = RelayServiceFlags(f);
-                let new = f.add(other);
-                Some(new.to_u64())
+                f.add(other);
+                Some(f.to_u64())
             });
     }
 
@@ -127,56 +144,83 @@ impl AtomicRelayServiceFlags {
             .flags
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |f| {
                 let mut f: RelayServiceFlags = RelayServiceFlags(f);
-                let new = f.remove(other);
-                Some(new.to_u64())
+                f.remove(other);
+                Some(f.to_u64())
             });
     }
 
     /// Check whether [RelayServiceFlags] are included in this one.
-    pub fn has(&self, flags: RelayServiceFlags) -> bool {
+    pub fn has(&self, flags: RelayServiceFlags, check: FlagCheck) -> bool {
         let _f: u64 = self.flags.load(Ordering::SeqCst);
         let f: RelayServiceFlags = RelayServiceFlags(_f);
-        f.has(flags)
+        f.has(flags, check)
     }
-    
+
+    /// Check if [RelayServiceFlags] has **any** of the passed flags.
+    #[inline]
+    pub fn has_any(&self, flags: RelayServiceFlags) -> bool {
+        self.has(flags, FlagCheck::Any)
+    }
+
+    /// Check if [RelayServiceFlags] has **all** the passed flags.
+    #[inline]
+    pub fn has_all(&self, flags: RelayServiceFlags) -> bool {
+        self.has(flags, FlagCheck::All)
+    }
+
     /// Check if `READ` service is enabled
+    #[inline]
     pub fn has_read(&self) -> bool {
-        self.has(RelayServiceFlags::READ)
+        self.has_all(RelayServiceFlags::READ)
     }
 
     /// Check if `WRITE` service is enabled
+    #[inline]
     pub fn has_write(&self) -> bool {
-        self.has(RelayServiceFlags::WRITE)
+        self.has_all(RelayServiceFlags::WRITE)
     }
 
     /// Check if `PING` service is enabled
+    #[inline]
     pub fn has_ping(&self) -> bool {
-        self.has(RelayServiceFlags::PING)
+        self.has_all(RelayServiceFlags::PING)
     }
 
     /// Check if `INBOX` service is enabled
+    #[inline]
     pub fn has_inbox(&self) -> bool {
-        self.has(RelayServiceFlags::INBOX)
+        self.has_all(RelayServiceFlags::INBOX)
     }
 
     /// Check if `OUTBOX` service is enabled
+    #[inline]
     pub fn has_outbox(&self) -> bool {
-        self.has(RelayServiceFlags::OUTBOX)
+        self.has_all(RelayServiceFlags::OUTBOX)
     }
 
     /// Check if `DISCOVERY` service is enabled
+    #[inline]
     pub fn has_discovery(&self) -> bool {
-        self.has(RelayServiceFlags::DISCOVERY)
+        self.has_all(RelayServiceFlags::DISCOVERY)
     }
 
-    /// Check if `READ`, `INBOX`, `DISCOVERY` services are enabled
+    /// Check if `READ`, `INBOX`, `OUTBOX` or `DISCOVERY` services are enabled
+    #[inline]
     pub fn can_read(&self) -> bool {
-        self.has_read() || self.has_inbox() || self.has_discovery()
+        self.has_any(
+            RelayServiceFlags::READ
+                | RelayServiceFlags::INBOX
+                | RelayServiceFlags::OUTBOX
+                | RelayServiceFlags::DISCOVERY,
+        )
     }
 
-    /// Check if `WRITE` or `OUTBOX` services are enabled
+    /// Check if `WRITE`, `INBOX` or `OUTBOX` services are enabled
+    #[inline]
     pub fn can_write(&self) -> bool {
-        self.has_write() || self.has_outbox()
+        self.has_any(
+            RelayServiceFlags::WRITE | RelayServiceFlags::INBOX | RelayServiceFlags::OUTBOX,
+        )
     }
 }
 
@@ -194,46 +238,66 @@ mod tests {
 
         let flags = RelayServiceFlags::NONE;
         for f in all.into_iter() {
-            assert!(!flags.has(f));
+            assert!(!flags.has(f, FlagCheck::All));
         }
 
         let mut flags = RelayServiceFlags::READ | RelayServiceFlags::WRITE;
-        assert!(flags.has(RelayServiceFlags::READ));
-        assert!(flags.has(RelayServiceFlags::WRITE));
-        assert!(!flags.has(RelayServiceFlags::PING));
-        assert!(!flags.has(RelayServiceFlags::INBOX));
-        assert!(!flags.has(RelayServiceFlags::OUTBOX));
-        assert!(!flags.has(RelayServiceFlags::DISCOVERY));
+        assert!(flags.has(RelayServiceFlags::READ, FlagCheck::All));
+        assert!(flags.has(RelayServiceFlags::WRITE, FlagCheck::All));
+        assert!(!flags.has(RelayServiceFlags::PING, FlagCheck::All));
+        assert!(!flags.has(RelayServiceFlags::INBOX, FlagCheck::All));
+        assert!(!flags.has(RelayServiceFlags::OUTBOX, FlagCheck::All));
+        assert!(!flags.has(RelayServiceFlags::DISCOVERY, FlagCheck::All));
 
         // Try to add flag
         flags.add(RelayServiceFlags::PING);
-        assert!(flags.has(RelayServiceFlags::PING));
+        assert!(flags.has(
+            RelayServiceFlags::PING | RelayServiceFlags::READ | RelayServiceFlags::WRITE,
+            FlagCheck::All
+        ));
 
         // Try to remove flag
         flags.remove(RelayServiceFlags::WRITE);
-        assert!(flags.has(RelayServiceFlags::READ));
-        assert!(flags.has(RelayServiceFlags::PING));
+        assert!(flags.has(
+            RelayServiceFlags::PING | RelayServiceFlags::READ,
+            FlagCheck::All
+        ));
 
         // Try to re-add already existing flag
         flags.add(RelayServiceFlags::PING);
-        assert!(flags.has(RelayServiceFlags::READ));
-        assert!(flags.has(RelayServiceFlags::PING));
+        assert!(flags.has(
+            RelayServiceFlags::PING | RelayServiceFlags::READ,
+            FlagCheck::All
+        ));
+
+        // Try to re-add already existing flag + new one
+        flags.add(RelayServiceFlags::PING | RelayServiceFlags::WRITE);
+        assert!(flags.has(
+            RelayServiceFlags::PING | RelayServiceFlags::READ | RelayServiceFlags::WRITE,
+            FlagCheck::All
+        ));
 
         // Try to add flag
         flags.add(RelayServiceFlags::INBOX);
-        assert!(flags.has(RelayServiceFlags::INBOX));
+        assert!(flags.has(RelayServiceFlags::INBOX, FlagCheck::All));
 
         // Try to add flag
         flags.add(RelayServiceFlags::OUTBOX);
-        assert!(flags.has(RelayServiceFlags::OUTBOX));
+        assert!(flags.has(RelayServiceFlags::OUTBOX, FlagCheck::All));
 
         // Try to add flag
         flags.add(RelayServiceFlags::DISCOVERY);
-        assert!(flags.has(RelayServiceFlags::DISCOVERY));
+        assert!(flags.has(RelayServiceFlags::DISCOVERY, FlagCheck::All));
 
         let flags = RelayServiceFlags::READ | RelayServiceFlags::INBOX | RelayServiceFlags::PING;
-        assert!(flags.has(RelayServiceFlags::READ | RelayServiceFlags::INBOX));
-        assert!(!flags.has(RelayServiceFlags::READ | RelayServiceFlags::WRITE));
+        assert!(flags.has(
+            RelayServiceFlags::READ | RelayServiceFlags::INBOX,
+            FlagCheck::All
+        ));
+        assert!(!flags.has(
+            RelayServiceFlags::READ | RelayServiceFlags::WRITE,
+            FlagCheck::All
+        ));
     }
 
     #[test]
