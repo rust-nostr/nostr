@@ -138,7 +138,7 @@ impl AtomicRelayServiceFlags {
         let f: RelayServiceFlags = RelayServiceFlags(_f);
         f.has(flags)
     }
-
+    
     /// Check if `READ` service is enabled
     pub fn has_read(&self) -> bool {
         self.has(RelayServiceFlags::READ)
@@ -167,6 +167,16 @@ impl AtomicRelayServiceFlags {
     /// Check if `DISCOVERY` service is enabled
     pub fn has_discovery(&self) -> bool {
         self.has(RelayServiceFlags::DISCOVERY)
+    }
+
+    /// Check if `READ`, `INBOX`, `DISCOVERY` services are enabled
+    pub fn can_read(&self) -> bool {
+        self.has_read() || self.has_inbox() || self.has_discovery()
+    }
+
+    /// Check if `WRITE` or `OUTBOX` services are enabled
+    pub fn can_write(&self) -> bool {
+        self.has_write() || self.has_outbox()
     }
 }
 
@@ -224,5 +234,35 @@ mod tests {
         let flags = RelayServiceFlags::READ | RelayServiceFlags::INBOX | RelayServiceFlags::PING;
         assert!(flags.has(RelayServiceFlags::READ | RelayServiceFlags::INBOX));
         assert!(!flags.has(RelayServiceFlags::READ | RelayServiceFlags::WRITE));
+    }
+
+    #[test]
+    fn test_service_flags_can_read() {
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::WRITE);
+        assert!(!f.can_read());
+
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::READ | RelayServiceFlags::WRITE);
+        assert!(f.can_read());
+
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::INBOX);
+        assert!(f.can_read());
+
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::DISCOVERY);
+        assert!(f.can_read());
+    }
+
+    #[test]
+    fn test_service_flags_can_write() {
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::WRITE);
+        assert!(f.can_write());
+
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::READ | RelayServiceFlags::WRITE);
+        assert!(f.can_write());
+
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::INBOX);
+        assert!(!f.can_write());
+
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::DISCOVERY);
+        assert!(!f.can_write());
     }
 }
