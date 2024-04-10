@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: fix `Tag::content` return always `None` when `Tag::Generic` ([Yuki Kishimoto])
 * nostr: fix NIP46 `Request::from_message` deserialization ([Yuki Kishimoto])
 * nostr: fix `NostrConnectURI` serialization ([Yuki Kishimoto])
+* nostr: fix `LookupInvoiceParams` ([benthecarman])
 
 ### Removed
 
@@ -76,6 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [DanConwayDev]: https://github.com/DanConwayDev
 [Daniel Cadenas]: https://github.com/dcadenas
 [rustedmoon]: https://github.com/rustedmoon
+[benthecarman]: https://github.com/benthecarman
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.29.0...HEAD

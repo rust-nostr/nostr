@@ -455,14 +455,14 @@ pub struct LookupInvoiceRequestParams {
     /// Payment hash of invoice
     pub payment_hash: Option<String>,
     /// Bolt11 invoice
-    pub bolt11: Option<String>,
+    pub invoice: Option<String>,
 }
 
 impl From<nip47::LookupInvoiceRequestParams> for LookupInvoiceRequestParams {
     fn from(value: nip47::LookupInvoiceRequestParams) -> Self {
         Self {
             payment_hash: value.payment_hash,
-            bolt11: value.bolt11,
+            invoice: value.invoice,
         }
     }
 }
@@ -471,7 +471,7 @@ impl From<LookupInvoiceRequestParams> for nip47::LookupInvoiceRequestParams {
     fn from(value: LookupInvoiceRequestParams) -> Self {
         Self {
             payment_hash: value.payment_hash,
-            bolt11: value.bolt11,
+            invoice: value.invoice,
         }
     }
 }

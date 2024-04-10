@@ -343,7 +343,7 @@ pub struct LookupInvoiceRequestParams {
     /// Payment hash of invoice
     pub payment_hash: Option<String>,
     /// Bolt11 invoice
-    pub bolt11: Option<String>,
+    pub invoice: Option<String>,
 }
 
 /// Transaction Type
