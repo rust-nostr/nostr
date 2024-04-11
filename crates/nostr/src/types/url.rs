@@ -27,7 +27,7 @@ impl TryIntoUrl for Url {
 
     #[inline]
     fn try_into_url(self) -> Result<Url, Self::Err> {
-        Ok(self.clone())
+        Ok(self)
     }
 }
 
@@ -36,7 +36,7 @@ impl TryIntoUrl for &Url {
 
     #[inline]
     fn try_into_url(self) -> Result<Url, Self::Err> {
-        Ok(<&Url>::clone(&self).clone())
+        Ok(self.clone())
     }
 }
 
