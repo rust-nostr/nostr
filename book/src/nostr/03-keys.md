@@ -10,7 +10,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```rust,ignore
-{{#include ../../snippets/nostr/rust/src/keys.rs}}
+{{#include ../../snippets/nostr/rust/src/keys.rs:generate}}
 ```
 
 </section>
@@ -19,7 +19,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/keys.py}}
+{{#include ../../snippets/nostr/python/src/keys.py:generate}}
 ```
 
 </section>
@@ -28,7 +28,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/keys.js}}
+{{#include ../../snippets/nostr/js/src/keys.js:generate}}
 ```
 
 </section>
@@ -58,26 +58,7 @@ TODO
 <section>
 
 ```rust,ignore
-use std::str::FromStr;
-
-use nostr::prelude::*;
-
-fn main() -> Result<()> {
-    // Restore from hex
-    let secret_key = SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?;
-    let keys = Keys::new(secret_key);
-
-    // Restore from bech32
-    let secret_key = SecretKey::from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
-    let keys = Keys::new(secret_key);
-
-    // Try from bech32 or hex
-    let keys = Keys::parse("hex or bech32 secret key")?;
-
-    // ...
-
-    Ok(())
-}
+{{#include ../../snippets/nostr/rust/src/keys.rs:restore}}
 ```
 
 </section>
@@ -86,15 +67,7 @@ fn main() -> Result<()> {
 <section>
 
 ```python,ignore
-from nostr_protocol import *
-
-secret_key = SecretKey.from_hex("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
-keys = Keys(secret_key)
-
-secret_key = SecretKey.from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
-keys = Keys(secret_key)
-
-keys = Keys.parse("hex or bech32 secret key")
+{{#include ../../snippets/nostr/python/src/keys.py:restore}}
 ```
 
 </section>
@@ -102,7 +75,9 @@ keys = Keys.parse("hex or bech32 secret key")
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/keys.js:restore}}
+```
 
 </section>
 
@@ -129,7 +104,7 @@ TODO
 <section>
 
 ```rust,ignore
-{{#include ../../snippets/nostr/rust/src/vanity.rs}}
+{{#include ../../snippets/nostr/rust/src/keys.rs:vanity}}
 ```
 
 </section>
@@ -138,7 +113,7 @@ TODO
 <section>
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/vanity.py}}
+{{#include ../../snippets/nostr/python/src/keys.py:vanity}}
 ```
 
 </section>
@@ -147,7 +122,7 @@ TODO
 <section>
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/vanity.js}}
+{{#include ../../snippets/nostr/js/src/keys.js:vanity}}
 ```
 
 </section>
