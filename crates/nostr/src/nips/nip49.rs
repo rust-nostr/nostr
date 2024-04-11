@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Encrypted Secret Key
+//! NIP-49: Encrypted Secret Key
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/49.md>
 

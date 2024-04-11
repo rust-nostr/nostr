@@ -30,7 +30,9 @@ pub mod error;
 pub mod options;
 pub mod prelude;
 
+#[doc(hidden)]
 pub use self::error::Error;
+#[doc(hidden)]
 pub use self::options::NostrWalletConnectOptions;
 
 /// Nostr Wallet Connect client
