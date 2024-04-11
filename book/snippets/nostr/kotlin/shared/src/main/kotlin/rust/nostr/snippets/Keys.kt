@@ -2,7 +2,6 @@ package rust.nostr.snippets
 
 import rust.nostr.protocol.*
 
-
 // ANCHOR: generate
 fun generate() {
     val keys = Keys.generate();

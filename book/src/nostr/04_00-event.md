@@ -34,7 +34,9 @@
 <div slot="title">Kotlin</div>
 <section>
 
-TODO
+```kotlin
+{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Event.kt:json}}
+```
 
 </section>
 
@@ -84,7 +86,9 @@ A convenient way to compose events is by using the `EventBuilder`. It allow to c
 <div slot="title">Kotlin</div>
 <section>
 
-TODO
+```kotlin
+{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Event.kt:builder}}
+```
 
 </section>
 

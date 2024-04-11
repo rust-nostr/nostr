@@ -20,7 +20,7 @@ def generate():
 
 # ANCHOR: restore
 def restore():
-    keys = Keys.parse("hex or bech32 secret key")
+    keys = Keys.parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
 
     secret_key = SecretKey.from_hex("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
     keys = Keys(secret_key)
