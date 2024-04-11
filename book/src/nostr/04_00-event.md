@@ -41,7 +41,9 @@ TODO
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift
+{{#include ../../snippets/nostr/swift/NostrSnippets/Sources/Event/Json.swift}}
+```
 
 </section>
 </custom-tabs>
@@ -89,7 +91,9 @@ TODO
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift
+{{#include ../../snippets/nostr/swift/NostrSnippets/Sources/Event/Builder.swift}}
+```
 
 </section>
 </custom-tabs>

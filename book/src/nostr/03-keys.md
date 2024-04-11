@@ -43,7 +43,9 @@ TODO
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift
+{{#include ../../snippets/nostr/swift/NostrSnippets/Sources/Keys.swift}}
+```
 
 </section>
 </custom-tabs>
@@ -160,7 +162,9 @@ TODO
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift
+{{#include ../../snippets/nostr/swift/NostrSnippets/Sources/Vanity.swift}}
+```
 
 </section>
 </custom-tabs>

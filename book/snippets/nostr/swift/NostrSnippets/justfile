@@ -1,0 +1,4 @@
+#!/usr/bin/env just --justfile
+
+test:
+    swift build
