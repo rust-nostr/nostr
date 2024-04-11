@@ -32,6 +32,13 @@ jobs:
     - name: Install just
       run: cargo install just
 
+    # Required for kotlin snippets
+    - name: Set up Java 17
+      uses: actions/setup-java@v2
+      with:
+        distribution: "temurin"
+        java-version: 17
+
     - name: Check
       run: just check-book
 
