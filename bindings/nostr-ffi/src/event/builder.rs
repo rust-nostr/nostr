@@ -187,10 +187,29 @@ impl EventBuilder {
         }
     }
 
+    /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
     #[uniffi::constructor]
     pub fn reaction(event: &Event, reaction: &str) -> Self {
         Self {
             inner: nostr::EventBuilder::reaction(event.deref(), reaction),
+        }
+    }
+
+    /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    #[uniffi::constructor]
+    pub fn reaction_extended(
+        event_id: &EventId,
+        public_key: &PublicKey,
+        kind: &Kind,
+        reaction: &str,
+    ) -> Self {
+        Self {
+            inner: nostr::EventBuilder::reaction_extended(
+                **event_id,
+                **public_key,
+                **kind,
+                reaction,
+            ),
         }
     }
 

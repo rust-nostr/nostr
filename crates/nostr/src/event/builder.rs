@@ -630,13 +630,26 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
+        Self::reaction_extended(event.id(), event.author(), event.kind(), reaction)
+    }
+
+    /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    pub fn reaction_extended<S>(
+        event_id: EventId,
+        public_key: PublicKey,
+        kind: Kind,
+        reaction: S,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
         Self::new(
             Kind::Reaction,
             reaction,
             [
-                Tag::event(event.id()),
-                Tag::public_key(event.author()),
-                Tag::Kind(event.kind()),
+                Tag::event(event_id),
+                Tag::public_key(public_key),
+                Tag::Kind(kind),
             ],
         )
     }

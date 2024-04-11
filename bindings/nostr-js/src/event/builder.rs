@@ -195,9 +195,28 @@ impl JsEventBuilder {
         }
     }
 
+    /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
     pub fn reaction(event: &JsEvent, reaction: &str) -> Self {
         Self {
             inner: EventBuilder::reaction(event.deref(), reaction),
+        }
+    }
+
+    /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    #[wasm_bindgen(js_name = reactionExtended)]
+    pub fn reaction_extended(
+        event_id: &JsEventId,
+        public_key: &JsPublicKey,
+        kind: f64,
+        reaction: &str,
+    ) -> Self {
+        Self {
+            inner: nostr::EventBuilder::reaction_extended(
+                **event_id,
+                **public_key,
+                kind.into(),
+                reaction,
+            ),
         }
     }
 
