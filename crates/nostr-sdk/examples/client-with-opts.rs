@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::time::Duration;
 
 use nostr_sdk::prelude::*;
 
@@ -12,31 +13,30 @@ const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let secret_key = SecretKey::from_bech32(BECH32_SK)?;
-    let my_keys = Keys::new(secret_key);
-    let opts = Options::new().wait_for_send(false);
+    // Parse keys
+    let my_keys = Keys::parse(BECH32_SK)?;
+
+    // Configure client to use proxy for `.onion` relays
+    let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
+    let proxy = Proxy::new(addr).target(ProxyTarget::Onion);
+    let opts = Options::new()
+        .connection_timeout(Some(Duration::from_secs(60)))
+        .proxy(proxy);
     let client = Client::with_opts(&my_keys, opts);
 
-    let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
-
     // Add relays
-    client.add_relay("wss://nostr.oxtr.dev").await?;
-    client.add_relay("wss://relay.damus.io").await?;
-    client.add_relay("wss://nostr.openchain.fr").await?;
+    client
+        .add_relays([
+            "wss://relay.damus.io",
+            "ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion",
+        ])
+        .await?;
 
     // Add relay with custom flags
     let flags = RelayServiceFlags::default().remove(RelayServiceFlags::WRITE); // Use default flags and remove one
     let _flags = RelayServiceFlags::READ | RelayServiceFlags::PING; // Or, explicit set the flags to use
     let opts = RelayOptions::new().flags(flags);
     client.add_relay_with_opts("wss://nostr.mom", opts).await?;
-
-    // Add relay with proxy
-    client
-        .add_relay_with_opts(
-            "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
-            RelayOptions::new().proxy(proxy),
-        )
-        .await?;
 
     client.connect().await;
 

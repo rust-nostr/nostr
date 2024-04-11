@@ -2,13 +2,16 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
-use uniffi::Object;
+use nostr_sdk::client::options;
+use uniffi::{Enum, Object};
 
+use crate::error::Result;
 use crate::relay::RelayLimits;
 
 #[derive(Clone, Object)]
@@ -97,10 +100,68 @@ impl Options {
         builder
     }
 
+    /// Proxy
+    pub fn proxy(self: Arc<Self>, proxy: &Proxy) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.proxy(**proxy);
+        builder
+    }
+
     /// Set custom relay limits
     pub fn relay_limits(self: Arc<Self>, limits: &RelayLimits) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.relay_limits(**limits);
+        builder
+    }
+}
+
+/// Proxy target
+#[derive(Enum)]
+pub enum ProxyTarget {
+    /// Use proxy for all relays
+    All,
+    /// Use proxy only for `.onion` relays
+    Onion,
+}
+
+impl From<ProxyTarget> for options::ProxyTarget {
+    fn from(value: ProxyTarget) -> Self {
+        match value {
+            ProxyTarget::All => Self::All,
+            ProxyTarget::Onion => Self::Onion,
+        }
+    }
+}
+
+/// Proxy
+#[derive(Clone, Object)]
+pub struct Proxy {
+    inner: options::Proxy,
+}
+
+impl Deref for Proxy {
+    type Target = options::Proxy;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+#[uniffi::export]
+impl Proxy {
+    /// Compose proxy (ex. `127.0.0.1:9050`)
+    #[uniffi::constructor]
+    pub fn new(addr: &str) -> Result<Self> {
+        let addr: SocketAddr = addr.parse()?;
+        Ok(Self {
+            inner: options::Proxy::new(addr),
+        })
+    }
+
+    /// Set proxy target (default: all)
+    pub fn target(self: Arc<Self>, target: ProxyTarget) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.target(target.into());
         builder
     }
 }

@@ -32,6 +32,8 @@ mod zapper;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::options::{Proxy, ProxyTarget};
 #[cfg(feature = "nip57")]
 pub use self::zapper::{ZapDetails, ZapEntity};
 
@@ -274,11 +276,26 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
+        let url: Url = url.try_into_url().map_err(pool::Error::from)?;
         let opts: RelayOptions = RelayOptions::new();
 
         // Set proxy
         #[cfg(not(target_arch = "wasm32"))]
-        let opts: RelayOptions = opts.proxy(self.opts.proxy);
+        let opts: RelayOptions = match self.opts.proxy.addr {
+            Some(addr) => match self.opts.proxy.target {
+                ProxyTarget::All => opts.proxy(Some(addr)),
+                ProxyTarget::Onion => {
+                    let domain: &str = url.domain().unwrap_or_default();
+
+                    if domain.ends_with(".onion") {
+                        opts.proxy(Some(addr))
+                    } else {
+                        opts
+                    }
+                }
+            },
+            None => opts,
+        };
 
         // Set min POW difficulty and limits
         let opts: RelayOptions = opts
@@ -286,12 +303,14 @@ impl Client {
             .limits(self.opts.relay_limits);
 
         // Add relay
-        self.add_relay_with_opts(url, opts).await
+        self.add_relay_with_opts::<Url>(url, opts).await
     }
 
     /// Add new relay with custom [`RelayOptions`]
     ///
     /// Return `false` if the relay already exists.
+    ///
+    /// Note: **this method ignore the options set in [`Options`]**.
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
     ///

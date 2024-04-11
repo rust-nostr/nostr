@@ -30,5 +30,7 @@
 * [Nostr SDK](./nostr-sdk/01-index.md)
     * [Installation](./nostr-sdk/02-installation.md)
     * [Quickstart](./nostr-sdk/03-quickstart.md)
+    * [Options](./nostr-sdk/04-00-options.md)
+        * [Proxy](./nostr-sdk/04-01-proxy.md)
 
 [Donate](./donate.md)

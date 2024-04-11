@@ -40,7 +40,7 @@ pub struct Options {
     pub send_timeout: Option<Duration>,
     /// Proxy
     #[cfg(not(target_arch = "wasm32"))]
-    pub proxy: Option<SocketAddr>,
+    pub proxy: Proxy,
     /// Default limits for new added relays
     pub relay_limits: RelayLimits,
     /// Pool Options
@@ -60,7 +60,7 @@ impl Default for Options {
             connection_timeout: None,
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             #[cfg(not(target_arch = "wasm32"))]
-            proxy: None,
+            proxy: Proxy::default(),
             relay_limits: RelayLimits::default(),
             pool: RelayPoolOptions::default(),
         }
@@ -190,7 +190,7 @@ impl Options {
 
     /// Proxy
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn proxy(mut self, proxy: Option<SocketAddr>) -> Self {
+    pub fn proxy(mut self, proxy: Proxy) -> Self {
         self.proxy = proxy;
         self
     }
@@ -204,5 +204,43 @@ impl Options {
     /// Set pool options
     pub fn pool(self, opts: RelayPoolOptions) -> Self {
         Self { pool: opts, ..self }
+    }
+}
+
+/// Proxy target
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum ProxyTarget {
+    /// Use proxy for all relays
+    #[default]
+    All,
+    /// Use proxy only for `.onion` relays
+    Onion,
+}
+
+/// Proxy
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Proxy {
+    pub(super) addr: Option<SocketAddr>,
+    pub(super) target: ProxyTarget,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Proxy {
+    /// Compose proxy
+    #[inline]
+    pub fn new(addr: SocketAddr) -> Self {
+        Self {
+            addr: Some(addr),
+            target: ProxyTarget::default(),
+        }
+    }
+
+    /// Set proxy target (default: all)
+    #[inline]
+    pub fn target(mut self, target: ProxyTarget) -> Self {
+        self.target = target;
+        self
     }
 }
