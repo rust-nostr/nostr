@@ -6,12 +6,12 @@ Signer for Nostr apps
 
 The following crate feature flags are available:
 
-| Feature             | Default | Description                                                                                 |
-| ------------------- | :-----: | ------------------------------------------------------------------------------------------- |
-| `nip04`             |   Yes   | Enable NIP-04: Encrypted Direct Message                                                     |
-| `nip07`             |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**)|
-| `nip44`             |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                               |
-| `nip46`             |   Yes   | Enable NIP-46: Nostr Connect                                                                |
+| Feature | Default | Description                                                                                  |
+|---------|:-------:|----------------------------------------------------------------------------------------------|
+| `nip04` |   Yes   | Enable NIP-04: Encrypted Direct Message                                                      |
+| `nip07` |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**) |
+| `nip44` |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                                |
+| `nip46` |   Yes   | Enable NIP-46: Nostr Connect                                                                 |
 
 ## State
 

@@ -17,7 +17,8 @@ pip install nostr-sdk
 ```
 
 ```python
-from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, Nip46Signer, init_logger, LogLevel
+from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, Nip46Signer, init_logger, LogLevel, \
+    NostrConnectUri
 from datetime import timedelta
 import time
 
@@ -30,21 +31,17 @@ init_logger(LogLevel.INFO)
 # Or, initialize with Keys signer
 keys = Keys.generate()
 signer = NostrSigner.keys(keys)
-client = Client(signer)
 
 # Or, initialize with NIP46 signer
-# app_keys = Keys.generate()
-# nip46 = Nip46Signer("wss://relay.damus.io", app_keys, None)
-#signer = NostrSigner.nip46(nip46)
-# client = Client(signer)
+# app_keys = Keys.parse("..")
+# uri = NostrConnectUri.parse("bunker://.. or nostrconnect://..")
+# nip46 = Nip46Signer(uri, app_keys, timedelta(seconds=60), None)
+# signer = NostrSigner.nip46(nip46)
 
-# Add a single relay
-client.add_relay("wss://relay.damus.io")
+client = Client(signer)
 
-# Add multiple relays
+# Add relays and connect
 client.add_relays(["wss://relay.damus.io", "wss://nos.lol"])
-
-# Connect
 client.connect()
 
 # Send an event using the Nostr Signer
@@ -53,7 +50,7 @@ client.send_event_builder(builder)
 client.set_metadata(Metadata().set_name("Testing Rust Nostr"))
 
 # Mine a POW event and sign it with custom keys
-custom_keys = Keys.generate() 
+custom_keys = Keys.generate()
 print("Mining a POW text note...")
 event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).to_pow_event(custom_keys, 20)
 event_id = client.send_event(event)
@@ -65,8 +62,8 @@ time.sleep(2.0)
 
 # Get events from relays
 print("Getting events from relays...")
-filter = Filter().authors([keys.public_key(), custom_keys.public_key()])
-events = client.get_events_of([filter], timedelta(seconds=10))
+f = Filter().authors([keys.public_key(), custom_keys.public_key()])
+events = client.get_events_of([f], timedelta(seconds=10))
 for event in events:
     print(event.as_json())
 ```

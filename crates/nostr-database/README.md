@@ -1,6 +1,6 @@
 # Nostr Database
 
-Database for Nostr apps
+Database abstraction and in-memory implementation for nostr apps
 
 ## Nostr Database Trait
 
@@ -8,18 +8,19 @@ This library contains the `NostrDatabase` and `NostrDatabaseExt` traits. You can
 
 ## Default backends
 
-* Memory (RAM), available in this library
-* SQLite (desktop, server and mobile devices), available at [`nostr-sqlite`](https://crates.io/crates/nostr-sqlite)
-* RocksDB (desktop, server and mobile devices), available at [`nostr-rocksdb`](https://crates.io/crates/nostr-rocksdb)
+* Memory (RAM, both native and web), available in this library
+* [nostrdb](https://github.com/damus-io/nostrdb) (native), available at [`nostr-ndb`](https://crates.io/crates/nostr-ndb)
+* SQLite (native), available at [`nostr-sqlite`](https://crates.io/crates/nostr-sqlite)
+* RocksDB (native), available at [`nostr-rocksdb`](https://crates.io/crates/nostr-rocksdb)
 * IndexedDB (web), available at [`nostr-indexeddb`](https://crates.io/crates/nostr-indexeddb)
 
 ## Crate Feature Flags
 
 The following crate feature flags are available:
 
-| Feature             | Default | Description                                                                              |
-| ------------------- | :-----: | ---------------------------------------------------------------------------------------- |
-| `flatbuf`           |   No    | Enable `flatbuffers` de/serialization for nostr events                                   |
+| Feature   | Default | Description                                            |
+|-----------|:-------:|--------------------------------------------------------|
+| `flatbuf` |   No    | Enable `flatbuffers` de/serialization for nostr events |
 
 ## State
 
