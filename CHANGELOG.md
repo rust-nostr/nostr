@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: allow to parse event ID from NIP21 uri with `EventId::parse` ([Yuki Kishimoto])
 * nostr: construct `GenericTagValue` based on `SingleLetterTag` in `deserialize_generic_tags` ([Yuki Kishimoto])
 * nostr: set `UnsignedEvent` ID as optional ([Yuki Kishimoto])
+* nostr: update `TryIntoUrl::try_into_url` fingerprint ([Yuki Kishimoto])
 * nostr: bump `bitcoin` to `0.31` ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `0.4` ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `0.4` ([Yuki Kishimoto])

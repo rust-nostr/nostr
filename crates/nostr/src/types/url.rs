@@ -5,7 +5,7 @@
 //! Url
 
 use alloc::string::String;
-use core::fmt;
+use core::fmt::{self, Debug};
 use core::str::FromStr;
 
 #[cfg(feature = "std")]
@@ -16,17 +16,17 @@ pub use url_fork::*;
 /// Try into [`Url`]
 pub trait TryIntoUrl {
     /// Error
-    type Err;
+    type Err: Debug;
 
     /// Try into [`Url`]
-    fn try_into_url(&self) -> Result<Url, Self::Err>;
+    fn try_into_url(self) -> Result<Url, Self::Err>;
 }
 
 impl TryIntoUrl for Url {
     type Err = ParseError;
 
     #[inline]
-    fn try_into_url(&self) -> Result<Url, Self::Err> {
+    fn try_into_url(self) -> Result<Url, Self::Err> {
         Ok(self.clone())
     }
 }
@@ -35,8 +35,8 @@ impl TryIntoUrl for &Url {
     type Err = ParseError;
 
     #[inline]
-    fn try_into_url(&self) -> Result<Url, Self::Err> {
-        Ok(<&Url>::clone(self).clone())
+    fn try_into_url(self) -> Result<Url, Self::Err> {
+        Ok(<&Url>::clone(&self).clone())
     }
 }
 
@@ -44,8 +44,8 @@ impl TryIntoUrl for String {
     type Err = ParseError;
 
     #[inline]
-    fn try_into_url(&self) -> Result<Url, Self::Err> {
-        Url::parse(self)
+    fn try_into_url(self) -> Result<Url, Self::Err> {
+        Url::parse(&self)
     }
 }
 
@@ -53,7 +53,7 @@ impl TryIntoUrl for &str {
     type Err = ParseError;
 
     #[inline]
-    fn try_into_url(&self) -> Result<Url, Self::Err> {
+    fn try_into_url(self) -> Result<Url, Self::Err> {
         Url::parse(self)
     }
 }
