@@ -95,6 +95,7 @@ impl From<TryFromSliceError> for ErrorV2 {
 struct MessageKeys([u8; MESSAGE_KEYS_SIZE]);
 
 impl MessageKeys {
+    #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, TryFromSliceError> {
         Ok(Self(slice.try_into()?))
     }
@@ -135,12 +136,14 @@ impl Deref for ConversationKey {
 
 impl ConversationKey {
     /// Derive Conversation Key
+    #[inline]
     pub fn derive(secret_key: &SecretKey, public_key: &PublicKey) -> Self {
         let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
         Self(hkdf::extract(b"nip44-v2", &shared_key))
     }
 
     /// Compose Conversation Key from bytes
+    #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         Ok(Self(
             Hmac::from_slice(slice).map_err(|e| Error::from(ErrorV2::from(e)))?,
@@ -148,6 +151,7 @@ impl ConversationKey {
     }
 
     /// Get Conversation Key as bytes
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         self.deref().as_byte_array()
     }
@@ -156,6 +160,7 @@ impl ConversationKey {
 /// Encrypt with NIP44 (v2)
 ///
 /// **The result is NOT encoded in base64!**
+#[inline]
 #[cfg(feature = "std")]
 pub fn encrypt_to_bytes<T>(
     conversation_key: &ConversationKey,
@@ -170,6 +175,7 @@ where
 /// Encrypt with NIP44 (v2) using custom Rng
 ///
 /// **The result is NOT encoded in base64!**
+#[inline]
 pub fn encrypt_to_bytes_with_rng<R, T>(
     rng: &mut R,
     conversation_key: &ConversationKey,
@@ -289,6 +295,7 @@ where
     Ok(unpadded.to_vec())
 }
 
+#[inline]
 fn get_message_keys(
     conversation_key: &ConversationKey,
     nonce: &[u8],

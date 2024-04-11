@@ -67,6 +67,7 @@ impl From<secp256k1::Error> for Error {
 }
 
 /// Encrypt
+#[inline]
 #[cfg(feature = "std")]
 pub fn encrypt<T>(
     secret_key: &SecretKey,
@@ -143,6 +144,7 @@ where
 }
 
 /// Decrypts content to a UTF-8 string
+#[inline]
 pub fn decrypt<T>(
     secret_key: &SecretKey,
     public_key: &PublicKey,

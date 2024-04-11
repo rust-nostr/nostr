@@ -401,6 +401,7 @@ struct RequestTemplate {
 
 impl Request {
     /// Compose `pay_invoice` request
+    #[inline]
     pub fn pay_invoice(params: PayInvoiceRequestParams) -> Self {
         Self {
             method: Method::PayInvoice,
@@ -409,6 +410,7 @@ impl Request {
     }
 
     /// Compose `pay_keysend` request
+    #[inline]
     pub fn pay_keysend(params: PayKeysendRequestParams) -> Self {
         Self {
             method: Method::PayKeysend,
@@ -417,6 +419,7 @@ impl Request {
     }
 
     /// Compose `make_invoice` request
+    #[inline]
     pub fn make_invoice(params: MakeInvoiceRequestParams) -> Self {
         Self {
             method: Method::MakeInvoice,
@@ -425,6 +428,7 @@ impl Request {
     }
 
     /// Compose `lookup_invoice` request
+    #[inline]
     pub fn lookup_invoice(params: LookupInvoiceRequestParams) -> Self {
         Self {
             method: Method::LookupInvoice,
@@ -433,6 +437,7 @@ impl Request {
     }
 
     /// Compose `list_transactions` request
+    #[inline]
     pub fn list_transactions(params: ListTransactionsRequestParams) -> Self {
         Self {
             method: Method::ListTransactions,
@@ -441,6 +446,7 @@ impl Request {
     }
 
     /// Compose `get_balance` request
+    #[inline]
     pub fn get_balance() -> Self {
         Self {
             method: Method::GetBalance,
@@ -449,6 +455,7 @@ impl Request {
     }
 
     /// Compose `get_info` request
+    #[inline]
     pub fn get_info() -> Self {
         Self {
             method: Method::GetInfo,
@@ -679,6 +686,7 @@ struct ResponseTemplate {
 
 impl Response {
     /// Deserialize from [Event]
+    #[inline]
     pub fn from_event(uri: &NostrWalletConnectURI, event: &Event) -> Result<Self, Error> {
         let decrypt_res: String = nip04::decrypt(&uri.secret, event.author_ref(), event.content())?;
         Self::from_json(decrypt_res)
@@ -848,6 +856,7 @@ impl<'de> Deserialize<'de> for Response {
     }
 }
 
+#[inline]
 fn url_encode<T>(data: T) -> String
 where
     T: AsRef<[u8]>,
@@ -873,6 +882,7 @@ pub struct NostrWalletConnectURI {
 
 impl NostrWalletConnectURI {
     /// Create new [`NostrWalletConnectURI`]
+    #[inline]
     pub fn new(
         public_key: PublicKey,
         relay_url: Url,

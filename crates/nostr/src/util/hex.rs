@@ -60,6 +60,7 @@ where
     hex
 }
 
+#[inline]
 const fn val(c: u8, idx: usize) -> Result<u8, Error> {
     match c {
         b'A'..=b'F' => Ok(c - b'A' + 10),

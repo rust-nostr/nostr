@@ -66,6 +66,7 @@ pub trait FromMnemonic: Sized {
     /// Derive from BIP-39 mnemonics (ENGLISH wordlist).
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
+    #[inline]
     #[cfg(feature = "std")]
     fn from_mnemonic<S>(mnemonic: S, passphrase: Option<S>) -> Result<Self, Self::Err>
     where
@@ -77,6 +78,7 @@ pub trait FromMnemonic: Sized {
     /// Derive from BIP-39 mnemonics with **custom account** (ENGLISH wordlist).
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
+    #[inline]
     #[cfg(feature = "std")]
     fn from_mnemonic_with_account<S>(
         mnemonic: S,
@@ -92,6 +94,7 @@ pub trait FromMnemonic: Sized {
     /// Derive from BIP-39 mnemonics with **custom** `account`, `type` and/or `index` (ENGLISH wordlist).
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
+    #[inline]
     #[cfg(feature = "std")]
     fn from_mnemonic_advanced<S>(
         mnemonic: S,

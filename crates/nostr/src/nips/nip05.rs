@@ -94,16 +94,12 @@ where
         .and_then(|pubkey| PublicKey::from_str(pubkey).ok())
 }
 
+#[inline]
 fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
-    let relays_list: Option<Vec<Url>> = json
-        .get("relays")
+    json.get("relays")
         .and_then(|relays| relays.get(pk.to_string()))
-        .and_then(|value| serde_json::from_value(value.clone()).ok());
-
-    match relays_list {
-        None => vec![],
-        Some(v) => v,
-    }
+        .and_then(|value| serde_json::from_value(value.clone()).ok())
+        .unwrap_or_default()
 }
 
 fn verify_json<S>(public_key: PublicKey, json: Value, name: S) -> Result<(), Error>

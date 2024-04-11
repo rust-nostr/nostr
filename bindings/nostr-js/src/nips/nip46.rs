@@ -4,8 +4,7 @@
 
 use core::ops::Deref;
 
-use nostr::nips::nip46::{NostrConnectMetadata, NostrConnectURI};
-use nostr::Url;
+use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};

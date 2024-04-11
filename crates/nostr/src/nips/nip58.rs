@@ -45,6 +45,7 @@ impl fmt::Display for Error {
 }
 
 /// Helper function to filter events for a specific [`Kind`]
+#[inline]
 pub(crate) fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Event> {
     events
         .into_iter()

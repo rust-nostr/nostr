@@ -69,6 +69,7 @@ impl PublicKey {
     }
 
     /// Parse [PublicKey] from `bytes`
+    #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         Ok(Self {
             inner: XOnlyPublicKey::from_slice(slice)?,
@@ -76,6 +77,7 @@ impl PublicKey {
     }
 
     /// Parse [PublicKey] from `hex` string
+    #[inline]
     pub fn from_hex<S>(hex: S) -> Result<Self, Error>
     where
         S: AsRef<str>,
@@ -86,11 +88,13 @@ impl PublicKey {
     }
 
     /// Get public key as `hex` string
+    #[inline]
     pub fn to_hex(&self) -> String {
         self.inner.to_string()
     }
 
     /// Get public key as `bytes`
+    #[inline]
     pub fn to_bytes(&self) -> [u8; 32] {
         self.inner.serialize()
     }
@@ -100,6 +104,7 @@ impl FromStr for PublicKey {
     type Err = Error;
 
     /// Try to parse [PublicKey] from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    #[inline]
     fn from_str(public_key: &str) -> Result<Self, Self::Err> {
         Self::parse(public_key)
     }

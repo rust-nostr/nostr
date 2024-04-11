@@ -259,6 +259,7 @@ pub struct ImageDimensions {
 
 impl ImageDimensions {
     /// Net image dimensions
+    #[inline]
     pub fn new(width: u64, height: u64) -> Self {
         Self { width, height }
     }
@@ -663,6 +664,7 @@ pub enum Tag {
 
 impl Tag {
     /// Parse [`Tag`] from slice of string
+    #[inline]
     pub fn parse<S>(tag: &[S]) -> Result<Self, Error>
     where
         S: AsRef<str>,

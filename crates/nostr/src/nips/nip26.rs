@@ -122,6 +122,7 @@ impl fmt::Display for ValidationError {
 
 /// Sign delegation.
 /// See `create_delegation_tag` for more complete functionality.
+#[inline]
 #[cfg(feature = "std")]
 pub fn sign_delegation(
     delegator_keys: &Keys,
@@ -157,6 +158,7 @@ where
 }
 
 /// Verify delegation signature
+#[inline]
 #[cfg(feature = "std")]
 pub fn verify_delegation_signature(
     delegator_public_key: PublicKey,
@@ -197,6 +199,7 @@ pub struct DelegationToken(String);
 
 impl DelegationToken {
     /// Generate [`DelegationToken`]
+    #[inline]
     pub fn new(delegatee_pk: PublicKey, conditions: Conditions) -> Self {
         Self(format!(
             "{}:{DELEGATION_KEYWORD}:{delegatee_pk}:{conditions}",
@@ -205,6 +208,7 @@ impl DelegationToken {
     }
 
     /// Get as bytes
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         self.0.as_bytes()
     }
@@ -226,6 +230,7 @@ pub struct DelegationTag {
 
 impl DelegationTag {
     /// Create a delegation tag (including the signature).
+    #[inline]
     #[cfg(feature = "std")]
     pub fn new(
         delegator_keys: &Keys,
@@ -268,21 +273,25 @@ impl DelegationTag {
     }
 
     /// Get delegator public key
+    #[inline]
     pub fn delegator_pubkey(&self) -> PublicKey {
         self.delegator_pubkey
     }
 
     /// Get conditions
+    #[inline]
     pub fn conditions(&self) -> Conditions {
         self.conditions.clone()
     }
 
     /// Get signature
+    #[inline]
     pub fn signature(&self) -> Signature {
         self.signature
     }
 
     /// Validate a delegation tag, check signature and conditions.
+    #[inline]
     #[cfg(feature = "std")]
     pub fn validate(
         &self,
@@ -364,6 +373,7 @@ impl fmt::Display for DelegationTag {
 impl FromStr for DelegationTag {
     type Err = Error;
 
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::from_json(s)
     }
@@ -443,22 +453,18 @@ impl FromStr for Condition {
 }
 
 /// Set of conditions of a delegation.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Conditions(Vec<Condition>);
-
-impl Default for Conditions {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl Conditions {
     /// New empty [`Conditions`]
+    #[inline]
     pub fn new() -> Self {
-        Self(Vec::new())
+        Self::default()
     }
 
     /// Add [`Condition`]
+    #[inline]
     pub fn add(&mut self, cond: Condition) {
         self.0.push(cond);
     }
@@ -472,6 +478,7 @@ impl Conditions {
     }
 
     /// Get [`Vec<Condition>`]
+    #[inline]
     pub fn inner(&self) -> Vec<Condition> {
         self.0.clone()
     }
@@ -528,6 +535,7 @@ impl<'de> Deserialize<'de> for Conditions {
 
 impl EventProperties {
     /// Create new with values
+    #[inline]
     pub fn new(event_kind: u64, created_time: u64) -> Self {
         Self {
             kind: event_kind,

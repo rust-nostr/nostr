@@ -93,6 +93,7 @@ pub struct Metadata {
 
 impl Metadata {
     /// New empty [`Metadata`]
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }

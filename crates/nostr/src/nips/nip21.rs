@@ -79,11 +79,13 @@ where
     Error: From<<Self as FromBech32>::Err>,
 {
     /// Get nostr URI
+    #[inline]
     fn to_nostr_uri(&self) -> Result<String, Error> {
         Ok(format!("{SCHEME}:{}", self.to_bech32()?))
     }
 
     /// From `nostr` URI
+    #[inline]
     fn from_nostr_uri<S>(uri: S) -> Result<Self, Error>
     where
         S: AsRef<str>,
@@ -151,6 +153,7 @@ impl TryFrom<Nip19> for Nip21 {
 
 impl Nip21 {
     /// Parse NIP21 string
+    #[inline]
     pub fn parse<S>(uri: S) -> Result<Self, Error>
     where
         S: AsRef<str>,

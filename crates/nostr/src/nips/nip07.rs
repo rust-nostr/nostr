@@ -114,6 +114,7 @@ impl Nip07Signer {
     }
 
     /// Check if `window.nostr` object is available
+    #[inline]
     pub fn is_available() -> bool {
         Self::new().is_ok()
     }
@@ -130,6 +131,7 @@ impl Nip07Signer {
     }
 
     /// Get value from object key
+    #[inline]
     fn get_value_by_key(&self, obj: &Object, key: &str) -> Result<JsValue, Error> {
         Reflect::get(obj, &JsValue::from_str(key))
             .map_err(|_| Error::ObjectKeyNotFound(key.to_string()))
@@ -207,8 +209,6 @@ impl Nip07Signer {
         // Add signature
         Ok(unsigned.add_signature(sig)?)
     }
-
-    // TODO: add `signSchnorr`
 
     // TODO: add `getRelays`
 

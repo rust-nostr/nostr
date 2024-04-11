@@ -211,6 +211,7 @@ impl RawRelayMessage {
     }
 
     /// Deserialize [`RawRelayMessage`] from JSON string
+    #[inline]
     pub fn from_json<T>(json: T) -> Result<Self, MessageHandleError>
     where
         T: AsRef<[u8]>,

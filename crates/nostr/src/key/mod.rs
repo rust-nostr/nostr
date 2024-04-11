@@ -72,11 +72,13 @@ pub struct Keys {
 #[cfg(feature = "std")]
 impl Keys {
     /// Initialize from secret key.
+    #[inline]
     pub fn new(secret_key: SecretKey) -> Self {
         Self::new_with_ctx(&SECP256K1, secret_key)
     }
 
     /// Try to parse [Keys] from **secret key** `hex` or `bech32`
+    #[inline]
     pub fn parse<S>(secret_key: S) -> Result<Self, Error>
     where
         S: AsRef<str>,
@@ -85,11 +87,13 @@ impl Keys {
     }
 
     /// Generate new random [`Keys`]
+    #[inline]
     pub fn generate() -> Self {
         Self::generate_with_ctx(&SECP256K1, &mut OsRng)
     }
 
     /// Generate random [`Keys`] with custom [`Rng`]
+    #[inline]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
     where
         R: Rng + ?Sized,
@@ -100,6 +104,7 @@ impl Keys {
     /// Generate random [`Keys`] with custom [`Rng`] and without [`Keypair`]
     ///
     /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
+    #[inline]
     pub fn generate_without_keypair<R>(rng: &mut R) -> Self
     where
         R: Rng + ?Sized,
@@ -108,6 +113,7 @@ impl Keys {
     }
 
     /// Sign schnorr [`Message`]
+    #[inline]
     pub fn sign_schnorr(&self, message: &Message) -> Result<Signature, Error> {
         self.sign_schnorr_with_ctx(&SECP256K1, message, &mut OsRng)
     }
@@ -130,6 +136,7 @@ impl Keys {
     }
 
     /// Try to parse [Keys] from **secret key** `hex` or `bech32`
+    #[inline]
     pub fn parse_with_ctx<C, S>(secp: &Secp256k1<C>, secret_key: S) -> Result<Self, Error>
     where
         C: Signing,
@@ -140,6 +147,7 @@ impl Keys {
     }
 
     /// Initialize with public key only (no secret key).
+    #[inline]
     pub fn from_public_key(public_key: PublicKey) -> Self {
         Self {
             public_key,
@@ -149,6 +157,7 @@ impl Keys {
     }
 
     /// Generate random [`Keys`] with custom [`Rng`]
+    #[inline]
     pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
         C: Signing,
@@ -175,11 +184,13 @@ impl Keys {
     }
 
     /// Get public key
+    #[inline]
     pub fn public_key(&self) -> PublicKey {
         self.public_key
     }
 
     /// Get secret key
+    #[inline]
     pub fn secret_key(&self) -> Result<&SecretKey, Error> {
         if let Some(secret_key) = &self.secret_key {
             Ok(secret_key)
@@ -224,6 +235,7 @@ impl FromStr for Keys {
     type Err = Error;
 
     /// Try to parse [Keys] from **secret key** `hex` or `bech32`
+    #[inline]
     fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
         Self::parse(secret_key)
     }

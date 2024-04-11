@@ -189,6 +189,7 @@ pub struct EncryptedSecretKey {
 
 impl EncryptedSecretKey {
     /// Encrypt [SecretKey]
+    #[inline]
     #[cfg(feature = "std")]
     pub fn new<S>(
         secret_key: &SecretKey,
@@ -312,11 +313,13 @@ impl EncryptedSecretKey {
     }
 
     /// Get encrypted secret key version
+    #[inline]
     pub fn version(&self) -> Version {
         self.version
     }
 
     /// Get encrypted secret key security
+    #[inline]
     pub fn key_security(&self) -> KeySecurity {
         self.key_security
     }

@@ -84,17 +84,20 @@ pub struct PartialEvent {
 
 impl PartialEvent {
     /// Compose from [RawEvent]
+    #[inline]
     pub fn from_raw(raw: &RawEvent) -> Result<Self, Error> {
         Ok(raw.try_into()?)
     }
 
     /// Verify [`Signature`]
+    #[inline]
     #[cfg(feature = "std")]
     pub fn verify_signature(&self) -> Result<(), Error> {
         self.verify_signature_with_ctx(&SECP256K1)
     }
 
     /// Verify [`Signature`]
+    #[inline]
     pub fn verify_signature_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
     where
         C: Verification,
@@ -143,6 +146,7 @@ pub struct MissingPartialEvent {
 
 impl MissingPartialEvent {
     /// Compose from [RawEvent]
+    #[inline]
     pub fn from_raw(raw: RawEvent) -> Self {
         Self {
             created_at: Timestamp::from(raw.created_at),

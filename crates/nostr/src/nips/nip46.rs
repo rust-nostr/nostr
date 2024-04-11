@@ -397,14 +397,17 @@ impl ResponseResult {
             }
         }
     }
+    #[inline]
     pub fn is_auth_url(&self) -> bool {
         matches!(self, Self::AuthUrl)
     }
 
+    #[inline]
     pub fn is_error(&self) -> bool {
         matches!(self, Self::Error)
     }
 
+    #[inline]
     pub fn to_connect(self) -> Result<(), Error> {
         if let Self::Connect = self {
             Ok(())
@@ -413,6 +416,7 @@ impl ResponseResult {
         }
     }
 
+    #[inline]
     pub fn to_get_public_key(self) -> Result<PublicKey, Error> {
         if let Self::GetPublicKey(val) = self {
             Ok(val)
@@ -421,6 +425,7 @@ impl ResponseResult {
         }
     }
 
+    #[inline]
     pub fn to_get_relays(self) -> Result<HashMap<Url, RelayPermissions>, Error> {
         if let Self::GetRelays(val) = self {
             Ok(val)
@@ -429,6 +434,7 @@ impl ResponseResult {
         }
     }
 
+    #[inline]
     pub fn to_sign_event(self) -> Result<Event, Error> {
         if let Self::SignEvent(val) = self {
             Ok(val)
@@ -437,6 +443,7 @@ impl ResponseResult {
         }
     }
 
+    #[inline]
     pub fn to_pong(self) -> Result<(), Error> {
         if let Self::Pong = self {
             Ok(())
@@ -445,6 +452,7 @@ impl ResponseResult {
         }
     }
 
+    #[inline]
     pub fn to_encrypt_decrypt(self) -> Result<String, Error> {
         if let Self::EncryptionDecryption(val) = self {
             Ok(val)
@@ -498,12 +506,14 @@ impl fmt::Display for Message {
 
 impl Message {
     /// Compose [`Request`] message
+    #[inline]
     #[cfg(feature = "std")]
     pub fn request(req: Request) -> Self {
         Self::request_with_rng(&mut rand::thread_rng(), req)
     }
 
     /// Compose [`Request`] message
+    #[inline]
     pub fn request_with_rng<R>(rng: &mut R, req: Request) -> Self
     where
         R: RngCore,
@@ -515,6 +525,7 @@ impl Message {
     }
 
     /// Compose `Response` message
+    #[inline]
     pub fn response<S>(req_id: S, result: Option<ResponseResult>, error: Option<S>) -> Self
     where
         S: Into<String>,
@@ -527,6 +538,7 @@ impl Message {
     }
 
     /// Check if current [`Message`] is a request
+    #[inline]
     pub fn is_request(&self) -> bool {
         match self {
             Message::Request { .. } => true,
@@ -542,6 +554,7 @@ impl Message {
     } */
 
     /// Consume [Message] and return [Request]
+    #[inline]
     pub fn to_request(self) -> Result<Request, Error> {
         match self {
             Self::Request { req, .. } => Ok(req),
@@ -550,38 +563,13 @@ impl Message {
     }
 
     /// Get [`Message`] id
+    #[inline]
     pub fn id(&self) -> &str {
         match self {
             Self::Request { id, .. } => id,
             Self::Response { id, .. } => id,
         }
     }
-
-    /* /// Generate [`Response`] message for [`Request`]
-    #[cfg(feature = "std")]
-    pub fn generate_response(&self, keys: &Keys) -> Result<Option<Self>, Error> {
-        self.generate_response_wit_ctx(&SECP256K1, &mut rand::thread_rng(), keys)
-    }
-
-    /// Generate [`Response`] message for [`Request`]
-    pub fn generate_response_wit_ctx<C, R>(
-        &self,
-        secp: &Secp256k1<C>,
-        rng: &mut R,
-        keys: &Keys,
-    ) -> Result<Option<Self>, Error>
-    where
-        C: Signing,
-        R: Rng + CryptoRng,
-    {
-        let req = self.as_request()?;
-        // TODO: remove if let Some(res) = ...
-        if let Some(res) = req.generate_response_with_ctx(secp, rng, keys)? {
-            Ok(Some(Self::response(self.id(), Some(res), None)))
-        } else {
-            Ok(None)
-        }
-    } */
 
     /// Generate error [`Response`] message for [`Request`]
     pub fn generate_error_response<S>(&self, error: S) -> Result<Self, Error>
@@ -667,6 +655,7 @@ impl JsonUtil for Message {
     type Err = Error;
 }
 
+#[inline]
 fn url_encode<T>(data: T) -> String
 where
     T: AsRef<[u8]>,
@@ -692,6 +681,7 @@ pub struct NostrConnectMetadata {
 
 impl NostrConnectMetadata {
     /// New Nostr Connect Metadata
+    #[inline]
     pub fn new<S>(name: S) -> Self
     where
         S: Into<String>,
@@ -702,11 +692,6 @@ impl NostrConnectMetadata {
             description: None,
             icons: None,
         }
-    }
-
-    /// Serialize as JSON string
-    pub fn as_json(&self) -> String {
-        json!(self).to_string()
     }
 
     /// Set url
@@ -737,6 +722,10 @@ impl NostrConnectMetadata {
     }
 }
 
+impl JsonUtil for NostrConnectMetadata {
+    type Err = Error;
+}
+
 /// Nostr Connect URI
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum NostrConnectURI {
@@ -762,6 +751,7 @@ pub enum NostrConnectURI {
 
 impl NostrConnectURI {
     /// Construct [NostrConnectURI] initiated by the client
+    #[inline]
     pub fn client<I, S>(public_key: PublicKey, relays: I, app_name: S) -> Self
     where
         I: IntoIterator<Item = Url>,
@@ -849,11 +839,13 @@ impl NostrConnectURI {
     }
 
     /// Check if is `bunker` URI
+    #[inline]
     pub fn is_bunker(&self) -> bool {
         matches!(self, Self::Bunker { .. })
     }
 
     /// Get signer public key, if exists.
+    #[inline]
     pub fn signer_public_key(&self) -> Option<PublicKey> {
         match self {
             Self::Bunker {
@@ -864,6 +856,7 @@ impl NostrConnectURI {
     }
 
     /// Get relays
+    #[inline]
     pub fn relays(&self) -> Vec<Url> {
         match self {
             Self::Bunker { relays, .. } => relays.clone(),
@@ -872,6 +865,7 @@ impl NostrConnectURI {
     }
 
     /// Get optional secret
+    #[inline]
     pub fn secret(&self) -> Option<String> {
         match self {
             Self::Bunker { secret, .. } => secret.clone(),
@@ -883,6 +877,7 @@ impl NostrConnectURI {
 impl FromStr for NostrConnectURI {
     type Err = Error;
 
+    #[inline]
     fn from_str(uri: &str) -> Result<Self, Self::Err> {
         Self::parse(uri)
     }

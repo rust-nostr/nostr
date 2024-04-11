@@ -17,6 +17,7 @@ pub use url_fork::*;
 pub trait TryIntoUrl {
     /// Error
     type Err;
+
     /// Try into [`Url`]
     fn try_into_url(&self) -> Result<Url, Self::Err>;
 }
@@ -24,6 +25,7 @@ pub trait TryIntoUrl {
 impl TryIntoUrl for Url {
     type Err = ParseError;
 
+    #[inline]
     fn try_into_url(&self) -> Result<Url, Self::Err> {
         Ok(self.clone())
     }
@@ -32,6 +34,7 @@ impl TryIntoUrl for Url {
 impl TryIntoUrl for &Url {
     type Err = ParseError;
 
+    #[inline]
     fn try_into_url(&self) -> Result<Url, Self::Err> {
         Ok(<&Url>::clone(self).clone())
     }
@@ -40,6 +43,7 @@ impl TryIntoUrl for &Url {
 impl TryIntoUrl for String {
     type Err = ParseError;
 
+    #[inline]
     fn try_into_url(&self) -> Result<Url, Self::Err> {
         Url::parse(self)
     }
@@ -48,6 +52,7 @@ impl TryIntoUrl for String {
 impl TryIntoUrl for &str {
     type Err = ParseError;
 
+    #[inline]
     fn try_into_url(&self) -> Result<Url, Self::Err> {
         Url::parse(self)
     }
@@ -59,6 +64,7 @@ pub struct UncheckedUrl(String);
 
 impl UncheckedUrl {
     /// New unchecked url
+    #[inline]
     pub fn new<S>(url: S) -> Self
     where
         S: Into<String>,
@@ -67,6 +73,7 @@ impl UncheckedUrl {
     }
 
     /// Empty unchecked url
+    #[inline]
     pub fn empty() -> Self {
         Self(String::new())
     }
@@ -85,6 +92,7 @@ where
 impl FromStr for UncheckedUrl {
     type Err = ParseError;
 
+    #[inline]
     fn from_str(url: &str) -> Result<Self, Self::Err> {
         Ok(Self::from(url))
     }
@@ -93,6 +101,7 @@ impl FromStr for UncheckedUrl {
 impl TryFrom<UncheckedUrl> for Url {
     type Error = ParseError;
 
+    #[inline]
     fn try_from(unchecked_url: UncheckedUrl) -> Result<Url, Self::Error> {
         Self::parse(&unchecked_url.0)
     }

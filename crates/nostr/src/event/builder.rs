@@ -180,6 +180,7 @@ pub struct EventBuilder {
 
 impl EventBuilder {
     /// New [`EventBuilder`]
+    #[inline]
     pub fn new<S, I>(kind: Kind, content: S, tags: I) -> Self
     where
         S: Into<String>,
@@ -626,6 +627,7 @@ impl EventBuilder {
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    #[inline]
     pub fn reaction<S>(event: &Event, reaction: S) -> Self
     where
         S: Into<String>,
@@ -665,6 +667,7 @@ impl EventBuilder {
     /// Channel metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[inline]
     pub fn channel_metadata(
         channel_id: EventId,
         relay_url: Option<Url>,
@@ -684,6 +687,7 @@ impl EventBuilder {
     /// Channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[inline]
     pub fn channel_msg<S>(channel_id: EventId, relay_url: Url, content: S) -> Self
     where
         S: Into<String>,
@@ -741,6 +745,7 @@ impl EventBuilder {
     /// Create an auth event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
     pub fn auth<S>(challenge: S, relay: Url) -> Self
     where
         S: Into<String>,
@@ -755,6 +760,7 @@ impl EventBuilder {
     /// Nostr Connect
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
+    #[inline]
     #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
     pub fn nostr_connect(
         sender_keys: &Keys,
@@ -771,6 +777,7 @@ impl EventBuilder {
     /// Live Event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
+    #[inline]
     pub fn live_event(live_event: LiveEvent) -> Self {
         let tags: Vec<Tag> = live_event.into();
         Self::new(Kind::LiveEvent, "", tags)
@@ -1170,6 +1177,7 @@ impl EventBuilder {
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
+    #[inline]
     pub fn file_metadata<S>(description: S, metadata: FileMetadata) -> Self
     where
         S: Into<String>,
@@ -1181,6 +1189,7 @@ impl EventBuilder {
     /// HTTP Auth
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/98.md>
+    #[inline]
     pub fn http_auth(data: HttpData) -> Self {
         let tags: Vec<Tag> = data.into();
         Self::new(Kind::HttpAuth, "", tags)
@@ -1189,6 +1198,7 @@ impl EventBuilder {
     /// Set stall data
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
+    #[inline]
     pub fn stall_data(data: StallData) -> Self {
         let content: String = data.as_json();
         let tags: Vec<Tag> = data.into();
@@ -1198,6 +1208,7 @@ impl EventBuilder {
     /// Set product data
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
+    #[inline]
     pub fn product_data(data: ProductData) -> Self {
         let content: String = data.as_json();
         let tags: Vec<Tag> = data.into();
@@ -1207,6 +1218,7 @@ impl EventBuilder {
     /// Seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
     pub fn seal(
         sender_keys: &Keys,
@@ -1261,6 +1273,7 @@ impl EventBuilder {
     /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
     pub fn gift_wrap(
         sender_keys: &Keys,
@@ -1285,6 +1298,7 @@ impl EventBuilder {
     /// Mute list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn mute_list(list: MuteList) -> Self {
         let tags: Vec<Tag> = list.into();
         Self::new(Kind::MuteList, "", tags)
@@ -1293,17 +1307,18 @@ impl EventBuilder {
     /// Pinned notes
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn pinned_notes<I>(ids: I) -> Self
     where
         I: IntoIterator<Item = EventId>,
     {
-        let tags = ids.into_iter().map(Tag::event);
-        Self::new(Kind::PinList, "", tags)
+        Self::new(Kind::PinList, "", ids.into_iter().map(Tag::event))
     }
 
     /// Bookmarks
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn bookmarks(list: Bookmarks) -> Self {
         let tags: Vec<Tag> = list.into();
         Self::new(Kind::Bookmarks, "", tags)
@@ -1312,50 +1327,55 @@ impl EventBuilder {
     /// Communities
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn communities<I>(communities: I) -> Self
     where
         I: IntoIterator<Item = Coordinate>,
     {
-        let tags = communities.into_iter().map(Tag::from);
-        Self::new(Kind::Communities, "", tags)
+        Self::new(
+            Kind::Communities,
+            "",
+            communities.into_iter().map(Tag::from),
+        )
     }
 
     /// Public chats
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn public_chats<I>(chat: I) -> Self
     where
         I: IntoIterator<Item = EventId>,
     {
-        let tags = chat.into_iter().map(Tag::event);
-        Self::new(Kind::PublicChats, "", tags)
+        Self::new(Kind::PublicChats, "", chat.into_iter().map(Tag::event))
     }
 
     /// Blocked relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn blocked_relays<I>(relay: I) -> Self
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
-        let tags = relay.into_iter().map(Tag::Relay);
-        Self::new(Kind::BlockedRelays, "", tags)
+        Self::new(Kind::BlockedRelays, "", relay.into_iter().map(Tag::Relay))
     }
 
     /// Search relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn search_relays<I>(relay: I) -> Self
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
-        let tags = relay.into_iter().map(Tag::Relay);
-        Self::new(Kind::SearchRelays, "", tags)
+        Self::new(Kind::SearchRelays, "", relay.into_iter().map(Tag::Relay))
     }
 
     /// Interests
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn interests(list: Interests) -> Self {
         let tags: Vec<Tag> = list.into();
         Self::new(Kind::Interests, "", tags)
@@ -1364,6 +1384,7 @@ impl EventBuilder {
     /// Emojis
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn emojis(list: Emojis) -> Self {
         let tags: Vec<Tag> = list.into();
         Self::new(Kind::Emojis, "", tags)
@@ -1372,28 +1393,33 @@ impl EventBuilder {
     /// Follow sets
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn follow_sets<I>(public_keys: I) -> Self
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        let tags = public_keys.into_iter().map(Tag::public_key);
-        Self::new(Kind::FollowSets, "", tags)
+        Self::new(
+            Kind::FollowSets,
+            "",
+            public_keys.into_iter().map(Tag::public_key),
+        )
     }
 
     /// Relay sets
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn relay_sets<I>(relay: I) -> Self
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
-        let tags = relay.into_iter().map(Tag::Relay);
-        Self::new(Kind::RelaySets, "", tags)
+        Self::new(Kind::RelaySets, "", relay.into_iter().map(Tag::Relay))
     }
 
     /// Bookmark sets
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn bookmarks_sets(list: Bookmarks) -> Self {
         let tags: Vec<Tag> = list.into();
         Self::new(Kind::BookmarkSets, "", tags)
@@ -1402,6 +1428,7 @@ impl EventBuilder {
     /// Article Curation sets
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn articles_curation_sets(list: ArticlesCuration) -> Self {
         let tags: Vec<Tag> = list.into();
         Self::new(Kind::ArticlesCurationSets, "", tags)
@@ -1410,12 +1437,16 @@ impl EventBuilder {
     /// Videos Curation sets
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
     pub fn videos_curation_sets<I>(video: I) -> Self
     where
         I: IntoIterator<Item = Coordinate>,
     {
-        let tags = video.into_iter().map(Tag::from);
-        Self::new(Kind::VideosCurationSets, "", tags)
+        Self::new(
+            Kind::VideosCurationSets,
+            "",
+            video.into_iter().map(Tag::from),
+        )
     }
 
     /// Emoji sets
@@ -1440,7 +1471,7 @@ impl EventBuilder {
         I: IntoIterator<Item = String>,
     {
         let namespace: String = namespace.into();
-        let labels: Vec<String> = labels.into_iter().chain(vec![namespace.clone()]).collect();
+        let labels: Vec<String> = labels.into_iter().chain([namespace.clone()]).collect();
         Self::new(
             Kind::Label,
             "",

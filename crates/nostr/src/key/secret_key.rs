@@ -71,6 +71,7 @@ impl SecretKey {
     }
 
     /// Parse [SecretKey] from `bytes`
+    #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         Ok(Self {
             inner: secp256k1::SecretKey::from_slice(slice)?,
@@ -78,6 +79,7 @@ impl SecretKey {
     }
 
     /// Parse [SecretKey] from `hex` string
+    #[inline]
     pub fn from_hex<S>(hex: S) -> Result<Self, Error>
     where
         S: AsRef<str>,
@@ -88,16 +90,19 @@ impl SecretKey {
     }
 
     /// Get secret key as `hex` string
+    #[inline]
     pub fn to_secret_hex(&self) -> String {
         self.inner.display_secret().to_string()
     }
 
     /// Get secret key as `bytes`
+    #[inline]
     pub fn as_secret_bytes(&self) -> &[u8] {
         self.inner.as_ref()
     }
 
     /// Get secret key as `bytes`
+    #[inline]
     pub fn to_secret_bytes(&self) -> [u8; 32] {
         self.inner.secret_bytes()
     }
@@ -106,6 +111,7 @@ impl SecretKey {
     ///
     /// By default `LOG_N` is set to `16` and [KeySecurity] to `Unknown`.
     /// To use custom values check [EncryptedSecretKey] constructors.
+    #[inline]
     #[cfg(all(feature = "std", feature = "nip49"))]
     pub fn encrypt<S>(&self, password: S) -> Result<EncryptedSecretKey, nip49::Error>
     where
@@ -119,6 +125,7 @@ impl FromStr for SecretKey {
     type Err = Error;
 
     /// Try to parse [SecretKey] from `hex` or `bech32`
+    #[inline]
     fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
         Self::parse(secret_key)
     }

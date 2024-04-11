@@ -274,9 +274,12 @@ impl FromBech32 for SecretKey {
 impl ToBech32 for SecretKey {
     type Err = Error;
 
+    #[inline]
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let data = self.as_secret_bytes();
-        Ok(bech32::encode::<Bech32>(HRP_SECRET_KEY, data)?)
+        Ok(bech32::encode::<Bech32>(
+            HRP_SECRET_KEY,
+            self.as_secret_bytes(),
+        )?)
     }
 }
 
@@ -302,9 +305,12 @@ impl FromBech32 for EncryptedSecretKey {
 impl ToBech32 for EncryptedSecretKey {
     type Err = Error;
 
+    #[inline]
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let data = self.as_vec();
-        Ok(bech32::encode::<Bech32>(HRP_SECRET_KEY_ENCRYPTED, &data)?)
+        Ok(bech32::encode::<Bech32>(
+            HRP_SECRET_KEY_ENCRYPTED,
+            &self.as_vec(),
+        )?)
     }
 }
 
@@ -328,6 +334,7 @@ impl FromBech32 for PublicKey {
 impl ToBech32 for PublicKey {
     type Err = Error;
 
+    #[inline]
     fn to_bech32(&self) -> Result<String, Self::Err> {
         Ok(bech32::encode::<Bech32>(HRP_PUBLIC_KEY, &self.serialize())?)
     }
@@ -353,6 +360,7 @@ impl FromBech32 for EventId {
 impl ToBech32 for EventId {
     type Err = Error;
 
+    #[inline]
     fn to_bech32(&self) -> Result<String, Self::Err> {
         Ok(bech32::encode::<Bech32>(HRP_NOTE_ID, self.as_bytes())?)
     }
@@ -366,6 +374,7 @@ pub struct Nip19Event {
 }
 
 impl Nip19Event {
+    #[inline]
     pub fn new<I, S>(event_id: EventId, relays: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -460,6 +469,7 @@ pub struct Nip19Profile {
 }
 
 impl Nip19Profile {
+    #[inline]
     pub fn new<I, U>(public_key: PublicKey, relays: I) -> Result<Self, Error>
     where
         I: IntoIterator<Item = U>,

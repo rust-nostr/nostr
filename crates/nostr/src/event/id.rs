@@ -118,26 +118,31 @@ impl EventId {
     }
 
     /// [`EventId`] from hash
+    #[inline]
     pub fn from_hash(hash: Sha256Hash) -> Self {
         Self(hash)
     }
 
     /// All zeros
+    #[inline]
     pub fn all_zeros() -> Self {
         Self(Sha256Hash::all_zeros())
     }
 
     /// Get as bytes
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         self.as_ref()
     }
 
     /// Consume and get bytes
+    #[inline]
     pub fn to_bytes(self) -> [u8; 32] {
         self.0.to_byte_array()
     }
 
     /// Get as hex string
+    #[inline]
     pub fn to_hex(&self) -> String {
         self.0.to_string()
     }
@@ -145,11 +150,13 @@ impl EventId {
     /// Check POW
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    #[inline]
     pub fn check_pow(&self, difficulty: u8) -> bool {
         nip13::get_leading_zero_bits(self.as_bytes()) >= difficulty
     }
 
     /// Get [`EventId`] as [`Sha256Hash`]
+    #[inline]
     pub fn inner(&self) -> Sha256Hash {
         self.0
     }
@@ -159,6 +166,7 @@ impl FromStr for EventId {
     type Err = Error;
 
     /// Try to parse [EventId] from `hex` or `bech32`
+    #[inline]
     fn from_str(id: &str) -> Result<Self, Self::Err> {
         Self::parse(id)
     }

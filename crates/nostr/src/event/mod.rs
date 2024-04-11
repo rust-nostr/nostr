@@ -168,6 +168,7 @@ impl Event {
     /// Deserialize [`Event`] from [`Value`]
     ///
     /// **This method NOT verify the signature!**
+    #[inline]
     pub fn from_value(value: Value) -> Result<Self, Error> {
         Ok(serde_json::from_value(value)?)
     }
@@ -233,12 +234,14 @@ impl Event {
     }
 
     /// Verify both [`EventId`] and [`Signature`]
+    #[inline]
     #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
         self.verify_with_ctx(&SECP256K1)
     }
 
     /// Verify [`EventId`] and [`Signature`]
+    #[inline]
     pub fn verify_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
     where
         C: Verification,
@@ -267,12 +270,14 @@ impl Event {
     }
 
     /// Verify only event [`Signature`]
+    #[inline]
     #[cfg(feature = "std")]
     pub fn verify_signature(&self) -> Result<(), Error> {
         self.verify_with_ctx(&SECP256K1)
     }
 
     /// Verify event [`Signature`]
+    #[inline]
     pub fn verify_signature_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
     where
         C: Verification,
@@ -305,6 +310,7 @@ impl Event {
     /// If an event has no `Expiration` tag, then it will return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    #[inline]
     #[cfg(feature = "std")]
     pub fn is_expired(&self) -> bool {
         let now: Instant = Instant::now();
@@ -315,6 +321,7 @@ impl Event {
     /// If an event has no `Expiration` tag, then it will return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    #[inline]
     pub fn is_expired_with_supplier<T>(&self, supplier: &T) -> bool
     where
         T: TimeSupplier,
@@ -432,6 +439,7 @@ impl JsonUtil for Event {
     /// Deserialize [`Event`] from JSON
     ///
     /// **This method NOT verify the signature!**
+    #[inline]
     fn from_json<T>(json: T) -> Result<Self, Self::Err>
     where
         T: AsRef<[u8]>,

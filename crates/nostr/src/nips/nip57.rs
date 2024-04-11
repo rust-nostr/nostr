@@ -263,6 +263,7 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
 }
 
 /// Create **private** zap request
+#[inline]
 #[cfg(feature = "std")]
 pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
     private_zap_request_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), data, keys)
@@ -372,12 +373,12 @@ pub fn decrypt_sent_private_zap_message(
 }
 
 /// Decrypt **private** zap message that was received by the owner of the secret key
+#[inline]
 pub fn decrypt_received_private_zap_message(
     secret_key: &SecretKey,
     private_zap_event: &Event,
 ) -> Result<Event, Error> {
     let key: [u8; 32] = util::generate_shared_key(secret_key, &private_zap_event.pubkey);
-
     decrypt_private_zap_message(key, private_zap_event)
 }
 

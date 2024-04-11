@@ -81,6 +81,7 @@ pub struct Coordinate {
 
 impl Coordinate {
     /// Create new event coordinate
+    #[inline]
     pub fn new(kind: Kind, public_key: PublicKey) -> Self {
         Self {
             kind,
@@ -193,6 +194,7 @@ impl FromStr for Coordinate {
     type Err = Error;
 
     /// Try to parse [Coordinate] from `<kind>:<pubkey>:[<d-tag>]` format, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    #[inline]
     fn from_str(coordinate: &str) -> Result<Self, Self::Err> {
         Self::parse(coordinate)
     }

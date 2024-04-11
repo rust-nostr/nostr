@@ -88,6 +88,7 @@ pub enum Version {
 
 impl Version {
     /// Get [`Version`] as `u8`
+    #[inline]
     pub fn as_u8(&self) -> u8 {
         *self as u8
     }
@@ -107,6 +108,7 @@ impl TryFrom<u8> for Version {
 }
 
 /// Encrypt - EXPERIMENTAL
+#[inline]
 #[cfg(feature = "std")]
 pub fn encrypt<T>(
     secret_key: &SecretKey,
@@ -167,6 +169,7 @@ where
 }
 
 /// Decrypt
+#[inline]
 pub fn decrypt<T>(
     secret_key: &SecretKey,
     public_key: &PublicKey,

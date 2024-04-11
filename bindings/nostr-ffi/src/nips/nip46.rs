@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip46::{self, Method, Request, ResponseResult};
-use nostr::Url;
+use nostr::{JsonUtil, Url};
 use uniffi::{Enum, Object};
 
 use crate::error::Result;

@@ -165,6 +165,7 @@ impl<'de> Deserialize<'de> for RelayMessage {
 
 impl RelayMessage {
     /// Create `EVENT` message
+    #[inline]
     pub fn event(subscription_id: SubscriptionId, event: Event) -> Self {
         Self::Event {
             subscription_id,
@@ -173,6 +174,7 @@ impl RelayMessage {
     }
 
     /// Create `NOTICE` message
+    #[inline]
     pub fn notice<S>(message: S) -> Self
     where
         S: Into<String>,
@@ -183,6 +185,7 @@ impl RelayMessage {
     }
 
     /// Create `CLOSED` message
+    #[inline]
     pub fn closed<S>(subscription_id: SubscriptionId, message: S) -> Self
     where
         S: Into<String>,
@@ -194,11 +197,13 @@ impl RelayMessage {
     }
 
     /// Create `EOSE` message
+    #[inline]
     pub fn eose(subscription_id: SubscriptionId) -> Self {
         Self::EndOfStoredEvents(subscription_id)
     }
 
     /// Create `OK` message
+    #[inline]
     pub fn ok<S>(event_id: EventId, status: bool, message: S) -> Self
     where
         S: Into<String>,
@@ -211,6 +216,7 @@ impl RelayMessage {
     }
 
     /// Create `AUTH` message
+    #[inline]
     pub fn auth<S>(challenge: S) -> Self
     where
         S: Into<String>,
@@ -221,6 +227,7 @@ impl RelayMessage {
     }
 
     /// Create  `EVENT` message
+    #[inline]
     pub fn count(subscription_id: SubscriptionId, count: usize) -> Self {
         Self::Count {
             subscription_id,
@@ -264,6 +271,7 @@ impl RelayMessage {
     }
 
     /// Deserialize [`RelayMessage`] from [`Value`]
+    #[inline]
     pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
         let raw = RawRelayMessage::from_value(msg)?;
         RelayMessage::try_from(raw)

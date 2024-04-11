@@ -11,6 +11,7 @@ use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::{Hash, HashEngine};
 
 /// HKDF extract
+#[inline]
 pub fn extract(salt: &[u8], input_key_material: &[u8]) -> Hmac<Sha256Hash> {
     let mut engine: HmacEngine<Sha256Hash> = HmacEngine::new(salt);
     engine.input(input_key_material);

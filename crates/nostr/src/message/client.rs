@@ -88,11 +88,13 @@ impl<'de> Deserialize<'de> for ClientMessage {
 
 impl ClientMessage {
     /// Create `EVENT` message
+    #[inline]
     pub fn event(event: Event) -> Self {
         Self::Event(Box::new(event))
     }
 
     /// Create `REQ` message
+    #[inline]
     pub fn req(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
         Self::Req {
             subscription_id,
@@ -101,6 +103,7 @@ impl ClientMessage {
     }
 
     /// Create `COUNT` message
+    #[inline]
     pub fn count(subscription_id: SubscriptionId, filters: Vec<Filter>) -> Self {
         Self::Count {
             subscription_id,
@@ -109,16 +112,19 @@ impl ClientMessage {
     }
 
     /// Create new `CLOSE` message
+    #[inline]
     pub fn close(subscription_id: SubscriptionId) -> Self {
         Self::Close(subscription_id)
     }
 
     /// Create `AUTH` message
+    #[inline]
     pub fn auth(event: Event) -> Self {
         Self::Auth(Box::new(event))
     }
 
     /// Create new `NEG-OPEN` message
+    #[inline]
     pub fn neg_open(
         negentropy: &mut Negentropy,
         subscription_id: &SubscriptionId,
@@ -134,16 +140,19 @@ impl ClientMessage {
     }
 
     /// Check if is an `EVENT` message
+    #[inline]
     pub fn is_event(&self) -> bool {
         matches!(self, ClientMessage::Event(_))
     }
 
     /// Check if is an `REQ` message
+    #[inline]
     pub fn is_req(&self) -> bool {
         matches!(self, ClientMessage::Req { .. })
     }
 
     /// Check if is an `CLOSE` message
+    #[inline]
     pub fn is_close(&self) -> bool {
         matches!(self, ClientMessage::Close(_))
     }

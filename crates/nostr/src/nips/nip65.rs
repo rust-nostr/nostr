@@ -11,6 +11,7 @@ use alloc::vec::Vec;
 use crate::{Event, RelayMetadata, Tag, UncheckedUrl};
 
 /// Extracts the relay info (url, optional read/write flag) from the event
+#[inline]
 pub fn extract_relay_list(event: &Event) -> Vec<(UncheckedUrl, Option<RelayMetadata>)> {
     event
         .iter_tags()

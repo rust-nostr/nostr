@@ -84,6 +84,7 @@ pub struct SubscriptionId(String);
 
 impl SubscriptionId {
     /// Create new [`SubscriptionId`]
+    #[inline]
     pub fn new<S>(id: S) -> Self
     where
         S: Into<String>,
@@ -92,6 +93,7 @@ impl SubscriptionId {
     }
 
     /// Generate new random [`SubscriptionId`]
+    #[inline]
     #[cfg(feature = "std")]
     pub fn generate() -> Self {
         let mut rng = OsRng;

@@ -21,6 +21,7 @@ pub struct Contact {
 
 impl Contact {
     /// Create new [`Contact`]
+    #[inline]
     pub fn new<S>(public_key: PublicKey, relay_url: Option<UncheckedUrl>, alias: Option<S>) -> Self
     where
         S: Into<String>,

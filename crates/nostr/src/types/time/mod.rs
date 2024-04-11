@@ -71,6 +71,7 @@ impl Timestamp {
     }
 
     /// Remove a random number of seconds from [`Timestamp`] (max 65535 secs)
+    #[inline]
     #[cfg(feature = "std")]
     pub fn tweak(&mut self) {
         self.tweak_with_rng(&mut OsRng);
@@ -86,6 +87,7 @@ impl Timestamp {
     }
 
     /// Get timestamp as [`u64`]
+    #[inline]
     pub fn as_u64(&self) -> u64 {
         if self.0 >= 0 {
             self.0 as u64
@@ -95,6 +97,7 @@ impl Timestamp {
     }
 
     /// Get timestamp as [`i64`]
+    #[inline]
     pub fn as_i64(&self) -> i64 {
         self.0
     }

@@ -52,6 +52,7 @@ where
     type Err;
 
     /// Deserialize JSON
+    #[inline]
     fn from_json<T>(json: T) -> Result<Self, Self::Err>
     where
         T: AsRef<[u8]>,
@@ -60,6 +61,7 @@ where
     }
 
     /// Serialize to JSON string
+    #[inline]
     fn as_json(&self) -> String {
         // TODO: remove unwrap
         serde_json::to_string(self).unwrap()

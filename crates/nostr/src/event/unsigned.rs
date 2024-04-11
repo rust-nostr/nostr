@@ -89,6 +89,7 @@ pub struct UnsignedEvent {
 
 impl UnsignedEvent {
     /// Construct new unsigned event
+    #[inline]
     pub fn new<I, S>(
         public_key: PublicKey,
         created_at: Timestamp,
@@ -174,6 +175,7 @@ impl UnsignedEvent {
     /// Add signature to unsigned event
     ///
     /// Internally verify the [Event].
+    #[inline]
     pub fn add_signature_with_ctx<C>(
         self,
         secp: &Secp256k1<C>,

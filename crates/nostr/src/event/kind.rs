@@ -185,16 +185,19 @@ impl Hash for Kind {
 
 impl Kind {
     /// Get [`Kind`] as `u32`
+    #[inline]
     pub fn as_u32(&self) -> u32 {
         self.as_u64() as u32
     }
 
     /// Get [`Kind`] as `u64`
+    #[inline]
     pub fn as_u64(&self) -> u64 {
         (*self).into()
     }
 
     /// Get [`Kind`] as `f64`
+    #[inline]
     pub fn as_f64(&self) -> f64 {
         self.as_u64() as f64
     }

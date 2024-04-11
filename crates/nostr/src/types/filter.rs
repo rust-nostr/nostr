@@ -85,6 +85,7 @@ pub struct SingleLetterTag {
 
 impl SingleLetterTag {
     /// Compose new `lowercase` single-letter tag
+    #[inline]
     pub fn lowercase(character: Alphabet) -> Self {
         Self {
             character,
@@ -93,6 +94,7 @@ impl SingleLetterTag {
     }
 
     /// Compose new `uppercase` single-letter tag
+    #[inline]
     pub fn uppercase(character: Alphabet) -> Self {
         Self {
             character,
@@ -202,11 +204,13 @@ impl SingleLetterTag {
     }
 
     /// Check if single-letter tag is `lowercase`
+    #[inline]
     pub fn is_lowercase(&self) -> bool {
         !self.uppercase
     }
 
     /// Check if single-letter tag is `uppercase`
+    #[inline]
     pub fn is_uppercase(&self) -> bool {
         self.uppercase
     }
@@ -362,6 +366,7 @@ pub struct Filter {
 
 impl Filter {
     /// Create new empty [`Filter`]
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
