@@ -1,0 +1,10 @@
+[versions]
+agp = "8.1.4"
+kotlin = "1.9.22"
+
+[libraries]
+nostr = { module = "io.github.rust-nostr:nostr", version = "0.10.0" }
+
+[plugins]
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
+kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

@@ -9,4 +9,7 @@ python:
 js:
 	cd js && npm i
 	node js/index.js
+
+kotlin:
+    cd kotlin && just test
 	

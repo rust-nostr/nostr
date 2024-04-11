@@ -36,7 +36,9 @@ To generate a new key pair use the `generate()` method:
 <div slot="title">Kotlin</div>
 <section>
 
-TODO
+```kotlin
+{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:generate}}
+```
 
 </section>
 
@@ -84,7 +86,9 @@ TODO
 <div slot="title">Kotlin</div>
 <section>
 
-TODO
+```kotlin
+{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:restore}}
+```
 
 </section>
 
@@ -130,7 +134,9 @@ TODO
 <div slot="title">Kotlin</div>
 <section>
 
-TODO
+```kotlin
+{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:vanity}}
+```
 
 </section>
 
