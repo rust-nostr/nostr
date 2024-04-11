@@ -1,5 +1,5 @@
-from nostr_sdk import Client, NostrSigner, Keys, Event, UnsignedEvent, EventBuilder, Filter, \
-    HandleNotification, Timestamp, nip04_decrypt, nip59_extract_rumor, SecretKey, init_logger, LogLevel, Kind, KindEnum
+from nostr_sdk import Client, NostrSigner, Keys, Event, UnsignedEvent, Filter, \
+    HandleNotification, Timestamp, nip04_decrypt, UnwrappedGift, init_logger, LogLevel, Kind, KindEnum
 import time
 
 init_logger(LogLevel.DEBUG)
@@ -24,8 +24,10 @@ client.connect()
 now = Timestamp.now()
 
 nip04_filter = Filter().pubkey(pk).kind(Kind.from_enum(KindEnum.ENCRYPTED_DIRECT_MESSAGE())).since(now)
-nip59_filter = Filter().pubkey(pk).kind(Kind.from_enum(KindEnum.GIFT_WRAP())).since(Timestamp.from_secs(now.as_secs() - 60 * 60 * 24 * 7)) # NIP59 have a tweaked timestamp (in the past)
+nip59_filter = Filter().pubkey(pk).kind(Kind.from_enum(KindEnum.GIFT_WRAP())).since(
+    Timestamp.from_secs(now.as_secs() - 60 * 60 * 24 * 7))  # NIP59 have a tweaked timestamp (in the past)
 client.subscribe([nip04_filter, nip59_filter], None)
+
 
 class NotificationHandler(HandleNotification):
     def handle(self, relay_url, subscription_id, event: Event):
@@ -42,14 +44,16 @@ class NotificationHandler(HandleNotification):
             print("Decrypting NIP59 event")
             try:
                 # Extract rumor
-                rumor: UnsignedEvent = nip59_extract_rumor(keys, event)
+                unwrapped_gift = UnwrappedGift.from_gift_wrap(keys, event)
+                sender = unwrapped_gift.sender()
+                rumor: UnsignedEvent = unwrapped_gift.rumor()
 
                 # Check timestamp of rumor
                 if rumor.created_at().as_secs() >= now.as_secs():
                     if rumor.kind().match_enum(KindEnum.SEALED_DIRECT()):
                         msg = rumor.content()
                         print(f"Received new msg [sealed]: {msg}")
-                        client.send_sealed_msg(rumor.author(), f"Echo: {msg}", None)
+                        client.send_sealed_msg(sender, f"Echo: {msg}", None)
                     else:
                         print(f"{rumor.as_json()}")
             except Exception as e:
@@ -57,7 +61,8 @@ class NotificationHandler(HandleNotification):
 
     def handle_msg(self, relay_url, msg):
         None
-    
+
+
 abortable = client.handle_notifications(NotificationHandler())
 # Optionally, to abort handle notifications look, call abortable.abort()
 

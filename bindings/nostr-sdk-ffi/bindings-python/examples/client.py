@@ -1,4 +1,5 @@
-from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, Nip46Signer, init_logger, LogLevel
+from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, Nip46Signer, init_logger, LogLevel, \
+    NostrConnectUri
 from datetime import timedelta
 import time
 
@@ -11,21 +12,17 @@ init_logger(LogLevel.INFO)
 # Or, initialize with Keys signer
 keys = Keys.generate()
 signer = NostrSigner.keys(keys)
-client = Client(signer)
 
 # Or, initialize with NIP46 signer
-# app_keys = Keys.generate()
-# nip46 = Nip46Signer("wss://relay.damus.io", app_keys, None)
-#signer = NostrSigner.nip46(nip46)
-# client = Client(signer)
+# app_keys = Keys.parse("..")
+# uri = NostrConnectUri.parse("bunker://.. or nostrconnect://..")
+# nip46 = Nip46Signer(uri, app_keys, timedelta(seconds=60), None)
+# signer = NostrSigner.nip46(nip46)
 
-# Add a single relay
-client.add_relay("wss://relay.damus.io")
+client = Client(signer)
 
-# Add multiple relays
+# Add relays and connect
 client.add_relays(["wss://relay.damus.io", "wss://nos.lol"])
-
-# Connect
 client.connect()
 
 # Send an event using the Nostr Signer
@@ -46,7 +43,7 @@ time.sleep(2.0)
 
 # Get events from relays
 print("Getting events from relays...")
-filter = Filter().authors([keys.public_key(), custom_keys.public_key()])
-events = client.get_events_of([filter], timedelta(seconds=10))
+f = Filter().authors([keys.public_key(), custom_keys.public_key()])
+events = client.get_events_of([f], timedelta(seconds=10))
 for event in events:
     print(event.as_json())

@@ -7,7 +7,6 @@ signer = NostrSigner.keys(keys)
 client = Client(signer)
 
 client.add_relay("wss://relay.damus.io")
-client.add_relay("ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion", "127.0.0.1:9050")
 client.connect()
 
 try:

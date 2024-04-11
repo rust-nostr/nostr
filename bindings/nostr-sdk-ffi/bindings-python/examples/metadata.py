@@ -26,8 +26,8 @@ client.set_metadata(metadata)
 # Get metadata
 pk = PublicKey.from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
 print(f"\nGetting profile metadata for {pk.to_bech32()}...")
-filter = Filter().kind(Kind(0)).author(pk).limit(1)
-events = client.get_events_of([filter], timedelta(seconds=10))
+f = Filter().kind(Kind(0)).author(pk).limit(1)
+events = client.get_events_of([f], timedelta(seconds=10))
 for event in events:
     metadata = Metadata.from_json(event.content())
     print(f"Name: {metadata.get_name()}")

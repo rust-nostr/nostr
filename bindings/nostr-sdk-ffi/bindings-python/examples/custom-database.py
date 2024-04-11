@@ -1,9 +1,9 @@
-from nostr_sdk import Keys, Client, EventBuilder, Filter, ClientBuilder, CustomNostrDatabase, NostrDatabase, NegentropyOptions, Event, EventId, init_logger, LogLevel
-from datetime import timedelta
-import time
-from typing import List, Optional, Set, Dict, Tuple
+from nostr_sdk import Keys, Filter, ClientBuilder, CustomNostrDatabase, NostrDatabase, NegentropyOptions, Event, \
+    init_logger, LogLevel
+from typing import List, Optional, Set
 
 init_logger(LogLevel.INFO)
+
 
 # Example of custom in-memory database
 class MyDatabase(CustomNostrDatabase):
@@ -29,7 +29,7 @@ class MyDatabase(CustomNostrDatabase):
 
     def has_coordinate_been_deleted(self, coordinate, timestamp) -> bool:
         return False
-    
+
     def event_id_seen(self, event_id, relay_url: str):
         if event_id in self.seen_event_ids:
             self.seen_event_ids[event_id].add(relay_url)
@@ -57,6 +57,7 @@ class MyDatabase(CustomNostrDatabase):
         self.seen_event_ids.clear()
         self.events.clear()
 
+
 my_db = MyDatabase()
 database = NostrDatabase.custom(my_db)
 client = ClientBuilder().database(database).build()
@@ -69,13 +70,13 @@ keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc
 print(keys.public_key().to_bech32())
 
 # Negentropy reconciliation
-filter = Filter().author(keys.public_key())
+f = Filter().author(keys.public_key())
 opts = NegentropyOptions()
-client.reconcile(filter, opts)
+client.reconcile(f, opts)
 
 # Query events from database
-filter = Filter().author(keys.public_key()).limit(10)
-events = client.database().query([filter])
+f = Filter().author(keys.public_key()).limit(10)
+events = client.database().query([f])
 if len(events) == 0:
     print("Query not found any event")
 else:

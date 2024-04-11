@@ -20,7 +20,7 @@ while True:
         print(f"    Bytes sent: {stats.bytes_sent()}")
         print(f"    Bytes received: {stats.bytes_received()}")
         print(f"    Connected at: {stats.connected_at().to_human_datetime()}")
-        if stats.latency() != None:
+        if stats.latency() is not None:
             print(f"    Latency: {stats.latency().total_seconds() * 1000} ms")
 
         print("###########################################")
