@@ -54,7 +54,8 @@ impl From<raw::RawEvent> for RawEventRecord {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct RawEvent {
     inner: raw::RawEvent,
 }

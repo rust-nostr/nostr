@@ -76,7 +76,8 @@ impl From<Alphabet> for filter::Alphabet {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct SingleLetterTag {
     inner: filter::SingleLetterTag,
 }
@@ -120,7 +121,8 @@ impl SingleLetterTag {
     }
 }
 
-#[derive(Clone, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct Filter {
     inner: nostr::Filter,
 }

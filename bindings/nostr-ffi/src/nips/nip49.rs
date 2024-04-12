@@ -58,7 +58,8 @@ impl From<KeySecurity> for nip49::KeySecurity {
 }
 
 /// Encrypted Secret Key
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct EncryptedSecretKey {
     inner: nip49::EncryptedSecretKey,
 }

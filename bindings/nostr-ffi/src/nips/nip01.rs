@@ -14,7 +14,8 @@ use crate::error::Result;
 use crate::{Kind, PublicKey};
 
 /// Coordinate for event (`a` tag)
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct Coordinate {
     inner: nip01::Coordinate,
 }

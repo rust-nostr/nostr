@@ -10,7 +10,8 @@ use nostr_sdk::pool::relay;
 use uniffi::Object;
 
 /// Relay Limits
-#[derive(Clone, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct RelayLimits {
     inner: relay::RelayLimits,
 }

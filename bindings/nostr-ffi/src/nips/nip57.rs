@@ -32,7 +32,8 @@ impl From<ZapType> for nip57::ZapType {
     }
 }
 
-#[derive(Clone, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct ZapRequestData {
     inner: nip57::ZapRequestData,
 }

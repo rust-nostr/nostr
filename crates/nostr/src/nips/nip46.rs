@@ -727,7 +727,7 @@ impl JsonUtil for NostrConnectMetadata {
 }
 
 /// Nostr Connect URI
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum NostrConnectURI {
     /// Direct connection initiated by remote signer
     Bunker {

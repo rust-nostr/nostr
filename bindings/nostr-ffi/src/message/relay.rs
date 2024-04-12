@@ -162,7 +162,8 @@ impl From<RelayMessageEnum> for nostr::RelayMessage {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct RelayMessage {
     inner: nostr::RelayMessage,
 }

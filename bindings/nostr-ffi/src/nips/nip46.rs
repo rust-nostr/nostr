@@ -14,7 +14,8 @@ use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::NostrError;
 
-#[derive(Clone, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct NostrConnectMetadata {
     inner: nip46::NostrConnectMetadata,
 }
@@ -69,7 +70,8 @@ impl NostrConnectMetadata {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct NostrConnectURI {
     inner: nip46::NostrConnectURI,
 }

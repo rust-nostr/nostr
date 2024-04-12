@@ -62,7 +62,8 @@ impl From<nip19::Nip19> for Nip19Enum {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct Nip19 {
     inner: nip19::Nip19,
 }
@@ -85,7 +86,8 @@ impl Nip19 {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct Nip19Event {
     inner: nip19::Nip19Event,
 }
@@ -144,7 +146,8 @@ impl Nip19Event {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct Nip19Profile {
     inner: nip19::Nip19Profile,
 }

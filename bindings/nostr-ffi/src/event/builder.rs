@@ -26,7 +26,8 @@ use crate::{
     Timestamp, UnsignedEvent,
 };
 
-#[derive(Clone, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct EventBuilder {
     inner: nostr::EventBuilder,
 }

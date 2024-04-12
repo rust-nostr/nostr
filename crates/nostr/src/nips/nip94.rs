@@ -38,7 +38,7 @@ impl core::fmt::Display for FileMetadataError {
 impl std::error::Error for FileMetadataError {}
 
 /// File Metadata
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileMetadata {
     /// Url
     pub url: Url,

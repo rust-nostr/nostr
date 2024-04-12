@@ -68,7 +68,8 @@ impl From<nostr::Metadata> for MetadataRecord {
     }
 }
 
-#[derive(Clone, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct Metadata {
     inner: nostr::Metadata,
 }

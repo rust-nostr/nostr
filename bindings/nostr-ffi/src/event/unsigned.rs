@@ -14,7 +14,8 @@ use super::EventId;
 use crate::error::Result;
 use crate::{Event, Keys, Kind, PublicKey, Tag, Timestamp};
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct UnsignedEvent {
     inner: nostr::UnsignedEvent,
 }

@@ -15,7 +15,7 @@ const SUPPORT_RUST_NOSTR_PERCENTAGE: f64 = 0.05; // 5%
 const SUPPORT_RUST_NOSTR_MSG: &str = "Zap split to support Rust Nostr development!";
 
 /// Zap entity
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ZapEntity {
     /// Zap to event
     Event(EventId),

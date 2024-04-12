@@ -12,7 +12,8 @@ use uniffi::{Enum, Object, Record};
 use crate::error::Result;
 use crate::Timestamp;
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct RelayInformationDocument {
     inner: nip11::RelayInformationDocument,
 }

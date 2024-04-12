@@ -50,7 +50,8 @@ impl From<nip21::Nip21> for Nip21Enum {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct Nip21 {
     inner: nip21::Nip21,
 }

@@ -159,7 +159,8 @@ impl From<nostr::ClientMessage> for ClientMessageEnum {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct ClientMessage {
     inner: nostr::ClientMessage,
 }

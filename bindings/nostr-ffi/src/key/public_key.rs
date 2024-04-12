@@ -10,7 +10,8 @@ use uniffi::Object;
 
 use crate::error::Result;
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct PublicKey {
     inner: nostr::PublicKey,
 }

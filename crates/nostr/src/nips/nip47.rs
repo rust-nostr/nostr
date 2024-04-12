@@ -227,7 +227,7 @@ pub enum Method {
 }
 
 /// Nostr Wallet Connect Request Params
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RequestParams {
     /// Pay Invoice
     PayInvoice(PayInvoiceRequestParams),
@@ -269,7 +269,7 @@ impl Serialize for RequestParams {
 }
 
 /// Pay Invoice Request Params
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PayInvoiceRequestParams {
     /// Optional id
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -282,14 +282,14 @@ pub struct PayInvoiceRequestParams {
 }
 
 /// Multiple Pay Invoice Request Params
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MultiPayInvoiceRequestParams {
     /// Requested invoices
     pub invoices: Vec<PayInvoiceRequestParams>,
 }
 
 /// TLVs to be added to the keysend payment
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct KeysendTLVRecord {
     /// TLV type
     #[serde(rename = "type")]
@@ -299,7 +299,7 @@ pub struct KeysendTLVRecord {
 }
 
 /// Pay Invoice Request Params
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PayKeysendRequestParams {
     /// Optional id
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -318,14 +318,14 @@ pub struct PayKeysendRequestParams {
 }
 
 /// Multiple Pay Keysend Request Params
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MultiPayKeysendRequestParams {
     /// Requested keysends
     pub keysends: Vec<PayKeysendRequestParams>,
 }
 
 /// Make Invoice Request Params
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MakeInvoiceRequestParams {
     /// Amount in millisatoshis
     pub amount: u64,
@@ -338,7 +338,7 @@ pub struct MakeInvoiceRequestParams {
 }
 
 /// Lookup Invoice Request Params
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LookupInvoiceRequestParams {
     /// Payment hash of invoice
     pub payment_hash: Option<String>,
@@ -347,7 +347,7 @@ pub struct LookupInvoiceRequestParams {
 }
 
 /// Transaction Type
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TransactionType {
     /// Incoming payments
     #[serde(rename = "incoming")]
@@ -358,7 +358,7 @@ pub enum TransactionType {
 }
 
 /// List Transactions Request Params
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ListTransactionsRequestParams {
     /// Starting timestamp in seconds since epoch
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -382,7 +382,7 @@ pub struct ListTransactionsRequestParams {
 }
 
 /// NIP47 Request
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Request {
     /// Request method
     pub method: Method,
@@ -663,7 +663,7 @@ impl Serialize for ResponseResult {
 }
 
 /// NIP47 Response
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Response {
     /// Request Method
     pub result_type: Method,

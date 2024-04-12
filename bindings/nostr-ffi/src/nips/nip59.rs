@@ -33,7 +33,8 @@ pub fn gift_wrap(
 /// Unwrapped Gift Wrap
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct UnwrappedGift {
     inner: nip59::UnwrappedGift,
 }

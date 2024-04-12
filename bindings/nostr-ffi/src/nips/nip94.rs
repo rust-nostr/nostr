@@ -15,7 +15,8 @@ use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::ImageDimensions;
 
-#[derive(Clone, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct FileMetadata {
     inner: nip94::FileMetadata,
 }

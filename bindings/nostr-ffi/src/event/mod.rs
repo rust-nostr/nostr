@@ -24,7 +24,8 @@ use crate::error::Result;
 use crate::nips::nip01::Coordinate;
 use crate::{PublicKey, Timestamp};
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct Event {
     inner: nostr::Event,
 }

@@ -6,7 +6,8 @@ use std::ops::Deref;
 
 use uniffi::Object;
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct Timestamp {
     inner: nostr::Timestamp,
 }

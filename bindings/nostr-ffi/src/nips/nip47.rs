@@ -520,7 +520,8 @@ impl From<ListTransactionsRequestParams> for nip47::ListTransactionsRequestParam
 }
 
 /// NIP47 Request
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct Request {
     inner: nip47::Request,
 }
@@ -865,7 +866,8 @@ impl From<ResponseResult> for nip47::ResponseResult {
 }
 
 /// NIP47 Response
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct Response {
     inner: nip47::Response,
 }
@@ -912,7 +914,8 @@ impl Response {
 }
 
 /// Nostr Connect URI
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct NostrWalletConnectURI {
     inner: nip47::NostrWalletConnectURI,
 }

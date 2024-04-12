@@ -134,7 +134,8 @@ impl From<ProxyTarget> for options::ProxyTarget {
 }
 
 /// Proxy
-#[derive(Clone, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct Proxy {
     inner: options::Proxy,
 }

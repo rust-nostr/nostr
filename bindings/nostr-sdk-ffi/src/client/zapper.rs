@@ -16,7 +16,8 @@ use uniffi::Object;
 use crate::error::Result;
 
 /// Zap entity
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct ZapEntity {
     inner: client::ZapEntity,
 }
@@ -81,7 +82,8 @@ impl NostrZapper {
 }
 
 /// Zap Details
-#[derive(Clone, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct ZapDetails {
     inner: client::ZapDetails,
 }

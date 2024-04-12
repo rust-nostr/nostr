@@ -16,7 +16,8 @@ pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
 use crate::error::Result;
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct Keys {
     inner: key::Keys,
 }

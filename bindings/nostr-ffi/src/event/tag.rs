@@ -870,7 +870,8 @@ impl TryFrom<TagEnum> for tag::Tag {
     }
 }
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
 pub struct Tag {
     inner: tag::Tag,
 }

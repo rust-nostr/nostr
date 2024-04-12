@@ -10,7 +10,8 @@ use uniffi::Object;
 use crate::error::Result;
 use crate::nips::nip49::EncryptedSecretKey;
 
-#[derive(Object)]
+#[derive(Debug, PartialEq, Eq, Object)]
+#[uniffi::export(Debug, Eq)]
 pub struct SecretKey {
     inner: nostr::SecretKey,
 }
