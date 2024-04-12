@@ -8,7 +8,7 @@ libnostr_ffi.dylib
 
 *.swp
 
-src/nostr/nostr.py
+src/nostr/nostr_ffi.py
 src/nostr/*.so
 *.whl
 build/

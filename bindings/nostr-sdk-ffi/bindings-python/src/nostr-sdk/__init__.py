@@ -1,2 +1,2 @@
-from nostr_sdk.nostr import *
-from nostr_sdk.nostr_sdk import *
+from nostr_sdk.nostr_ffi import *
+from nostr_sdk.nostr_sdk_ffi import *

@@ -1,1 +1,1 @@
-from nostr_protocol.nostr import *
+from nostr_protocol.nostr_ffi import *

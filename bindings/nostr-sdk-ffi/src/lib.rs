@@ -29,4 +29,4 @@ pub use self::logger::{init_logger, LogLevel};
 pub use self::notifications::HandleNotification;
 pub use self::relay::{Relay, RelayConnectionStats, RelayStatus};
 
-uniffi::setup_scaffolding!("nostr_sdk");
+uniffi::setup_scaffolding!();

@@ -50,4 +50,4 @@ impl NostrLibrary {
     }
 }
 
-uniffi::setup_scaffolding!("nostr");
+uniffi::setup_scaffolding!();
