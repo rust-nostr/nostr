@@ -54,16 +54,19 @@ kotlin: clean-android android
 	find ./ffi/kotlin/jniLibs -name libnostr_sdk_ffi.so -type f -delete
 	cargo run -p uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_ffi.so --language kotlin --no-format -o ffi/kotlin
 
+# Copy required modules and libs and assemble AAR
+assemble-aar:
+    rm -rf bindings-android/lib/src/main/jniLibs
+    rm -rf bindings-android/lib/src/main/kotlin
+    cp -r ffi/kotlin/jniLibs bindings-android/lib/src/main
+    mkdir -p bindings-android/lib/src/main/kotlin/
+    cp -r ffi/kotlin/rust bindings-android/lib/src/main/kotlin/
+    cd bindings-android && ./gradlew assembleRelease
+    mkdir -p ffi/android
+    cp bindings-android/lib/build/outputs/aar/lib-release.aar ffi/android
+
 # Compile and build Android Archive (AAR)
-bindings-android: sdk-root kotlin
-	rm -rf bindings-android/lib/src/main/jniLibs
-	rm -rf bindings-android/lib/src/main/kotlin
-	cp -r ffi/kotlin/jniLibs bindings-android/lib/src/main
-	mkdir -p bindings-android/lib/src/main/kotlin/
-	cp -r ffi/kotlin/rust bindings-android/lib/src/main/kotlin/
-	cd bindings-android && ./gradlew assembleRelease
-	mkdir -p ffi/android
-	cp bindings-android/lib/build/outputs/aar/lib-release.aar ffi/android
+bindings-android: sdk-root kotlin assemble-aar
 
 # Publish android bindings
 [confirm]
