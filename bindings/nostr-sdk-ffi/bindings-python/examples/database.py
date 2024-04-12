@@ -8,6 +8,7 @@ print(keys.public_key().to_bech32())
 # Create/open SQLite database
 database = NostrDatabase.sqlite("nostr.db")
 
+# NOT AVAILABLE ON WINDOWS AT THE MOMENT!
 # Create/open nostrdb database
 # database = NostrDatabase.ndb("ndb")
 

@@ -6,7 +6,8 @@ pip install --user -r requirements.txt
 
 echo "Generating native binaries..."
 rustup target add x86_64-pc-windows-msvc
-cargo build --release --target x86_64-pc-windows-msvc
+# TODO: enable all features
+cargo build --release --target x86_64-pc-windows-msvc --no-default-features --features sqlite
 
 echo "Generating nostr_sdk.py..."
 cd ../
