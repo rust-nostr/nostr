@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 //! Kind
+
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};

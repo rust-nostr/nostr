@@ -16,6 +16,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::profile::JsProfile;
 
+/// Nostr Database
 #[wasm_bindgen(js_name = NostrDatabase)]
 pub struct JsNostrDatabase {
     inner: Arc<DynNostrDatabase>,
@@ -45,6 +46,11 @@ impl JsNostrDatabase {
         })
     }
 
+    /// Save `Event` into store
+    ///
+    /// Return `true` if event was successfully saved into database.
+    ///
+    /// **This method assume that `Event` was already verified**
     pub async fn save_event(&self, event: &JsEvent) -> Result<bool> {
         self.inner.save_event(event).await.map_err(into_err)
     }
