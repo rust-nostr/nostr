@@ -15,6 +15,11 @@ for arg in "${buildargs[@]}"; do
 
     cargo build $arg
 
+    if [[ $arg != *"--target wasm32-unknown-unknown"* ]];
+    then
+        cargo test $arg
+    fi
+
     cargo clippy $arg -- -D warnings
 
     echo
