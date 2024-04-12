@@ -7,7 +7,7 @@ let package = Package(
     name: "NostrSnippets",
     platforms: [.macOS(.v13)],
     dependencies: [
-        .package(url: "https://github.com/rust-nostr/nostr-swift", from:"0.10.0")
+        .package(url: "https://github.com/rust-nostr/nostr-swift", from:"0.11.0")
     ],
     targets: [
         .executableTarget(

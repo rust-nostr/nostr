@@ -1,4 +1,4 @@
-const { Keys, EventBuilder, loadWasmSync } = require("@rust-nostr/nostr");
+const { Keys, EventBuilder, UnwrappedGift, loadWasmSync } = require("@rust-nostr/nostr");
 
 function run() {
     loadWasmSync();
@@ -17,7 +17,9 @@ function run() {
     console.log("Gift Wrap: " + gw.asJson())
 
     // Extract rumor from gift wrap with receiver keys
-    // TODO
+    let unwrapped_gift = UnwrappedGift.fromGiftWrap(bob_keys, gw);
+    console.log("Sender: ", unwrapped_gift.sender.toBech32())
+    console.log("Rumor: ", unwrapped_gift.rumor.asJson())
 }
 
 module.exports.run = run;

@@ -1,4 +1,4 @@
-from nostr_protocol import Keys, EventBuilder, Event, gift_wrap, nip59_extract_rumor
+from nostr_protocol import Keys, EventBuilder, Event, gift_wrap, UnwrappedGift, UnsignedEvent
 
 
 def nip59():
@@ -16,5 +16,8 @@ def nip59():
     print(f"Gift Wrap: {gw.as_json()}")
 
     # Extract rumor from gift wrap with receiver keys
-    rumor = nip59_extract_rumor(bob_keys, gw)
+    unwrapped_gift = UnwrappedGift.from_gift_wrap(bob_keys, gw)
+    sender = unwrapped_gift.sender()
+    rumor: UnsignedEvent = unwrapped_gift.rumor()
+    print(f"Sender: {sender.to_bech32()}")
     print(f"Rumor: {rumor.as_json()}")

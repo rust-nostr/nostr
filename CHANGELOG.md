@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Summary
 
+### Changed
+
+### Added
+
+### Fixed
+
+### Removed
+
+## [v0.30.0]
+
+### Summary
+
 Adapted NIP46 to last changes, added `NostrConnectRemoteSigner` to easily build remote signers (just construct it and call `serve` method), 
 improved proxy options (allow to specify the proxy target: all relays or only `.onion` ones), 
 improvements to NWC client, fixed equality operator for some foreign language (python still need to use `a.__eq__(b)`),
@@ -95,4 +107,5 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [Xiao Yu]: https://github.com/kasugamirai
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.29.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.30.0...HEAD
+[v0.30.0]: https://github.com/rust-nostr/nostr/compare/v0.30.0...HEAD

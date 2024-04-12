@@ -28,6 +28,8 @@
 * Bump versions in `book` (**without commit**, commit in next step)
     * Update examples
     * Rust book tests: `just check-book`
+  
+* Update `CHANGELOG.md`
 
 * Commit and push (**WITH tag**)
     * `Release vX.X.X`
