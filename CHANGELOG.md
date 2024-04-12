@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * ffi(sdk): add `AbortHandle` ([Yuki Kishimoto])
 * ffi(sdk): add `sqlite` and `ndb` features ([Yuki Kishimoto])
 * js(nostr): add missing NIP51 constructors ([rustedmoon])
+* js(nostr): add NIP47 request params and response results structs ([Yuki Kishimoto])
 
 ### Fixed
 
