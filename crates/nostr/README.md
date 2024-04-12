@@ -16,14 +16,14 @@ You may be interested in:
 * [`nostr-database`](https://crates.io/crates/nostr-database): Database for Nostr apps
 * [`nostr-relay-pool`](https://crates.io/crates/nostr-relay-pool): Nostr Relay Pool
 * [`nostr-signer`](https://crates.io/crates/nostr-signer): Signer for Nostr apps
-* [`nostr-zapper`](https://crates.io/crates/nostr-zapper): Zapper abscraction for Nostr apps
+* [`nostr-zapper`](https://crates.io/crates/nostr-zapper): Zapper abstraction for Nostr apps
 * [`nwc`](https://crates.io/crates/nwc): `NWC` client and zapper backend for Nostr apps
 
 ## Getting started
 
 ```toml
 [dependencies]
-nostr = "0.29"
+nostr = "0.30"
 ```
 
 ```rust,no_run
