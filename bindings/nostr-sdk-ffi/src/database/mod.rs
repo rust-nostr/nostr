@@ -37,9 +37,9 @@ impl From<&NostrDatabase> for Arc<DynNostrDatabase> {
     }
 }
 
+#[cfg(feature = "sqlite")]
 #[uniffi::export]
 impl NostrDatabase {
-    #[cfg(feature = "sqlite")]
     #[uniffi::constructor]
     pub fn sqlite(path: &str) -> Result<Self> {
         block_on(async move {
@@ -49,9 +49,12 @@ impl NostrDatabase {
             })
         })
     }
+}
 
+#[cfg(feature = "ndb")]
+#[uniffi::export]
+impl NostrDatabase {
     /// [`nostrdb`](https://github.com/damus-io/nostrdb) backend
-    #[cfg(feature = "ndb")]
     #[uniffi::constructor]
     pub fn ndb(path: &str) -> Result<Self> {
         let db = Arc::new(NdbDatabase::open(path)?);
@@ -59,7 +62,10 @@ impl NostrDatabase {
             inner: db.into_nostr_database(),
         })
     }
+}
 
+#[uniffi::export]
+impl NostrDatabase {
     #[uniffi::constructor]
     pub fn custom(database: Box<dyn CustomNostrDatabase>) -> Self {
         let intermediate = IntermediateCustomNostrDatabase { inner: database };
