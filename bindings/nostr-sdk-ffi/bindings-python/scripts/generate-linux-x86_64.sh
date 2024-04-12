@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-${PYBIN}/python --version
-${PYBIN}/pip install -r requirements.txt
+python --version
+pip install -r requirements.txt
 
 echo "Generating native binaries..."
 cargo build --release

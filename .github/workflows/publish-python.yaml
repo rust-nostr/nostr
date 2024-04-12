@@ -2,30 +2,16 @@ name: Publish nostr-protocol to PyPI
 
 on: [workflow_dispatch]
 
-# We use manylinux2014 because older CentOS versions used by 2010 and 1 have a very old glibc version, which
-# makes it very hard to use GitHub's javascript actions (checkout, upload-artifact, etc).
-# They mount their own nodejs interpreter inside your container, but since that's not statically linked it
-# tries to load glibc and fails because it requires a more recent version.
-
 jobs:
-  build-manylinux2014-x86_64-wheels:
-    name: "Build Manylinux 2014 x86_64 wheel"
+  build-manylinux_2_31-x86_64-wheels:
+    name: "Build manylinux_2_31 x86_64 wheel"
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python: ["3.9", "3.10", "3.11", "3.12"]
     defaults:
       run:
         working-directory: bindings/nostr-ffi/bindings-python
-    container:
-      image: quay.io/pypa/manylinux2014_x86_64
-      env:
-        PLAT: manylinux2014_x86_64
-        PYBIN: "/opt/python/${{ matrix.python }}/bin"
-    strategy:
-      matrix:
-        python: # Update this list whenever the docker image is updated (check /opt/python/)
-          - cp39-cp39
-          - cp310-cp310
-          - cp311-cp311
-          - cp312-cp312
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
@@ -33,18 +19,21 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-        
+
+      - name: "Setup Python"
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
       - name: "Generate nostr.py and binaries"
-        run: bash ./scripts/generate-linux.sh
+        run: bash ./scripts/generate-linux-x86_64.sh
 
       - name: "Build wheel"
-        # Specifying the plat-name argument is necessary to build a wheel with the correct name,
-        # see issue #350 for more information
-        run: ${PYBIN}/python setup.py bdist_wheel --plat-name manylinux_2_17_x86_64 --verbose
+        run: python3 setup.py bdist_wheel --plat-name manylinux_2_31_x86_64 --verbose
 
       - uses: actions/upload-artifact@v3
         with:
-          name: nostr_protocol-manylinux2014-x86_64-${{ matrix.python }}
+          name: nostr_sdk-manylinux_2_31_x86_64-${{ matrix.python }}
           path: /home/runner/work/nostr/nostr/bindings/nostr-ffi/bindings-python/dist/*.whl
 
   build-manylinux_2_31-aarch64-wheels:
