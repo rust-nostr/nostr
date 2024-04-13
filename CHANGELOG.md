@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+ffi(nostr): remove `Kind::match*` methods ([Yuki Kishimoto])
+
 ## [v0.30.0]
 
 ### Summary
@@ -70,7 +72,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 * nostr: fix NIP46 `Request::from_message` deserialization ([Yuki Kishimoto])
 * nostr: fix `NostrConnectURI` serialization ([Yuki Kishimoto])
 * nostr: fix `LookupInvoiceParams` ([benthecarman])
-* ffi: fix equality operator (`==`) for some foreign language (python still need to use `a.__eq__(b)`) ([Yuki Kishimoto])
+* ffi: fix equality operator (`==`) ([Yuki Kishimoto])
 * js(nostr): fix `Keys` method calls in examples ([Xiao Yu])
 
 ### Removed

@@ -7,14 +7,6 @@ use std::ops::Deref;
 use uniffi::{Enum, Object};
 
 /// Event Kind
-///
-/// **Note: currently is NOT possible to compare 2 `Kind` objects, like `kind1 == kind2` in Python!**
-///
-/// To check if 2 kinds are equal, you can do:
-/// * `kind1.__eq__(kind2)`
-/// * `kind1.match(kind2)`
-/// * `kind1.match_u64(1)` or `kind1.as_u64() == 1`
-/// * `kind1.match_enum(KindEnum.TEXT_NOTE())` or `kind1.as_enum() = KindEnum.TEXT_NOTE()`
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]
 pub struct Kind {
@@ -54,21 +46,6 @@ impl Kind {
 
     pub fn as_enum(&self) -> KindEnum {
         self.inner.into()
-    }
-
-    /// Check if `Kind` match another `Kind`
-    pub fn r#match(&self, other: &Self) -> bool {
-        self.inner == other.inner
-    }
-
-    /// Check if `Kind` match `KindEnum`
-    pub fn match_enum(&self, e: KindEnum) -> bool {
-        self.inner == e.into()
-    }
-
-    /// Check if `Kind` match `u64`
-    pub fn match_u64(&self, kind: u64) -> bool {
-        self.inner.as_u64() == kind
     }
 }
 
