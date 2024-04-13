@@ -49,6 +49,15 @@ impl TryIntoUrl for String {
     }
 }
 
+impl TryIntoUrl for &String {
+    type Err = ParseError;
+
+    #[inline]
+    fn try_into_url(self) -> Result<Url, Self::Err> {
+        Url::parse(self)
+    }
+}
+
 impl TryIntoUrl for &str {
     type Err = ParseError;
 
