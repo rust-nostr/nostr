@@ -100,12 +100,8 @@ impl From<nip19::Nip19Event> for Nip19Event {
 
 #[uniffi::export]
 impl Nip19Event {
-    #[uniffi::constructor]
-    pub fn new(
-        event_id: Arc<EventId>,
-        author: Option<Arc<PublicKey>>,
-        relays: Vec<String>,
-    ) -> Self {
+    #[uniffi::constructor(default(author = None, relays = []))]
+    pub fn new(event_id: &EventId, author: Option<Arc<PublicKey>>, relays: &[String]) -> Self {
         let mut inner = nip19::Nip19Event::new(**event_id, relays);
         inner.author = author.map(|p| **p);
         Self { inner }
@@ -161,8 +157,8 @@ impl From<nip19::Nip19Profile> for Nip19Profile {
 #[uniffi::export]
 impl Nip19Profile {
     /// New NIP19 profile
-    #[uniffi::constructor]
-    pub fn new(public_key: &PublicKey, relays: Vec<String>) -> Result<Self> {
+    #[uniffi::constructor(default(relays = []))]
+    pub fn new(public_key: &PublicKey, relays: &[String]) -> Result<Self> {
         Ok(Self {
             inner: nip19::Nip19Profile::new(**public_key, relays)?,
         })
