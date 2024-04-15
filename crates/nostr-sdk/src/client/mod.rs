@@ -1210,7 +1210,7 @@ impl Client {
         &self,
         bolt11: S,
         preimage: Option<S>,
-        zap_request: Event,
+        zap_request: &Event,
     ) -> Result<EventId, Error>
     where
         S: Into<String>,

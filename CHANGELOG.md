@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 nostr: update fingerprint of NIP26 functions ([Yuki Kishimoto])
+nostr: update fingerprint of `EventBuilder::zap_receipt` constructor ([Yuki Kishimoto])
 nostr: update `EventId::new` fingerprint ([Yuki Kishimoto])
 database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
 ffi(nostr): set default args for `Nip19Profile` and `Nip19Event` constructors ([Yuki Kishimoto])

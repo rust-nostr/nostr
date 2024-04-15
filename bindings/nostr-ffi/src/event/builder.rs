@@ -333,9 +333,9 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn zap_receipt(bolt11: String, preimage: Option<String>, zap_request: &Event) -> Self {
+    pub fn zap_receipt(bolt11: &str, preimage: Option<String>, zap_request: &Event) -> Self {
         Self {
-            inner: nostr::EventBuilder::zap_receipt(bolt11, preimage, zap_request.deref().clone()),
+            inner: nostr::EventBuilder::zap_receipt(bolt11, preimage, zap_request.deref()),
         }
     }
 

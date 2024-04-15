@@ -319,9 +319,9 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = zapReceipt)]
-    pub fn zap_receipt(bolt11: String, preimage: Option<String>, zap_request: JsEvent) -> Self {
+    pub fn zap_receipt(bolt11: &str, preimage: Option<String>, zap_request: &JsEvent) -> Self {
         Self {
-            inner: EventBuilder::zap_receipt(bolt11, preimage, zap_request.deref().to_owned()),
+            inner: EventBuilder::zap_receipt(bolt11, preimage, zap_request.deref()),
         }
     }
 
