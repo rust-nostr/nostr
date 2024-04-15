@@ -16,7 +16,6 @@ pub extern crate nostr_database as database;
 pub extern crate nostrdb;
 
 use async_trait::async_trait;
-use nostr::nips::nip01::Coordinate;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::util::hex;
 use nostr::{
@@ -121,18 +120,6 @@ impl NostrDatabase for NdbDatabase {
 
     async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         self.has_event_already_been_saved(event_id).await
-    }
-
-    async fn has_event_id_been_deleted(&self, _event_id: &EventId) -> Result<bool, Self::Err> {
-        Ok(false)
-    }
-
-    async fn has_coordinate_been_deleted(
-        &self,
-        _coordinate: &Coordinate,
-        _timestamp: Timestamp,
-    ) -> Result<bool, Self::Err> {
-        Ok(false)
     }
 
     async fn event_id_seen(&self, _event_id: EventId, _relay_url: Url) -> Result<(), Self::Err> {

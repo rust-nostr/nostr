@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 nostr: update `EventId::new` fingerprint ([Yuki Kishimoto])
+database: set default results forf `NostrDatabase::has_event_id_been_deleted` and `NostrDatabase::has_coordinate_been_deleted` ([Yuki Kishimoto])
 ffi(nostr): set default args for `Nip19Profile` and `Nip19Event` constructors ([Yuki Kishimoto])
 ffi(sdk): set default args for `Client` constructors ([Yuki Kishimoto])
 
