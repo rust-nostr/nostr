@@ -48,20 +48,20 @@ nostr-zapper = { workspace = true, optional = true }
 nwc = { workspace = true, optional = true }
 once_cell = { workspace = true, optional = true }
 thiserror.workspace = true
+tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 nostr-ndb = { workspace = true, optional = true }
 nostr-rocksdb = { workspace = true, optional = true }
 nostr-sqlite = { workspace = true, optional = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 nostr-indexeddb = { workspace = true, optional = true }
 nostr-webln = { workspace = true, optional = true }
-tokio = { workspace = true, features = ["rt", "macros", "sync"] }
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["macros"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
