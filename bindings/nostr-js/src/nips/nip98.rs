@@ -1,6 +1,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use nostr::nips::nip98::HttpData;
 use nostr::UncheckedUrl;
 use wasm_bindgen::prelude::*;
@@ -12,15 +14,17 @@ pub struct JsHttpData {
     inner: HttpData,
 }
 
-impl From<HttpData> for JsHttpData {
-    fn from(inner: HttpData) -> Self {
-        Self { inner }
+impl Deref for JsHttpData {
+    type Target = HttpData;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
-impl From<JsHttpData> for HttpData {
-    fn from(value: JsHttpData) -> Self {
-        value.inner
+impl From<HttpData> for JsHttpData {
+    fn from(inner: HttpData) -> Self {
+        Self { inner }
     }
 }
 
@@ -28,7 +32,9 @@ impl From<JsHttpData> for HttpData {
 impl JsHttpData {
     #[wasm_bindgen(constructor)]
     pub fn new(url: &str, method: JsHttpMethod) -> Self {
-        HttpData::new(UncheckedUrl::from(url), method.into()).into()
+        Self {
+            inner: HttpData::new(UncheckedUrl::from(url), method.into()),
+        }
     }
 
     #[wasm_bindgen(getter)]

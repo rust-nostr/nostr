@@ -40,16 +40,26 @@ impl From<JsNIP44Version> for Version {
 /// Encrypt (NIP44)
 #[wasm_bindgen(js_name = nip44Encrypt)]
 pub fn nip44_encrypt(
-    sk: &JsSecretKey,
-    pk: &JsPublicKey,
+    secret_key: &JsSecretKey,
+    public_key: &JsPublicKey,
     content: &str,
     version: JsNIP44Version,
 ) -> Result<String> {
-    nip44::encrypt(sk.deref(), pk.deref(), content, version.into()).map_err(into_err)
+    nip44::encrypt(
+        secret_key.deref(),
+        public_key.deref(),
+        content,
+        version.into(),
+    )
+    .map_err(into_err)
 }
 
 /// Decrypt (NIP44)
 #[wasm_bindgen(js_name = nip44Decrypt)]
-pub fn nip44_decrypt(sk: &JsSecretKey, pk: &JsPublicKey, payload: &str) -> Result<String> {
-    nip44::decrypt(sk.deref(), pk.deref(), payload).map_err(into_err)
+pub fn nip44_decrypt(
+    secret_key: &JsSecretKey,
+    public_key: &JsPublicKey,
+    payload: &str,
+) -> Result<String> {
+    nip44::decrypt(secret_key.deref(), public_key.deref(), payload).map_err(into_err)
 }

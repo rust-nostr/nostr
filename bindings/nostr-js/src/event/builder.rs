@@ -55,8 +55,8 @@ impl JsEventBuilder {
 
     /// Set a custom `created_at` UNIX timestamp
     #[wasm_bindgen(js_name = customCreatedAt)]
-    pub fn custom_created_at(self, created_at: JsTimestamp) -> Self {
-        self.inner.custom_created_at(*created_at).into()
+    pub fn custom_created_at(self, created_at: &JsTimestamp) -> Self {
+        self.inner.custom_created_at(**created_at).into()
     }
 
     /// Build `Event`
@@ -169,7 +169,7 @@ impl JsEventBuilder {
         Ok(Self {
             inner: EventBuilder::encrypted_direct_msg(
                 sender_keys.deref(),
-                receiver_pubkey.into(),
+                **receiver_pubkey,
                 content,
                 reply_to.map(|id| id.into()),
             )
@@ -186,7 +186,7 @@ impl JsEventBuilder {
 
     #[wasm_bindgen]
     pub fn delete(ids: Vec<JsEventId>, reason: Option<String>) -> Self {
-        let ids = ids.into_iter().map(|id| id.inner);
+        let ids = ids.into_iter().map(|id| *id);
         Self {
             inner: match reason {
                 Some(reason) => EventBuilder::delete_with_reason(ids, reason),
@@ -237,7 +237,7 @@ impl JsEventBuilder {
             None => None,
         };
         Ok(Self {
-            inner: EventBuilder::channel_metadata(channel_id.into(), relay_url, metadata.deref()),
+            inner: EventBuilder::channel_metadata(**channel_id, relay_url, metadata.deref()),
         })
     }
 
@@ -249,21 +249,21 @@ impl JsEventBuilder {
     ) -> Result<JsEventBuilder> {
         let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
         Ok(Self {
-            inner: EventBuilder::channel_msg(channel_id.into(), relay_url, content),
+            inner: EventBuilder::channel_msg(**channel_id, relay_url, content),
         })
     }
 
     #[wasm_bindgen(js_name = hideChannelMsg)]
     pub fn hide_channel_msg(message_id: &JsEventId, reason: Option<String>) -> Self {
         Self {
-            inner: EventBuilder::hide_channel_msg(message_id.into(), reason),
+            inner: EventBuilder::hide_channel_msg(**message_id, reason),
         }
     }
 
     #[wasm_bindgen(js_name = muteChannelUser)]
     pub fn mute_channel_user(pubkey: &JsPublicKey, reason: Option<String>) -> Self {
         Self {
-            inner: EventBuilder::mute_channel_user(pubkey.into(), reason),
+            inner: EventBuilder::mute_channel_user(**pubkey, reason),
         }
     }
 
@@ -276,24 +276,24 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = liveEvent)]
-    pub fn live_event(live_event: JsLiveEvent) -> Self {
+    pub fn live_event(live_event: &JsLiveEvent) -> Self {
         Self {
-            inner: EventBuilder::live_event(live_event.into()),
+            inner: EventBuilder::live_event(live_event.deref().clone()),
         }
     }
 
     #[wasm_bindgen(js_name = liveEventMsg)]
     pub fn live_event_msg(
-        live_event_id: String,
-        live_event_host: JsPublicKey,
-        content: String,
+        live_event_id: &str,
+        live_event_host: &JsPublicKey,
+        content: &str,
         relay_url: Option<String>,
         tags: Vec<JsTag>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
             inner: EventBuilder::live_event_msg(
                 live_event_id,
-                live_event_host.deref().to_owned(),
+                **live_event_host,
                 content,
                 match relay_url {
                     Some(url) => Some(Url::from_str(&url).map_err(into_err)?),
@@ -305,14 +305,14 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen]
-    pub fn report(tags: Vec<JsTag>, content: String) -> Self {
+    pub fn report(tags: Vec<JsTag>, content: &str) -> Self {
         Self {
             inner: EventBuilder::report(tags.into_iter().map(|t| t.into()), content),
         }
     }
 
     #[wasm_bindgen(js_name = publicZapRequest)]
-    pub fn public_zap_request(data: JsZapRequestData) -> Self {
+    pub fn public_zap_request(data: &JsZapRequestData) -> Self {
         Self {
             inner: EventBuilder::public_zap_request(data.deref().clone()),
         }
@@ -349,12 +349,12 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = awardBadge)]
     pub fn award_badge(
         badge_definition: &JsEvent,
-        awarded_pubkeys: Vec<JsTag>,
+        awarded_public_keys: Vec<JsTag>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
             inner: EventBuilder::award_badge(
                 badge_definition.deref(),
-                awarded_pubkeys.into_iter().map(|t| t.into()),
+                awarded_public_keys.into_iter().map(|t| t.into()),
             )
             .map_err(into_err)?,
         })
@@ -422,16 +422,16 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = fileMetadata)]
-    pub fn file_metadata(description: String, metadata: JsFileMetadata) -> Self {
+    pub fn file_metadata(description: &str, metadata: &JsFileMetadata) -> Self {
         Self {
             inner: EventBuilder::file_metadata(description, metadata.deref().clone()),
         }
     }
 
     #[wasm_bindgen(js_name = httpAuth)]
-    pub fn http_auth(data: JsHttpData) -> Self {
+    pub fn http_auth(data: &JsHttpData) -> Self {
         Self {
-            inner: EventBuilder::http_auth(data.into()),
+            inner: EventBuilder::http_auth(data.deref().clone()),
         }
     }
 
@@ -443,9 +443,9 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = productData)]
-    pub fn product_data(data: JsProductData) -> Self {
+    pub fn product_data(data: &JsProductData) -> Self {
         Self {
-            inner: EventBuilder::product_data(data.into()),
+            inner: EventBuilder::product_data(data.deref().clone()),
         }
     }
 
@@ -499,9 +499,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = muteList)]
-    pub fn mute_list(list: JsMuteList) -> Self {
+    pub fn mute_list(list: &JsMuteList) -> Self {
         Self {
-            inner: EventBuilder::mute_list(list.into()),
+            inner: EventBuilder::mute_list(list.clone().into()),
         }
     }
 
@@ -519,9 +519,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = bookmarks)]
-    pub fn bookmarks(list: JsBookmarks) -> Result<JsEventBuilder> {
+    pub fn bookmarks(list: &JsBookmarks) -> Result<JsEventBuilder> {
         Ok(Self {
-            inner: EventBuilder::bookmarks(list.try_into()?),
+            inner: EventBuilder::bookmarks(list.clone().try_into()?),
         })
     }
 
@@ -569,9 +569,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen]
-    pub fn interests(list: JsInterests) -> Self {
+    pub fn interests(list: &JsInterests) -> Self {
         Self {
-            inner: EventBuilder::interests(list.into()),
+            inner: EventBuilder::interests(list.clone().into()),
         }
     }
 
@@ -579,9 +579,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen]
-    pub fn emojis(list: JsEmojis) -> Self {
+    pub fn emojis(list: &JsEmojis) -> Self {
         Self {
-            inner: EventBuilder::emojis(list.into()),
+            inner: EventBuilder::emojis(list.clone().into()),
         }
     }
 
@@ -609,9 +609,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = bookmarksSets)]
-    pub fn bookmarks_sets(list: JsBookmarks) -> Result<JsEventBuilder> {
+    pub fn bookmarks_sets(list: &JsBookmarks) -> Result<JsEventBuilder> {
         Ok(Self {
-            inner: EventBuilder::bookmarks_sets(list.try_into()?),
+            inner: EventBuilder::bookmarks_sets(list.clone().try_into()?),
         })
     }
 
@@ -619,9 +619,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = articlesCurationSets)]
-    pub fn articles_curation_sets(list: JsArticlesCuration) -> Self {
+    pub fn articles_curation_sets(list: &JsArticlesCuration) -> Self {
         Self {
-            inner: EventBuilder::articles_curation_sets(list.into()),
+            inner: EventBuilder::articles_curation_sets(list.clone().into()),
         }
     }
 
@@ -649,7 +649,7 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
     #[wasm_bindgen]
-    pub fn label(label_namespace: String, labels: Vec<String>) -> Self {
+    pub fn label(label_namespace: &str, labels: Vec<String>) -> Self {
         Self {
             inner: EventBuilder::label(label_namespace, labels),
         }

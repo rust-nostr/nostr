@@ -377,11 +377,11 @@ impl JsClient {
     pub async fn send_direct_msg(
         &self,
         receiver: &JsPublicKey,
-        msg: String,
+        msg: &str,
         reply: Option<JsEventId>,
     ) -> Result<JsEventId> {
         self.inner
-            .send_direct_msg(receiver.into(), msg, reply.map(|id| id.into()))
+            .send_direct_msg(**receiver, msg, reply.map(|id| id.into()))
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -433,7 +433,7 @@ impl JsClient {
     /// React to an [`Event`]
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn reaction(&self, event: &JsEvent, reaction: String) -> Result<JsEventId> {
+    pub async fn reaction(&self, event: &JsEvent, reaction: &str) -> Result<JsEventId> {
         self.inner
             .reaction(event.deref(), reaction)
             .await
@@ -468,7 +468,7 @@ impl JsClient {
             None => None,
         };
         self.inner
-            .set_channel_metadata(channel_id.into(), relay_url, metadata.deref())
+            .set_channel_metadata(**channel_id, relay_url, metadata.deref())
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -481,12 +481,12 @@ impl JsClient {
     pub async fn send_channel_msg(
         &self,
         channel_id: &JsEventId,
-        relay_url: String,
-        msg: String,
+        relay_url: &str,
+        msg: &str,
     ) -> Result<JsEventId> {
-        let relay_url: Url = Url::parse(&relay_url).map_err(into_err)?;
+        let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
         self.inner
-            .send_channel_msg(channel_id.into(), relay_url, msg)
+            .send_channel_msg(**channel_id, relay_url, msg)
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -502,7 +502,7 @@ impl JsClient {
         reason: Option<String>,
     ) -> Result<JsEventId> {
         self.inner
-            .hide_channel_msg(message_id.into(), reason)
+            .hide_channel_msg(**message_id, reason)
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -518,7 +518,7 @@ impl JsClient {
         reason: Option<String>,
     ) -> Result<JsEventId> {
         self.inner
-            .mute_channel_user(pubkey.into(), reason)
+            .mute_channel_user(**pubkey, reason)
             .await
             .map_err(into_err)
             .map(|id| id.into())

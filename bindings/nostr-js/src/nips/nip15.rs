@@ -147,15 +147,17 @@ pub struct JsProductData {
     inner: ProductData,
 }
 
-impl From<ProductData> for JsProductData {
-    fn from(inner: ProductData) -> Self {
-        Self { inner }
+impl Deref for JsProductData {
+    type Target = ProductData;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
-impl From<JsProductData> for ProductData {
-    fn from(value: JsProductData) -> Self {
-        value.inner
+impl From<ProductData> for JsProductData {
+    fn from(inner: ProductData) -> Self {
+        Self { inner }
     }
 }
 

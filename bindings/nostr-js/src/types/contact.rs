@@ -41,7 +41,7 @@ impl JsContact {
         let relay_url: Option<UncheckedUrl> =
             relay_url.map(|relay_url| UncheckedUrl::from(&relay_url));
         Self {
-            inner: Contact::new(public_key.into(), relay_url, alias),
+            inner: Contact::new(**public_key, relay_url, alias),
         }
     }
 }

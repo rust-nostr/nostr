@@ -38,8 +38,11 @@ impl From<(String, String)> for JsAes256Gcm {
 #[wasm_bindgen(js_class = Aes256Gcm)]
 impl JsAes256Gcm {
     #[wasm_bindgen(constructor)]
-    pub fn new(key: String, iv: String) -> Self {
-        Self { key, iv }
+    pub fn new(key: &str, iv: &str) -> Self {
+        Self {
+            key: key.to_string(),
+            iv: iv.to_string(),
+        }
     }
 }
 

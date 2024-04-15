@@ -67,7 +67,7 @@ impl JsZapRequestData {
     pub fn new(
         public_key: &JsPublicKey,
         relays: Vec<String>,
-        message: String,
+        message: &str,
         amount: Option<f64>,
         lnurl: Option<String>,
         event_id: Option<JsEventId>,
@@ -77,7 +77,7 @@ impl JsZapRequestData {
             inner: ZapRequestData {
                 public_key: **public_key,
                 relays: relays.into_iter().map(|r| UncheckedUrl::from(&r)).collect(),
-                message,
+                message: message.to_string(),
                 amount: amount.map(|n| n as u64),
                 lnurl,
                 event_id: event_id.map(|e| *e.deref()),

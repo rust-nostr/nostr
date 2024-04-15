@@ -44,7 +44,7 @@ impl JsKeys {
     }
 
     /// Try to parse keys from **secret key** `hex` or `bech32`
-    pub fn parse(secret_key: String) -> Result<JsKeys> {
+    pub fn parse(secret_key: &str) -> Result<JsKeys> {
         Ok(Self {
             inner: Keys::parse(secret_key).map_err(into_err)?,
         })
@@ -54,7 +54,7 @@ impl JsKeys {
     #[wasm_bindgen(js_name = fromPublicKey)]
     pub fn from_public_key(public_key: &JsPublicKey) -> JsKeys {
         Self {
-            inner: Keys::from_public_key(public_key.into()),
+            inner: Keys::from_public_key(**public_key),
         }
     }
 

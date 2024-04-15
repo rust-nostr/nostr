@@ -189,6 +189,12 @@ impl Keys {
         self.public_key
     }
 
+    /// Get public key
+    #[inline]
+    pub fn public_key_ref(&self) -> &PublicKey {
+        &self.public_key
+    }
+
     /// Get secret key
     #[inline]
     pub fn secret_key(&self) -> Result<&SecretKey, Error> {

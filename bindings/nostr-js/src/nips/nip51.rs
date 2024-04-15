@@ -21,6 +21,7 @@ use crate::key::JsPublicKey;
 /// Things the user doesn't want to see in their feeds
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[derive(Clone)]
 #[wasm_bindgen(js_name = MuteList)]
 pub struct JsMuteList {
     #[wasm_bindgen(getter_with_clone)]
@@ -47,6 +48,7 @@ impl From<JsMuteList> for MuteList {
 /// Uncategorized, "global" list of things a user wants to save
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[derive(Clone)]
 #[wasm_bindgen(js_name = Bookmarks)]
 pub struct JsBookmarks {
     #[wasm_bindgen(getter_with_clone)]
@@ -85,6 +87,7 @@ impl TryFrom<JsBookmarks> for Bookmarks {
 /// Topics a user may be interested in and pointers
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[derive(Clone)]
 #[wasm_bindgen(js_name = Interests)]
 pub struct JsInterests {
     #[wasm_bindgen(getter_with_clone)]
@@ -127,6 +130,7 @@ impl From<JsEmojiInfo> for (String, UncheckedUrl) {
 /// User preferred emojis and pointers to emoji sets
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[derive(Clone)]
 #[wasm_bindgen(js_name = Emojis)]
 pub struct JsEmojis {
     #[wasm_bindgen(getter_with_clone)]
@@ -151,6 +155,7 @@ impl From<JsEmojis> for Emojis {
 /// Groups of articles picked by users as interesting and/or belonging to the same category
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+#[derive(Clone)]
 #[wasm_bindgen(js_name = ArticlesCuration)]
 pub struct JsArticlesCuration {
     #[wasm_bindgen(getter_with_clone)]

@@ -147,15 +147,17 @@ pub struct JsLiveEvent {
     inner: LiveEvent,
 }
 
-impl From<LiveEvent> for JsLiveEvent {
-    fn from(inner: LiveEvent) -> Self {
-        Self { inner }
+impl Deref for JsLiveEvent {
+    type Target = LiveEvent;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
-impl From<JsLiveEvent> for LiveEvent {
-    fn from(value: JsLiveEvent) -> Self {
-        value.inner
+impl From<LiveEvent> for JsLiveEvent {
+    fn from(inner: LiveEvent) -> Self {
+        Self { inner }
     }
 }
 

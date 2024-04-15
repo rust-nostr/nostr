@@ -194,18 +194,18 @@ impl JsFilter {
 
     /// Set subscription ids
     pub fn ids(self, ids: Vec<JsEventId>) -> Self {
-        let ids = ids.into_iter().map(|id| id.inner);
+        let ids = ids.into_iter().map(|id| id.into());
         self.inner.ids(ids).into()
     }
 
     /// Set author
     pub fn author(self, author: &JsPublicKey) -> Self {
-        self.inner.author(author.into()).into()
+        self.inner.author(**author).into()
     }
 
     /// Set authors
     pub fn authors(self, authors: Vec<JsPublicKey>) -> Self {
-        let authors = authors.into_iter().map(|p| p.inner);
+        let authors = authors.into_iter().map(|p| p.into());
         self.inner.authors(authors).into()
     }
 
@@ -222,23 +222,23 @@ impl JsFilter {
 
     /// Set event
     pub fn event(self, id: &JsEventId) -> Self {
-        self.inner.event(id.into()).into()
+        self.inner.event(**id).into()
     }
 
     /// Set events
     pub fn events(self, ids: Vec<JsEventId>) -> Self {
-        let ids = ids.into_iter().map(|id| id.inner);
+        let ids = ids.into_iter().map(|id| id.into());
         self.inner.events(ids).into()
     }
 
     /// Set pubkey
     pub fn pubkey(self, pubkey: &JsPublicKey) -> Self {
-        self.inner.pubkey(pubkey.into()).into()
+        self.inner.pubkey(**pubkey).into()
     }
 
     /// Set pubkeys
     pub fn pubkeys(self, pubkeys: Vec<JsPublicKey>) -> Self {
-        let pubkeys = pubkeys.into_iter().map(|p| p.inner);
+        let pubkeys = pubkeys.into_iter().map(|p| p.into());
         self.inner.pubkeys(pubkeys).into()
     }
 

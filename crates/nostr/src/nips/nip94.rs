@@ -128,8 +128,6 @@ impl FileMetadata {
 
 impl From<FileMetadata> for Vec<Tag> {
     fn from(metadata: FileMetadata) -> Self {
-        let mut tags = Vec::new();
-
         let FileMetadata {
             url,
             mime_type,
@@ -140,6 +138,8 @@ impl From<FileMetadata> for Vec<Tag> {
             magnet,
             blurhash,
         } = metadata;
+
+        let mut tags: Vec<Tag> = Vec::with_capacity(3);
 
         tags.push(Tag::Url(url));
         tags.push(Tag::MimeType(mime_type));

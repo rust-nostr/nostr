@@ -44,10 +44,10 @@ impl JsNip07Signer {
     }
 
     #[wasm_bindgen(js_name = signEvent)]
-    pub async fn sign_event(&self, unsigned: JsUnsignedEvent) -> Result<JsEvent> {
+    pub async fn sign_event(&self, unsigned: &JsUnsignedEvent) -> Result<JsEvent> {
         Ok(self
             .inner
-            .sign_event(unsigned.into())
+            .sign_event(unsigned.deref().clone())
             .await
             .map_err(into_err)?
             .into())

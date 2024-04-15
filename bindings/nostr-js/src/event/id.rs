@@ -15,7 +15,7 @@ use crate::types::JsTimestamp;
 #[wasm_bindgen(js_name = EventId)]
 #[derive(Clone, Copy)]
 pub struct JsEventId {
-    pub(crate) inner: EventId,
+    inner: EventId,
 }
 
 impl Deref for JsEventId {
@@ -34,12 +34,6 @@ impl From<EventId> for JsEventId {
 
 impl From<JsEventId> for EventId {
     fn from(event_id: JsEventId) -> Self {
-        event_id.inner
-    }
-}
-
-impl From<&JsEventId> for EventId {
-    fn from(event_id: &JsEventId) -> Self {
         event_id.inner
     }
 }
