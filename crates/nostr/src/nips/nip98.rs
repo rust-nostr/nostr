@@ -62,6 +62,7 @@ impl From<bitcoin::hashes::hex::HexToBytesError> for Error {
 }
 
 /// HTTP Data
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HttpData {
     /// Absolute request URL
     pub url: UncheckedUrl,
@@ -73,6 +74,7 @@ pub struct HttpData {
 
 impl HttpData {
     /// New [`HttpData`]
+    #[inline]
     pub fn new(url: UncheckedUrl, method: HttpMethod) -> Self {
         Self {
             url,
@@ -82,11 +84,10 @@ impl HttpData {
     }
 
     /// Add hex-encoded SHA256 hash of the request body
-    pub fn payload(self, payload: Sha256Hash) -> Self {
-        Self {
-            payload: Some(payload),
-            ..self
-        }
+    #[inline]
+    pub fn payload(mut self, payload: Sha256Hash) -> Self {
+        self.payload = Some(payload);
+        self
     }
 }
 

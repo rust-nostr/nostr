@@ -104,7 +104,7 @@ where
 }
 
 /// Live Event Host
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LiveEventHost {
     /// Host public key
     pub public_key: PublicKey,
@@ -115,6 +115,7 @@ pub struct LiveEventHost {
 }
 
 /// Live Event
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LiveEvent {
     /// Unique event ID
     pub id: String,
@@ -152,8 +153,6 @@ pub struct LiveEvent {
 
 impl From<LiveEvent> for Vec<Tag> {
     fn from(live_event: LiveEvent) -> Self {
-        let mut tags = Vec::new();
-
         let LiveEvent {
             id,
             title,
@@ -172,6 +171,8 @@ impl From<LiveEvent> for Vec<Tag> {
             speakers,
             participants,
         } = live_event;
+
+        let mut tags = Vec::with_capacity(1);
 
         tags.push(Tag::Identifier(id));
 

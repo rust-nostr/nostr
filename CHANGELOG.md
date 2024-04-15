@@ -21,6 +21,7 @@ ffi(sdk): set default args for `Client` constructors ([Yuki Kishimoto])
 ### Added
 
 nostr: impl TryIntoUrl for &String ([Yuki Kishimoto])
+nostr: derive default traits for `HttpData`, `LiveEventHost` and `LiveEvent` ([Yuki Kishimoto])
 
 ### Fixed
 
