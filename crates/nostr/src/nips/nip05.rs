@@ -82,7 +82,7 @@ where
     Ok((url, name.to_string()))
 }
 
-fn get_key_from_json<S>(json: Value, name: S) -> Option<PublicKey>
+fn get_key_from_json<S>(json: &Value, name: S) -> Option<PublicKey>
 where
     S: AsRef<str>,
 {
@@ -101,7 +101,7 @@ fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
         .unwrap_or_default()
 }
 
-fn verify_json<S>(public_key: &PublicKey, json: Value, name: S) -> Result<(), Error>
+fn verify_json<S>(public_key: &PublicKey, json: &Value, name: S) -> Result<(), Error>
 where
     S: AsRef<str>,
 {
@@ -144,7 +144,7 @@ where
 
     let res = client.get(url).send().await?;
     let json: Value = serde_json::from_str(&res.text().await?)?;
-    verify_json(public_key, json, name)
+    verify_json(public_key, &json, name)
 }
 
 /// Verify NIP05
@@ -169,7 +169,7 @@ where
     let client: Client = builder.build()?;
     let res = client.get(url).send()?;
     let json: Value = serde_json::from_str(&res.text()?)?;
-    verify_json(public_key, json, name)
+    verify_json(public_key, &json, name)
 }
 
 /// Get [Nip19Profile] from NIP05 (public key and list of advertised relays)
@@ -199,7 +199,7 @@ where
     let res = client.get(url).send().await?;
     let json: Value = serde_json::from_str(&res.text().await?)?;
 
-    let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
+    let public_key = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
     let relays = get_relays_from_json(json, public_key);
 
     Ok(Nip19Profile { public_key, relays })
@@ -224,8 +224,43 @@ where
     let res = client.get(url).send()?;
     let json: Value = serde_json::from_str(&res.text()?)?;
 
-    let public_key = get_key_from_json(json.clone(), name).ok_or(Error::ImpossibleToVerify)?;
+    let public_key = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
     let relays = get_relays_from_json(json, public_key);
 
     Ok(Nip19Profile { public_key, relays })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_verify_nip05() {
+        // nostr.json
+        let json: &str = r#"{
+            "names": {
+              "yuki": "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
+              "_": "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272"
+            }
+          }"#;
+        let json: Value = serde_json::from_str(json).unwrap();
+
+        let (url, name) = compose_url("_@yukikishimoto.com").unwrap();
+        assert_eq!(
+            url,
+            "https://yukikishimoto.com/.well-known/nostr.json?name=_"
+        );
+        assert_eq!(name, "_");
+
+        let public_key =
+            PublicKey::from_hex("68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272")
+                .unwrap();
+        assert!(verify_json(&public_key, &json, name).is_ok());
+        assert!(verify_json(&public_key, &json, "yuki").is_ok());
+
+        let public_key =
+            PublicKey::from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a")
+                .unwrap();
+        assert!(verify_json(&public_key, &json, "yuki").is_err());
+    }
 }
