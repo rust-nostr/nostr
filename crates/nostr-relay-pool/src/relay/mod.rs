@@ -95,17 +95,20 @@ impl Ord for Relay {
 
 impl Relay {
     /// Create new `Relay` with **default** `options` and `in-memory database`
+    #[inline]
     pub fn new(url: Url) -> Self {
         Self::with_opts(url, RelayOptions::default())
     }
 
     /// Create new `Relay` with default `in-memory database` and custom `options`
+    #[inline]
     pub fn with_opts(url: Url, opts: RelayOptions) -> Self {
         let database = Arc::new(MemoryDatabase::default());
         Self::custom(url, database, opts)
     }
 
     /// Create new `Relay` with **custom** `options` and/or `database`
+    #[inline]
     pub fn custom(url: Url, database: Arc<DynNostrDatabase>, opts: RelayOptions) -> Self {
         Self {
             inner: AtomicDestructor::new(InternalRelay::new(url, database, opts)),

@@ -74,11 +74,13 @@ impl Default for RelayPool {
 
 impl RelayPool {
     /// Create new `RelayPool`
+    #[inline]
     pub fn new(opts: RelayPoolOptions) -> Self {
         Self::with_database(opts, Arc::new(MemoryDatabase::default()))
     }
 
     /// New with database
+    #[inline]
     pub fn with_database<D>(opts: RelayPoolOptions, database: D) -> Self
     where
         D: IntoNostrDatabase,
@@ -91,31 +93,37 @@ impl RelayPool {
     /// Stop
     ///
     /// Call `connect` to re-start relays connections
+    #[inline]
     pub async fn stop(&self) -> Result<(), Error> {
         self.inner.stop().await
     }
 
     /// Completely shutdown pool
+    #[inline]
     pub async fn shutdown(self) -> Result<(), Error> {
         self.inner.shutdown().await
     }
 
     /// Get new **pool** notification listener
+    #[inline]
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.inner.notifications()
     }
 
     /// Get database
+    #[inline]
     pub fn database(&self) -> Arc<DynNostrDatabase> {
         self.inner.database()
     }
 
     /// Get relays
+    #[inline]
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         self.inner.relays().await
     }
 
     /// Get [`Relay`]
+    #[inline]
     pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
@@ -125,6 +133,7 @@ impl RelayPool {
     }
 
     /// Add new relay
+    #[inline]
     pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
@@ -134,6 +143,7 @@ impl RelayPool {
     }
 
     /// Disconnect and remove relay
+    #[inline]
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
@@ -143,21 +153,25 @@ impl RelayPool {
     }
 
     /// Disconnect and remove all relays
+    #[inline]
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
         self.inner.remove_all_relays().await
     }
 
     /// Connect to all added relays and keep connection alive
+    #[inline]
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
         self.inner.connect(connection_timeout).await
     }
 
     /// Disconnect from all relays
+    #[inline]
     pub async fn disconnect(&self) -> Result<(), Error> {
         self.inner.disconnect().await
     }
 
     /// Connect to relay
+    #[inline]
     pub async fn connect_relay<U>(
         &self,
         url: U,
@@ -173,21 +187,25 @@ impl RelayPool {
     }
 
     /// Get subscriptions
+    #[inline]
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
         self.inner.subscriptions().await
     }
 
     /// Get subscription
+    #[inline]
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
         self.inner.subscription(id).await
     }
 
     /// Send client message to all connected relays
+    #[inline]
     pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
         self.inner.send_msg(msg, opts).await
     }
 
     /// Send multiple client messages at once to all connected relays
+    #[inline]
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
@@ -199,6 +217,7 @@ impl RelayPool {
     /// Send client message to specific relays
     ///
     /// Note: **the relays must already be added!**
+    #[inline]
     pub async fn send_msg_to<I, U>(
         &self,
         urls: I,
@@ -216,6 +235,7 @@ impl RelayPool {
     /// Send multiple client messages at once to specific relays
     ///
     /// Note: **the relays must already be added!**
+    #[inline]
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
@@ -231,11 +251,13 @@ impl RelayPool {
     }
 
     /// Send event to **all connected relays** and wait for `OK` message
+    #[inline]
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         self.inner.send_event(event, opts).await
     }
 
     /// Send multiple [`Event`] at once to **all connected relays** and wait for `OK` message
+    #[inline]
     pub async fn batch_event(
         &self,
         events: Vec<Event>,
@@ -245,6 +267,7 @@ impl RelayPool {
     }
 
     /// Send event to **specific relays** and wait for `OK` message
+    #[inline]
     pub async fn send_event_to<I, U>(
         &self,
         urls: I,
@@ -260,6 +283,7 @@ impl RelayPool {
     }
 
     /// Send multiple events at once to **specific relays** and wait for `OK` message
+    #[inline]
     pub async fn batch_event_to<I, U>(
         &self,
         urls: I,
@@ -281,6 +305,7 @@ impl RelayPool {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
+    #[inline]
     pub async fn subscribe(&self, filters: Vec<Filter>, opts: SubscribeOptions) -> SubscriptionId {
         self.inner.subscribe(filters, opts).await
     }
@@ -292,6 +317,7 @@ impl RelayPool {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
+    #[inline]
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
@@ -302,11 +328,13 @@ impl RelayPool {
     }
 
     /// Unsubscribe from subscription
+    #[inline]
     pub async fn unsubscribe(&self, id: SubscriptionId, opts: RelaySendOptions) {
         self.inner.unsubscribe(id, opts).await
     }
 
     /// Unsubscribe from all subscriptions
+    #[inline]
     pub async fn unsubscribe_all(&self, opts: RelaySendOptions) {
         self.inner.unsubscribe_all(opts).await
     }
@@ -314,6 +342,7 @@ impl RelayPool {
     /// Get events of filters
     ///
     /// Get events both from **local database** and **relays**
+    #[inline]
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
@@ -328,6 +357,7 @@ impl RelayPool {
     /// Get events of filters from **specific relays**
     ///
     /// Get events both from **local database** and **relays**
+    #[inline]
     pub async fn get_events_from<I, U>(
         &self,
         urls: I,
@@ -346,11 +376,13 @@ impl RelayPool {
     }
 
     /// Negentropy reconciliation
+    #[inline]
     pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
         self.inner.reconcile(filter, opts).await
     }
 
     /// Negentropy reconciliation with custom items
+    #[inline]
     pub async fn reconcile_with_items(
         &self,
         filter: Filter,

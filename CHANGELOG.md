@@ -16,6 +16,7 @@ nostr: update fingerprint of `EventBuilder::zap_receipt` constructor ([Yuki Kish
 nostr: update `EventId::new` fingerprint ([Yuki Kishimoto])
 nostr: update fingerprint of `nip05::verify` function ([Yuki Kishimoto])
 database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
+pool: inline `RelayPool` methods ([Yuki Kishimoto])
 sdk: update `tokio` features ([Yuki Kishimoto])
 ffi(nostr): set default args for `Nip19Profile` and `Nip19Event` constructors ([Yuki Kishimoto])
 ffi(nostr): set default args for `nip05::verify` function ([Yuki Kishimoto])
