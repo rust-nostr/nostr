@@ -30,7 +30,7 @@ ffi(nostr): remove `Kind::match*` methods ([Yuki Kishimoto])
 
 Adapted NIP46 to last changes, added `NostrConnectRemoteSigner` to easily build remote signers (just construct it and call `serve` method), 
 improved proxy options (allow to specify the proxy target: all relays or only `.onion` ones), 
-improvements to NWC client, fixed equality operator for some foreign language (python still need to use `a.__eq__(b)`),
+improvements to NWC client, fixed equality operator for bindings (Python, Kotlin and Swift),
 added `nostrdb` storage backend, added NIP32 and completed NIP51 support and more!
 
 ### Changed
