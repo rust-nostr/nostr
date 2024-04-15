@@ -32,7 +32,7 @@ pub enum RawRelayMessage {
     },
     /// `["EOSE", <subscription_id>]` (NIP01)
     EndOfStoredEvents(String),
-    /// ["NOTICE", \<message\>] (NIP01)
+    /// `["NOTICE", <message>]` (NIP01)
     Notice {
         /// Message
         message: String,
@@ -84,85 +84,88 @@ impl RawRelayMessage {
         }
 
         let v_len: usize = v.len();
+        let v_type: &str = v[0]
+            .as_str()
+            .ok_or(MessageHandleError::InvalidMessageFormat)?;
 
         // Notice
         // Relay response format: ["NOTICE", <message>]
-        if v[0] == "NOTICE" {
-            if v_len >= 2 {
-                return Ok(Self::Notice {
+        if v_type == "NOTICE" {
+            return if v_len >= 2 {
+                Ok(Self::Notice {
                     message: serde_json::from_value(v[1].clone())?,
-                });
+                })
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
+                Err(MessageHandleError::InvalidMessageFormat)
+            };
         }
 
         // Closed
         // Relay response format: ["CLOSED", <subscription_id>, <message>]
-        if v[0] == "CLOSED" {
-            if v_len >= 3 {
-                return Ok(Self::Closed {
+        if v_type == "CLOSED" {
+            return if v_len >= 3 {
+                Ok(Self::Closed {
                     subscription_id: serde_json::from_value(v[1].clone())?,
                     message: serde_json::from_value(v[2].clone())?,
-                });
+                })
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
+                Err(MessageHandleError::InvalidMessageFormat)
+            };
         }
 
         // Event
         // Relay response format: ["EVENT", <subscription id>, <event JSON>]
-        if v[0] == "EVENT" {
-            if v_len >= 3 {
-                return Ok(Self::Event {
+        if v_type == "EVENT" {
+            return if v_len >= 3 {
+                Ok(Self::Event {
                     subscription_id: serde_json::from_value(v[1].clone())?,
                     event: serde_json::from_value(v[2].clone())?,
-                });
+                })
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
+                Err(MessageHandleError::InvalidMessageFormat)
+            };
         }
 
         // EOSE (NIP-15)
         // Relay response format: ["EOSE", <subscription_id>]
-        if v[0] == "EOSE" {
-            if v_len >= 2 {
+        if v_type == "EOSE" {
+            return if v_len >= 2 {
                 let subscription_id: String = serde_json::from_value(v[1].clone())?;
-                return Ok(Self::EndOfStoredEvents(subscription_id));
+                Ok(Self::EndOfStoredEvents(subscription_id))
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
+                Err(MessageHandleError::InvalidMessageFormat)
+            };
         }
 
         // OK (NIP-20)
         // Relay response format: ["OK", <event_id>, <true|false>, <message>]
-        if v[0] == "OK" {
-            if v_len >= 4 {
-                return Ok(Self::Ok {
+        if v_type == "OK" {
+            return if v_len >= 4 {
+                Ok(Self::Ok {
                     event_id: serde_json::from_value(v[1].clone())?,
                     status: serde_json::from_value(v[2].clone())?,
                     message: serde_json::from_value(v[3].clone())?,
-                });
+                })
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
+                Err(MessageHandleError::InvalidMessageFormat)
+            };
         }
 
         // OK (NIP-42)
         // Relay response format: ["AUTH", <challenge>]
-        if v[0] == "AUTH" {
-            if v_len >= 2 {
-                return Ok(Self::Auth {
+        if v_type == "AUTH" {
+            return if v_len >= 2 {
+                Ok(Self::Auth {
                     challenge: serde_json::from_value(v[1].clone())?,
-                });
+                })
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
+                Err(MessageHandleError::InvalidMessageFormat)
+            };
         }
 
-        // Relay response format: ["EVENT", <subscription id>, <event JSON>]
-        if v[0] == "COUNT" {
-            if v_len >= 3 {
+        // Relay response format: ["COUNT", <subscription id>, {"count": num}]
+        if v_type == "COUNT" {
+            return if v_len >= 3 {
                 let map = v[2]
                     .as_object()
                     .ok_or(MessageHandleError::InvalidMessageFormat)?;
@@ -172,39 +175,39 @@ impl RawRelayMessage {
                     .clone();
                 let count: usize = serde_json::from_value(count)?;
 
-                return Ok(Self::Count {
+                Ok(Self::Count {
                     subscription_id: serde_json::from_value(v[1].clone())?,
                     count,
-                });
+                })
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
+                Err(MessageHandleError::InvalidMessageFormat)
+            };
         }
 
         // Negentropy Message
         // ["NEG-MSG", <subscription ID string>, <message, lowercase hex-encoded>]
-        if v[0] == "NEG-MSG" {
-            if v_len >= 3 {
-                return Ok(Self::NegMsg {
+        if v_type == "NEG-MSG" {
+            return if v_len >= 3 {
+                Ok(Self::NegMsg {
                     subscription_id: serde_json::from_value(v[1].clone())?,
                     message: serde_json::from_value(v[2].clone())?,
-                });
+                })
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
+                Err(MessageHandleError::InvalidMessageFormat)
+            };
         }
 
         // Negentropy Error
         // ["NEG-ERR", <subscription ID string>, <reason-code>]
-        if v[0] == "NEG-ERR" {
-            if v_len >= 3 {
-                return Ok(Self::NegErr {
+        if v_type == "NEG-ERR" {
+            return if v_len >= 3 {
+                Ok(Self::NegErr {
                     subscription_id: serde_json::from_value(v[1].clone())?,
                     code: serde_json::from_value(v[2].clone())?,
-                });
+                })
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
-            }
+                Err(MessageHandleError::InvalidMessageFormat)
+            };
         }
 
         Err(MessageHandleError::InvalidMessageFormat)
@@ -224,5 +227,21 @@ impl RawRelayMessage {
 
         let value: Value = serde_json::from_slice(msg)?;
         Self::from_value(value)
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+
+    const EVENT: &'static str = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]"#;
+
+    #[bench]
+    pub fn deserialize_raw_message_relay(bh: &mut Bencher) {
+        bh.iter(|| {
+            black_box(RawRelayMessage::from_json(EVENT)).unwrap();
+        });
     }
 }
