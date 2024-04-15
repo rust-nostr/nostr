@@ -15,6 +15,8 @@ use crate::types::JsTimestamp;
 
 /// Create a NIP-26 delegation tag (including the signature).
 /// See also validate_delegation_tag().
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/26.md>
 #[wasm_bindgen(js_name = createDelegationTag)]
 pub fn create_delegation_tag(
     delegator_keys: &JsKeys,
@@ -22,12 +24,14 @@ pub fn create_delegation_tag(
     conditions: &str,
 ) -> Result<String> {
     let conditions = Conditions::from_str(conditions).map_err(into_err)?;
-    let tag = DelegationTag::new(delegator_keys.deref(), delegatee_pubkey.into(), conditions)
+    let tag = DelegationTag::new(delegator_keys.deref(), delegatee_pubkey.deref(), conditions)
         .map_err(into_err)?;
     Ok(tag.to_string())
 }
 
 /// Validate a NIP-26 delegation tag, check signature and conditions.
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/26.md>
 #[wasm_bindgen(js_name = validateDelegationTag)]
 pub fn validate_delegation_tag(
     delegation_tag: &str,
@@ -38,41 +42,46 @@ pub fn validate_delegation_tag(
     match DelegationTag::from_str(delegation_tag) {
         Ok(tag) => {
             let event_properties = EventProperties::new(event_kind as u64, created_at.as_u64());
-            tag.validate(delegatee_pubkey.into(), &event_properties)
+            tag.validate(delegatee_pubkey.deref(), &event_properties)
                 .is_ok()
         }
         Err(_) => false,
     }
 }
 
-/// Sign delegation (NIP26)
+/// Sign delegation
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/26.md>
 #[wasm_bindgen(js_name = signDelegation)]
 pub fn sign_delegation(
     keys: &JsKeys,
     delegatee_pk: &JsPublicKey,
-    conditions: String,
+    conditions: &str,
 ) -> Result<String> {
-    let conditions = Conditions::from_str(&conditions).map_err(into_err)?;
+    let conditions = Conditions::from_str(conditions).map_err(into_err)?;
     let signature: Signature =
-        nip26::sign_delegation(keys.deref(), delegatee_pk.into(), conditions).map_err(into_err)?;
+        nip26::sign_delegation(keys.deref(), delegatee_pk.deref(), &conditions)
+            .map_err(into_err)?;
     Ok(signature.to_string())
 }
 
-/// Verify delegation signature (NIP26)
+/// Verify delegation signature
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/26.md>
 #[wasm_bindgen(js_name = verifyDelegationSignature)]
 pub fn verify_delegation_signature(
     delegator_public_key: &JsPublicKey,
     delegatee_public_key: &JsPublicKey,
-    conditions: String,
-    signature: String,
+    conditions: &str,
+    signature: &str,
 ) -> Result<bool> {
-    let conditions = Conditions::from_str(&conditions).map_err(into_err)?;
-    let signature_struct = Signature::from_str(&signature).map_err(into_err)?;
+    let conditions = Conditions::from_str(conditions).map_err(into_err)?;
+    let signature_struct = Signature::from_str(signature).map_err(into_err)?;
     match nip26::verify_delegation_signature(
-        delegator_public_key.into(),
+        delegator_public_key.deref(),
         signature_struct,
-        delegatee_public_key.into(),
-        conditions,
+        delegatee_public_key.deref(),
+        &conditions,
     ) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
