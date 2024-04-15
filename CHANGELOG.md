@@ -11,28 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-nostr: update fingerprint of NIP26 functions ([Yuki Kishimoto])
-nostr: update fingerprint of `EventBuilder::zap_receipt` constructor ([Yuki Kishimoto])
-nostr: update `EventId::new` fingerprint ([Yuki Kishimoto])
-nostr: update fingerprint of `nip05::verify` function ([Yuki Kishimoto])
-database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
-pool: inline `RelayPool` methods ([Yuki Kishimoto])
-sdk: update `tokio` features ([Yuki Kishimoto])
-ffi(nostr): set default args for `Nip19Profile` and `Nip19Event` constructors ([Yuki Kishimoto])
-ffi(nostr): set default args for `nip05::verify` function ([Yuki Kishimoto])
-ffi(sdk): set default args for `Client` constructors ([Yuki Kishimoto])
-js: enable support for Reference Types ([Yuki Kishimoto])
+* nostr: update fingerprint of NIP26 functions ([Yuki Kishimoto])
+* nostr: update fingerprint of `EventBuilder::zap_receipt` constructor ([Yuki Kishimoto])
+* nostr: update `EventId::new` fingerprint ([Yuki Kishimoto])
+* nostr: update fingerprint of `nip05::verify` function ([Yuki Kishimoto])
+* database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
+* pool: inline `RelayPool` methods ([Yuki Kishimoto])
+* sdk: update `tokio` features ([Yuki Kishimoto])
+* ffi(nostr): set default args for `Nip19Profile` and `Nip19Event` constructors ([Yuki Kishimoto])
+* ffi(nostr): set default args for `nip05::verify` function ([Yuki Kishimoto])
+* ffi(sdk): set default args for `Client` constructors ([Yuki Kishimoto])
+* js: enable support for Reference Types ([Yuki Kishimoto])
 
 ### Added
 
-nostr: impl TryIntoUrl for &String ([Yuki Kishimoto])
-nostr: derive default traits for `HttpData`, `LiveEventHost` and `LiveEvent` ([Yuki Kishimoto])
+* nostr: impl TryIntoUrl for &String ([Yuki Kishimoto])
+* nostr: derive default traits for `HttpData`, `LiveEventHost` and `LiveEvent` ([Yuki Kishimoto])
+* pool: add `RelayPool::start` ([Yuki Kishimoto])
 
 ### Fixed
 
 ### Removed
 
-ffi(nostr): remove `Kind::match*` methods ([Yuki Kishimoto])
+* ffi(nostr): remove `Kind::match*` methods ([Yuki Kishimoto])
 
 ## [v0.30.0]
 
