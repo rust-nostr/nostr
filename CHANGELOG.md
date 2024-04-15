@@ -19,6 +19,7 @@ database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
 ffi(nostr): set default args for `Nip19Profile` and `Nip19Event` constructors ([Yuki Kishimoto])
 ffi(nostr): set default args for `nip05::verify` function ([Yuki Kishimoto])
 ffi(sdk): set default args for `Client` constructors ([Yuki Kishimoto])
+js: enable support for Reference Types ([Yuki Kishimoto])
 
 ### Added
 
