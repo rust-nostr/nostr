@@ -67,7 +67,7 @@ impl EventId {
     /// Generate [`EventId`]
     pub fn new(
         public_key: &PublicKey,
-        created_at: Timestamp,
+        created_at: &Timestamp,
         kind: &Kind,
         tags: &[Tag],
         content: &str,

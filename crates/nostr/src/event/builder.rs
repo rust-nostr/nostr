@@ -288,7 +288,7 @@ impl EventBuilder {
             let created_at: Timestamp = self
                 .custom_created_at
                 .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
-            let id: EventId = EventId::new(&pubkey, created_at, &self.kind, &tags, &self.content);
+            let id: EventId = EventId::new(&pubkey, &created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
                 #[cfg(feature = "std")]

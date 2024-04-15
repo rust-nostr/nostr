@@ -12,7 +12,7 @@ use crate::error::{into_err, Result};
 #[derive(Clone, Copy)]
 #[wasm_bindgen(js_name = PublicKey)]
 pub struct JsPublicKey {
-    pub(crate) inner: PublicKey,
+    inner: PublicKey,
 }
 
 impl Deref for JsPublicKey {
@@ -31,12 +31,6 @@ impl From<PublicKey> for JsPublicKey {
 
 impl From<JsPublicKey> for PublicKey {
     fn from(public_key: JsPublicKey) -> Self {
-        public_key.inner
-    }
-}
-
-impl From<&JsPublicKey> for PublicKey {
-    fn from(public_key: &JsPublicKey) -> Self {
         public_key.inner
     }
 }

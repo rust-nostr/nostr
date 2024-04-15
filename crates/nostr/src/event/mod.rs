@@ -257,7 +257,7 @@ impl Event {
     pub fn verify_id(&self) -> Result<(), Error> {
         let id: EventId = EventId::new(
             &self.inner.pubkey,
-            self.inner.created_at,
+            &self.inner.created_at,
             &self.inner.kind,
             &self.inner.tags,
             &self.inner.content,

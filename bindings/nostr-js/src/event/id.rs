@@ -57,7 +57,7 @@ impl JsEventId {
         let kind = Kind::from(kind);
         let tags: Vec<Tag> = tags.into_iter().map(|t| t.into()).collect();
         Self {
-            inner: EventId::new(&pubkey.into(), **created_at, &kind, &tags, content),
+            inner: EventId::new(pubkey.deref(), created_at.deref(), &kind, &tags, content),
         }
     }
 

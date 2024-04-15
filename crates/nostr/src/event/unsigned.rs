@@ -115,7 +115,7 @@ impl UnsignedEvent {
     fn compute_id(&self) -> EventId {
         EventId::new(
             &self.pubkey,
-            self.created_at,
+            &self.created_at,
             &self.kind,
             &self.tags,
             &self.content,

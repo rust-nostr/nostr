@@ -47,7 +47,7 @@ impl EventId {
         Ok(Self {
             inner: nostr::EventId::new(
                 public_key.deref(),
-                **created_at,
+                created_at.deref(),
                 kind.deref(),
                 &tags,
                 content,
