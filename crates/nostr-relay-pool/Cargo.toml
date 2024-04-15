@@ -22,5 +22,11 @@ atomic-destructor = { version = "0.1", default-features = false, features = ["tr
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["macros", "sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[[example]]
+name = "pool"
