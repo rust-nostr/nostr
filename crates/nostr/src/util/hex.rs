@@ -38,11 +38,11 @@ impl fmt::Display for Error {
 }
 
 #[inline]
-fn from_digit(num: u8) -> char {
+fn from_digit(num: u8) -> u8 {
     if num < 10 {
-        (b'0' + num) as char
+        b'0' + num
     } else {
-        (b'a' + num - 10) as char
+        b'a' + num - 10
     }
 }
 
@@ -54,8 +54,8 @@ where
     let bytes: &[u8] = data.as_ref();
     let mut hex: String = String::with_capacity(2 * bytes.len());
     for byte in bytes.iter() {
-        hex.push(from_digit(byte >> 4));
-        hex.push(from_digit(byte & 0xF));
+        hex.push(from_digit(byte >> 4) as char);
+        hex.push(from_digit(byte & 0xF) as char);
     }
     hex
 }
