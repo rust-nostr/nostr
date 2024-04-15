@@ -130,22 +130,14 @@ pub trait NostrDatabase: AsyncTraitDeps {
     async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err>;
 
     /// Check if [`EventId`] has been deleted
-    ///
-    /// By default, return `false`.
-    async fn has_event_id_been_deleted(&self, _event_id: &EventId) -> Result<bool, Self::Err> {
-        Ok(false)
-    }
+    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err>;
 
     /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
-    ///
-    /// By default, return `false`.
     async fn has_coordinate_been_deleted(
         &self,
-        _coordinate: &Coordinate,
-        _timestamp: Timestamp,
-    ) -> Result<bool, Self::Err> {
-        Ok(false)
-    }
+        coordinate: &Coordinate,
+        timestamp: Timestamp,
+    ) -> Result<bool, Self::Err>;
 
     /// Set [`EventId`] as seen by relay
     ///
