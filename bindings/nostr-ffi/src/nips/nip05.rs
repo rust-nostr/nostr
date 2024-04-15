@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use std::net::SocketAddr;
+use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip05;
@@ -11,17 +12,17 @@ use crate::error::Result;
 use crate::nips::nip19::Nip19Profile;
 use crate::PublicKey;
 
-#[uniffi::export]
-pub fn verify_nip05(public_key: &PublicKey, nip05: String, proxy: Option<String>) -> Result<()> {
+#[uniffi::export(default(proxy = None))]
+pub fn verify_nip05(public_key: &PublicKey, nip05: &str, proxy: Option<String>) -> Result<()> {
     let proxy: Option<SocketAddr> = match proxy {
         Some(proxy) => Some(proxy.parse()?),
         None => None,
     };
-    Ok(nip05::verify_blocking(**public_key, nip05, proxy)?)
+    Ok(nip05::verify_blocking(public_key.deref(), nip05, proxy)?)
 }
 
-#[uniffi::export]
-pub fn get_nip05_profile(nip05: String, proxy: Option<String>) -> Result<Arc<Nip19Profile>> {
+#[uniffi::export(default(proxy = None))]
+pub fn get_nip05_profile(nip05: &str, proxy: Option<String>) -> Result<Arc<Nip19Profile>> {
     let proxy: Option<SocketAddr> = match proxy {
         Some(proxy) => Some(proxy.parse()?),
         None => None,
