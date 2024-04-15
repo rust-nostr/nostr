@@ -16,8 +16,6 @@ use async_utility::{futures_util, thread, time};
 use async_wsocket::futures_util::{Future, SinkExt, StreamExt};
 use async_wsocket::{Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
-#[cfg(not(target_arch = "wasm32"))]
-use nostr::message::MessageHandleError;
 use nostr::negentropy::{Bytes, Negentropy};
 use nostr::nips::nip01::Coordinate;
 #[cfg(feature = "nip11")]
@@ -538,43 +536,8 @@ impl InternalRelay {
         let _ = thread::spawn(async move {
             tracing::debug!("Relay Message Thread Started");
 
-            async fn func(relay: &InternalRelay, data: Vec<u8>) -> Result<bool, Error> {
-                let size: usize = data.len();
-                relay.stats.add_bytes_received(size);
-
-                if let Some(max_size) = relay.opts.limits.messages.max_size {
-                    let max_size: usize = max_size as usize;
-                    if size > max_size {
-                        return Err(Error::RelayMessageTooLarge { size, max_size });
-                    }
-                }
-
-                let msg = RawRelayMessage::from_json(&data)?;
-                tracing::trace!("Received message from {}: {:?}", relay.url, msg);
-
-                if let RawRelayMessage::Event { event, .. } = &msg {
-                    // Check event size
-                    if let Some(max_size) = relay.opts.limits.events.max_size {
-                        let size: usize = event.as_json().as_bytes().len();
-                        let max_size: usize = max_size as usize;
-                        if size > max_size {
-                            return Err(Error::EventTooLarge { size, max_size });
-                        }
-                    }
-
-                    // Check tags limit
-                    if let Some(max_num_tags) = relay.opts.limits.events.max_num_tags {
-                        let size: usize = event.tags.len();
-                        let max_num_tags: usize = max_num_tags as usize;
-                        if size > max_num_tags {
-                            return Err(Error::TooManyTags {
-                                size,
-                                max_size: max_num_tags,
-                            });
-                        }
-                    }
-                }
-
+            #[inline]
+            async fn func(relay: &InternalRelay, msg: &[u8]) {
                 match relay.handle_relay_message(msg).await {
                     Ok(Some(msg)) => {
                         // Send notification
@@ -604,8 +567,6 @@ impl InternalRelay {
                         relay.url
                     ),
                 }
-
-                Ok(false)
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -638,18 +599,7 @@ impl InternalRelay {
                         }
                         _ => {
                             let data: Vec<u8> = msg.into_data();
-                            match func(&relay, data).await {
-                                Ok(exit) => {
-                                    if exit {
-                                        break;
-                                    }
-                                }
-                                Err(Error::MessageHandle(MessageHandleError::EmptyMsg)) => {}
-                                Err(e) => tracing::error!(
-                                    "Impossible to handle relay message from {}: {e}",
-                                    relay.url
-                                ),
-                            }
+                            func(&relay, &data).await;
                         }
                     }
                 }
@@ -657,18 +607,8 @@ impl InternalRelay {
 
             #[cfg(target_arch = "wasm32")]
             while let Some(msg) = ws_rx.next().await {
-                let data: Vec<u8> = msg.as_ref().to_vec();
-                match func(&relay, data).await {
-                    Ok(exit) => {
-                        if exit {
-                            break;
-                        }
-                    }
-                    Err(e) => tracing::error!(
-                        "Impossible to handle relay message from {}: {e}",
-                        relay.url
-                    ),
-                }
+                let data: &[u8] = msg.as_ref();
+                func(&relay, data).await;
             }
 
             tracing::debug!("Exited from Message Thread of {}", relay.url);
@@ -739,16 +679,52 @@ impl InternalRelay {
         };
     }
 
-    #[tracing::instrument(skip(self), level = "trace")]
-    async fn handle_relay_message(
-        &self,
-        msg: RawRelayMessage,
-    ) -> Result<Option<RelayMessage>, Error> {
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn handle_relay_message(&self, msg: &[u8]) -> Result<Option<RelayMessage>, Error> {
+        let size: usize = msg.len();
+
+        // Update bytes received
+        self.stats.add_bytes_received(size);
+
+        // Check message size
+        if let Some(max_size) = self.opts.limits.messages.max_size {
+            let max_size: usize = max_size as usize;
+            if size > max_size {
+                return Err(Error::RelayMessageTooLarge { size, max_size });
+            }
+        }
+
+        // Deserialize message
+        let msg = RawRelayMessage::from_json(msg)?;
+        tracing::trace!("Received message from {}: {:?}", self.url, msg);
+
+        // Handle msg
         match msg {
             RawRelayMessage::Event {
                 subscription_id,
                 event,
             } => {
+                // Check event size
+                if let Some(max_size) = self.opts.limits.events.max_size {
+                    let size: usize = event.as_json().as_bytes().len();
+                    let max_size: usize = max_size as usize;
+                    if size > max_size {
+                        return Err(Error::EventTooLarge { size, max_size });
+                    }
+                }
+
+                // Check tags limit
+                if let Some(max_num_tags) = self.opts.limits.events.max_num_tags {
+                    let size: usize = event.tags.len();
+                    let max_num_tags: usize = max_num_tags as usize;
+                    if size > max_num_tags {
+                        return Err(Error::TooManyTags {
+                            size,
+                            max_size: max_num_tags,
+                        });
+                    }
+                }
+
                 // Deserialize partial event (id, pubkey and sig)
                 let partial_event: PartialEvent = PartialEvent::from_raw(&event)?;
 
@@ -902,6 +878,7 @@ impl InternalRelay {
         self.batch_msg(vec![msg], opts).await
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
@@ -951,6 +928,7 @@ impl InternalRelay {
         Ok(id)
     }
 
+    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn batch_event(
         &self,
         events: Vec<Event>,
