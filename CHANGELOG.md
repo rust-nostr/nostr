@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
 * pool: inline `RelayPool` methods ([Yuki Kishimoto])
 * sdk: update `tokio` features ([Yuki Kishimoto])
+* signer: update fingerprint of `NostrConnectRemoteSigner::serve` method ([Yuki Kishimoto])
 * ffi(nostr): set default args for `Nip19Profile` and `Nip19Event` constructors ([Yuki Kishimoto])
 * ffi(nostr): set default args for `nip05::verify` function ([Yuki Kishimoto])
 * ffi(sdk): set default args for `Client` constructors ([Yuki Kishimoto])

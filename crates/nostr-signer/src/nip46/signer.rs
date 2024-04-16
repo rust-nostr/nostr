@@ -117,7 +117,10 @@ impl NostrConnectRemoteSigner {
     }
 
     /// Serve signer
-    pub async fn serve(&self, actions: Box<dyn NostrConnectSignerActions>) -> Result<(), Error> {
+    pub async fn serve<T>(&self, actions: T) -> Result<(), Error>
+    where
+        T: NostrConnectSignerActions,
+    {
         self.subscribe().await;
 
         self.pool
