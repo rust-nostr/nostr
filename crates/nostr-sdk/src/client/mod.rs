@@ -1007,7 +1007,7 @@ impl Client {
         let mut contacts: HashMap<PublicKey, Metadata> =
             public_keys.iter().map(|p| (*p, Metadata::new())).collect();
 
-        let chunk_size: usize = self.opts.get_req_filters_chunk_size();
+        let chunk_size: usize = self.opts.req_filters_chunk_size as usize;
         for chunk in public_keys.chunks(chunk_size) {
             let mut filters: Vec<Filter> = Vec::new();
             for public_key in chunk.iter() {
