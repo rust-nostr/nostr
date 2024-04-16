@@ -96,6 +96,7 @@ pub struct Client {
 }
 
 impl Default for Client {
+    #[inline]
     fn default() -> Self {
         Self::builder().build()
     }
@@ -170,6 +171,7 @@ impl Client {
     }
 
     /// Update default difficulty for new [`Event`]
+    #[inline]
     pub fn update_difficulty(&self, difficulty: u8) {
         self.opts.update_difficulty(difficulty);
     }
@@ -222,16 +224,19 @@ impl Client {
     }
 
     /// Get [`RelayPool`]
+    #[inline]
     pub fn pool(&self) -> RelayPool {
         self.pool.clone()
     }
 
     /// Get database
+    #[inline]
     pub fn database(&self) -> Arc<DynNostrDatabase> {
         self.pool.database()
     }
 
     /// Start a previously stopped client
+    #[inline]
     pub async fn start(&self) {
         self.connect().await;
     }
@@ -239,26 +244,31 @@ impl Client {
     /// Stop the client
     ///
     /// Disconnect all relays and set their status to `RelayStatus::Stopped`.
+    #[inline]
     pub async fn stop(&self) -> Result<(), Error> {
         Ok(self.pool.stop().await?)
     }
 
     /// Completely shutdown [`Client`]
+    #[inline]
     pub async fn shutdown(self) -> Result<(), Error> {
         Ok(self.pool.shutdown().await?)
     }
 
     /// Get new notification listener
+    #[inline]
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.pool.notifications()
     }
 
     /// Get relays
+    #[inline]
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         self.pool.relays().await
     }
 
     /// Get a previously added [`Relay`]
+    #[inline]
     pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
@@ -353,6 +363,7 @@ impl Client {
     /// client.connect().await;
     /// # }
     /// ```
+    #[inline]
     pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
@@ -364,6 +375,7 @@ impl Client {
     /// Add multiple relays
     ///
     /// Connection is **NOT** automatically started with relays, remember to call `client.connect()`!
+    #[inline]
     pub async fn add_relays<I, U>(&self, relays: I) -> Result<(), Error>
     where
         I: IntoIterator<Item = U>,
@@ -389,19 +401,19 @@ impl Client {
     /// client.remove_relay("wss://relay.nostr.info").await.unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.pool.remove_relay(url).await?;
-        Ok(())
+        Ok(self.pool.remove_relay(url).await?)
     }
 
     /// Disconnect and remove all relays
+    #[inline]
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
-        self.pool.remove_all_relays().await?;
-        Ok(())
+        Ok(self.pool.remove_all_relays().await?)
     }
 
     /// Connect to a previously added relay
@@ -420,6 +432,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn connect_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
@@ -470,6 +483,7 @@ impl Client {
     /// client.connect().await;
     /// # }
     /// ```
+    #[inline]
     pub async fn connect(&self) {
         self.pool.connect(self.opts.connection_timeout).await;
     }
@@ -487,16 +501,19 @@ impl Client {
     /// client.disconnect().await.unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn disconnect(&self) -> Result<(), Error> {
         Ok(self.pool.disconnect().await?)
     }
 
     /// Get pool subscriptions
+    #[inline]
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
         self.pool.subscriptions().await
     }
 
     /// Get subscription
+    #[inline]
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
         self.pool.subscription(id).await
     }
@@ -596,12 +613,14 @@ impl Client {
     }
 
     /// Unsubscribe
+    #[inline]
     pub async fn unsubscribe(&self, id: SubscriptionId) {
         let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
         self.pool.unsubscribe(id, opts).await;
     }
 
     /// Unsubscribe from all subscriptions
+    #[inline]
     pub async fn unsubscribe_all(&self) {
         let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
         self.pool.unsubscribe_all(opts).await;
@@ -632,6 +651,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
@@ -644,22 +664,21 @@ impl Client {
     /// Get events of filters with [`FilterOptions`]
     ///
     /// If timeout is set to `None`, the default from [`Options`] will be used.
+    #[inline]
     pub async fn get_events_of_with_opts(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        let timeout: Duration = match timeout {
-            Some(t) => t,
-            None => self.opts.timeout,
-        };
+        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         Ok(self.pool.get_events_of(filters, timeout, opts).await?)
     }
 
     /// Get events of filters from specific relays
     ///
     /// Get events both from **local database** and **relays**
+    #[inline]
     pub async fn get_events_from<I, U>(
         &self,
         urls: I,
@@ -679,12 +698,14 @@ impl Client {
     }
 
     /// Send client message to **all relays**
+    #[inline]
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_msg(msg, opts).await?)
     }
 
     /// Batch send client messages to **all relays**
+    #[inline]
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
@@ -694,6 +715,7 @@ impl Client {
     }
 
     /// Send client message to a **specific relays**
+    #[inline]
     pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<(), Error>
     where
         I: IntoIterator<Item = U>,
@@ -705,6 +727,7 @@ impl Client {
     }
 
     /// Batch send client messages to **specific relays**
+    #[inline]
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
@@ -723,12 +746,14 @@ impl Client {
     ///
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
+    #[inline]
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_event(event, opts).await?)
     }
 
     /// Send multiple [`Event`] at once to **all relays**.
+    #[inline]
     pub async fn batch_event(
         &self,
         events: Vec<Event>,
@@ -741,6 +766,7 @@ impl Client {
     ///
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
+    #[inline]
     pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<EventId, Error>
     where
         I: IntoIterator<Item = U>,
@@ -752,6 +778,7 @@ impl Client {
     }
 
     /// Send multiple [`Event`] at once to **specific relays**.
+    #[inline]
     pub async fn batch_event_to<I, U>(
         &self,
         urls: I,
@@ -784,6 +811,7 @@ impl Client {
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to **all relays**.
     ///
     /// Rise an error if the [`NostrSigner`] is not set.
+    #[inline]
     pub async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event(event).await
@@ -792,6 +820,7 @@ impl Client {
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to **specific relays**.
     ///
     /// Rise an error if the [`NostrSigner`] is not set.
+    #[inline]
     pub async fn send_event_builder_to<I, U>(
         &self,
         urls: I,
@@ -843,6 +872,7 @@ impl Client {
     /// client.set_metadata(&metadata).await.unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn set_metadata(&self, metadata: &Metadata) -> Result<EventId, Error> {
         let builder = EventBuilder::metadata(metadata);
         self.send_event_builder(builder).await
@@ -851,6 +881,7 @@ impl Client {
     /// Set relay list (NIP65)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    #[inline]
     pub async fn set_relay_list<I>(&self, relays: I) -> Result<EventId, Error>
     where
         I: IntoIterator<Item = (UncheckedUrl, Option<RelayMetadata>)>,
@@ -877,6 +908,7 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn publish_text_note<S, I>(&self, content: S, tags: I) -> Result<EventId, Error>
     where
         S: Into<String>,
@@ -889,6 +921,7 @@ impl Client {
     /// Set contact list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
+    #[inline]
     pub async fn set_contact_list<I>(&self, list: I) -> Result<EventId, Error>
     where
         I: IntoIterator<Item = Contact>,
@@ -1044,6 +1077,7 @@ impl Client {
     }
 
     /// Repost
+    #[inline]
     pub async fn repost(
         &self,
         event: &Event,
@@ -1056,6 +1090,7 @@ impl Client {
     /// Delete event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
+    #[inline]
     pub async fn delete_event<T>(&self, id: T) -> Result<EventId, Error>
     where
         T: Into<EventIdOrCoordinate>,
@@ -1085,6 +1120,7 @@ impl Client {
     /// client.like(&event).await.unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn like(&self, event: &Event) -> Result<EventId, Error> {
         self.reaction(event, "+").await
     }
@@ -1110,6 +1146,7 @@ impl Client {
     /// client.dislike(&event).await.unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn dislike(&self, event: &Event) -> Result<EventId, Error> {
         self.reaction(event, "-").await
     }
@@ -1135,6 +1172,7 @@ impl Client {
     /// client.reaction(&event, "🐻").await.unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn reaction<S>(&self, event: &Event, reaction: S) -> Result<EventId, Error>
     where
         S: Into<String>,
@@ -1146,6 +1184,7 @@ impl Client {
     /// Create new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[inline]
     pub async fn new_channel(&self, metadata: &Metadata) -> Result<EventId, Error> {
         let builder = EventBuilder::channel(metadata);
         self.send_event_builder(builder).await
@@ -1154,6 +1193,7 @@ impl Client {
     /// Update channel metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[inline]
     pub async fn set_channel_metadata(
         &self,
         channel_id: EventId,
@@ -1167,6 +1207,7 @@ impl Client {
     /// Send message to channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[inline]
     pub async fn send_channel_msg<S>(
         &self,
         channel_id: EventId,
@@ -1183,6 +1224,7 @@ impl Client {
     /// Hide channel message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[inline]
     pub async fn hide_channel_msg<S>(
         &self,
         message_id: EventId,
@@ -1198,6 +1240,7 @@ impl Client {
     /// Mute channel user
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
+    #[inline]
     pub async fn mute_channel_user<S>(
         &self,
         pubkey: PublicKey,
@@ -1213,6 +1256,7 @@ impl Client {
     /// Create an auth event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
     pub async fn auth<S>(&self, challenge: S, relay: Url) -> Result<EventId, Error>
     where
         S: Into<String>,
@@ -1224,6 +1268,7 @@ impl Client {
     /// Create zap receipt event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+    #[inline]
     #[cfg(feature = "nip57")]
     pub async fn zap_receipt<S>(
         &self,
@@ -1241,6 +1286,7 @@ impl Client {
     /// Send a Zap!
     ///
     /// This method automatically create a split zap to support Rust Nostr development.
+    #[inline]
     #[cfg(feature = "nip57")]
     pub async fn zap<T>(
         &self,
@@ -1284,6 +1330,7 @@ impl Client {
     }
 
     /// Send GiftWrapper Sealed Direct message
+    #[inline]
     #[cfg(feature = "nip59")]
     pub async fn send_sealed_msg<S>(
         &self,
@@ -1301,6 +1348,7 @@ impl Client {
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
+    #[inline]
     pub async fn file_metadata<S>(
         &self,
         description: S,
@@ -1316,11 +1364,13 @@ impl Client {
     /// Negentropy reconciliation
     ///
     /// <https://github.com/hoytech/negentropy>
+    #[inline]
     pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
         Ok(self.pool.reconcile(filter, opts).await?)
     }
 
     /// Negentropy reconciliation with items
+    #[inline]
     pub async fn reconcile_with_items(
         &self,
         filter: Filter,
@@ -1331,6 +1381,7 @@ impl Client {
     }
 
     /// Handle notifications
+    #[inline]
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
         F: Fn(RelayPoolNotification) -> Fut,

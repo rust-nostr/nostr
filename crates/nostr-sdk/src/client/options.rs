@@ -69,16 +69,16 @@ impl Default for Options {
 
 impl Options {
     /// Create new (default) [`Options`]
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// If set to `true`, `Client` wait that a message is sent before continue.
-    pub fn wait_for_send(self, wait: bool) -> Self {
-        Self {
-            wait_for_send: Arc::new(AtomicBool::new(wait)),
-            ..self
-        }
+    #[inline]
+    pub fn wait_for_send(mut self, wait: bool) -> Self {
+        self.wait_for_send = Arc::new(AtomicBool::new(wait));
+        self
     }
 
     pub(crate) fn get_wait_for_send(&self) -> RelaySendOptions {
@@ -91,11 +91,10 @@ impl Options {
     }
 
     /// If set to `true`, `Client` wait that a subscription msg is sent before continue (`subscribe` and `unsubscribe` methods)
-    pub fn wait_for_subscription(self, wait: bool) -> Self {
-        Self {
-            wait_for_subscription: Arc::new(AtomicBool::new(wait)),
-            ..self
-        }
+    #[inline]
+    pub fn wait_for_subscription(mut self, wait: bool) -> Self {
+        self.wait_for_subscription = Arc::new(AtomicBool::new(wait));
+        self
     }
 
     pub(crate) fn get_wait_for_subscription(&self) -> RelaySendOptions {
@@ -108,47 +107,49 @@ impl Options {
     }
 
     /// Set default POW difficulty for `Event`
-    pub fn difficulty(self, difficulty: u8) -> Self {
-        Self {
-            new_events_difficulty: Arc::new(AtomicU8::new(difficulty)),
-            ..self
-        }
+    #[inline]
+    pub fn difficulty(mut self, difficulty: u8) -> Self {
+        self.new_events_difficulty = Arc::new(AtomicU8::new(difficulty));
+        self
     }
 
+    #[inline]
     pub(crate) fn get_difficulty(&self) -> u8 {
         self.new_events_difficulty.load(Ordering::SeqCst)
     }
 
+    #[inline]
     pub(crate) fn update_difficulty(&self, difficulty: u8) {
         self.new_events_difficulty
             .store(difficulty, Ordering::SeqCst);
     }
 
     /// Minimum POW difficulty for received events
-    pub fn min_pow(self, difficulty: u8) -> Self {
-        Self {
-            min_pow_difficulty: Arc::new(AtomicU8::new(difficulty)),
-            ..self
-        }
+    #[inline]
+    pub fn min_pow(mut self, difficulty: u8) -> Self {
+        self.min_pow_difficulty = Arc::new(AtomicU8::new(difficulty));
+        self
     }
 
+    #[inline]
     pub(crate) fn get_min_pow_difficulty(&self) -> u8 {
         self.min_pow_difficulty.load(Ordering::SeqCst)
     }
 
     /// Update min POW difficulty
+    #[inline]
     pub fn update_min_pow_difficulty(&self, difficulty: u8) {
         self.min_pow_difficulty.store(difficulty, Ordering::SeqCst);
     }
 
     /// Set `REQ` filters chunk size
-    pub fn req_filters_chunk_size(self, size: u8) -> Self {
-        Self {
-            req_filters_chunk_size: Arc::new(AtomicU8::new(size)),
-            ..self
-        }
+    #[inline]
+    pub fn req_filters_chunk_size(mut self, size: u8) -> Self {
+        self.req_filters_chunk_size = Arc::new(AtomicU8::new(size));
+        self
     }
 
+    #[inline]
     pub(crate) fn get_req_filters_chunk_size(&self) -> usize {
         self.req_filters_chunk_size.load(Ordering::SeqCst) as usize
     }
@@ -156,39 +157,42 @@ impl Options {
     /// Skip disconnected relays during send methods (default: true)
     ///
     /// If the relay made just 1 attempt, the relay will not be skipped
-    pub fn skip_disconnected_relays(self, skip: bool) -> Self {
-        Self {
-            skip_disconnected_relays: Arc::new(AtomicBool::new(skip)),
-            ..self
-        }
+    #[inline]
+    pub fn skip_disconnected_relays(mut self, skip: bool) -> Self {
+        self.skip_disconnected_relays = Arc::new(AtomicBool::new(skip));
+        self
     }
 
+    #[inline]
     pub(crate) fn get_skip_disconnected_relays(&self) -> bool {
         self.skip_disconnected_relays.load(Ordering::SeqCst)
     }
 
     /// Set default timeout
-    pub fn timeout(self, timeout: Duration) -> Self {
-        Self { timeout, ..self }
+    #[inline]
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
     }
 
     /// Connection timeout (default: None)
     ///
     /// If set to `None`, the client will try to connect to the relays without waiting.
+    #[inline]
     pub fn connection_timeout(mut self, timeout: Option<Duration>) -> Self {
         self.connection_timeout = timeout;
         self
     }
 
     /// Set default send timeout
-    pub fn send_timeout(self, timeout: Option<Duration>) -> Self {
-        Self {
-            send_timeout: timeout,
-            ..self
-        }
+    #[inline]
+    pub fn send_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.send_timeout = timeout;
+        self
     }
 
     /// Proxy
+    #[inline]
     #[cfg(not(target_arch = "wasm32"))]
     pub fn proxy(mut self, proxy: Proxy) -> Self {
         self.proxy = proxy;
@@ -196,14 +200,17 @@ impl Options {
     }
 
     /// Set custom relay limits
+    #[inline]
     pub fn relay_limits(mut self, limits: RelayLimits) -> Self {
         self.relay_limits = limits;
         self
     }
 
     /// Set pool options
-    pub fn pool(self, opts: RelayPoolOptions) -> Self {
-        Self { pool: opts, ..self }
+    #[inline]
+    pub fn pool(mut self, opts: RelayPoolOptions) -> Self {
+        self.pool = opts;
+        self
     }
 }
 

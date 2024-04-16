@@ -42,6 +42,7 @@ impl Default for ClientBuilder {
 
 impl ClientBuilder {
     /// New default client builder
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
@@ -54,10 +55,9 @@ impl ClientBuilder {
     ///
     /// // Signer with private keys
     /// let keys = Keys::generate();
-    /// let builder = ClientBuilder::new().signer(keys);
-    ///
-    /// let _client: Client = builder.build();
+    /// let client = ClientBuilder::new().signer(keys).build();
     /// ```
+    #[inline]
     pub fn signer<S>(mut self, signer: S) -> Self
     where
         S: Into<NostrSigner>,
@@ -67,6 +67,7 @@ impl ClientBuilder {
     }
 
     /// Set zapper
+    #[inline]
     #[cfg(feature = "nip57")]
     pub fn zapper<Z>(mut self, zapper: Z) -> Self
     where
@@ -77,6 +78,7 @@ impl ClientBuilder {
     }
 
     /// Set database
+    #[inline]
     pub fn database<D>(mut self, database: D) -> Self
     where
         D: IntoNostrDatabase,
@@ -86,12 +88,14 @@ impl ClientBuilder {
     }
 
     /// Set opts
+    #[inline]
     pub fn opts(mut self, opts: Options) -> Self {
         self.opts = opts;
         self
     }
 
     /// Build [`Client`]
+    #[inline]
     pub fn build(self) -> Client {
         Client::from_builder(self)
     }
