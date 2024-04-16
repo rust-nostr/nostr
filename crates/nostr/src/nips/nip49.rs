@@ -318,6 +318,12 @@ impl EncryptedSecretKey {
         self.version
     }
 
+    /// Get encryption log_n value
+    #[inline]
+    pub fn log_n(&self) -> u8 {
+        self.log_n
+    }
+
     /// Get encrypted secret key security
     #[inline]
     pub fn key_security(&self) -> KeySecurity {
