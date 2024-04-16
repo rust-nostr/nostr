@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 from setuptools import setup
-
 from pathlib import Path
+
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
@@ -19,7 +19,7 @@ setup(
     url="https://github.com/rust-nostr/nostr",
     author="Yuki Kishimoto <yukikishimoto@protonmail.com>",
     license="MIT",
-     # This is required to ensure the library name includes the python version, abi, and platform tags
+    # This is required to ensure the library name includes the python version, abi, and platform tags
     # See issue #350 for more information
     has_ext_modules=lambda: True,
 )
