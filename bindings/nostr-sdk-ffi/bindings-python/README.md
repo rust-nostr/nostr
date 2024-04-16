@@ -77,6 +77,10 @@ More examples can be found at:
 
 Look at <https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips>
 
+## Book
+
+Learn more about `rust-nostr` at <https://rust-nostr.org>.
+
 ## State
 
 **This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.

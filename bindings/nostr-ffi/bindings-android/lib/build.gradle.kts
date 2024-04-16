@@ -64,8 +64,8 @@ afterEvaluate {
                 from(components["release"])
                 pom {
                     name.set("nostr")
-                    description.set("Nostr Kotlin language bindings.")
-                    url.set("https://github.com/rust-nostr/nostr")
+                    description.set("Nostr protocol implementation")
+                    url.set("https://rust-nostr.org")
                     licenses {
                         license {
                             name.set("MIT")
@@ -82,7 +82,7 @@ afterEvaluate {
                     scm {
                         connection.set("scm:git:github.com/rust-nostr/nostr.git")
                         developerConnection.set("scm:git:ssh://github.com/rust-nostr/nostr.git")
-                        url.set("https://github.com/rust-nostr/nostr/tree/master")
+                        url.set("https://github.com/rust-nostr/nostr")
                     }
                 }
             }
