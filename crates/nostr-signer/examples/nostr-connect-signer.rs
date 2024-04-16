@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
     println!("\n{uri}\n");
 
     // Serve signer
-    signer.serve(Box::new(CustomActions)).await?;
+    signer.serve(CustomActions).await?;
 
     Ok(())
 }
