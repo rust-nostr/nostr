@@ -20,6 +20,7 @@ pub mod options;
 pub mod signer;
 pub mod zapper;
 
+pub use self::builder::JsClientBuilder;
 use self::options::JsOptions;
 pub use self::signer::JsNostrSigner;
 use self::zapper::{JsZapDetails, JsZapEntity};
@@ -53,9 +54,15 @@ impl JsClient {
         Self {
             inner: match signer {
                 Some(signer) => Client::with_opts(signer.deref().clone(), opts.deref().clone()),
-                None => ClientBuilder::new().opts(opts.deref().clone()).build(),
+                None => Client::builder().opts(opts.deref().clone()).build(),
             },
         }
+    }
+
+    /// Construct `ClientBuilder`
+    #[inline]
+    pub fn builder() -> JsClientBuilder {
+        JsClientBuilder::new()
     }
 
     /// Update default difficulty for new `Event`

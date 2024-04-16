@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     let secret_key =
         SecretKey::from_bech32("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
     let keys = Keys::new(secret_key);
-    let client = ClientBuilder::new().signer(keys).zapper(nwc).build();
+    let client = Client::builder().signer(keys).zapper(nwc).build();
 
     client.add_relay("wss://relay.nostr.band").await?;
     client.add_relay("wss://relay.damus.io").await?;

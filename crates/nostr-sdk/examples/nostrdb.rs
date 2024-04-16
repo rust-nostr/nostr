@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     let my_keys = Keys::parse(BECH32_SK)?;
 
     let database = NdbDatabase::open("./db/ndb")?;
-    let client: Client = ClientBuilder::default()
+    let client: Client = Client::builder()
         .signer(&my_keys)
         .database(database)
         .build();

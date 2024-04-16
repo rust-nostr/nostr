@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2024 Rust Nostr Developersopers
+// Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
 use std::ops::Deref;
@@ -14,7 +14,7 @@ use super::zapper::NostrZapper;
 use super::{Client, ClientSdk, NostrSigner, Options};
 use crate::database::NostrDatabase;
 
-#[derive(Clone, Object)]
+#[derive(Clone, Default, Object)]
 pub struct ClientBuilder {
     inner: nostr_sdk::ClientBuilder,
 }
@@ -28,11 +28,10 @@ impl From<nostr_sdk::ClientBuilder> for ClientBuilder {
 #[uniffi::export]
 impl ClientBuilder {
     /// New client builder
+    #[inline]
     #[uniffi::constructor]
     pub fn new() -> Self {
-        Self {
-            inner: nostr_sdk::ClientBuilder::new(),
-        }
+        Self::default()
     }
 
     pub fn signer(self: Arc<Self>, signer: Arc<NostrSigner>) -> Self {

@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
 
     // Compose options and limits
     let opts = Options::new().relay_limits(limits);
-    let client = ClientBuilder::default().opts(opts).build();
+    let client = Client::builder().opts(opts).build();
 
     // Add relays and connect
     client

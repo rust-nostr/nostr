@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
     let public_key = keys.public_key();
 
     let opts = Options::new().wait_for_send(false);
-    let client = ClientBuilder::new().opts(opts).build();
+    let client = Client::builder().opts(opts).build();
 
     client.add_relay("wss://nostr.oxtr.dev").await?;
     client.add_relay("wss://relay.damus.io").await?;

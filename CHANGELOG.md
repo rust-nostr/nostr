@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: derive default traits for `HttpData`, `LiveEventHost` and `LiveEvent` ([Yuki Kishimoto])
 * nostr: expose NIP49 `log_n` ([DanConwayDev])
 * pool: add `RelayPool::start` ([Yuki Kishimoto])
+* sdk: add `Client::builder()` ([Yuki Kishimoto])
 
 ### Fixed
 

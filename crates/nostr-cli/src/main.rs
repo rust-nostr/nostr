@@ -38,7 +38,7 @@ async fn run() -> Result<()> {
         CliCommand::Open => {
             //let db = RocksDatabase::open("./db/nostr").await?;
             let db = SQLiteDatabase::open("nostr.db").await?;
-            let client = ClientBuilder::new().database(db).build();
+            let client = Client::builder().database(db).build();
 
             let rl = &mut DefaultEditor::new()?;
 

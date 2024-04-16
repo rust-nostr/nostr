@@ -97,7 +97,7 @@ pub struct Client {
 
 impl Default for Client {
     fn default() -> Self {
-        ClientBuilder::new().build()
+        Self::builder().build()
     }
 }
 
@@ -113,16 +113,17 @@ impl Client {
     /// let my_keys = Keys::generate();
     /// let client = Client::new(&my_keys);
     /// ```
+    #[inline]
     pub fn new<S>(signer: S) -> Self
     where
         S: Into<NostrSigner>,
     {
-        Self::with_opts(signer, Options::default())
+        Self::builder().signer(signer).build()
     }
 
     /// Create a new [`Client`] with [`Options`]
     ///
-    /// To create a [`Client`] with custom [`Options`] and without any signer use `ClientBuilder::new().opts(opts).build()`.
+    /// To create a [`Client`] with custom [`Options`] and without any signer use `Client::builder().opts(opts).build()`.
     ///
     /// # Example
     /// ```rust,no_run
@@ -132,11 +133,29 @@ impl Client {
     /// let opts = Options::new().wait_for_send(true);
     /// let client = Client::with_opts(&my_keys, opts);
     /// ```
+    #[inline]
     pub fn with_opts<S>(signer: S, opts: Options) -> Self
     where
         S: Into<NostrSigner>,
     {
-        ClientBuilder::new().signer(signer).opts(opts).build()
+        Self::builder().signer(signer).opts(opts).build()
+    }
+
+    /// Construct [ClientBuilder]
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use std::time::Duration;
+    ///
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// let signer = Keys::generate();
+    /// let opts = Options::default().connection_timeout(Some(Duration::from_secs(30)));
+    /// let client: Client = Client::builder().signer(signer).opts(opts).build();
+    /// ```
+    #[inline]
+    pub fn builder() -> ClientBuilder {
+        ClientBuilder::default()
     }
 
     /// Compose [`Client`] from [`ClientBuilder`]

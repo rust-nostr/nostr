@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
         PublicKey::from_bech32("npub1080l37pfvdpyuzasyuy2ytjykjvq3ylr5jlqlg7tvzjrh9r8vn3sf5yaph")?;
 
     let database = RocksDatabase::open("./db/rocksdb").await?;
-    let client: Client = ClientBuilder::new().database(database).build();
+    let client: Client = Client::builder().database(database).build();
 
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nostr.wine").await?;

@@ -1,4 +1,4 @@
-const { Keys, NostrSigner, PublicKey, loadWasmAsync, initLogger, LogLevel, NostrZapper, NostrWalletConnectURI, ClientBuilder, ZapEntity } = require("../");
+const { PublicKey, loadWasmAsync, initLogger, LogLevel, NostrZapper, NostrWalletConnectURI, Client, ZapEntity } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -8,7 +8,7 @@ async function main() {
     let uri = NostrWalletConnectURI.parse("nostr+walletconnect://..");
 
     let zapper = await NostrZapper.nwc(uri);
-    let client = new ClientBuilder().zapper(zapper).build();
+    let client = Client.builder().zapper(zapper).build();
 
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nos.lol");
