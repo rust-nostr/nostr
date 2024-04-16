@@ -99,7 +99,7 @@ async fn run() -> Result<()> {
             println!("\nBunker URI: {uri}\n");
 
             // Serve signer
-            signer.serve(Box::new(CustomActions)).await?;
+            signer.serve(CustomActions).await?;
 
             Ok(())
         }
