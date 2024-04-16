@@ -50,7 +50,7 @@ impl Client {
         Self::with_opts(signer, Arc::new(Options::new()))
     }
 
-    #[uniffi::constructor(default(signer = None))]
+    #[uniffi::constructor]
     pub fn with_opts(signer: Option<Arc<NostrSigner>>, opts: Arc<Options>) -> Self {
         Self {
             inner: match signer {
@@ -58,7 +58,7 @@ impl Client {
                     signer.as_ref().deref().clone(),
                     opts.as_ref().deref().clone(),
                 ),
-                None => nostr_sdk::ClientBuilder::new()
+                None => nostr_sdk::Client::builder()
                     .opts(opts.as_ref().deref().clone())
                     .build(),
             },
