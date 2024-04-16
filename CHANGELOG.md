@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * ffi(nostr): set default args for `nip05::verify` function ([Yuki Kishimoto])
 * ffi(sdk): set default args for `Client` constructors ([Yuki Kishimoto])
 * js: enable support for Reference Types ([Yuki Kishimoto])
+* js(nostr): rewrite `JsMetadata` methods and add getters ([Yuki Kishimoto])
 
 ### Added
 

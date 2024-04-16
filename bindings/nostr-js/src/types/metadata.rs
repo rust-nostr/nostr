@@ -15,14 +15,16 @@ pub struct JsMetadata {
 }
 
 impl From<Metadata> for JsMetadata {
-    fn from(metadata: Metadata) -> Self {
-        Self { inner: metadata }
+    #[inline]
+    fn from(inner: Metadata) -> Self {
+        Self { inner }
     }
 }
 
 impl Deref for JsMetadata {
     type Target = Metadata;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
@@ -30,6 +32,7 @@ impl Deref for JsMetadata {
 
 #[wasm_bindgen(js_class = Metadata)]
 impl JsMetadata {
+    #[inline]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
@@ -37,6 +40,7 @@ impl JsMetadata {
         }
     }
 
+    #[inline]
     #[wasm_bindgen(js_name = fromJson)]
     pub fn from_json(json: &str) -> Result<JsMetadata> {
         Ok(Self {
@@ -44,66 +48,120 @@ impl JsMetadata {
         })
     }
 
+    #[inline]
     #[wasm_bindgen(js_name = asJson)]
     pub fn as_json(&self) -> String {
         self.inner.as_json()
     }
 
-    pub fn name(&self, name: &str) -> Self {
-        Self {
-            inner: self.inner.to_owned().name(name),
-        }
+    #[inline]
+    #[wasm_bindgen(js_name = name)]
+    pub fn set_name(self, name: &str) -> Self {
+        self.inner.name(name).into()
     }
 
+    #[inline]
+    #[wasm_bindgen(js_name = getName)]
+    pub fn get_name(&self) -> Option<String> {
+        self.inner.name.clone()
+    }
+
+    #[inline]
     #[wasm_bindgen(js_name = displayName)]
-    pub fn display_name(&self, display_name: &str) -> Self {
-        Self {
-            inner: self.inner.to_owned().display_name(display_name),
-        }
+    pub fn set_display_name(self, display_name: &str) -> Self {
+        self.inner.display_name(display_name).into()
     }
 
-    pub fn about(&self, about: &str) -> Self {
-        Self {
-            inner: self.inner.to_owned().about(about),
-        }
+    #[inline]
+    #[wasm_bindgen(js_name = getDisplayName)]
+    pub fn get_display_name(&self) -> Option<String> {
+        self.inner.display_name.clone()
     }
 
-    pub fn website(&self, url: &str) -> Result<JsMetadata> {
+    #[inline]
+    #[wasm_bindgen(js_name = about)]
+    pub fn set_about(self, about: &str) -> Self {
+        self.inner.about(about).into()
+    }
+
+    #[inline]
+    #[wasm_bindgen(js_name = getAbout)]
+    pub fn get_about(&self) -> Option<String> {
+        self.inner.about.clone()
+    }
+
+    #[inline]
+    #[wasm_bindgen(js_name = website)]
+    pub fn set_website(self, url: &str) -> Result<JsMetadata> {
         let url = Url::parse(url).map_err(into_err)?;
-        Ok(Self {
-            inner: self.inner.to_owned().website(url),
-        })
+        Ok(self.inner.website(url).into())
     }
 
-    pub fn picture(&self, url: &str) -> Result<JsMetadata> {
+    #[inline]
+    #[wasm_bindgen(js_name = getWebsite)]
+    pub fn get_website(&self) -> Option<String> {
+        self.inner.website.clone()
+    }
+
+    #[inline]
+    #[wasm_bindgen(js_name = picture)]
+    pub fn set_picture(self, url: &str) -> Result<JsMetadata> {
         let url = Url::parse(url).map_err(into_err)?;
-        Ok(Self {
-            inner: self.inner.to_owned().picture(url),
-        })
+        Ok(self.inner.picture(url).into())
     }
 
-    pub fn banner(&self, url: &str) -> Result<JsMetadata> {
+    #[inline]
+    #[wasm_bindgen(js_name = getPicture)]
+    pub fn get_picture(&self) -> Option<String> {
+        self.inner.picture.clone()
+    }
+
+    #[inline]
+    #[wasm_bindgen(js_name = banner)]
+    pub fn set_banner(self, url: &str) -> Result<JsMetadata> {
         let url = Url::parse(url).map_err(into_err)?;
-        Ok(Self {
-            inner: self.inner.to_owned().banner(url),
-        })
+        Ok(self.inner.banner(url).into())
     }
 
-    pub fn nip05(&self, nip05: &str) -> Self {
-        Self {
-            inner: self.inner.to_owned().nip05(nip05),
-        }
+    #[inline]
+    #[wasm_bindgen(js_name = getBanner)]
+    pub fn get_banner(&self) -> Option<String> {
+        self.inner.banner.clone()
     }
 
-    pub fn lud06(&self, lud06: &str) -> Self {
-        Self {
-            inner: self.inner.to_owned().lud06(lud06),
-        }
+    #[inline]
+    #[wasm_bindgen(js_name = nip05)]
+    pub fn set_nip05(self, nip05: &str) -> Self {
+        self.inner.nip05(nip05).into()
     }
 
-    pub fn lud16(&self, lud16: &str) -> Self {
-        Self {
-            inner: self.inner.to_owned().lud16(lud16),
-        }
+    #[inline]
+    #[wasm_bindgen(js_name = getNip05)]
+    pub fn get_nip05(&self) -> Option<String> {
+        self.inner.nip05.clone()
+    }
+
+    #[inline]
+    #[wasm_bindgen(js_name = lud06)]
+    pub fn set_lud06(self, lud06: &str) -> Self {
+        self.inner.lud06(lud06).into()
+    }
+
+    #[inline]
+    #[wasm_bindgen(js_name = getLud06)]
+    pub fn get_lud06(&self) -> Option<String> {
+        self.inner.lud06.clone()
+    }
+
+    #[inline]
+    #[wasm_bindgen(js_name = lud16)]
+    pub fn set_lud16(self, lud16: &str) -> Self {
+        self.inner.lud16(lud16).into()
+    }
+
+    #[inline]
+    #[wasm_bindgen(js_name = getLud16)]
+    pub fn get_lud16(&self) -> Option<String> {
+        self.inner.lud16.clone()
     }
 }
