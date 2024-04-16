@@ -65,8 +65,18 @@ impl Client {
         }
     }
 
+    /// Update default difficulty for new `Event`
+    #[inline]
     pub fn update_difficulty(&self, difficulty: u8) {
         self.inner.update_difficulty(difficulty);
+    }
+
+    /// Update minimum POW difficulty for received events
+    ///
+    /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
+    #[inline]
+    pub fn update_min_pow_difficulty(&self, difficulty: u8) {
+        self.inner.update_min_pow_difficulty(difficulty);
     }
 
     pub fn signer(&self) -> Result<NostrSigner> {

@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: expose NIP49 `log_n` ([DanConwayDev])
 * pool: add `RelayPool::start` ([Yuki Kishimoto])
 * sdk: add `Client::builder()` ([Yuki Kishimoto])
+* sdk: add `Client::update_min_pow_difficulty` method ([Yuki Kishimoto])
 
 ### Fixed
 

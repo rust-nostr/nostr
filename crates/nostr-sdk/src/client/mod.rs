@@ -176,6 +176,14 @@ impl Client {
         self.opts.update_difficulty(difficulty);
     }
 
+    /// Update minimum POW difficulty for received events
+    ///
+    /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
+    #[inline]
+    pub fn update_min_pow_difficulty(&self, difficulty: u8) {
+        self.opts.update_min_pow_difficulty(difficulty);
+    }
+
     /// Get current nostr signer
     ///
     /// Rise error if it not set.
