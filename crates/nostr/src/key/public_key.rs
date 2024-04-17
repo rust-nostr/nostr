@@ -151,6 +151,7 @@ mod benches {
     use test::{black_box, Bencher};
 
     use super::*;
+    use crate::nips::nip19::ToBech32;
 
     const NIP21_URI: &str = "nostr:npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy";
     const HEX: &str = "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4";
@@ -188,6 +189,22 @@ mod benches {
     pub fn public_key_from_bech32(bh: &mut Bencher) {
         bh.iter(|| {
             black_box(PublicKey::from_bech32(BECH32)).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn public_key_to_hex(bh: &mut Bencher) {
+        let public_key = PublicKey::from_hex(HEX).unwrap();
+        bh.iter(|| {
+            black_box(public_key.to_bech32()).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn public_key_to_bech32(bh: &mut Bencher) {
+        let public_key = PublicKey::from_hex(HEX).unwrap();
+        bh.iter(|| {
+            black_box(public_key.to_bech32()).unwrap();
         });
     }
 }
