@@ -30,6 +30,21 @@ pub fn gift_wrap(
     .into())
 }
 
+/// Build Gift Wrap from Seal
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+#[uniffi::export]
+pub fn gift_wrap_from_seal(
+    receiver: &PublicKey,
+    seal: &Event,
+    expiration: Option<Arc<Timestamp>>,
+) -> Result<Event> {
+    Ok(
+        EventBuilder::gift_wrap_from_seal(receiver.deref(), seal.deref(), expiration.map(|t| **t))?
+            .into(),
+    )
+}
+
 /// Unwrapped Gift Wrap
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
