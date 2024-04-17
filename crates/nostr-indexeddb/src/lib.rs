@@ -20,6 +20,7 @@ pub extern crate nostr_database as database;
 
 #[cfg(target_arch = "wasm32")]
 use async_trait::async_trait;
+use indexed_db_futures::js_sys::JsString;
 use indexed_db_futures::request::{IdbOpenDbRequestLike, OpenDbRequest};
 use indexed_db_futures::web_sys::IdbTransactionMode;
 use indexed_db_futures::{IdbDatabase, IdbQuerySource, IdbVersionChangeEvent};
@@ -33,7 +34,7 @@ use nostr_database::{
     FlatBufferEncode, Order, TempEvent,
 };
 use tokio::sync::Mutex;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{JsCast, JsValue};
 
 mod error;
 
@@ -195,7 +196,7 @@ impl WebDatabase {
             .get_all()?
             .await?
             .into_iter()
-            .filter_map(|v| v.as_string())
+            .filter_map(js_value_to_string)
             .filter_map(|v| {
                 let bytes = hex::decode(v).ok()?;
                 TempEvent::decode(&bytes).ok()
@@ -207,7 +208,7 @@ impl WebDatabase {
         // Discard events
         for event_id in to_discard.into_iter() {
             let key = JsValue::from(event_id.to_hex());
-            store.delete(&key)?;
+            store.delete(&key)?.await?;
         }
 
         tracing::info!("Database indexes loaded");
@@ -258,15 +259,23 @@ impl_nostr_database!({
         } = self.indexes.index_event(event).await;
 
         if to_store {
-            // Acquire FlatBuffers Builder
-            let mut fbb = self.fbb.lock().await;
-
             let tx = self
                 .db
                 .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
             let store = tx.object_store(EVENTS_CF)?;
             let key = JsValue::from(event.id().to_hex());
-            let value = JsValue::from(hex::encode(event.encode(&mut fbb)));
+
+            // Acquire FlatBuffers Builder
+            let mut fbb = self.fbb.lock().await;
+
+            // Encode
+            let event_hex: String = hex::encode(event.encode(&mut fbb));
+
+            // Drop FlatBuffers Builder
+            drop(fbb);
+
+            // Store key-val
+            let value = JsValue::from(event_hex);
             store.put_key_val(&key, &value)?;
 
             // Discard events no longer needed
@@ -299,8 +308,11 @@ impl_nostr_database!({
         for event in events.into_iter() {
             let key = JsValue::from(event.id.to_hex());
             let value = JsValue::from(hex::encode(event.encode(&mut fbb)));
-            store.put_key_val(&key, &value)?;
+            store.put_key_val(&key, &value)?.await?;
         }
+
+        // Drop FlatBuffers Builder
+        drop(fbb);
 
         tx.await.into_result()?;
 
@@ -351,22 +363,30 @@ impl_nostr_database!({
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), IndexedDBError> {
-        let mut set: HashSet<Url> = match self.event_seen_on_relays(event_id).await? {
-            Some(set) => set,
-            None => HashSet::with_capacity(1),
-        };
+        let mut set: HashSet<Url> = self
+            .event_seen_on_relays(event_id)
+            .await?
+            .unwrap_or_else(|| HashSet::with_capacity(1));
 
         if set.insert(relay_url) {
-            // Save
-            let mut fbb = self.fbb.lock().await;
             let tx = self.db.transaction_on_one_with_mode(
                 EVENTS_SEEN_BY_RELAYS_CF,
                 IdbTransactionMode::Readwrite,
             )?;
             let store = tx.object_store(EVENTS_SEEN_BY_RELAYS_CF)?;
             let key = JsValue::from(event_id.to_hex());
+
+            // Acquire FlatBuffers Builder
+            let mut fbb = self.fbb.lock().await;
+
+            // Encode
             let value = JsValue::from(hex::encode(set.encode(&mut fbb)));
-            store.put_key_val(&key, &value)?;
+
+            // Drop FlatBuffers Builder
+            drop(fbb);
+
+            // Save
+            store.put_key_val(&key, &value)?.await?;
         }
 
         Ok(())
@@ -383,8 +403,7 @@ impl_nostr_database!({
         let key = JsValue::from(event_id.to_hex());
         match store.get(&key)?.await? {
             Some(jsvalue) => {
-                let set_hex = jsvalue
-                    .as_string()
+                let set_hex = js_value_to_string(jsvalue)
                     .ok_or(IndexedDBError::Database(DatabaseError::NotFound))?;
                 let bytes = hex::decode(set_hex).map_err(DatabaseError::backend)?;
                 Ok(Some(
@@ -404,10 +423,9 @@ impl_nostr_database!({
         let key = JsValue::from(event_id.to_hex());
         match store.get(&key)?.await? {
             Some(jsvalue) => {
-                let event_hex = jsvalue
-                    .as_string()
+                let event_hex: String = js_value_to_string(jsvalue)
                     .ok_or(IndexedDBError::Database(DatabaseError::NotFound))?;
-                let bytes = hex::decode(event_hex).map_err(DatabaseError::backend)?;
+                let bytes: Vec<u8> = hex::decode(event_hex).map_err(DatabaseError::backend)?;
                 Ok(Event::decode(&bytes).map_err(DatabaseError::backend)?)
             }
             None => Err(IndexedDBError::Database(DatabaseError::NotFound)),
@@ -429,15 +447,16 @@ impl_nostr_database!({
             .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
         let store = tx.object_store(EVENTS_CF)?;
 
-        let ids = self.indexes.query(filters, order).await;
+        let ids: Vec<EventId> = self.indexes.query(filters, order).await;
         let mut events: Vec<Event> = Vec::with_capacity(ids.len());
 
         for event_id in ids.into_iter() {
             let key = JsValue::from(event_id.to_hex());
             if let Some(jsvalue) = store.get(&key)?.await? {
-                let event_hex = jsvalue.as_string().ok_or(DatabaseError::NotFound)?;
-                let bytes = hex::decode(event_hex).map_err(DatabaseError::backend)?;
-                let event = Event::decode(&bytes).map_err(DatabaseError::backend)?;
+                let event_hex: String =
+                    js_value_to_string(jsvalue).ok_or(DatabaseError::NotFound)?;
+                let bytes: Vec<u8> = hex::decode(event_hex).map_err(DatabaseError::backend)?;
+                let event: Event = Event::decode(&bytes).map_err(DatabaseError::backend)?;
                 events.push(event);
             }
         }
@@ -495,3 +514,9 @@ impl_nostr_database!({
         Ok(())
     }
 });
+
+#[inline(always)]
+fn js_value_to_string(value: JsValue) -> Option<String> {
+    let s: JsString = value.dyn_into().ok()?;
+    Some(s.into())
+}
