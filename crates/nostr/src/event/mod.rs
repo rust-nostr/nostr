@@ -5,12 +5,15 @@
 
 //! Event
 
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::ops::Deref;
+#[cfg(feature = "std")]
+use std::sync::{Arc, OnceLock};
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
@@ -38,7 +41,10 @@ use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{JsonUtil, PublicKey, Timestamp};
+use crate::{GenericTagValue, JsonUtil, PublicKey, SingleLetterTag, Timestamp};
+
+/// Tags Indexes
+pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<GenericTagValue>>;
 
 /// [`Event`] error
 #[derive(Debug, PartialEq, Eq)]
@@ -86,6 +92,9 @@ pub struct Event {
     inner: EventIntermediate,
     /// JSON deserialization key order
     deser_order: Vec<String>,
+    /// Tags indexes
+    #[cfg(feature = "std")]
+    tags_indexes: Arc<OnceLock<TagsIndexes>>,
 }
 
 impl fmt::Debug for Event {
@@ -162,6 +171,8 @@ impl Event {
                 sig,
             },
             deser_order: Vec::new(),
+            #[cfg(feature = "std")]
+            tags_indexes: Arc::new(OnceLock::new()),
         }
     }
 
@@ -431,6 +442,24 @@ impl Event {
             _ => None,
         })
     }
+
+    pub(crate) fn build_tags_indexes(&self) -> TagsIndexes {
+        let mut idx: TagsIndexes = TagsIndexes::new();
+        for (single_letter_tag, content) in self
+            .iter_tags()
+            .filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
+        {
+            idx.entry(single_letter_tag).or_default().insert(content);
+        }
+        idx
+    }
+
+    /// Get tags indexes
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn tags_indexes(&self) -> &TagsIndexes {
+        self.tags_indexes.get_or_init(|| self.build_tags_indexes())
+    }
 }
 
 impl JsonUtil for Event {
@@ -526,6 +555,8 @@ impl<'de> Deserialize<'de> for Event {
         Ok(Self {
             inner: serde_json::from_value(value).map_err(serde::de::Error::custom)?,
             deser_order,
+            #[cfg(feature = "std")]
+            tags_indexes: Arc::new(OnceLock::new()),
         })
     }
 }

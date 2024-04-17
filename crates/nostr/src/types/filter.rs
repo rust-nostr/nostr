@@ -17,6 +17,7 @@ use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
+use crate::event::TagsIndexes;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
 type GenericTags = AllocMap<SingleLetterTag, AllocSet<GenericTagValue>>;
@@ -741,18 +742,14 @@ impl Filter {
             return false;
         }
 
-        // Build tags indexes
-        let mut idx: AllocMap<SingleLetterTag, AllocSet<GenericTagValue>> = AllocMap::new();
-        for (single_letter_tag, content) in event
-            .iter_tags()
-            .filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
-        {
-            idx.entry(single_letter_tag).or_default().insert(content);
-        }
+        #[cfg(feature = "std")]
+        let tags_indexes: &TagsIndexes = event.tags_indexes();
+        #[cfg(not(feature = "std"))]
+        let tags_indexes: TagsIndexes = event.build_tags_indexes();
 
         // Match
         self.generic_tags.iter().all(|(tag_name, set)| {
-            if let Some(val_set) = idx.get(tag_name) {
+            if let Some(val_set) = tags_indexes.get(tag_name) {
                 set.iter().any(|t| val_set.contains(t))
             } else {
                 false
@@ -1182,7 +1179,9 @@ mod benches {
                 Kind::TextNote,
                 [
                     Tag::public_key(PublicKey::from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
+                    Tag::public_key(PublicKey::from_hex("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe").unwrap()),
                     Tag::event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap()),
+                    Tag::Kind(Kind::TextNote),
                 ],
                 "test",
                 Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
