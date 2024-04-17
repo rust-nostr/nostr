@@ -113,6 +113,8 @@ impl RelayPool {
     }
 
     /// Get new **pool** notification listener
+    ///
+    /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.inner.notifications()
