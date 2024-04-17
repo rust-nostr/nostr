@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+* Bump `uniffi` to `v0.27.1` ([Yuki Kishimoto])
 * nostr: update fingerprint of NIP26 functions ([Yuki Kishimoto])
 * nostr: update fingerprint of `EventBuilder::zap_receipt` constructor ([Yuki Kishimoto])
 * nostr: update `EventId::new` fingerprint ([Yuki Kishimoto])
