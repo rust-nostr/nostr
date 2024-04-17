@@ -33,6 +33,7 @@ impl From<nostr::PublicKey> for PublicKey {
 #[uniffi::export]
 impl PublicKey {
     /// Try to parse public key from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    #[inline]
     #[uniffi::constructor]
     pub fn parse(public_key: &str) -> Result<Self> {
         Ok(Self {
@@ -40,6 +41,7 @@ impl PublicKey {
         })
     }
 
+    #[inline]
     #[uniffi::constructor]
     pub fn from_hex(hex: &str) -> Result<Self> {
         Ok(Self {
@@ -47,6 +49,7 @@ impl PublicKey {
         })
     }
 
+    #[inline]
     #[uniffi::constructor]
     pub fn from_bech32(bech32: &str) -> Result<Self> {
         Ok(Self {
@@ -54,6 +57,7 @@ impl PublicKey {
         })
     }
 
+    #[inline]
     #[uniffi::constructor]
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(Self {
@@ -61,6 +65,7 @@ impl PublicKey {
         })
     }
 
+    #[inline]
     #[uniffi::constructor]
     pub fn from_nostr_uri(uri: &str) -> Result<Self> {
         Ok(Self {
@@ -68,14 +73,17 @@ impl PublicKey {
         })
     }
 
+    #[inline]
     pub fn to_hex(&self) -> String {
         self.inner.to_string()
     }
 
+    #[inline]
     pub fn to_bech32(&self) -> Result<String> {
         Ok(self.inner.to_bech32()?)
     }
 
+    #[inline]
     pub fn to_nostr_uri(&self) -> Result<String> {
         Ok(self.inner.to_nostr_uri()?)
     }
