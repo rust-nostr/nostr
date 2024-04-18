@@ -62,8 +62,10 @@ class App extends Component {
     try {
       let filter = new Filter().author(this.state.public_key);
       let database = this.state.client.database;
+      console.time("query");
       let events = await database.query([filter]);
-      console.log("Got " + events.length + " events");
+      console.timeEnd("query");
+      console.log("Got", events.length, "events");
     } catch (error) {
       console.log(error)
     }
