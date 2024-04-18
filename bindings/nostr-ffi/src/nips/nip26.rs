@@ -37,7 +37,7 @@ pub fn validate_delegation_tag(
 ) -> bool {
     match DelegationTag::from_str(delegation_tag) {
         Ok(tag) => {
-            let event_properties = EventProperties::new(event_kind.as_u64(), created_at);
+            let event_properties = EventProperties::new(event_kind.as_u16(), created_at);
             tag.validate(delegatee_pubkey.deref(), &event_properties)
                 .is_ok()
         }

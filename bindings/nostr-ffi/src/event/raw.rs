@@ -17,7 +17,7 @@ pub struct RawEventRecord {
     /// Timestamp (seconds)
     pub created_at: u64,
     /// Kind
-    pub kind: u64,
+    pub kind: u16,
     /// Vector of strings
     pub tags: Vec<Vec<String>>,
     /// Content

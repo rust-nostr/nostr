@@ -36,12 +36,12 @@ pub fn create_delegation_tag(
 pub fn validate_delegation_tag(
     delegation_tag: &str,
     delegatee_pubkey: &JsPublicKey,
-    event_kind: f64,
+    event_kind: u16,
     created_at: &JsTimestamp,
 ) -> bool {
     match DelegationTag::from_str(delegation_tag) {
         Ok(tag) => {
-            let event_properties = EventProperties::new(event_kind as u64, created_at.as_u64());
+            let event_properties = EventProperties::new(event_kind, created_at.as_u64());
             tag.validate(delegatee_pubkey.deref(), &event_properties)
                 .is_ok()
         }

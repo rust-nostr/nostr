@@ -210,12 +210,12 @@ impl JsFilter {
     }
 
     /// Set kind
-    pub fn kind(self, kind: f64) -> Self {
+    pub fn kind(self, kind: u16) -> Self {
         self.inner.kind(Kind::from(kind)).into()
     }
 
     /// Set kinds
-    pub fn kinds(self, kinds: Vec<f64>) -> Self {
+    pub fn kinds(self, kinds: Vec<u16>) -> Self {
         let kinds = kinds.into_iter().map(Kind::from);
         self.inner.kinds(kinds).into()
     }

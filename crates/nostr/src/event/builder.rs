@@ -51,7 +51,7 @@ pub enum WrongKindError {
     /// Singe kind
     Single(Kind),
     /// Range
-    Range(Range<u64>),
+    Range(Range<u16>),
 }
 
 impl fmt::Display for WrongKindError {

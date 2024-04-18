@@ -57,9 +57,10 @@ impl JsUnsignedEvent {
         self.inner.created_at.into()
     }
 
+    #[inline]
     #[wasm_bindgen(getter)]
-    pub fn kind(&self) -> f64 {
-        self.inner.kind.as_f64()
+    pub fn kind(&self) -> u16 {
+        self.inner.kind.as_u16()
     }
 
     #[wasm_bindgen(getter)]

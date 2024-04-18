@@ -268,7 +268,7 @@ fn ndb_note_to_event(note: Note) -> Result<Event, DatabaseError> {
     let tags: Vec<Tag> = ndb_note_to_tags(&note)?;
 
     let created_at = Timestamp::from(note.created_at());
-    let kind = Kind::from(note.kind() as u64);
+    let kind = Kind::from(note.kind() as u16);
     let content = note.content();
 
     Ok(Event::new(

@@ -115,7 +115,7 @@ impl FlatBufferDecode for Event {
             EventId::from_slice(&ev.id().ok_or(Error::NotFound)?.0)?,
             PublicKey::from_slice(&ev.pubkey().ok_or(Error::NotFound)?.0)?,
             Timestamp::from(ev.created_at()),
-            Kind::from(ev.kind()),
+            Kind::from(ev.kind() as u16),
             tags,
             ev.content().ok_or(Error::NotFound)?.to_owned(),
             Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
@@ -130,7 +130,7 @@ impl FlatBufferDecode for TempEvent {
         let id = ev.id().ok_or(Error::NotFound)?.0;
         let pubkey = ev.pubkey().ok_or(Error::NotFound)?.0;
         let created_at = ev.created_at();
-        let kind = ev.kind();
+        let kind = ev.kind() as u16;
         let tags = ev.tags().ok_or(Error::NotFound)?;
         Ok(Self::new(id, pubkey, created_at, kind, tags))
     }

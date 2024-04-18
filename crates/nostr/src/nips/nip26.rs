@@ -378,7 +378,7 @@ impl FromStr for DelegationTag {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Condition {
     /// Event kind, e.g. kind=1
-    Kind(u64),
+    Kind(u16),
     /// Creation time before, e.g. created_at<1679000000
     CreatedBefore(u64),
     /// Creation time after, e.g. created_at>1676000000
@@ -388,7 +388,7 @@ pub enum Condition {
 /// Represents properties of an event, relevant for delegation
 pub struct EventProperties {
     /// Event kind. For simplicity/flexibility, numeric type is used.
-    kind: u64,
+    kind: u16,
     /// Creation time, as unix timestamp
     created_time: u64,
 }
@@ -432,7 +432,7 @@ impl FromStr for Condition {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(kind) = s.strip_prefix("kind=") {
-            let n = u64::from_str(kind)?;
+            let n = u16::from_str(kind)?;
             return Ok(Self::Kind(n));
         }
         if let Some(created_before) = s.strip_prefix("created_at<") {
@@ -531,7 +531,7 @@ impl<'de> Deserialize<'de> for Conditions {
 impl EventProperties {
     /// Create new with values
     #[inline]
-    pub fn new(event_kind: u64, created_time: u64) -> Self {
+    pub fn new(event_kind: u16, created_time: u64) -> Self {
         Self {
             kind: event_kind,
             created_time,
@@ -541,7 +541,7 @@ impl EventProperties {
     /// Create from an Event
     pub fn from_event(event: &Event) -> Self {
         Self {
-            kind: event.kind().as_u64(),
+            kind: event.kind().as_u16(),
             created_time: event.created_at().as_u64(),
         }
     }

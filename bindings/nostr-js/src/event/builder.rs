@@ -47,7 +47,7 @@ impl From<EventBuilder> for JsEventBuilder {
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
-    pub fn new(kind: f64, content: &str, tags: Vec<JsTag>) -> Self {
+    pub fn new(kind: u16, content: &str, tags: Vec<JsTag>) -> Self {
         Self {
             inner: EventBuilder::new(kind.into(), content, tags.into_iter().map(|t| t.into())),
         }
@@ -207,7 +207,7 @@ impl JsEventBuilder {
     pub fn reaction_extended(
         event_id: &JsEventId,
         public_key: &JsPublicKey,
-        kind: f64,
+        kind: u16,
         reaction: &str,
     ) -> Self {
         Self {
@@ -377,7 +377,7 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = jobRequest)]
-    pub fn job_request(kind: f64, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
+    pub fn job_request(kind: u16, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
         Ok(Self {
             inner: EventBuilder::job_request(kind.into(), tags.into_iter().map(|t| t.into()))
                 .map_err(into_err)?,

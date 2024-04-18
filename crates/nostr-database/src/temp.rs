@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Raw Event
+//! Temp Event
 
 #![allow(missing_docs)]
 
@@ -50,7 +50,7 @@ impl TempEvent {
         id: [u8; 32],
         pubkey: [u8; 32],
         created_at: u64,
-        kind: u64,
+        kind: u16,
         tags: Vector<'a, ForwardsUOffset<StringVector<'a>>>,
     ) -> Self {
         Self {

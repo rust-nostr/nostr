@@ -29,7 +29,7 @@ impl From<nostr::Kind> for Kind {
 #[uniffi::export]
 impl Kind {
     #[uniffi::constructor]
-    pub fn new(kind: u64) -> Self {
+    pub fn new(kind: u16) -> Self {
         Self {
             inner: nostr::Kind::from(kind),
         }
@@ -40,6 +40,12 @@ impl Kind {
         Self { inner: e.into() }
     }
 
+    /// Get kind as 16-bit unsigned number
+    pub fn as_u16(&self) -> u16 {
+        self.inner.as_u16()
+    }
+
+    /// Get kind as 64-bit unsigned number
     pub fn as_u64(&self) -> u64 {
         self.inner.as_u64()
     }
@@ -236,7 +242,7 @@ pub enum KindEnum {
         kind: u16,
     },
     Custom {
-        kind: u64,
+        kind: u16,
     },
 }
 

@@ -583,9 +583,11 @@ impl Coordinate {
                 }
                 KIND => {
                     if kind.is_none() {
-                        let k: u64 =
+                        // The kind value must be a 32-bit unsigned number according to
+                        // https://github.com/nostr-protocol/nips/blob/37f6cbb775126b386414220f783ca0f5f85e7614/19.md#shareable-identifiers-with-extra-metadata
+                        let k: u16 =
                             u32::from_be_bytes(bytes.try_into().map_err(|_| Error::TryFromSlice)?)
-                                as u64;
+                                as u16;
                         kind = Some(Kind::from(k));
                     }
                 }

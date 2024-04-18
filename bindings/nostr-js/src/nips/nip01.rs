@@ -33,7 +33,7 @@ impl From<Coordinate> for JsCoordinate {
 impl JsCoordinate {
     #[wasm_bindgen(constructor)]
     pub fn new(
-        kind: f64,
+        kind: u16,
         public_key: &JsPublicKey,
         identifier: Option<String>,
         relays: Option<Vec<String>>,
@@ -48,9 +48,10 @@ impl JsCoordinate {
         }
     }
 
+    #[inline]
     #[wasm_bindgen(getter)]
-    pub fn kind(&self) -> f64 {
-        self.inner.kind.as_f64()
+    pub fn kind(&self) -> u16 {
+        self.inner.kind.as_u16()
     }
 
     #[wasm_bindgen(getter, js_name = publicKey)]
