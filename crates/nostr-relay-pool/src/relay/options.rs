@@ -289,11 +289,12 @@ pub enum FilterOptions {
 }
 
 /// Negentropy Sync direction
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum NegentropyDirection {
     /// Send events to relay
     Up,
     /// Get events from relay
+    #[default]
     Down,
     /// Both send and get events from relay (bidirectional sync)
     Both,
@@ -320,7 +321,7 @@ impl Default for NegentropyOptions {
     fn default() -> Self {
         Self {
             initial_timeout: Duration::from_secs(10),
-            direction: NegentropyDirection::Down,
+            direction: NegentropyDirection::default(),
         }
     }
 }

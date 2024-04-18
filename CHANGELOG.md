@@ -37,8 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: expose NIP49 `log_n` ([DanConwayDev])
 * nostr: add tags indexes to `Event` ([Yuki Kishimoto])
 * pool: add `RelayPool::start` ([Yuki Kishimoto])
+* pool: add `NegentropyDirection` default ([Yuki Kishimoto])
 * sdk: add `Client::builder()` ([Yuki Kishimoto])
 * sdk: add `Client::update_min_pow_difficulty` method ([Yuki Kishimoto])
+* sdk: add `Client::connect_with_timeout` ([Yuki Kishimoto])
 * ffi(nostr): add `gift_wrap_from_seal` func ([Yuki Kishimoto])
 
 ### Fixed
