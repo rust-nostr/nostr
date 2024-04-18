@@ -326,7 +326,7 @@ impl QueryByParamReplaceable {
 enum QueryPattern {
     KindAuthor(QueryByKindAndAuthorParams),
     ParamReplaceable(QueryByParamReplaceable),
-    Generic(Filter),
+    Generic(Box<Filter>),
 }
 
 impl From<Filter> for QueryPattern {
@@ -376,7 +376,7 @@ impl From<Filter> for QueryPattern {
                     until: filter.until,
                 })
             }
-            _ => Self::Generic(filter),
+            _ => Self::Generic(Box::new(filter)),
         }
     }
 }
@@ -719,7 +719,7 @@ impl InternalDatabaseIndexes {
                         None => Box::new(iter::empty()),
                     }
                 }
-                QueryPattern::Generic(filter) => Box::new(self.internal_generic_query(filter)),
+                QueryPattern::Generic(filter) => Box::new(self.internal_generic_query(*filter)),
             };
 
             if let Some(limit) = limit {
