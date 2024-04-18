@@ -5,6 +5,7 @@
 use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::time::Duration;
 
 use clap::Parser;
 use cli::DatabaseCommand;
@@ -38,6 +39,10 @@ async fn run() -> Result<()> {
         CliCommand::Open => {
             //let db = RocksDatabase::open("./db/nostr").await?;
             let db = SQLiteDatabase::open("nostr.db").await?;
+            // let db = MemoryDatabase::with_opts(MemoryDatabaseOptions {
+            //     events: true,
+            //     max_events: None,
+            // });
             let client = Client::builder().database(db).build();
 
             let rl = &mut DefaultEditor::new()?;
@@ -108,6 +113,37 @@ async fn run() -> Result<()> {
 
 async fn handle_command(command: Command, client: &Client) -> Result<()> {
     match command {
+        Command::Sync {
+            public_key,
+            relays,
+            direction,
+        } => {
+            // Add relays
+            client.add_relays(relays.iter()).await?;
+
+            // println!("Connecting to relays...");
+
+            // Connect and wait for connection
+            client.connect_with_timeout(Duration::from_secs(60)).await;
+
+            // println!("Connected.");
+
+            // println!("Reconciling events with relays...");
+
+            // Reconcile
+            let filter: Filter = Filter::default().author(public_key);
+            let opts: NegentropyOptions = NegentropyOptions::default().direction(direction.into());
+            client.reconcile_with(relays.iter(), filter, opts).await?;
+
+            // println!("Reconciliation terminated.");
+
+            // Remove relays
+            for url in relays.into_iter() {
+                client.remove_relay(url).await?;
+            }
+
+            Ok(())
+        }
         Command::Query {
             kind,
             author,

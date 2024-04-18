@@ -6,7 +6,7 @@
 
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use nostr_sdk::prelude::*;
 
 pub mod io;
@@ -31,6 +31,17 @@ pub enum CliCommand {
 #[derive(Debug, Parser)]
 #[command(name = "")]
 pub enum Command {
+    /// Sync public key's event with specified relays (negentropy)
+    #[command(arg_required_else_help = true)]
+    Sync {
+        /// Public key
+        public_key: PublicKey,
+        /// Relays
+        relays: Vec<Url>,
+        /// Direction
+        #[clap(short, long, value_enum, default_value_t = CliNegentropyDirection::Down)]
+        direction: CliNegentropyDirection,
+    },
     /// Query
     Query {
         /// Kind
@@ -90,3 +101,23 @@ pub enum DatabaseCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum DevCommands {}
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum CliNegentropyDirection {
+    /// Send events to relay
+    Up,
+    /// Get events from relay
+    Down,
+    /// Both send and get events from relay (bidirectional sync)
+    Both,
+}
+
+impl From<CliNegentropyDirection> for NegentropyDirection {
+    fn from(value: CliNegentropyDirection) -> Self {
+        match value {
+            CliNegentropyDirection::Up => Self::Up,
+            CliNegentropyDirection::Down => Self::Down,
+            CliNegentropyDirection::Both => Self::Both,
+        }
+    }
+}
