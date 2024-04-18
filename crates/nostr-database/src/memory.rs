@@ -20,9 +20,9 @@ use crate::{Backend, DatabaseError, DatabaseIndexes, EventIndexResult, NostrData
 /// Database options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MemoryDatabaseOptions {
-    /// Store events (?)
+    /// Store events (default: false)
     pub events: bool,
-    /// Max events and IDs to store in memory
+    /// Max events and IDs to store in memory (default: 100_000)
     ///
     /// `None` means no limits.
     pub max_events: Option<usize>,
