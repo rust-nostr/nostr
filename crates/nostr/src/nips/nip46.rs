@@ -7,6 +7,7 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/46.md>
 
 use alloc::borrow::{Cow, ToOwned};
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
@@ -348,7 +349,7 @@ pub enum ResponseResult {
     /// Get public key
     GetPublicKey(PublicKey),
     /// Sign event
-    SignEvent(Event),
+    SignEvent(Box<Event>),
     /// Get relays
     GetRelays(HashMap<Url, RelayPermissions>),
     /// NIP04/NIP44 encryption/decryption
@@ -388,7 +389,7 @@ impl ResponseResult {
                 if let Ok(public_key) = PublicKey::from_hex(other) {
                     Ok(Self::GetPublicKey(public_key))
                 } else if let Ok(event) = Event::from_json(other) {
-                    Ok(Self::SignEvent(event))
+                    Ok(Self::SignEvent(Box::new(event)))
                 } else if let Ok(map) = serde_json::from_str(other) {
                     Ok(Self::GetRelays(map))
                 } else {
@@ -437,7 +438,7 @@ impl ResponseResult {
     #[inline]
     pub fn to_sign_event(self) -> Result<Event, Error> {
         if let Self::SignEvent(val) = self {
-            Ok(val)
+            Ok(*val)
         } else {
             Err(Error::UnexpectedResult)
         }
@@ -1036,7 +1037,7 @@ mod test {
         let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
         let event = Event::from_json(&json).unwrap();
         let res: ResponseResult = ResponseResult::parse(json).unwrap();
-        assert_eq!(res, ResponseResult::SignEvent(event));
+        assert_eq!(res, ResponseResult::SignEvent(Box::new(event)));
 
         let res: ResponseResult = ResponseResult::parse("pong").unwrap();
         assert_eq!(res, ResponseResult::Pong);
@@ -1104,7 +1105,11 @@ mod test {
         let message = Message::from_json(json).unwrap();
         assert_eq!(
             message,
-            Message::response("3047714669", Some(ResponseResult::SignEvent(event)), None)
+            Message::response(
+                "3047714669",
+                Some(ResponseResult::SignEvent(Box::new(event))),
+                None
+            )
         );
 
         // Encryption

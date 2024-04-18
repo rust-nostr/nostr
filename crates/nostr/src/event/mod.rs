@@ -7,16 +7,18 @@
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
+#[cfg(feature = "std")]
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::ops::Deref;
-#[cfg(feature = "std")]
-use std::sync::{Arc, OnceLock};
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
+#[cfg(feature = "std")]
+use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -94,7 +96,7 @@ pub struct Event {
     deser_order: Vec<String>,
     /// Tags indexes
     #[cfg(feature = "std")]
-    tags_indexes: Arc<OnceLock<TagsIndexes>>,
+    tags_indexes: Arc<OnceCell<TagsIndexes>>,
 }
 
 impl fmt::Debug for Event {
@@ -172,7 +174,7 @@ impl Event {
             },
             deser_order: Vec::new(),
             #[cfg(feature = "std")]
-            tags_indexes: Arc::new(OnceLock::new()),
+            tags_indexes: Arc::new(OnceCell::new()),
         }
     }
 
@@ -556,7 +558,7 @@ impl<'de> Deserialize<'de> for Event {
             inner: serde_json::from_value(value).map_err(serde::de::Error::custom)?,
             deser_order,
             #[cfg(feature = "std")]
-            tags_indexes: Arc::new(OnceLock::new()),
+            tags_indexes: Arc::new(OnceCell::new()),
         })
     }
 }

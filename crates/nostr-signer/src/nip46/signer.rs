@@ -227,9 +227,12 @@ impl NostrConnectRemoteSigner {
                                         }
                                         Request::SignEvent(unsigned) => {
                                             match unsigned.sign(&self.keys) {
-                                                Ok(event) => {
-                                                    (Some(ResponseResult::SignEvent(event)), None)
-                                                }
+                                                Ok(event) => (
+                                                    Some(ResponseResult::SignEvent(Box::new(
+                                                        event,
+                                                    ))),
+                                                    None,
+                                                ),
                                                 Err(e) => (None, Some(e.to_string())),
                                             }
                                         }
