@@ -728,4 +728,20 @@ mod tests {
         let event = Nip19Event::from_bech32(nevent).unwrap();
         assert_eq!(event.author, Some(expected_pubkey));
     }
+
+    #[test]
+    fn from_bech32_naddr() {
+        let coordinate: &str = "naddr1qqxnzd3exgersv33xymnsve3qgs8suecw4luyht9ekff89x4uacneapk8r5dyk0gmn6uwwurf6u9rusrqsqqqa282m3gxt";
+        let coordinate: Coordinate = Coordinate::from_bech32(coordinate).unwrap();
+
+        let expected_pubkey: PublicKey =
+            PublicKey::from_hex("787338757fc25d65cd929394d5e7713cf43638e8d259e8dcf5c73b834eb851f2")
+                .unwrap();
+        let expected_kind: Kind = Kind::LongFormTextNote;
+        let exected_identifier: &str = "1692282117831";
+
+        assert_eq!(coordinate.public_key, expected_pubkey);
+        assert_eq!(coordinate.kind, expected_kind);
+        assert_eq!(coordinate.identifier, exected_identifier);
+    }
 }
