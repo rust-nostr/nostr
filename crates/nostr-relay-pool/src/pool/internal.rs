@@ -578,35 +578,93 @@ impl InternalRelayPool {
         relay.connect(connection_timeout).await;
     }
 
+    #[inline]
     pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
-        let items: Vec<(EventId, Timestamp)> =
-            self.database.negentropy_items(filter.clone()).await?;
-        self.reconcile_with_items(filter, items, opts).await
+        let relays: HashMap<Url, Relay> = self.relays().await;
+        self.reconcile_with(relays.into_keys(), filter, opts).await
     }
 
+    #[inline]
+    pub async fn reconcile_with<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let items: Vec<(EventId, Timestamp)> =
+            self.database.negentropy_items(filter.clone()).await?;
+        self.reconcile_advanced(urls, filter, items, opts).await
+    }
+
+    #[inline]
     pub async fn reconcile_with_items(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
-        let mut handles = Vec::new();
-        let relays = self.relays().await;
-        for (url, relay) in relays.into_iter() {
-            let filter = filter.clone();
-            let my_items = items.clone();
-            let handle = thread::spawn(async move {
-                if let Err(e) = relay.reconcile_with_items(filter, my_items, opts).await {
-                    tracing::error!("Failed to get reconcile with {url}: {e}");
-                }
-            })?;
-            handles.push(handle);
+        let relays: HashMap<Url, Relay> = self.relays().await;
+        self.reconcile_advanced(relays.into_keys(), filter, items, opts)
+            .await
+    }
+
+    pub async fn reconcile_advanced<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        items: Vec<(EventId, Timestamp)>,
+        opts: NegentropyOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let urls: HashSet<Url> = urls
+            .into_iter()
+            .map(|u| u.try_into_url())
+            .collect::<Result<_, _>>()?;
+
+        // Check if urls set is empty
+        if urls.is_empty() {
+            return Err(Error::NoRelaysSpecified);
         }
 
-        for handle in handles.into_iter() {
-            handle.join().await?;
-        }
+        if urls.len() == 1 {
+            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
+            let relay: Relay = self.internal_relay(&url).await?;
+            Ok(relay.reconcile(filter, opts).await?)
+        } else {
+            let relays: HashMap<Url, Relay> = self.relays().await;
 
-        Ok(())
+            // Check if urls set contains ONLY already added relays
+            if !urls.iter().all(|url| relays.contains_key(url)) {
+                return Err(Error::RelayNotFound);
+            }
+
+            // Filter relays and start query
+            let mut handles = Vec::with_capacity(urls.len());
+            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+                let filter = filter.clone();
+                let my_items = items.clone();
+                let handle = thread::spawn(async move {
+                    if let Err(e) = relay.reconcile_with_items(filter, my_items, opts).await {
+                        tracing::error!("Failed to get reconcile with {url}: {e}");
+                    }
+                })?;
+                handles.push(handle);
+            }
+
+            for handle in handles.into_iter() {
+                handle.join().await?;
+            }
+
+            Ok(())
+        }
     }
 }

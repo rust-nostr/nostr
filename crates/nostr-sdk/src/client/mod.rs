@@ -1380,7 +1380,7 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /// Negentropy reconciliation
+    /// Negentropy reconciliation with all connected relays
     ///
     /// <https://github.com/hoytech/negentropy>
     #[inline]
@@ -1388,7 +1388,25 @@ impl Client {
         Ok(self.pool.reconcile(filter, opts).await?)
     }
 
-    /// Negentropy reconciliation with items
+    /// Negentropy reconciliation with specified relays
+    ///
+    /// <https://github.com/hoytech/negentropy>
+    #[inline]
+    pub async fn reconcile_with<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        Ok(self.pool.reconcile_with(urls, filter, opts).await?)
+    }
+
+    /// Negentropy reconciliation with all relays and custom items
     #[inline]
     pub async fn reconcile_with_items(
         &self,
@@ -1397,6 +1415,28 @@ impl Client {
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
         Ok(self.pool.reconcile_with_items(filter, items, opts).await?)
+    }
+
+    /// Negentropy reconciliation with specified relays and custom items
+    ///
+    /// <https://github.com/hoytech/negentropy>
+    #[inline]
+    pub async fn reconcile_advanced<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        items: Vec<(EventId, Timestamp)>,
+        opts: NegentropyOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        Ok(self
+            .pool
+            .reconcile_advanced(urls, filter, items, opts)
+            .await?)
     }
 
     /// Handle notifications

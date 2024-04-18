@@ -385,13 +385,29 @@ impl RelayPool {
             .await
     }
 
-    /// Negentropy reconciliation
+    /// Negentropy reconciliation with all connected relays
     #[inline]
     pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
         self.inner.reconcile(filter, opts).await
     }
 
-    /// Negentropy reconciliation with custom items
+    /// Negentropy reconciliation with specified relays
+    #[inline]
+    pub async fn reconcile_with<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> std::result::Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner.reconcile_with(urls, filter, opts).await
+    }
+
+    /// Negentropy reconciliation with all relays and custom items
     #[inline]
     pub async fn reconcile_with_items(
         &self,
@@ -400,6 +416,25 @@ impl RelayPool {
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
         self.inner.reconcile_with_items(filter, items, opts).await
+    }
+
+    /// Negentropy reconciliation with custom relays and items
+    #[inline]
+    pub async fn reconcile_advanced<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        items: Vec<(EventId, Timestamp)>,
+        opts: NegentropyOptions,
+    ) -> std::result::Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner
+            .reconcile_advanced(urls, filter, items, opts)
+            .await
     }
 
     /// Handle notifications
