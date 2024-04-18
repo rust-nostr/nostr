@@ -163,6 +163,15 @@ impl Client {
         block_on(async move { self.inner.connect().await })
     }
 
+    /// Connect relays
+    ///
+    /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
+    /// The code continues if the `timeout` is reached or if all relays connect.
+    #[inline]
+    pub fn connect_with_timeout(&self, timeout: Duration) {
+        block_on(async move { self.inner.connect_with_timeout(timeout).await })
+    }
+
     pub fn disconnect(&self) -> Result<()> {
         block_on(async move { Ok(self.inner.disconnect().await?) })
     }

@@ -156,7 +156,17 @@ impl JsClient {
 
     /// Connect to all added relays
     pub async fn connect(&self) {
-        self.inner.connect().await;
+        self.inner.connect().await
+    }
+
+    /// Connect relays
+    ///
+    /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
+    /// The code continues if the `timeout` is reached or if all relays connect.
+    #[inline]
+    #[wasm_bindgen(js_name = connectWithTimeout)]
+    pub async fn connect_with_timeout(&self, timeout: &JsDuration) {
+        self.inner.connect_with_timeout(**timeout).await
     }
 
     /// Disconnect from all relays
