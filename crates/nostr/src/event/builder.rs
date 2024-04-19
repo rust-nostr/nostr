@@ -290,7 +290,7 @@ impl EventBuilder {
                 .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
             let id: EventId = EventId::new(&pubkey, &created_at, &self.kind, &tags, &self.content);
 
-            if nip13::get_leading_zero_bits(id.inner()) >= difficulty {
+            if nip13::get_leading_zero_bits(id.as_bytes()) >= difficulty {
                 #[cfg(feature = "std")]
                 tracing::debug!(
                     "{} iterations in {} ms. Avg rate {} hashes/second",

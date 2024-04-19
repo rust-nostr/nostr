@@ -5,27 +5,30 @@
 //! Event Id
 
 use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::{FromSliceError, Hash};
-use bitcoin::hex::HexToArrayError;
+use bitcoin::hashes::Hash;
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 
 use super::{Kind, Tag};
 use crate::nips::nip13;
 use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::NostrURI;
+use crate::util::hex;
 use crate::{PublicKey, Timestamp};
+
+/// Event ID size
+pub const EVENT_ID_SIZE: usize = 32;
 
 /// [`EventId`] error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Hex decode error
-    FromSlice(FromSliceError),
-    /// Hex decode error
-    HexToArray(HexToArrayError),
+    Hex(hex::Error),
     /// Invalid event ID
     InvalidEventId,
 }
@@ -36,32 +39,25 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::FromSlice(e) => write!(f, "{e}"),
-            Self::HexToArray(e) => write!(f, "Hex: {e}"),
+            Self::Hex(e) => write!(f, "Hex: {e}"),
             Self::InvalidEventId => write!(f, "Invalid event ID"),
         }
     }
 }
 
-impl From<FromSliceError> for Error {
-    fn from(e: FromSliceError) -> Self {
-        Self::FromSlice(e)
+impl From<hex::Error> for Error {
+    fn from(e: hex::Error) -> Self {
+        Self::Hex(e)
     }
 }
 
-impl From<HexToArrayError> for Error {
-    fn from(e: HexToArrayError) -> Self {
-        Self::HexToArray(e)
-    }
-}
-
-/// Event Id
+/// Event ID
 ///
-/// 32-bytes lowercase hex-encoded sha256 of the the serialized event data
+/// 32-bytes lowercase hex-encoded sha256 of the serialized event data
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct EventId(Sha256Hash);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct EventId([u8; EVENT_ID_SIZE]);
 
 impl EventId {
     /// Generate [`EventId`]
@@ -74,7 +70,14 @@ impl EventId {
     ) -> Self {
         let json: Value = json!([0, public_key, created_at, kind, tags, content]);
         let event_str: String = json.to_string();
-        Self(Sha256Hash::hash(event_str.as_bytes()))
+        let hash: Sha256Hash = Sha256Hash::hash(event_str.as_bytes());
+        Self::owned(hash.to_byte_array())
+    }
+
+    /// Construct event ID
+    #[inline]
+    pub fn owned(bytes: [u8; EVENT_ID_SIZE]) -> Self {
+        Self(bytes)
     }
 
     /// Try to parse [EventId] from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
@@ -102,49 +105,54 @@ impl EventId {
         Err(Error::InvalidEventId)
     }
 
-    /// [`EventId`] hex string
+    /// Parse from hex string
     #[inline]
     pub fn from_hex<S>(hex: S) -> Result<Self, Error>
     where
-        S: AsRef<str>,
+        S: AsRef<[u8]>,
     {
-        Ok(Self(Sha256Hash::from_str(hex.as_ref())?))
+        let bytes: Vec<u8> = hex::decode(hex)?;
+        Self::from_slice(&bytes)
     }
 
-    /// [`EventId`] from bytes
+    /// Parse from bytes
     #[inline]
-    pub fn from_slice(sl: &[u8]) -> Result<Self, Error> {
-        Ok(Self(Sha256Hash::from_slice(sl)?))
-    }
+    pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
+        // Check len
+        if slice.len() != EVENT_ID_SIZE {
+            return Err(Error::InvalidEventId);
+        }
 
-    /// [`EventId`] from hash
-    #[inline]
-    pub fn from_hash(hash: Sha256Hash) -> Self {
-        Self(hash)
+        // Copy bytes
+        let mut bytes: [u8; EVENT_ID_SIZE] = [0u8; EVENT_ID_SIZE];
+        bytes.copy_from_slice(slice);
+
+        // Construct owned
+        Ok(Self::owned(bytes))
     }
 
     /// All zeros
     #[inline]
     pub fn all_zeros() -> Self {
-        Self(Sha256Hash::all_zeros())
+        Self::owned([0u8; EVENT_ID_SIZE])
     }
 
     /// Get as bytes
     #[inline]
-    pub fn as_bytes(&self) -> &[u8] {
-        self.as_ref()
+    pub fn as_bytes(&self) -> &[u8; EVENT_ID_SIZE] {
+        &self.0
     }
 
     /// Consume and get bytes
     #[inline]
     pub fn to_bytes(self) -> [u8; 32] {
-        self.0.to_byte_array()
+        self.0
     }
 
     /// Get as hex string
     #[inline]
     pub fn to_hex(&self) -> String {
-        self.0.to_string()
+        hex::encode(self.as_bytes())
     }
 
     /// Check POW
@@ -153,12 +161,6 @@ impl EventId {
     #[inline]
     pub fn check_pow(&self, difficulty: u8) -> bool {
         nip13::get_leading_zero_bits(self.as_bytes()) >= difficulty
-    }
-
-    /// Get [`EventId`] as [`Sha256Hash`]
-    #[inline]
-    pub fn inner(&self) -> Sha256Hash {
-        self.0
     }
 }
 
@@ -172,9 +174,9 @@ impl FromStr for EventId {
     }
 }
 
-impl AsRef<[u8]> for EventId {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
+impl AsRef<[u8; EVENT_ID_SIZE]> for EventId {
+    fn as_ref(&self) -> &[u8; EVENT_ID_SIZE] {
+        self.as_bytes()
     }
 }
 
@@ -190,15 +192,28 @@ impl fmt::Display for EventId {
     }
 }
 
-impl From<Sha256Hash> for EventId {
-    fn from(hash: Sha256Hash) -> Self {
-        Self(hash)
-    }
-}
-
 impl From<EventId> for Tag {
     fn from(event_id: EventId) -> Self {
         Tag::event(event_id)
+    }
+}
+
+impl Serialize for EventId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_hex())
+    }
+}
+
+impl<'de> Deserialize<'de> for EventId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let id: String = String::deserialize(deserializer)?;
+        Self::parse(id).map_err(serde::de::Error::custom)
     }
 }
 
