@@ -14,7 +14,6 @@ use core::fmt;
 use core::str::FromStr;
 
 use bitcoin::bech32::{self, Bech32, Hrp};
-use bitcoin::hashes::Hash;
 
 use super::nip01::Coordinate;
 #[cfg(feature = "nip49")]
@@ -450,8 +449,17 @@ impl ToBech32 for Nip19Event {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let mut bytes: Vec<u8> = vec![SPECIAL, 32];
-        bytes.extend(self.event_id.inner().as_byte_array());
+        // Allocate capacity for event ID
+        let mut bytes: Vec<u8> = Vec::with_capacity(2 + 32);
+
+        bytes.extend([SPECIAL, 32]); // Type and len
+        bytes.extend(self.event_id.as_bytes()); // Value
+
+        if let Some(author) = &self.author {
+            bytes.reserve_exact(2 + 32); // Allocate for author public key
+            bytes.extend([AUTHOR, 32]); // Type and len
+            bytes.extend(author.to_bytes()); // Value
+        }
 
         for relay in self.relays.iter() {
             bytes.extend([RELAY, relay.len() as u8]);
@@ -720,13 +728,17 @@ mod tests {
     }
 
     #[test]
-    fn from_bech32_nevent_author() {
+    fn test_bech32_nevent() {
+        let nevent = "nevent1qqsdhet4232flykq3048jzc9msmaa3hnxuesxy3lnc33vd0wt9xwk6szyqewrqnkx4zsaweutf739s0cu7et29zrntqs5elw70vlm8zudr3y24sqsgy";
+        let nip19_event = Nip19Event::from_bech32(nevent).unwrap();
+
         let expected_pubkey =
             PublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")
                 .unwrap();
-        let nevent = "nevent1qqsdhet4232flykq3048jzc9msmaa3hnxuesxy3lnc33vd0wt9xwk6szyqewrqnkx4zsaweutf739s0cu7et29zrntqs5elw70vlm8zudr3y24sqsgy";
-        let event = Nip19Event::from_bech32(nevent).unwrap();
-        assert_eq!(event.author, Some(expected_pubkey));
+
+        assert_eq!(nip19_event.author, Some(expected_pubkey));
+
+        assert_eq!(nip19_event.to_bech32().unwrap(), nevent);
     }
 
     #[test]

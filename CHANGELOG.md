@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+* nostr: fix NIP19 event (`nevent`) serialization ([Yuki Kishimoto])
+
 ### Removed
 
 * ffi(nostr): remove `Kind::match*` methods ([Yuki Kishimoto])
