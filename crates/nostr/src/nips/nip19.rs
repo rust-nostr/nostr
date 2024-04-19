@@ -44,6 +44,12 @@ pub const RELAY: u8 = 1;
 pub const AUTHOR: u8 = 2;
 pub const KIND: u8 = 3;
 
+/// 1 (type) + 1 (len) + 32 (value)
+const FIXED_1_1_32_BYTES_TVL: usize = 1 + 1 + 32;
+
+/// 1 (type) + 1 (len) + 4 (value - 32-bit unsigned number)
+const FIXED_KIND_BYTES_TVL: usize = 1 + 1 + 4;
+
 /// `NIP19` error
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
@@ -386,6 +392,13 @@ impl Nip19Event {
         }
     }
 
+    /// Add author
+    #[inline]
+    pub fn author(mut self, author: PublicKey) -> Self {
+        self.author = Some(author);
+        self
+    }
+
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut event_id: Option<EventId> = None;
         let mut author: Option<PublicKey> = None;
@@ -449,21 +462,30 @@ impl ToBech32 for Nip19Event {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        // Allocate capacity for event ID
-        let mut bytes: Vec<u8> = Vec::with_capacity(2 + 32);
+        // Allocate capacity
+        let relays_len: usize = self.relays.iter().map(|u| 2 + u.len()).sum();
+        let author_len: usize = if self.author.is_some() {
+            FIXED_1_1_32_BYTES_TVL
+        } else {
+            0
+        };
+        let mut bytes: Vec<u8> =
+            Vec::with_capacity(FIXED_1_1_32_BYTES_TVL + author_len + relays_len);
 
-        bytes.extend([SPECIAL, 32]); // Type and len
+        bytes.push(SPECIAL); // Type
+        bytes.push(32); // Len
         bytes.extend(self.event_id.as_bytes()); // Value
 
         if let Some(author) = &self.author {
-            bytes.reserve_exact(2 + 32); // Allocate for author public key
-            bytes.extend([AUTHOR, 32]); // Type and len
+            bytes.push(AUTHOR); // Type
+            bytes.push(32); // Len
             bytes.extend(author.to_bytes()); // Value
         }
 
         for relay in self.relays.iter() {
-            bytes.extend([RELAY, relay.len() as u8]);
-            bytes.extend(relay.as_bytes());
+            bytes.push(RELAY); // Type
+            bytes.push(relay.len() as u8); // Len
+            bytes.extend(relay.as_bytes()); // Value
         }
 
         Ok(bech32::encode::<Bech32>(HRP_EVENT, &bytes)?)
@@ -532,12 +554,19 @@ impl ToBech32 for Nip19Profile {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let mut bytes: Vec<u8> = vec![SPECIAL, 32];
-        bytes.extend(self.public_key.serialize());
+        // Allocate capacity
+        let relays_len: usize = self.relays.iter().map(|u| 2 + u.as_str().len()).sum();
+        let mut bytes: Vec<u8> = Vec::with_capacity(FIXED_1_1_32_BYTES_TVL + relays_len);
+
+        bytes.push(SPECIAL); // Type
+        bytes.push(32); // Len
+        bytes.extend(self.public_key.to_bytes()); // Value
 
         for relay in self.relays.iter() {
-            bytes.extend([RELAY, relay.as_str().len() as u8]);
-            bytes.extend(relay.as_ref().as_bytes());
+            let url: &str = relay.as_str();
+            bytes.push(RELAY); // Type
+            bytes.push(url.len() as u8); // Len
+            bytes.extend(url.as_bytes()); // Value
         }
 
         Ok(bech32::encode::<Bech32>(HRP_PROFILE, &bytes)?)
@@ -635,24 +664,33 @@ impl ToBech32 for Coordinate {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        let mut bytes: Vec<u8> = Vec::new();
+        // Allocate capacity
+        let identifier_len: usize = 2 + self.identifier.len();
+        let relays_len: usize = self.relays.iter().map(|u| 2 + u.len()).sum();
+        let mut bytes: Vec<u8> = Vec::with_capacity(
+            identifier_len + FIXED_1_1_32_BYTES_TVL + FIXED_KIND_BYTES_TVL + relays_len,
+        );
 
         // Identifier
-        bytes.extend([SPECIAL, self.identifier.len() as u8]);
-        bytes.extend(self.identifier.as_bytes());
-
-        for relay in self.relays.iter() {
-            bytes.extend([RELAY, relay.len() as u8]);
-            bytes.extend(relay.as_bytes());
-        }
+        bytes.push(SPECIAL); // Type
+        bytes.push(self.identifier.len() as u8); // Len
+        bytes.extend(self.identifier.as_bytes()); // Value
 
         // Author
-        bytes.extend([AUTHOR, 32]);
-        bytes.extend(self.public_key.serialize());
+        bytes.push(AUTHOR); // Type
+        bytes.push(32); // Len
+        bytes.extend(self.public_key.to_bytes()); // Value
 
         // Kind
-        bytes.extend([KIND, 4]);
-        bytes.extend(self.kind.as_u32().to_be_bytes());
+        bytes.push(KIND); // Type
+        bytes.push(4); // Len
+        bytes.extend(self.kind.as_u32().to_be_bytes()); // Value
+
+        for relay in self.relays.iter() {
+            bytes.push(RELAY); // Type
+            bytes.push(relay.len() as u8); // Len
+            bytes.extend(relay.as_bytes()); // Value
+        }
 
         Ok(bech32::encode::<Bech32>(HRP_COORDINATE, &bytes)?)
     }
@@ -712,15 +750,18 @@ mod tests {
 
     #[test]
     fn from_bech32_nip19_profile() {
-        let expected_pubkey =
-            PublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")
-                .unwrap();
-
-        let nprofile = "nprofile1qqsr9cvzwc652r4m83d86ykplrnm9dg5gwdvzzn8ameanlvut35wy3gpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsz4nxck";
+        let nprofile = "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gppemhxue69uhhytnc9e3k7mf0qyt8wumn8ghj7er2vfshxtnnv9jxkc3wvdhk6tclr7lsh";
         let nip19 = Nip19::from_bech32(nprofile).unwrap();
 
+        let expected_pubkey =
+            PublicKey::from_str("3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d")
+                .unwrap();
+
         assert_eq!(
-            Nip19::Profile(Nip19Profile::new(expected_pubkey, ["wss://relay.damus.io/"]).unwrap()),
+            Nip19::Profile(
+                Nip19Profile::new(expected_pubkey, ["wss://r.x.com", "wss://djbas.sadkb.com"])
+                    .unwrap()
+            ),
             nip19
         );
 
@@ -755,5 +796,27 @@ mod tests {
         assert_eq!(coordinate.public_key, expected_pubkey);
         assert_eq!(coordinate.kind, expected_kind);
         assert_eq!(coordinate.identifier, exected_identifier);
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use super::*;
+    use crate::test::{black_box, Bencher};
+
+    #[bench]
+    pub fn to_bech32_nevent(bh: &mut Bencher) {
+        let event_id =
+            EventId::from_hex("d94a3f4dd87b9a3b0bed183b32e916fa29c8020107845d1752d72697fe5309a5")
+                .unwrap();
+        let public_key =
+            PublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")
+                .unwrap();
+        let nip19_event = Nip19Event::new(event_id, ["wss://r.x.com", "wss://djbas.sadkb.com"])
+            .author(public_key);
+
+        bh.iter(|| {
+            black_box(nip19_event.to_bech32()).unwrap();
+        });
     }
 }
