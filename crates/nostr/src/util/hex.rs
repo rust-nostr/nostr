@@ -18,9 +18,10 @@ pub enum Error {
         /// Char index
         index: usize,
     },
-    /// A hex string's length needs to be even, as two digits correspond to
-    /// one byte.
+    /// A hex string's length needs to be even, as two digits correspond to one byte.
     OddLength,
+    /// Invalid len
+    InvalidLength,
 }
 
 #[cfg(feature = "std")]
@@ -33,12 +34,13 @@ impl fmt::Display for Error {
                 write!(f, "Invalid character {} at position {}", c, index)
             }
             Self::OddLength => write!(f, "Odd number of digits"),
+            Self::InvalidLength => write!(f, "Invalid length"),
         }
     }
 }
 
 #[inline]
-fn from_digit(num: u8) -> u8 {
+const fn from_digit(num: u8) -> u8 {
     if num < 10 {
         b'0' + num
     } else {
@@ -47,6 +49,7 @@ fn from_digit(num: u8) -> u8 {
 }
 
 /// Hex encode
+#[inline]
 pub fn encode<T>(data: T) -> String
 where
     T: AsRef<[u8]>,
@@ -60,6 +63,50 @@ where
     hex
 }
 
+/// Hex decode
+#[inline]
+pub fn decode<T>(hex: T) -> Result<Vec<u8>, Error>
+where
+    T: AsRef<[u8]>,
+{
+    let hex: &[u8] = hex.as_ref();
+    let len: usize = hex.len();
+
+    let mut bytes: Vec<u8> = vec![0u8; len / 2];
+    decode_to_slice(hex, &mut bytes)?;
+    Ok(bytes)
+}
+
+/// Hex decode to slice
+#[inline]
+pub fn decode_to_slice<T>(hex: T, out: &mut [u8]) -> Result<(), Error>
+where
+    T: AsRef<[u8]>,
+{
+    let hex: &[u8] = hex.as_ref();
+    let hex_len: usize = hex.len();
+
+    if hex_len % 2 != 0 {
+        return Err(Error::OddLength);
+    }
+
+    if hex_len / 2 != out.len() {
+        return Err(Error::InvalidLength);
+    }
+
+    for (i, byte) in out.iter_mut().enumerate() {
+        let high_idx: usize = i * 2;
+        let high: u8 = val(hex[high_idx], high_idx)?;
+
+        let low_idx: usize = high_idx + 1;
+        let low: u8 = val(hex[low_idx], low_idx)?;
+
+        *byte = high << 4 | low;
+    }
+
+    Ok(())
+}
+
 #[inline]
 const fn val(c: u8, idx: usize) -> Result<u8, Error> {
     match c {
@@ -71,29 +118,6 @@ const fn val(c: u8, idx: usize) -> Result<u8, Error> {
             index: idx,
         }),
     }
-}
-
-/// Hex decode
-pub fn decode<T>(hex: T) -> Result<Vec<u8>, Error>
-where
-    T: AsRef<[u8]>,
-{
-    let hex = hex.as_ref();
-    let len = hex.len();
-
-    if len % 2 != 0 {
-        return Err(Error::OddLength);
-    }
-
-    let mut bytes: Vec<u8> = Vec::with_capacity(len / 2);
-
-    for i in (0..len).step_by(2) {
-        let high = val(hex[i], i)?;
-        let low = val(hex[i + 1], i + 1)?;
-        bytes.push(high << 4 | low);
-    }
-
-    Ok(bytes)
 }
 
 #[cfg(test)]
