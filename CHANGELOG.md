@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: improve performance of `Filter::match_event` ([Yuki Kishimoto])
 * nostr: adj. kind to be `u16` instead of `u64` according to NIP01 ([Yuki Kishimoto])
 * nostr: improve NIP19 serialization performance ([Yuki Kishimoto])
+* nostr: improve `EventId::from_hex` performance ([Yuki Kishimoto])
 * database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
 * pool: inline `RelayPool` methods ([Yuki Kishimoto])
 * sdk: inline `Client`, `ClientBuilder` and `Options` methods ([Yuki Kishimoto])
