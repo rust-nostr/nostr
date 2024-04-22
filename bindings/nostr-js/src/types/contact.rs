@@ -28,9 +28,9 @@ impl From<Contact> for JsContact {
     }
 }
 
-impl From<&JsContact> for Contact {
-    fn from(contact: &JsContact) -> Self {
-        contact.inner.clone()
+impl From<JsContact> for Contact {
+    fn from(contact: JsContact) -> Self {
+        contact.inner
     }
 }
 
@@ -38,16 +38,24 @@ impl From<&JsContact> for Contact {
 impl JsContact {
     #[wasm_bindgen(constructor)]
     pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
-        let relay_url: Option<UncheckedUrl> =
-            relay_url.map(|relay_url| UncheckedUrl::from(&relay_url));
+        let relay_url: Option<UncheckedUrl> = relay_url.map(UncheckedUrl::from);
         Self {
             inner: Contact::new(**public_key, relay_url, alias),
         }
     }
-}
 
-impl JsContact {
-    pub fn inner(&self) -> Contact {
-        self.inner.clone()
+    #[wasm_bindgen(getter)]
+    pub fn alias(&self) -> Option<String> {
+        self.inner.alias.clone()
+    }
+
+    #[wasm_bindgen(js_name = publicKey, getter)]
+    pub fn public_key(&self) -> JsPublicKey {
+        self.inner.public_key.into()
+    }
+
+    #[wasm_bindgen(js_name = relayUrl, getter)]
+    pub fn relay_url(&self) -> Option<String> {
+        self.inner.relay_url.as_ref().map(|u| u.to_string())
     }
 }

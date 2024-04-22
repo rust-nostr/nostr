@@ -151,11 +151,11 @@ impl JsEventBuilder {
         }
     }
 
+    #[inline]
     #[wasm_bindgen(js_name = contactList)]
     pub fn contact_list(list: Vec<JsContact>) -> Self {
-        let list = list.into_iter().map(|c| c.inner());
         Self {
-            inner: EventBuilder::contact_list(list),
+            inner: EventBuilder::contact_list(list.into_iter().map(|c| c.into())),
         }
     }
 

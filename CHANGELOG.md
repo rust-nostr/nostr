@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * sdk: add `Client::connect_with_timeout` ([Yuki Kishimoto])
 * sdk: add `Client::reconcile_with` and `Client::reconcile_advanced` ([Yuki Kishimoto])
 * ffi(nostr): add `gift_wrap_from_seal` func ([Yuki Kishimoto])
+* js(nostr): add missing methods to `JsContact` ([Yuki Kishimoto])
 * cli: add `sync` command ([Yuki Kishimoto])
 
 ### Fixed

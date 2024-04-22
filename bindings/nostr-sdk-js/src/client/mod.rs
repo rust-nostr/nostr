@@ -388,7 +388,7 @@ impl JsClient {
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[wasm_bindgen(js_name = setContactList)]
     pub async fn set_contact_list(&self, list: Vec<JsContact>) -> Result<JsEventId> {
-        let list = list.into_iter().map(|c| c.inner());
+        let list = list.into_iter().map(|c| c.into());
         self.inner
             .set_contact_list(list)
             .await
