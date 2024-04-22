@@ -174,6 +174,12 @@ impl FromStr for EventId {
     }
 }
 
+impl AsRef<[u8]> for EventId {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
 impl AsRef<[u8; EVENT_ID_SIZE]> for EventId {
     fn as_ref(&self) -> &[u8; EVENT_ID_SIZE] {
         self.as_bytes()
