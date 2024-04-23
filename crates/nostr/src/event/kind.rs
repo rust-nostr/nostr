@@ -339,3 +339,24 @@ mod tests {
         assert!(!Kind::ParameterizedReplaceable(1).is_parameterized_replaceable());
     }
 }
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+
+    #[bench]
+    pub fn parse_ephemeral_kind(bh: &mut Bencher) {
+        bh.iter(|| {
+            black_box(Kind::from(29_999));
+        });
+    }
+
+    #[bench]
+    pub fn parse_kind(bh: &mut Bencher) {
+        bh.iter(|| {
+            black_box(Kind::from(0));
+        });
+    }
+}
