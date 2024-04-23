@@ -23,7 +23,7 @@ pub use self::supplier::{Instant, SystemTime, UNIX_EPOCH};
 
 /// Unix timestamp in seconds
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct Timestamp(i64);
+pub struct Timestamp(u64);
 
 impl Timestamp {
     /// Get UNIX timestamp
@@ -33,7 +33,7 @@ impl Timestamp {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        Self(ts as i64)
+        Self(ts)
     }
 
     /// Get UNIX timestamp from a specified [`TimeSupplier`]
@@ -83,22 +83,12 @@ impl Timestamp {
         R: Rng,
     {
         let secs: u16 = rng.gen_range(0..=u16::MAX);
-        self.0 -= secs as i64;
+        self.0 = self.0.saturating_sub(secs as u64);
     }
 
     /// Get timestamp as [`u64`]
     #[inline]
     pub fn as_u64(&self) -> u64 {
-        if self.0 >= 0 {
-            self.0 as u64
-        } else {
-            0
-        }
-    }
-
-    /// Get timestamp as [`i64`]
-    #[inline]
-    pub fn as_i64(&self) -> i64 {
         self.0
     }
 
@@ -188,7 +178,7 @@ impl Timestamp {
 
 impl From<u64> for Timestamp {
     fn from(timestamp: u64) -> Self {
-        Self(timestamp as i64)
+        Self(timestamp)
     }
 }
 
@@ -197,7 +187,7 @@ impl FromStr for Timestamp {
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(s.parse::<i64>()?))
+        Ok(Self(s.parse::<u64>()?))
     }
 }
 
@@ -210,14 +200,14 @@ impl fmt::Display for Timestamp {
 impl Add<Timestamp> for Timestamp {
     type Output = Self;
     fn add(self, rhs: Timestamp) -> Self::Output {
-        Self(self.0.saturating_add(rhs.as_i64()))
+        Self(self.0.saturating_add(rhs.as_u64()))
     }
 }
 
 impl Sub<Timestamp> for Timestamp {
     type Output = Self;
     fn sub(self, rhs: Timestamp) -> Self::Output {
-        Self(self.0.saturating_sub(rhs.as_i64()))
+        Self(self.0.saturating_sub(rhs.as_u64()))
     }
 }
 
@@ -225,7 +215,7 @@ impl Add<Duration> for Timestamp {
     type Output = Self;
 
     fn add(self, rhs: Duration) -> Self::Output {
-        Self(self.0.saturating_add(rhs.as_secs() as i64))
+        Self(self.0.saturating_add(rhs.as_secs()))
     }
 }
 
@@ -233,7 +223,7 @@ impl Sub<Duration> for Timestamp {
     type Output = Self;
 
     fn sub(self, rhs: Duration) -> Self::Output {
-        Self(self.0.saturating_sub(rhs.as_secs() as i64))
+        Self(self.0.saturating_sub(rhs.as_secs()))
     }
 }
 
@@ -241,7 +231,7 @@ impl Add<u64> for Timestamp {
     type Output = Self;
 
     fn add(self, rhs: u64) -> Self::Output {
-        self.add(rhs as i64)
+        Self(self.0.saturating_add(rhs))
     }
 }
 
@@ -249,22 +239,6 @@ impl Sub<u64> for Timestamp {
     type Output = Self;
 
     fn sub(self, rhs: u64) -> Self::Output {
-        self.sub(rhs as i64)
-    }
-}
-
-impl Add<i64> for Timestamp {
-    type Output = Self;
-
-    fn add(self, rhs: i64) -> Self::Output {
-        Self(self.0.saturating_add(rhs))
-    }
-}
-
-impl Sub<i64> for Timestamp {
-    type Output = Self;
-
-    fn sub(self, rhs: i64) -> Self::Output {
         Self(self.0.saturating_sub(rhs))
     }
 }

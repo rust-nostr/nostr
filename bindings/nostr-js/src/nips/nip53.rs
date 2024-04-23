@@ -200,12 +200,12 @@ impl JsLiveEvent {
 
     #[wasm_bindgen(getter)]
     pub fn starts(&self) -> Option<f64> {
-        self.inner.starts.map(|t| t.as_i64() as f64)
+        self.inner.starts.map(|t| t.as_u64() as f64)
     }
 
     #[wasm_bindgen(getter)]
     pub fn ends(&self) -> Option<f64> {
-        self.inner.ends.map(|t| t.as_i64() as f64)
+        self.inner.ends.map(|t| t.as_u64() as f64)
     }
 
     #[wasm_bindgen(getter)]
