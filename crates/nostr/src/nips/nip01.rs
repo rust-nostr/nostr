@@ -199,3 +199,47 @@ impl FromStr for Coordinate {
         Self::parse(coordinate)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_valid_coordinate() {
+        let coordinate: &str =
+            "30023:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:ipsum";
+        let coordinate: Coordinate = Coordinate::parse(coordinate).unwrap();
+
+        let expected_public_key: PublicKey =
+            PublicKey::from_hex("aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4")
+                .unwrap();
+
+        assert_eq!(coordinate.kind.as_u16(), 30023);
+        assert_eq!(coordinate.public_key, expected_public_key);
+        assert_eq!(coordinate.identifier, "ipsum");
+
+        let coordinate: &str =
+            "20500:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:";
+        let coordinate: Coordinate = Coordinate::parse(coordinate).unwrap();
+
+        assert_eq!(coordinate.kind.as_u16(), 20500);
+        assert_eq!(coordinate.public_key, expected_public_key);
+        assert_eq!(coordinate.identifier, "");
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+
+    #[bench]
+    pub fn parse_coordinate(bh: &mut Bencher) {
+        let coordinate: &str =
+            "30023:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:ipsum";
+        bh.iter(|| {
+            black_box(Coordinate::parse(coordinate)).unwrap();
+        });
+    }
+}
