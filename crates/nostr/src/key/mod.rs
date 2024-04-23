@@ -89,7 +89,7 @@ impl Keys {
     /// Generate new random [`Keys`]
     #[inline]
     pub fn generate() -> Self {
-        Self::generate_with_ctx(&SECP256K1, &mut OsRng)
+        Self::generate_with_rng(&mut OsRng)
     }
 
     /// Generate random [`Keys`] with custom [`Rng`]
@@ -163,8 +163,8 @@ impl Keys {
         C: Signing,
         R: Rng + ?Sized,
     {
-        let (secret_key, _) = secp.generate_keypair(rng);
-        Self::new_with_ctx(secp, SecretKey::from(secret_key))
+        let secret_key: SecretKey = SecretKey::generate_with_ctx(secp, rng);
+        Self::new_with_ctx(secp, secret_key)
     }
 
     /// Generate random [`Keys`] with custom [`Rng`] and without [`Keypair`]

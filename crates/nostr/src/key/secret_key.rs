@@ -16,6 +16,12 @@ use super::Error;
 use crate::nips::nip19::FromBech32;
 #[cfg(all(feature = "std", feature = "nip49"))]
 use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
+#[cfg(feature = "std")]
+use crate::prelude::rand::rngs::OsRng;
+use crate::prelude::rand::Rng;
+use crate::secp256k1::{Secp256k1, Signing};
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 
 /// Secret key
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,6 +93,34 @@ impl SecretKey {
         Ok(Self {
             inner: secp256k1::SecretKey::from_str(hex.as_ref())?,
         })
+    }
+
+    /// Generate new random secret key
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn generate() -> Self {
+        Self::generate_with_rng(&mut OsRng)
+    }
+
+    /// Generate random secret key with custom [`Rng`]
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn generate_with_rng<R>(rng: &mut R) -> Self
+    where
+        R: Rng + ?Sized,
+    {
+        Self::generate_with_ctx(&SECP256K1, rng)
+    }
+
+    /// Generate random secret key with custom `secp256k1` context and [`Rng`]
+    #[inline]
+    pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
+    where
+        C: Signing,
+        R: Rng + ?Sized,
+    {
+        let (secret_key, _) = secp.generate_keypair(rng);
+        Self { inner: secret_key }
     }
 
     /// Get secret key as `hex` string

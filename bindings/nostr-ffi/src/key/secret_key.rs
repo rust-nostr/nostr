@@ -61,6 +61,14 @@ impl SecretKey {
         })
     }
 
+    /// Generate random secret key
+    #[uniffi::constructor]
+    pub fn generate() -> Self {
+        Self {
+            inner: nostr::SecretKey::generate(),
+        }
+    }
+
     pub fn to_hex(&self) -> String {
         self.inner.to_secret_hex()
     }
@@ -71,7 +79,7 @@ impl SecretKey {
 
     /// Encrypt `SecretKey`
     ///
-    /// By default `LOG_N` is set to `16` and `KeySecurity` to `Unknown`.
+    /// By default, `LOG_N` is set to `16` and `KeySecurity` to `Unknown`.
     /// To use custom values check `EncryptedSecretKey` constructor.
     pub fn encrypt(&self, password: &str) -> Result<EncryptedSecretKey> {
         Ok(self.inner.encrypt(password)?.into())

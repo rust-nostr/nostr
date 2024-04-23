@@ -52,6 +52,13 @@ impl JsSecretKey {
         })
     }
 
+    /// Generate random secret key
+    pub fn generate() -> Self {
+        Self {
+            inner: SecretKey::generate(),
+        }
+    }
+
     #[wasm_bindgen(js_name = toHex)]
     pub fn to_hex(&self) -> String {
         self.inner.to_secret_hex()
@@ -64,7 +71,7 @@ impl JsSecretKey {
 
     /// Encrypt secret key
     ///
-    /// By default `LOG_N` is set to `16` and `KeySecurity` to `Unknown`.
+    /// By default, `LOG_N` is set to `16` and `KeySecurity` to `Unknown`.
     /// To use custom values check `EncryptedSecretKey` constructor.
     pub fn encrypt(&self, password: &str) -> Result<JsEncryptedSecretKey> {
         Ok(self.inner.encrypt(password).map_err(into_err)?.into())
