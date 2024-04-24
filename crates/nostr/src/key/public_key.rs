@@ -4,35 +4,69 @@
 
 //! Public key
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
+use alloc::sync::Arc;
+use core::cmp::Ordering;
 use core::fmt;
-use core::ops::Deref;
+use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
-use bitcoin::secp256k1::XOnlyPublicKey;
+use bitcoin::secp256k1::{self, XOnlyPublicKey};
+#[cfg(feature = "std")]
+use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
+#[cfg(not(feature = "std"))]
+use once_cell::unsync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `core::cell::OnceCell` instead and remove `once_cell` dep.
 use serde::{Deserialize, Deserializer, Serialize};
 
 use super::Error;
 use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::NostrURI;
+use crate::util::hex;
+
+/// Public key size
+pub const PUBLIC_KEY_SIZE: usize = 32;
 
 /// Public Key
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone)]
 pub struct PublicKey {
-    inner: XOnlyPublicKey,
+    /// Public key bytes
+    buf: [u8; PUBLIC_KEY_SIZE],
+    /// Verification key
+    xonly: Arc<OnceCell<XOnlyPublicKey>>,
 }
 
-impl Deref for PublicKey {
-    type Target = XOnlyPublicKey;
+impl PartialEq for PublicKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.buf == other.buf
+    }
+}
 
-    fn deref(&self) -> &Self::Target {
-        &self.inner
+impl Eq for PublicKey {}
+
+impl PartialOrd for PublicKey {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PublicKey {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.buf.cmp(&other.buf)
+    }
+}
+
+impl Hash for PublicKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.buf.hash(state);
     }
 }
 
 impl From<XOnlyPublicKey> for PublicKey {
-    fn from(inner: XOnlyPublicKey) -> Self {
-        Self { inner }
+    fn from(pk: XOnlyPublicKey) -> Self {
+        Self {
+            buf: pk.serialize(),
+            xonly: Arc::new(OnceCell::from(pk)),
+        }
     }
 }
 
@@ -43,7 +77,25 @@ impl fmt::Display for PublicKey {
 }
 
 impl PublicKey {
-    /// Try to parse [PublicKey] from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    /// Construct unchecked public key
+    #[inline]
+    pub fn unchecked(bytes: [u8; PUBLIC_KEY_SIZE]) -> Self {
+        Self {
+            buf: bytes,
+            xonly: Arc::new(OnceCell::new()),
+        }
+    }
+
+    /// Construct checked public key
+    #[inline]
+    pub fn checked(bytes: [u8; PUBLIC_KEY_SIZE]) -> Result<Self, Error> {
+        Ok(Self {
+            xonly: Arc::new(OnceCell::from(XOnlyPublicKey::from_slice(&bytes)?)),
+            buf: bytes,
+        })
+    }
+
+    /// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     pub fn parse<S>(public_key: S) -> Result<Self, Error>
     where
         S: AsRef<str>,
@@ -68,42 +120,65 @@ impl PublicKey {
         Err(Error::InvalidPublicKey)
     }
 
-    /// Parse [PublicKey] from `bytes`
+    /// Parse from `bytes`
     #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
-        Ok(Self {
-            inner: XOnlyPublicKey::from_slice(slice)?,
-        })
+        if slice.len() != PUBLIC_KEY_SIZE {
+            return Err(Error::InvalidPublicKey);
+        }
+
+        let mut bytes: [u8; PUBLIC_KEY_SIZE] = [0u8; PUBLIC_KEY_SIZE];
+        bytes.copy_from_slice(slice);
+
+        Ok(Self::unchecked(bytes))
     }
 
-    /// Parse [PublicKey] from `hex` string
+    /// Parse from `hex` string
     #[inline]
     pub fn from_hex<S>(hex: S) -> Result<Self, Error>
     where
-        S: AsRef<str>,
+        S: AsRef<[u8]>,
     {
-        Ok(Self {
-            inner: XOnlyPublicKey::from_str(hex.as_ref())?,
-        })
+        let mut bytes: [u8; PUBLIC_KEY_SIZE] = [0u8; PUBLIC_KEY_SIZE];
+        hex::decode_to_slice(hex, &mut bytes)?;
+        Ok(Self::unchecked(bytes))
     }
 
     /// Get public key as `hex` string
     #[inline]
     pub fn to_hex(&self) -> String {
-        self.inner.to_string()
+        hex::encode(self.as_bytes())
     }
 
     /// Get public key as `bytes`
     #[inline]
-    pub fn to_bytes(&self) -> [u8; 32] {
-        self.inner.serialize()
+    pub fn as_bytes(&self) -> &[u8; PUBLIC_KEY_SIZE] {
+        &self.buf
+    }
+
+    /// Get public key as `bytes`
+    #[inline]
+    pub fn to_bytes(self) -> [u8; PUBLIC_KEY_SIZE] {
+        self.buf
+    }
+
+    /// Get or try to init [XOnlyPublicKey]
+    pub(crate) fn get_xonly_public_key(&self) -> Result<&XOnlyPublicKey, secp256k1::Error> {
+        self.xonly
+            .get_or_try_init(|| XOnlyPublicKey::from_slice(self.as_bytes()))
+    }
+
+    /// Check if public key is valid
+    #[inline]
+    pub fn is_valid(&self) -> bool {
+        self.get_xonly_public_key().is_ok()
     }
 }
 
 impl FromStr for PublicKey {
     type Err = Error;
 
-    /// Try to parse [PublicKey] from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    /// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     #[inline]
     fn from_str(public_key: &str) -> Result<Self, Self::Err> {
         Self::parse(public_key)
@@ -141,7 +216,7 @@ mod tests {
     use super::*;
 
     #[test]
-    pub fn test_public_key_parse() {
+    fn test_public_key_parse() {
         let public_key = PublicKey::parse(
             "nostr:npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
         )

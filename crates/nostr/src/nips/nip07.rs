@@ -221,7 +221,7 @@ impl Nip07Signer {
     }
 
     /// NIP04 encrypt
-    pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip04_encrypt<T>(&self, public_key: &PublicKey, content: T) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
@@ -231,7 +231,7 @@ impl Nip07Signer {
         let content: String = String::from_utf8_lossy(content).to_string();
         let promise: Promise = Promise::resolve(&func.call2(
             &nip04_obj,
-            &JsValue::from_str(&public_key.to_string()),
+            &JsValue::from_str(&public_key.to_hex()),
             &JsValue::from_str(&content),
         )?);
         let result: JsValue = JsFuture::from(promise).await?;
@@ -271,7 +271,7 @@ impl Nip07Signer {
     }
 
     /// NIP44 encrypt
-    pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip44_encrypt<T>(&self, public_key: &PublicKey, content: T) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {

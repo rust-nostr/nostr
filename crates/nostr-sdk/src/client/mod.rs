@@ -1011,7 +1011,7 @@ impl Client {
         let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
-            pubkeys.extend(event.public_keys());
+            pubkeys.extend(event.public_keys().cloned());
         }
 
         Ok(pubkeys)
@@ -1024,7 +1024,7 @@ impl Client {
     ) -> Result<HashMap<PublicKey, Metadata>, Error> {
         let public_keys = self.get_contact_list_public_keys(timeout).await?;
         let mut contacts: HashMap<PublicKey, Metadata> =
-            public_keys.iter().map(|p| (*p, Metadata::new())).collect();
+            public_keys.iter().map(|p| (p.clone(), Metadata::new())).collect();
 
         let chunk_size: usize = self.opts.req_filters_chunk_size as usize;
         for chunk in public_keys.chunks(chunk_size) {
@@ -1032,7 +1032,7 @@ impl Client {
             for public_key in chunk.iter() {
                 filters.push(
                     Filter::new()
-                        .author(*public_key)
+                        .author(public_key.clone())
                         .kind(Kind::Metadata)
                         .limit(1),
                 );
@@ -1082,7 +1082,7 @@ impl Client {
         S: Into<String>,
     {
         let signer = self.signer().await?;
-        let content: String = signer.nip04_encrypt(receiver, msg.into()).await?;
+        let content: String = signer.nip04_encrypt(&receiver, msg.into()).await?;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(reply_to.is_some()));
         tags.push(Tag::public_key(receiver));
@@ -1336,7 +1336,7 @@ impl Client {
 
         // Compose seal
         // TODO: use directly the `EventBuilder::seal` constructor
-        let content: String = signer.nip44_encrypt(receiver, rumor.as_json()).await?;
+        let content: String = signer.nip44_encrypt(&receiver, rumor.as_json()).await?;
         let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, [])
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK));
         let seal: Event = self.sign_event_builder(seal).await?;
@@ -1380,7 +1380,7 @@ impl Client {
     where
         S: Into<String>,
     {
-        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message);
+        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver.clone(), message);
         self.gift_wrap(receiver, rumor, expiration).await
     }
 

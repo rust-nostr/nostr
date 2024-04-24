@@ -16,7 +16,7 @@ use core::hash::{Hash, Hasher};
 use core::ops::Deref;
 
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
 #[cfg(feature = "std")]
 use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
 use serde::ser::SerializeStruct;
@@ -194,12 +194,13 @@ impl Event {
 
     /// Get event author (`pubkey` field)
     #[inline]
-    pub fn author(&self) -> PublicKey {
-        self.inner.pubkey
+    pub fn author(&self) -> &PublicKey {
+        &self.inner.pubkey
     }
 
     /// Get event author reference (`pubkey` field)
     #[inline]
+    #[deprecated(since = "0.31.0", note = "Use `author` instead")]
     pub fn author_ref(&self) -> &PublicKey {
         &self.inner.pubkey
     }
@@ -296,7 +297,8 @@ impl Event {
         C: Verification,
     {
         let message: Message = Message::from_digest_slice(self.inner.id.as_bytes())?;
-        secp.verify_schnorr(&self.inner.sig, &message, &self.inner.pubkey)
+        let public_key: &XOnlyPublicKey = self.inner.pubkey.get_xonly_public_key()?;
+        secp.verify_schnorr(&self.inner.sig, &message, public_key)
             .map_err(|_| Error::InvalidSignature)
     }
 
@@ -685,20 +687,44 @@ mod benches {
 
     use super::*;
 
+    const JSON: &str = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
+
     #[bench]
     pub fn deserialize_event(bh: &mut Bencher) {
-        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
         bh.iter(|| {
-            black_box(Event::from_json(json)).unwrap();
+            black_box(Event::from_json(JSON)).unwrap();
         });
     }
 
     #[bench]
     pub fn serialize_event(bh: &mut Bencher) {
-        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
-        let event = Event::from_json(json).unwrap();
+        let event = Event::from_json(JSON).unwrap();
         bh.iter(|| {
             black_box(event.as_json());
+        });
+    }
+
+    #[bench]
+    pub fn verify_event(bh: &mut Bencher) {
+        let event = Event::from_json(JSON).unwrap();
+        bh.iter(|| {
+            black_box(event.verify()).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn verify_event_id(bh: &mut Bencher) {
+        let event = Event::from_json(JSON).unwrap();
+        bh.iter(|| {
+            black_box(event.verify_id()).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn verify_event_sig(bh: &mut Bencher) {
+        let event = Event::from_json(JSON).unwrap();
+        bh.iter(|| {
+            black_box(event.verify_signature()).unwrap();
         });
     }
 }

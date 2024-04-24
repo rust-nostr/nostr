@@ -217,7 +217,7 @@ impl EventBuilder {
         R: Rng + CryptoRng,
         T: TimeSupplier,
     {
-        let pubkey: PublicKey = keys.public_key();
+        let pubkey: PublicKey = keys.public_key().clone();
         Ok(self
             .to_unsigned_event_with_supplier(supplier, pubkey)
             .sign_with_ctx(secp, rng, keys)?)
@@ -260,7 +260,7 @@ impl EventBuilder {
         R: Rng + CryptoRng,
         T: TimeSupplier,
     {
-        let pubkey: PublicKey = keys.public_key();
+        let pubkey: PublicKey = keys.public_key().clone();
         Ok(self
             .to_unsigned_pow_event_with_supplier(supplier, pubkey, difficulty)
             .sign_with_ctx(secp, rng, keys)?)
@@ -433,7 +433,7 @@ impl EventBuilder {
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
                 }));
-                tags.push(Tag::public_key(root.author()));
+                tags.push(Tag::public_key(root.author().clone()));
 
                 // Add others `p` tags
                 tags.extend(
@@ -464,7 +464,7 @@ impl EventBuilder {
             relay_url,
             marker: Some(Marker::Reply),
         }));
-        tags.push(Tag::public_key(reply_to.author()));
+        tags.push(Tag::public_key(reply_to.author().clone()));
 
         // Add others `p` tags of reply_to event
         tags.extend(
@@ -558,22 +558,20 @@ impl EventBuilder {
     #[cfg(all(feature = "std", feature = "nip04"))]
     pub fn encrypted_direct_msg<S>(
         sender_keys: &Keys,
-        receiver_pubkey: PublicKey,
+        receiver_pubkey: &PublicKey,
         content: S,
         reply_to: Option<EventId>,
     ) -> Result<Self, Error>
     where
         S: Into<String>,
     {
-        let mut tags: Vec<Tag> = vec![Tag::public_key(receiver_pubkey)];
+        let content: String =
+            nip04::encrypt(sender_keys.secret_key()?, receiver_pubkey, content.into())?;
+        let mut tags: Vec<Tag> = vec![Tag::public_key(receiver_pubkey.clone())];
         if let Some(reply_to) = reply_to {
             tags.push(Tag::event(reply_to));
         }
-        Ok(Self::new(
-            Kind::EncryptedDirectMessage,
-            nip04::encrypt(sender_keys.secret_key()?, &receiver_pubkey, content.into())?,
-            tags,
-        ))
+        Ok(Self::new(Kind::EncryptedDirectMessage, content, tags))
     }
 
     /// Repost
@@ -588,7 +586,7 @@ impl EventBuilder {
                         relay_url,
                         marker: None,
                     }),
-                    Tag::public_key(event.author()),
+                    Tag::public_key(event.author().clone()),
                 ],
             )
         } else {
@@ -601,7 +599,7 @@ impl EventBuilder {
                         relay_url,
                         marker: None,
                     }),
-                    Tag::public_key(event.author()),
+                    Tag::public_key(event.author().clone()),
                     Tag::from_standardized_without_cell(TagStandard::Kind(event.kind())),
                 ],
             )
@@ -638,7 +636,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::reaction_extended(event.id(), event.author(), event.kind(), reaction)
+        Self::reaction_extended(event.id(), event.author().clone(), event.kind(), reaction)
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
@@ -918,7 +916,7 @@ impl EventBuilder {
         // add P tag
         tags.push(Tag::from_standardized_without_cell(
             TagStandard::PublicKey {
-                public_key: zap_request.author(),
+                public_key: zap_request.author().clone(),
                 relay_url: None,
                 alias: None,
                 uppercase: true,
@@ -1023,7 +1021,7 @@ impl EventBuilder {
         // Add identity tag
         tags.push(Tag::from_standardized_without_cell(
             TagStandard::Coordinate {
-                coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.author())
+                coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.author().clone())
                     .identifier(badge_id),
                 relay_url: None,
             },
@@ -1162,7 +1160,7 @@ impl EventBuilder {
                 .collect();
             tags.extend_from_slice(&[
                 Tag::event(job_request.id()),
-                Tag::public_key(job_request.author()),
+                Tag::public_key(job_request.author().clone()),
                 Tag::from_standardized_without_cell(TagStandard::Request(job_request)),
                 Tag::from_standardized_without_cell(TagStandard::Amount {
                     millisats: amount_millisats,
@@ -1195,7 +1193,7 @@ impl EventBuilder {
                 extra_info,
             }),
             Tag::event(job_request.id()),
-            Tag::public_key(job_request.author()),
+            Tag::public_key(job_request.author().clone()),
             Tag::from_standardized_without_cell(TagStandard::Amount {
                 millisats: amount_millisats,
                 bolt11,
@@ -1290,7 +1288,7 @@ impl EventBuilder {
         )?;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(expiration.is_some()));
-        tags.push(Tag::public_key(*receiver));
+        tags.push(Tag::public_key(receiver.clone()));
 
         if let Some(timestamp) = expiration {
             tags.push(Tag::expiration(timestamp));

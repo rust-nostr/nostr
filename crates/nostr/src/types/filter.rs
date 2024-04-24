@@ -972,7 +972,7 @@ mod tests {
         let event =
             Event::new(
                 event_id,
-                pubkey,
+                pubkey.clone(),
                 Timestamp::from(1612809991),
                 Kind::TextNote,
                 [
@@ -984,7 +984,7 @@ mod tests {
             );
         let event_with_empty_tags: Event = Event::new(
             event_id,
-            pubkey,
+            pubkey.clone(),
             Timestamp::from(1612809992),
             Kind::TextNote,
             [],
@@ -1002,14 +1002,14 @@ mod tests {
 
         // Match (author, kind and since)
         let filter: Filter = Filter::new()
-            .author(pubkey)
+            .author(pubkey.clone())
             .kind(Kind::TextNote)
             .since(Timestamp::from(1612808000));
         assert!(filter.match_event(&event));
 
         // Not match (since)
         let filter: Filter = Filter::new()
-            .author(pubkey)
+            .author(pubkey.clone())
             .kind(Kind::TextNote)
             .since(Timestamp::from(1700000000));
         assert!(!filter.match_event(&event));

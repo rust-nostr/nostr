@@ -341,7 +341,7 @@ impl ToBech32 for PublicKey {
 
     #[inline]
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        Ok(bech32::encode::<Bech32>(HRP_PUBLIC_KEY, &self.serialize())?)
+        Ok(bech32::encode::<Bech32>(HRP_PUBLIC_KEY, self.as_bytes())?)
     }
 }
 
@@ -479,7 +479,7 @@ impl ToBech32 for Nip19Event {
         if let Some(author) = &self.author {
             bytes.push(AUTHOR); // Type
             bytes.push(32); // Len
-            bytes.extend(author.to_bytes()); // Value
+            bytes.extend(author.as_bytes()); // Value
         }
 
         for relay in self.relays.iter() {
@@ -560,7 +560,7 @@ impl ToBech32 for Nip19Profile {
 
         bytes.push(SPECIAL); // Type
         bytes.push(32); // Len
-        bytes.extend(self.public_key.to_bytes()); // Value
+        bytes.extend(self.public_key.as_bytes()); // Value
 
         for relay in self.relays.iter() {
             let url: &str = relay.as_str();
@@ -679,7 +679,7 @@ impl ToBech32 for Coordinate {
         // Author
         bytes.push(AUTHOR); // Type
         bytes.push(32); // Len
-        bytes.extend(self.public_key.to_bytes()); // Value
+        bytes.extend(self.public_key.as_bytes()); // Value
 
         // Kind
         bytes.push(KIND); // Type

@@ -189,7 +189,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     #[tracing::instrument(skip_all, level = "trace")]
     async fn profile(&self, public_key: PublicKey) -> Result<Profile, Self::Err> {
         let filter = Filter::new()
-            .author(public_key)
+            .author(public_key.clone())
             .kind(Kind::Metadata)
             .limit(1);
         let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
@@ -217,7 +217,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .limit(1);
         let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
         match events.first() {
-            Some(event) => Ok(event.public_keys().copied().collect()),
+            Some(event) => Ok(event.public_keys().cloned().collect()),
             None => Ok(Vec::new()),
         }
     }
@@ -234,7 +234,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             Some(event) => {
                 // Get contacts metadata
                 let filter = Filter::new()
-                    .authors(event.public_keys().copied())
+                    .authors(event.public_keys().cloned())
                     .kind(Kind::Metadata);
                 let mut contacts: HashSet<Profile> = self
                     .query(vec![filter], Order::Desc)
@@ -243,12 +243,12 @@ pub trait NostrDatabaseExt: NostrDatabase {
                     .map(|e| {
                         let metadata: Metadata =
                             Metadata::from_json(e.content()).unwrap_or_default();
-                        Profile::new(e.author(), metadata)
+                        Profile::new(e.author().clone(), metadata)
                     })
                     .collect();
 
                 // Extend with missing public keys
-                contacts.extend(event.public_keys().copied().map(Profile::from));
+                contacts.extend(event.public_keys().cloned().map(Profile::from));
 
                 Ok(contacts.into_iter().collect())
             }

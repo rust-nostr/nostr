@@ -67,7 +67,7 @@ impl From<&Event> for EventIndex {
         Self {
             created_at: e.created_at(),
             event_id: e.id(),
-            pubkey: PublicKeyPrefix::from(e.author_ref()),
+            pubkey: PublicKeyPrefix::from(e.author()),
             kind: e.kind(),
             tags: TagIndexes::from(e.iter_tags()),
         }
@@ -80,7 +80,7 @@ struct PublicKeyPrefix([u8; PUBLIC_KEY_PREFIX_SIZE]);
 
 impl From<&PublicKey> for PublicKeyPrefix {
     fn from(pk: &PublicKey) -> Self {
-        let pk: [u8; 32] = pk.serialize();
+        let pk: &[u8; 32] = pk.as_bytes();
         Self::from(pk)
     }
 }
@@ -91,8 +91,8 @@ impl From<PublicKey> for PublicKeyPrefix {
     }
 }
 
-impl From<[u8; 32]> for PublicKeyPrefix {
-    fn from(pk: [u8; 32]) -> Self {
+impl From<&[u8; 32]> for PublicKeyPrefix {
+    fn from(pk: &[u8; 32]) -> Self {
         let mut pubkey = [0u8; PUBLIC_KEY_PREFIX_SIZE];
         pubkey.copy_from_slice(&pk[..PUBLIC_KEY_PREFIX_SIZE]);
         Self(pubkey)
@@ -208,10 +208,10 @@ impl<'a> EventOrTempEvent<'a> {
 
     fn pubkey(&self) -> PublicKeyPrefix {
         match self {
-            Self::Event(e) => PublicKeyPrefix::from(e.author_ref()),
-            Self::EventOwned(e) => PublicKeyPrefix::from(e.author_ref()),
+            Self::Event(e) => PublicKeyPrefix::from(e.author()),
+            Self::EventOwned(e) => PublicKeyPrefix::from(e.author()),
             #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => PublicKeyPrefix::from(r.pubkey),
+            Self::Temp(r) => PublicKeyPrefix::from(&r.pubkey),
         }
     }
 
@@ -337,7 +337,7 @@ impl From<Filter> for QueryPattern {
         let (authors_len, first_author): (usize, Option<PublicKey>) = filter
             .authors
             .as_ref()
-            .map(|set| (set.len(), set.iter().next().copied()))
+            .map(|set| (set.len(), set.iter().next().cloned()))
             .unwrap_or_default();
         let ids_len: usize = filter.ids.as_ref().map(|set| set.len()).unwrap_or_default();
         let generic_tags_len: usize = filter.generic_tags.len();
@@ -512,7 +512,7 @@ impl InternalDatabaseIndexes {
             // Check `a` tags
             for coordinate in event.coordinates() {
                 let coordinate_pubkey_prefix: PublicKeyPrefix =
-                    PublicKeyPrefix::from(coordinate.public_key);
+                    PublicKeyPrefix::from(&coordinate.public_key);
                 if coordinate_pubkey_prefix == pubkey_prefix {
                     // Save deleted coordinate at certain timestamp
                     self.deleted_coordinates
@@ -993,7 +993,7 @@ mod tests {
             .query(
                 [Filter::new()
                     .kind(Kind::Metadata)
-                    .author(keys_a.public_key())],
+                    .author(keys_a.public_key().clone())],
                 Order::Desc
             )
             .await
@@ -1004,7 +1004,7 @@ mod tests {
             .query(
                 [Filter::new()
                     .kind(Kind::ParameterizedReplaceable(32122))
-                    .author(keys_a.public_key())
+                    .author(keys_a.public_key().clone())
                     .identifier("id-2")],
                 Order::Desc
             )
@@ -1018,7 +1018,7 @@ mod tests {
                 .query(
                     [Filter::new()
                         .kind(Kind::ParameterizedReplaceable(32122))
-                        .author(keys_b.public_key())],
+                        .author(keys_b.public_key().clone())],
                     Order::Asc
                 )
                 .await,
@@ -1034,7 +1034,7 @@ mod tests {
                 .query(
                     [Filter::new()
                         .kind(Kind::ParameterizedReplaceable(32122))
-                        .author(keys_b.public_key())
+                        .author(keys_b.public_key().clone())
                         .identifier("id-3")],
                     Order::Desc
                 )
@@ -1044,7 +1044,10 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query([Filter::new().author(keys_a.public_key())], Order::Desc)
+                .query(
+                    [Filter::new().author(keys_a.public_key().clone())],
+                    Order::Desc
+                )
                 .await,
             vec![
                 Event::from_json(EVENTS[12]).unwrap().id(),
@@ -1059,7 +1062,7 @@ mod tests {
             indexes
                 .query(
                     [Filter::new()
-                        .author(keys_a.public_key())
+                        .author(keys_a.public_key().clone())
                         .kinds([Kind::TextNote, Kind::Custom(32121)])],
                     Order::Desc
                 )
@@ -1074,7 +1077,7 @@ mod tests {
             indexes
                 .query(
                     [Filter::new()
-                        .authors([keys_a.public_key(), keys_b.public_key()])
+                        .authors([keys_a.public_key().clone(), keys_b.public_key().clone()])
                         .kinds([Kind::TextNote, Kind::Custom(32121)])],
                     Order::Desc
                 )
@@ -1109,7 +1112,7 @@ mod tests {
             indexes
                 .query(
                     [Filter::new()
-                        .pubkey(keys_a.public_key())
+                        .pubkey(keys_a.public_key().clone())
                         .kind(Kind::Custom(30333))
                         .limit(1)],
                     Order::Desc
@@ -1128,7 +1131,7 @@ mod tests {
                 .query(
                     [Filter::new()
                         .kind(Kind::Metadata)
-                        .author(keys_a.public_key())],
+                        .author(keys_a.public_key().clone())],
                     Order::Desc
                 )
                 .await,
@@ -1145,7 +1148,7 @@ mod tests {
                 .query(
                     [Filter::new()
                         .kind(Kind::Metadata)
-                        .author(keys_a.public_key())],
+                        .author(keys_a.public_key().clone())],
                     Order::Desc
                 )
                 .await,
@@ -1164,7 +1167,7 @@ mod tests {
         let event =
             Event::new(
                 event_id,
-                pubkey,
+                pubkey.clone(),
                 Timestamp::from(1612809991),
                 Kind::TextNote,
                 [
@@ -1179,7 +1182,7 @@ mod tests {
 
           &Event::new(
             event_id,
-            pubkey,
+            pubkey.clone(),
             Timestamp::from(1612809991),
             Kind::TextNote,
             [],
@@ -1198,7 +1201,7 @@ mod tests {
 
         // Match (author, kind and since)
         let filter: FilterIndex = Filter::new()
-            .author(pubkey)
+            .author(pubkey.clone())
             .kind(Kind::TextNote)
             .since(Timestamp::from(1612808000))
             .into();

@@ -22,7 +22,7 @@ use chacha20::XChaCha20;
 pub mod v2;
 
 use self::v2::ConversationKey;
-use crate::{util, PublicKey, SecretKey};
+use crate::{secp256k1, util, PublicKey, SecretKey};
 
 /// Error
 #[derive(Debug, PartialEq, Eq)]
@@ -31,6 +31,8 @@ pub enum Error {
     V2(v2::ErrorV2),
     /// Error while decoding from base64
     Base64Decode(base64::DecodeError),
+    /// Secp256k1 error
+    Secp256k1(secp256k1::Error),
     /// Invalid length
     InvalidLength,
     /// Error while encoding to UTF-8
@@ -51,6 +53,7 @@ impl fmt::Display for Error {
         match self {
             Self::V2(e) => write!(f, "{e}"),
             Self::Base64Decode(e) => write!(f, "Error while decoding from base64: {e}"),
+            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::InvalidLength => write!(f, "Invalid length"),
             Self::Utf8Encode => write!(f, "Error while encoding to UTF-8"),
             Self::UnknownVersion(v) => write!(f, "unknown version: {v}"),
@@ -69,6 +72,12 @@ impl From<v2::ErrorV2> for Error {
 impl From<base64::DecodeError> for Error {
     fn from(e: base64::DecodeError) -> Self {
         Self::Base64Decode(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
     }
 }
 
@@ -138,7 +147,7 @@ where
         #[allow(deprecated)]
         Version::V1 => {
             // Compose key
-            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
             let key: Sha256Hash = Sha256Hash::hash(&shared_key);
 
             // Generate 192-bit nonce
@@ -161,7 +170,8 @@ where
             Ok(general_purpose::STANDARD.encode(payload))
         }
         Version::V2 => {
-            let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
+            let conversation_key: ConversationKey =
+                ConversationKey::derive(secret_key, public_key)?;
             let payload: Vec<u8> = v2::encrypt_to_bytes_with_rng(rng, &conversation_key, content)?;
             Ok(general_purpose::STANDARD.encode(payload))
         }
@@ -209,7 +219,7 @@ where
                 .ok_or_else(|| Error::NotFound(String::from("ciphertext")))?;
 
             // Compose key
-            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
             let key: Sha256Hash = Sha256Hash::hash(&shared_key);
 
             // Compose cipher
@@ -222,7 +232,8 @@ where
             Ok(buffer)
         }
         Version::V2 => {
-            let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
+            let conversation_key: ConversationKey =
+                ConversationKey::derive(secret_key, public_key)?;
             v2::decrypt_to_bytes(&conversation_key, &payload)
         }
     }
