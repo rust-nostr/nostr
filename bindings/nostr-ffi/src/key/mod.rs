@@ -56,7 +56,7 @@ impl Keys {
     #[uniffi::constructor]
     pub fn from_public_key(public_key: &PublicKey) -> Self {
         Self {
-            inner: key::Keys::from_public_key(**public_key),
+            inner: key::Keys::from_public_key(public_key.deref().clone()),
         }
     }
 
@@ -116,7 +116,7 @@ impl Keys {
     }
 
     pub fn public_key(&self) -> PublicKey {
-        self.inner.public_key().into()
+        self.inner.public_key().clone().into()
     }
 
     pub fn secret_key(&self) -> Result<SecretKey> {

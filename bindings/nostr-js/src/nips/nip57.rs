@@ -75,7 +75,7 @@ impl JsZapRequestData {
     ) -> Self {
         Self {
             inner: ZapRequestData {
-                public_key: **public_key,
+                public_key: public_key.deref().clone(),
                 relays: relays.into_iter().map(|r| UncheckedUrl::from(&r)).collect(),
                 message: message.to_string(),
                 amount: amount.map(|n| n as u64),
@@ -88,7 +88,7 @@ impl JsZapRequestData {
 
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> JsPublicKey {
-        self.inner.public_key.into()
+        self.inner.public_key.clone().into()
     }
 
     #[wasm_bindgen(getter)]

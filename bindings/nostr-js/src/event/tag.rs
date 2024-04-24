@@ -230,7 +230,7 @@ impl JsTag {
     #[wasm_bindgen(js_name = publicKey)]
     pub fn public_key(public_key: &JsPublicKey) -> Self {
         Self {
-            inner: Tag::public_key(**public_key),
+            inner: Tag::public_key(public_key.deref().clone()),
         }
     }
 
@@ -290,7 +290,7 @@ impl JsTag {
     #[inline]
     pub fn public_key_report(public_key: &JsPublicKey, report: JsReport) -> Self {
         Self {
-            inner: Tag::public_key_report(**public_key, report.into()),
+            inner: Tag::public_key_report(public_key.deref().clone(), report.into()),
         }
     }
 

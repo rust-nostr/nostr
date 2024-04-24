@@ -409,7 +409,7 @@ impl JsClient {
         reply: Option<JsEventId>,
     ) -> Result<JsEventId> {
         self.inner
-            .send_direct_msg(**receiver, msg, reply.map(|id| id.into()))
+            .send_direct_msg(receiver.deref(), msg, reply.map(|id| id.into()))
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -546,7 +546,7 @@ impl JsClient {
         reason: Option<String>,
     ) -> Result<JsEventId> {
         self.inner
-            .mute_channel_user(**pubkey, reason)
+            .mute_channel_user(pubkey.deref().clone(), reason)
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -562,7 +562,11 @@ impl JsClient {
         details: Option<JsZapDetails>,
     ) -> Result<()> {
         self.inner
-            .zap(**to, satoshi as u64, details.map(|d| d.into()))
+            .zap(
+                to.deref().clone(),
+                satoshi as u64,
+                details.map(|d| d.into()),
+            )
             .await
             .map_err(into_err)
     }
@@ -578,7 +582,11 @@ impl JsClient {
         expiration: Option<JsTimestamp>,
     ) -> Result<()> {
         self.inner
-            .gift_wrap(**receiver, rumor.deref().clone(), expiration.map(|t| *t))
+            .gift_wrap(
+                receiver.deref(),
+                rumor.deref().clone(),
+                expiration.map(|t| *t),
+            )
             .await
             .map_err(into_err)
     }
@@ -594,7 +602,7 @@ impl JsClient {
         expiration: Option<JsTimestamp>,
     ) -> Result<()> {
         self.inner
-            .send_private_msg(**receiver, message, expiration.map(|t| *t))
+            .send_private_msg(receiver.deref(), message, expiration.map(|t| *t))
             .await
             .map_err(into_err)
     }

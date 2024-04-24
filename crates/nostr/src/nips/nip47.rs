@@ -515,7 +515,7 @@ impl Request {
         Ok(EventBuilder::new(
             Kind::WalletConnectRequest,
             encrypted,
-            [Tag::public_key(uri.public_key)],
+            [Tag::public_key(uri.public_key.clone())],
         )
         .to_event(&keys)?)
     }
@@ -688,7 +688,7 @@ impl Response {
     /// Deserialize from [Event]
     #[inline]
     pub fn from_event(uri: &NostrWalletConnectURI, event: &Event) -> Result<Self, Error> {
-        let decrypt_res: String = nip04::decrypt(&uri.secret, event.author_ref(), event.content())?;
+        let decrypt_res: String = nip04::decrypt(&uri.secret, event.author(), event.content())?;
         Self::from_json(decrypt_res)
     }
 

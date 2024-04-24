@@ -54,7 +54,7 @@ impl JsKeys {
     #[wasm_bindgen(js_name = fromPublicKey)]
     pub fn from_public_key(public_key: &JsPublicKey) -> JsKeys {
         Self {
-            inner: Keys::from_public_key(**public_key),
+            inner: Keys::from_public_key(public_key.deref().clone()),
         }
     }
 
@@ -97,7 +97,7 @@ impl JsKeys {
     /// Get public key
     #[wasm_bindgen(js_name = publicKey, getter)]
     pub fn public_key(&self) -> JsPublicKey {
-        self.inner.public_key().into()
+        self.inner.public_key().clone().into()
     }
 
     /// Get secret key

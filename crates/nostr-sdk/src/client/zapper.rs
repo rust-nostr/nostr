@@ -15,7 +15,7 @@ const SUPPORT_RUST_NOSTR_PERCENTAGE: f64 = 0.05; // 5%
 const SUPPORT_RUST_NOSTR_MSG: &str = "Zap split to support Rust Nostr development!";
 
 /// Zap entity
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ZapEntity {
     /// Zap to event
     Event(EventId),
@@ -41,12 +41,9 @@ impl From<PublicKey> for ZapEntity {
     }
 }
 
-impl ZapEntity {
-    fn event_id(&self) -> Option<EventId> {
-        match self {
-            Self::Event(id) => Some(*id),
-            _ => None,
-        }
+impl From<&PublicKey> for ZapEntity {
+    fn from(value: &PublicKey) -> Self {
+        Self::PublicKey(value.clone())
     }
 }
 
@@ -100,19 +97,19 @@ impl Client {
 
         // Get entity metadata
         let to: ZapEntity = to.into();
-        let (public_key, metadata): (PublicKey, Metadata) = match to {
+        let (event_id, public_key, metadata): (Option<EventId>, PublicKey, Metadata) = match to {
             ZapEntity::Event(event_id) => {
                 // Get event
                 let filter: Filter = Filter::new().id(event_id);
                 let events: Vec<Event> = self.get_events_of(vec![filter], None).await?;
                 let event: &Event = events.first().ok_or(Error::EventNotFound(event_id))?;
-                let public_key: PublicKey = event.author();
-                let metadata: Metadata = self.metadata(public_key).await?;
-                (public_key, metadata)
+                let public_key: PublicKey = event.author().clone();
+                let metadata: Metadata = self.metadata(public_key.clone()).await?;
+                (Some(event_id), public_key, metadata)
             }
             ZapEntity::PublicKey(public_key) => {
-                let metadata: Metadata = self.metadata(public_key).await?;
-                (public_key, metadata)
+                let metadata: Metadata = self.metadata(public_key.clone()).await?;
+                (None, public_key, metadata)
             }
         };
 
@@ -127,7 +124,7 @@ impl Client {
 
         // Compose zap split and get invoices
         let invoices: Vec<String> = self
-            .zap_split(public_key, lud, satoshi, details, to.event_id())
+            .zap_split(public_key, lud, satoshi, details, event_id)
             .await?;
 
         let zapper = self.zapper().await?;

@@ -37,7 +37,11 @@ pub struct JsMuteList {
 impl From<JsMuteList> for MuteList {
     fn from(value: JsMuteList) -> Self {
         Self {
-            public_keys: value.public_keys.into_iter().map(|p| p.into()).collect(),
+            public_keys: value
+                .public_keys
+                .into_iter()
+                .map(|p| p.deref().clone())
+                .collect(),
             hashtags: value.hashtags,
             event_ids: value.event_ids.into_iter().map(|e| e.into()).collect(),
             words: value.words,

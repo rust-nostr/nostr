@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
 
 use super::raw::{self, RawEvent};
 use super::tag;
@@ -72,7 +72,7 @@ impl From<tag::Error> for Error {
 }
 
 /// Partial event
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PartialEvent {
     /// ID
     pub id: EventId,
@@ -83,7 +83,7 @@ pub struct PartialEvent {
 }
 
 impl PartialEvent {
-    /// Compose from [RawEvent]
+    /// Construct from [RawEvent]
     #[inline]
     pub fn from_raw(raw: &RawEvent) -> Result<Self, Error> {
         Ok(raw.try_into()?)
@@ -104,12 +104,13 @@ impl PartialEvent {
     {
         // Verify signature
         let message: Message = Message::from_digest_slice(self.id.as_bytes())?;
-        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
+        let public_key: &XOnlyPublicKey = self.pubkey.get_xonly_public_key()?;
+        secp.verify_schnorr(&self.sig, &message, public_key)
             .map_err(|_| Error::InvalidSignature)
     }
 
     /// Merge [`MissingPartialEvent`] and compose [`Event`]
-    pub fn merge(&self, missing: MissingPartialEvent) -> Result<Event, Error> {
+    pub fn merge(self, missing: MissingPartialEvent) -> Result<Event, Error> {
         let mut tags: Vec<Tag> = Vec::with_capacity(missing.tags.len());
         for tag in missing.tags.into_iter() {
             tags.push(Tag::parse(&tag)?);

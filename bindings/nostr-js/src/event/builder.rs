@@ -73,7 +73,7 @@ impl JsEventBuilder {
     /// **This method consume the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = toUnsignedEvent)]
     pub fn to_unsigned_event(self, public_key: &JsPublicKey) -> JsUnsignedEvent {
-        self.inner.to_unsigned_event(**public_key).into()
+        self.inner.to_unsigned_event(public_key.deref()).into()
     }
 
     /// Build POW `Event`
@@ -98,7 +98,7 @@ impl JsEventBuilder {
         difficulty: u8,
     ) -> JsUnsignedEvent {
         self.inner
-            .to_unsigned_pow_event(**public_key, difficulty)
+            .to_unsigned_pow_event(public_key.deref(), difficulty)
             .into()
     }
 
@@ -178,7 +178,7 @@ impl JsEventBuilder {
         Ok(Self {
             inner: EventBuilder::encrypted_direct_msg(
                 sender_keys.deref(),
-                **receiver_pubkey,
+                receiver_pubkey.deref(),
                 content,
                 reply_to.map(|id| id.into()),
             )
@@ -222,7 +222,7 @@ impl JsEventBuilder {
         Self {
             inner: nostr::EventBuilder::reaction_extended(
                 **event_id,
-                **public_key,
+                public_key.deref().clone(),
                 kind.into(),
                 reaction,
             ),
@@ -272,7 +272,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = muteChannelUser)]
     pub fn mute_channel_user(pubkey: &JsPublicKey, reason: Option<String>) -> Self {
         Self {
-            inner: EventBuilder::mute_channel_user(**pubkey, reason),
+            inner: EventBuilder::mute_channel_user(pubkey.deref().clone(), reason),
         }
     }
 
@@ -302,7 +302,7 @@ impl JsEventBuilder {
         Ok(Self {
             inner: EventBuilder::live_event_msg(
                 live_event_id,
-                **live_event_host,
+                live_event_host.deref().clone(),
                 content,
                 match relay_url {
                     Some(url) => Some(Url::from_str(&url).map_err(into_err)?),
@@ -507,7 +507,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = privateMsgRumor)]
     pub fn private_msg_rumor(receiver: &JsPublicKey, message: &str) -> Self {
         Self {
-            inner: EventBuilder::private_msg_rumor(**receiver, message),
+            inner: EventBuilder::private_msg_rumor(receiver.deref().clone(), message),
         }
     }
 
@@ -607,7 +607,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = followSets)]
     pub fn follow_sets(public_keys: Vec<JsPublicKey>) -> Self {
         Self {
-            inner: EventBuilder::follow_sets(public_keys.into_iter().map(|p| p.into())),
+            inner: EventBuilder::follow_sets(public_keys.into_iter().map(|p| p.deref().clone())),
         }
     }
 

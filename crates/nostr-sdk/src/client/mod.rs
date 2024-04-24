@@ -1011,7 +1011,7 @@ impl Client {
         let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
-            pubkeys.extend(event.public_keys());
+            pubkeys.extend(event.public_keys().cloned());
         }
 
         Ok(pubkeys)
@@ -1023,8 +1023,10 @@ impl Client {
         timeout: Option<Duration>,
     ) -> Result<HashMap<PublicKey, Metadata>, Error> {
         let public_keys = self.get_contact_list_public_keys(timeout).await?;
-        let mut contacts: HashMap<PublicKey, Metadata> =
-            public_keys.iter().map(|p| (*p, Metadata::new())).collect();
+        let mut contacts: HashMap<PublicKey, Metadata> = public_keys
+            .iter()
+            .map(|p| (p.clone(), Metadata::new()))
+            .collect();
 
         let chunk_size: usize = self.opts.req_filters_chunk_size as usize;
         for chunk in public_keys.chunks(chunk_size) {
@@ -1032,7 +1034,7 @@ impl Client {
             for public_key in chunk.iter() {
                 filters.push(
                     Filter::new()
-                        .author(*public_key)
+                        .author(public_key.clone())
                         .kind(Kind::Metadata)
                         .limit(1),
                 );
@@ -1040,7 +1042,7 @@ impl Client {
             let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(event.content())?;
-                if let Some(m) = contacts.get_mut(&event.author()) {
+                if let Some(m) = contacts.get_mut(event.author()) {
                     *m = metadata
                 };
             }
@@ -1072,17 +1074,20 @@ impl Client {
     /// # }
     /// ```
     #[cfg(feature = "nip04")]
-    pub async fn send_direct_msg<S>(
+    pub async fn send_direct_msg<P, S>(
         &self,
-        receiver: PublicKey,
+        receiver: P,
         msg: S,
         reply_to: Option<EventId>,
     ) -> Result<EventId, Error>
     where
+        P: IntoPublicKey,
         S: Into<String>,
     {
-        let signer = self.signer().await?;
-        let content: String = signer.nip04_encrypt(receiver, msg.into()).await?;
+        let receiver: PublicKey = receiver.into_public_key();
+
+        let signer: NostrSigner = self.signer().await?;
+        let content: String = signer.nip04_encrypt(&receiver, msg.into()).await?;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(reply_to.is_some()));
         tags.push(Tag::public_key(receiver));
@@ -1323,20 +1328,25 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap(
+    pub async fn gift_wrap<P>(
         &self,
-        receiver: PublicKey,
+        receiver: P,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        P: IntoPublicKey,
+    {
+        let receiver: PublicKey = receiver.into_public_key();
+
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
-        let public_key: PublicKey = signer.public_key().await?;
+        let public_key: PublicKey = signer.public_key().await?.into_owned();
         let rumor = rumor.to_unsigned_event(public_key);
 
         // Compose seal
         // TODO: use directly the `EventBuilder::seal` constructor
-        let content: String = signer.nip44_encrypt(receiver, rumor.as_json()).await?;
+        let content: String = signer.nip44_encrypt(&receiver, rumor.as_json()).await?;
         let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, [])
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK));
         let seal: Event = self.sign_event_builder(seal).await?;
@@ -1371,16 +1381,18 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn send_private_msg<S>(
+    pub async fn send_private_msg<P, S>(
         &self,
-        receiver: PublicKey,
+        receiver: P,
         message: S,
         expiration: Option<Timestamp>,
     ) -> Result<(), Error>
     where
+        P: IntoPublicKey,
         S: Into<String>,
     {
-        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message);
+        let receiver: PublicKey = receiver.into_public_key();
+        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver.clone(), message);
         self.gift_wrap(receiver, rumor, expiration).await
     }
 

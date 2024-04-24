@@ -92,7 +92,7 @@ where
     T: AsRef<[u8]>,
 {
     // Generate key
-    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
 
     // Generate iv
     let mut iv: [u8; 16] = [0u8; 16];
@@ -133,7 +133,7 @@ where
     let iv: Vec<u8> = general_purpose::STANDARD
         .decode(parsed_content[1])
         .map_err(|_| Error::Base64Decode)?;
-    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
 
     let cipher = Aes256CbcDec::new(&key.into(), iv.as_slice().into());
     let result = cipher

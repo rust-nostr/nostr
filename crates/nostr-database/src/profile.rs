@@ -6,6 +6,7 @@
 
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
+use std::borrow::Cow;
 
 use crate::{Metadata, PublicKey};
 
@@ -58,13 +59,13 @@ impl Profile {
     }
 
     /// Get profile public key
-    pub fn public_key(&self) -> PublicKey {
-        self.public_key
+    pub fn public_key(&self) -> &PublicKey {
+        &self.public_key
     }
 
     /// Get profile metadata
-    pub fn metadata(&self) -> Metadata {
-        self.metadata.clone()
+    pub fn metadata(&self) -> &Metadata {
+        &self.metadata
     }
 
     /// Get profile name
@@ -73,27 +74,27 @@ impl Profile {
     /// * Check `display_name` field
     /// * Check `name` field
     /// * Return cutted public key (ex. `00000000:00000002`)
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> Cow<str> {
         if let Some(display_name) = &self.metadata.display_name {
             if !display_name.is_empty() {
-                return display_name.clone();
+                return Cow::Borrowed(display_name);
             }
         }
 
         if let Some(name) = &self.metadata.name {
             if !name.is_empty() {
-                return name.clone();
+                return Cow::Borrowed(name);
             }
         }
 
-        cut_public_key(self.public_key)
+        Cow::Owned(cut_public_key(&self.public_key))
     }
 }
 
 /// Get the first and last 8 chars of a [`PublicKey`]
 ///
 /// Ex. `00000000:00000002`
-pub fn cut_public_key(pk: PublicKey) -> String {
-    let pk = pk.to_string();
+pub fn cut_public_key(pk: &PublicKey) -> String {
+    let pk: String = pk.to_hex();
     format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
 }

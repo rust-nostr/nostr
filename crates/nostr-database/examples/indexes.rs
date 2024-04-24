@@ -32,7 +32,10 @@ async fn main() {
 
         let event = EventBuilder::text_note(
             format!("Reply to event #{i}"),
-            [Tag::event(event.id()), Tag::public_key(event.author())],
+            [
+                Tag::event(event.id()),
+                Tag::public_key(event.author().clone()),
+            ],
         )
         .to_event(&keys_b)
         .unwrap();
@@ -63,7 +66,7 @@ async fn main() {
                 .limit(20)
                 //.kind(Kind::Custom(123))
                 //.identifier("myid5000")
-                .author(keys_a.public_key())],
+                .author(keys_a.public_key().clone())],
             Order::Desc,
         )
         .await;

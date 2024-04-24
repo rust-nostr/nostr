@@ -16,6 +16,7 @@ use core::str::FromStr;
 use super::nip19::FromBech32;
 use super::nip21::NostrURI;
 use crate::event::id;
+use crate::util::IntoPublicKey;
 use crate::{key, Filter, Kind, PublicKey, Tag, TagStandard, UncheckedUrl};
 
 /// Raw Event error
@@ -82,10 +83,13 @@ pub struct Coordinate {
 impl Coordinate {
     /// Create new event coordinate
     #[inline]
-    pub fn new(kind: Kind, public_key: PublicKey) -> Self {
+    pub fn new<T>(kind: Kind, public_key: T) -> Self
+    where
+        T: IntoPublicKey,
+    {
         Self {
             kind,
-            public_key,
+            public_key: public_key.into_public_key(),
             identifier: String::new(),
             relays: Vec::new(),
         }
@@ -174,11 +178,13 @@ impl From<Coordinate> for Filter {
 impl From<&Coordinate> for Filter {
     fn from(value: &Coordinate) -> Self {
         if value.identifier.is_empty() {
-            Filter::new().kind(value.kind).author(value.public_key)
+            Filter::new()
+                .kind(value.kind)
+                .author(value.public_key.clone())
         } else {
             Filter::new()
                 .kind(value.kind)
-                .author(value.public_key)
+                .author(value.public_key.clone())
                 .identifier(value.identifier.clone())
         }
     }

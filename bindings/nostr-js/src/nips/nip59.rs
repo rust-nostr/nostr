@@ -35,7 +35,7 @@ impl JsUnwrappedGift {
     /// Get sender public key
     #[wasm_bindgen(getter)]
     pub fn sender(&self) -> JsPublicKey {
-        self.inner.sender.into()
+        self.inner.sender.clone().into()
     }
 
     /// Get rumor

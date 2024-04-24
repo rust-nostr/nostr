@@ -206,12 +206,12 @@ impl JsFilter {
 
     /// Set author
     pub fn author(self, author: &JsPublicKey) -> Self {
-        self.inner.author(**author).into()
+        self.inner.author(author.deref()).into()
     }
 
     /// Set authors
     pub fn authors(self, authors: Vec<JsPublicKey>) -> Self {
-        let authors = authors.into_iter().map(|p| p.into());
+        let authors = authors.into_iter().map(|p| p.deref().clone());
         self.inner.authors(authors).into()
     }
 
@@ -239,12 +239,12 @@ impl JsFilter {
 
     /// Set pubkey
     pub fn pubkey(self, pubkey: &JsPublicKey) -> Self {
-        self.inner.pubkey(**pubkey).into()
+        self.inner.pubkey(pubkey.deref()).into()
     }
 
     /// Set pubkeys
     pub fn pubkeys(self, pubkeys: Vec<JsPublicKey>) -> Self {
-        let pubkeys = pubkeys.into_iter().map(|p| p.into());
+        let pubkeys = pubkeys.into_iter().map(|p| p.deref().clone());
         self.inner.pubkeys(pubkeys).into()
     }
 

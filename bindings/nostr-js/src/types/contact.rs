@@ -40,7 +40,7 @@ impl JsContact {
     pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
         let relay_url: Option<UncheckedUrl> = relay_url.map(UncheckedUrl::from);
         Self {
-            inner: Contact::new(**public_key, relay_url, alias),
+            inner: Contact::new(public_key.deref().clone(), relay_url, alias),
         }
     }
 
@@ -51,7 +51,7 @@ impl JsContact {
 
     #[wasm_bindgen(js_name = publicKey, getter)]
     pub fn public_key(&self) -> JsPublicKey {
-        self.inner.public_key.into()
+        self.inner.public_key.clone().into()
     }
 
     #[wasm_bindgen(js_name = relayUrl, getter)]

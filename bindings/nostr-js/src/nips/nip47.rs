@@ -612,7 +612,7 @@ impl JsNostrWalletConnectURI {
         let relay_url = Url::parse(relay_url).map_err(into_err)?;
         Ok(Self {
             inner: NostrWalletConnectURI::new(
-                **public_key,
+                public_key.deref().clone(),
                 relay_url,
                 random_secret_key.deref().clone(),
                 lud16,
@@ -630,7 +630,7 @@ impl JsNostrWalletConnectURI {
     /// App Pubkey
     #[wasm_bindgen(js_name = publicKey)]
     pub fn public_key(&self) -> JsPublicKey {
-        self.inner.public_key.into()
+        self.inner.public_key.clone().into()
     }
 
     /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.

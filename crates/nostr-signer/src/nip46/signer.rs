@@ -83,7 +83,7 @@ impl NostrConnectRemoteSigner {
     /// Get Nostr Connect URI
     pub async fn nostr_connect_uri(&self) -> NostrConnectURI {
         NostrConnectURI::Bunker {
-            signer_public_key: self.keys.public_key(),
+            signer_public_key: self.keys.public_key().clone(),
             relays: self.relays().await,
             secret: self.secret.clone(),
         }
@@ -91,7 +91,7 @@ impl NostrConnectRemoteSigner {
 
     async fn send_connect_ack(&self, public_key: PublicKey) -> Result<(), Error> {
         let msg = Message::request(Request::Connect {
-            public_key: self.keys.public_key(),
+            public_key: self.keys.public_key().clone(),
             secret: None,
         });
         let event =
@@ -103,7 +103,7 @@ impl NostrConnectRemoteSigner {
     }
 
     async fn subscribe(&self) {
-        let public_key: PublicKey = self.keys.public_key();
+        let public_key: PublicKey = self.keys.public_key().clone();
 
         let filter = Filter::new()
             .pubkey(public_key)
@@ -127,11 +127,9 @@ impl NostrConnectRemoteSigner {
             .handle_notifications(|notification| async {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind() == Kind::NostrConnect {
-                        if let Ok(msg) = nip04::decrypt(
-                            self.keys.secret_key()?,
-                            event.author_ref(),
-                            event.content(),
-                        ) {
+                        if let Ok(msg) =
+                            nip04::decrypt(self.keys.secret_key()?, event.author(), event.content())
+                        {
                             tracing::debug!("New Nostr Connect message received: {msg}");
 
                             let msg: Message = Message::from_json(msg)?;
@@ -151,7 +149,7 @@ impl NostrConnectRemoteSigner {
                                         }
                                         Request::GetPublicKey => (
                                             Some(ResponseResult::GetPublicKey(
-                                                self.keys.public_key(),
+                                                self.keys.public_key().clone(),
                                             )),
                                             None,
                                         ),
@@ -246,9 +244,12 @@ impl NostrConnectRemoteSigner {
                                 let msg: Message = Message::response(id, result, error);
 
                                 // Compose and publish event
-                                let event =
-                                    EventBuilder::nostr_connect(&self.keys, event.author(), msg)?
-                                        .to_event(&self.keys)?;
+                                let event = EventBuilder::nostr_connect(
+                                    &self.keys,
+                                    event.author().clone(),
+                                    msg,
+                                )?
+                                .to_event(&self.keys)?;
                                 self.pool.send_event(event, RelaySendOptions::new()).await?;
                             }
                         } else {

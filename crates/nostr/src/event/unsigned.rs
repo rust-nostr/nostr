@@ -231,12 +231,12 @@ impl JsonUtil for UnsignedEvent {
 impl From<Event> for UnsignedEvent {
     fn from(event: Event) -> Self {
         Self {
-            id: Some(event.id),
-            pubkey: event.pubkey,
-            created_at: event.created_at,
-            kind: event.kind,
-            tags: event.tags.clone(),
-            content: event.content.clone(),
+            id: Some(event.inner.id),
+            pubkey: event.inner.pubkey,
+            created_at: event.inner.created_at,
+            kind: event.inner.kind,
+            tags: event.inner.tags,
+            content: event.inner.content,
         }
     }
 }

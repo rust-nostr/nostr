@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::sync::Arc;
 
 use js_sys::Array;
@@ -113,7 +114,7 @@ impl JsNostrDatabase {
     pub async fn profile(&self, public_key: &JsPublicKey) -> Result<JsProfile> {
         Ok(self
             .inner
-            .profile(**public_key)
+            .profile(public_key.deref().clone())
             .await
             .map_err(into_err)?
             .into())

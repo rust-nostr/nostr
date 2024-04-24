@@ -41,7 +41,7 @@ impl JsCoordinate {
         Self {
             inner: Coordinate {
                 kind: Kind::from(kind),
-                public_key: **public_key,
+                public_key: public_key.deref().clone(),
                 identifier: identifier.unwrap_or_default(),
                 relays: relays.unwrap_or_default(),
             },
@@ -56,7 +56,7 @@ impl JsCoordinate {
 
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> JsPublicKey {
-        self.inner.public_key.into()
+        self.inner.public_key.clone().into()
     }
 
     #[wasm_bindgen(getter)]

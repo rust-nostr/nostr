@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 #[wasm_bindgen(js_name = PublicKey)]
 pub struct JsPublicKey {
     inner: PublicKey,
@@ -26,12 +26,6 @@ impl Deref for JsPublicKey {
 impl From<PublicKey> for JsPublicKey {
     fn from(inner: PublicKey) -> Self {
         Self { inner }
-    }
-}
-
-impl From<JsPublicKey> for PublicKey {
-    fn from(public_key: JsPublicKey) -> Self {
-        public_key.inner
     }
 }
 

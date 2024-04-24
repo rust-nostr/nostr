@@ -847,11 +847,11 @@ impl NostrConnectURI {
 
     /// Get signer public key, if exists.
     #[inline]
-    pub fn signer_public_key(&self) -> Option<PublicKey> {
+    pub fn signer_public_key(&self) -> Option<&PublicKey> {
         match self {
             Self::Bunker {
                 signer_public_key, ..
-            } => Some(*signer_public_key),
+            } => Some(signer_public_key),
             Self::Client { .. } => None,
         }
     }

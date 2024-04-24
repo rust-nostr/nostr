@@ -130,6 +130,10 @@ impl NostrDatabase {
     }
 
     pub fn profile(&self, public_key: &PublicKey) -> Result<Arc<Profile>> {
-        block_on(async move { Ok(Arc::new(self.inner.profile(**public_key).await?.into())) })
+        block_on(async move {
+            Ok(Arc::new(
+                self.inner.profile(public_key.deref().clone()).await?.into(),
+            ))
+        })
     }
 }

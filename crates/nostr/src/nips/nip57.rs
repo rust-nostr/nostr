@@ -295,7 +295,7 @@ where
         create_encryption_key(keys.secret_key()?, &data.public_key, created_at)?;
 
     // Compose encrypted message
-    let mut tags: Vec<Tag> = vec![Tag::public_key(data.public_key)];
+    let mut tags: Vec<Tag> = vec![Tag::public_key(data.public_key.clone())];
     if let Some(event_id) = data.event_id {
         tags.push(Tag::event(event_id));
     }
@@ -339,7 +339,7 @@ where
     R: RngCore,
     T: AsRef<[u8]>,
 {
-    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
     let mut iv: [u8; 16] = [0u8; 16];
     rng.fill_bytes(&mut iv);
 
@@ -374,7 +374,7 @@ pub fn decrypt_sent_private_zap_message(
     // Re-create our ephemeral encryption key
     let secret_key: SecretKey =
         create_encryption_key(secret_key, public_key, private_zap_event.created_at())?;
-    let key: [u8; 32] = util::generate_shared_key(&secret_key, public_key);
+    let key: [u8; 32] = util::generate_shared_key(&secret_key, public_key)?;
 
     // decrypt like normal
     decrypt_private_zap_message(key, private_zap_event)
@@ -386,7 +386,7 @@ pub fn decrypt_received_private_zap_message(
     secret_key: &SecretKey,
     private_zap_event: &Event,
 ) -> Result<Event, Error> {
-    let key: [u8; 32] = util::generate_shared_key(secret_key, &private_zap_event.pubkey);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, &private_zap_event.pubkey)?;
     decrypt_private_zap_message(key, private_zap_event)
 }
 
@@ -431,7 +431,7 @@ mod tests {
 
         let relays = [UncheckedUrl::from("wss://relay.damus.io")];
         let msg = "Private Zap message!";
-        let data = ZapRequestData::new(bob_keys.public_key(), relays).message(msg);
+        let data = ZapRequestData::new(bob_keys.public_key().clone(), relays).message(msg);
         let private_zap = private_zap_request(data, &alice_keys).unwrap();
 
         let private_zap_msg = decrypt_sent_private_zap_message(

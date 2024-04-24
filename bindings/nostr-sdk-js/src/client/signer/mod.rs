@@ -60,7 +60,13 @@ impl JsNostrSigner {
     /// Get signer public key
     #[wasm_bindgen(js_name = publicKey)]
     pub async fn public_key(&self) -> Result<JsPublicKey> {
-        Ok(self.inner.public_key().await.map_err(into_err)?.into())
+        Ok(self
+            .inner
+            .public_key()
+            .await
+            .map_err(into_err)?
+            .into_owned()
+            .into())
     }
 
     #[wasm_bindgen(js_name = signEventBuilder)]
@@ -86,7 +92,7 @@ impl JsNostrSigner {
     #[wasm_bindgen(js_name = nip04Encrypt)]
     pub async fn nip04_encrypt(&self, public_key: &JsPublicKey, content: String) -> Result<String> {
         self.inner
-            .nip04_encrypt(**public_key, content)
+            .nip04_encrypt(public_key.deref(), content)
             .await
             .map_err(into_err)
     }
@@ -98,7 +104,7 @@ impl JsNostrSigner {
         encrypted_content: String,
     ) -> Result<String> {
         self.inner
-            .nip04_decrypt(**public_key, encrypted_content)
+            .nip04_decrypt(public_key.deref(), encrypted_content)
             .await
             .map_err(into_err)
     }
@@ -106,7 +112,7 @@ impl JsNostrSigner {
     #[wasm_bindgen(js_name = nip44Encrypt)]
     pub async fn nip44_encrypt(&self, public_key: &JsPublicKey, content: String) -> Result<String> {
         self.inner
-            .nip44_encrypt(**public_key, content)
+            .nip44_encrypt(public_key.deref(), content)
             .await
             .map_err(into_err)
     }
@@ -114,7 +120,7 @@ impl JsNostrSigner {
     #[wasm_bindgen(js_name = nip44Decrypt)]
     pub async fn nip44_decrypt(&self, public_key: &JsPublicKey, content: String) -> Result<String> {
         self.inner
-            .nip44_decrypt(**public_key, content)
+            .nip44_decrypt(public_key.deref(), content)
             .await
             .map_err(into_err)
     }
