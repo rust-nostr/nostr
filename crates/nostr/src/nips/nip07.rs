@@ -157,8 +157,8 @@ impl Nip07Signer {
             .iter()
             .map(|t| {
                 t.as_vec()
-                    .into_iter()
-                    .map(|v| JsValue::from_str(&v))
+                    .iter()
+                    .map(|v| JsValue::from_str(v))
                     .collect::<Array>()
             })
             .collect();

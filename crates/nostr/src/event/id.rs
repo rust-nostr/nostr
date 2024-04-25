@@ -198,6 +198,13 @@ impl fmt::Display for EventId {
     }
 }
 
+// Required to keep clean the methods of `Filter` struct
+impl From<EventId> for String {
+    fn from(event_id: EventId) -> Self {
+        event_id.to_hex()
+    }
+}
+
 impl From<EventId> for Tag {
     fn from(event_id: EventId) -> Self {
         Tag::event(event_id)

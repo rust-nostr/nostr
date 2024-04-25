@@ -11,7 +11,7 @@ pub mod time;
 pub mod url;
 
 pub use self::contact::Contact;
-pub use self::filter::{Alphabet, Filter, GenericTagValue, SingleLetterTag};
+pub use self::filter::{Alphabet, Filter, SingleLetterTag};
 pub use self::metadata::Metadata;
 pub use self::time::Timestamp;
 pub use self::url::{TryIntoUrl, UncheckedUrl, Url};

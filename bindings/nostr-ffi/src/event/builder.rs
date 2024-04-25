@@ -95,13 +95,16 @@ impl EventBuilder {
     }
 
     #[uniffi::constructor]
-    pub fn relay_list(list: HashMap<String, Option<RelayMetadata>>) -> Self {
-        let iter = list
-            .into_iter()
-            .map(|(url, r)| (UncheckedUrl::from(url), r.map(|r| r.into())));
-        Self {
-            inner: nostr::EventBuilder::relay_list(iter),
+    pub fn relay_list(map: HashMap<String, Option<RelayMetadata>>) -> Result<Self> {
+        let mut list = Vec::with_capacity(map.len());
+        for (url, metadata) in map.into_iter() {
+            let relay_url: Url = Url::parse(&url)?;
+            let metadata = metadata.map(|m| m.into());
+            list.push((relay_url, metadata))
         }
+        Ok(Self {
+            inner: nostr::EventBuilder::relay_list(list),
+        })
     }
 
     #[uniffi::constructor]

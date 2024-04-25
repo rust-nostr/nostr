@@ -17,7 +17,7 @@ use serde_json::{json, Value};
 
 use super::kind::{Kind, NIP90_JOB_REQUEST_RANGE, NIP90_JOB_RESULT_RANGE};
 use super::tag::ImageDimensions;
-use super::{Event, EventId, Marker, Tag, TagKind, UnsignedEvent};
+use super::{Event, EventId, Marker, Tag, TagKind, TagStandard, UnsignedEvent};
 use crate::key::{self, Keys, PublicKey};
 use crate::nips::nip01::Coordinate;
 #[cfg(feature = "nip04")]
@@ -283,7 +283,7 @@ impl EventBuilder {
         loop {
             nonce += 1;
 
-            tags.push(Tag::POW { nonce, difficulty });
+            tags.push(Tag::pow(nonce, difficulty));
 
             let created_at: Timestamp = self
                 .custom_created_at
@@ -379,11 +379,11 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     pub fn relay_list<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = (UncheckedUrl, Option<RelayMetadata>)>,
+        I: IntoIterator<Item = (Url, Option<RelayMetadata>)>,
     {
         let tags = iter
             .into_iter()
-            .map(|(url, metadata)| Tag::RelayMetadata(url, metadata));
+            .map(|(url, metadata)| Tag::relay_metadata(url, metadata));
         Self::new(Kind::RelayList, "", tags)
     }
 
@@ -395,7 +395,7 @@ impl EventBuilder {
     /// ```rust,no_run
     /// use nostr::EventBuilder;
     ///
-    /// let builder = EventBuilder::text_note("My first text note from Nostr SDK!", []);
+    /// let builder = EventBuilder::text_note("My first text note from rust-nostr!", []);
     /// ```
     #[inline]
     pub fn text_note<S, I>(content: S, tags: I) -> Self
@@ -426,11 +426,11 @@ impl EventBuilder {
         match root {
             Some(root) => {
                 // ID and author
-                tags.push(Tag::Event {
+                tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
                     event_id: root.id(),
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
-                });
+                }));
                 tags.push(Tag::public_key(root.author()));
 
                 // Add others `p` tags
@@ -448,20 +448,20 @@ impl EventBuilder {
             }
             None => {
                 // No root event is passed, use `reply_to` event ID for `root` marker
-                tags.push(Tag::Event {
+                tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
                     event_id: reply_to.id(),
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
-                });
+                }));
             }
         }
 
         // Add `e` and `p` tag of event author
-        tags.push(Tag::Event {
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
             event_id: reply_to.id(),
             relay_url,
             marker: Some(Marker::Reply),
-        });
+        }));
         tags.push(Tag::public_key(reply_to.author()));
 
         // Add others `p` tags of reply_to event
@@ -490,18 +490,18 @@ impl EventBuilder {
     /// ```rust,no_run
     /// use std::str::FromStr;
     ///
-    /// use nostr::{EventBuilder, Tag, Timestamp, EventId, UncheckedUrl};
+    /// use nostr::prelude::*;
     ///
     /// let event_id = EventId::from_hex("b3e392b11f5d4f28321cedd09303a748acfd0487aea5a7450b3481c60b6e4f87").unwrap();
     /// let content: &str = "Lorem [ipsum][4] dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nRead more at #[3].";
     /// let tags = &[
-    ///     Tag::Identifier("lorem-ipsum".to_string()),
-    ///     Tag::Title("Lorem Ipsum".to_string()),
-    ///     Tag::PublishedAt(Timestamp::from(1296962229)),
-    ///     Tag::Hashtag("placeholder".to_string()),
+    ///     Tag::identifier("lorem-ipsum".to_string()),
+    ///     Tag::from_standardized(TagStandard::Title("Lorem Ipsum".to_string())),
+    ///     Tag::from_standardized(TagStandard::PublishedAt(Timestamp::from(1296962229))),
+    ///     Tag::hashtag("placeholder".to_string()),
     ///     Tag::event(event_id),
     /// ];
-    /// let builder = EventBuilder::long_form_text_note("My first text note from Nostr SDK!", []);
+    /// let builder = EventBuilder::long_form_text_note("My first text note from rust-nostr!", []);
     /// ```
     #[inline]
     pub fn long_form_text_note<S, I>(content: S, tags: I) -> Self
@@ -517,11 +517,13 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = Contact>,
     {
-        let tags = contacts.into_iter().map(|contact| Tag::PublicKey {
-            public_key: contact.public_key,
-            relay_url: contact.relay_url,
-            alias: contact.alias,
-            uppercase: false,
+        let tags = contacts.into_iter().map(|contact| {
+            Tag::from_standardized_without_cell(TagStandard::PublicKey {
+                public_key: contact.public_key,
+                relay_url: contact.relay_url,
+                alias: contact.alias,
+                uppercase: false,
+            })
         });
         Self::new(Kind::ContactList, "", tags)
     }
@@ -538,11 +540,11 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::OpenTimestamps,
             ots,
-            [Tag::Event {
+            [Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id,
                 relay_url,
                 marker: None,
-            }],
+            })],
         ))
     }
 
@@ -577,11 +579,11 @@ impl EventBuilder {
                 Kind::Repost,
                 event.as_json(),
                 [
-                    Tag::Event {
+                    Tag::from_standardized_without_cell(TagStandard::Event {
                         event_id: event.id(),
                         relay_url,
                         marker: None,
-                    },
+                    }),
                     Tag::public_key(event.author()),
                 ],
             )
@@ -590,13 +592,13 @@ impl EventBuilder {
                 Kind::GenericRepost,
                 event.as_json(),
                 [
-                    Tag::Event {
+                    Tag::from_standardized_without_cell(TagStandard::Event {
                         event_id: event.id(),
                         relay_url,
                         marker: None,
-                    },
+                    }),
                     Tag::public_key(event.author()),
-                    Tag::Kind(event.kind()),
+                    Tag::from_standardized_without_cell(TagStandard::Kind(event.kind())),
                 ],
             )
         }
@@ -651,7 +653,7 @@ impl EventBuilder {
             [
                 Tag::event(event_id),
                 Tag::public_key(public_key),
-                Tag::Kind(kind),
+                Tag::from_standardized_without_cell(TagStandard::Kind(kind)),
             ],
         )
     }
@@ -676,11 +678,11 @@ impl EventBuilder {
         Self::new(
             Kind::ChannelMetadata,
             metadata.as_json(),
-            [Tag::Event {
+            [Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: channel_id,
                 relay_url: relay_url.map(|u| u.into()),
                 marker: None,
-            }],
+            })],
         )
     }
 
@@ -695,11 +697,11 @@ impl EventBuilder {
         Self::new(
             Kind::ChannelMessage,
             content,
-            [Tag::Event {
+            [Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: channel_id,
                 relay_url: Some(relay_url.into()),
                 marker: Some(Marker::Root),
-            }],
+            })],
         )
     }
 
@@ -753,7 +755,10 @@ impl EventBuilder {
         Self::new(
             Kind::Authentication,
             "",
-            [Tag::Challenge(challenge.into()), Tag::Relay(relay.into())],
+            [
+                Tag::from_standardized_without_cell(TagStandard::Challenge(challenge.into())),
+                Tag::from_standardized_without_cell(TagStandard::Relay(relay.into())),
+            ],
         )
     }
 
@@ -796,10 +801,13 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        tags.push(Tag::A {
-            coordinate: Coordinate::new(Kind::LiveEvent, live_event_host).identifier(live_event_id),
-            relay_url: relay_url.map(|u| u.into()),
-        });
+        tags.push(Tag::from_standardized_without_cell(
+            TagStandard::Coordinate {
+                coordinate: Coordinate::new(Kind::LiveEvent, live_event_host)
+                    .identifier(live_event_id),
+                relay_url: relay_url.map(|u| u.into()),
+            },
+        ));
         Self::new(Kind::LiveEventMessage, content, tags)
     }
 
@@ -862,13 +870,15 @@ impl EventBuilder {
         S2: Into<String>,
     {
         let mut tags: Vec<Tag> = vec![
-            Tag::Bolt11(bolt11.into()),
-            Tag::Description(zap_request.as_json()),
+            Tag::from_standardized_without_cell(TagStandard::Bolt11(bolt11.into())),
+            Tag::from_standardized_without_cell(TagStandard::Description(zap_request.as_json())),
         ];
 
         // add preimage tag if provided
         if let Some(pre_image_tag) = preimage {
-            tags.push(Tag::Preimage(pre_image_tag.into()))
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Preimage(
+                pre_image_tag.into(),
+            )))
         }
 
         // add e tag
@@ -902,12 +912,14 @@ impl EventBuilder {
         }
 
         // add P tag
-        tags.push(Tag::PublicKey {
-            public_key: zap_request.author(),
-            relay_url: None,
-            alias: None,
-            uppercase: true,
-        });
+        tags.push(Tag::from_standardized_without_cell(
+            TagStandard::PublicKey {
+                public_key: zap_request.author(),
+                relay_url: None,
+                alias: None,
+                uppercase: true,
+            },
+        ));
 
         Self::new(Kind::ZapReceipt, "", tags)
     }
@@ -921,7 +933,7 @@ impl EventBuilder {
     /// use nostr::{EventBuilder, ImageDimensions, UncheckedUrl};
     ///
     /// let badge_id = String::from("nostr-sdk-test-badge");
-    /// let name = Some(String::from("Nostr SDK test badge"));
+    /// let name = Some(String::from("rust-nostr test badge"));
     /// let description = Some(String::from("This is a test badge"));
     /// let image_url = Some(UncheckedUrl::from("https://nostr.build/someimage/1337"));
     /// let image_size = Some(ImageDimensions::new(1024, 1024));
@@ -947,24 +959,28 @@ impl EventBuilder {
         let mut tags: Vec<Tag> = Vec::new();
 
         // Set identifier tag
-        tags.push(Tag::Identifier(badge_id.into()));
+        tags.push(Tag::identifier(badge_id.into()));
 
         // Set name tag
         if let Some(name) = name {
-            tags.push(Tag::Name(name.into()));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Name(
+                name.into(),
+            )));
         }
 
         // Set description tag
         if let Some(description) = description {
-            tags.push(Tag::Description(description.into()));
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::Description(description.into()),
+            ));
         }
 
         // Set image tag
         if let Some(image) = image {
             let image_tag = if let Some(dimensions) = image_dimensions {
-                Tag::Image(image, Some(dimensions))
+                Tag::from_standardized_without_cell(TagStandard::Image(image, Some(dimensions)))
             } else {
-                Tag::Image(image, None)
+                Tag::from_standardized_without_cell(TagStandard::Image(image, None))
             };
             tags.push(image_tag);
         }
@@ -972,9 +988,9 @@ impl EventBuilder {
         // Set thumbnail tags
         for (thumb, dimensions) in thumbnails.into_iter() {
             let thumb_tag = if let Some(dimensions) = dimensions {
-                Tag::Thumb(thumb, Some(dimensions))
+                Tag::from_standardized_without_cell(TagStandard::Thumb(thumb, Some(dimensions)))
             } else {
-                Tag::Thumb(thumb, None)
+                Tag::from_standardized_without_cell(TagStandard::Thumb(thumb, None))
             };
             tags.push(thumb_tag);
         }
@@ -989,27 +1005,30 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = Tag>,
     {
-        let mut tags = Vec::new();
-
         let badge_id = badge_definition
             .iter_tags()
-            .find_map(|t| match t {
-                Tag::Identifier(id) => Some(id),
+            .find_map(|t| match t.as_standardized() {
+                Some(TagStandard::Identifier(id)) => Some(id),
                 _ => None,
             })
             .ok_or(Error::NIP58(nip58::Error::IdentifierTagNotFound))?;
 
+        // At least 1 tag
+        let mut tags = Vec::with_capacity(1);
+
         // Add identity tag
-        tags.push(Tag::A {
-            coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.author())
-                .identifier(badge_id),
-            relay_url: None,
-        });
+        tags.push(Tag::from_standardized_without_cell(
+            TagStandard::Coordinate {
+                coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.author())
+                    .identifier(badge_id),
+                relay_url: None,
+            },
+        ));
 
         // Add awarded pubkeys
         let ptags = awarded_pubkeys
             .into_iter()
-            .filter(|p| matches!(p, Tag::PublicKey { .. }));
+            .filter(|p| p.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::P)));
         tags.extend(ptags);
 
         // Build event
@@ -1034,8 +1053,8 @@ impl EventBuilder {
         }
 
         for award in badge_awards.iter() {
-            if !award.iter_tags().any(|t| match t {
-                Tag::PublicKey { public_key, .. } => public_key == pubkey_awarded,
+            if !award.iter_tags().any(|t| match t.as_standardized() {
+                Some(TagStandard::PublicKey { public_key, .. }) => public_key == pubkey_awarded,
                 _ => false,
             }) {
                 return Err(Error::NIP58(Nip58Error::BadgeAwardsLackAwardedPublicKey));
@@ -1049,7 +1068,7 @@ impl EventBuilder {
         }
 
         // Add identifier `d` tag
-        let id_tag: Tag = Tag::Identifier("profile_badges".to_string());
+        let id_tag: Tag = Tag::identifier("profile_badges");
         let mut tags: Vec<Tag> = vec![id_tag];
 
         let badge_definitions_identifiers = badge_definitions.into_iter().filter_map(|event| {
@@ -1059,8 +1078,11 @@ impl EventBuilder {
 
         let badge_awards_identifiers = badge_awards.into_iter().filter_map(|event| {
             let (_, relay_url) = nip58::extract_awarded_public_key(event.tags(), pubkey_awarded)?;
-            let (id, a_tag) = event.iter_tags().find_map(|t| match t {
-                Tag::A { coordinate, .. } => Some((coordinate.identifier.clone(), t.clone())),
+            let relay_url = relay_url.clone();
+            let (id, a_tag) = event.iter_tags().find_map(|t| match t.as_standardized() {
+                Some(TagStandard::Coordinate { coordinate, .. }) => {
+                    Some((coordinate.identifier.clone(), t.clone()))
+                }
                 _ => None,
             })?;
             Some((event, id, a_tag, relay_url))
@@ -1077,11 +1099,12 @@ impl EventBuilder {
                 ((_, identifier), (badge_award_event, badge_id, a_tag, relay_url))
                     if badge_id == identifier =>
                 {
-                    let badge_award_event_tag: Tag = Tag::Event {
-                        event_id: badge_award_event.id(),
-                        relay_url,
-                        marker: None,
-                    };
+                    let badge_award_event_tag: Tag =
+                        Tag::from_standardized_without_cell(TagStandard::Event {
+                            event_id: badge_award_event.id(),
+                            relay_url: relay_url.clone(),
+                            marker: None,
+                        });
                     tags.extend_from_slice(&[a_tag, badge_award_event_tag]);
                 }
                 _ => {}
@@ -1136,11 +1159,11 @@ impl EventBuilder {
             tags.extend_from_slice(&[
                 Tag::event(job_request.id()),
                 Tag::public_key(job_request.author()),
-                Tag::Request(job_request),
-                Tag::Amount {
+                Tag::from_standardized_without_cell(TagStandard::Request(job_request)),
+                Tag::from_standardized_without_cell(TagStandard::Amount {
                     millisats: amount_millisats,
                     bolt11,
-                },
+                }),
             ]);
             Ok(Self::new(kind, "", tags))
         } else {
@@ -1163,13 +1186,16 @@ impl EventBuilder {
         payload: Option<String>,
     ) -> Self {
         let tags = [
-            Tag::DataVendingMachineStatus { status, extra_info },
+            Tag::from_standardized_without_cell(TagStandard::DataVendingMachineStatus {
+                status,
+                extra_info,
+            }),
             Tag::event(job_request.id()),
             Tag::public_key(job_request.author()),
-            Tag::Amount {
+            Tag::from_standardized_without_cell(TagStandard::Amount {
                 millisats: amount_millisats,
                 bolt11,
-            },
+            }),
         ];
         Self::new(Kind::JobFeedback, payload.unwrap_or_default(), tags)
     }
@@ -1261,8 +1287,8 @@ impl EventBuilder {
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(expiration.is_some()));
         tags.push(Tag::public_key(*receiver));
 
-        if let Some(expiration) = expiration {
-            tags.push(Tag::Expiration(expiration));
+        if let Some(timestamp) = expiration {
+            tags.push(Tag::expiration(timestamp));
         }
 
         Self::new(Kind::GiftWrap, content, tags)
@@ -1358,7 +1384,13 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
-        Self::new(Kind::BlockedRelays, "", relay.into_iter().map(Tag::Relay))
+        Self::new(
+            Kind::BlockedRelays,
+            "",
+            relay
+                .into_iter()
+                .map(|r| Tag::from_standardized_without_cell(TagStandard::Relay(r))),
+        )
     }
 
     /// Search relays
@@ -1369,7 +1401,13 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
-        Self::new(Kind::SearchRelays, "", relay.into_iter().map(Tag::Relay))
+        Self::new(
+            Kind::SearchRelays,
+            "",
+            relay
+                .into_iter()
+                .map(|r| Tag::from_standardized_without_cell(TagStandard::Relay(r))),
+        )
     }
 
     /// Interests
@@ -1413,7 +1451,13 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
-        Self::new(Kind::RelaySets, "", relay.into_iter().map(Tag::Relay))
+        Self::new(
+            Kind::RelaySets,
+            "",
+            relay
+                .into_iter()
+                .map(|r| Tag::from_standardized_without_cell(TagStandard::Relay(r))),
+        )
     }
 
     /// Bookmark sets
@@ -1456,9 +1500,9 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = (String, UncheckedUrl)>,
     {
-        let tags = emoji
-            .into_iter()
-            .map(|(s, url)| Tag::Emoji { shortcode: s, url });
+        let tags = emoji.into_iter().map(|(s, url)| {
+            Tag::from_standardized_without_cell(TagStandard::Emoji { shortcode: s, url })
+        });
         Self::new(Kind::EmojiSets, "", tags)
     }
 
@@ -1475,7 +1519,10 @@ impl EventBuilder {
         Self::new(
             Kind::Label,
             "",
-            [Tag::LabelNamespace(namespace), Tag::Label(labels)],
+            [
+                Tag::from_standardized_without_cell(TagStandard::LabelNamespace(namespace)),
+                Tag::from_standardized_without_cell(TagStandard::Label(labels)),
+            ],
         )
     }
 }
@@ -1548,7 +1595,7 @@ mod tests {
             .tags
             .clone()
             .iter()
-            .find(|t| matches!(t, Tag::Preimage(_)))
+            .find(|t| t.kind() == TagKind::Preimage)
             .is_some();
 
         assert_eq!(true, has_preimage_tag);
@@ -1568,7 +1615,7 @@ mod tests {
             .tags
             .clone()
             .iter()
-            .find(|t| matches!(t, Tag::Preimage(_)))
+            .find(|t| t.kind() == TagKind::Preimage)
             .is_some();
 
         assert_eq!(false, has_preimage_tag);
@@ -1584,7 +1631,7 @@ mod tests {
             .tags
             .clone()
             .iter()
-            .find(|t| matches!(t, Tag::Identifier(_)))
+            .find(|t| t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D)))
             .is_some();
         assert_eq!(true, has_id);
 
@@ -1610,7 +1657,7 @@ mod tests {
             .tags
             .clone()
             .iter()
-            .find(|t| matches!(t, Tag::Identifier(_)))
+            .find(|t| t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D)))
             .is_some();
         assert_eq!(true, has_id);
 
@@ -1665,7 +1712,7 @@ mod tests {
 
         // Create new event with the event builder
         let awarded_pubkeys = vec![
-            Tag::PublicKey {
+            Tag::from_standardized(TagStandard::PublicKey {
                 public_key: PublicKey::from_str(
                     "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
                 )
@@ -1673,8 +1720,8 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
                 alias: None,
                 uppercase: false,
-            },
-            Tag::PublicKey {
+            }),
+            Tag::from_standardized(TagStandard::PublicKey {
                 public_key: PublicKey::from_str(
                     "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
                 )
@@ -1682,7 +1729,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
                 alias: None,
                 uppercase: false,
-            },
+            }),
         ];
         let event_builder: Event =
             EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)
@@ -1708,13 +1755,13 @@ mod tests {
         let relay_url = UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap();
 
         let awarded_pubkeys = vec![
-            Tag::PublicKey {
+            Tag::from_standardized(TagStandard::PublicKey {
                 public_key: pub_key.clone(),
                 relay_url: Some(relay_url.clone()),
                 alias: None,
                 uppercase: false,
-            },
-            Tag::PublicKey {
+            }),
+            Tag::from_standardized(TagStandard::PublicKey {
                 public_key: PublicKey::from_str(
                     "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
                 )
@@ -1722,7 +1769,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
                 alias: None,
                 uppercase: false,
-            },
+            }),
         ];
         let bravery_badge_event =
             self::EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())

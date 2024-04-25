@@ -110,6 +110,13 @@ impl FromStr for PublicKey {
     }
 }
 
+// Required to keep clean the methods of `Filter` struct
+impl From<PublicKey> for String {
+    fn from(public_key: PublicKey) -> Self {
+        public_key.to_hex()
+    }
+}
+
 impl Serialize for PublicKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

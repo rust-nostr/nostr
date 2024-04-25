@@ -5,7 +5,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::types::filter::{self, IntoGenericTagValue};
+use nostr::types::filter;
 use nostr::JsonUtil;
 use uniffi::{Enum, Object, Record};
 
@@ -467,15 +467,7 @@ impl From<FilterRecord> for nostr::Filter {
             generic_tags: f
                 .generic_tags
                 .into_iter()
-                .map(|GenericTag { key, value }| {
-                    (
-                        **key,
-                        value
-                            .into_iter()
-                            .map(|v| v.into_generic_tag_value())
-                            .collect(),
-                    )
-                })
+                .map(|GenericTag { key, value }| (**key, value.into_iter().collect()))
                 .collect(),
         }
     }

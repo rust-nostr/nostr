@@ -6,7 +6,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/48.md>
 
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use core::fmt;
 
 /// NIP48 Proxy Protocol
@@ -38,16 +38,15 @@ impl fmt::Display for Protocol {
 
 impl<S> From<S> for Protocol
 where
-    S: Into<String>,
+    S: AsRef<str>,
 {
     fn from(s: S) -> Self {
-        let s: String = s.into();
-        match s.as_str() {
+        match s.as_ref() {
             "activitypub" => Self::ActivityPub,
             "atproto" => Self::ATProto,
             "rss" => Self::Rss,
             "web" => Self::Web,
-            _ => Self::Custom(s),
+            s => Self::Custom(s.to_string()),
         }
     }
 }

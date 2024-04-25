@@ -11,7 +11,7 @@ use std::ops::{Deref, DerefMut};
 use flatbuffers::{ForwardsUOffset, Vector};
 use nostr::hashes::siphash24::Hash as SipHash24;
 use nostr::hashes::Hash;
-use nostr::{Alphabet, GenericTagValue, SingleLetterTag, Tag};
+use nostr::{Alphabet, SingleLetterTag, Tag};
 
 #[cfg(feature = "flatbuf")]
 use crate::flatbuffers::StringVector;
@@ -75,7 +75,7 @@ where
         for (single_letter_tag, content) in
             iter.filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
         {
-            let inner = hash(content.to_string());
+            let inner = hash(content);
             tag_index
                 .entry(single_letter_tag)
                 .or_default()
@@ -128,11 +128,8 @@ impl DerefMut for TagIndexValues {
 impl TagIndexValues {
     pub fn iter<'a, I>(iter: I) -> impl Iterator<Item = [u8; TAG_INDEX_VALUE_SIZE]> + 'a
     where
-        I: Iterator<Item = &'a GenericTagValue> + 'a,
+        I: Iterator<Item = &'a String> + 'a,
     {
-        iter.map(|value| {
-            let s: String = value.to_string();
-            hash(s)
-        })
+        iter.map(hash)
     }
 }

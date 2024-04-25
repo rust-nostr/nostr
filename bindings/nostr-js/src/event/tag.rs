@@ -2,12 +2,49 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 use crate::event::JsEventId;
 use crate::key::JsPublicKey;
+use crate::nips::nip01::JsCoordinate;
+use crate::types::filter::JsSingleLetterTag;
+use crate::types::JsTimestamp;
+
+/// Report
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+#[wasm_bindgen(js_name = Report)]
+pub enum JsReport {
+    /// Depictions of nudity, porn, etc
+    Nudity,
+    /// Profanity, hateful speech, etc.
+    Profanity,
+    /// Something which may be illegal in some jurisdiction
+    Illegal,
+    /// Spam
+    Spam,
+    /// Someone pretending to be someone else
+    Impersonation,
+    ///  Reports that don't fit in the above categories
+    Other,
+}
+
+impl From<JsReport> for Report {
+    fn from(value: JsReport) -> Self {
+        match value {
+            JsReport::Nudity => Self::Nudity,
+            JsReport::Profanity => Self::Profanity,
+            JsReport::Illegal => Self::Illegal,
+            JsReport::Spam => Self::Spam,
+            JsReport::Impersonation => Self::Impersonation,
+            JsReport::Other => Self::Other,
+        }
+    }
+}
 
 #[wasm_bindgen(js_name = HttpMethod)]
 pub enum JsHttpMethod {
@@ -113,6 +150,7 @@ impl From<JsRelayMetadata> for RelayMetadata {
     }
 }
 
+/// Tag
 #[wasm_bindgen(js_name = Tag)]
 pub struct JsTag {
     inner: Tag,
@@ -132,6 +170,10 @@ impl From<JsTag> for Tag {
 
 #[wasm_bindgen(js_class = Tag)]
 impl JsTag {
+    /// Parse tag
+    ///
+    /// Return error if the tag is empty!
+    #[inline]
     #[wasm_bindgen]
     pub fn parse(tag: Vec<String>) -> Result<JsTag> {
         Ok(Self {
@@ -139,7 +181,42 @@ impl JsTag {
         })
     }
 
-    /// Compose `["e", "<event-id>"]` tag
+    /// Get tag kind
+    #[inline]
+    pub fn kind(&self) -> String {
+        self.inner.kind().to_string()
+    }
+
+    /// Return the **first** tag value (index `1`), if exists.
+    #[inline]
+    pub fn content(&self) -> Option<String> {
+        self.inner.content().map(|c| c.to_string())
+    }
+
+    /// Get `SingleLetterTag`
+    #[inline]
+    pub fn single_letter_tag(&self) -> Option<JsSingleLetterTag> {
+        self.inner.single_letter_tag().map(|s| s.into())
+    }
+
+    /// Get array of strings
+    #[inline]
+    #[wasm_bindgen(js_name = asVec)]
+    pub fn as_vec(&self) -> Vec<String> {
+        self.inner.as_vec().to_vec()
+    }
+
+    /// Consume tag and return array of strings
+    #[inline]
+    #[wasm_bindgen(js_name = toVec)]
+    pub fn to_vec(self) -> Vec<String> {
+        self.inner.to_vec()
+    }
+
+    /// Compose `["e", "<event-id">]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
     pub fn event(event_id: &JsEventId) -> Self {
         Self {
             inner: Tag::event(**event_id),
@@ -147,32 +224,98 @@ impl JsTag {
     }
 
     /// Compose `["p", "<public-key>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    #[wasm_bindgen(js_name = publicKey)]
     pub fn public_key(public_key: &JsPublicKey) -> Self {
         Self {
             inner: Tag::public_key(**public_key),
         }
     }
 
+    /// Compose `["d", "<identifier>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn identifier(identifier: &str) -> Self {
+        Self {
+            inner: Tag::identifier(identifier),
+        }
+    }
+
+    /// Compose `["a", "<coordinate>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn coordinate(coordinate: &JsCoordinate) -> Self {
+        Self {
+            inner: Tag::coordinate(coordinate.deref().clone()),
+        }
+    }
+
+    /// Compose `["nonce", "<nonce>", "<difficulty>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    #[inline]
+    pub fn pow(nonce: u64, difficulty: u8) -> Self {
+        Self {
+            inner: Tag::pow(nonce as u128, difficulty),
+        }
+    }
+
+    /// Compose `["expiration", "<timestamp>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    #[inline]
+    pub fn expiration(timestamp: &JsTimestamp) -> Self {
+        Self {
+            inner: Tag::expiration(**timestamp),
+        }
+    }
+
+    /// Compose `["e", "<event-id>", "<report>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    #[inline]
+    pub fn event_report(event_id: &JsEventId, report: JsReport) -> Self {
+        Self {
+            inner: Tag::event_report(**event_id, report.into()),
+        }
+    }
+
+    /// Compose `["p", "<public-key>", "<report>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    #[inline]
+    pub fn public_key_report(public_key: &JsPublicKey, report: JsReport) -> Self {
+        Self {
+            inner: Tag::public_key_report(**public_key, report.into()),
+        }
+    }
+
+    /// Compose `["r", "<relay-url>", "<metadata>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    #[inline]
+    pub fn relay_metadata(relay_url: &str, metadata: Option<JsRelayMetadata>) -> Result<JsTag> {
+        let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
+        Ok(Self {
+            inner: Tag::relay_metadata(relay_url, metadata.map(|m| m.into())),
+        })
+    }
+
+    /// Compose `["t", "<hashtag>"]` tag
+    #[inline]
+    pub fn hashtag(hashtag: &str) -> Self {
+        Self {
+            inner: Tag::hashtag(hashtag),
+        }
+    }
+
     /// Check if `Tag` is an event `reply`
+    #[inline]
     pub fn is_reply(&self) -> bool {
         self.inner.is_reply()
-    }
-
-    pub fn kind(&self) -> String {
-        self.inner.kind().to_string()
-    }
-
-    /// Get tag as vector of string
-    ///
-    /// Internally clone tag and convert it to `Vec<String>`. To avoid tag clone, use `toVec()`.
-    #[wasm_bindgen(js_name = asVec)]
-    pub fn as_vec(&self) -> Vec<String> {
-        self.inner.as_vec()
-    }
-
-    /// Consume the tag and return vector of string
-    #[wasm_bindgen(js_name = toVec)]
-    pub fn to_vec(self) -> Vec<String> {
-        self.inner.to_vec()
     }
 }

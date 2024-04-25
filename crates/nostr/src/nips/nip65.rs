@@ -8,16 +8,20 @@
 
 use alloc::vec::Vec;
 
-use crate::{Event, RelayMetadata, Tag, UncheckedUrl};
+use crate::{Event, RelayMetadata, TagStandard, Url};
 
 /// Extracts the relay info (url, optional read/write flag) from the event
 #[inline]
-pub fn extract_relay_list(event: &Event) -> Vec<(UncheckedUrl, Option<RelayMetadata>)> {
+pub fn extract_relay_list(event: &Event) -> Vec<(&Url, &Option<RelayMetadata>)> {
     event
         .iter_tags()
         .filter_map(|tag| {
-            if let Tag::RelayMetadata(url, metadata) = tag {
-                Some((url.clone(), metadata.clone()))
+            if let Some(TagStandard::RelayMetadata {
+                relay_url,
+                metadata,
+            }) = tag.as_standardized()
+            {
+                Some((relay_url, metadata))
             } else {
                 None
             }

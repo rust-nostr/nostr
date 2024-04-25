@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: adj. kind to be `u16` instead of `u64` according to NIP01 ([Yuki Kishimoto])
 * nostr: improve NIP19 serialization performance ([Yuki Kishimoto])
 * nostr: improve `EventId::from_hex` performance ([Yuki Kishimoto])
+* nostr: rename `Tag` enum to `TagStandard` ([Yuki Kishimoto])
 * database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
 * pool: inline `RelayPool` methods ([Yuki Kishimoto])
 * sdk: inline `Client`, `ClientBuilder` and `Options` methods ([Yuki Kishimoto])
@@ -40,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: add tags indexes to `Event` ([Yuki Kishimoto])
 * nostr: add `hex::decode_to_slice` ([Yuki Kishimoto])
 * nostr: add `SecretKey::generate` ([Yuki Kishimoto])
+* nostr: add `Tag` struct ([Yuki Kishimoto])
 * pool: add `RelayPool::start` ([Yuki Kishimoto])
 * pool: add `NegentropyDirection` default ([Yuki Kishimoto])
 * sdk: add `Client::builder()` ([Yuki Kishimoto])
@@ -56,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+* nostr: remove `GenericTagValue` ([Yuki Kishimoto])
 * ffi(nostr): remove `Kind::match*` methods ([Yuki Kishimoto])
 
 ## [v0.30.0]

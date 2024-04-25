@@ -4,10 +4,13 @@
 
 //! Tag
 
-use alloc::borrow::ToOwned;
+use alloc::borrow::{Cow, ToOwned};
 use alloc::string::{String, ToString};
+use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::cmp::Ordering;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 use core::num::ParseIntError;
 use core::str::FromStr;
 
@@ -15,6 +18,10 @@ use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hex::HexToArrayError;
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::schnorr::Signature;
+#[cfg(feature = "std")]
+use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
+#[cfg(not(feature = "std"))]
+use once_cell::unsync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `core::cell::OnceCell` instead and remove `once_cell` dep.
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -25,15 +32,13 @@ use crate::nips::nip26::{Conditions, Error as Nip26Error};
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
 use crate::nips::nip90::DataVendingMachineStatus;
-use crate::types::filter::IntoGenericTagValue;
 use crate::types::url::{ParseError, Url};
 use crate::{
-    key, Alphabet, Event, GenericTagValue, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp,
-    UncheckedUrl,
+    key, Alphabet, Event, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp, UncheckedUrl,
 };
 
-/// [`Tag`] error
-#[derive(Debug)]
+/// Tag error
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Keys
     Keys(key::Error),
@@ -43,6 +48,8 @@ pub enum Error {
     UnknownReportType,
     /// Impossible to find tag kind
     KindNotFound,
+    /// Empty tag
+    EmptyTag,
     /// Invalid Zap Request
     InvalidZapRequest,
     /// Impossible to parse integer
@@ -71,6 +78,8 @@ pub enum Error {
     InvalidHttpMethod(String),
     /// Invalid Relay Metadata
     InvalidRelayMetadata(String),
+    /// Unknown standardized tag
+    UnknownStardardizedTag,
 }
 
 #[cfg(feature = "std")]
@@ -83,6 +92,7 @@ impl fmt::Display for Error {
             Self::MarkerParseError => write!(f, "Impossible to parse marker"),
             Self::UnknownReportType => write!(f, "Unknown report type"),
             Self::KindNotFound => write!(f, "Impossible to find tag kind"),
+            Self::EmptyTag => write!(f, "Empty tag"),
             Self::InvalidZapRequest => write!(f, "Invalid Zap request"),
             Self::ParseIntError(e) => write!(f, "Parse integer: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
@@ -97,6 +107,7 @@ impl fmt::Display for Error {
             Self::InvalidImageDimensions => write!(f, "Invalid image dimensions"),
             Self::InvalidHttpMethod(m) => write!(f, "Invalid HTTP method: {m}"),
             Self::InvalidRelayMetadata(s) => write!(f, "Invalid relay metadata: {s}"),
+            Self::UnknownStardardizedTag => write!(f, "Unknown standardized tag"),
         }
     }
 }
@@ -201,6 +212,8 @@ where
 }
 
 /// Report
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/56.md>
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Report {
     /// Depictions of nudity, porn, etc
@@ -208,8 +221,6 @@ pub enum Report {
     /// Profanity, hateful speech, etc.
     Profanity,
     /// Something which may be illegal in some jurisdiction
-    ///
-    /// Remember: there is what is right and there is the law.
     Illegal,
     /// Spam
     Spam,
@@ -355,7 +366,7 @@ impl FromStr for RelayMetadata {
 
 /// Tag kind
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum TagKind {
+pub enum TagKind<'a> {
     /// Single letter
     SingleLetter(SingleLetterTag),
     /// Relay
@@ -439,10 +450,10 @@ pub enum TagKind {
     /// Word
     Word,
     /// Custom tag kind
-    Custom(String),
+    Custom(Cow<'a, str>),
 }
 
-impl fmt::Display for TagKind {
+impl<'a> fmt::Display for TagKind<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::SingleLetter(s) => write!(f, "{s}"),
@@ -491,12 +502,9 @@ impl fmt::Display for TagKind {
     }
 }
 
-impl<S> From<S> for TagKind
-where
-    S: AsRef<str>,
-{
-    fn from(tag: S) -> Self {
-        match tag.as_ref() {
+impl<'a> From<&'a str> for TagKind<'a> {
+    fn from(kind: &'a str) -> Self {
+        match kind {
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,
@@ -537,18 +545,300 @@ where
             "encrypted" => Self::Encrypted,
             "request" => Self::Request,
             "word" => Self::Word,
-            t => match SingleLetterTag::from_str(t) {
+            k => match SingleLetterTag::from_str(k) {
                 Ok(s) => Self::SingleLetter(s),
-                Err(..) => Self::Custom(t.to_owned()),
+                Err(..) => Self::Custom(Cow::Borrowed(k)),
             },
         }
     }
 }
 
+/// Tag
+#[derive(Debug, Clone)]
+pub struct Tag {
+    buf: Vec<String>,
+    standardized: Arc<OnceCell<Option<TagStandard>>>,
+}
+
+impl PartialEq for Tag {
+    fn eq(&self, other: &Self) -> bool {
+        self.buf == other.buf
+    }
+}
+
+impl Eq for Tag {}
+
+impl PartialOrd for Tag {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Tag {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.buf.cmp(&other.buf)
+    }
+}
+
+impl Hash for Tag {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.buf.hash(state);
+    }
+}
+
+impl Tag {
+    #[inline]
+    fn new(buf: Vec<String>, standardized: Option<TagStandard>) -> Self {
+        Self {
+            buf,
+            standardized: Arc::new(OnceCell::from(standardized)),
+        }
+    }
+
+    #[inline]
+    fn new_with_empty_cell(buf: Vec<String>) -> Self {
+        Self {
+            buf,
+            standardized: Arc::new(OnceCell::new()),
+        }
+    }
+
+    /// Parse tag
+    ///
+    /// Return error if the tag is empty!
+    pub fn parse<S>(tag: &[S]) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        // Check if it's empty
+        if tag.is_empty() {
+            return Err(Error::EmptyTag);
+        }
+
+        // NOT USE `Self::new`!
+        Ok(Self::new_with_empty_cell(
+            tag.iter().map(|v| v.as_ref().to_string()).collect(),
+        ))
+    }
+
+    /// Construct from standardized tag
+    #[inline]
+    pub fn from_standardized(standardized: TagStandard) -> Self {
+        Self::new(standardized.clone().to_vec(), Some(standardized))
+    }
+
+    /// Construct from standardized tag without initialize cell (avoid a clone)
+    #[inline]
+    pub fn from_standardized_without_cell(standardized: TagStandard) -> Self {
+        Self::new_with_empty_cell(standardized.to_vec())
+    }
+
+    /// Get tag kind
+    #[inline]
+    pub fn kind(&self) -> TagKind {
+        // SAFETY: `buf` must not be empty, checked during parsing.
+        let key: &str = &self.buf[0];
+        TagKind::from(key)
+    }
+
+    /// Return the **first** tag value (index `1`), if exists.
+    #[inline]
+    pub fn content(&self) -> Option<&str> {
+        self.buf.get(1).map(|s| s.as_str())
+    }
+
+    /// Get [SingleLetterTag]
+    #[inline]
+    pub fn single_letter_tag(&self) -> Option<SingleLetterTag> {
+        match self.kind() {
+            TagKind::SingleLetter(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Get reference of standardized tag
+    #[inline]
+    pub fn as_standardized(&self) -> Option<&TagStandard> {
+        self.standardized
+            .get_or_init(|| TagStandard::parse(self.as_vec()).ok())
+            .as_ref()
+    }
+
+    /// Consume tag and get standardized tag
+    pub fn to_standardized(self) -> Option<TagStandard> {
+        // TODO: replace with `Arc::unwrap_or_clone(self.standardized)` when MSRV will be >= 1.76.0
+        let standardized: OnceCell<Option<TagStandard>> =
+            Arc::try_unwrap(self.standardized).unwrap_or_else(|arc| (*arc).clone());
+        match standardized.into_inner() {
+            Some(inner) => inner,
+            None => TagStandard::parse(&self.buf).ok(),
+        }
+    }
+
+    /// Get reference of array of strings
+    #[inline]
+    pub fn as_vec(&self) -> &[String] {
+        &self.buf
+    }
+
+    /// Consume tag and return array of strings
+    #[inline]
+    pub fn to_vec(self) -> Vec<String> {
+        self.buf
+    }
+
+    /// Compose `["e", "<event-id">]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn event(event_id: EventId) -> Self {
+        Self::from_standardized_without_cell(TagStandard::event(event_id))
+    }
+
+    /// Compose `["p", "<public-key>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn public_key(public_key: PublicKey) -> Self {
+        Self::from_standardized_without_cell(TagStandard::public_key(public_key))
+    }
+
+    /// Compose `["d", "<identifier>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn identifier<T>(identifier: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::from_standardized_without_cell(TagStandard::Identifier(identifier.into()))
+    }
+
+    /// Compose `["a", "<coordinate>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn coordinate(coordinate: Coordinate) -> Self {
+        Self::from_standardized_without_cell(TagStandard::Coordinate {
+            coordinate,
+            relay_url: None,
+        })
+    }
+
+    /// Compose `["nonce", "<nonce>", "<difficulty>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    #[inline]
+    pub fn pow(nonce: u128, difficulty: u8) -> Self {
+        Self::from_standardized_without_cell(TagStandard::POW { nonce, difficulty })
+    }
+
+    /// Compose `["expiration", "<timestamp>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    #[inline]
+    pub fn expiration(timestamp: Timestamp) -> Self {
+        Self::from_standardized_without_cell(TagStandard::Expiration(timestamp))
+    }
+
+    /// Compose `["e", "<event-id>", "<report>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    #[inline]
+    pub fn event_report(event_id: EventId, report: Report) -> Self {
+        Self::from_standardized_without_cell(TagStandard::EventReport(event_id, report))
+    }
+
+    /// Compose `["p", "<public-key>", "<report>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    #[inline]
+    pub fn public_key_report(public_key: PublicKey, report: Report) -> Self {
+        Self::from_standardized_without_cell(TagStandard::PublicKeyReport(public_key, report))
+    }
+
+    /// Compose `["r", "<relay-url>", "<metadata>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    #[inline]
+    pub fn relay_metadata(relay_url: Url, metadata: Option<RelayMetadata>) -> Self {
+        Self::from_standardized_without_cell(TagStandard::RelayMetadata {
+            relay_url,
+            metadata,
+        })
+    }
+
+    /// Compose `["t", "<hashtag>"]` tag
+    #[inline]
+    pub fn hashtag<T>(hashtag: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::from_standardized_without_cell(TagStandard::Hashtag(hashtag.into()))
+    }
+
+    /// Compose custom tag
+    ///
+    /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
+    #[inline]
+    pub fn custom<I, S>(kind: TagKind, values: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        // Collect values
+        let values: Vec<String> = values.into_iter().map(|v| v.into()).collect();
+
+        // Compose tag
+        let mut buf: Vec<String> = Vec::with_capacity(1 + values.len());
+        buf.push(kind.to_string());
+        buf.extend(values);
+
+        // NOT USE `Self::new`!
+        Self::new_with_empty_cell(buf)
+    }
+
+    /// Check if tag is an event `reply`
+    #[inline]
+    pub fn is_reply(&self) -> bool {
+        matches!(
+            self.as_standardized(),
+            Some(TagStandard::Event {
+                marker: Some(Marker::Reply),
+                ..
+            })
+        )
+    }
+}
+
+impl Serialize for Tag {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.buf.len()))?;
+        for element in self.buf.iter() {
+            seq.serialize_element(&element)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Tag {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        type Data = Vec<String>;
+        let tag: Vec<String> = Data::deserialize(deserializer)?;
+        Self::parse(&tag).map_err(DeserializerError::custom)
+    }
+}
+
+/// Standardized tag
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Tag {
-    Generic(TagKind, Vec<String>),
+pub enum TagStandard {
     Event {
         event_id: EventId,
         relay_url: Option<UncheckedUrl>,
@@ -561,8 +851,14 @@ pub enum Tag {
         /// Whether the p tag is an uppercase P or not
         uppercase: bool,
     },
+    /// Report event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     EventReport(EventId, Report),
-    PubKeyReport(PublicKey, Report),
+    /// Report public key
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    PublicKeyReport(PublicKey, Report),
     PubKeyLiveEvent {
         public_key: PublicKey,
         relay_url: Option<UncheckedUrl>,
@@ -570,17 +866,26 @@ pub enum Tag {
         proof: Option<Signature>,
     },
     Reference(String),
-    RelayMetadata(UncheckedUrl, Option<RelayMetadata>),
+    /// Relay Metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    RelayMetadata {
+        relay_url: Url,
+        metadata: Option<RelayMetadata>,
+    },
     Hashtag(String),
     Geohash(String),
     Identifier(String),
     ExternalIdentity(Identity),
-    A {
+    Coordinate {
         coordinate: Coordinate,
         relay_url: Option<UncheckedUrl>,
     },
     Kind(Kind),
     Relay(UncheckedUrl),
+    /// Proof of Work
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
     POW {
         nonce: u128,
         difficulty: u8,
@@ -662,7 +967,7 @@ pub enum Tag {
     Label(Vec<String>),
 }
 
-impl Tag {
+impl TagStandard {
     /// Parse [`Tag`] from slice of string
     #[inline]
     pub fn parse<S>(tag: &[S]) -> Result<Self, Error>
@@ -670,23 +975,14 @@ impl Tag {
         S: AsRef<str>,
     {
         let tag_kind: TagKind = match tag.first() {
-            Some(kind) => TagKind::from(kind),
+            Some(kind) => TagKind::from(kind.as_ref()),
             None => return Err(Error::KindNotFound),
         };
 
-        match Self::inaternal_parse(&tag_kind, tag) {
-            Ok(Some(tag)) => Ok(tag),
-            _ => Ok(Self::custom(
-                tag_kind,
-                tag.get(1..)
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|s| s.as_ref().to_owned()),
-            )),
-        }
+        Self::inaternal_parse(&tag_kind, tag)
     }
 
-    fn inaternal_parse<S>(tag_kind: &TagKind, tag: &[S]) -> Result<Option<Self>, Error>
+    fn inaternal_parse<S>(tag_kind: &TagKind, tag: &[S]) -> Result<Self, Error>
     where
         S: AsRef<str>,
     {
@@ -700,7 +996,7 @@ impl Tag {
                 .skip(1)
                 .map(|u| UncheckedUrl::from(u.as_ref()))
                 .collect::<Vec<UncheckedUrl>>();
-            return Ok(Some(Self::Relays(urls)));
+            return Ok(Self::Relays(urls));
         }
 
         // Check `l` tag
@@ -709,15 +1005,15 @@ impl Tag {
             uppercase: false,
         })) {
             let labels = tag.iter().skip(1).map(|u| u.as_ref().to_string()).collect();
-            return Ok(Some(Self::Label(labels)));
+            return Ok(Self::Label(labels));
         }
 
         if tag_len == 1 {
             return match tag_kind {
-                TagKind::ContentWarning => Ok(Some(Self::ContentWarning { reason: None })),
-                TagKind::Anon => Ok(Some(Self::Anon { msg: None })),
-                TagKind::Encrypted => Ok(Some(Self::Encrypted)),
-                _ => Ok(None),
+                TagKind::ContentWarning => Ok(Self::ContentWarning { reason: None }),
+                TagKind::Anon => Ok(Self::Anon { msg: None }),
+                TagKind::Encrypted => Ok(Self::Encrypted),
+                _ => Err(Error::UnknownStardardizedTag),
             };
         }
 
@@ -728,113 +1024,117 @@ impl Tag {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::A,
                     uppercase: false,
-                }) => Ok(Some(Self::A {
+                }) => Ok(Self::Coordinate {
                     coordinate: Coordinate::from_str(tag_1)?,
                     relay_url: None,
-                })),
+                }),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::P,
                     uppercase,
                 }) => {
                     let public_key = PublicKey::from_str(tag_1)?;
-                    Ok(Some(Self::PublicKey {
+                    Ok(Self::PublicKey {
                         public_key,
                         relay_url: None,
                         alias: None,
                         uppercase: *uppercase,
-                    }))
+                    })
                 }
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::E,
                     uppercase: false,
-                }) => Ok(Some(Self::event(EventId::from_hex(tag_1)?))),
+                }) => Ok(Self::event(EventId::from_hex(tag_1)?)),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::R,
                     uppercase: false,
                 }) => {
                     if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
-                        Ok(Some(Self::RelayMetadata(UncheckedUrl::from(tag_1), None)))
+                        Ok(Self::RelayMetadata {
+                            relay_url: Url::parse(tag_1)?,
+                            metadata: None,
+                        })
                     } else {
-                        Ok(Some(Self::Reference(tag_1.to_owned())))
+                        Ok(Self::Reference(tag_1.to_owned()))
                     }
                 }
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::T,
                     uppercase: false,
-                }) => Ok(Some(Self::Hashtag(tag_1.to_owned()))),
+                }) => Ok(Self::Hashtag(tag_1.to_owned())),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::G,
                     uppercase: false,
-                }) => Ok(Some(Self::Geohash(tag_1.to_owned()))),
+                }) => Ok(Self::Geohash(tag_1.to_owned())),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::D,
                     uppercase: false,
-                }) => Ok(Some(Self::Identifier(tag_1.to_owned()))),
+                }) => Ok(Self::Identifier(tag_1.to_owned())),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::K,
                     uppercase: false,
-                }) => Ok(Some(Self::Kind(Kind::from_str(tag_1)?))),
+                }) => Ok(Self::Kind(Kind::from_str(tag_1)?)),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::M,
                     uppercase: false,
-                }) => Ok(Some(Self::MimeType(tag_1.to_owned()))),
+                }) => Ok(Self::MimeType(tag_1.to_owned())),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::X,
                     uppercase: false,
-                }) => Ok(Some(Self::Sha256(Sha256Hash::from_str(tag_1)?))),
+                }) => Ok(Self::Sha256(Sha256Hash::from_str(tag_1)?)),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::U,
                     uppercase: false,
-                }) => Ok(Some(Self::AbsoluteURL(UncheckedUrl::from(tag_1)))),
-                TagKind::Relay => Ok(Some(Self::Relay(UncheckedUrl::from(tag_1)))),
-                TagKind::ContentWarning => Ok(Some(Self::ContentWarning {
+                }) => Ok(Self::AbsoluteURL(UncheckedUrl::from(tag_1))),
+                TagKind::Relay => Ok(Self::Relay(UncheckedUrl::from(tag_1))),
+                TagKind::ContentWarning => Ok(Self::ContentWarning {
                     reason: Some(tag_1.to_owned()),
-                })),
-                TagKind::Expiration => Ok(Some(Self::Expiration(Timestamp::from_str(tag_1)?))),
-                TagKind::Subject => Ok(Some(Self::Subject(tag_1.to_owned()))),
-                TagKind::Challenge => Ok(Some(Self::Challenge(tag_1.to_owned()))),
-                TagKind::Title => Ok(Some(Self::Title(tag_1.to_owned()))),
-                TagKind::Image => Ok(Some(Self::Image(UncheckedUrl::from(tag_1), None))),
-                TagKind::Thumb => Ok(Some(Self::Thumb(UncheckedUrl::from(tag_1), None))),
-                TagKind::Summary => Ok(Some(Self::Summary(tag_1.to_owned()))),
-                TagKind::PublishedAt => Ok(Some(Self::PublishedAt(Timestamp::from_str(tag_1)?))),
-                TagKind::Description => Ok(Some(Self::Description(tag_1.to_owned()))),
-                TagKind::Bolt11 => Ok(Some(Self::Bolt11(tag_1.to_owned()))),
-                TagKind::Preimage => Ok(Some(Self::Preimage(tag_1.to_owned()))),
-                TagKind::Amount => Ok(Some(Self::Amount {
+                }),
+                TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
+                TagKind::Subject => Ok(Self::Subject(tag_1.to_owned())),
+                TagKind::Challenge => Ok(Self::Challenge(tag_1.to_owned())),
+                TagKind::Title => Ok(Self::Title(tag_1.to_owned())),
+                TagKind::Image => Ok(Self::Image(UncheckedUrl::from(tag_1), None)),
+                TagKind::Thumb => Ok(Self::Thumb(UncheckedUrl::from(tag_1), None)),
+                TagKind::Summary => Ok(Self::Summary(tag_1.to_owned())),
+                TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(tag_1)?)),
+                TagKind::Description => Ok(Self::Description(tag_1.to_owned())),
+                TagKind::Bolt11 => Ok(Self::Bolt11(tag_1.to_owned())),
+                TagKind::Preimage => Ok(Self::Preimage(tag_1.to_owned())),
+                TagKind::Amount => Ok(Self::Amount {
                     millisats: tag_1.parse()?,
                     bolt11: None,
-                })),
-                TagKind::Lnurl => Ok(Some(Self::Lnurl(tag_1.to_owned()))),
-                TagKind::Name => Ok(Some(Self::Name(tag_1.to_owned()))),
-                TagKind::Url => Ok(Some(Self::Url(Url::parse(tag_1)?))),
-                TagKind::Magnet => Ok(Some(Self::Magnet(tag_1.to_owned()))),
-                TagKind::Blurhash => Ok(Some(Self::Blurhash(tag_1.to_owned()))),
-                TagKind::Streaming => Ok(Some(Self::Streaming(UncheckedUrl::from(tag_1)))),
-                TagKind::Recording => Ok(Some(Self::Recording(UncheckedUrl::from(tag_1)))),
-                TagKind::Starts => Ok(Some(Self::Starts(Timestamp::from_str(tag_1)?))),
-                TagKind::Ends => Ok(Some(Self::Ends(Timestamp::from_str(tag_1)?))),
+                }),
+                TagKind::Lnurl => Ok(Self::Lnurl(tag_1.to_owned())),
+                TagKind::Name => Ok(Self::Name(tag_1.to_owned())),
+                TagKind::Url => Ok(Self::Url(Url::parse(tag_1)?)),
+                TagKind::Magnet => Ok(Self::Magnet(tag_1.to_owned())),
+                TagKind::Blurhash => Ok(Self::Blurhash(tag_1.to_owned())),
+                TagKind::Streaming => Ok(Self::Streaming(UncheckedUrl::from(tag_1))),
+                TagKind::Recording => Ok(Self::Recording(UncheckedUrl::from(tag_1))),
+                TagKind::Starts => Ok(Self::Starts(Timestamp::from_str(tag_1)?)),
+                TagKind::Ends => Ok(Self::Ends(Timestamp::from_str(tag_1)?)),
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
-                    Ok(status) => Ok(Some(Self::DataVendingMachineStatus {
+                    Ok(status) => Ok(Self::DataVendingMachineStatus {
                         status,
                         extra_info: None,
-                    })),
-                    Err(_) => Ok(Some(Self::LiveEventStatus(LiveEventStatus::from(tag_1)))), /* TODO: check if unknown status error? */
+                    }),
+                    Err(_) => Ok(Self::LiveEventStatus(LiveEventStatus::from(tag_1))), /* TODO: check if unknown status error? */
                 },
-                TagKind::CurrentParticipants => Ok(Some(Self::CurrentParticipants(tag_1.parse()?))),
-                TagKind::TotalParticipants => Ok(Some(Self::TotalParticipants(tag_1.parse()?))),
-                TagKind::Method => Ok(Some(Self::Method(HttpMethod::from_str(tag_1)?))),
-                TagKind::Payload => Ok(Some(Self::Payload(Sha256Hash::from_str(tag_1)?))),
-                TagKind::Anon => Ok(Some(Self::Anon {
+                TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(tag_1.parse()?)),
+                TagKind::TotalParticipants => Ok(Self::TotalParticipants(tag_1.parse()?)),
+                TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
+                TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
+                TagKind::Anon => Ok(Self::Anon {
                     msg: (!tag_1.is_empty()).then_some(tag_1.to_owned()),
-                })),
-                TagKind::Request => Ok(Some(Self::Request(Event::from_json(tag_1)?))),
-                TagKind::Word => Ok(Some(Self::Word(tag_1.to_string()))),
+                }),
+                TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
+                TagKind::Word => Ok(Self::Word(tag_1.to_string())),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::L,
                     uppercase: true,
-                }) => Ok(Some(Self::LabelNamespace(tag_1.to_string()))),
-                _ => Ok(None),
+                }) => Ok(Self::LabelNamespace(tag_1.to_string())),
+                TagKind::Dim => Ok(Self::Dim(ImageDimensions::from_str(tag_1)?)),
+                _ => Err(Error::UnknownStardardizedTag),
             };
         }
 
@@ -849,21 +1149,21 @@ impl Tag {
                 }) => {
                     let public_key = PublicKey::from_str(tag_1)?;
                     if tag_2.is_empty() {
-                        Ok(Some(Self::PublicKey {
+                        Ok(Self::PublicKey {
                             public_key,
                             relay_url: Some(UncheckedUrl::empty()),
                             alias: None,
                             uppercase: false,
-                        }))
+                        })
                     } else {
                         match Report::from_str(tag_2) {
-                            Ok(report) => Ok(Some(Self::PubKeyReport(public_key, report))),
-                            Err(_) => Ok(Some(Self::PublicKey {
+                            Ok(report) => Ok(Self::PublicKeyReport(public_key, report)),
+                            Err(_) => Ok(Self::PublicKey {
                                 public_key,
                                 relay_url: Some(UncheckedUrl::from(tag_2)),
                                 alias: None,
                                 uppercase: false,
-                            })),
+                            }),
                         }
                     }
                 }
@@ -873,49 +1173,49 @@ impl Tag {
                 }) => {
                     let event_id = EventId::from_hex(tag_1)?;
                     if tag_2.is_empty() {
-                        Ok(Some(Self::Event {
+                        Ok(Self::Event {
                             event_id,
                             relay_url: Some(UncheckedUrl::empty()),
                             marker: None,
-                        }))
+                        })
                     } else {
                         match Report::from_str(tag_2) {
-                            Ok(report) => Ok(Some(Self::EventReport(event_id, report))),
-                            Err(_) => Ok(Some(Self::Event {
+                            Ok(report) => Ok(Self::EventReport(event_id, report)),
+                            Err(_) => Ok(Self::Event {
                                 event_id,
                                 relay_url: Some(UncheckedUrl::from(tag_2)),
                                 marker: None,
-                            })),
+                            }),
                         }
                     }
                 }
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::I,
                     uppercase: false,
-                }) => Ok(Some(Self::ExternalIdentity(Identity::new(tag_1, tag_2)?))),
-                TagKind::Nonce => Ok(Some(Self::POW {
+                }) => Ok(Self::ExternalIdentity(Identity::new(tag_1, tag_2)?)),
+                TagKind::Nonce => Ok(Self::POW {
                     nonce: tag_1.parse()?,
                     difficulty: tag_2.parse()?,
-                })),
+                }),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::A,
                     uppercase: false,
-                }) => Ok(Some(Self::A {
+                }) => Ok(Self::Coordinate {
                     coordinate: Coordinate::from_str(tag_1)?,
                     relay_url: Some(UncheckedUrl::from(tag_2)),
-                })),
-                TagKind::Image => Ok(Some(Self::Image(
+                }),
+                TagKind::Image => Ok(Self::Image(
                     UncheckedUrl::from(tag_1),
                     Some(ImageDimensions::from_str(tag_2)?),
-                ))),
-                TagKind::Thumb => Ok(Some(Self::Thumb(
+                )),
+                TagKind::Thumb => Ok(Self::Thumb(
                     UncheckedUrl::from(tag_1),
                     Some(ImageDimensions::from_str(tag_2)?),
-                ))),
-                TagKind::Aes256Gcm => Ok(Some(Self::Aes256Gcm {
+                )),
+                TagKind::Aes256Gcm => Ok(Self::Aes256Gcm {
                     key: tag_1.to_owned(),
                     iv: tag_2.to_owned(),
-                })),
+                }),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::R,
                     uppercase: false,
@@ -923,30 +1223,30 @@ impl Tag {
                     if (tag_1.starts_with("ws://") || tag_1.starts_with("wss://"))
                         && !tag_2.is_empty()
                     {
-                        Ok(Some(Self::RelayMetadata(
-                            UncheckedUrl::from(tag_1),
-                            Some(RelayMetadata::from_str(tag_2)?),
-                        )))
+                        Ok(Self::RelayMetadata {
+                            relay_url: Url::from_str(tag_1)?,
+                            metadata: Some(RelayMetadata::from_str(tag_2)?),
+                        })
                     } else {
-                        Ok(None)
+                        Err(Error::UnknownStardardizedTag)
                     }
                 }
-                TagKind::Proxy => Ok(Some(Self::Proxy {
+                TagKind::Proxy => Ok(Self::Proxy {
                     id: tag_1.to_owned(),
                     protocol: Protocol::from(tag_2),
-                })),
-                TagKind::Emoji => Ok(Some(Self::Emoji {
+                }),
+                TagKind::Emoji => Ok(Self::Emoji {
                     shortcode: tag_1.to_owned(),
                     url: UncheckedUrl::from(tag_2),
-                })),
+                }),
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
-                    Ok(status) => Ok(Some(Self::DataVendingMachineStatus {
+                    Ok(status) => Ok(Self::DataVendingMachineStatus {
                         status,
                         extra_info: Some(tag_2.to_string()),
-                    })),
-                    Err(_) => Ok(None),
+                    }),
+                    Err(_) => Err(Error::UnknownStardardizedTag),
                 },
-                _ => Ok(None),
+                _ => Err(Error::UnknownStardardizedTag),
             };
         }
 
@@ -964,34 +1264,34 @@ impl Tag {
                     let relay_url: Option<UncheckedUrl> = Some(UncheckedUrl::from(tag_2));
 
                     match LiveEventMarker::from_str(tag_3) {
-                        Ok(marker) => Ok(Some(Self::PubKeyLiveEvent {
+                        Ok(marker) => Ok(Self::PubKeyLiveEvent {
                             public_key,
                             relay_url,
                             marker,
                             proof: None,
-                        })),
-                        Err(_) => Ok(Some(Self::PublicKey {
+                        }),
+                        Err(_) => Ok(Self::PublicKey {
                             public_key,
                             relay_url,
                             alias: Some(tag_3.to_string()),
                             uppercase: *uppercase,
-                        })),
+                        }),
                     }
                 }
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::E,
                     uppercase: false,
-                }) => Ok(Some(Self::Event {
+                }) => Ok(Self::Event {
                     event_id: EventId::from_hex(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
-                })),
-                TagKind::Delegation => Ok(Some(Self::Delegation {
+                }),
+                TagKind::Delegation => Ok(Self::Delegation {
                     delegator: PublicKey::from_str(tag_1)?,
                     conditions: Conditions::from_str(tag_2)?,
                     sig: Signature::from_str(tag_3)?,
-                })),
-                _ => Ok(None),
+                }),
+                _ => Err(Error::UnknownStardardizedTag),
             };
         }
 
@@ -1005,20 +1305,20 @@ impl Tag {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::P,
                     ..
-                }) => Ok(Some(Self::PubKeyLiveEvent {
+                }) => Ok(Self::PubKeyLiveEvent {
                     public_key: PublicKey::from_str(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: LiveEventMarker::from_str(tag_3)?,
                     proof: Signature::from_str(tag_4).ok(),
-                })),
-                _ => Ok(None),
+                }),
+                _ => Err(Error::UnknownStardardizedTag),
             };
         }
 
-        Ok(None)
+        Err(Error::UnknownStardardizedTag)
     }
 
-    /// Compose `Tag::Event` without `relay_url` and `marker`
+    /// Compose `TagStandard::Event` without `relay_url` and `marker`
     ///
     /// JSON: `["e", "event-id"]`
     #[inline]
@@ -1030,7 +1330,7 @@ impl Tag {
         }
     }
 
-    /// Compose `Tag::PublicKey` without `relay_url` and `alias`
+    /// Compose `TagStandard::PublicKey` without `relay_url` and `alias`
     ///
     /// JSON: `["p", "<public-key>"]`
     #[inline]
@@ -1043,48 +1343,21 @@ impl Tag {
         }
     }
 
-    /// Compose custom tag
-    ///
-    /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
-    #[inline]
-    pub fn custom<I, S>(kind: TagKind, values: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        Self::Generic(kind, values.into_iter().map(|v| v.into()).collect())
-    }
-
-    /// Check if [Tag] is an event `reply`
+    /// Check if tag is an event `reply`
     #[inline]
     pub fn is_reply(&self) -> bool {
         matches!(
             self,
-            Tag::Event {
+            Self::Event {
                 marker: Some(Marker::Reply),
                 ..
             }
         )
     }
 
-    /// Get [`Tag`] as string vector
-    ///
-    /// Internally clone tag and convert it to `Vec<String>`. To avoid tag clone, use `Tag::to_vec`.
-    #[inline]
-    pub fn as_vec(&self) -> Vec<String> {
-        self.clone().into()
-    }
-
-    /// Consume [`Tag`] and return string vector
-    #[inline]
-    pub fn to_vec(self) -> Vec<String> {
-        self.into()
-    }
-
     /// Get tag kind
     pub fn kind(&self) -> TagKind {
         match self {
-            Self::Generic(kind, ..) => kind.clone(),
             Self::Event { .. } | Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::E,
                 uppercase: false,
@@ -1093,13 +1366,13 @@ impl Tag {
                 character: Alphabet::P,
                 uppercase: *uppercase,
             }),
-            Self::PubKeyReport(..) | Self::PubKeyLiveEvent { .. } => {
+            Self::PublicKeyReport(..) | Self::PubKeyLiveEvent { .. } => {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::P,
                     uppercase: false,
                 })
             }
-            Self::Reference(..) | Self::RelayMetadata(..) => {
+            Self::Reference(..) | Self::RelayMetadata { .. } => {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::R,
                     uppercase: false,
@@ -1121,7 +1394,7 @@ impl Tag {
                 character: Alphabet::I,
                 uppercase: false,
             }),
-            Self::A { .. } => TagKind::SingleLetter(SingleLetterTag {
+            Self::Coordinate { .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::A,
                 uppercase: false,
             }),
@@ -1192,99 +1465,24 @@ impl Tag {
         }
     }
 
-    /// Get [SingleLetterTag]
+    /// Consume [`Tag`] and return string vector
     #[inline]
-    pub fn single_letter_tag(&self) -> Option<SingleLetterTag> {
-        match self.kind() {
-            TagKind::SingleLetter(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    /// Return the **first** tag value (index `1`), if exists.
-    pub fn content(&self) -> Option<GenericTagValue> {
-        match self {
-            Self::Generic(_, l) => l.first().map(|v| v.into_generic_tag_value()),
-            Self::Event { event_id, .. } | Self::EventReport(event_id, ..) => {
-                Some((*event_id).into_generic_tag_value())
-            }
-            Self::PublicKey { public_key, .. }
-            | Self::PubKeyReport(public_key, ..)
-            | Self::PubKeyLiveEvent { public_key, .. } => {
-                Some((*public_key).into_generic_tag_value())
-            }
-            Self::Reference(val) => Some(val.into_generic_tag_value()),
-            Self::RelayMetadata(url, ..) => Some(url.to_string().into_generic_tag_value()),
-            Self::Hashtag(val) => Some(val.into_generic_tag_value()),
-            Self::Geohash(val, ..) => Some(val.into_generic_tag_value()),
-            Self::Identifier(val, ..) => Some(val.into_generic_tag_value()),
-            Self::ExternalIdentity(..) => None,
-            Self::A { coordinate, .. } => Some(coordinate.to_string().into_generic_tag_value()),
-            Self::Kind(kind) => Some(kind.to_string().into_generic_tag_value()),
-            Self::Relay(url) => Some(url.to_string().into_generic_tag_value()),
-            Self::POW { nonce, .. } => Some(nonce.to_string().into_generic_tag_value()),
-            Self::Delegation { delegator, .. } => Some(delegator.into_generic_tag_value()),
-            Self::ContentWarning { reason } => reason.clone().map(GenericTagValue::String),
-            Self::Expiration(timestamp) => Some(timestamp.to_string().into_generic_tag_value()),
-            Self::Subject(val) => Some(val.into_generic_tag_value()),
-            Self::Challenge(val) => Some(val.into_generic_tag_value()),
-            Self::Title(val) => Some(val.into_generic_tag_value()),
-            Self::Image(url, ..) => Some(url.to_string().into_generic_tag_value()),
-            Self::Thumb(url, ..) => Some(url.to_string().into_generic_tag_value()),
-            Self::Summary(val) => Some(val.into_generic_tag_value()),
-            Self::PublishedAt(timestamp) => Some(timestamp.to_string().into_generic_tag_value()),
-            Self::Description(val) => Some(val.into_generic_tag_value()),
-            Self::Bolt11(val) => Some(val.into_generic_tag_value()),
-            Self::Preimage(val) => Some(val.into_generic_tag_value()),
-            Self::Relays(list) => list.first().map(|r| r.to_string().into_generic_tag_value()),
-            Self::Amount { millisats, .. } => Some(millisats.to_string().into_generic_tag_value()),
-            Self::Name(val) => Some(val.into_generic_tag_value()),
-            Self::Lnurl(val) => Some(val.into_generic_tag_value()),
-            Self::Url(url) => Some(url.to_string().into_generic_tag_value()),
-            Self::MimeType(val) => Some(val.into_generic_tag_value()),
-            Self::Aes256Gcm { key, .. } => Some(key.clone().into_generic_tag_value()),
-            Self::Sha256(val) => Some(val.to_string().into_generic_tag_value()),
-            Self::Size(val) => Some(val.to_string().into_generic_tag_value()),
-            Self::Dim(val) => Some(val.to_string().into_generic_tag_value()),
-            Self::Magnet(val) => Some(val.into_generic_tag_value()),
-            Self::Blurhash(val) => Some(val.into_generic_tag_value()),
-            Self::Streaming(url) => Some(url.to_string().into_generic_tag_value()),
-            Self::Recording(url) => Some(url.to_string().into_generic_tag_value()),
-            Self::Starts(timestamp) => Some(timestamp.to_string().into_generic_tag_value()),
-            Self::Ends(timestamp) => Some(timestamp.to_string().into_generic_tag_value()),
-            Self::LiveEventStatus(val) => Some(val.to_string().into_generic_tag_value()),
-            Self::DataVendingMachineStatus { status, .. } => {
-                Some(status.to_string().into_generic_tag_value())
-            }
-            Self::CurrentParticipants(num) => Some(num.to_string().into_generic_tag_value()),
-            Self::TotalParticipants(num) => Some(num.to_string().into_generic_tag_value()),
-            Self::AbsoluteURL(url) => Some(url.to_string().into_generic_tag_value()),
-            Self::Method(val) => Some(val.to_string().into_generic_tag_value()),
-            Self::Payload(val) => Some(val.to_string().into_generic_tag_value()),
-            Self::Anon { msg } => msg.clone().map(GenericTagValue::String),
-            Self::Proxy { id, .. } => Some(id.into_generic_tag_value()),
-            Self::Emoji { shortcode, .. } => Some(shortcode.into_generic_tag_value()),
-            Self::Encrypted => None,
-            Self::Request(val) => Some(val.as_json().into_generic_tag_value()),
-            Self::Word(val) => Some(val.into_generic_tag_value()),
-            Self::LabelNamespace(val) => Some(val.into_generic_tag_value()),
-            Self::Label(l) => l.first().map(|v| v.into_generic_tag_value()),
-        }
+    pub fn to_vec(self) -> Vec<String> {
+        self.into()
     }
 }
 
-impl From<Tag> for Vec<String> {
-    fn from(tag: Tag) -> Self {
-        let tag_kind: TagKind = tag.kind();
+impl From<TagStandard> for Vec<String> {
+    fn from(tag: TagStandard) -> Self {
+        let tag_kind: String = tag.kind().to_string();
 
         match tag {
-            Tag::Generic(kind, data) => [vec![kind.to_string()], data].concat(),
-            Tag::Event {
+            TagStandard::Event {
                 event_id,
                 relay_url,
                 marker,
             } => {
-                let mut tag = vec![tag_kind.to_string(), event_id.to_hex()];
+                let mut tag = vec![tag_kind, event_id.to_hex()];
                 if let Some(relay_url) = relay_url {
                     tag.push(relay_url.to_string());
                 }
@@ -1296,13 +1494,13 @@ impl From<Tag> for Vec<String> {
                 }
                 tag
             }
-            Tag::PublicKey {
+            TagStandard::PublicKey {
                 public_key,
                 relay_url,
                 alias,
                 ..
             } => {
-                let mut tag = vec![tag_kind.to_string(), public_key.to_string()];
+                let mut tag = vec![tag_kind, public_key.to_string()];
                 if let Some(relay_url) = relay_url {
                     tag.push(relay_url.to_string());
                 }
@@ -1311,20 +1509,20 @@ impl From<Tag> for Vec<String> {
                 }
                 tag
             }
-            Tag::EventReport(id, report) => {
-                vec![tag_kind.to_string(), id.to_hex(), report.to_string()]
+            TagStandard::EventReport(id, report) => {
+                vec![tag_kind, id.to_hex(), report.to_string()]
             }
-            Tag::PubKeyReport(pk, report) => {
-                vec![tag_kind.to_string(), pk.to_string(), report.to_string()]
+            TagStandard::PublicKeyReport(pk, report) => {
+                vec![tag_kind, pk.to_string(), report.to_string()]
             }
-            Tag::PubKeyLiveEvent {
+            TagStandard::PubKeyLiveEvent {
                 public_key,
                 relay_url,
                 marker,
                 proof,
             } => {
                 let mut tag = vec![
-                    tag_kind.to_string(),
+                    tag_kind,
                     public_key.to_string(),
                     relay_url.map(|u| u.to_string()).unwrap_or_default(),
                     marker.to_string(),
@@ -1334,203 +1532,166 @@ impl From<Tag> for Vec<String> {
                 }
                 tag
             }
-            Tag::Reference(r) => vec![tag_kind.to_string(), r],
-            Tag::RelayMetadata(url, rw) => {
-                let mut tag = vec![tag_kind.to_string(), url.to_string()];
-                if let Some(rw) = rw {
-                    tag.push(rw.to_string());
+            TagStandard::Reference(r) => vec![tag_kind, r],
+            TagStandard::RelayMetadata {
+                relay_url,
+                metadata,
+            } => {
+                let mut tag = vec![tag_kind, relay_url.to_string()];
+                if let Some(metadata) = metadata {
+                    tag.push(metadata.to_string());
                 }
                 tag
             }
-            Tag::Hashtag(t) => vec![tag_kind.to_string(), t],
-            Tag::Geohash(g) => vec![tag_kind.to_string(), g],
-            Tag::Identifier(d) => vec![tag_kind.to_string(), d],
-            Tag::A {
+            TagStandard::Hashtag(t) => vec![tag_kind, t],
+            TagStandard::Geohash(g) => vec![tag_kind, g],
+            TagStandard::Identifier(d) => vec![tag_kind, d],
+            TagStandard::Coordinate {
                 coordinate,
                 relay_url,
             } => {
-                let mut vec = vec![tag_kind.to_string(), coordinate.to_string()];
+                let mut vec = vec![tag_kind, coordinate.to_string()];
                 if let Some(relay) = relay_url {
                     vec.push(relay.to_string());
                 }
                 vec
             }
-            Tag::ExternalIdentity(identity) => identity.into(),
-            Tag::Kind(kind) => vec![tag_kind.to_string(), kind.to_string()],
-            Tag::Relay(url) => vec![tag_kind.to_string(), url.to_string()],
-            Tag::POW { nonce, difficulty } => vec![
-                tag_kind.to_string(),
-                nonce.to_string(),
-                difficulty.to_string(),
-            ],
-            Tag::Delegation {
+            TagStandard::ExternalIdentity(identity) => identity.into(),
+            TagStandard::Kind(kind) => vec![tag_kind, kind.to_string()],
+            TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
+            TagStandard::POW { nonce, difficulty } => {
+                vec![tag_kind, nonce.to_string(), difficulty.to_string()]
+            }
+            TagStandard::Delegation {
                 delegator,
                 conditions,
                 sig,
             } => vec![
-                tag_kind.to_string(),
+                tag_kind,
                 delegator.to_string(),
                 conditions.to_string(),
                 sig.to_string(),
             ],
-            Tag::ContentWarning { reason } => {
-                let mut tag = vec![tag_kind.to_string()];
+            TagStandard::ContentWarning { reason } => {
+                let mut tag = vec![tag_kind];
                 if let Some(reason) = reason {
                     tag.push(reason);
                 }
                 tag
             }
-            Tag::Expiration(timestamp) => {
-                vec![tag_kind.to_string(), timestamp.to_string()]
+            TagStandard::Expiration(timestamp) => {
+                vec![tag_kind, timestamp.to_string()]
             }
-            Tag::Subject(sub) => vec![tag_kind.to_string(), sub],
-            Tag::Challenge(challenge) => vec![tag_kind.to_string(), challenge],
-            Tag::Title(title) => vec![tag_kind.to_string(), title],
-            Tag::Image(image, dimensions) => {
-                let mut tag = vec![tag_kind.to_string(), image.to_string()];
+            TagStandard::Subject(sub) => vec![tag_kind, sub],
+            TagStandard::Challenge(challenge) => vec![tag_kind, challenge],
+            TagStandard::Title(title) => vec![tag_kind, title],
+            TagStandard::Image(image, dimensions) => {
+                let mut tag = vec![tag_kind, image.to_string()];
                 if let Some(dim) = dimensions {
                     tag.push(dim.to_string());
                 }
                 tag
             }
-            Tag::Thumb(thumb, dimensions) => {
-                let mut tag = vec![tag_kind.to_string(), thumb.to_string()];
+            TagStandard::Thumb(thumb, dimensions) => {
+                let mut tag = vec![tag_kind, thumb.to_string()];
                 if let Some(dim) = dimensions {
                     tag.push(dim.to_string());
                 }
                 tag
             }
-            Tag::Summary(summary) => vec![tag_kind.to_string(), summary],
-            Tag::PublishedAt(timestamp) => {
-                vec![tag_kind.to_string(), timestamp.to_string()]
+            TagStandard::Summary(summary) => vec![tag_kind, summary],
+            TagStandard::PublishedAt(timestamp) => {
+                vec![tag_kind, timestamp.to_string()]
             }
-            Tag::Description(description) => {
-                vec![tag_kind.to_string(), description]
+            TagStandard::Description(description) => {
+                vec![tag_kind, description]
             }
-            Tag::Bolt11(bolt11) => {
-                vec![tag_kind.to_string(), bolt11]
+            TagStandard::Bolt11(bolt11) => {
+                vec![tag_kind, bolt11]
             }
-            Tag::Preimage(preimage) => {
-                vec![tag_kind.to_string(), preimage]
+            TagStandard::Preimage(preimage) => {
+                vec![tag_kind, preimage]
             }
-            Tag::Relays(relays) => vec![tag_kind.to_string()]
+            TagStandard::Relays(relays) => vec![tag_kind]
                 .into_iter()
                 .chain(relays.iter().map(|relay| relay.to_string()))
                 .collect::<Vec<_>>(),
-            Tag::Amount { millisats, bolt11 } => {
-                let mut tag = vec![tag_kind.to_string(), millisats.to_string()];
+            TagStandard::Amount { millisats, bolt11 } => {
+                let mut tag = vec![tag_kind, millisats.to_string()];
                 if let Some(bolt11) = bolt11 {
                     tag.push(bolt11);
                 }
                 tag
             }
-            Tag::Name(name) => {
-                vec![tag_kind.to_string(), name]
+            TagStandard::Name(name) => {
+                vec![tag_kind, name]
             }
-            Tag::Lnurl(lnurl) => {
-                vec![tag_kind.to_string(), lnurl]
+            TagStandard::Lnurl(lnurl) => {
+                vec![tag_kind, lnurl]
             }
-            Tag::Url(url) => vec![tag_kind.to_string(), url.to_string()],
-            Tag::MimeType(mime) => vec![tag_kind.to_string(), mime],
-            Tag::Aes256Gcm { key, iv } => vec![tag_kind.to_string(), key, iv],
-            Tag::Sha256(hash) => vec![tag_kind.to_string(), hash.to_string()],
-            Tag::Size(bytes) => vec![tag_kind.to_string(), bytes.to_string()],
-            Tag::Dim(dim) => vec![tag_kind.to_string(), dim.to_string()],
-            Tag::Magnet(uri) => vec![tag_kind.to_string(), uri],
-            Tag::Blurhash(data) => vec![tag_kind.to_string(), data],
-            Tag::Streaming(url) => vec![tag_kind.to_string(), url.to_string()],
-            Tag::Recording(url) => vec![tag_kind.to_string(), url.to_string()],
-            Tag::Starts(timestamp) => {
-                vec![tag_kind.to_string(), timestamp.to_string()]
+            TagStandard::Url(url) => vec![tag_kind, url.to_string()],
+            TagStandard::MimeType(mime) => vec![tag_kind, mime],
+            TagStandard::Aes256Gcm { key, iv } => vec![tag_kind, key, iv],
+            TagStandard::Sha256(hash) => vec![tag_kind, hash.to_string()],
+            TagStandard::Size(bytes) => vec![tag_kind, bytes.to_string()],
+            TagStandard::Dim(dim) => vec![tag_kind, dim.to_string()],
+            TagStandard::Magnet(uri) => vec![tag_kind, uri],
+            TagStandard::Blurhash(data) => vec![tag_kind, data],
+            TagStandard::Streaming(url) => vec![tag_kind, url.to_string()],
+            TagStandard::Recording(url) => vec![tag_kind, url.to_string()],
+            TagStandard::Starts(timestamp) => {
+                vec![tag_kind, timestamp.to_string()]
             }
-            Tag::Ends(timestamp) => {
-                vec![tag_kind.to_string(), timestamp.to_string()]
+            TagStandard::Ends(timestamp) => {
+                vec![tag_kind, timestamp.to_string()]
             }
-            Tag::LiveEventStatus(s) => {
-                vec![tag_kind.to_string(), s.to_string()]
+            TagStandard::LiveEventStatus(s) => {
+                vec![tag_kind, s.to_string()]
             }
-            Tag::CurrentParticipants(num) => {
-                vec![tag_kind.to_string(), num.to_string()]
+            TagStandard::CurrentParticipants(num) => {
+                vec![tag_kind, num.to_string()]
             }
-            Tag::TotalParticipants(num) => {
-                vec![tag_kind.to_string(), num.to_string()]
+            TagStandard::TotalParticipants(num) => {
+                vec![tag_kind, num.to_string()]
             }
-            Tag::AbsoluteURL(url) => {
-                vec![tag_kind.to_string(), url.to_string()]
+            TagStandard::AbsoluteURL(url) => {
+                vec![tag_kind, url.to_string()]
             }
-            Tag::Method(method) => {
-                vec![tag_kind.to_string(), method.to_string()]
+            TagStandard::Method(method) => {
+                vec![tag_kind, method.to_string()]
             }
-            Tag::Payload(p) => vec![tag_kind.to_string(), p.to_string()],
-            Tag::Anon { msg } => {
-                let mut tag = vec![tag_kind.to_string()];
+            TagStandard::Payload(p) => vec![tag_kind, p.to_string()],
+            TagStandard::Anon { msg } => {
+                let mut tag = vec![tag_kind];
                 if let Some(msg) = msg {
                     tag.push(msg);
                 }
                 tag
             }
-            Tag::Proxy { id, protocol } => {
-                vec![tag_kind.to_string(), id, protocol.to_string()]
+            TagStandard::Proxy { id, protocol } => {
+                vec![tag_kind, id, protocol.to_string()]
             }
-            Tag::Emoji { shortcode, url } => {
-                vec![tag_kind.to_string(), shortcode, url.to_string()]
+            TagStandard::Emoji { shortcode, url } => {
+                vec![tag_kind, shortcode, url.to_string()]
             }
-            Tag::Encrypted => vec![tag_kind.to_string()],
-            Tag::Request(event) => vec![tag_kind.to_string(), event.as_json()],
-            Tag::DataVendingMachineStatus { status, extra_info } => {
-                let mut tag = vec![tag_kind.to_string(), status.to_string()];
+            TagStandard::Encrypted => vec![tag_kind],
+            TagStandard::Request(event) => vec![tag_kind, event.as_json()],
+            TagStandard::DataVendingMachineStatus { status, extra_info } => {
+                let mut tag = vec![tag_kind, status.to_string()];
                 if let Some(extra_info) = extra_info {
                     tag.push(extra_info);
                 }
                 tag
             }
-            Tag::Word(word) => vec![TagKind::Word.to_string(), word],
-            Tag::LabelNamespace(n) => vec![
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::L,
-                    uppercase: true,
-                })
-                .to_string(),
-                n,
-            ],
-            Tag::Label(l) => {
+            TagStandard::Word(word) => vec![tag_kind, word],
+            TagStandard::LabelNamespace(n) => vec![tag_kind, n],
+            TagStandard::Label(l) => {
                 let mut tag = Vec::with_capacity(1 + l.len());
-                tag.push(
-                    TagKind::SingleLetter(SingleLetterTag {
-                        character: Alphabet::L,
-                        uppercase: false,
-                    })
-                    .to_string(),
-                );
+                tag.push(tag_kind);
                 tag.extend(l);
                 tag
             }
         }
-    }
-}
-
-impl Serialize for Tag {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let data: Vec<String> = self.as_vec();
-        let mut seq = serializer.serialize_seq(Some(data.len()))?;
-        for element in data.into_iter() {
-            seq.serialize_element(&element)?;
-        }
-        seq.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for Tag {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        type Data = Vec<String>;
-        let tag: Vec<String> = Data::deserialize(deserializer)?;
-        Self::parse(&tag).map_err(DeserializerError::custom)
     }
 }
 
@@ -1601,18 +1762,18 @@ impl Identity {
     }
 }
 
-impl TryFrom<Tag> for Identity {
+impl TryFrom<TagStandard> for Identity {
     type Error = Error;
 
-    fn try_from(value: Tag) -> Result<Self, Self::Error> {
+    fn try_from(value: TagStandard) -> Result<Self, Self::Error> {
         match value {
-            Tag::ExternalIdentity(iden) => Ok(iden),
+            TagStandard::ExternalIdentity(iden) => Ok(iden),
             _ => Err(Error::InvalidIdentity),
         }
     }
 }
 
-impl From<Identity> for Tag {
+impl From<Identity> for TagStandard {
     fn from(value: Identity) -> Self {
         Self::ExternalIdentity(value)
     }
@@ -1638,11 +1799,26 @@ mod tests {
     use crate::{Event, JsonUtil, Timestamp};
 
     #[test]
-    fn test_tag_is_reply() {
-        let tag = Tag::Relay(UncheckedUrl::new("wss://relay.damus.io"));
+    fn test_tag_match_standardized() {
+        let tag: Tag = Tag::parse(&["d", "bravery"]).unwrap();
+        assert_eq!(
+            tag.as_standardized(),
+            Some(&TagStandard::Identifier(String::from("bravery")))
+        );
+
+        let tag: Tag = Tag::parse(&["d", "test"]).unwrap();
+        assert_eq!(
+            tag.to_standardized(),
+            Some(TagStandard::Identifier(String::from("test")))
+        );
+    }
+
+    #[test]
+    fn test_tag_standard_is_reply() {
+        let tag = TagStandard::Relay(UncheckedUrl::new("wss://relay.damus.io"));
         assert!(!tag.is_reply());
 
-        let tag = Tag::Event {
+        let tag = TagStandard::Event {
             event_id: EventId::from_hex(
                 "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45",
             )
@@ -1652,7 +1828,7 @@ mod tests {
         };
         assert!(tag.is_reply());
 
-        let tag = Tag::Event {
+        let tag = TagStandard::Event {
             event_id: EventId::from_hex(
                 "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45",
             )
@@ -1666,10 +1842,7 @@ mod tests {
     #[test]
     fn test_extract_tag_content() {
         let t: Tag = Tag::parse(&["aaaaaa", "bbbbbb"]).unwrap();
-        assert_eq!(
-            t.content(),
-            Some(GenericTagValue::String(String::from("bbbbbb")))
-        );
+        assert_eq!(t.content(), Some("bbbbbb"));
 
         // Test extract public key
         let t: Tag = Tag::parse(&[
@@ -1679,9 +1852,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             t.content(),
-            Some(GenericTagValue::String(String::from(
-                "f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785"
-            )))
+            Some("f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785")
         );
 
         // Test extract event ID
@@ -1692,9 +1863,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             t.content(),
-            Some(GenericTagValue::String(String::from(
-                "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45"
-            )))
+            Some("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
         );
     }
 
@@ -1741,7 +1910,8 @@ mod tests {
     fn test_tag_as_vec() {
         assert_eq!(
             vec!["content-warning"],
-            Tag::ContentWarning { reason: None }.as_vec()
+            Tag::from_standardized_without_cell(TagStandard::ContentWarning { reason: None })
+                .to_vec()
         );
 
         assert_eq!(
@@ -1755,7 +1925,7 @@ mod tests {
                 )
                 .unwrap()
             )
-            .as_vec()
+            .to_vec()
         );
 
         assert_eq!(
@@ -1769,40 +1939,36 @@ mod tests {
                 )
                 .unwrap()
             )
-            .as_vec()
+            .to_vec()
         );
 
         assert_eq!(
             vec!["expiration", "1600000000"],
-            Tag::Expiration(Timestamp::from(1600000000)).as_vec()
+            Tag::expiration(Timestamp::from(1600000000)).to_vec()
         );
 
         assert_eq!(
             vec!["content-warning", "reason"],
-            Tag::ContentWarning {
+            Tag::from_standardized_without_cell(TagStandard::ContentWarning {
                 reason: Some(String::from("reason"))
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
             vec!["subject", "textnote with subject"],
-            Tag::Subject(String::from("textnote with subject")).as_vec()
+            Tag::from_standardized_without_cell(TagStandard::Subject(String::from(
+                "textnote with subject"
+            )))
+            .to_vec()
         );
 
         assert_eq!(
-            vec!["client", "nostr-sdk"],
-            Tag::Generic(
-                TagKind::Custom("client".to_string()),
-                vec!["nostr-sdk".to_string()]
-            )
-            .as_vec()
+            vec!["client", "rust-nostr"],
+            Tag::custom(TagKind::Custom(Cow::Borrowed("client")), ["rust-nostr"]).to_vec()
         );
 
-        assert_eq!(
-            vec!["d", "test"],
-            Tag::Identifier("test".to_string()).as_vec()
-        );
+        assert_eq!(vec!["d", "test"], Tag::identifier("test").to_vec());
 
         assert_eq!(
             vec![
@@ -1810,7 +1976,7 @@ mod tests {
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
                 "wss://relay.damus.io"
             ],
-            Tag::PublicKey {
+            Tag::from_standardized_without_cell(TagStandard::PublicKey {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
@@ -1818,8 +1984,8 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 alias: None,
                 uppercase: false,
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
@@ -1828,15 +1994,15 @@ mod tests {
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 ""
             ],
-            Tag::Event {
+            Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::empty()),
                 marker: None
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
@@ -1845,15 +2011,15 @@ mod tests {
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 "wss://relay.damus.io"
             ],
-            Tag::Event {
+            Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 marker: None
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
@@ -1862,14 +2028,14 @@ mod tests {
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
                 "spam"
             ],
-            Tag::PubKeyReport(
+            Tag::public_key_report(
                 PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
                 Report::Spam
             )
-            .as_vec()
+            .to_vec()
         );
 
         assert_eq!(
@@ -1878,23 +2044,34 @@ mod tests {
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 "nudity"
             ],
-            Tag::EventReport(
+            Tag::event_report(
                 EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
                 Report::Nudity,
             )
-            .as_vec()
+            .to_vec()
         );
 
+        assert_eq!(vec!["nonce", "1", "20"], Tag::pow(1, 20).to_vec());
+
         assert_eq!(
-            vec!["nonce", "1", "20"],
-            Tag::POW {
-                nonce: 1,
-                difficulty: 20
-            }
-            .as_vec()
+            vec![
+                "a",
+                "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"
+            ],
+            Tag::coordinate(
+                Coordinate::new(
+                    Kind::LongFormTextNote,
+                    PublicKey::from_str(
+                        "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
+                    )
+                    .unwrap()
+                )
+                .identifier("ipsum"),
+            )
+            .to_vec()
         );
 
         assert_eq!(
@@ -1903,7 +2080,7 @@ mod tests {
                 "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
                 "wss://relay.nostr.org"
             ],
-            Tag::A {
+            Tag::from_standardized_without_cell(TagStandard::Coordinate {
                 coordinate: Coordinate::new(
                     Kind::LongFormTextNote,
                     PublicKey::from_str(
@@ -1913,8 +2090,8 @@ mod tests {
                 )
                 .identifier("ipsum"),
                 relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap())
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
@@ -1924,7 +2101,7 @@ mod tests {
                 "wss://relay.damus.io",
                 "Speaker",
             ],
-            Tag::PubKeyLiveEvent {
+            Tag::from_standardized_without_cell(TagStandard::PubKeyLiveEvent {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
@@ -1932,8 +2109,8 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 marker: LiveEventMarker::Speaker,
                 proof: None
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
@@ -1943,7 +2120,7 @@ mod tests {
                 "",
                 "Participant",
             ],
-            Tag::PubKeyLiveEvent {
+            Tag::from_standardized_without_cell(TagStandard::PubKeyLiveEvent {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
@@ -1951,8 +2128,8 @@ mod tests {
                 relay_url: None,
                 marker: LiveEventMarker::Participant,
                 proof: None
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
@@ -1962,7 +2139,7 @@ mod tests {
                 "wss://relay.damus.io",
                 "alias",
             ],
-            Tag::PublicKey {
+            Tag::from_standardized_without_cell(TagStandard::PublicKey {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
@@ -1970,8 +2147,8 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 alias: Some(String::from("alias")),
                 uppercase: false,
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
@@ -1981,15 +2158,15 @@ mod tests {
                 "",
                 "reply"
             ],
-            Tag::Event {
+            Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
                 relay_url: None,
                 marker: Some(Marker::Reply)
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
@@ -1999,15 +2176,15 @@ mod tests {
                 "kind=1",
                 "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             ],
-            Tag::Delegation { delegator: PublicKey::from_str(
+            Tag::from_standardized_without_cell(TagStandard::Delegation { delegator: PublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
-            .as_vec()
+            ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() })
+            .to_vec()
         );
 
         assert_eq!(
             vec!["lnurl", "lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"],
-            Tag::Lnurl(String::from("lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp")).as_vec(),
+            Tag::from_standardized_without_cell(TagStandard::Lnurl(String::from("lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"))).to_vec(),
         );
 
         assert_eq!(
@@ -2018,53 +2195,59 @@ mod tests {
                 "Host",
                 "a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"
             ],
-            Tag::PubKeyLiveEvent {
+            Tag::from_standardized_without_cell(TagStandard::PubKeyLiveEvent {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 ).unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 marker: LiveEventMarker::Host,
                 proof: Some(Signature::from_str("a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd").unwrap())
-            }
-            .as_vec()
+            })
+            .to_vec()
         );
 
         assert_eq!(
             vec!["L", "#t"],
-            Tag::LabelNamespace("#t".to_string()).as_vec()
+            Tag::from_standardized_without_cell(TagStandard::LabelNamespace("#t".to_string()))
+                .to_vec()
         );
 
         assert_eq!(
             vec!["l", "IT-MI"],
-            Tag::Label(vec!["IT-MI".to_string()]).as_vec()
+            Tag::from_standardized_without_cell(TagStandard::Label(vec!["IT-MI".to_string()]))
+                .to_vec()
         );
 
         assert_eq!(
             vec!["l", "IT-MI", "ISO-3166-2"],
-            Tag::Label(vec!["IT-MI".to_string(), "ISO-3166-2".to_string()]).as_vec()
+            Tag::from_standardized_without_cell(TagStandard::Label(vec![
+                "IT-MI".to_string(),
+                "ISO-3166-2".to_string()
+            ]))
+            .to_vec()
         );
 
         assert_eq!(
-            vec!["r", "wss://atlas.nostr.land"],
-            Tag::RelayMetadata(UncheckedUrl::new("wss://atlas.nostr.land"), None).as_vec()
+            vec!["r", "wss://atlas.nostr.land/"],
+            Tag::relay_metadata(Url::from_str("wss://atlas.nostr.land").unwrap(), None).to_vec()
         );
 
         assert_eq!(
-            vec!["r", "wss://atlas.nostr.land", "read"],
-            Tag::RelayMetadata(
-                UncheckedUrl::new("wss://atlas.nostr.land"),
+            vec!["r", "wss://atlas.nostr.land/", "read"],
+            Tag::relay_metadata(
+                Url::from_str("wss://atlas.nostr.land").unwrap(),
                 Some(RelayMetadata::Read)
             )
-            .as_vec()
+            .to_vec()
         );
 
         assert_eq!(
-            vec!["r", "wss://atlas.nostr.land", "write"],
-            Tag::RelayMetadata(
-                UncheckedUrl::new("wss://atlas.nostr.land"),
+            vec!["r", "wss://atlas.nostr.land/", "write"],
+            Tag::relay_metadata(
+                Url::from_str("wss://atlas.nostr.land").unwrap(),
                 Some(RelayMetadata::Write)
             )
-            .as_vec()
+            .to_vec()
         );
 
         assert_eq!(
@@ -2073,7 +2256,7 @@ mod tests {
                 TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
                 ["wss://atlas.nostr.land", ""]
             )
-            .as_vec()
+            .to_vec()
         );
 
         assert_eq!(
@@ -2089,20 +2272,17 @@ mod tests {
                     ""
                 ]
             )
-            .as_vec()
+            .to_vec()
         );
     }
 
     #[test]
     fn test_tag_parser() {
-        match Tag::parse::<String>(&[]) {
-            Err(Error::KindNotFound) => (),
-            _ => panic!(),
-        }
+        assert_eq!(Tag::parse::<String>(&[]).unwrap_err(), Error::EmptyTag);
 
         assert_eq!(
             Tag::parse(&["content-warning"]).unwrap(),
-            Tag::ContentWarning { reason: None }
+            Tag::from_standardized_without_cell(TagStandard::ContentWarning { reason: None })
         );
 
         assert_eq!(
@@ -2135,51 +2315,49 @@ mod tests {
 
         assert_eq!(
             Tag::parse(&["expiration", "1600000000"]).unwrap(),
-            Tag::Expiration(Timestamp::from(1600000000))
+            Tag::expiration(Timestamp::from(1600000000))
         );
 
         assert_eq!(
             Tag::parse(&["content-warning", "reason"]).unwrap(),
-            Tag::ContentWarning {
+            Tag::from_standardized_without_cell(TagStandard::ContentWarning {
                 reason: Some(String::from("reason"))
-            }
+            })
         );
 
         assert_eq!(
             Tag::parse(&["subject", "textnote with subject"]).unwrap(),
-            Tag::Subject(String::from("textnote with subject"))
+            Tag::from_standardized_without_cell(TagStandard::Subject(String::from(
+                "textnote with subject"
+            )))
         );
 
         assert_eq!(
             Tag::parse(&["client", "nostr-sdk"]).unwrap(),
-            Tag::Generic(
-                TagKind::Custom("client".to_string()),
-                vec!["nostr-sdk".to_string()]
-            )
+            Tag::custom(TagKind::Custom(Cow::Borrowed("client")), ["nostr-sdk"])
+        );
+
+        assert_eq!(Tag::parse(&["d", "test"]).unwrap(), Tag::identifier("test"));
+
+        assert_eq!(
+            Tag::parse(&["r", "https://example.com"]).unwrap(),
+            Tag::from_standardized_without_cell(TagStandard::Reference(String::from(
+                "https://example.com"
+            )))
         );
 
         assert_eq!(
-            Tag::parse(&["d", "test"]).unwrap(),
-            Tag::Identifier("test".to_string())
-        );
-
-        assert_eq!(
-            Tag::parse(&["r", "https://example.com",]).unwrap(),
-            Tag::Reference(String::from("https://example.com"),)
-        );
-
-        assert_eq!(
-            Tag::parse(&["r", "wss://alicerelay.example.com",]).unwrap(),
-            Tag::RelayMetadata(UncheckedUrl::from("wss://alicerelay.example.com"), None)
+            Tag::parse(&["r", "wss://alicerelay.example.com/"]).unwrap(),
+            Tag::relay_metadata(Url::from_str("wss://alicerelay.example.com").unwrap(), None)
         );
 
         assert_eq!(
             Tag::parse(&["i", "github:12345678", "abcdefghijklmnop"]).unwrap(),
-            Tag::ExternalIdentity(Identity {
+            Tag::from_standardized_without_cell(TagStandard::ExternalIdentity(Identity {
                 platform: ExternalIdentity::GitHub,
                 ident: "12345678".to_string(),
                 proof: "abcdefghijklmnop".to_string()
-            })
+            }))
         );
 
         assert_eq!(
@@ -2189,7 +2367,7 @@ mod tests {
                 "wss://relay.damus.io"
             ])
             .unwrap(),
-            Tag::PublicKey {
+            Tag::from_standardized_without_cell(TagStandard::PublicKey {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
@@ -2197,7 +2375,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 alias: None,
                 uppercase: false
-            }
+            })
         );
 
         assert_eq!(
@@ -2207,14 +2385,14 @@ mod tests {
                 ""
             ])
             .unwrap(),
-            Tag::Event {
+            Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::empty()),
                 marker: None
-            }
+            })
         );
 
         assert_eq!(
@@ -2224,14 +2402,14 @@ mod tests {
                 "wss://relay.damus.io"
             ])
             .unwrap(),
-            Tag::Event {
+            Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 marker: None
-            }
+            })
         );
 
         assert_eq!(
@@ -2241,13 +2419,13 @@ mod tests {
                 "impersonation"
             ])
             .unwrap(),
-            Tag::PubKeyReport(
+            Tag::from_standardized_without_cell(TagStandard::PublicKeyReport(
                 PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
                 Report::Impersonation
-            )
+            ))
         );
 
         assert_eq!(
@@ -2257,13 +2435,13 @@ mod tests {
                 "other"
             ])
             .unwrap(),
-            Tag::PubKeyReport(
+            Tag::from_standardized_without_cell(TagStandard::PublicKeyReport(
                 PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
                 Report::Other
-            )
+            ))
         );
 
         assert_eq!(
@@ -2273,22 +2451,16 @@ mod tests {
                 "profanity"
             ])
             .unwrap(),
-            Tag::EventReport(
+            Tag::from_standardized_without_cell(TagStandard::EventReport(
                 EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
                 Report::Profanity
-            )
+            ))
         );
 
-        assert_eq!(
-            Tag::parse(&["nonce", "1", "20"]).unwrap(),
-            Tag::POW {
-                nonce: 1,
-                difficulty: 20
-            }
-        );
+        assert_eq!(Tag::parse(&["nonce", "1", "20"]).unwrap(), Tag::pow(1, 20));
 
         assert_eq!(
             Tag::parse(&[
@@ -2297,7 +2469,7 @@ mod tests {
                 "wss://relay.nostr.org"
             ])
             .unwrap(),
-            Tag::A {
+            Tag::from_standardized_without_cell(TagStandard::Coordinate {
                 coordinate: Coordinate::new(
                     Kind::LongFormTextNote,
                     PublicKey::from_str(
@@ -2307,34 +2479,34 @@ mod tests {
                 )
                 .identifier("ipsum"),
                 relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap())
-            }
+            })
         );
 
         assert_eq!(
-            Tag::parse(&["r", "wss://alicerelay.example.com", "read"]).unwrap(),
-            Tag::RelayMetadata(
-                UncheckedUrl::from("wss://alicerelay.example.com"),
+            Tag::parse(&["r", "wss://alicerelay.example.com/", "read"]).unwrap(),
+            Tag::relay_metadata(
+                Url::from_str("wss://alicerelay.example.com").unwrap(),
                 Some(RelayMetadata::Read)
             )
         );
 
         assert_eq!(
-            Tag::parse(&["r", "wss://atlas.nostr.land"]).unwrap(),
-            Tag::RelayMetadata(UncheckedUrl::new("wss://atlas.nostr.land"), None)
+            Tag::parse(&["r", "wss://atlas.nostr.land/"]).unwrap(),
+            Tag::relay_metadata(Url::from_str("wss://atlas.nostr.land").unwrap(), None)
         );
 
         assert_eq!(
-            Tag::parse(&["r", "wss://atlas.nostr.land", "read"]).unwrap(),
-            Tag::RelayMetadata(
-                UncheckedUrl::new("wss://atlas.nostr.land"),
+            Tag::parse(&["r", "wss://atlas.nostr.land/", "read"]).unwrap(),
+            Tag::relay_metadata(
+                Url::from_str("wss://atlas.nostr.land").unwrap(),
                 Some(RelayMetadata::Read)
             )
         );
 
         assert_eq!(
-            Tag::parse(&["r", "wss://atlas.nostr.land", "write"]).unwrap(),
-            Tag::RelayMetadata(
-                UncheckedUrl::new("wss://atlas.nostr.land"),
+            Tag::parse(&["r", "wss://atlas.nostr.land/", "write"]).unwrap(),
+            Tag::relay_metadata(
+                Url::from_str("wss://atlas.nostr.land").unwrap(),
                 Some(RelayMetadata::Write)
             )
         );
@@ -2371,7 +2543,7 @@ mod tests {
                 "alias",
             ])
             .unwrap(),
-            Tag::PublicKey {
+            Tag::from_standardized_without_cell(TagStandard::PublicKey {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
@@ -2379,7 +2551,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 alias: Some(String::from("alias")),
                 uppercase: false,
-            }
+            })
         );
 
         assert_eq!(
@@ -2390,14 +2562,14 @@ mod tests {
                 "reply"
             ])
             .unwrap(),
-            Tag::Event {
+            Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
                 relay_url: None,
                 marker: Some(Marker::Reply)
-            }
+            })
         );
 
         assert_eq!(
@@ -2407,9 +2579,9 @@ mod tests {
                 "kind=1",
                 "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             ]).unwrap(),
-            Tag::Delegation { delegator: PublicKey::from_str(
+            Tag::from_standardized_without_cell(TagStandard::Delegation { delegator: PublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
+            ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() })
         );
 
         assert_eq!(
@@ -2421,19 +2593,19 @@ mod tests {
                 "wss//nostr.fmt.wiz.biz"
             ])
             .unwrap(),
-            Tag::Relays(vec![
+            Tag::from_standardized_without_cell(TagStandard::Relays(vec![
                 UncheckedUrl::from("wss://relay.damus.io/"),
                 UncheckedUrl::from("wss://nostr-relay.wlvs.space/"),
                 UncheckedUrl::from("wss://nostr.fmt.wiz.biz"),
                 UncheckedUrl::from("wss//nostr.fmt.wiz.biz")
-            ])
+            ]))
         );
 
         assert_eq!(
             Tag::parse(&[
                 "bolt11",
                 "lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0"]).unwrap(),
-                Tag::Bolt11("lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0".to_string())
+            Tag::from_standardized_without_cell(TagStandard::Bolt11("lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0".to_string()))
         );
 
         assert_eq!(
@@ -2442,9 +2614,9 @@ mod tests {
                 "5d006d2cf1e73c7148e7519a4c68adc81642ce0e25a432b2434c99f97344c15f"
             ])
             .unwrap(),
-            Tag::Preimage(
+            Tag::from_standardized_without_cell(TagStandard::Preimage(
                 "5d006d2cf1e73c7148e7519a4c68adc81642ce0e25a432b2434c99f97344c15f".to_string()
-            )
+            ))
         );
 
         assert_eq!(
@@ -2452,30 +2624,33 @@ mod tests {
                 "description",
                 "{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}"
             ]).unwrap(),
-            Tag::Description("{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}".to_string())
+            Tag::from_standardized_without_cell(TagStandard::Description("{\"pubkey\":\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\",\"content\":\"\",\"id\":\"d9cc14d50fcb8c27539aacf776882942c1a11ea4472f8cdec1dea82fab66279d\",\"created_at\":1674164539,\"sig\":\"77127f636577e9029276be060332ea565deaf89ff215a494ccff16ae3f757065e2bc59b2e8c113dd407917a010b3abd36c8d7ad84c0e3ab7dab3a0b0caa9835d\",\"kind\":9734,\"tags\":[[\"e\",\"3624762a1274dd9636e0c552b53086d70bc88c165bc4dc0f9e836a1eaf86c3b8\"],[\"p\",\"32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245\"],[\"relays\",\"wss://relay.damus.io\",\"wss://nostr-relay.wlvs.space\",\"wss://nostr.fmt.wiz.biz\",\"wss://relay.nostr.bg\",\"wss://nostr.oxtr.dev\",\"wss://nostr.v0l.io\",\"wss://brb.io\",\"wss://nostr.bitcoiner.social\",\"ws://monad.jb55.com:8080\",\"wss://relay.snort.social\"]]}".to_string()))
         );
 
         assert_eq!(
             Tag::parse(&["amount", "10000"]).unwrap(),
-            Tag::Amount {
+            Tag::from_standardized_without_cell(TagStandard::Amount {
                 millisats: 10_000,
                 bolt11: None
-            }
+            })
         );
 
         assert_eq!(
             Tag::parse(&["L", "#t"]).unwrap(),
-            Tag::LabelNamespace("#t".to_string())
+            Tag::from_standardized_without_cell(TagStandard::LabelNamespace("#t".to_string()))
         );
 
         assert_eq!(
             Tag::parse(&["l", "IT-MI"]).unwrap(),
-            Tag::Label(vec!["IT-MI".to_string()])
+            Tag::from_standardized_without_cell(TagStandard::Label(vec!["IT-MI".to_string()]))
         );
 
         assert_eq!(
             Tag::parse(&["l", "IT-MI", "ISO-3166-2"]).unwrap(),
-            Tag::Label(vec!["IT-MI".to_string(), "ISO-3166-2".to_string()])
+            Tag::from_standardized_without_cell(TagStandard::Label(vec![
+                "IT-MI".to_string(),
+                "ISO-3166-2".to_string()
+            ]))
         );
     }
 }
@@ -2487,6 +2662,14 @@ mod benches {
     use super::*;
 
     #[bench]
+    pub fn get_tag_kind(bh: &mut Bencher) {
+        let tag = Tag::identifier("id");
+        bh.iter(|| {
+            black_box(tag.kind());
+        });
+    }
+
+    #[bench]
     pub fn parse_p_tag(bh: &mut Bencher) {
         let tag = &[
             "p",
@@ -2494,6 +2677,17 @@ mod benches {
         ];
         bh.iter(|| {
             black_box(Tag::parse(tag)).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn parse_p_standardized_tag(bh: &mut Bencher) {
+        let tag = &[
+            "p",
+            "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
+        ];
+        bh.iter(|| {
+            black_box(TagStandard::parse(tag)).unwrap();
         });
     }
 
@@ -2510,6 +2704,18 @@ mod benches {
     }
 
     #[bench]
+    pub fn parse_e_standardized_tag(bh: &mut Bencher) {
+        let tag = &[
+            "e",
+            "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+            "wss://relay.damus.io",
+        ];
+        bh.iter(|| {
+            black_box(TagStandard::parse(tag)).unwrap();
+        });
+    }
+
+    #[bench]
     pub fn parse_a_tag(bh: &mut Bencher) {
         let tag = &[
             "a",
@@ -2518,6 +2724,18 @@ mod benches {
         ];
         bh.iter(|| {
             black_box(Tag::parse(tag)).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn parse_a_standardized_tag(bh: &mut Bencher) {
+        let tag = &[
+            "a",
+            "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
+            "wss://relay.nostr.org",
+        ];
+        bh.iter(|| {
+            black_box(TagStandard::parse(tag)).unwrap();
         });
     }
 }

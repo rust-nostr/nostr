@@ -53,7 +53,7 @@ async fn main() {
         let event = EventBuilder::new(
             Kind::Custom(123),
             "Custom with d tag",
-            [Tag::Identifier(format!("myid{i}"))],
+            [Tag::identifier(format!("myid{i}"))],
         )
         .to_event(&keys_a)
         .unwrap();

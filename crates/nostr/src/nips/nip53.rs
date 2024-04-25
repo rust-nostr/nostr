@@ -13,10 +13,10 @@ use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
 
-use crate::{ImageDimensions, PublicKey, Tag, Timestamp, UncheckedUrl};
+use crate::{ImageDimensions, PublicKey, Tag, TagStandard, Timestamp, UncheckedUrl};
 
 /// NIP53 Error
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Unknown [`LiveEventMarker`]
     UnknownLiveEventMarker(String),
@@ -174,22 +174,30 @@ impl From<LiveEvent> for Vec<Tag> {
 
         let mut tags = Vec::with_capacity(1);
 
-        tags.push(Tag::Identifier(id));
+        tags.push(Tag::identifier(id));
 
         if let Some(title) = title {
-            tags.push(Tag::Title(title));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Title(
+                title,
+            )));
         }
 
         if let Some(summary) = summary {
-            tags.push(Tag::Summary(summary));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Summary(
+                summary,
+            )));
         }
 
         if let Some(streaming) = streaming {
-            tags.push(Tag::Streaming(streaming));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Streaming(
+                streaming,
+            )));
         }
 
         if let Some(status) = status {
-            tags.push(Tag::LiveEventStatus(status));
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::LiveEventStatus(status),
+            ));
         }
 
         if let Some(LiveEventHost {
@@ -198,62 +206,82 @@ impl From<LiveEvent> for Vec<Tag> {
             proof,
         }) = host
         {
-            tags.push(Tag::PubKeyLiveEvent {
-                public_key,
-                relay_url,
-                marker: LiveEventMarker::Host,
-                proof,
-            });
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::PubKeyLiveEvent {
+                    public_key,
+                    relay_url,
+                    marker: LiveEventMarker::Host,
+                    proof,
+                },
+            ));
         }
 
         for (public_key, relay_url) in speakers.into_iter() {
-            tags.push(Tag::PubKeyLiveEvent {
-                public_key,
-                relay_url,
-                marker: LiveEventMarker::Speaker,
-                proof: None,
-            });
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::PubKeyLiveEvent {
+                    public_key,
+                    relay_url,
+                    marker: LiveEventMarker::Speaker,
+                    proof: None,
+                },
+            ));
         }
 
         for (public_key, relay_url) in participants.into_iter() {
-            tags.push(Tag::PubKeyLiveEvent {
-                public_key,
-                relay_url,
-                marker: LiveEventMarker::Participant,
-                proof: None,
-            });
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::PubKeyLiveEvent {
+                    public_key,
+                    relay_url,
+                    marker: LiveEventMarker::Participant,
+                    proof: None,
+                },
+            ));
         }
 
         if let Some((image, dim)) = image {
-            tags.push(Tag::Image(image, dim));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Image(
+                image, dim,
+            )));
         }
 
         for hashtag in hashtags.into_iter() {
-            tags.push(Tag::Hashtag(hashtag));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Hashtag(
+                hashtag,
+            )));
         }
 
         if let Some(recording) = recording {
-            tags.push(Tag::Recording(recording));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Recording(
+                recording,
+            )));
         }
 
         if let Some(starts) = starts {
-            tags.push(Tag::Starts(starts));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Starts(
+                starts,
+            )));
         }
 
         if let Some(ends) = ends {
-            tags.push(Tag::Ends(ends));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Ends(ends)));
         }
 
         if let Some(current_participants) = current_participants {
-            tags.push(Tag::CurrentParticipants(current_participants));
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::CurrentParticipants(current_participants),
+            ));
         }
 
         if let Some(total_participants) = total_participants {
-            tags.push(Tag::TotalParticipants(total_participants));
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::TotalParticipants(total_participants),
+            ));
         }
 
         if !relays.is_empty() {
-            tags.push(Tag::Relays(relays));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Relays(
+                relays,
+            )));
         }
 
         tags

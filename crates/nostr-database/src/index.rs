@@ -11,9 +11,7 @@ use std::sync::Arc;
 
 use nostr::event::id;
 use nostr::nips::nip01::Coordinate;
-use nostr::{
-    Alphabet, Event, EventId, Filter, GenericTagValue, Kind, PublicKey, SingleLetterTag, Timestamp,
-};
+use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -108,7 +106,7 @@ struct FilterIndex {
     kinds: HashSet<Kind>,
     since: Option<Timestamp>,
     until: Option<Timestamp>,
-    generic_tags: HashMap<SingleLetterTag, HashSet<GenericTagValue>>,
+    generic_tags: HashMap<SingleLetterTag, HashSet<String>>,
 }
 
 impl FilterIndex {
@@ -346,7 +344,7 @@ impl From<Filter> for QueryPattern {
         let identifier = filter
             .generic_tags
             .get(&SingleLetterTag::lowercase(Alphabet::D))
-            .and_then(|v| v.iter().next().map(|v| hash(v.to_string())));
+            .and_then(|v| v.iter().next().map(hash));
 
         match (
             kinds_len,

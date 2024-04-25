@@ -903,7 +903,7 @@ impl Client {
     #[inline]
     pub async fn set_relay_list<I>(&self, relays: I) -> Result<EventId, Error>
     where
-        I: IntoIterator<Item = (UncheckedUrl, Option<RelayMetadata>)>,
+        I: IntoIterator<Item = (Url, Option<RelayMetadata>)>,
     {
         let builder = EventBuilder::relay_list(relays);
         self.send_event_builder(builder).await
@@ -922,7 +922,7 @@ impl Client {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// client
-    ///     .publish_text_note("My first text note from Nostr SDK!", [])
+    ///     .publish_text_note("My first text note from rust-nostr!", [])
     ///     .await
     ///     .unwrap();
     /// # }
@@ -984,12 +984,12 @@ impl Client {
 
         for event in events.into_iter() {
             for tag in event.into_iter_tags() {
-                if let Tag::PublicKey {
+                if let Some(TagStandard::PublicKey {
                     public_key,
                     relay_url,
                     alias,
                     uppercase: false,
-                } = tag
+                }) = tag.to_standardized()
                 {
                     contact_list.push(Contact::new(public_key, relay_url, alias))
                 }
@@ -1066,7 +1066,7 @@ impl Client {
     ///         .unwrap();
     ///
     /// client
-    ///     .send_direct_msg(alice_pubkey, "My first DM fro Nostr SDK!", None)
+    ///     .send_direct_msg(alice_pubkey, "My first DM from rust-nostr!", None)
     ///     .await
     ///     .unwrap();
     /// # }

@@ -32,7 +32,7 @@ use crate::types::time::TimeSupplier;
 use crate::SECP256K1;
 use crate::{
     event, util, Event, EventBuilder, EventId, JsonUtil, Keys, Kind, PublicKey, SecretKey, Tag,
-    Timestamp, UncheckedUrl,
+    TagStandard, Timestamp, UncheckedUrl,
 };
 
 type Aes256CbcEnc = Encryptor<Aes256>;
@@ -226,7 +226,9 @@ impl From<ZapRequestData> for Vec<Tag> {
         let mut tags: Vec<Tag> = vec![Tag::public_key(public_key)];
 
         if !relays.is_empty() {
-            tags.push(Tag::Relays(relays));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Relays(
+                relays,
+            )));
         }
 
         if let Some(event_id) = event_id {
@@ -238,14 +240,16 @@ impl From<ZapRequestData> for Vec<Tag> {
         }
 
         if let Some(amount) = amount {
-            tags.push(Tag::Amount {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Amount {
                 millisats: amount,
                 bolt11: None,
-            });
+            }));
         }
 
         if let Some(lnurl) = lnurl {
-            tags.push(Tag::Lnurl(lnurl));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Lnurl(
+                lnurl,
+            )));
         }
 
         tags
@@ -258,7 +262,9 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     let keys = Keys::generate();
     let message: String = data.message.clone();
     let mut tags: Vec<Tag> = data.into();
-    tags.push(Tag::Anon { msg: None });
+    tags.push(Tag::from_standardized_without_cell(TagStandard::Anon {
+        msg: None,
+    }));
     Ok(EventBuilder::new(Kind::ZapRequest, message, tags).to_event(&keys)?)
 }
 
@@ -300,7 +306,9 @@ where
 
     // Compose event
     let mut tags: Vec<Tag> = data.into();
-    tags.push(Tag::Anon { msg: Some(msg) });
+    tags.push(Tag::from_standardized_without_cell(TagStandard::Anon {
+        msg: Some(msg),
+    }));
     let private_zap_keys: Keys = Keys::new_with_ctx(secp, secret_key);
     Ok(EventBuilder::new(Kind::ZapRequest, "", tags)
         .custom_created_at(created_at)
@@ -350,7 +358,7 @@ where
 
 fn extract_anon_tag_message(event: &Event) -> Result<&String, Error> {
     for tag in event.iter_tags() {
-        if let Tag::Anon { msg } = tag {
+        if let Some(TagStandard::Anon { msg }) = tag.as_standardized() {
             return msg.as_ref().ok_or(Error::InvalidPrivateZapMessage);
         }
     }

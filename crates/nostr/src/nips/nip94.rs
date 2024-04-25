@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 
-use crate::{ImageDimensions, Tag, Url};
+use crate::{ImageDimensions, Tag, TagKind, TagStandard, Url};
 
 /// Potential errors returned when parsing tags into a [FileMetadata] struct
 #[derive(Debug, PartialEq, Eq)]
@@ -141,28 +141,38 @@ impl From<FileMetadata> for Vec<Tag> {
 
         let mut tags: Vec<Tag> = Vec::with_capacity(3);
 
-        tags.push(Tag::Url(url));
-        tags.push(Tag::MimeType(mime_type));
-        tags.push(Tag::Sha256(hash));
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Url(url)));
+        tags.push(Tag::from_standardized_without_cell(TagStandard::MimeType(
+            mime_type,
+        )));
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Sha256(
+            hash,
+        )));
 
         if let Some((key, iv)) = aes_256_gcm {
-            tags.push(Tag::Aes256Gcm { key, iv });
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::Aes256Gcm { key, iv },
+            ));
         }
 
         if let Some(size) = size {
-            tags.push(Tag::Size(size));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Size(size)));
         }
 
         if let Some(dim) = dim {
-            tags.push(Tag::Dim(dim));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Dim(dim)));
         }
 
         if let Some(magnet) = magnet {
-            tags.push(Tag::Magnet(magnet));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Magnet(
+                magnet,
+            )));
         }
 
         if let Some(blurhash) = blurhash {
-            tags.push(Tag::Blurhash(blurhash));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Blurhash(
+                blurhash,
+            )));
         }
 
         tags
@@ -173,39 +183,93 @@ impl TryFrom<Vec<Tag>> for FileMetadata {
     type Error = FileMetadataError;
 
     fn try_from(value: Vec<Tag>) -> Result<Self, Self::Error> {
-        let url = match value.iter().find(|t| matches!(t, Tag::Url(_))) {
-            Some(Tag::Url(url)) => Ok(url),
+        let url = match value
+            .iter()
+            .find(|t| t.kind() == TagKind::Url)
+            .map(|t| t.as_standardized())
+        {
+            Some(Some(TagStandard::Url(url))) => Ok(url),
             _ => Err(Self::Error::MissingUrl),
         }?;
-        let mime = match value.iter().find(|t| matches!(t, Tag::MimeType(_))) {
-            Some(Tag::MimeType(mime)) => Ok(mime),
+
+        let mime = match value
+            .iter()
+            .find(|t| {
+                let t = t.as_standardized();
+                matches!(t, Some(TagStandard::MimeType(..)))
+            })
+            .map(|t| t.as_standardized())
+        {
+            Some(Some(TagStandard::MimeType(mime))) => Ok(mime),
             _ => Err(Self::Error::MissingMimeType),
         }?;
-        let sha256 = match value.iter().find(|t| matches!(t, Tag::Sha256(_))) {
-            Some(Tag::Sha256(sha256)) => Ok(sha256),
+
+        let sha256 = match value
+            .iter()
+            .find(|t| {
+                let t = t.as_standardized();
+                matches!(t, Some(TagStandard::Sha256(..)))
+            })
+            .map(|t| t.as_standardized())
+        {
+            Some(Some(TagStandard::Sha256(sha256))) => Ok(sha256),
             _ => Err(Self::Error::MissingSha),
         }?;
+
         let mut metadata = FileMetadata::new(url.clone(), mime, *sha256);
 
-        if let Some(Tag::Aes256Gcm { key, iv }) =
-            value.iter().find(|t| matches!(t, Tag::Aes256Gcm { .. }))
-        {
+        if let Some(TagStandard::Aes256Gcm { key, iv }) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::Aes256Gcm { .. })) {
+                t
+            } else {
+                None
+            }
+        }) {
             metadata = metadata.aes_256_gcm(key, iv);
         }
 
-        if let Some(Tag::Size(size)) = value.iter().find(|t| matches!(t, Tag::Size(_))) {
+        if let Some(TagStandard::Size(size)) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::Size { .. })) {
+                t
+            } else {
+                None
+            }
+        }) {
             metadata = metadata.size(*size);
         }
 
-        if let Some(Tag::Dim(dim)) = value.iter().find(|t| matches!(t, Tag::Dim(_))) {
+        if let Some(TagStandard::Dim(dim)) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::Dim { .. })) {
+                t
+            } else {
+                None
+            }
+        }) {
             metadata = metadata.dimensions(*dim);
         }
 
-        if let Some(Tag::Magnet(magnet)) = value.iter().find(|t| matches!(t, Tag::Magnet(_))) {
+        if let Some(TagStandard::Magnet(magnet)) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::Magnet { .. })) {
+                t
+            } else {
+                None
+            }
+        }) {
             metadata = metadata.magnet(magnet);
         }
 
-        if let Some(Tag::Blurhash(bh)) = value.iter().find(|t| matches!(t, Tag::Blurhash(_))) {
+        if let Some(TagStandard::Blurhash(bh)) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::Blurhash { .. })) {
+                t
+            } else {
+                None
+            }
+        }) {
             metadata = metadata.blurhash(bh);
         }
 
@@ -232,10 +296,10 @@ mod tests {
             height: 640,
         };
         let tags = vec![
-            Tag::Dim(dim.clone()),
-            Tag::Sha256(hash),
-            Tag::Url(url.clone()),
-            Tag::MimeType(String::from("image/jpeg")),
+            Tag::from_standardized_without_cell(TagStandard::Dim(dim)),
+            Tag::from_standardized_without_cell(TagStandard::Sha256(hash)),
+            Tag::from_standardized_without_cell(TagStandard::Url(url.clone())),
+            Tag::from_standardized_without_cell(TagStandard::MimeType(String::from("image/jpeg"))),
         ];
         let got = FileMetadata::try_from(tags).unwrap();
         let expected = FileMetadata::new(url, "image/jpeg", hash).dimensions(dim);
@@ -251,9 +315,9 @@ mod tests {
             height: 640,
         };
         let tags = vec![
-            Tag::Dim(dim.clone()),
-            Tag::Sha256(hash),
-            Tag::MimeType(String::from("image/jpeg")),
+            Tag::from_standardized_without_cell(TagStandard::Dim(dim.clone())),
+            Tag::from_standardized_without_cell(TagStandard::Sha256(hash)),
+            Tag::from_standardized_without_cell(TagStandard::MimeType(String::from("image/jpeg"))),
         ];
         let got = FileMetadata::try_from(tags).unwrap_err();
 
@@ -269,9 +333,9 @@ mod tests {
             height: 640,
         };
         let tags = vec![
-            Tag::Dim(dim.clone()),
-            Tag::Sha256(hash),
-            Tag::Url(url.clone()),
+            Tag::from_standardized_without_cell(TagStandard::Dim(dim.clone())),
+            Tag::from_standardized_without_cell(TagStandard::Sha256(hash)),
+            Tag::from_standardized_without_cell(TagStandard::Url(url.clone())),
         ];
         let got = FileMetadata::try_from(tags).unwrap_err();
 
@@ -286,9 +350,9 @@ mod tests {
             height: 640,
         };
         let tags = vec![
-            Tag::Dim(dim.clone()),
-            Tag::Url(url.clone()),
-            Tag::MimeType(String::from("image/jpeg")),
+            Tag::from_standardized_without_cell(TagStandard::Dim(dim.clone())),
+            Tag::from_standardized_without_cell(TagStandard::Url(url.clone())),
+            Tag::from_standardized_without_cell(TagStandard::MimeType(String::from("image/jpeg"))),
         ];
         let got = FileMetadata::try_from(tags).unwrap_err();
 

@@ -35,7 +35,7 @@ pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::partial::{MissingPartialEvent, PartialEvent};
-pub use self::tag::{Marker, Tag, TagKind};
+pub use self::tag::{Marker, Tag, TagKind, TagStandard};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::Coordinate;
 #[cfg(feature = "std")]
@@ -43,10 +43,10 @@ use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{GenericTagValue, JsonUtil, PublicKey, SingleLetterTag, Timestamp};
+use crate::{Alphabet, JsonUtil, PublicKey, SingleLetterTag, Timestamp};
 
 /// Tags Indexes
-pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<GenericTagValue>>;
+pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
 /// [`Event`] error
 #[derive(Debug, PartialEq, Eq)]
@@ -311,8 +311,8 @@ impl Event {
     /// Get [`Timestamp`] expiration if set
     #[inline]
     pub fn expiration(&self) -> Option<&Timestamp> {
-        for tag in self.iter_tags() {
-            if let Tag::Expiration(timestamp) = tag {
+        for tag in self.iter_tags().filter(|t| t.kind() == TagKind::Expiration) {
+            if let Some(TagStandard::Expiration(timestamp)) = tag.as_standardized() {
                 return Some(timestamp);
             }
         }
@@ -406,8 +406,11 @@ impl Event {
     /// Extract identifier (`d` tag), if exists.
     #[inline]
     pub fn identifier(&self) -> Option<&str> {
-        for tag in self.iter_tags() {
-            if let Tag::Identifier(id) = tag {
+        for tag in self
+            .iter_tags()
+            .filter(|t| t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D)))
+        {
+            if let Some(TagStandard::Identifier(id)) = tag.as_standardized() {
                 return Some(id);
             }
         }
@@ -416,22 +419,22 @@ impl Event {
 
     /// Extract public keys from tags (`p` tag)
     ///
-    /// **This method extract ONLY `Tag::PublicKey`**
+    /// **This method extract ONLY `TagStandard::PublicKey`**
     #[inline]
     pub fn public_keys(&self) -> impl Iterator<Item = &PublicKey> {
-        self.iter_tags().filter_map(|t| match t {
-            Tag::PublicKey { public_key, .. } => Some(public_key),
+        self.iter_tags().filter_map(|t| match t.as_standardized() {
+            Some(TagStandard::PublicKey { public_key, .. }) => Some(public_key),
             _ => None,
         })
     }
 
     /// Extract event IDs from tags (`e` tag)
     ///
-    /// **This method extract ONLY `Tag::Event`**
+    /// **This method extract ONLY `TagStandard::Event`**
     #[inline]
     pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
-        self.iter_tags().filter_map(|t| match t {
-            Tag::Event { event_id, .. } => Some(event_id),
+        self.iter_tags().filter_map(|t| match t.as_standardized() {
+            Some(TagStandard::Event { event_id, .. }) => Some(event_id),
             _ => None,
         })
     }
@@ -439,8 +442,8 @@ impl Event {
     /// Extract coordinates from tags (`a` tag)
     #[inline]
     pub fn coordinates(&self) -> impl Iterator<Item = &Coordinate> {
-        self.iter_tags().filter_map(|t| match t {
-            Tag::A { coordinate, .. } => Some(coordinate),
+        self.iter_tags().filter_map(|t| match t.as_standardized() {
+            Some(TagStandard::Coordinate { coordinate, .. }) => Some(coordinate),
             _ => None,
         })
     }
@@ -451,7 +454,9 @@ impl Event {
             .iter_tags()
             .filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
         {
-            idx.entry(single_letter_tag).or_default().insert(content);
+            idx.entry(single_letter_tag)
+                .or_default()
+                .insert(content.to_string());
         }
         idx
     }
@@ -598,7 +603,7 @@ mod tests {
     fn test_event_expired() {
         let my_keys = Keys::generate();
         let event =
-            EventBuilder::text_note("my content", [Tag::Expiration(Timestamp::from(1600000000))])
+            EventBuilder::text_note("my content", [Tag::expiration(Timestamp::from(1600000000))])
                 .to_event(&my_keys)
                 .unwrap();
 
@@ -614,7 +619,7 @@ mod tests {
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note(
             "my content",
-            [Tag::Expiration(Timestamp::from(expiry_date))],
+            [Tag::expiration(Timestamp::from(expiry_date))],
         )
         .to_event(&my_keys)
         .unwrap();

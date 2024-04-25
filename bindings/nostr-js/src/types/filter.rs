@@ -88,6 +88,12 @@ impl Deref for JsSingleLetterTag {
     }
 }
 
+impl From<SingleLetterTag> for JsSingleLetterTag {
+    fn from(inner: SingleLetterTag) -> Self {
+        Self { inner }
+    }
+}
+
 #[wasm_bindgen(js_class = SingleLetterTag)]
 impl JsSingleLetterTag {
     pub fn lowercase(character: JsAlphabet) -> Self {

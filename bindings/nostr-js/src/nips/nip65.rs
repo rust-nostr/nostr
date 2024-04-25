@@ -4,7 +4,6 @@
 use std::ops::Deref;
 
 use nostr::nips::nip65;
-use nostr::{RelayMetadata, UncheckedUrl};
 use wasm_bindgen::prelude::*;
 
 use crate::event::tag::JsRelayMetadata;
@@ -15,15 +14,6 @@ pub struct JsRelayListItem {
     #[wasm_bindgen(getter_with_clone)]
     pub url: String,
     pub metadata: Option<JsRelayMetadata>,
-}
-
-impl From<JsRelayListItem> for (UncheckedUrl, Option<RelayMetadata>) {
-    fn from(value: JsRelayListItem) -> Self {
-        (
-            UncheckedUrl::from(value.url),
-            value.metadata.map(|r| r.into()),
-        )
-    }
 }
 
 #[wasm_bindgen(js_class = RelayListItem)]
@@ -40,7 +30,7 @@ pub fn extract_relay_list(event: &JsEvent) -> Vec<JsRelayListItem> {
         .into_iter()
         .map(|(s, r)| JsRelayListItem {
             url: s.to_string(),
-            metadata: r.map(|r| r.into()),
+            metadata: r.clone().map(|r| r.into()),
         })
         .collect()
 }

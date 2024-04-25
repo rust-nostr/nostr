@@ -16,10 +16,10 @@ use core::str::FromStr;
 use super::nip19::FromBech32;
 use super::nip21::NostrURI;
 use crate::event::id;
-use crate::{key, Filter, Kind, PublicKey, Tag, UncheckedUrl};
+use crate::{key, Filter, Kind, PublicKey, Tag, TagStandard, UncheckedUrl};
 
 /// Raw Event error
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Keys error
     Keys(key::Error),
@@ -150,11 +150,11 @@ impl Coordinate {
 }
 
 impl From<Coordinate> for Tag {
-    fn from(value: Coordinate) -> Self {
-        Self::A {
-            relay_url: value.relays.first().cloned().map(UncheckedUrl::from),
-            coordinate: value,
-        }
+    fn from(coordinate: Coordinate) -> Self {
+        Self::from_standardized(TagStandard::Coordinate {
+            relay_url: coordinate.relays.first().cloned().map(UncheckedUrl::from),
+            coordinate,
+        })
     }
 }
 

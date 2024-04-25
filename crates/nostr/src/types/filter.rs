@@ -7,8 +7,9 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::collections::{BTreeMap as AllocMap, BTreeSet as AllocSet};
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::fmt;
+use core::hash::Hash;
 use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
@@ -20,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use crate::event::TagsIndexes;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
-type GenericTags = AllocMap<SingleLetterTag, AllocSet<GenericTagValue>>;
+type GenericTags = AllocMap<SingleLetterTag, AllocSet<String>>;
 
 /// Alphabet Error
 #[derive(Debug)]
@@ -252,71 +253,6 @@ impl<'de> Deserialize<'de> for SingleLetterTag {
     {
         let character: char = char::deserialize(deserializer)?;
         Self::from_char(character).map_err(serde::de::Error::custom)
-    }
-}
-
-/// Generic Tag Value
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum GenericTagValue {
-    /// Public key
-    PublicKey(PublicKey),
-    /// Event ID
-    EventId(EventId),
-    /// Other (string)
-    String(String),
-}
-
-impl fmt::Display for GenericTagValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::PublicKey(inner) => write!(f, "{inner}"),
-            Self::EventId(inner) => write!(f, "{inner}"),
-            Self::String(inner) => write!(f, "{inner}"),
-        }
-    }
-}
-
-impl Serialize for GenericTagValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-#[allow(missing_docs)]
-pub trait IntoGenericTagValue {
-    fn into_generic_tag_value(self) -> GenericTagValue;
-}
-
-impl IntoGenericTagValue for PublicKey {
-    fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::PublicKey(self)
-    }
-}
-
-impl IntoGenericTagValue for EventId {
-    fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::EventId(self)
-    }
-}
-
-impl IntoGenericTagValue for String {
-    fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::String(self)
-    }
-}
-
-impl IntoGenericTagValue for &String {
-    fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::String(self.clone())
-    }
-}
-
-impl IntoGenericTagValue for &str {
-    fn into_generic_tag_value(self) -> GenericTagValue {
-        GenericTagValue::String(self.to_string())
     }
 }
 
@@ -677,15 +613,12 @@ impl Filter {
     }
 
     /// Add custom tag
-    pub fn custom_tag<I, T>(mut self, tag: SingleLetterTag, values: I) -> Self
+    pub fn custom_tag<I, S>(mut self, tag: SingleLetterTag, values: I) -> Self
     where
-        I: IntoIterator<Item = T>,
-        T: IntoGenericTagValue,
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
     {
-        let values: AllocSet<GenericTagValue> = values
-            .into_iter()
-            .map(|v| v.into_generic_tag_value())
-            .collect();
+        let values: AllocSet<String> = values.into_iter().map(|v| v.into()).collect();
         self.generic_tags.entry(tag).or_default().extend(values);
         self
     }
@@ -694,9 +627,9 @@ impl Filter {
     pub fn remove_custom_tag<I, T>(mut self, tag: SingleLetterTag, values: I) -> Self
     where
         I: IntoIterator<Item = T>,
-        T: IntoGenericTagValue,
+        T: Into<String>,
     {
-        let values = values.into_iter().map(|v| v.into_generic_tag_value());
+        let values = values.into_iter().map(|v| v.into());
         self.generic_tags.entry(tag).and_modify(|set| {
             for item in values {
                 set.remove(&item);
@@ -816,32 +749,7 @@ where
                 if let (Some('#'), Some(ch), None) = (chars.next(), chars.next(), chars.next()) {
                     let tag: SingleLetterTag =
                         SingleLetterTag::from_char(ch).map_err(serde::de::Error::custom)?;
-                    let temp_values: AllocSet<String> = map.next_value()?;
-
-                    #[cfg(feature = "std")]
-                    let mut values: AllocSet<GenericTagValue> =
-                        AllocSet::with_capacity(temp_values.len());
-                    #[cfg(not(feature = "std"))]
-                    let mut values: AllocSet<GenericTagValue> = AllocSet::new();
-
-                    for v in temp_values.into_iter() {
-                        match (tag.character, tag.uppercase) {
-                            (Alphabet::E, false) => {
-                                let id: EventId =
-                                    EventId::from_hex(v).map_err(serde::de::Error::custom)?;
-                                values.insert(GenericTagValue::EventId(id));
-                            }
-                            (Alphabet::P, ..) => {
-                                let pk: PublicKey =
-                                    PublicKey::from_hex(v).map_err(serde::de::Error::custom)?;
-                                values.insert(GenericTagValue::PublicKey(pk));
-                            }
-                            _ => {
-                                values.insert(GenericTagValue::String(v));
-                            }
-                        }
-                    }
-
+                    let values: AllocSet<String> = map.next_value()?;
                     generic_tags.insert(tag, values);
                 } else {
                     map.next_value::<serde::de::IgnoredAny>()?;
@@ -857,7 +765,7 @@ where
 fn extend_or_collect<T, I>(mut set: Option<AllocSet<T>>, iter: I) -> Option<AllocSet<T>>
 where
     I: IntoIterator<Item = T>,
-    T: Eq + Ord + core::hash::Hash,
+    T: Eq + Ord + Hash,
 {
     match set.as_mut() {
         Some(s) => {
@@ -873,7 +781,7 @@ where
 fn remove_or_none<T, I>(mut set: Option<AllocSet<T>>, iter: I) -> Option<AllocSet<T>>
 where
     I: IntoIterator<Item = T>,
-    T: Eq + Ord + core::hash::Hash,
+    T: Eq + Ord + Hash,
 {
     if let Some(s) = set.as_mut() {
         for item in iter.into_iter() {
@@ -975,7 +883,7 @@ mod tests {
             )
             .custom_tag(SingleLetterTag::lowercase(Alphabet::Z), ["rating"]);
         let json = r##"{"search":"test","#d":["identifier"],"#j":["test1"],"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],"#z":["rating"]}"##;
-        assert_eq!(filter.as_json(), json.to_string());
+        assert_eq!(filter.as_json(), json);
     }
 
     #[test]
@@ -1012,7 +920,7 @@ mod tests {
                 uppercase: false,
             })
             .unwrap();
-        assert!(set.contains(&GenericTagValue::EventId(event_id)));
+        assert!(set.contains(&event_id.to_hex()));
 
         // Check #p tag
         let set = filter
@@ -1022,7 +930,7 @@ mod tests {
                 uppercase: false,
             })
             .unwrap();
-        assert!(set.contains(&GenericTagValue::PublicKey(pubkey)));
+        assert!(set.contains(&pubkey.to_hex()));
 
         // Check #a tag
         let set = filter
@@ -1032,8 +940,8 @@ mod tests {
                 uppercase: false,
             })
             .unwrap();
-        assert!(set.contains(&GenericTagValue::String(String::from("..."))));
-        assert!(set.contains(&GenericTagValue::String(String::from("test"))));
+        assert!(set.contains("..."));
+        assert!(set.contains("test"));
 
         let json = r##"{"#":["..."],"search":"test"}"##;
         let filter = Filter::from_json(json).unwrap();
@@ -1164,7 +1072,7 @@ mod benches {
     use test::{black_box, Bencher};
 
     use super::*;
-    use crate::Tag;
+    use crate::{Tag, TagStandard};
 
     #[bench]
     pub fn filter_match_event(bh: &mut Bencher) {
@@ -1181,7 +1089,7 @@ mod benches {
                     Tag::public_key(PublicKey::from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
                     Tag::public_key(PublicKey::from_hex("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe").unwrap()),
                     Tag::event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap()),
-                    Tag::Kind(Kind::TextNote),
+                    Tag::from_standardized(TagStandard::Kind(Kind::TextNote)),
                 ],
                 "test",
                 Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),

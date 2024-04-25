@@ -18,7 +18,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["std", "all-nips"]
 std = [
-    "dep:once_cell",
     "dep:url",
     "base64?/std",
     "bitcoin/std",
@@ -28,6 +27,7 @@ std = [
     "chacha20?/std",
     "chacha20poly1305?/std",
     "negentropy/std",
+    "once_cell/std",
     "scrypt?/std",
     "serde/std",
     "serde_json/std",
@@ -42,6 +42,7 @@ alloc = [
     "chacha20poly1305?/alloc",
     "base64?/alloc",
     "bitcoin/no-std",
+    "once_cell/alloc",
     "serde/alloc",
     "serde_json/alloc",
 ]
@@ -70,7 +71,7 @@ chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
 negentropy = { version = "0.3", default-features = false }
 nostr-ots = { version = "0.2", optional = true }
-once_cell = { workspace = true, optional = true }
+once_cell.workspace = true
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "socks"], optional = true }
 scrypt = { version = "0.11", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }

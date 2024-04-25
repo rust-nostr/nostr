@@ -2,8 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-#![allow(non_camel_case_types)]
-
+use std::borrow::Cow;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -245,7 +244,7 @@ pub enum TagKind {
     },
 }
 
-impl From<tag::TagKind> for TagKind {
+impl<'a> From<tag::TagKind<'a>> for TagKind {
     fn from(value: tag::TagKind) -> Self {
         match value {
             tag::TagKind::SingleLetter(single_letter) => Self::SingleLetter {
@@ -291,12 +290,14 @@ impl From<tag::TagKind> for TagKind {
             tag::TagKind::Encrypted => Self::Encrypted,
             tag::TagKind::Request => Self::Request,
             tag::TagKind::Word => Self::Word,
-            tag::TagKind::Custom(unknown) => Self::Unknown { unknown },
+            tag::TagKind::Custom(unknown) => Self::Unknown {
+                unknown: unknown.to_string(),
+            },
         }
     }
 }
 
-impl From<TagKind> for tag::TagKind {
+impl<'a> From<TagKind> for tag::TagKind<'a> {
     fn from(value: TagKind) -> Self {
         match value {
             TagKind::SingleLetter { single_letter } => Self::SingleLetter(**single_letter),
@@ -340,23 +341,218 @@ impl From<TagKind> for tag::TagKind {
             TagKind::Encrypted => Self::Encrypted,
             TagKind::Request => Self::Request,
             TagKind::Word => Self::Word,
-            TagKind::Unknown { unknown } => Self::Custom(unknown),
+            TagKind::Unknown { unknown } => Self::Custom(Cow::Owned(unknown)),
         }
     }
 }
 
+/// Tag
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
+pub struct Tag {
+    inner: tag::Tag,
+}
+
+impl Deref for Tag {
+    type Target = tag::Tag;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl From<tag::Tag> for Tag {
+    fn from(inner: tag::Tag) -> Self {
+        Self { inner }
+    }
+}
+
+#[uniffi::export]
+impl Tag {
+    /// Parse tag
+    ///
+    /// Return error if the tag is empty!
+    #[inline]
+    #[uniffi::constructor]
+    pub fn parse(data: &[String]) -> Result<Self> {
+        Ok(Self {
+            inner: tag::Tag::parse(data)?,
+        })
+    }
+
+    /// Construct from standardized tag
+    #[inline]
+    #[uniffi::constructor]
+    pub fn from_standardized(standardized: TagStandard) -> Result<Self> {
+        let standardized: tag::TagStandard = tag::TagStandard::try_from(standardized)?;
+        Ok(Self {
+            inner: tag::Tag::from_standardized(standardized),
+        })
+    }
+
+    /// Get tag kind
+    #[inline]
+    pub fn kind(&self) -> TagKind {
+        self.inner.kind().into()
+    }
+
+    /// Return the **first** tag value (index `1`), if exists.
+    #[inline]
+    pub fn content(&self) -> Option<String> {
+        self.inner.content().map(|c| c.to_string())
+    }
+
+    /// Get `SingleLetterTag`
+    #[inline]
+    pub fn single_letter_tag(&self) -> Option<Arc<SingleLetterTag>> {
+        self.inner.single_letter_tag().map(|s| Arc::new(s.into()))
+    }
+
+    /// Get standardized tag
+    pub fn as_standardized(&self) -> Option<TagStandard> {
+        self.inner.as_standardized().cloned().map(|t| t.into())
+    }
+
+    /// Get array of strings
+    pub fn as_vec(&self) -> Vec<String> {
+        self.inner.as_vec().to_vec()
+    }
+
+    /// Compose `["e", "<event-id">]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn event(event_id: &EventId) -> Self {
+        Self {
+            inner: tag::Tag::event(**event_id),
+        }
+    }
+
+    /// Compose `["p", "<public-key>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn public_key(public_key: &PublicKey) -> Self {
+        Self {
+            inner: tag::Tag::public_key(**public_key),
+        }
+    }
+
+    /// Compose `["d", "<identifier>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn identifier(identifier: &str) -> Self {
+        Self {
+            inner: tag::Tag::identifier(identifier),
+        }
+    }
+
+    /// Compose `["a", "<coordinate>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn coordinate(coordinate: &Coordinate) -> Self {
+        Self {
+            inner: tag::Tag::coordinate(coordinate.deref().clone()),
+        }
+    }
+
+    /// Compose `["nonce", "<nonce>", "<difficulty>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn pow(nonce: u64, difficulty: u8) -> Self {
+        Self {
+            inner: tag::Tag::pow(nonce as u128, difficulty),
+        }
+    }
+
+    /// Compose `["expiration", "<timestamp>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn expiration(timestamp: &Timestamp) -> Self {
+        Self {
+            inner: tag::Tag::expiration(**timestamp),
+        }
+    }
+
+    /// Compose `["e", "<event-id>", "<report>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn event_report(event_id: &EventId, report: Report) -> Self {
+        Self {
+            inner: tag::Tag::event_report(**event_id, report.into()),
+        }
+    }
+
+    /// Compose `["p", "<public-key>", "<report>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn public_key_report(public_key: &PublicKey, report: Report) -> Self {
+        Self {
+            inner: tag::Tag::public_key_report(**public_key, report.into()),
+        }
+    }
+
+    /// Compose `["r", "<relay-url>", "<metadata>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn relay_metadata(relay_url: &str, metadata: Option<RelayMetadata>) -> Result<Self> {
+        let relay_url: Url = Url::from_str(relay_url)?;
+        Ok(Self {
+            inner: tag::Tag::relay_metadata(relay_url, metadata.map(|m| m.into())),
+        })
+    }
+
+    /// Compose `["t", "<hashtag>"]` tag
+    #[inline]
+    #[uniffi::constructor]
+    pub fn hashtag(hashtag: &str) -> Self {
+        Self {
+            inner: tag::Tag::hashtag(hashtag),
+        }
+    }
+
+    /// Compose custom tag
+    ///
+    /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
+    #[inline]
+    #[uniffi::constructor]
+    pub fn custom(kind: TagKind, values: &[String]) -> Self {
+        Self {
+            inner: tag::Tag::custom(kind.into(), values),
+        }
+    }
+
+    /// Check if `Tag` is an event `reply`
+    pub fn is_reply(&self) -> bool {
+        self.inner.is_reply()
+    }
+}
+
+/// Standardized tag
 #[derive(Enum)]
-pub enum TagEnum {
-    Unknown {
-        kind: TagKind,
-        data: Vec<String>,
-    },
-    EventTag {
+pub enum TagStandard {
+    Event {
         event_id: Arc<EventId>,
         relay_url: Option<String>,
         marker: Option<Marker>,
     },
-    PublicKeyTag {
+    PublicKey {
         public_key: Arc<PublicKey>,
         relay_url: Option<String>,
         alias: Option<String>,
@@ -380,7 +576,7 @@ pub enum TagEnum {
     Reference {
         reference: String,
     },
-    RelayMetadataTag {
+    RelayMetadata {
         relay_url: String,
         rw: Option<RelayMetadata>,
     },
@@ -393,10 +589,10 @@ pub enum TagEnum {
     Identifier {
         identifier: String,
     },
-    ExternalIdentityTag {
+    ExternalIdentity {
         identity: Identity,
     },
-    A {
+    Coordinate {
         coordinate: Arc<Coordinate>,
         relay_url: Option<String>,
     },
@@ -466,7 +662,7 @@ pub enum TagEnum {
     PublishedAt {
         timestamp: Arc<Timestamp>,
     },
-    UrlTag {
+    Url {
         url: String,
     },
     MimeType {
@@ -504,7 +700,7 @@ pub enum TagEnum {
     Ends {
         timestamp: Arc<Timestamp>,
     },
-    LiveEventStatusTag {
+    LiveEventStatus {
         status: LiveEventStatus,
     },
     CurrentParticipants {
@@ -537,7 +733,7 @@ pub enum TagEnum {
     Request {
         event: Arc<Event>,
     },
-    DataVendingMachineStatusTag {
+    DataVendingMachineStatus {
         status: DataVendingMachineStatus,
         extra_info: Option<String>,
     },
@@ -552,42 +748,38 @@ pub enum TagEnum {
     },
 }
 
-impl From<tag::Tag> for TagEnum {
-    fn from(value: tag::Tag) -> Self {
+impl From<tag::TagStandard> for TagStandard {
+    fn from(value: tag::TagStandard) -> Self {
         match value {
-            tag::Tag::Generic(kind, data) => Self::Unknown {
-                kind: kind.into(),
-                data,
-            },
-            tag::Tag::Event {
+            tag::TagStandard::Event {
                 event_id,
                 relay_url,
                 marker,
-            } => Self::EventTag {
+            } => Self::Event {
                 event_id: Arc::new(event_id.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.map(|m| m.into()),
             },
-            tag::Tag::PublicKey {
+            tag::TagStandard::PublicKey {
                 public_key,
                 relay_url,
                 alias,
                 uppercase,
-            } => Self::PublicKeyTag {
+            } => Self::PublicKey {
                 public_key: Arc::new(public_key.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 alias,
                 uppercase,
             },
-            tag::Tag::EventReport(id, report) => Self::EventReport {
+            tag::TagStandard::EventReport(id, report) => Self::EventReport {
                 event_id: Arc::new(id.into()),
                 report: report.into(),
             },
-            tag::Tag::PubKeyReport(pk, report) => Self::PubKeyReport {
+            tag::TagStandard::PublicKeyReport(pk, report) => Self::PubKeyReport {
                 public_key: Arc::new(pk.into()),
                 report: report.into(),
             },
-            tag::Tag::PubKeyLiveEvent {
+            tag::TagStandard::PubKeyLiveEvent {
                 public_key,
                 relay_url,
                 marker,
@@ -598,33 +790,36 @@ impl From<tag::Tag> for TagEnum {
                 marker: marker.into(),
                 proof: proof.map(|p| p.to_string()),
             },
-            tag::Tag::Reference(r) => Self::Reference { reference: r },
-            tag::Tag::RelayMetadata(url, rw) => Self::RelayMetadataTag {
-                relay_url: url.to_string(),
-                rw: rw.map(|rw| rw.into()),
+            tag::TagStandard::Reference(r) => Self::Reference { reference: r },
+            tag::TagStandard::RelayMetadata {
+                relay_url,
+                metadata,
+            } => Self::RelayMetadata {
+                relay_url: relay_url.to_string(),
+                rw: metadata.map(|rw| rw.into()),
             },
-            tag::Tag::Hashtag(t) => Self::Hashtag { hashtag: t },
-            tag::Tag::Geohash(g) => Self::Geohash { geohash: g },
-            tag::Tag::Identifier(d) => Self::Identifier { identifier: d },
-            tag::Tag::A {
+            tag::TagStandard::Hashtag(t) => Self::Hashtag { hashtag: t },
+            tag::TagStandard::Geohash(g) => Self::Geohash { geohash: g },
+            tag::TagStandard::Identifier(d) => Self::Identifier { identifier: d },
+            tag::TagStandard::Coordinate {
                 coordinate,
                 relay_url,
-            } => Self::A {
+            } => Self::Coordinate {
                 coordinate: Arc::new(coordinate.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
             },
-            tag::Tag::ExternalIdentity(identity) => Self::ExternalIdentityTag {
+            tag::TagStandard::ExternalIdentity(identity) => Self::ExternalIdentity {
                 identity: identity.into(),
             },
-            tag::Tag::Kind(kind) => Self::Kind { kind: kind.into() },
-            tag::Tag::Relay(url) => Self::RelayUrl {
+            tag::TagStandard::Kind(kind) => Self::Kind { kind: kind.into() },
+            tag::TagStandard::Relay(url) => Self::RelayUrl {
                 relay_url: url.to_string(),
             },
-            tag::Tag::POW { nonce, difficulty } => Self::POW {
+            tag::TagStandard::POW { nonce, difficulty } => Self::POW {
                 nonce: nonce.to_string(),
                 difficulty,
             },
-            tag::Tag::Delegation {
+            tag::TagStandard::Delegation {
                 delegator,
                 conditions,
                 sig,
@@ -633,105 +828,104 @@ impl From<tag::Tag> for TagEnum {
                 conditions: conditions.to_string(),
                 sig: sig.to_string(),
             },
-            tag::Tag::ContentWarning { reason } => Self::ContentWarning { reason },
-            tag::Tag::Expiration(timestamp) => Self::Expiration {
+            tag::TagStandard::ContentWarning { reason } => Self::ContentWarning { reason },
+            tag::TagStandard::Expiration(timestamp) => Self::Expiration {
                 timestamp: Arc::new(timestamp.into()),
             },
-            tag::Tag::Subject(sub) => Self::Subject { subject: sub },
-            tag::Tag::Challenge(challenge) => Self::Challenge { challenge },
-            tag::Tag::Title(title) => Self::Title { title },
-            tag::Tag::Image(image, dimensions) => Self::Image {
+            tag::TagStandard::Subject(sub) => Self::Subject { subject: sub },
+            tag::TagStandard::Challenge(challenge) => Self::Challenge { challenge },
+            tag::TagStandard::Title(title) => Self::Title { title },
+            tag::TagStandard::Image(image, dimensions) => Self::Image {
                 url: image.to_string(),
                 dimensions: dimensions.map(|d| Arc::new(d.into())),
             },
-            tag::Tag::Thumb(thumb, dimensions) => Self::Thumb {
+            tag::TagStandard::Thumb(thumb, dimensions) => Self::Thumb {
                 url: thumb.to_string(),
                 dimensions: dimensions.map(|d| Arc::new(d.into())),
             },
-            tag::Tag::Summary(summary) => Self::Summary { summary },
-            tag::Tag::PublishedAt(timestamp) => Self::PublishedAt {
+            tag::TagStandard::Summary(summary) => Self::Summary { summary },
+            tag::TagStandard::PublishedAt(timestamp) => Self::PublishedAt {
                 timestamp: Arc::new(timestamp.into()),
             },
-            tag::Tag::Description(description) => Self::Description { desc: description },
-            tag::Tag::Bolt11(bolt11) => Self::Bolt11 { bolt11 },
-            tag::Tag::Preimage(preimage) => Self::Preimage { preimage },
-            tag::Tag::Relays(relays) => Self::Relays {
+            tag::TagStandard::Description(description) => Self::Description { desc: description },
+            tag::TagStandard::Bolt11(bolt11) => Self::Bolt11 { bolt11 },
+            tag::TagStandard::Preimage(preimage) => Self::Preimage { preimage },
+            tag::TagStandard::Relays(relays) => Self::Relays {
                 urls: relays.into_iter().map(|r| r.to_string()).collect(),
             },
-            tag::Tag::Amount { millisats, bolt11 } => Self::Amount { millisats, bolt11 },
-            tag::Tag::Name(name) => Self::Name { name },
-            tag::Tag::Lnurl(lnurl) => Self::Lnurl { lnurl },
-            tag::Tag::Url(url) => Self::UrlTag {
+            tag::TagStandard::Amount { millisats, bolt11 } => Self::Amount { millisats, bolt11 },
+            tag::TagStandard::Name(name) => Self::Name { name },
+            tag::TagStandard::Lnurl(lnurl) => Self::Lnurl { lnurl },
+            tag::TagStandard::Url(url) => Self::Url {
                 url: url.to_string(),
             },
-            tag::Tag::MimeType(mime) => Self::MimeType { mime },
-            tag::Tag::Aes256Gcm { key, iv } => Self::Aes256Gcm { key, iv },
-            tag::Tag::Sha256(hash) => Self::Sha256 {
+            tag::TagStandard::MimeType(mime) => Self::MimeType { mime },
+            tag::TagStandard::Aes256Gcm { key, iv } => Self::Aes256Gcm { key, iv },
+            tag::TagStandard::Sha256(hash) => Self::Sha256 {
                 hash: hash.to_string(),
             },
-            tag::Tag::Size(bytes) => Self::Size { size: bytes as u64 },
-            tag::Tag::Dim(dim) => Self::Dim {
+            tag::TagStandard::Size(bytes) => Self::Size { size: bytes as u64 },
+            tag::TagStandard::Dim(dim) => Self::Dim {
                 dimensions: Arc::new(dim.into()),
             },
-            tag::Tag::Magnet(uri) => Self::Magnet { uri },
-            tag::Tag::Blurhash(data) => Self::Blurhash { blurhash: data },
-            tag::Tag::Streaming(url) => Self::Streaming {
+            tag::TagStandard::Magnet(uri) => Self::Magnet { uri },
+            tag::TagStandard::Blurhash(data) => Self::Blurhash { blurhash: data },
+            tag::TagStandard::Streaming(url) => Self::Streaming {
                 url: url.to_string(),
             },
-            tag::Tag::Recording(url) => Self::Recording {
+            tag::TagStandard::Recording(url) => Self::Recording {
                 url: url.to_string(),
             },
-            tag::Tag::Starts(timestamp) => Self::Starts {
+            tag::TagStandard::Starts(timestamp) => Self::Starts {
                 timestamp: Arc::new(timestamp.into()),
             },
-            tag::Tag::Ends(timestamp) => Self::Ends {
+            tag::TagStandard::Ends(timestamp) => Self::Ends {
                 timestamp: Arc::new(timestamp.into()),
             },
-            tag::Tag::LiveEventStatus(s) => Self::LiveEventStatusTag { status: s.into() },
-            tag::Tag::CurrentParticipants(num) => Self::CurrentParticipants { num },
-            tag::Tag::TotalParticipants(num) => Self::TotalParticipants { num },
-            tag::Tag::AbsoluteURL(url) => Self::AbsoluteURL {
+            tag::TagStandard::LiveEventStatus(s) => Self::LiveEventStatus { status: s.into() },
+            tag::TagStandard::CurrentParticipants(num) => Self::CurrentParticipants { num },
+            tag::TagStandard::TotalParticipants(num) => Self::TotalParticipants { num },
+            tag::TagStandard::AbsoluteURL(url) => Self::AbsoluteURL {
                 url: url.to_string(),
             },
-            tag::Tag::Method(method) => Self::Method {
+            tag::TagStandard::Method(method) => Self::Method {
                 method: method.into(),
             },
-            tag::Tag::Payload(p) => Self::Payload {
+            tag::TagStandard::Payload(p) => Self::Payload {
                 hash: p.to_string(),
             },
-            tag::Tag::Anon { msg } => Self::Anon { msg },
-            tag::Tag::Proxy { id, protocol } => Self::Proxy {
+            tag::TagStandard::Anon { msg } => Self::Anon { msg },
+            tag::TagStandard::Proxy { id, protocol } => Self::Proxy {
                 id,
                 protocol: protocol.into(),
             },
-            tag::Tag::Emoji { shortcode, url } => Self::Emoji {
+            tag::TagStandard::Emoji { shortcode, url } => Self::Emoji {
                 shortcode,
                 url: url.to_string(),
             },
-            tag::Tag::Encrypted => Self::Encrypted,
-            tag::Tag::Request(event) => Self::Request {
+            tag::TagStandard::Encrypted => Self::Encrypted,
+            tag::TagStandard::Request(event) => Self::Request {
                 event: Arc::new(event.into()),
             },
-            tag::Tag::DataVendingMachineStatus { status, extra_info } => {
-                Self::DataVendingMachineStatusTag {
+            tag::TagStandard::DataVendingMachineStatus { status, extra_info } => {
+                Self::DataVendingMachineStatus {
                     status: status.into(),
                     extra_info,
                 }
             }
-            tag::Tag::Word(word) => Self::Word { word },
-            tag::Tag::LabelNamespace(label) => Self::LabelNamespace { namespace: label },
-            tag::Tag::Label(labels) => Self::Label { label: labels },
+            tag::TagStandard::Word(word) => Self::Word { word },
+            tag::TagStandard::LabelNamespace(label) => Self::LabelNamespace { namespace: label },
+            tag::TagStandard::Label(labels) => Self::Label { label: labels },
         }
     }
 }
 
-impl TryFrom<TagEnum> for tag::Tag {
+impl TryFrom<TagStandard> for tag::TagStandard {
     type Error = NostrError;
 
-    fn try_from(value: TagEnum) -> Result<Self, Self::Error> {
+    fn try_from(value: TagStandard) -> Result<Self, Self::Error> {
         match value {
-            TagEnum::Unknown { kind, data } => Ok(Self::Generic(kind.into(), data)),
-            TagEnum::EventTag {
+            TagStandard::Event {
                 event_id,
                 relay_url,
                 marker,
@@ -740,7 +934,7 @@ impl TryFrom<TagEnum> for tag::Tag {
                 relay_url: relay_url.map(UncheckedUrl::from),
                 marker: marker.map(tag::Marker::from),
             }),
-            TagEnum::PublicKeyTag {
+            TagStandard::PublicKey {
                 public_key,
                 relay_url,
                 alias,
@@ -751,13 +945,13 @@ impl TryFrom<TagEnum> for tag::Tag {
                 alias,
                 uppercase,
             }),
-            TagEnum::EventReport { event_id, report } => {
+            TagStandard::EventReport { event_id, report } => {
                 Ok(Self::EventReport(**event_id, report.into()))
             }
-            TagEnum::PubKeyReport { public_key, report } => {
-                Ok(Self::PubKeyReport(**public_key, report.into()))
+            TagStandard::PubKeyReport { public_key, report } => {
+                Ok(Self::PublicKeyReport(**public_key, report.into()))
             }
-            TagEnum::PubKeyLiveEvent {
+            TagStandard::PubKeyLiveEvent {
                 public_key,
                 relay_url,
                 marker,
@@ -771,31 +965,31 @@ impl TryFrom<TagEnum> for tag::Tag {
                     None => None,
                 },
             }),
-            TagEnum::Reference { reference } => Ok(Self::Reference(reference)),
-            TagEnum::RelayMetadataTag { relay_url, rw } => Ok(Self::RelayMetadata(
-                UncheckedUrl::from(relay_url),
-                rw.map(|rw| rw.into()),
-            )),
-            TagEnum::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
-            TagEnum::Geohash { geohash } => Ok(Self::Geohash(geohash)),
-            TagEnum::Identifier { identifier } => Ok(Self::Identifier(identifier)),
-            TagEnum::ExternalIdentityTag { identity } => {
+            TagStandard::Reference { reference } => Ok(Self::Reference(reference)),
+            TagStandard::RelayMetadata { relay_url, rw } => Ok(Self::RelayMetadata {
+                relay_url: Url::from_str(&relay_url)?,
+                metadata: rw.map(|rw| rw.into()),
+            }),
+            TagStandard::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
+            TagStandard::Geohash { geohash } => Ok(Self::Geohash(geohash)),
+            TagStandard::Identifier { identifier } => Ok(Self::Identifier(identifier)),
+            TagStandard::ExternalIdentity { identity } => {
                 Ok(Self::ExternalIdentity(identity.into()))
             }
-            TagEnum::A {
+            TagStandard::Coordinate {
                 coordinate,
                 relay_url,
-            } => Ok(Self::A {
+            } => Ok(Self::Coordinate {
                 coordinate: coordinate.as_ref().deref().clone(),
                 relay_url: relay_url.map(UncheckedUrl::from),
             }),
-            TagEnum::Kind { kind } => Ok(Self::Kind(kind.into())),
-            TagEnum::RelayUrl { relay_url } => Ok(Self::Relay(UncheckedUrl::from(relay_url))),
-            TagEnum::POW { nonce, difficulty } => Ok(Self::POW {
+            TagStandard::Kind { kind } => Ok(Self::Kind(kind.into())),
+            TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(UncheckedUrl::from(relay_url))),
+            TagStandard::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,
                 difficulty,
             }),
-            TagEnum::Delegation {
+            TagStandard::Delegation {
                 delegator,
                 conditions,
                 sig,
@@ -804,139 +998,69 @@ impl TryFrom<TagEnum> for tag::Tag {
                 conditions: Conditions::from_str(&conditions)?,
                 sig: Signature::from_str(&sig)?,
             }),
-            TagEnum::ContentWarning { reason } => Ok(Self::ContentWarning { reason }),
-            TagEnum::Expiration { timestamp } => Ok(Self::Expiration(**timestamp)),
-            TagEnum::Subject { subject } => Ok(Self::Subject(subject)),
-            TagEnum::Challenge { challenge } => Ok(Self::Challenge(challenge)),
-            TagEnum::Title { title } => Ok(Self::Title(title)),
-            TagEnum::Image { url, dimensions } => Ok(Self::Image(
+            TagStandard::ContentWarning { reason } => Ok(Self::ContentWarning { reason }),
+            TagStandard::Expiration { timestamp } => Ok(Self::Expiration(**timestamp)),
+            TagStandard::Subject { subject } => Ok(Self::Subject(subject)),
+            TagStandard::Challenge { challenge } => Ok(Self::Challenge(challenge)),
+            TagStandard::Title { title } => Ok(Self::Title(title)),
+            TagStandard::Image { url, dimensions } => Ok(Self::Image(
                 UncheckedUrl::from(url),
                 dimensions.map(|d| **d),
             )),
-            TagEnum::Thumb { url, dimensions } => Ok(Self::Thumb(
+            TagStandard::Thumb { url, dimensions } => Ok(Self::Thumb(
                 UncheckedUrl::from(url),
                 dimensions.map(|d| **d),
             )),
-            TagEnum::Summary { summary } => Ok(Self::Summary(summary)),
-            TagEnum::Description { desc } => Ok(Self::Description(desc)),
-            TagEnum::Bolt11 { bolt11 } => Ok(Self::Bolt11(bolt11)),
-            TagEnum::Preimage { preimage } => Ok(Self::Preimage(preimage)),
-            TagEnum::Relays { urls } => Ok(Self::Relays(
+            TagStandard::Summary { summary } => Ok(Self::Summary(summary)),
+            TagStandard::Description { desc } => Ok(Self::Description(desc)),
+            TagStandard::Bolt11 { bolt11 } => Ok(Self::Bolt11(bolt11)),
+            TagStandard::Preimage { preimage } => Ok(Self::Preimage(preimage)),
+            TagStandard::Relays { urls } => Ok(Self::Relays(
                 urls.into_iter().map(UncheckedUrl::from).collect(),
             )),
-            TagEnum::Amount { millisats, bolt11 } => Ok(Self::Amount { millisats, bolt11 }),
-            TagEnum::Lnurl { lnurl } => Ok(Self::Lnurl(lnurl)),
-            TagEnum::Name { name } => Ok(Self::Name(name)),
-            TagEnum::PublishedAt { timestamp } => Ok(Self::PublishedAt(**timestamp)),
-            TagEnum::UrlTag { url } => Ok(Self::Url(Url::parse(&url)?)),
-            TagEnum::MimeType { mime } => Ok(Self::MimeType(mime)),
-            TagEnum::Aes256Gcm { key, iv } => Ok(Self::Aes256Gcm { key, iv }),
-            TagEnum::Sha256 { hash } => Ok(Self::Sha256(Sha256Hash::from_str(&hash)?)),
-            TagEnum::Size { size } => Ok(Self::Size(size as usize)),
-            TagEnum::Dim { dimensions } => Ok(Self::Dim(**dimensions)),
-            TagEnum::Magnet { uri } => Ok(Self::Magnet(uri)),
-            TagEnum::Blurhash { blurhash } => Ok(Self::Blurhash(blurhash)),
-            TagEnum::Streaming { url } => Ok(Self::Streaming(UncheckedUrl::from(url))),
-            TagEnum::Recording { url } => Ok(Self::Recording(UncheckedUrl::from(url))),
-            TagEnum::Starts { timestamp } => Ok(Self::Starts(**timestamp)),
-            TagEnum::Ends { timestamp } => Ok(Self::Ends(**timestamp)),
-            TagEnum::LiveEventStatusTag { status } => Ok(Self::LiveEventStatus(status.into())),
-            TagEnum::CurrentParticipants { num } => Ok(Self::CurrentParticipants(num)),
-            TagEnum::TotalParticipants { num } => Ok(Self::CurrentParticipants(num)),
-            TagEnum::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
-            TagEnum::Method { method } => Ok(Self::Method(method.into())),
-            TagEnum::Payload { hash } => Ok(Self::Payload(Sha256Hash::from_str(&hash)?)),
-            TagEnum::Anon { msg } => Ok(Self::Anon { msg }),
-            TagEnum::Proxy { id, protocol } => Ok(Self::Proxy {
+            TagStandard::Amount { millisats, bolt11 } => Ok(Self::Amount { millisats, bolt11 }),
+            TagStandard::Lnurl { lnurl } => Ok(Self::Lnurl(lnurl)),
+            TagStandard::Name { name } => Ok(Self::Name(name)),
+            TagStandard::PublishedAt { timestamp } => Ok(Self::PublishedAt(**timestamp)),
+            TagStandard::Url { url } => Ok(Self::Url(Url::parse(&url)?)),
+            TagStandard::MimeType { mime } => Ok(Self::MimeType(mime)),
+            TagStandard::Aes256Gcm { key, iv } => Ok(Self::Aes256Gcm { key, iv }),
+            TagStandard::Sha256 { hash } => Ok(Self::Sha256(Sha256Hash::from_str(&hash)?)),
+            TagStandard::Size { size } => Ok(Self::Size(size as usize)),
+            TagStandard::Dim { dimensions } => Ok(Self::Dim(**dimensions)),
+            TagStandard::Magnet { uri } => Ok(Self::Magnet(uri)),
+            TagStandard::Blurhash { blurhash } => Ok(Self::Blurhash(blurhash)),
+            TagStandard::Streaming { url } => Ok(Self::Streaming(UncheckedUrl::from(url))),
+            TagStandard::Recording { url } => Ok(Self::Recording(UncheckedUrl::from(url))),
+            TagStandard::Starts { timestamp } => Ok(Self::Starts(**timestamp)),
+            TagStandard::Ends { timestamp } => Ok(Self::Ends(**timestamp)),
+            TagStandard::LiveEventStatus { status } => Ok(Self::LiveEventStatus(status.into())),
+            TagStandard::CurrentParticipants { num } => Ok(Self::CurrentParticipants(num)),
+            TagStandard::TotalParticipants { num } => Ok(Self::CurrentParticipants(num)),
+            TagStandard::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
+            TagStandard::Method { method } => Ok(Self::Method(method.into())),
+            TagStandard::Payload { hash } => Ok(Self::Payload(Sha256Hash::from_str(&hash)?)),
+            TagStandard::Anon { msg } => Ok(Self::Anon { msg }),
+            TagStandard::Proxy { id, protocol } => Ok(Self::Proxy {
                 id,
                 protocol: protocol.into(),
             }),
-            TagEnum::Emoji { shortcode, url } => Ok(Self::Emoji {
+            TagStandard::Emoji { shortcode, url } => Ok(Self::Emoji {
                 shortcode,
                 url: UncheckedUrl::from(url),
             }),
-            TagEnum::Encrypted => Ok(Self::Encrypted),
-            TagEnum::Request { event } => Ok(Self::Request(event.as_ref().deref().clone())),
-            TagEnum::DataVendingMachineStatusTag { status, extra_info } => {
+            TagStandard::Encrypted => Ok(Self::Encrypted),
+            TagStandard::Request { event } => Ok(Self::Request(event.as_ref().deref().clone())),
+            TagStandard::DataVendingMachineStatus { status, extra_info } => {
                 Ok(Self::DataVendingMachineStatus {
                     status: status.into(),
                     extra_info,
                 })
             }
-            TagEnum::Word { word } => Ok(Self::Word(word)),
-            TagEnum::LabelNamespace { namespace } => Ok(Self::LabelNamespace(namespace)),
-            TagEnum::Label { label } => Ok(Self::Label(label)),
+            TagStandard::Word { word } => Ok(Self::Word(word)),
+            TagStandard::LabelNamespace { namespace } => Ok(Self::LabelNamespace(namespace)),
+            TagStandard::Label { label } => Ok(Self::Label(label)),
         }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Object)]
-#[uniffi::export(Debug, Eq, Hash)]
-pub struct Tag {
-    inner: tag::Tag,
-}
-
-impl Deref for Tag {
-    type Target = tag::Tag;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl From<tag::Tag> for Tag {
-    fn from(inner: tag::Tag) -> Self {
-        Self { inner }
-    }
-}
-
-#[uniffi::export]
-impl Tag {
-    #[uniffi::constructor]
-    pub fn parse(data: &[String]) -> Result<Self> {
-        Ok(Self {
-            inner: tag::Tag::parse(data)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_enum(e: TagEnum) -> Result<Self> {
-        Ok(Self {
-            inner: tag::Tag::try_from(e)?,
-        })
-    }
-
-    /// Compose `["e", "<event-id>"]` tag
-    #[uniffi::constructor]
-    pub fn event(event_id: &EventId) -> Self {
-        Self {
-            inner: tag::Tag::event(**event_id),
-        }
-    }
-
-    /// Compose `["p", "<public-key>"]` tag
-    #[uniffi::constructor]
-    pub fn public_key(public_key: &PublicKey) -> Self {
-        Self {
-            inner: tag::Tag::public_key(**public_key),
-        }
-    }
-
-    /// Check if `Tag` is an event `reply`
-    pub fn is_reply(&self) -> bool {
-        self.inner.is_reply()
-    }
-
-    pub fn as_enum(&self) -> TagEnum {
-        self.inner.clone().into()
-    }
-
-    pub fn as_vec(&self) -> Vec<String> {
-        self.inner.as_vec()
-    }
-
-    pub fn kind(&self) -> TagKind {
-        self.inner.kind().into()
     }
 }
 

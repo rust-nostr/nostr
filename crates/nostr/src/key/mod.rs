@@ -26,7 +26,7 @@ pub use self::secret_key::SecretKey;
 use crate::SECP256K1;
 
 /// [`Keys`] error
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Invalid secret key
     InvalidSecretKey,

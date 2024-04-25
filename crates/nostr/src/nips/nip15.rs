@@ -55,7 +55,7 @@ impl StallData {
 
 impl From<StallData> for Vec<Tag> {
     fn from(value: StallData) -> Self {
-        vec![Tag::Identifier(value.id)]
+        vec![Tag::identifier(value.id)]
     }
 }
 
@@ -165,10 +165,11 @@ impl ProductData {
 
 impl From<ProductData> for Vec<Tag> {
     fn from(value: ProductData) -> Self {
-        let mut tags = Vec::new();
-        tags.push(Tag::Identifier(value.stall_id));
-        value.categories.unwrap_or_default().iter().for_each(|cat| {
-            tags.push(Tag::Hashtag(cat.into()));
+        let categories: Vec<String> = value.categories.unwrap_or_default();
+        let mut tags: Vec<Tag> = Vec::with_capacity(1 + categories.len());
+        tags.push(Tag::identifier(value.stall_id));
+        categories.iter().for_each(|cat| {
+            tags.push(Tag::hashtag(cat));
         });
         tags
     }
@@ -363,11 +364,7 @@ mod tests {
             .shipping(vec![ShippingMethod::new("123", 5.0).name("default")]);
         let tags: Vec<Tag> = stall.clone().into();
         assert_eq!(tags.len(), 1);
-        assert_eq!(
-            tags[0],
-            Tag::Identifier("123".into()),
-            "tags contains stall id"
-        );
+        assert_eq!(tags[0], Tag::identifier("123"), "tags contains stall id");
 
         let string: String = stall.as_json();
         assert_eq!(
@@ -391,21 +388,9 @@ mod tests {
 
         let tags: Vec<Tag> = product.clone().into();
         assert_eq!(tags.len(), 3);
-        assert_eq!(
-            tags[0],
-            Tag::Identifier("456".into()),
-            "tags contains stall id"
-        );
-        assert_eq!(
-            tags[1],
-            Tag::Hashtag("Test".into()),
-            "tags contains category"
-        );
-        assert_eq!(
-            tags[2],
-            Tag::Hashtag("Product".into()),
-            "tags contains category"
-        );
+        assert_eq!(tags[0], Tag::identifier("456"), "tags contains stall id");
+        assert_eq!(tags[1], Tag::hashtag("Test"), "tags contains category");
+        assert_eq!(tags[2], Tag::hashtag("Product"), "tags contains category");
 
         let string: String = product.as_json();
         assert_eq!(

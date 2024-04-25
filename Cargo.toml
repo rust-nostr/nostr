@@ -36,7 +36,7 @@ nostr-sqlite = { version = "0.30", path = "./crates/nostr-sqlite", default-featu
 nostr-webln = { version = "0.30", path = "./crates/nostr-webln", default-features = false }
 nostr-zapper = { version = "0.30", path = "./crates/nostr-zapper", default-features = false }
 nwc = { version = "0.30", path = "./crates/nwc", default-features = false }
-once_cell = "1.19"
+once_cell = { version = "1.19", default-features = false }
 serde_json = { version = "1.0", default-features = false }
 thiserror = "1.0"
 tokio = { version = "1", default-features = false }

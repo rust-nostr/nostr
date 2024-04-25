@@ -109,10 +109,16 @@ impl JsEventBuilder {
     }
 
     #[wasm_bindgen(js_name = relayList)]
-    pub fn relay_list(relays: Vec<JsRelayListItem>) -> Self {
-        Self {
-            inner: EventBuilder::relay_list(relays.into_iter().map(|r| r.into())),
+    pub fn relay_list(relays: Vec<JsRelayListItem>) -> Result<JsEventBuilder> {
+        let mut list = Vec::with_capacity(relays.len());
+        for JsRelayListItem { url, metadata } in relays.into_iter() {
+            let relay_url: Url = Url::parse(&url).map_err(into_err)?;
+            let metadata = metadata.map(|m| m.into());
+            list.push((relay_url, metadata))
         }
+        Ok(Self {
+            inner: EventBuilder::relay_list(list),
+        })
     }
 
     #[wasm_bindgen(js_name = textNote)]

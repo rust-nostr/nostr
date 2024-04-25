@@ -14,7 +14,7 @@ use core::fmt;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 
-use crate::{HttpMethod, Tag, UncheckedUrl};
+use crate::{HttpMethod, Tag, TagStandard, UncheckedUrl};
 
 /// [`HttpData`] required tags
 #[derive(Debug)]
@@ -99,9 +99,14 @@ impl From<HttpData> for Vec<Tag> {
             payload,
         } = data;
 
-        let mut tags: Vec<Tag> = vec![Tag::AbsoluteURL(url), Tag::Method(method)];
+        let mut tags: Vec<Tag> = vec![
+            Tag::from_standardized_without_cell(TagStandard::AbsoluteURL(url)),
+            Tag::from_standardized_without_cell(TagStandard::Method(method)),
+        ];
         if let Some(payload) = payload {
-            tags.push(Tag::Payload(payload));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Payload(
+                payload,
+            )));
         }
 
         tags
@@ -114,24 +119,24 @@ impl TryFrom<Vec<Tag>> for HttpData {
     fn try_from(value: Vec<Tag>) -> Result<Self, Self::Error> {
         let url = value
             .iter()
-            .find_map(|t| match t {
-                Tag::AbsoluteURL(u) => Some(u),
+            .find_map(|t| match t.as_standardized() {
+                Some(TagStandard::AbsoluteURL(u)) => Some(u),
                 _ => None,
             })
             .cloned()
             .ok_or(Error::MissingTag(RequiredTags::AbsoluteURL))?;
         let method = value
             .iter()
-            .find_map(|t| match t {
-                Tag::Method(m) => Some(m),
+            .find_map(|t| match t.as_standardized() {
+                Some(TagStandard::Method(m)) => Some(m),
                 _ => None,
             })
             .cloned()
             .ok_or(Error::MissingTag(RequiredTags::Method))?;
         let payload = value
             .iter()
-            .find_map(|t| match t {
-                Tag::Payload(p) => Some(p),
+            .find_map(|t| match t.as_standardized() {
+                Some(TagStandard::Payload(p)) => Some(p),
                 _ => None,
             })
             .cloned();

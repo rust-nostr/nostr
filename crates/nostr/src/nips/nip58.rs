@@ -9,7 +9,7 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::{Event, Kind, PublicKey, Tag, UncheckedUrl};
+use crate::{Event, Kind, PublicKey, Tag, TagStandard, UncheckedUrl};
 
 #[derive(Debug)]
 /// [`BadgeAward`](crate::event::kind::Kind#variant.BadgeAward) error
@@ -54,16 +54,16 @@ pub(crate) fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Eve
 }
 
 /// Helper function to extract the awarded public key from an array of PubKey tags
-pub(crate) fn extract_awarded_public_key(
-    tags: &[Tag],
+pub(crate) fn extract_awarded_public_key<'a>(
+    tags: &'a [Tag],
     awarded_public_key: &PublicKey,
-) -> Option<(PublicKey, Option<UncheckedUrl>)> {
-    tags.iter().find_map(|t| match t {
-        Tag::PublicKey {
+) -> Option<(&'a PublicKey, &'a Option<UncheckedUrl>)> {
+    tags.iter().find_map(|t| match t.as_standardized() {
+        Some(TagStandard::PublicKey {
             public_key,
             relay_url,
             ..
-        } if public_key == awarded_public_key => Some((*public_key, relay_url.clone())),
+        }) if public_key == awarded_public_key => Some((public_key, relay_url)),
         _ => None,
     })
 }
