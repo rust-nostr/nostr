@@ -31,8 +31,8 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let metadata = Metadata::new()
-        .name("nostr-sdk-bot-example")
-        .display_name("Nostr SDK Bot Example")
+        .name("rust-nostr-bot-example")
+        .display_name("rust-nostr bot example")
         .website(Url::parse("https://github.com/rust-nostr/nostr")?);
     client.set_metadata(&metadata).await?;
 

@@ -15,7 +15,7 @@ async function main() {
         await client.connect();
 
         // This note will be published
-        await client.publishTextNote("My first text note from Nostr SDK WASM!", []);
+        await client.publishTextNote("My first text note from rust-nostr JS!", []);
 
         // Change relay service flags (remove write permission)
         let relay = await client.relay("wss://relay.damus.io");

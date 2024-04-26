@@ -16,7 +16,7 @@ async function main() {
 
         await client.connect();
 
-        await client.publishTextNote("Test from Rust Nostr SDK JavaScript bindings with NIP07 signer!", []);
+        await client.publishTextNote("Test from rust-nostr JavaScript bindings with NIP07 signer!", []);
     } catch (error) {
         console.log(error) 
     }

@@ -35,7 +35,7 @@ async function main() {
     
     await client.setMetadata(metadata);
 
-    await client.publishTextNote("My first text note from Nostr SDK WASM!", []);
+    await client.publishTextNote("My first text note from rust-nostr WASM!", []);
 
     // Send custom event
     let event_id = EventId.fromBech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r");
