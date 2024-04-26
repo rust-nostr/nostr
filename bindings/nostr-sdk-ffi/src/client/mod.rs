@@ -391,6 +391,11 @@ impl Client {
         })
     }
 
+    /// Encrypted direct msg
+    ///
+    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
     pub fn send_direct_msg(
         &self,
         receiver: &PublicKey,
@@ -493,8 +498,11 @@ impl Client {
         })
     }
 
-    /// Send GiftWrapper Sealed Direct message
-    pub fn send_sealed_msg(
+    /// Send private direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[uniffi::method(default(expiration = None))]
+    pub fn send_private_msg(
         &self,
         receiver: &PublicKey,
         message: String,
@@ -503,7 +511,7 @@ impl Client {
         block_on(async move {
             Ok(self
                 .inner
-                .send_sealed_msg(**receiver, message, expiration.map(|t| **t))
+                .send_private_msg(**receiver, message, expiration.map(|t| **t))
                 .await?)
         })
     }

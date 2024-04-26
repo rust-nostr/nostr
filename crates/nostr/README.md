@@ -130,6 +130,7 @@ The following crate feature flags are available:
 |     ✅     | [14 - Subject tag in text events](https://github.com/nostr-protocol/nips/blob/master/14.md)                     |
 |     ✅     | [15 - Nostr Marketplace](https://github.com/nostr-protocol/nips/blob/master/15.md)                              |
 |     ✅     | [16 - Event Treatment](https://github.com/nostr-protocol/nips/blob/master/16.md)                                |
+|     ✅     | [17 - Private Direct Messages](https://github.com/nostr-protocol/nips/blob/master/17.md)                        |
 |     ✅     | [18 - Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)                                        |
 |     ✅     | [19 - bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)                        |
 |     ✅     | [20 - Command Results](https://github.com/nostr-protocol/nips/blob/master/20.md)                                |

@@ -1351,7 +1351,25 @@ impl Client {
     /// Send GiftWrapper Sealed Direct message
     #[inline]
     #[cfg(feature = "nip59")]
+    #[deprecated(since = "0.31.0", note = "Use `send_private_msg` instead.")]
     pub async fn send_sealed_msg<S>(
+        &self,
+        receiver: PublicKey,
+        message: S,
+        expiration: Option<Timestamp>,
+    ) -> std::result::Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        self.send_private_msg(receiver, message, expiration).await
+    }
+
+    /// Send private direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
+    #[cfg(feature = "nip59")]
+    pub async fn send_private_msg<S>(
         &self,
         receiver: PublicKey,
         message: S,
@@ -1360,7 +1378,7 @@ impl Client {
     where
         S: Into<String>,
     {
-        let rumor: EventBuilder = EventBuilder::sealed_direct(receiver, message);
+        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message);
         self.gift_wrap(receiver, rumor, expiration).await
     }
 

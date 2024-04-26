@@ -155,6 +155,8 @@ impl EventBuilder {
     }
 
     /// Create encrypted direct msg event
+    ///
+    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
     #[uniffi::constructor]
     pub fn encrypted_direct_msg(
         sender_keys: &Keys,
@@ -474,11 +476,18 @@ impl EventBuilder {
         }
     }
 
-    /// GiftWrapped Sealed Direct message
+    /// Private Direct message rumor
+    ///
+    /// <div class="warning">
+    /// This constructor compose ONLY the rumor for the private direct message!
+    /// NOT USE THIS IF YOU DON'T KNOW WHAT YOU ARE DOING!
+    /// </div>
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[uniffi::constructor]
-    pub fn sealed_direct(receiver: &PublicKey, message: &str) -> Self {
+    pub fn private_msg_rumor(receiver: &PublicKey, message: &str) -> Self {
         Self {
-            inner: nostr::EventBuilder::sealed_direct(**receiver, message),
+            inner: nostr::EventBuilder::private_msg_rumor(**receiver, message),
         }
     }
 

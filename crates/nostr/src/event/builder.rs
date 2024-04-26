@@ -550,6 +550,8 @@ impl EventBuilder {
 
     /// Create encrypted direct msg event
     ///
+    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
     #[cfg(all(feature = "std", feature = "nip04"))]
     pub fn encrypted_direct_msg<S>(
@@ -1314,11 +1316,33 @@ impl EventBuilder {
     /// GiftWrapped Sealed Direct message
     #[inline]
     #[cfg(feature = "nip59")]
+    #[deprecated(since = "0.31.0", note = "Use `private_msg_rumor` instead.")]
     pub fn sealed_direct<S>(receiver: PublicKey, message: S) -> Self
     where
         S: Into<String>,
     {
-        Self::new(Kind::SealedDirect, message, [Tag::public_key(receiver)])
+        Self::private_msg_rumor(receiver, message)
+    }
+
+    /// Private Direct message rumor
+    ///
+    /// <div class="warning">
+    /// This constructor compose ONLY the rumor for the private direct message!
+    /// NOT USE THIS IF YOU DON'T KNOW WHAT YOU ARE DOING!
+    /// </div>
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
+    #[cfg(feature = "nip59")]
+    pub fn private_msg_rumor<S>(receiver: PublicKey, message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(
+            Kind::PrivateDirectMessage,
+            message,
+            [Tag::public_key(receiver)],
+        )
     }
 
     /// Mute list

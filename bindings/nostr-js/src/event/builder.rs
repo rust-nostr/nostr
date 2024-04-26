@@ -165,6 +165,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Create encrypted direct msg event
+    ///
+    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
     #[wasm_bindgen(js_name = encryptedDirectMsg)]
     pub fn encrypted_direct_msg(
         sender_keys: &JsKeys,
@@ -493,11 +496,18 @@ impl JsEventBuilder {
         .into())
     }
 
-    /// GiftWrapped Sealed Direct message
-    #[wasm_bindgen(js_name = sealedDirect)]
-    pub fn sealed_direct(receiver: &JsPublicKey, message: &str) -> Self {
+    /// Private Direct message rumor
+    ///
+    /// <div class="warning">
+    /// This constructor compose ONLY the rumor for the private direct message!
+    /// NOT USE THIS IF YOU DON'T KNOW WHAT YOU ARE DOING!
+    /// </div>
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[wasm_bindgen(js_name = privateMsgRumor)]
+    pub fn private_msg_rumor(receiver: &JsPublicKey, message: &str) -> Self {
         Self {
-            inner: EventBuilder::sealed_direct(**receiver, message),
+            inner: EventBuilder::private_msg_rumor(**receiver, message),
         }
     }
 

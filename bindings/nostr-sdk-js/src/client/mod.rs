@@ -398,6 +398,8 @@ impl JsClient {
 
     /// Send encrypted direct message
     ///
+    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
     #[wasm_bindgen(js_name = sendDirectMsg)]
     pub async fn send_direct_msg(
@@ -581,16 +583,18 @@ impl JsClient {
             .map_err(into_err)
     }
 
-    /// Send GiftWrapper Sealed Direct message
-    #[wasm_bindgen(js_name = sendSealedMsg)]
-    pub async fn send_sealed_msg(
+    /// Send private direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[wasm_bindgen(js_name = sendPrivateMsg)]
+    pub async fn send_private_msg(
         &self,
         receiver: &JsPublicKey,
         message: &str,
         expiration: Option<JsTimestamp>,
     ) -> Result<()> {
         self.inner
-            .send_sealed_msg(**receiver, message, expiration.map(|t| *t))
+            .send_private_msg(**receiver, message, expiration.map(|t| *t))
             .await
             .map_err(into_err)
     }
