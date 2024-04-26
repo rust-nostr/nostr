@@ -1335,8 +1335,10 @@ impl Client {
         let rumor = rumor.to_unsigned_event(public_key);
 
         // Compose seal
+        // TODO: use directly the `EventBuilder::seal` constructor
         let content: String = signer.nip44_encrypt(receiver, rumor.as_json()).await?;
-        let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, []);
+        let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, [])
+            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK));
         let seal: Event = self.sign_event_builder(seal).await?;
 
         // Compose gift wrap

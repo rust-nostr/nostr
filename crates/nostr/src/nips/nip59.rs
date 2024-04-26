@@ -7,6 +7,7 @@
 
 use alloc::string::String;
 use core::fmt;
+use core::ops::Range;
 
 use bitcoin::secp256k1::{Secp256k1, Verification};
 
@@ -17,6 +18,9 @@ use crate::key::{self, Keys, SecretKey};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{JsonUtil, Kind, PublicKey};
+
+/// Range for random timestamp tweak (up to 2 days)
+pub const RANGE_RANDOM_TIMESTAMP_TWEAK: Range<u64> = 0..172800; // From 0 secs to 2 days
 
 /// NIP59 error
 #[derive(Debug, PartialEq, Eq)]

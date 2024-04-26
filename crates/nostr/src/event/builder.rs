@@ -32,6 +32,8 @@ use crate::nips::nip53::LiveEvent;
 #[cfg(feature = "nip57")]
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip58::Error as Nip58Error;
+#[cfg(all(feature = "std", feature = "nip59"))]
+use crate::nips::nip59;
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::nips::nip94::FileMetadata;
 use crate::nips::nip98::HttpData;
@@ -1259,7 +1261,8 @@ impl EventBuilder {
             rumor.as_json(),
             Version::default(),
         )?;
-        Ok(Self::new(Kind::Seal, content, []))
+        Ok(Self::new(Kind::Seal, content, [])
+            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK)))
     }
 
     /// Gift Wrap from seal
@@ -1294,7 +1297,7 @@ impl EventBuilder {
         }
 
         Self::new(Kind::GiftWrap, content, tags)
-            .custom_created_at(Timestamp::tweaked())
+            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
             .to_event(&keys)
     }
 
