@@ -7,7 +7,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
-use core::ops::{Add, Sub};
+use core::ops::{Add, Range, Sub};
 use core::str::FromStr;
 use core::time::Duration;
 
@@ -49,41 +49,41 @@ impl Timestamp {
 
     /// Get tweaked UNIX timestamp
     ///
-    /// Remove a random number of seconds from now (max 65535 secs)
+    /// Remove a random number of seconds from now
     #[cfg(feature = "std")]
-    pub fn tweaked() -> Self {
+    pub fn tweaked(range: Range<u64>) -> Self {
         let mut now: Timestamp = Self::now();
-        now.tweak();
+        now.tweak(range);
         now
     }
 
     /// Get tweaked UNIX timestamp
     ///
-    /// Remove a random number of seconds from now (max 65535 secs)
-    pub fn tweaked_with_supplier_and_rng<T, R>(supplier: &T, rng: &mut R) -> Self
+    /// Remove a random number of seconds from now
+    pub fn tweaked_with_supplier_and_rng<T, R>(supplier: &T, rng: &mut R, range: Range<u64>) -> Self
     where
         T: TimeSupplier,
         R: Rng,
     {
         let mut now: Timestamp = Self::now_with_supplier(supplier);
-        now.tweak_with_rng(rng);
+        now.tweak_with_rng(rng, range);
         now
     }
 
-    /// Remove a random number of seconds from [`Timestamp`] (max 65535 secs)
+    /// Remove a random number of seconds from [`Timestamp`]
     #[inline]
     #[cfg(feature = "std")]
-    pub fn tweak(&mut self) {
-        self.tweak_with_rng(&mut OsRng);
+    pub fn tweak(&mut self, range: Range<u64>) {
+        self.tweak_with_rng(&mut OsRng, range);
     }
 
-    /// Remove a random number of seconds from [`Timestamp`] (max 65535 secs)
-    pub fn tweak_with_rng<R>(&mut self, rng: &mut R)
+    /// Remove a random number of seconds from [`Timestamp`]
+    pub fn tweak_with_rng<R>(&mut self, rng: &mut R, range: Range<u64>)
     where
         R: Rng,
     {
-        let secs: u16 = rng.gen_range(0..=u16::MAX);
-        self.0 = self.0.saturating_sub(secs as u64);
+        let secs: u64 = rng.gen_range(range);
+        self.0 = self.0.saturating_sub(secs);
     }
 
     /// Get timestamp as [`u64`]

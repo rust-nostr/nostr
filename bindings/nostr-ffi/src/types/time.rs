@@ -37,13 +37,6 @@ impl Timestamp {
     }
 
     #[uniffi::constructor]
-    pub fn tweaked() -> Self {
-        Self {
-            inner: nostr::Timestamp::tweaked(),
-        }
-    }
-
-    #[uniffi::constructor]
     pub fn from_secs(secs: u64) -> Self {
         Self {
             inner: nostr::Timestamp::from(secs),
