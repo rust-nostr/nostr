@@ -1023,8 +1023,10 @@ impl Client {
         timeout: Option<Duration>,
     ) -> Result<HashMap<PublicKey, Metadata>, Error> {
         let public_keys = self.get_contact_list_public_keys(timeout).await?;
-        let mut contacts: HashMap<PublicKey, Metadata> =
-            public_keys.iter().map(|p| (p.clone(), Metadata::new())).collect();
+        let mut contacts: HashMap<PublicKey, Metadata> = public_keys
+            .iter()
+            .map(|p| (p.clone(), Metadata::new()))
+            .collect();
 
         let chunk_size: usize = self.opts.req_filters_chunk_size as usize;
         for chunk in public_keys.chunks(chunk_size) {
@@ -1040,7 +1042,7 @@ impl Client {
             let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(event.content())?;
-                if let Some(m) = contacts.get_mut(&event.author()) {
+                if let Some(m) = contacts.get_mut(event.author()) {
                     *m = metadata
                 };
             }
@@ -1072,16 +1074,19 @@ impl Client {
     /// # }
     /// ```
     #[cfg(feature = "nip04")]
-    pub async fn send_direct_msg<S>(
+    pub async fn send_direct_msg<P, S>(
         &self,
-        receiver: PublicKey,
+        receiver: P,
         msg: S,
         reply_to: Option<EventId>,
     ) -> Result<EventId, Error>
     where
+        P: IntoPublicKey,
         S: Into<String>,
     {
-        let signer = self.signer().await?;
+        let receiver: PublicKey = receiver.into_public_key();
+
+        let signer: NostrSigner = self.signer().await?;
         let content: String = signer.nip04_encrypt(&receiver, msg.into()).await?;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(reply_to.is_some()));
@@ -1331,7 +1336,7 @@ impl Client {
     ) -> Result<(), Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
-        let public_key: PublicKey = signer.public_key().await?;
+        let public_key: PublicKey = signer.public_key().await?.into_owned();
         let rumor = rumor.to_unsigned_event(public_key);
 
         // Compose seal

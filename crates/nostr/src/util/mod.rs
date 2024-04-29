@@ -4,6 +4,7 @@
 
 //! Util
 
+use alloc::borrow::Cow;
 use alloc::string::String;
 
 use bitcoin::secp256k1::{self, ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
@@ -19,6 +20,7 @@ pub mod hex;
 pub mod hkdf;
 
 use crate::nips::nip01::Coordinate;
+use crate::nips::nip19::Nip19Profile;
 use crate::{EventId, PublicKey, SecretKey, Tag};
 
 /// Generate shared key
@@ -98,5 +100,34 @@ impl From<EventId> for EventIdOrCoordinate {
 impl From<Coordinate> for EventIdOrCoordinate {
     fn from(coordinate: Coordinate) -> Self {
         Self::Coordinate(coordinate)
+    }
+}
+
+#[allow(missing_docs)]
+pub trait IntoPublicKey {
+    fn into_public_key(self) -> PublicKey;
+}
+
+impl IntoPublicKey for PublicKey {
+    fn into_public_key(self) -> PublicKey {
+        self
+    }
+}
+
+impl IntoPublicKey for &PublicKey {
+    fn into_public_key(self) -> PublicKey {
+        self.clone()
+    }
+}
+
+impl IntoPublicKey for Cow<'_, PublicKey> {
+    fn into_public_key(self) -> PublicKey {
+        self.into_owned()
+    }
+}
+
+impl IntoPublicKey for Nip19Profile {
+    fn into_public_key(self) -> PublicKey {
+        self.public_key
     }
 }

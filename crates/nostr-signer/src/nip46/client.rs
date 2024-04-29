@@ -115,8 +115,9 @@ impl Nip46Signer {
         tracing::debug!("Sending '{msg}' NIP46 message");
 
         let req_id = msg.id().to_string();
-        let event: Event = EventBuilder::nostr_connect(&self.app_keys, signer_public_key.clone(), msg)?
-            .to_event(&self.app_keys)?;
+        let event: Event =
+            EventBuilder::nostr_connect(&self.app_keys, signer_public_key.clone(), msg)?
+                .to_event(&self.app_keys)?;
 
         let mut notifications = self.pool.notifications();
 
@@ -184,13 +185,14 @@ impl Nip46Signer {
     }
 
     /// NIP04 encrypt
-    pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip04_encrypt<P, T>(&self, public_key: P, content: T) -> Result<String, Error>
     where
+        P: IntoPublicKey,
         T: AsRef<[u8]>,
     {
         let content: &[u8] = content.as_ref();
         let req = Request::Nip04Encrypt {
-            public_key,
+            public_key: public_key.into_public_key(),
             text: String::from_utf8_lossy(content).to_string(),
         };
         let res = self.send_request(req).await?;
@@ -198,16 +200,13 @@ impl Nip46Signer {
     }
 
     /// NIP04 decrypt
-    pub async fn nip04_decrypt<S>(
-        &self,
-        public_key: PublicKey,
-        ciphertext: S,
-    ) -> Result<String, Error>
+    pub async fn nip04_decrypt<P, S>(&self, public_key: P, ciphertext: S) -> Result<String, Error>
     where
+        P: IntoPublicKey,
         S: Into<String>,
     {
         let req = Request::Nip04Decrypt {
-            public_key,
+            public_key: public_key.into_public_key(),
             ciphertext: ciphertext.into(),
         };
         let res = self.send_request(req).await?;
@@ -215,13 +214,14 @@ impl Nip46Signer {
     }
 
     /// NIP44 encrypt
-    pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip44_encrypt<P, T>(&self, public_key: P, content: T) -> Result<String, Error>
     where
+        P: IntoPublicKey,
         T: AsRef<[u8]>,
     {
         let content: &[u8] = content.as_ref();
         let req = Request::Nip44Encrypt {
-            public_key,
+            public_key: public_key.into_public_key(),
             text: String::from_utf8_lossy(content).to_string(),
         };
         let res = self.send_request(req).await?;
@@ -229,13 +229,14 @@ impl Nip46Signer {
     }
 
     /// NIP44 decrypt
-    pub async fn nip44_decrypt<T>(&self, public_key: PublicKey, payload: T) -> Result<String, Error>
+    pub async fn nip44_decrypt<P, T>(&self, public_key: P, payload: T) -> Result<String, Error>
     where
+        P: IntoPublicKey,
         T: AsRef<[u8]>,
     {
         let payload: &[u8] = payload.as_ref();
         let req = Request::Nip44Decrypt {
-            public_key,
+            public_key: public_key.into_public_key(),
             ciphertext: String::from_utf8_lossy(payload).to_string(),
         };
         let res = self.send_request(req).await?;
@@ -275,8 +276,7 @@ async fn get_signer_public_key(
         while let Ok(notification) = notifications.recv().await {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind() == Kind::NostrConnect {
-                    let msg: String =
-                        nip04::decrypt(secret_key, event.author(), event.content())?;
+                    let msg: String = nip04::decrypt(secret_key, event.author(), event.content())?;
                     tracing::debug!("New Nostr Connect message received: {msg}");
                     let msg = Message::from_json(msg)?;
                     if let Ok(Request::Connect { public_key, .. }) = msg.to_request() {

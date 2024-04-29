@@ -221,7 +221,11 @@ impl Nip07Signer {
     }
 
     /// NIP04 encrypt
-    pub async fn nip04_encrypt<T>(&self, public_key: &PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip04_encrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        content: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
@@ -243,7 +247,7 @@ impl Nip07Signer {
     /// NIP04 decrypt
     pub async fn nip04_decrypt<S>(
         &self,
-        public_key: PublicKey,
+        public_key: &PublicKey,
         ciphertext: S,
     ) -> Result<String, Error>
     where
@@ -271,7 +275,11 @@ impl Nip07Signer {
     }
 
     /// NIP44 encrypt
-    pub async fn nip44_encrypt<T>(&self, public_key: &PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip44_encrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        content: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
@@ -293,7 +301,7 @@ impl Nip07Signer {
     /// NIP44 decrypt
     pub async fn nip44_decrypt<T>(
         &self,
-        public_key: PublicKey,
+        public_key: &PublicKey,
         ciphertext: T,
     ) -> Result<String, Error>
     where

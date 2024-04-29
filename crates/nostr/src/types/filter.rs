@@ -19,6 +19,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::event::TagsIndexes;
+use crate::util::IntoPublicKey;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
 type GenericTags = AllocMap<SingleLetterTag, AllocSet<String>>;
@@ -336,27 +337,38 @@ impl Filter {
 
     /// Add author
     #[inline]
-    pub fn author(self, author: PublicKey) -> Self {
+    pub fn author<T>(self, author: T) -> Self
+    where
+        T: IntoPublicKey,
+    {
         self.authors([author])
     }
 
     /// Add authors
     #[inline]
-    pub fn authors<I>(mut self, authors: I) -> Self
+    pub fn authors<I, T>(mut self, authors: I) -> Self
     where
-        I: IntoIterator<Item = PublicKey>,
+        I: IntoIterator<Item = T>,
+        T: IntoPublicKey,
     {
-        self.authors = extend_or_collect(self.authors, authors);
+        self.authors = extend_or_collect(
+            self.authors,
+            authors.into_iter().map(|p| p.into_public_key()),
+        );
         self
     }
 
     /// Remove authors
     #[inline]
-    pub fn remove_authors<I>(mut self, authors: I) -> Self
+    pub fn remove_authors<I, T>(mut self, authors: I) -> Self
     where
-        I: IntoIterator<Item = PublicKey>,
+        I: IntoIterator<Item = T>,
+        T: IntoPublicKey,
     {
-        self.authors = remove_or_none(self.authors, authors);
+        self.authors = remove_or_none(
+            self.authors,
+            authors.into_iter().map(|p| p.into_public_key()),
+        );
         self
     }
 
@@ -412,26 +424,37 @@ impl Filter {
 
     /// Add pubkey
     #[inline]
-    pub fn pubkey(self, pubkey: PublicKey) -> Self {
-        self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), [pubkey])
+    pub fn pubkey<T>(self, pubkey: T) -> Self
+    where
+        T: IntoPublicKey,
+    {
+        self.pubkeys([pubkey])
     }
 
     /// Add pubkeys
     #[inline]
-    pub fn pubkeys<I>(self, pubkeys: I) -> Self
+    pub fn pubkeys<I, T>(self, pubkeys: I) -> Self
     where
-        I: IntoIterator<Item = PublicKey>,
+        I: IntoIterator<Item = T>,
+        T: IntoPublicKey,
     {
-        self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
+        self.custom_tag(
+            SingleLetterTag::lowercase(Alphabet::P),
+            pubkeys.into_iter().map(|p| p.into_public_key()),
+        )
     }
 
     /// Remove pubkeys
     #[inline]
-    pub fn remove_pubkeys<I>(self, pubkeys: I) -> Self
+    pub fn remove_pubkeys<I, T>(self, pubkeys: I) -> Self
     where
-        I: IntoIterator<Item = PublicKey>,
+        I: IntoIterator<Item = T>,
+        T: IntoPublicKey,
     {
-        self.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
+        self.remove_custom_tag(
+            SingleLetterTag::lowercase(Alphabet::P),
+            pubkeys.into_iter().map(|p| p.into_public_key()),
+        )
     }
 
     /// Add hashtag
@@ -797,6 +820,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec::Vec;
+
     use bitcoin::secp256k1::schnorr::Signature;
 
     use super::*;
@@ -827,10 +852,12 @@ mod tests {
 
     #[test]
     fn test_empty_filter_serialization() {
-        let filter = Filter::new().authors([]);
+        let authors: Vec<PublicKey> = Vec::new();
+        let filter = Filter::new().authors(authors);
         assert_eq!(filter.as_json(), r#"{"authors":[]}"#);
 
-        let filter = Filter::new().pubkeys([]);
+        let pubkeys: Vec<PublicKey> = Vec::new();
+        let filter = Filter::new().pubkeys(pubkeys);
         assert_eq!(filter.as_json(), r##"{"#p":[]}"##);
     }
 

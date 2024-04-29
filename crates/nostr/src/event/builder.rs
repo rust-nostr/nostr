@@ -42,7 +42,7 @@ use crate::nips::{nip13, nip58};
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 use crate::types::{Contact, Metadata, Timestamp};
-use crate::util::EventIdOrCoordinate;
+use crate::util::{EventIdOrCoordinate, IntoPublicKey};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{Alphabet, JsonUtil, RelayMetadata, SingleLetterTag, UncheckedUrl, Url};
@@ -225,17 +225,14 @@ impl EventBuilder {
 
     /// Build [`UnsignedEvent`]
     #[inline]
-    pub fn to_unsigned_event_with_supplier<T>(
-        self,
-        supplier: &T,
-        pubkey: PublicKey,
-    ) -> UnsignedEvent
+    pub fn to_unsigned_event_with_supplier<P, T>(self, supplier: &T, public_key: P) -> UnsignedEvent
     where
+        P: IntoPublicKey,
         T: TimeSupplier,
     {
         UnsignedEvent {
             id: None,
-            pubkey,
+            pubkey: public_key.into_public_key(),
             created_at: self
                 .custom_created_at
                 .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
@@ -267,15 +264,18 @@ impl EventBuilder {
     }
 
     /// Build unsigned POW [`Event`]
-    pub fn to_unsigned_pow_event_with_supplier<T>(
+    pub fn to_unsigned_pow_event_with_supplier<P, T>(
         self,
         supplier: &T,
-        pubkey: PublicKey,
+        public_key: P,
         difficulty: u8,
     ) -> UnsignedEvent
     where
+        P: IntoPublicKey,
         T: TimeSupplier,
     {
+        let public_key: PublicKey = public_key.into_public_key();
+
         let mut nonce: u128 = 0;
         let mut tags: Vec<Tag> = self.tags;
 
@@ -290,7 +290,8 @@ impl EventBuilder {
             let created_at: Timestamp = self
                 .custom_created_at
                 .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
-            let id: EventId = EventId::new(&pubkey, &created_at, &self.kind, &tags, &self.content);
+            let id: EventId =
+                EventId::new(&public_key, &created_at, &self.kind, &tags, &self.content);
 
             if nip13::get_leading_zero_bits(id.as_bytes()) >= difficulty {
                 #[cfg(feature = "std")]
@@ -303,7 +304,7 @@ impl EventBuilder {
 
                 return UnsignedEvent {
                     id: Some(id),
-                    pubkey,
+                    pubkey: public_key,
                     created_at,
                     kind: self.kind,
                     tags,
@@ -327,8 +328,11 @@ impl EventBuilder {
     /// Build [`UnsignedEvent`]
     #[inline]
     #[cfg(feature = "std")]
-    pub fn to_unsigned_event(self, pubkey: PublicKey) -> UnsignedEvent {
-        self.to_unsigned_event_with_supplier(&Instant::now(), pubkey)
+    pub fn to_unsigned_event<P>(self, public_key: P) -> UnsignedEvent
+    where
+        P: IntoPublicKey,
+    {
+        self.to_unsigned_event_with_supplier(&Instant::now(), public_key)
     }
 
     /// Build POW [`Event`]
@@ -347,8 +351,11 @@ impl EventBuilder {
     /// Build unsigned POW [`Event`]
     #[inline]
     #[cfg(feature = "std")]
-    pub fn to_unsigned_pow_event(self, pubkey: PublicKey, difficulty: u8) -> UnsignedEvent {
-        self.to_unsigned_pow_event_with_supplier(&Instant::now(), pubkey, difficulty)
+    pub fn to_unsigned_pow_event<P>(self, public_key: P, difficulty: u8) -> UnsignedEvent
+    where
+        P: IntoPublicKey,
+    {
+        self.to_unsigned_pow_event_with_supplier(&Instant::now(), public_key, difficulty)
     }
 }
 
@@ -1021,7 +1028,7 @@ impl EventBuilder {
         // Add identity tag
         tags.push(Tag::from_standardized_without_cell(
             TagStandard::Coordinate {
-                coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.author().clone())
+                coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.author())
                     .identifier(badge_id),
                 relay_url: None,
             },

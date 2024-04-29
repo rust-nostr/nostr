@@ -167,11 +167,10 @@ impl NostrDatabase for NdbDatabase {
     async fn query(&self, filters: Vec<Filter>, _order: Order) -> Result<Vec<Event>, Self::Err> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
-        let mut events: Vec<Event> = Vec::with_capacity(res.len());
-        for r in res.into_iter() {
-            events.push(ndb_note_to_event(r.note)?);
-        }
-        Ok(events)
+        Ok(res
+            .into_iter()
+            .filter_map(|r| ndb_note_to_event(r.note).ok())
+            .collect())
     }
 
     async fn event_ids_by_filters(
@@ -181,11 +180,7 @@ impl NostrDatabase for NdbDatabase {
     ) -> Result<Vec<EventId>, Self::Err> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
-        let mut ids: Vec<EventId> = Vec::with_capacity(res.len());
-        for r in res.into_iter() {
-            ids.push(ndb_note_to_id(r.note)?);
-        }
-        Ok(ids)
+        Ok(res.into_iter().map(|r| ndb_note_to_id(r.note)).collect())
     }
 
     async fn negentropy_items(
@@ -194,11 +189,10 @@ impl NostrDatabase for NdbDatabase {
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, vec![filter])?;
-        let mut items: Vec<(EventId, Timestamp)> = Vec::with_capacity(res.len());
-        for r in res.into_iter() {
-            items.push(ndb_note_to_neg_item(r.note)?);
-        }
-        Ok(items)
+        Ok(res
+            .into_iter()
+            .map(|r| ndb_note_to_neg_item(r.note))
+            .collect())
     }
 
     async fn delete(&self, _filter: Filter) -> Result<(), Self::Err> {
@@ -223,7 +217,7 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 
     if let Some(authors) = f.authors {
         if !authors.is_empty() {
-            let authors: Vec<[u8; 32]> = authors.into_iter().map(|p| p.serialize()).collect();
+            let authors: Vec<[u8; 32]> = authors.into_iter().map(|p| p.to_bytes()).collect();
             filter.authors(authors);
         }
     }
@@ -261,12 +255,12 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 
 #[inline(always)]
 fn ndb_note_to_event(note: Note) -> Result<Event, DatabaseError> {
-    let id = EventId::from_slice(note.id()).map_err(DatabaseError::nostr)?;
-    let public_key = PublicKey::from_slice(note.pubkey()).map_err(DatabaseError::nostr)?;
     let sig = Signature::from_slice(note.sig()).map_err(DatabaseError::nostr)?;
 
     let tags: Vec<Tag> = ndb_note_to_tags(&note)?;
 
+    let id = EventId::owned(*note.id());
+    let public_key = PublicKey::unchecked(*note.pubkey());
     let created_at = Timestamp::from(note.created_at());
     let kind = Kind::from(note.kind() as u16);
     let content = note.content();
@@ -295,13 +289,13 @@ fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
 }
 
 #[inline(always)]
-fn ndb_note_to_id(note: Note) -> Result<EventId, DatabaseError> {
-    EventId::from_slice(note.id()).map_err(DatabaseError::nostr)
+fn ndb_note_to_id(note: Note) -> EventId {
+    EventId::owned(*note.id())
 }
 
 #[inline(always)]
-fn ndb_note_to_neg_item(note: Note) -> Result<(EventId, Timestamp), DatabaseError> {
-    let id = EventId::from_slice(note.id()).map_err(DatabaseError::nostr)?;
+fn ndb_note_to_neg_item(note: Note) -> (EventId, Timestamp) {
+    let id = EventId::owned(*note.id());
     let created_at = Timestamp::from(note.created_at());
-    Ok((id, created_at))
+    (id, created_at)
 }

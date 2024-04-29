@@ -13,8 +13,8 @@ use crate::error::Result;
 use crate::{NostrError, PublicKey, SecretKey};
 
 #[uniffi::export]
-pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> Vec<u8> {
-    util::generate_shared_key(secret_key.deref(), public_key.deref()).to_vec()
+pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> Result<Vec<u8>> {
+    Ok(util::generate_shared_key(secret_key.deref(), public_key.deref())?.to_vec())
 }
 
 #[derive(Enum)]

@@ -41,6 +41,12 @@ impl From<PublicKey> for ZapEntity {
     }
 }
 
+impl From<&PublicKey> for ZapEntity {
+    fn from(value: &PublicKey) -> Self {
+        Self::PublicKey(value.clone())
+    }
+}
+
 /// Zap Details
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ZapDetails {

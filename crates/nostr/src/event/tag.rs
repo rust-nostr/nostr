@@ -33,6 +33,7 @@ use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{self, LiveEventMarker, LiveEventStatus};
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::types::url::{ParseError, Url};
+use crate::util::IntoPublicKey;
 use crate::{
     key, Alphabet, Event, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp, UncheckedUrl,
 };
@@ -699,8 +700,11 @@ impl Tag {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
-    pub fn public_key(public_key: PublicKey) -> Self {
-        Self::from_standardized_without_cell(TagStandard::public_key(public_key))
+    pub fn public_key<T>(public_key: T) -> Self
+    where
+        T: IntoPublicKey,
+    {
+        Self::from_standardized_without_cell(TagStandard::public_key(public_key.into_public_key()))
     }
 
     /// Compose `["d", "<identifier>"]` tag
