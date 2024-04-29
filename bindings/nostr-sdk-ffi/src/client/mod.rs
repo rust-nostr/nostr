@@ -151,6 +151,7 @@ impl Client {
         block_on(async move { Ok(self.inner.remove_relay(url).await?) })
     }
 
+    /// Connect to a previously added relay
     pub fn connect_relay(&self, url: String) -> Result<()> {
         block_on(async move { Ok(self.inner.connect_relay(url).await?) })
     }
@@ -159,11 +160,12 @@ impl Client {
         block_on(async move { Ok(self.inner.disconnect_relay(url).await?) })
     }
 
+    /// Connect to all added relays
     pub fn connect(&self) {
         block_on(async move { self.inner.connect().await })
     }
 
-    /// Connect relays
+    /// Connect to all added relays
     ///
     /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
     /// The code continues if the `timeout` is reached or if all relays connect.

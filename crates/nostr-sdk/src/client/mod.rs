@@ -480,7 +480,7 @@ impl Client {
         Ok(())
     }
 
-    /// Connect relays
+    /// Connect to all added relays
     ///
     /// # Example
     /// ```rust,no_run
@@ -498,7 +498,7 @@ impl Client {
         self.pool.connect(self.opts.connection_timeout).await;
     }
 
-    /// Connect relays
+    /// Connect to all added relays
     ///
     /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
     /// The code continues if the `timeout` is reached or if all relays connect.

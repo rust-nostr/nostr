@@ -142,7 +142,7 @@ impl JsClient {
         self.inner.remove_relay(url).await.map_err(into_err)
     }
 
-    /// Connect relay
+    /// Connect to a previously added relay
     #[wasm_bindgen(js_name = connectRelay)]
     pub async fn connect_relay(&self, url: String) -> Result<()> {
         self.inner.connect_relay(url).await.map_err(into_err)
@@ -159,7 +159,7 @@ impl JsClient {
         self.inner.connect().await
     }
 
-    /// Connect relays
+    /// Connect to all added relays
     ///
     /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
     /// The code continues if the `timeout` is reached or if all relays connect.
