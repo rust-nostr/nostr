@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: allow to set a `Timestamp` tweak range ([Yuki Kishimoto])
 * nostr: adj. NIP59 timestamp tweak range ([Yuki Kishimoto])
 * database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
+* database: store full event in `DatabaseIndexes` ([Yuki Kishimoto])
 * pool: inline `RelayPool` methods ([Yuki Kishimoto])
 * sdk: inline `Client`, `ClientBuilder` and `Options` methods ([Yuki Kishimoto])
 * sdk: update `tokio` features ([Yuki Kishimoto])
@@ -62,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 * nostr: remove `GenericTagValue` ([Yuki Kishimoto])
+* database: remove `TempEvent` ([Yuki Kishimoto])
+* database: remove `NostrDatabase::event_ids_by_filters` ([Yuki Kishimoto])
 * ffi(nostr): remove `Kind::match*` methods ([Yuki Kishimoto])
 
 ## [v0.30.0]

@@ -37,6 +37,7 @@ async fn run() -> Result<()> {
 
     match args.command {
         CliCommand::Open => {
+            //let db = NdbDatabase::open("ndb")?;
             //let db = RocksDatabase::open("./db/nostr").await?;
             let db = SQLiteDatabase::open("nostr.db").await?;
             // let db = MemoryDatabase::with_opts(MemoryDatabaseOptions {

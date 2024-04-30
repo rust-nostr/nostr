@@ -7,43 +7,25 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
+use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::event::id;
+use nostr::hashes::siphash24::Hash as SipHash24;
+use nostr::hashes::Hash;
 use nostr::nips::nip01::Coordinate;
 use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
-use thiserror::Error;
 use tokio::sync::RwLock;
 
-use crate::tag_indexes::{hash, TagIndexValues, TagIndexes, TAG_INDEX_VALUE_SIZE};
-#[cfg(feature = "flatbuf")]
-use crate::temp::TempEvent;
 use crate::Order;
 
-/// Public Key Prefix Size
-const PUBLIC_KEY_PREFIX_SIZE: usize = 8;
-
-#[derive(Debug, Error)]
-enum Error {
-    #[error(transparent)]
-    EventId(#[from] id::Error),
-}
+const TAG_INDEX_VALUE_SIZE: usize = 8;
 
 type ArcEventIndex = Arc<EventIndex>;
 
-/// Event Index
+// Wrap `Event` in `EventIndex` to reverse `Ord`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct EventIndex {
-    /// Timestamp (seconds)
-    created_at: Timestamp,
-    /// Event ID
-    event_id: EventId,
-    /// Public key prefix
-    pubkey: PublicKeyPrefix,
-    /// Kind
-    kind: Kind,
-    /// Tag indexes
-    tags: TagIndexes,
+    inner: Event,
 }
 
 impl PartialOrd for EventIndex {
@@ -54,240 +36,39 @@ impl PartialOrd for EventIndex {
 
 impl Ord for EventIndex {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.created_at != other.created_at {
-            self.created_at.cmp(&other.created_at).reverse()
-        } else {
-            self.event_id.cmp(&other.event_id)
-        }
+        // Descending order
+        self.inner.cmp(&other.inner).reverse()
     }
 }
 
-impl From<&Event> for EventIndex {
-    fn from(e: &Event) -> Self {
-        Self {
-            created_at: e.created_at(),
-            event_id: e.id(),
-            pubkey: PublicKeyPrefix::from(e.author()),
-            kind: e.kind(),
-            tags: TagIndexes::from(e.iter_tags()),
-        }
+impl Deref for EventIndex {
+    type Target = Event;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
-/// Public Key prefix
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct PublicKeyPrefix([u8; PUBLIC_KEY_PREFIX_SIZE]);
-
-impl From<&PublicKey> for PublicKeyPrefix {
-    fn from(pk: &PublicKey) -> Self {
-        let pk: &[u8; 32] = pk.as_bytes();
-        Self::from(pk)
-    }
-}
-
-impl From<PublicKey> for PublicKeyPrefix {
-    fn from(pk: PublicKey) -> Self {
-        Self::from(&pk)
-    }
-}
-
-impl From<&[u8; 32]> for PublicKeyPrefix {
-    fn from(pk: &[u8; 32]) -> Self {
-        let mut pubkey = [0u8; PUBLIC_KEY_PREFIX_SIZE];
-        pubkey.copy_from_slice(&pk[..PUBLIC_KEY_PREFIX_SIZE]);
-        Self(pubkey)
-    }
-}
-
-#[derive(Default)]
-struct FilterIndex {
-    ids: HashSet<EventId>,
-    authors: HashSet<PublicKeyPrefix>,
-    kinds: HashSet<Kind>,
-    since: Option<Timestamp>,
-    until: Option<Timestamp>,
-    generic_tags: HashMap<SingleLetterTag, HashSet<String>>,
-}
-
-impl FilterIndex {
-    fn ids_match(&self, event: &EventIndex) -> bool {
-        self.ids.is_empty() || self.ids.contains(&event.event_id)
-    }
-
-    fn authors_match(&self, event: &EventIndex) -> bool {
-        self.authors.is_empty() || self.authors.contains(&event.pubkey)
-    }
-
-    fn tag_match(&self, event: &EventIndex) -> bool {
-        if self.generic_tags.is_empty() {
-            return true;
-        }
-
-        if event.tags.is_empty() {
-            return false;
-        }
-
-        self.generic_tags.iter().all(|(tagname, set)| {
-            event.tags.get(tagname).map_or(false, |valset| {
-                TagIndexValues::iter(set.iter())
-                    .filter(|t| valset.contains(t))
-                    .count()
-                    > 0
-            })
-        })
-    }
-
-    fn kind_match(&self, kind: &Kind) -> bool {
-        self.kinds.is_empty() || self.kinds.contains(kind)
-    }
-
-    pub fn match_event(&self, event: &EventIndex) -> bool {
-        self.ids_match(event)
-            && self.since.map_or(true, |t| event.created_at >= t)
-            && self.until.map_or(true, |t| event.created_at <= t)
-            && self.kind_match(&event.kind)
-            && self.authors_match(event)
-            && self.tag_match(event)
-    }
-}
-
-impl From<Filter> for FilterIndex {
-    fn from(value: Filter) -> Self {
-        Self {
-            ids: value.ids.unwrap_or_default(),
-            authors: value
-                .authors
-                .unwrap_or_default()
-                .into_iter()
-                .map(PublicKeyPrefix::from)
-                .collect(),
-            kinds: value.kinds.unwrap_or_default(),
-            since: value.since,
-            until: value.until,
-            generic_tags: value.generic_tags,
-        }
-    }
-}
-
-#[allow(missing_docs)]
-pub enum EventOrTempEvent<'a> {
-    Event(&'a Event),
-    EventOwned(Box<Event>),
-    #[cfg(feature = "flatbuf")]
-    Temp(TempEvent),
-}
-
-impl<'a> From<Event> for EventOrTempEvent<'a> {
-    fn from(value: Event) -> Self {
-        Self::EventOwned(Box::new(value))
-    }
-}
-
-impl<'a> From<&'a Event> for EventOrTempEvent<'a> {
-    fn from(value: &'a Event) -> Self {
-        Self::Event(value)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'a> From<TempEvent> for EventOrTempEvent<'a> {
-    fn from(value: TempEvent) -> Self {
-        Self::Temp(value)
-    }
-}
-
-impl<'a> EventOrTempEvent<'a> {
-    fn id(&self) -> Result<EventId, Error> {
-        match self {
-            EventOrTempEvent::Event(e) => Ok(e.id()),
-            EventOrTempEvent::EventOwned(e) => Ok(e.id()),
-            #[cfg(feature = "flatbuf")]
-            EventOrTempEvent::Temp(r) => Ok(EventId::from_slice(&r.id)?),
-        }
-    }
-
-    fn pubkey(&self) -> PublicKeyPrefix {
-        match self {
-            Self::Event(e) => PublicKeyPrefix::from(e.author()),
-            Self::EventOwned(e) => PublicKeyPrefix::from(e.author()),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => PublicKeyPrefix::from(&r.pubkey),
-        }
-    }
-
-    fn created_at(&self) -> Timestamp {
-        match self {
-            Self::Event(e) => e.created_at(),
-            Self::EventOwned(e) => e.created_at(),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.created_at,
-        }
-    }
-
-    fn kind(&self) -> Kind {
-        match self {
-            Self::Event(e) => e.kind(),
-            Self::EventOwned(e) => e.kind(),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.kind,
-        }
-    }
-
-    fn tags(self) -> TagIndexes {
-        match self {
-            Self::Event(e) => TagIndexes::from(e.iter_tags()),
-            Self::EventOwned(e) => TagIndexes::from(e.iter_tags()),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.tags,
-        }
-    }
-
-    fn identifier(&self) -> Option<[u8; TAG_INDEX_VALUE_SIZE]> {
-        match self {
-            Self::Event(e) => e.identifier().map(hash),
-            Self::EventOwned(e) => e.identifier().map(hash),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.identifier,
-        }
-    }
-
-    fn event_ids(&self) -> Box<dyn Iterator<Item = &EventId> + '_> {
-        match self {
-            Self::Event(e) => Box::new(e.event_ids()),
-            Self::EventOwned(e) => Box::new(e.event_ids()),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => Box::new(r.event_ids.iter()),
-        }
-    }
-
-    fn coordinates(&self) -> Box<dyn Iterator<Item = &Coordinate> + '_> {
-        match self {
-            Self::Event(e) => Box::new(e.coordinates()),
-            Self::EventOwned(e) => Box::new(e.coordinates()),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => Box::new(r.coordinates.iter()),
-        }
-    }
-
-    fn is_expired(&self, now: &Timestamp) -> bool {
-        match self {
-            Self::Event(e) => e.is_expired_at(now),
-            Self::EventOwned(e) => e.is_expired_at(now),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.is_expired(now),
-        }
-    }
+#[inline]
+fn hash<S>(value: S) -> [u8; TAG_INDEX_VALUE_SIZE]
+where
+    S: AsRef<str>,
+{
+    let mut inner: [u8; TAG_INDEX_VALUE_SIZE] = [0u8; TAG_INDEX_VALUE_SIZE];
+    let hash = SipHash24::hash(value.as_ref().as_bytes());
+    inner.copy_from_slice(&hash[..TAG_INDEX_VALUE_SIZE]);
+    inner
 }
 
 struct QueryByKindAndAuthorParams {
     kind: Kind,
-    author: PublicKeyPrefix,
+    author: PublicKey,
     since: Option<Timestamp>,
     until: Option<Timestamp>,
 }
 
 impl QueryByKindAndAuthorParams {
-    pub fn new(kind: Kind, author: PublicKeyPrefix) -> Self {
+    pub fn new(kind: Kind, author: PublicKey) -> Self {
         Self {
             kind,
             author,
@@ -299,18 +80,14 @@ impl QueryByKindAndAuthorParams {
 
 struct QueryByParamReplaceable {
     kind: Kind,
-    author: PublicKeyPrefix,
+    author: PublicKey,
     identifier: [u8; TAG_INDEX_VALUE_SIZE],
     since: Option<Timestamp>,
     until: Option<Timestamp>,
 }
 
 impl QueryByParamReplaceable {
-    pub fn new(
-        kind: Kind,
-        author: PublicKeyPrefix,
-        identifier: [u8; TAG_INDEX_VALUE_SIZE],
-    ) -> Self {
+    pub fn new(kind: Kind, author: PublicKey, identifier: [u8; TAG_INDEX_VALUE_SIZE]) -> Self {
         Self {
             kind,
             author,
@@ -358,7 +135,7 @@ impl From<Filter> for QueryPattern {
             (1, Some(kind), 1, Some(author), 0, 0, None) => {
                 Self::KindAuthor(QueryByKindAndAuthorParams {
                     kind,
-                    author: PublicKeyPrefix::from(author),
+                    author,
                     since: filter.since,
                     until: filter.until,
                 })
@@ -368,7 +145,7 @@ impl From<Filter> for QueryPattern {
             {
                 Self::ParamReplaceable(QueryByParamReplaceable {
                     kind,
-                    author: PublicKeyPrefix::from(author),
+                    author,
                     identifier,
                     since: filter.since,
                     until: filter.until,
@@ -398,9 +175,9 @@ enum InternalQueryResult<'a> {
 struct InternalDatabaseIndexes {
     index: BTreeSet<ArcEventIndex>,
     ids_index: HashMap<EventId, ArcEventIndex>,
-    kind_author_index: HashMap<(Kind, PublicKeyPrefix), BTreeSet<ArcEventIndex>>,
-    kind_author_tags_index:
-        HashMap<(Kind, PublicKeyPrefix, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>,
+    // author_index: HashMap<PublicKey, BTreeSet<ArcEventIndex>>
+    kind_author_index: HashMap<(Kind, PublicKey), BTreeSet<ArcEventIndex>>,
+    kind_author_tags_index: HashMap<(Kind, PublicKey, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>,
     deleted_ids: HashSet<EventId>,
     deleted_coordinates: HashMap<Coordinate, Timestamp>,
 }
@@ -408,17 +185,28 @@ struct InternalDatabaseIndexes {
 impl InternalDatabaseIndexes {
     /// Bulk index
     #[tracing::instrument(skip_all)]
-    pub fn bulk_index<'a, E>(&mut self, events: BTreeSet<E>) -> HashSet<EventId>
-    where
-        E: Into<EventOrTempEvent<'a>>,
-    {
+    pub fn bulk_index(&mut self, events: BTreeSet<Event>) -> HashSet<EventId> {
+        // Reserve allocation
+        self.ids_index.reserve(events.len());
+        self.kind_author_index.reserve(events.len());
+        self.kind_author_tags_index.reserve(
+            events
+                .iter()
+                .filter(|e| e.kind().is_parameterized_replaceable())
+                .count(),
+        );
+        self.deleted_ids.reserve(
+            events
+                .iter()
+                .filter(|e| e.kind() == Kind::EventDeletion)
+                .count(),
+        );
+
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
-            .map(|e| e.into())
             .filter(|e| !e.kind().is_ephemeral())
-            .filter_map(|event| self.internal_index_event(event, &now).ok())
-            .flat_map(|res| res.to_discard)
+            .flat_map(|event| self.internal_index_event(&event, &now).to_discard)
             .collect()
     }
 
@@ -428,46 +216,49 @@ impl InternalDatabaseIndexes {
         &'a mut self,
         events: BTreeSet<Event>,
     ) -> impl Iterator<Item = Event> + 'a {
+        // Reserve allocation
+        self.ids_index.reserve(events.len());
+        self.kind_author_index.reserve(events.len());
+        self.kind_author_tags_index.reserve(
+            events
+                .iter()
+                .filter(|e| e.kind().is_parameterized_replaceable())
+                .count(),
+        );
+        self.deleted_ids.reserve(
+            events
+                .iter()
+                .filter(|e| e.kind() == Kind::EventDeletion)
+                .count(),
+        );
+
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
             .filter(|e| !e.is_expired() && !e.is_ephemeral())
-            .filter(move |event| match self.internal_index_event(event, &now) {
-                Ok(res) => res.to_store,
-                Err(_) => false,
-            })
+            .filter(move |event| self.internal_index_event(event, &now).to_store)
     }
 
-    fn internal_index_event<'a, E>(
-        &mut self,
-        event: E,
-        now: &Timestamp,
-    ) -> Result<EventIndexResult, Error>
-    where
-        E: Into<EventOrTempEvent<'a>>,
-    {
-        let event = event.into();
-        let event_id: EventId = event.id()?;
-
+    fn internal_index_event(&mut self, event: &Event, now: &Timestamp) -> EventIndexResult {
         // Check if was already added
-        if self.ids_index.contains_key(&event_id) {
-            return Ok(EventIndexResult::default());
+        if self.ids_index.contains_key(&event.id) {
+            return EventIndexResult::default();
         }
 
         // Check if was deleted or is expired
-        if self.deleted_ids.contains(&event_id) || event.is_expired(now) {
+        if self.deleted_ids.contains(&event.id) || event.is_expired_at(now) {
             let mut to_discard: HashSet<EventId> = HashSet::with_capacity(1);
-            to_discard.insert(event_id);
-            return Ok(EventIndexResult {
+            to_discard.insert(event.id);
+            return EventIndexResult {
                 to_store: false,
                 to_discard,
-            });
+            };
         }
 
         let mut to_discard: HashSet<EventId> = HashSet::new();
 
         // Compose others fields
-        let pubkey_prefix: PublicKeyPrefix = event.pubkey();
+        let pubkey_prefix = event.author();
         let created_at: Timestamp = event.created_at();
         let kind: Kind = event.kind();
 
@@ -475,12 +266,12 @@ impl InternalDatabaseIndexes {
 
         if kind.is_replaceable() {
             let params: QueryByKindAndAuthorParams =
-                QueryByKindAndAuthorParams::new(kind, pubkey_prefix);
+                QueryByKindAndAuthorParams::new(kind, pubkey_prefix.clone());
             for ev in self.internal_query_by_kind_and_author(params) {
-                if ev.created_at > created_at || ev.event_id == event_id {
+                if ev.created_at > created_at || ev.id == event.id {
                     should_insert = false;
                 } else {
-                    to_discard.insert(ev.event_id);
+                    to_discard.insert(ev.id);
                 }
             }
         } else if kind.is_parameterized_replaceable() {
@@ -488,12 +279,12 @@ impl InternalDatabaseIndexes {
                 Some(identifier) => {
                     // TODO: check if coordinate was deleted
                     let params: QueryByParamReplaceable =
-                        QueryByParamReplaceable::new(kind, pubkey_prefix, identifier);
+                        QueryByParamReplaceable::new(kind, pubkey_prefix.clone(), hash(identifier));
                     if let Some(ev) = self.internal_query_param_replaceable(params) {
-                        if ev.created_at > created_at || ev.event_id == event_id {
+                        if ev.created_at > created_at || ev.id == event.id {
                             should_insert = false;
                         } else {
-                            to_discard.insert(ev.event_id);
+                            to_discard.insert(ev.id);
                         }
                     }
                 }
@@ -503,17 +294,15 @@ impl InternalDatabaseIndexes {
             // Check `e` tags
             for id in event.event_ids() {
                 if let Some(ev) = self.ids_index.get(id) {
-                    if ev.pubkey == pubkey_prefix && ev.created_at <= created_at {
-                        to_discard.insert(ev.event_id);
+                    if &ev.pubkey == pubkey_prefix && ev.created_at <= created_at {
+                        to_discard.insert(ev.id);
                     }
                 }
             }
 
             // Check `a` tags
             for coordinate in event.coordinates() {
-                let coordinate_pubkey_prefix: PublicKeyPrefix =
-                    PublicKeyPrefix::from(&coordinate.public_key);
-                if coordinate_pubkey_prefix == pubkey_prefix {
+                if &coordinate.public_key == pubkey_prefix {
                     // Save deleted coordinate at certain timestamp
                     self.deleted_coordinates
                         .insert(coordinate.clone(), created_at);
@@ -522,7 +311,7 @@ impl InternalDatabaseIndexes {
                     let filter: Filter = filter.until(created_at);
                     // Not check if ev.pubkey match the pubkey_prefix because assume that query
                     // returned only the events owned by pubkey_prefix
-                    to_discard.extend(self.internal_generic_query(filter).map(|e| e.event_id));
+                    to_discard.extend(self.internal_generic_query(filter).map(|e| e.id));
                 }
             }
         }
@@ -533,39 +322,36 @@ impl InternalDatabaseIndexes {
         // Insert event
         if should_insert {
             let e: ArcEventIndex = Arc::new(EventIndex {
-                created_at,
-                event_id,
-                pubkey: pubkey_prefix,
-                kind,
-                tags: event.tags(),
+                inner: event.to_owned(),
             });
 
             self.index.insert(e.clone());
-            self.ids_index.insert(event_id, e.clone());
+            self.ids_index.insert(event.id, e.clone());
 
             if kind.is_parameterized_replaceable() {
-                if let Some(identifier) = e.tags.identifier() {
+                if let Some(identifier) = e.identifier() {
                     self.kind_author_tags_index
-                        .insert((kind, pubkey_prefix, identifier), e.clone());
+                        .insert((kind, pubkey_prefix.clone(), hash(identifier)), e.clone());
                 }
             }
 
             if kind.is_replaceable() {
                 let mut set = BTreeSet::new();
                 set.insert(e);
-                self.kind_author_index.insert((kind, pubkey_prefix), set);
+                self.kind_author_index
+                    .insert((kind, pubkey_prefix.clone()), set);
             } else {
                 self.kind_author_index
-                    .entry((kind, pubkey_prefix))
+                    .entry((kind, pubkey_prefix.clone()))
                     .or_default()
                     .insert(e);
             }
         }
 
-        Ok(EventIndexResult {
+        EventIndexResult {
             to_store: should_insert,
             to_discard,
-        })
+        }
     }
 
     fn discard_events(&mut self, ids: &HashSet<EventId>) {
@@ -575,13 +361,19 @@ impl InternalDatabaseIndexes {
                     self.index.remove(&ev);
 
                     if ev.kind.is_parameterized_replaceable() {
-                        if let Some(identifier) = ev.tags.identifier() {
-                            self.kind_author_tags_index
-                                .remove(&(ev.kind, ev.pubkey, identifier));
+                        if let Some(identifier) = ev.identifier() {
+                            self.kind_author_tags_index.remove(&(
+                                ev.kind,
+                                ev.pubkey.clone(),
+                                hash(identifier),
+                            ));
                         }
                     }
 
-                    if let Some(set) = self.kind_author_index.get_mut(&(ev.kind, ev.pubkey)) {
+                    if let Some(set) = self
+                        .kind_author_index
+                        .get_mut(&(ev.kind, ev.pubkey.clone()))
+                    {
                         set.remove(&ev);
                     }
                 }
@@ -600,7 +392,7 @@ impl InternalDatabaseIndexes {
             return EventIndexResult::default();
         }
         let now = Timestamp::now();
-        self.internal_index_event(event, &now).unwrap_or_default()
+        self.internal_index_event(event, &now)
     }
 
     /// Query by [`Kind`] and [`PublicKeyPrefix`]
@@ -617,7 +409,7 @@ impl InternalDatabaseIndexes {
         } = params;
         match self.kind_author_index.get(&(kind, author)) {
             Some(set) => Box::new(set.iter().filter(move |ev| {
-                if self.deleted_ids.contains(&ev.event_id) {
+                if self.deleted_ids.contains(&ev.id) {
                     return false;
                 }
 
@@ -660,7 +452,7 @@ impl InternalDatabaseIndexes {
             .kind_author_tags_index
             .get(&(kind, author, identifier))?;
 
-        if self.deleted_ids.contains(&ev.event_id) {
+        if self.deleted_ids.contains(&ev.id) {
             return None;
         }
 
@@ -680,14 +472,10 @@ impl InternalDatabaseIndexes {
     }
 
     /// Generic query
-    fn internal_generic_query<T>(&self, filter: T) -> impl Iterator<Item = &ArcEventIndex>
-    where
-        T: Into<FilterIndex>,
-    {
-        let filter: FilterIndex = filter.into();
-        self.index.iter().filter(move |event| {
-            !self.deleted_ids.contains(&event.event_id) && filter.match_event(event)
-        })
+    fn internal_generic_query(&self, filter: Filter) -> impl Iterator<Item = &ArcEventIndex> {
+        self.index
+            .iter()
+            .filter(move |event| !self.deleted_ids.contains(&event.id) && filter.match_event(event))
     }
 
     fn internal_query<I>(&self, filters: I) -> InternalQueryResult<'_>
@@ -732,18 +520,18 @@ impl InternalDatabaseIndexes {
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub fn query<I>(&self, filters: I, order: Order) -> Vec<EventId>
+    pub fn query<I>(&self, filters: I, order: Order) -> Vec<Event>
     where
         I: IntoIterator<Item = Filter>,
     {
         match self.internal_query(filters) {
             InternalQueryResult::All => match order {
-                Order::Asc => self.index.iter().map(|ev| ev.event_id).rev().collect(),
-                Order::Desc => self.index.iter().map(|ev| ev.event_id).collect(),
+                Order::Asc => self.index.iter().map(|ev| ev.inner.clone()).rev().collect(),
+                Order::Desc => self.index.iter().map(|ev| ev.inner.clone()).collect(),
             },
             InternalQueryResult::Set(set) => match order {
-                Order::Asc => set.into_iter().map(|ev| ev.event_id).rev().collect(),
-                Order::Desc => set.into_iter().map(|ev| ev.event_id).collect(),
+                Order::Asc => set.into_iter().map(|ev| ev.inner.clone()).rev().collect(),
+                Order::Desc => set.into_iter().map(|ev| ev.inner.clone()).collect(),
             },
         }
     }
@@ -763,15 +551,12 @@ impl InternalDatabaseIndexes {
     #[tracing::instrument(skip_all, level = "trace")]
     pub fn negentropy_items(&self, filter: Filter) -> Vec<(EventId, Timestamp)> {
         match self.internal_query([filter]) {
-            InternalQueryResult::All => self
-                .index
-                .iter()
-                .map(|ev| (ev.event_id, ev.created_at))
-                .collect(),
-            InternalQueryResult::Set(set) => set
-                .into_iter()
-                .map(|ev| (ev.event_id, ev.created_at))
-                .collect(),
+            InternalQueryResult::All => {
+                self.index.iter().map(|ev| (ev.id, ev.created_at)).collect()
+            }
+            InternalQueryResult::Set(set) => {
+                set.into_iter().map(|ev| (ev.id, ev.created_at)).collect()
+            }
         }
     }
 
@@ -800,7 +585,7 @@ impl InternalDatabaseIndexes {
                 None
             }
             InternalQueryResult::Set(set) => {
-                let ids: HashSet<EventId> = set.into_iter().map(|ev| ev.event_id).collect();
+                let ids: HashSet<EventId> = set.into_iter().map(|ev| ev.id).collect();
                 self.discard_events(&ids);
                 Some(ids)
             }
@@ -827,10 +612,7 @@ impl DatabaseIndexes {
 
     /// Bulk index
     #[tracing::instrument(skip_all)]
-    pub async fn bulk_index<'a, E>(&self, events: BTreeSet<E>) -> HashSet<EventId>
-    where
-        E: Into<EventOrTempEvent<'a>>,
-    {
+    pub async fn bulk_index(&self, events: BTreeSet<Event>) -> HashSet<EventId> {
         let mut inner = self.inner.write().await;
         inner.bulk_index(events)
     }
@@ -861,7 +643,7 @@ impl DatabaseIndexes {
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn query<I>(&self, filters: I, order: Order) -> Vec<EventId>
+    pub async fn query<I>(&self, filters: I, order: Order) -> Vec<Event>
     where
         I: IntoIterator<Item = Filter>,
     {
@@ -919,10 +701,7 @@ impl DatabaseIndexes {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use nostr::secp256k1::schnorr::Signature;
-    use nostr::{FromBech32, JsonUtil, Keys, SecretKey, Tag};
+    use nostr::{FromBech32, JsonUtil, Keys, SecretKey};
 
     use super::*;
 
@@ -967,20 +746,20 @@ mod tests {
 
         // Test expected output
         let expected_output = vec![
-            Event::from_json(EVENTS[13]).unwrap().id(),
-            Event::from_json(EVENTS[12]).unwrap().id(),
-            Event::from_json(EVENTS[11]).unwrap().id(),
+            Event::from_json(EVENTS[13]).unwrap(),
+            Event::from_json(EVENTS[12]).unwrap(),
+            Event::from_json(EVENTS[11]).unwrap(),
             // Event 10 deleted by event 12
             // Event 9 replaced by event 10
-            Event::from_json(EVENTS[8]).unwrap().id(),
-            Event::from_json(EVENTS[7]).unwrap().id(),
-            Event::from_json(EVENTS[6]).unwrap().id(),
-            Event::from_json(EVENTS[5]).unwrap().id(),
-            Event::from_json(EVENTS[4]).unwrap().id(),
+            Event::from_json(EVENTS[8]).unwrap(),
+            Event::from_json(EVENTS[7]).unwrap(),
+            Event::from_json(EVENTS[6]).unwrap(),
+            Event::from_json(EVENTS[5]).unwrap(),
+            Event::from_json(EVENTS[4]).unwrap(),
             // Event 3 deleted by Event 8
             // Event 2 replaced by Event 6
-            Event::from_json(EVENTS[1]).unwrap().id(),
-            Event::from_json(EVENTS[0]).unwrap().id(),
+            Event::from_json(EVENTS[1]).unwrap(),
+            Event::from_json(EVENTS[0]).unwrap(),
         ];
         assert_eq!(
             indexes.query([Filter::new()], Order::Desc).await,
@@ -1023,8 +802,8 @@ mod tests {
                 )
                 .await,
             vec![
-                Event::from_json(EVENTS[4]).unwrap().id(),
-                Event::from_json(EVENTS[5]).unwrap().id(),
+                Event::from_json(EVENTS[4]).unwrap(),
+                Event::from_json(EVENTS[5]).unwrap(),
             ]
         );
 
@@ -1039,7 +818,7 @@ mod tests {
                     Order::Desc
                 )
                 .await,
-            vec![Event::from_json(EVENTS[4]).unwrap().id()]
+            vec![Event::from_json(EVENTS[4]).unwrap()]
         );
 
         assert_eq!(
@@ -1050,11 +829,11 @@ mod tests {
                 )
                 .await,
             vec![
-                Event::from_json(EVENTS[12]).unwrap().id(),
-                Event::from_json(EVENTS[8]).unwrap().id(),
-                Event::from_json(EVENTS[6]).unwrap().id(),
-                Event::from_json(EVENTS[1]).unwrap().id(),
-                Event::from_json(EVENTS[0]).unwrap().id(),
+                Event::from_json(EVENTS[12]).unwrap(),
+                Event::from_json(EVENTS[8]).unwrap(),
+                Event::from_json(EVENTS[6]).unwrap(),
+                Event::from_json(EVENTS[1]).unwrap(),
+                Event::from_json(EVENTS[0]).unwrap(),
             ]
         );
 
@@ -1068,8 +847,8 @@ mod tests {
                 )
                 .await,
             vec![
-                Event::from_json(EVENTS[1]).unwrap().id(),
-                Event::from_json(EVENTS[0]).unwrap().id(),
+                Event::from_json(EVENTS[1]).unwrap(),
+                Event::from_json(EVENTS[0]).unwrap(),
             ]
         );
 
@@ -1083,8 +862,8 @@ mod tests {
                 )
                 .await,
             vec![
-                Event::from_json(EVENTS[1]).unwrap().id(),
-                Event::from_json(EVENTS[0]).unwrap().id(),
+                Event::from_json(EVENTS[1]).unwrap(),
+                Event::from_json(EVENTS[0]).unwrap(),
             ]
         );
 
@@ -1094,9 +873,9 @@ mod tests {
                 .query([Filter::new().identifier("id-1")], Order::Desc)
                 .await,
             vec![
-                Event::from_json(EVENTS[6]).unwrap().id(),
-                Event::from_json(EVENTS[5]).unwrap().id(),
-                Event::from_json(EVENTS[1]).unwrap().id(),
+                Event::from_json(EVENTS[6]).unwrap(),
+                Event::from_json(EVENTS[5]).unwrap(),
+                Event::from_json(EVENTS[1]).unwrap(),
             ]
         );
 
@@ -1105,7 +884,7 @@ mod tests {
             indexes
                 .query([Filter::new().identifier("multi-id")], Order::Desc)
                 .await,
-            vec![Event::from_json(EVENTS[13]).unwrap().id(),]
+            vec![Event::from_json(EVENTS[13]).unwrap()]
         );
         // As above but by using kind and pubkey
         assert_eq!(
@@ -1118,7 +897,7 @@ mod tests {
                     Order::Desc
                 )
                 .await,
-            vec![Event::from_json(EVENTS[13]).unwrap().id(),]
+            vec![Event::from_json(EVENTS[13]).unwrap()]
         );
 
         // Test add new replaceable event (metadata)
@@ -1135,7 +914,7 @@ mod tests {
                     Order::Desc
                 )
                 .await,
-            vec![first_ev_metadata.id()]
+            vec![first_ev_metadata.clone()]
         );
 
         // Test add replace metadata
@@ -1152,125 +931,7 @@ mod tests {
                     Order::Desc
                 )
                 .await,
-            vec![ev.id()]
+            vec![ev]
         );
-    }
-
-    #[test]
-    fn test_match_event() {
-        let event_id =
-            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
-                .unwrap();
-        let pubkey =
-            PublicKey::from_str("379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe")
-                .unwrap();
-        let event =
-            Event::new(
-                event_id,
-                pubkey.clone(),
-                Timestamp::from(1612809991),
-                Kind::TextNote,
-                [
-                    Tag::public_key(PublicKey::from_str("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a").unwrap()),
-                    Tag::event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap()),
-                ],
-                "test",
-                Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
-            );
-        let event: EventIndex = EventIndex::from(&event);
-        let event_with_empty_tags: EventIndex = EventIndex::from(
-
-          &Event::new(
-            event_id,
-            pubkey.clone(),
-            Timestamp::from(1612809991),
-            Kind::TextNote,
-            [],
-            "test",
-            Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
-          )
-        );
-
-        // ID match
-        let filter: FilterIndex = Filter::new().id(event_id).into();
-        assert!(filter.match_event(&event));
-
-        // Not match (kind)
-        let filter: FilterIndex = Filter::new().id(event_id).kind(Kind::Metadata).into();
-        assert!(!filter.match_event(&event));
-
-        // Match (author, kind and since)
-        let filter: FilterIndex = Filter::new()
-            .author(pubkey.clone())
-            .kind(Kind::TextNote)
-            .since(Timestamp::from(1612808000))
-            .into();
-        assert!(filter.match_event(&event));
-
-        // Not match (since)
-        let filter: FilterIndex = Filter::new()
-            .author(pubkey)
-            .kind(Kind::TextNote)
-            .since(Timestamp::from(1700000000))
-            .into();
-        assert!(!filter.match_event(&event));
-
-        // Match (#p tag and kind)
-        let filter: FilterIndex = Filter::new()
-            .pubkey(
-                PublicKey::from_str(
-                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
-                )
-                .unwrap(),
-            )
-            .kind(Kind::TextNote)
-            .into();
-        assert!(filter.match_event(&event));
-
-        // Match (tags)
-        let filter: FilterIndex = Filter::new()
-            .pubkey(
-                PublicKey::from_str(
-                    "b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a",
-                )
-                .unwrap(),
-            )
-            .event(
-                EventId::from_hex(
-                    "7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96",
-                )
-                .unwrap(),
-            )
-            .into();
-        assert!(filter.match_event(&event));
-
-        // Match (tags)
-        let filter: FilterIndex = Filter::new()
-            .events(vec![
-                EventId::from_hex(
-                    "7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96",
-                )
-                .unwrap(),
-                EventId::from_hex(
-                    "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
-                )
-                .unwrap(),
-            ])
-            .into();
-        assert!(filter.match_event(&event));
-
-        // Not match (tags)
-        let filter: FilterIndex = Filter::new()
-            .events(vec![EventId::from_hex(
-                "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
-            )
-            .unwrap()])
-            .into();
-        assert!(!filter.match_event(&event));
-
-        // Not match (tags filter for events with empty tags)
-        let filter: FilterIndex = Filter::new().hashtag("this-should-not-match").into();
-        assert!(!filter.match_event(&event));
-        assert!(!filter.match_event(&event_with_empty_tags));
     }
 }

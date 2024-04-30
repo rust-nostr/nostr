@@ -173,16 +173,6 @@ impl NostrDatabase for NdbDatabase {
             .collect())
     }
 
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        _order: Order,
-    ) -> Result<Vec<EventId>, Self::Err> {
-        let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
-        Ok(res.into_iter().map(|r| ndb_note_to_id(r.note)).collect())
-    }
-
     async fn negentropy_items(
         &self,
         filter: Filter,
@@ -286,11 +276,6 @@ fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
         tags.push(tag);
     }
     Ok(tags)
-}
-
-#[inline(always)]
-fn ndb_note_to_id(note: Note) -> EventId {
-    EventId::owned(*note.id())
 }
 
 #[inline(always)]
