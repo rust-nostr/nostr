@@ -32,7 +32,7 @@ pub enum Error {
     #[error("no relays")]
     NoRelays,
     /// No relays specified
-    #[error("no relays sepcified")]
+    #[error("no relays specified")]
     NoRelaysSpecified,
     /// Msg not sent
     #[error("message not sent")]
