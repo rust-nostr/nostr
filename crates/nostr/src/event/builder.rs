@@ -16,12 +16,12 @@ use bitcoin::secp256k1::{self, Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
 use super::kind::{Kind, NIP90_JOB_REQUEST_RANGE, NIP90_JOB_RESULT_RANGE};
-use super::tag::ImageDimensions;
-use super::{Event, EventId, Marker, Tag, TagKind, TagStandard, UnsignedEvent};
+use super::{Event, EventId, Tag, TagKind, TagStandard, UnsignedEvent};
 use crate::key::{self, Keys, PublicKey};
 use crate::nips::nip01::Coordinate;
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
+use crate::nips::nip10::Marker;
 use crate::nips::nip15::{ProductData, StallData};
 #[cfg(all(feature = "std", feature = "nip44"))]
 use crate::nips::nip44::{self, Version};
@@ -31,9 +31,9 @@ use crate::nips::nip51::{ArticlesCuration, Bookmarks, Emojis, Interests, MuteLis
 use crate::nips::nip53::LiveEvent;
 #[cfg(feature = "nip57")]
 use crate::nips::nip57::ZapRequestData;
-use crate::nips::nip58::Error as Nip58Error;
 #[cfg(all(feature = "std", feature = "nip59"))]
 use crate::nips::nip59;
+use crate::nips::nip65::RelayMetadata;
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::nips::nip94::FileMetadata;
 use crate::nips::nip98::HttpData;
@@ -45,7 +45,7 @@ use crate::types::{Contact, Metadata, Timestamp};
 use crate::util::EventIdOrCoordinate;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Alphabet, JsonUtil, RelayMetadata, SingleLetterTag, UncheckedUrl, Url};
+use crate::{Alphabet, ImageDimensions, JsonUtil, SingleLetterTag, UncheckedUrl, Url};
 
 /// Wrong kind error
 #[derive(Debug)]
@@ -369,7 +369,7 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::{EventBuilder, Metadata, Url};
+    /// use nostr::prelude::*;
     ///
     /// let metadata = Metadata::new()
     ///     .name("username")
@@ -575,15 +575,13 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
+        let content: String =
+            nip04::encrypt(sender_keys.secret_key()?, &receiver_pubkey, content.into())?;
         let mut tags: Vec<Tag> = vec![Tag::public_key(receiver_pubkey)];
         if let Some(reply_to) = reply_to {
             tags.push(Tag::event(reply_to));
         }
-        Ok(Self::new(
-            Kind::EncryptedDirectMessage,
-            nip04::encrypt(sender_keys.secret_key()?, &receiver_pubkey, content.into())?,
-            tags,
-        ))
+        Ok(Self::new(Kind::EncryptedDirectMessage, content, tags))
     }
 
     /// Repost
@@ -944,7 +942,7 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::{EventBuilder, ImageDimensions, UncheckedUrl};
+    /// use nostr::prelude::*;
     ///
     /// let badge_id = String::from("nostr-sdk-test-badge");
     /// let name = Some(String::from("rust-nostr test badge"));
@@ -1063,7 +1061,7 @@ impl EventBuilder {
 
         let badge_awards: Vec<Event> = nip58::filter_for_kind(badge_awards, &Kind::BadgeAward);
         if badge_awards.is_empty() {
-            return Err(Error::NIP58(Nip58Error::InvalidKind));
+            return Err(Error::NIP58(nip58::Error::InvalidKind));
         }
 
         for award in badge_awards.iter() {
@@ -1071,14 +1069,14 @@ impl EventBuilder {
                 Some(TagStandard::PublicKey { public_key, .. }) => public_key == pubkey_awarded,
                 _ => false,
             }) {
-                return Err(Error::NIP58(Nip58Error::BadgeAwardsLackAwardedPublicKey));
+                return Err(Error::NIP58(nip58::Error::BadgeAwardsLackAwardedPublicKey));
             }
         }
 
         let badge_definitions: Vec<Event> =
             nip58::filter_for_kind(badge_definitions, &Kind::BadgeDefinition);
         if badge_definitions.is_empty() {
-            return Err(Error::NIP58(Nip58Error::InvalidKind));
+            return Err(Error::NIP58(nip58::Error::InvalidKind));
         }
 
         // Add identifier `d` tag
@@ -1108,7 +1106,7 @@ impl EventBuilder {
         for (badge_definition, badge_award) in users_badges {
             match (badge_definition, badge_award) {
                 ((_, identifier), (_, badge_id, ..)) if badge_id != identifier => {
-                    return Err(Error::NIP58(Nip58Error::MismatchedBadgeDefinitionOrAward));
+                    return Err(Error::NIP58(nip58::Error::MismatchedBadgeDefinitionOrAward));
                 }
                 ((_, identifier), (badge_award_event, badge_id, a_tag, relay_url))
                     if badge_id == identifier =>

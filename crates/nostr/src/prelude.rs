@@ -35,6 +35,7 @@ pub use crate::nips::nip05::{self, *};
 pub use crate::nips::nip06::{self, *};
 #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
 pub use crate::nips::nip07::{self, *};
+pub use crate::nips::nip10::{self, *};
 #[cfg(all(feature = "std", feature = "nip11"))]
 pub use crate::nips::nip11::{self, *};
 pub use crate::nips::nip13::{self, *};
@@ -42,6 +43,7 @@ pub use crate::nips::nip15::{self, *};
 pub use crate::nips::nip19::{self, *};
 pub use crate::nips::nip21::{self, *};
 pub use crate::nips::nip26::{self, *};
+pub use crate::nips::nip39::{self, *};
 #[cfg(feature = "nip44")]
 pub use crate::nips::nip44::{self, *};
 #[cfg(all(feature = "std", feature = "nip46"))]
@@ -53,6 +55,7 @@ pub use crate::nips::nip48::{self, *};
 pub use crate::nips::nip49::{self, *};
 pub use crate::nips::nip51::{self, *};
 pub use crate::nips::nip53::{self, *};
+pub use crate::nips::nip56::{self, *};
 #[cfg(feature = "nip57")]
 pub use crate::nips::nip57::{self, *};
 #[cfg(feature = "nip59")]

@@ -526,7 +526,7 @@ impl Client {
     /// Send a Zap!
     pub fn zap(
         &self,
-        to: Arc<ZapEntity>,
+        to: &ZapEntity,
         satoshi: u64,
         details: Option<Arc<ZapDetails>>,
     ) -> Result<()> {
