@@ -230,7 +230,7 @@ impl JsTag {
     #[wasm_bindgen(js_name = publicKey)]
     pub fn public_key(public_key: &JsPublicKey) -> Self {
         Self {
-            inner: Tag::public_key(public_key.deref().clone()),
+            inner: Tag::public_key(public_key.deref()),
         }
     }
 

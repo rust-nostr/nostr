@@ -2,26 +2,28 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP98
+//! NIP-98
 //!
-//! This NIP defines an ephemerial event used to authorize requests to HTTP servers using nostr events.
+//! This NIP defines an ephemeral event used to authorize requests to HTTP servers using nostr events.
 //! This is useful for HTTP services which are build for Nostr and deal with Nostr user accounts.
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/98.md>
 
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
+use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 
-use crate::{HttpMethod, Tag, TagStandard, UncheckedUrl};
+use crate::{Tag, TagStandard, UncheckedUrl};
 
 /// [`HttpData`] required tags
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum RequiredTags {
-    /// [`Tag::AbsoluteURL`]
+    /// [`TagStandard::AbsoluteURL`]
     AbsoluteURL,
-    /// [`Tag::Method`]
+    /// [`TagStandard::Method`]
     Method,
 }
 
@@ -34,13 +36,13 @@ impl fmt::Display for RequiredTags {
     }
 }
 
-/// [`HttpData`] error
-#[derive(Debug)]
+/// NIP-98 error
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    /// Hex decoding error
-    Hex(bitcoin::hashes::hex::HexToBytesError),
     /// Tag missing when parsing
     MissingTag(RequiredTags),
+    /// Invalid HTTP Method
+    InvalidHttpMethod(String),
 }
 
 #[cfg(feature = "std")]
@@ -49,19 +51,55 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Hex(e) => write!(f, "{e}"),
-            Self::MissingTag(tag) => write!(f, r#"missing tag "{tag}""#),
+            Self::MissingTag(tag) => write!(f, "missing tag '{tag}'"),
+            Self::InvalidHttpMethod(m) => write!(f, "Invalid HTTP method: {m}"),
         }
     }
 }
 
-impl From<bitcoin::hashes::hex::HexToBytesError> for Error {
-    fn from(e: bitcoin::hashes::hex::HexToBytesError) -> Self {
-        Self::Hex(e)
+/// HTTP Method
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/98.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum HttpMethod {
+    /// GET
+    GET,
+    /// POST
+    POST,
+    /// PUT
+    PUT,
+    /// PATCH
+    PATCH,
+}
+
+impl fmt::Display for HttpMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::GET => write!(f, "GET"),
+            Self::POST => write!(f, "POST"),
+            Self::PUT => write!(f, "PUT"),
+            Self::PATCH => write!(f, "PATCH"),
+        }
+    }
+}
+
+impl FromStr for HttpMethod {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "GET" => Ok(Self::GET),
+            "POST" => Ok(Self::POST),
+            "PUT" => Ok(Self::PUT),
+            "PATCH" => Ok(Self::PATCH),
+            m => Err(Error::InvalidHttpMethod(m.to_string())),
+        }
     }
 }
 
 /// HTTP Data
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/98.md>
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HttpData {
     /// Absolute request URL

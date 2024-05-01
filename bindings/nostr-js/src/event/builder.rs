@@ -222,7 +222,7 @@ impl JsEventBuilder {
         Self {
             inner: nostr::EventBuilder::reaction_extended(
                 **event_id,
-                public_key.deref().clone(),
+                public_key.deref(),
                 kind.into(),
                 reaction,
             ),
@@ -272,7 +272,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = muteChannelUser)]
     pub fn mute_channel_user(pubkey: &JsPublicKey, reason: Option<String>) -> Self {
         Self {
-            inner: EventBuilder::mute_channel_user(pubkey.deref().clone(), reason),
+            inner: EventBuilder::mute_channel_user(pubkey.deref(), reason),
         }
     }
 
@@ -507,7 +507,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = privateMsgRumor)]
     pub fn private_msg_rumor(receiver: &JsPublicKey, message: &str) -> Self {
         Self {
-            inner: EventBuilder::private_msg_rumor(receiver.deref().clone(), message),
+            inner: EventBuilder::private_msg_rumor(receiver.deref(), message),
         }
     }
 
@@ -607,7 +607,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = followSets)]
     pub fn follow_sets(public_keys: Vec<JsPublicKey>) -> Self {
         Self {
-            inner: EventBuilder::follow_sets(public_keys.into_iter().map(|p| p.deref().clone())),
+            inner: EventBuilder::follow_sets(public_keys.iter().map(|p| p.deref())),
         }
     }
 

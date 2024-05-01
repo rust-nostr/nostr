@@ -40,7 +40,7 @@ impl UnsignedEvent {
     }
 
     pub fn author(&self) -> PublicKey {
-        self.inner.pubkey.into()
+        self.inner.pubkey.clone().into()
     }
 
     pub fn created_at(&self) -> Timestamp {

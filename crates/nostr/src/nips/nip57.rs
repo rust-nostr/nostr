@@ -223,7 +223,7 @@ impl From<ZapRequestData> for Vec<Tag> {
             ..
         } = data;
 
-        let mut tags: Vec<Tag> = vec![Tag::public_key(public_key)];
+        let mut tags: Vec<Tag> = vec![Tag::public_key(&public_key)];
 
         if !relays.is_empty() {
             tags.push(Tag::from_standardized_without_cell(TagStandard::Relays(
@@ -295,7 +295,7 @@ where
         create_encryption_key(keys.secret_key()?, &data.public_key, created_at)?;
 
     // Compose encrypted message
-    let mut tags: Vec<Tag> = vec![Tag::public_key(data.public_key.clone())];
+    let mut tags: Vec<Tag> = vec![Tag::public_key(&data.public_key)];
     if let Some(event_id) = data.event_id {
         tags.push(Tag::event(event_id));
     }

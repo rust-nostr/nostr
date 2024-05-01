@@ -1068,26 +1068,23 @@ impl Client {
     ///         .unwrap();
     ///
     /// client
-    ///     .send_direct_msg(alice_pubkey, "My first DM from rust-nostr!", None)
+    ///     .send_direct_msg(&alice_pubkey, "My first DM from rust-nostr!", None)
     ///     .await
     ///     .unwrap();
     /// # }
     /// ```
     #[cfg(feature = "nip04")]
-    pub async fn send_direct_msg<P, S>(
+    pub async fn send_direct_msg<S>(
         &self,
-        receiver: P,
+        receiver: &PublicKey,
         msg: S,
         reply_to: Option<EventId>,
     ) -> Result<EventId, Error>
     where
-        P: IntoPublicKey,
         S: Into<String>,
     {
-        let receiver: PublicKey = receiver.into_public_key();
-
         let signer: NostrSigner = self.signer().await?;
-        let content: String = signer.nip04_encrypt(&receiver, msg.into()).await?;
+        let content: String = signer.nip04_encrypt(receiver, msg.into()).await?;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(reply_to.is_some()));
         tags.push(Tag::public_key(receiver));
@@ -1267,7 +1264,7 @@ impl Client {
     #[inline]
     pub async fn mute_channel_user<S>(
         &self,
-        pubkey: PublicKey,
+        pubkey: &PublicKey,
         reason: Option<S>,
     ) -> Result<EventId, Error>
     where
@@ -1328,17 +1325,12 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap<P>(
+    pub async fn gift_wrap(
         &self,
-        receiver: P,
+        receiver: &PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
-    ) -> Result<(), Error>
-    where
-        P: IntoPublicKey,
-    {
-        let receiver: PublicKey = receiver.into_public_key();
-
+    ) -> Result<(), Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
         let public_key: PublicKey = signer.public_key().await?.into_owned();
@@ -1346,13 +1338,13 @@ impl Client {
 
         // Compose seal
         // TODO: use directly the `EventBuilder::seal` constructor
-        let content: String = signer.nip44_encrypt(&receiver, rumor.as_json()).await?;
+        let content: String = signer.nip44_encrypt(receiver, rumor.as_json()).await?;
         let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, [])
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK));
         let seal: Event = self.sign_event_builder(seal).await?;
 
         // Compose gift wrap
-        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal, expiration)?;
+        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(receiver, &seal, expiration)?;
 
         // Send event
         self.send_event(gift_wrap).await?;
@@ -1366,7 +1358,7 @@ impl Client {
     #[deprecated(since = "0.31.0", note = "Use `send_private_msg` instead.")]
     pub async fn send_sealed_msg<S>(
         &self,
-        receiver: PublicKey,
+        receiver: &PublicKey,
         message: S,
         expiration: Option<Timestamp>,
     ) -> std::result::Result<(), Error>
@@ -1381,18 +1373,16 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn send_private_msg<P, S>(
+    pub async fn send_private_msg<S>(
         &self,
-        receiver: P,
+        receiver: &PublicKey,
         message: S,
         expiration: Option<Timestamp>,
     ) -> Result<(), Error>
     where
-        P: IntoPublicKey,
         S: Into<String>,
     {
-        let receiver: PublicKey = receiver.into_public_key();
-        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver.clone(), message);
+        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message);
         self.gift_wrap(receiver, rumor, expiration).await
     }
 

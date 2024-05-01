@@ -50,10 +50,7 @@ pub mod types;
 pub mod util;
 
 #[doc(hidden)]
-pub use self::event::tag::{
-    ExternalIdentity, HttpMethod, Identity, ImageDimensions, Marker, RelayMetadata, Report, Tag,
-    TagKind, TagStandard,
-};
+pub use self::event::tag::{Tag, TagKind, TagStandard};
 #[doc(hidden)]
 pub use self::event::{
     Event, EventBuilder, EventId, Kind, MissingPartialEvent, PartialEvent, UnsignedEvent,
@@ -66,7 +63,8 @@ pub use self::message::{ClientMessage, RawRelayMessage, RelayMessage, Subscripti
 pub use self::nips::nip19::{FromBech32, ToBech32};
 #[doc(hidden)]
 pub use self::types::{
-    Alphabet, Contact, Filter, Metadata, SingleLetterTag, Timestamp, TryIntoUrl, UncheckedUrl, Url,
+    Alphabet, Contact, Filter, ImageDimensions, Metadata, SingleLetterTag, Timestamp, TryIntoUrl,
+    UncheckedUrl, Url,
 };
 #[doc(hidden)]
 pub use self::util::JsonUtil;

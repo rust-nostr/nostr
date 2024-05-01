@@ -68,7 +68,7 @@ impl NostrConnectRemoteSigner {
                 public_key, relays, ..
             } => {
                 let this = Self::new(secret_key, relays, secret, opts).await?;
-                this.send_connect_ack(public_key).await?;
+                this.send_connect_ack(&public_key).await?;
                 Ok(this)
             }
             NostrConnectURI::Bunker { .. } => Err(Error::UnexpectedUri),
@@ -89,7 +89,7 @@ impl NostrConnectRemoteSigner {
         }
     }
 
-    async fn send_connect_ack(&self, public_key: PublicKey) -> Result<(), Error> {
+    async fn send_connect_ack(&self, public_key: &PublicKey) -> Result<(), Error> {
         let msg = Message::request(Request::Connect {
             public_key: self.keys.public_key().clone(),
             secret: None,
@@ -244,12 +244,9 @@ impl NostrConnectRemoteSigner {
                                 let msg: Message = Message::response(id, result, error);
 
                                 // Compose and publish event
-                                let event = EventBuilder::nostr_connect(
-                                    &self.keys,
-                                    event.author().clone(),
-                                    msg,
-                                )?
-                                .to_event(&self.keys)?;
+                                let event =
+                                    EventBuilder::nostr_connect(&self.keys, event.author(), msg)?
+                                        .to_event(&self.keys)?;
                                 self.pool.send_event(event, RelaySendOptions::new()).await?;
                             }
                         } else {

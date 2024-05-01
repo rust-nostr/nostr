@@ -68,7 +68,7 @@ impl UnwrappedGift {
 
     /// Get sender public key
     pub fn sender(&self) -> PublicKey {
-        self.inner.sender.into()
+        self.inner.sender.clone().into()
     }
 
     /// Get rumor

@@ -18,9 +18,7 @@ pub mod types;
 pub mod util;
 
 pub use crate::error::NostrError;
-pub use crate::event::{
-    Event, EventBuilder, EventId, Kind, KindEnum, RelayMetadata, Tag, TagKind, UnsignedEvent,
-};
+pub use crate::event::{Event, EventBuilder, EventId, Kind, KindEnum, Tag, TagKind, UnsignedEvent};
 pub use crate::key::{Keys, PublicKey, SecretKey};
 pub use crate::message::{ClientMessage, ClientMessageEnum, RelayMessage, RelayMessageEnum};
 pub use crate::nips::nip04::{nip04_decrypt, nip04_encrypt};
@@ -28,6 +26,7 @@ pub use crate::nips::nip05::{get_nip05_profile, verify_nip05};
 pub use crate::nips::nip11::RelayInformationDocument;
 pub use crate::nips::nip46::{NostrConnectMessage, NostrConnectMetadata, NostrConnectURI};
 pub use crate::nips::nip53::{Image, LiveEvent, LiveEventHost, LiveEventStatus, Person};
+pub use crate::nips::nip65::RelayMetadata;
 pub use crate::nips::nip94::FileMetadata;
 pub use crate::types::{
     Alphabet, Contact, Filter, ImageDimensions, Metadata, SingleLetterTag, Timestamp,

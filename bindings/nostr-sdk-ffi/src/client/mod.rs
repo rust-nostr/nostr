@@ -407,7 +407,7 @@ impl Client {
         block_on(async move {
             Ok(Arc::new(
                 self.inner
-                    .send_direct_msg(**receiver, msg, reply.map(|r| **r))
+                    .send_direct_msg(receiver.deref(), msg, reply.map(|r| **r))
                     .await?
                     .into(),
             ))
@@ -467,14 +467,18 @@ impl Client {
     /// This method automatically create a split zap to support Rust Nostr development.
     pub fn zap(
         &self,
-        to: Arc<ZapEntity>,
+        to: &ZapEntity,
         satoshi: u64,
         details: Option<Arc<ZapDetails>>,
     ) -> Result<()> {
         block_on(async move {
             Ok(self
                 .inner
-                .zap(**to, satoshi, details.map(|d| d.as_ref().deref().clone()))
+                .zap(
+                    to.deref().clone(),
+                    satoshi,
+                    details.map(|d| d.as_ref().deref().clone()),
+                )
                 .await?)
         })
     }
@@ -492,7 +496,7 @@ impl Client {
             Ok(self
                 .inner
                 .gift_wrap(
-                    **receiver,
+                    receiver.deref(),
                     rumor.as_ref().deref().clone(),
                     expiration.map(|t| **t),
                 )
@@ -513,7 +517,7 @@ impl Client {
         block_on(async move {
             Ok(self
                 .inner
-                .send_private_msg(**receiver, message, expiration.map(|t| **t))
+                .send_private_msg(receiver.deref(), message, expiration.map(|t| **t))
                 .await?)
         })
     }

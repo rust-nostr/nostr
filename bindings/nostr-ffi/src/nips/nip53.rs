@@ -1,6 +1,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -82,7 +83,7 @@ pub struct LiveEventHost {
 impl From<LiveEventHost> for nip53::LiveEventHost {
     fn from(value: LiveEventHost) -> Self {
         Self {
-            public_key: **value.public_key,
+            public_key: value.public_key.as_ref().deref().clone(),
             relay_url: value.relay_url.map(UncheckedUrl::from),
             proof: match value.proof {
                 Some(sig) => Signature::from_str(&sig).ok(),
@@ -146,12 +147,22 @@ impl From<LiveEvent> for nip53::LiveEvent {
             speakers: value
                 .speakers
                 .into_iter()
-                .map(|s| (**s.public_key, s.url.map(UncheckedUrl::from)))
+                .map(|s| {
+                    (
+                        s.public_key.as_ref().deref().clone(),
+                        s.url.map(UncheckedUrl::from),
+                    )
+                })
                 .collect(),
             participants: value
                 .participants
                 .into_iter()
-                .map(|s| (**s.public_key, s.url.map(UncheckedUrl::from)))
+                .map(|s| {
+                    (
+                        s.public_key.as_ref().deref().clone(),
+                        s.url.map(UncheckedUrl::from),
+                    )
+                })
                 .collect(),
         }
     }

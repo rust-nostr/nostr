@@ -27,7 +27,11 @@ pub struct MuteList {
 impl From<MuteList> for nip51::MuteList {
     fn from(value: MuteList) -> Self {
         Self {
-            public_keys: value.public_keys.into_iter().map(|p| **p).collect(),
+            public_keys: value
+                .public_keys
+                .into_iter()
+                .map(|p| p.as_ref().deref().clone())
+                .collect(),
             hashtags: value.hashtags,
             event_ids: value.event_ids.into_iter().map(|e| **e).collect(),
             words: value.words,

@@ -115,9 +115,8 @@ impl Nip46Signer {
         tracing::debug!("Sending '{msg}' NIP46 message");
 
         let req_id = msg.id().to_string();
-        let event: Event =
-            EventBuilder::nostr_connect(&self.app_keys, signer_public_key.clone(), msg)?
-                .to_event(&self.app_keys)?;
+        let event: Event = EventBuilder::nostr_connect(&self.app_keys, signer_public_key, msg)?
+            .to_event(&self.app_keys)?;
 
         let mut notifications = self.pool.notifications();
 

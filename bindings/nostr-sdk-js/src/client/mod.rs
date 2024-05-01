@@ -546,7 +546,7 @@ impl JsClient {
         reason: Option<String>,
     ) -> Result<JsEventId> {
         self.inner
-            .mute_channel_user(pubkey.deref().clone(), reason)
+            .mute_channel_user(pubkey.deref(), reason)
             .await
             .map_err(into_err)
             .map(|id| id.into())

@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip19::{self, FromBech32, ToBech32};
@@ -103,7 +104,7 @@ impl Nip19Event {
     #[uniffi::constructor(default(author = None, relays = []))]
     pub fn new(event_id: &EventId, author: Option<Arc<PublicKey>>, relays: &[String]) -> Self {
         let mut inner = nip19::Nip19Event::new(**event_id, relays);
-        inner.author = author.map(|p| **p);
+        inner.author = author.map(|p| p.as_ref().deref().clone());
         Self { inner }
     }
 
@@ -134,7 +135,7 @@ impl Nip19Event {
     }
 
     pub fn author(&self) -> Option<Arc<PublicKey>> {
-        self.inner.author.map(|p| Arc::new(p.into()))
+        self.inner.author.clone().map(|p| Arc::new(p.into()))
     }
 
     pub fn relays(&self) -> Vec<String> {
@@ -160,7 +161,7 @@ impl Nip19Profile {
     #[uniffi::constructor(default(relays = []))]
     pub fn new(public_key: &PublicKey, relays: &[String]) -> Result<Self> {
         Ok(Self {
-            inner: nip19::Nip19Profile::new(**public_key, relays)?,
+            inner: nip19::Nip19Profile::new(public_key.deref().clone(), relays)?,
         })
     }
 
@@ -187,7 +188,7 @@ impl Nip19Profile {
     }
 
     pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.public_key.into())
+        Arc::new(self.inner.public_key.clone().into())
     }
 
     pub fn relays(&self) -> Vec<String> {

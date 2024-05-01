@@ -16,12 +16,12 @@ use bitcoin::secp256k1::{self, Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
 use super::kind::{Kind, NIP90_JOB_REQUEST_RANGE, NIP90_JOB_RESULT_RANGE};
-use super::tag::ImageDimensions;
-use super::{Event, EventId, Marker, Tag, TagKind, TagStandard, UnsignedEvent};
+use super::{Event, EventId, Tag, TagKind, TagStandard, UnsignedEvent};
 use crate::key::{self, Keys, PublicKey};
 use crate::nips::nip01::Coordinate;
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
+use crate::nips::nip10::Marker;
 use crate::nips::nip15::{ProductData, StallData};
 #[cfg(all(feature = "std", feature = "nip44"))]
 use crate::nips::nip44::{self, Version};
@@ -31,9 +31,9 @@ use crate::nips::nip51::{ArticlesCuration, Bookmarks, Emojis, Interests, MuteLis
 use crate::nips::nip53::LiveEvent;
 #[cfg(feature = "nip57")]
 use crate::nips::nip57::ZapRequestData;
-use crate::nips::nip58::Error as Nip58Error;
 #[cfg(all(feature = "std", feature = "nip59"))]
 use crate::nips::nip59;
+use crate::nips::nip65::RelayMetadata;
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::nips::nip94::FileMetadata;
 use crate::nips::nip98::HttpData;
@@ -45,7 +45,7 @@ use crate::types::{Contact, Metadata, Timestamp};
 use crate::util::{EventIdOrCoordinate, IntoPublicKey};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Alphabet, JsonUtil, RelayMetadata, SingleLetterTag, UncheckedUrl, Url};
+use crate::{Alphabet, ImageDimensions, JsonUtil, SingleLetterTag, UncheckedUrl, Url};
 
 /// Wrong kind error
 #[derive(Debug)]
@@ -366,7 +366,7 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::{EventBuilder, Metadata, Url};
+    /// use nostr::prelude::*;
     ///
     /// let metadata = Metadata::new()
     ///     .name("username")
@@ -440,7 +440,7 @@ impl EventBuilder {
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
                 }));
-                tags.push(Tag::public_key(root.author().clone()));
+                tags.push(Tag::public_key(root.author()));
 
                 // Add others `p` tags
                 tags.extend(
@@ -471,7 +471,7 @@ impl EventBuilder {
             relay_url,
             marker: Some(Marker::Reply),
         }));
-        tags.push(Tag::public_key(reply_to.author().clone()));
+        tags.push(Tag::public_key(reply_to.author()));
 
         // Add others `p` tags of reply_to event
         tags.extend(
@@ -574,7 +574,7 @@ impl EventBuilder {
     {
         let content: String =
             nip04::encrypt(sender_keys.secret_key()?, receiver_pubkey, content.into())?;
-        let mut tags: Vec<Tag> = vec![Tag::public_key(receiver_pubkey.clone())];
+        let mut tags: Vec<Tag> = vec![Tag::public_key(receiver_pubkey)];
         if let Some(reply_to) = reply_to {
             tags.push(Tag::event(reply_to));
         }
@@ -593,7 +593,7 @@ impl EventBuilder {
                         relay_url,
                         marker: None,
                     }),
-                    Tag::public_key(event.author().clone()),
+                    Tag::public_key(event.author()),
                 ],
             )
         } else {
@@ -606,7 +606,7 @@ impl EventBuilder {
                         relay_url,
                         marker: None,
                     }),
-                    Tag::public_key(event.author().clone()),
+                    Tag::public_key(event.author()),
                     Tag::from_standardized_without_cell(TagStandard::Kind(event.kind())),
                 ],
             )
@@ -643,13 +643,13 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::reaction_extended(event.id(), event.author().clone(), event.kind(), reaction)
+        Self::reaction_extended(event.id(), event.author(), event.kind(), reaction)
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
     pub fn reaction_extended<S>(
         event_id: EventId,
-        public_key: PublicKey,
+        public_key: &PublicKey,
         kind: Kind,
         reaction: S,
     ) -> Self
@@ -738,7 +738,7 @@ impl EventBuilder {
     /// Mute channel user
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn mute_channel_user<S>(public_key: PublicKey, reason: Option<S>) -> Self
+    pub fn mute_channel_user<S>(public_key: &PublicKey, reason: Option<S>) -> Self
     where
         S: Into<String>,
     {
@@ -778,12 +778,12 @@ impl EventBuilder {
     #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
     pub fn nostr_connect(
         sender_keys: &Keys,
-        receiver_pubkey: PublicKey,
+        receiver_pubkey: &PublicKey,
         msg: NostrConnectMessage,
     ) -> Result<Self, Error> {
         Ok(Self::new(
             Kind::NostrConnect,
-            nip04::encrypt(sender_keys.secret_key()?, &receiver_pubkey, msg.as_json())?,
+            nip04::encrypt(sender_keys.secret_key()?, receiver_pubkey, msg.as_json())?,
             [Tag::public_key(receiver_pubkey)],
         ))
     }
@@ -939,7 +939,7 @@ impl EventBuilder {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr::{EventBuilder, ImageDimensions, UncheckedUrl};
+    /// use nostr::prelude::*;
     ///
     /// let badge_id = String::from("nostr-sdk-test-badge");
     /// let name = Some(String::from("rust-nostr test badge"));
@@ -1058,7 +1058,7 @@ impl EventBuilder {
 
         let badge_awards: Vec<Event> = nip58::filter_for_kind(badge_awards, &Kind::BadgeAward);
         if badge_awards.is_empty() {
-            return Err(Error::NIP58(Nip58Error::InvalidKind));
+            return Err(Error::NIP58(nip58::Error::InvalidKind));
         }
 
         for award in badge_awards.iter() {
@@ -1066,14 +1066,14 @@ impl EventBuilder {
                 Some(TagStandard::PublicKey { public_key, .. }) => public_key == pubkey_awarded,
                 _ => false,
             }) {
-                return Err(Error::NIP58(Nip58Error::BadgeAwardsLackAwardedPublicKey));
+                return Err(Error::NIP58(nip58::Error::BadgeAwardsLackAwardedPublicKey));
             }
         }
 
         let badge_definitions: Vec<Event> =
             nip58::filter_for_kind(badge_definitions, &Kind::BadgeDefinition);
         if badge_definitions.is_empty() {
-            return Err(Error::NIP58(Nip58Error::InvalidKind));
+            return Err(Error::NIP58(nip58::Error::InvalidKind));
         }
 
         // Add identifier `d` tag
@@ -1103,7 +1103,7 @@ impl EventBuilder {
         for (badge_definition, badge_award) in users_badges {
             match (badge_definition, badge_award) {
                 ((_, identifier), (_, badge_id, ..)) if badge_id != identifier => {
-                    return Err(Error::NIP58(Nip58Error::MismatchedBadgeDefinitionOrAward));
+                    return Err(Error::NIP58(nip58::Error::MismatchedBadgeDefinitionOrAward));
                 }
                 ((_, identifier), (badge_award_event, badge_id, a_tag, relay_url))
                     if badge_id == identifier =>
@@ -1167,7 +1167,7 @@ impl EventBuilder {
                 .collect();
             tags.extend_from_slice(&[
                 Tag::event(job_request.id()),
-                Tag::public_key(job_request.author().clone()),
+                Tag::public_key(job_request.author()),
                 Tag::from_standardized_without_cell(TagStandard::Request(job_request)),
                 Tag::from_standardized_without_cell(TagStandard::Amount {
                     millisats: amount_millisats,
@@ -1200,7 +1200,7 @@ impl EventBuilder {
                 extra_info,
             }),
             Tag::event(job_request.id()),
-            Tag::public_key(job_request.author().clone()),
+            Tag::public_key(job_request.author()),
             Tag::from_standardized_without_cell(TagStandard::Amount {
                 millisats: amount_millisats,
                 bolt11,
@@ -1295,7 +1295,7 @@ impl EventBuilder {
         )?;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(expiration.is_some()));
-        tags.push(Tag::public_key(receiver.clone()));
+        tags.push(Tag::public_key(receiver));
 
         if let Some(timestamp) = expiration {
             tags.push(Tag::expiration(timestamp));
@@ -1325,7 +1325,7 @@ impl EventBuilder {
     #[inline]
     #[cfg(feature = "nip59")]
     #[deprecated(since = "0.31.0", note = "Use `private_msg_rumor` instead.")]
-    pub fn sealed_direct<S>(receiver: PublicKey, message: S) -> Self
+    pub fn sealed_direct<S>(receiver: &PublicKey, message: S) -> Self
     where
         S: Into<String>,
     {
@@ -1342,7 +1342,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub fn private_msg_rumor<S>(receiver: PublicKey, message: S) -> Self
+    pub fn private_msg_rumor<S>(receiver: &PublicKey, message: S) -> Self
     where
         S: Into<String>,
     {
@@ -1464,9 +1464,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[inline]
-    pub fn follow_sets<I>(public_keys: I) -> Self
+    pub fn follow_sets<'a, I>(public_keys: I) -> Self
     where
-        I: IntoIterator<Item = PublicKey>,
+        I: Iterator<Item = &'a PublicKey>,
     {
         Self::new(
             Kind::FollowSets,
