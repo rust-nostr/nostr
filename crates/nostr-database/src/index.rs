@@ -279,6 +279,12 @@ impl<'a> EventOrTempEvent<'a> {
     }
 }
 
+struct QueryByAuthorParams {
+    author: PublicKeyPrefix,
+    since: Option<Timestamp>,
+    until: Option<Timestamp>,
+}
+
 struct QueryByKindAndAuthorParams {
     kind: Kind,
     author: PublicKeyPrefix,
@@ -322,6 +328,7 @@ impl QueryByParamReplaceable {
 }
 
 enum QueryPattern {
+    Author(QueryByAuthorParams),
     KindAuthor(QueryByKindAndAuthorParams),
     ParamReplaceable(QueryByParamReplaceable),
     Generic(Box<Filter>),
@@ -355,6 +362,11 @@ impl From<Filter> for QueryPattern {
             generic_tags_len,
             identifier,
         ) {
+            (0, None, 1, Some(author), 0, 0, None) => Self::Author(QueryByAuthorParams {
+                author: PublicKeyPrefix::from(author),
+                since: filter.since,
+                until: filter.until,
+            }),
             (1, Some(kind), 1, Some(author), 0, 0, None) => {
                 Self::KindAuthor(QueryByKindAndAuthorParams {
                     kind,
@@ -398,6 +410,7 @@ enum InternalQueryResult<'a> {
 struct InternalDatabaseIndexes {
     index: BTreeSet<ArcEventIndex>,
     ids_index: HashMap<EventId, ArcEventIndex>,
+    author_index: HashMap<PublicKeyPrefix, BTreeSet<ArcEventIndex>>,
     kind_author_index: HashMap<(Kind, PublicKeyPrefix), BTreeSet<ArcEventIndex>>,
     kind_author_tags_index:
         HashMap<(Kind, PublicKeyPrefix, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>,
@@ -542,6 +555,10 @@ impl InternalDatabaseIndexes {
 
             self.index.insert(e.clone());
             self.ids_index.insert(event_id, e.clone());
+            self.author_index
+                .entry(pubkey_prefix)
+                .or_default()
+                .insert(e.clone());
 
             if kind.is_parameterized_replaceable() {
                 if let Some(identifier) = e.tags.identifier() {
@@ -574,6 +591,10 @@ impl InternalDatabaseIndexes {
                 if let Some(ev) = self.ids_index.remove(id) {
                     self.index.remove(&ev);
 
+                    if let Some(set) = self.author_index.get_mut(&ev.pubkey) {
+                        set.remove(&ev);
+                    }
+
                     if ev.kind.is_parameterized_replaceable() {
                         if let Some(identifier) = ev.tags.identifier() {
                             self.kind_author_tags_index
@@ -603,6 +624,40 @@ impl InternalDatabaseIndexes {
         self.internal_index_event(event, &now).unwrap_or_default()
     }
 
+    /// Query by public key
+    fn internal_query_by_author<'a>(
+        &'a self,
+        params: QueryByAuthorParams,
+    ) -> Box<dyn Iterator<Item = &'a ArcEventIndex> + 'a> {
+        let QueryByAuthorParams {
+            author,
+            since,
+            until,
+        } = params;
+        match self.author_index.get(&author) {
+            Some(set) => Box::new(set.iter().filter(move |ev| {
+                if self.deleted_ids.contains(&ev.event_id) {
+                    return false;
+                }
+
+                if let Some(since) = since {
+                    if ev.created_at < since {
+                        return false;
+                    }
+                }
+
+                if let Some(until) = until {
+                    if ev.created_at > until {
+                        return false;
+                    }
+                }
+
+                true
+            })),
+            None => Box::new(iter::empty()),
+        }
+    }
+
     /// Query by [`Kind`] and [`PublicKeyPrefix`]
     fn internal_query_by_kind_and_author<'a>(
         &'a self,
@@ -613,7 +668,6 @@ impl InternalDatabaseIndexes {
             author,
             since,
             until,
-            ..
         } = params;
         match self.kind_author_index.get(&(kind, author)) {
             Some(set) => Box::new(set.iter().filter(move |ev| {
@@ -690,7 +744,7 @@ impl InternalDatabaseIndexes {
         })
     }
 
-    fn internal_query<I>(&self, filters: I) -> InternalQueryResult<'_>
+    fn internal_query<I>(&self, filters: I) -> InternalQueryResult
     where
         I: IntoIterator<Item = Filter>,
     {
@@ -710,6 +764,7 @@ impl InternalDatabaseIndexes {
             let limit: Option<usize> = filter.limit;
 
             let evs: Box<dyn Iterator<Item = &ArcEventIndex>> = match QueryPattern::from(filter) {
+                QueryPattern::Author(params) => self.internal_query_by_author(params),
                 QueryPattern::KindAuthor(params) => self.internal_query_by_kind_and_author(params),
                 QueryPattern::ParamReplaceable(params) => {
                     match self.internal_query_param_replaceable(params) {
