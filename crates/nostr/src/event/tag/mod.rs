@@ -263,7 +263,6 @@ impl Tag {
     /// Compose custom tag
     ///
     /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
-    #[inline]
     pub fn custom<I, S>(kind: TagKind, values: I) -> Self
     where
         I: IntoIterator<Item = S>,
