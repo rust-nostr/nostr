@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: add `hex::decode_to_slice` ([Yuki Kishimoto])
 * nostr: add `SecretKey::generate` ([Yuki Kishimoto])
 * nostr: add `Tag` struct ([Yuki Kishimoto])
+* database: add `author` index ([Yuki Kishimoto])
 * pool: add `RelayPool::start` ([Yuki Kishimoto])
 * pool: add `NegentropyDirection` default ([Yuki Kishimoto])
 * sdk: add `Client::builder()` ([Yuki Kishimoto])

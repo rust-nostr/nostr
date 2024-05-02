@@ -60,6 +60,12 @@ where
     inner
 }
 
+struct QueryByAuthorParams {
+    author: PublicKey,
+    since: Option<Timestamp>,
+    until: Option<Timestamp>,
+}
+
 struct QueryByKindAndAuthorParams {
     kind: Kind,
     author: PublicKey,
@@ -99,6 +105,7 @@ impl QueryByParamReplaceable {
 }
 
 enum QueryPattern {
+    Author(QueryByAuthorParams),
     KindAuthor(QueryByKindAndAuthorParams),
     ParamReplaceable(QueryByParamReplaceable),
     Generic(Box<Filter>),
@@ -132,6 +139,11 @@ impl From<Filter> for QueryPattern {
             generic_tags_len,
             identifier,
         ) {
+            (0, None, 1, Some(author), 0, 0, None) => Self::Author(QueryByAuthorParams {
+                author,
+                since: filter.since,
+                until: filter.until,
+            }),
             (1, Some(kind), 1, Some(author), 0, 0, None) => {
                 Self::KindAuthor(QueryByKindAndAuthorParams {
                     kind,
@@ -175,7 +187,7 @@ enum InternalQueryResult<'a> {
 struct InternalDatabaseIndexes {
     index: BTreeSet<ArcEventIndex>,
     ids_index: HashMap<EventId, ArcEventIndex>,
-    // author_index: HashMap<PublicKey, BTreeSet<ArcEventIndex>>
+    author_index: HashMap<PublicKey, BTreeSet<ArcEventIndex>>,
     kind_author_index: HashMap<(Kind, PublicKey), BTreeSet<ArcEventIndex>>,
     kind_author_tags_index: HashMap<(Kind, PublicKey, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>,
     deleted_ids: HashSet<EventId>,
@@ -188,7 +200,8 @@ impl InternalDatabaseIndexes {
     pub fn bulk_index(&mut self, events: BTreeSet<Event>) -> HashSet<EventId> {
         // Reserve allocation
         self.ids_index.reserve(events.len());
-        self.kind_author_index.reserve(events.len());
+        self.author_index.reserve(events.len()); // TODO: better estimation of allocation?
+        self.kind_author_index.reserve(events.len()); // TODO: better estimation of allocation?
         self.kind_author_tags_index.reserve(
             events
                 .iter()
@@ -218,7 +231,8 @@ impl InternalDatabaseIndexes {
     ) -> impl Iterator<Item = Event> + 'a {
         // Reserve allocation
         self.ids_index.reserve(events.len());
-        self.kind_author_index.reserve(events.len());
+        self.author_index.reserve(events.len()); // TODO: better estimation of allocation?
+        self.kind_author_index.reserve(events.len()); // TODO: better estimation of allocation?
         self.kind_author_tags_index.reserve(
             events
                 .iter()
@@ -321,28 +335,32 @@ impl InternalDatabaseIndexes {
 
         // Insert event
         if should_insert {
+            let public_key: PublicKey = pubkey_prefix.clone();
             let e: ArcEventIndex = Arc::new(EventIndex {
                 inner: event.to_owned(),
             });
 
             self.index.insert(e.clone());
             self.ids_index.insert(event.id, e.clone());
+            self.author_index
+                .entry(public_key.clone())
+                .or_default()
+                .insert(e.clone());
 
             if kind.is_parameterized_replaceable() {
                 if let Some(identifier) = e.identifier() {
                     self.kind_author_tags_index
-                        .insert((kind, pubkey_prefix.clone(), hash(identifier)), e.clone());
+                        .insert((kind, public_key.clone(), hash(identifier)), e.clone());
                 }
             }
 
             if kind.is_replaceable() {
                 let mut set = BTreeSet::new();
                 set.insert(e);
-                self.kind_author_index
-                    .insert((kind, pubkey_prefix.clone()), set);
+                self.kind_author_index.insert((kind, public_key), set);
             } else {
                 self.kind_author_index
-                    .entry((kind, pubkey_prefix.clone()))
+                    .entry((kind, public_key))
                     .or_default()
                     .insert(e);
             }
@@ -360,11 +378,15 @@ impl InternalDatabaseIndexes {
                 if let Some(ev) = self.ids_index.remove(id) {
                     self.index.remove(&ev);
 
+                    if let Some(set) = self.author_index.get_mut(ev.author()) {
+                        set.remove(&ev);
+                    }
+
                     if ev.kind.is_parameterized_replaceable() {
                         if let Some(identifier) = ev.identifier() {
                             self.kind_author_tags_index.remove(&(
                                 ev.kind,
-                                ev.pubkey.clone(),
+                                ev.author().clone(),
                                 hash(identifier),
                             ));
                         }
@@ -372,7 +394,7 @@ impl InternalDatabaseIndexes {
 
                     if let Some(set) = self
                         .kind_author_index
-                        .get_mut(&(ev.kind, ev.pubkey.clone()))
+                        .get_mut(&(ev.kind, ev.author().clone()))
                     {
                         set.remove(&ev);
                     }
@@ -395,7 +417,41 @@ impl InternalDatabaseIndexes {
         self.internal_index_event(event, &now)
     }
 
-    /// Query by [`Kind`] and [`PublicKeyPrefix`]
+    /// Query by [`PublicKey`]
+    fn internal_query_by_author<'a>(
+        &'a self,
+        params: QueryByAuthorParams,
+    ) -> Box<dyn Iterator<Item = &'a ArcEventIndex> + 'a> {
+        let QueryByAuthorParams {
+            author,
+            since,
+            until,
+        } = params;
+        match self.author_index.get(&author) {
+            Some(set) => Box::new(set.iter().filter(move |ev| {
+                if self.deleted_ids.contains(&ev.id) {
+                    return false;
+                }
+
+                if let Some(since) = since {
+                    if ev.created_at < since {
+                        return false;
+                    }
+                }
+
+                if let Some(until) = until {
+                    if ev.created_at > until {
+                        return false;
+                    }
+                }
+
+                true
+            })),
+            None => Box::new(iter::empty()),
+        }
+    }
+
+    /// Query by [`Kind`] and [`PublicKey`]
     fn internal_query_by_kind_and_author<'a>(
         &'a self,
         params: QueryByKindAndAuthorParams,
@@ -405,7 +461,6 @@ impl InternalDatabaseIndexes {
             author,
             since,
             until,
-            ..
         } = params;
         match self.kind_author_index.get(&(kind, author)) {
             Some(set) => Box::new(set.iter().filter(move |ev| {
@@ -478,7 +533,7 @@ impl InternalDatabaseIndexes {
             .filter(move |event| !self.deleted_ids.contains(&event.id) && filter.match_event(event))
     }
 
-    fn internal_query<I>(&self, filters: I) -> InternalQueryResult<'_>
+    fn internal_query<I>(&self, filters: I) -> InternalQueryResult
     where
         I: IntoIterator<Item = Filter>,
     {
@@ -498,6 +553,7 @@ impl InternalDatabaseIndexes {
             let limit: Option<usize> = filter.limit;
 
             let evs: Box<dyn Iterator<Item = &ArcEventIndex>> = match QueryPattern::from(filter) {
+                QueryPattern::Author(params) => self.internal_query_by_author(params),
                 QueryPattern::KindAuthor(params) => self.internal_query_by_kind_and_author(params),
                 QueryPattern::ParamReplaceable(params) => {
                     match self.internal_query_param_replaceable(params) {
