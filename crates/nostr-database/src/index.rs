@@ -192,6 +192,7 @@ struct InternalDatabaseIndexes {
     kind_author_tags_index: HashMap<(Kind, PublicKey, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>,
     deleted_ids: HashSet<EventId>,
     deleted_coordinates: HashMap<Coordinate, Timestamp>,
+    capacity: Option<usize>, // Default 75_000 (events)?
 }
 
 impl InternalDatabaseIndexes {
@@ -335,6 +336,13 @@ impl InternalDatabaseIndexes {
 
         // Insert event
         if should_insert {
+            // Check capacity
+            if let Some(capacity) = self.capacity {
+                if capacity > 0 && self.index.len() > capacity {
+                    self.pop_last_event();
+                }
+            }
+
             let public_key: PublicKey = pubkey_prefix.clone();
             let e: ArcEventIndex = Arc::new(EventIndex {
                 inner: event.to_owned(),
@@ -400,6 +408,34 @@ impl InternalDatabaseIndexes {
                     }
                 }
                 self.deleted_ids.insert(*id);
+            }
+        }
+    }
+
+    fn pop_last_event(&mut self) {
+        if let Some(ev) = self.index.pop_last() {
+            self.index.remove(&ev);
+            self.ids_index.remove(&ev.id);
+
+            if let Some(set) = self.author_index.get_mut(ev.author()) {
+                set.remove(&ev);
+            }
+
+            if ev.kind.is_parameterized_replaceable() {
+                if let Some(identifier) = ev.identifier() {
+                    self.kind_author_tags_index.remove(&(
+                        ev.kind,
+                        ev.author().clone(),
+                        hash(identifier),
+                    ));
+                }
+            }
+
+            if let Some(set) = self
+                .kind_author_index
+                .get_mut(&(ev.kind, ev.author().clone()))
+            {
+                set.remove(&ev);
             }
         }
     }
