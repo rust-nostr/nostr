@@ -50,7 +50,7 @@ impl Coordinate {
     #[uniffi::constructor]
     pub fn new(kind: &Kind, public_key: &PublicKey) -> Self {
         Self {
-            inner: nip01::Coordinate::new(**kind, **public_key),
+            inner: nip01::Coordinate::new(**kind, public_key.deref().clone()),
         }
     }
 
@@ -82,7 +82,7 @@ impl Coordinate {
     }
 
     pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.public_key.into())
+        Arc::new(self.inner.public_key.clone().into())
     }
 
     pub fn identifier(&self) -> String {

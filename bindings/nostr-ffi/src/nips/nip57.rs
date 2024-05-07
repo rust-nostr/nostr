@@ -57,7 +57,10 @@ impl ZapRequestData {
     #[uniffi::constructor]
     pub fn new(public_key: &PublicKey, relays: Vec<String>) -> Self {
         Self {
-            inner: nip57::ZapRequestData::new(**public_key, relays.into_iter().map(|r| r.into())),
+            inner: nip57::ZapRequestData::new(
+                public_key.deref().clone(),
+                relays.into_iter().map(|r| r.into()),
+            ),
         }
     }
 

@@ -68,7 +68,7 @@ impl NWC {
 
     async fn subscribe(&self) -> Result<(), Error> {
         let filter = Filter::new()
-            .author(self.uri.public_key)
+            .author(self.uri.public_key.clone())
             .kind(Kind::WalletConnectResponse)
             .since(Timestamp::now());
 

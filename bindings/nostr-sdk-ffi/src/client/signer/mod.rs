@@ -50,7 +50,7 @@ impl NostrSigner {
 
     /// Get signer public key
     pub fn public_key(&self) -> Result<PublicKey> {
-        block_on(async move { Ok(self.inner.public_key().await?.into()) })
+        block_on(async move { Ok(self.inner.public_key().await?.into_owned().into()) })
     }
 
     pub fn sign_event_builder(&self, builder: &EventBuilder) -> Result<Event> {
@@ -74,7 +74,12 @@ impl NostrSigner {
     }
 
     pub fn nip04_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
-        block_on(async move { Ok(self.inner.nip04_encrypt(**public_key, content).await?) })
+        block_on(async move {
+            Ok(self
+                .inner
+                .nip04_encrypt(public_key.deref(), content)
+                .await?)
+        })
     }
 
     pub fn nip04_decrypt(
@@ -85,16 +90,26 @@ impl NostrSigner {
         block_on(async move {
             Ok(self
                 .inner
-                .nip04_decrypt(**public_key, encrypted_content)
+                .nip04_decrypt(public_key.deref(), encrypted_content)
                 .await?)
         })
     }
 
     pub fn nip44_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
-        block_on(async move { Ok(self.inner.nip44_encrypt(**public_key, content).await?) })
+        block_on(async move {
+            Ok(self
+                .inner
+                .nip44_encrypt(public_key.deref(), content)
+                .await?)
+        })
     }
 
     pub fn nip44_decrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
-        block_on(async move { Ok(self.inner.nip44_decrypt(**public_key, content).await?) })
+        block_on(async move {
+            Ok(self
+                .inner
+                .nip44_decrypt(public_key.deref(), content)
+                .await?)
+        })
     }
 }

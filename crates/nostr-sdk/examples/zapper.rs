@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
             .unwrap();
 
     // Send sats without zap event
-    client.zap(public_key, 1000, None).await?;
+    client.zap(&public_key, 1000, None).await?;
 
     // Zap profile
     let details = ZapDetails::new(ZapType::Public).message("Test");

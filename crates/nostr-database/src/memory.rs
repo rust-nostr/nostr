@@ -210,27 +210,6 @@ impl NostrDatabase for MemoryDatabase {
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
         if self.opts.events {
-            let ids = self.indexes.query(filters, order).await;
-            let mut events = self.events.lock().await;
-
-            let mut list: Vec<Event> = Vec::with_capacity(ids.len());
-            for event_id in ids.into_iter() {
-                if let Some(event) = events.get(&event_id).cloned() {
-                    list.push(event);
-                }
-            }
-            Ok(list)
-        } else {
-            Err(DatabaseError::FeatureDisabled)
-        }
-    }
-
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err> {
-        if self.opts.events {
             Ok(self.indexes.query(filters, order).await)
         } else {
             Err(DatabaseError::FeatureDisabled)

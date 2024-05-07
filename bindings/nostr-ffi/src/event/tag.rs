@@ -9,155 +9,25 @@ use std::sync::Arc;
 
 use nostr::event::tag;
 use nostr::hashes::sha256::Hash as Sha256Hash;
+use nostr::nips::nip10;
 use nostr::nips::nip26::Conditions;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::{UncheckedUrl, Url};
-use uniffi::{Enum, Object, Record};
+use uniffi::{Enum, Object};
 
 use super::kind::KindEnum;
 use crate::error::{NostrError, Result};
 use crate::nips::nip01::Coordinate;
+use crate::nips::nip10::Marker;
+use crate::nips::nip39::Identity;
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::LiveEventMarker;
+use crate::nips::nip56::Report;
+use crate::nips::nip65::RelayMetadata;
 use crate::nips::nip90::DataVendingMachineStatus;
+use crate::nips::nip98::HttpMethod;
 use crate::types::filter::SingleLetterTag;
 use crate::{Event, EventId, ImageDimensions, LiveEventStatus, PublicKey, Timestamp};
-
-/// Marker
-#[derive(Enum)]
-pub enum Marker {
-    /// Root
-    Root,
-    /// Reply
-    Reply,
-    /// Mention
-    Mention,
-    /// Custom
-    Custom { custom: String },
-}
-
-impl From<Marker> for tag::Marker {
-    fn from(value: Marker) -> Self {
-        match value {
-            Marker::Root => Self::Root,
-            Marker::Reply => Self::Reply,
-            Marker::Mention => Self::Mention,
-            Marker::Custom { custom } => Self::Custom(custom),
-        }
-    }
-}
-
-impl From<tag::Marker> for Marker {
-    fn from(value: tag::Marker) -> Self {
-        match value {
-            tag::Marker::Root => Self::Root,
-            tag::Marker::Reply => Self::Reply,
-            tag::Marker::Mention => Self::Mention,
-            tag::Marker::Custom(custom) => Self::Custom { custom },
-        }
-    }
-}
-
-/// Report
-#[derive(Enum)]
-pub enum Report {
-    /// Depictions of nudity, porn, etc
-    Nudity,
-    /// Profanity, hateful speech, etc.
-    Profanity,
-    /// Something which may be illegal in some jurisdiction
-    ///
-    /// Remember: there is what is right and there is the law.
-    Illegal,
-    /// Spam
-    Spam,
-    /// Someone pretending to be someone else
-    Impersonation,
-    /// Reports that don't fit in the above categories
-    Other,
-}
-
-impl From<Report> for tag::Report {
-    fn from(value: Report) -> Self {
-        match value {
-            Report::Nudity => Self::Nudity,
-            Report::Profanity => Self::Profanity,
-            Report::Illegal => Self::Illegal,
-            Report::Spam => Self::Spam,
-            Report::Impersonation => Self::Impersonation,
-            Report::Other => Self::Other,
-        }
-    }
-}
-
-impl From<tag::Report> for Report {
-    fn from(value: tag::Report) -> Self {
-        match value {
-            tag::Report::Nudity => Self::Nudity,
-            tag::Report::Profanity => Self::Profanity,
-            tag::Report::Illegal => Self::Illegal,
-            tag::Report::Spam => Self::Spam,
-            tag::Report::Impersonation => Self::Impersonation,
-            tag::Report::Other => Self::Other,
-        }
-    }
-}
-
-#[derive(Enum)]
-pub enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Patch,
-}
-
-impl From<HttpMethod> for tag::HttpMethod {
-    fn from(value: HttpMethod) -> Self {
-        match value {
-            HttpMethod::Get => Self::GET,
-            HttpMethod::Post => Self::POST,
-            HttpMethod::Put => Self::PUT,
-            HttpMethod::Patch => Self::PATCH,
-        }
-    }
-}
-
-impl From<tag::HttpMethod> for HttpMethod {
-    fn from(value: tag::HttpMethod) -> Self {
-        match value {
-            tag::HttpMethod::GET => Self::Get,
-            tag::HttpMethod::POST => Self::Post,
-            tag::HttpMethod::PUT => Self::Put,
-            tag::HttpMethod::PATCH => Self::Patch,
-        }
-    }
-}
-
-#[derive(Enum)]
-pub enum RelayMetadata {
-    /// Read
-    Read,
-    /// Write
-    Write,
-}
-
-impl From<RelayMetadata> for nostr::RelayMetadata {
-    fn from(value: RelayMetadata) -> Self {
-        match value {
-            RelayMetadata::Read => Self::Read,
-            RelayMetadata::Write => Self::Write,
-        }
-    }
-}
-
-impl From<nostr::RelayMetadata> for RelayMetadata {
-    fn from(value: nostr::RelayMetadata) -> Self {
-        match value {
-            nostr::RelayMetadata::Read => Self::Read,
-            nostr::RelayMetadata::Write => Self::Write,
-        }
-    }
-}
 
 #[derive(Enum)]
 pub enum TagKind {
@@ -436,7 +306,7 @@ impl Tag {
     #[uniffi::constructor]
     pub fn public_key(public_key: &PublicKey) -> Self {
         Self {
-            inner: tag::Tag::public_key(**public_key),
+            inner: tag::Tag::public_key(public_key.deref()),
         }
     }
 
@@ -502,7 +372,7 @@ impl Tag {
     #[uniffi::constructor]
     pub fn public_key_report(public_key: &PublicKey, report: Report) -> Self {
         Self {
-            inner: tag::Tag::public_key_report(**public_key, report.into()),
+            inner: tag::Tag::public_key_report(public_key.deref().clone(), report.into()),
         }
     }
 
@@ -932,7 +802,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             } => Ok(Self::Event {
                 event_id: **event_id,
                 relay_url: relay_url.map(UncheckedUrl::from),
-                marker: marker.map(tag::Marker::from),
+                marker: marker.map(nip10::Marker::from),
             }),
             TagStandard::PublicKey {
                 public_key,
@@ -940,7 +810,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 alias,
                 uppercase,
             } => Ok(Self::PublicKey {
-                public_key: **public_key,
+                public_key: public_key.as_ref().deref().clone(),
                 relay_url: relay_url.map(UncheckedUrl::from),
                 alias,
                 uppercase,
@@ -948,16 +818,17 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::EventReport { event_id, report } => {
                 Ok(Self::EventReport(**event_id, report.into()))
             }
-            TagStandard::PubKeyReport { public_key, report } => {
-                Ok(Self::PublicKeyReport(**public_key, report.into()))
-            }
+            TagStandard::PubKeyReport { public_key, report } => Ok(Self::PublicKeyReport(
+                public_key.as_ref().deref().clone(),
+                report.into(),
+            )),
             TagStandard::PubKeyLiveEvent {
                 public_key,
                 relay_url,
                 marker,
                 proof,
             } => Ok(Self::PubKeyLiveEvent {
-                public_key: **public_key,
+                public_key: public_key.as_ref().deref().clone(),
                 relay_url: relay_url.map(UncheckedUrl::from),
                 marker: marker.into(),
                 proof: match proof {
@@ -994,7 +865,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 conditions,
                 sig,
             } => Ok(Self::Delegation {
-                delegator: **delegator,
+                delegator: delegator.as_ref().deref().clone(),
                 conditions: Conditions::from_str(&conditions)?,
                 sig: Signature::from_str(&sig)?,
             }),
@@ -1060,72 +931,6 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Word { word } => Ok(Self::Word(word)),
             TagStandard::LabelNamespace { namespace } => Ok(Self::LabelNamespace(namespace)),
             TagStandard::Label { label } => Ok(Self::Label(label)),
-        }
-    }
-}
-
-/// Supported external identity providers
-#[derive(Enum)]
-pub enum ExternalIdentity {
-    /// github.com
-    GitHub,
-    /// twitter.com
-    Twitter,
-    /// mastodon.social
-    Mastodon,
-    /// telegram.org
-    Telegram,
-}
-
-impl From<ExternalIdentity> for tag::ExternalIdentity {
-    fn from(value: ExternalIdentity) -> Self {
-        match value {
-            ExternalIdentity::GitHub => Self::GitHub,
-            ExternalIdentity::Twitter => Self::Twitter,
-            ExternalIdentity::Mastodon => Self::Mastodon,
-            ExternalIdentity::Telegram => Self::Telegram,
-        }
-    }
-}
-
-impl From<tag::ExternalIdentity> for ExternalIdentity {
-    fn from(value: tag::ExternalIdentity) -> Self {
-        match value {
-            tag::ExternalIdentity::GitHub => Self::GitHub,
-            tag::ExternalIdentity::Twitter => Self::Twitter,
-            tag::ExternalIdentity::Mastodon => Self::Mastodon,
-            tag::ExternalIdentity::Telegram => Self::Telegram,
-        }
-    }
-}
-
-/// A NIP-39 external identity
-#[derive(Record)]
-pub struct Identity {
-    /// The external identity provider
-    pub platform: ExternalIdentity,
-    /// The user's identity (username) on the provider
-    pub ident: String,
-    /// The user's proof on the provider
-    pub proof: String,
-}
-
-impl From<Identity> for tag::Identity {
-    fn from(value: Identity) -> Self {
-        Self {
-            platform: value.platform.into(),
-            ident: value.ident,
-            proof: value.proof,
-        }
-    }
-}
-
-impl From<tag::Identity> for Identity {
-    fn from(value: tag::Identity) -> Self {
-        Self {
-            platform: value.platform.into(),
-            ident: value.ident,
-            proof: value.proof,
         }
     }
 }

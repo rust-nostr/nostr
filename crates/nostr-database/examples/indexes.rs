@@ -63,7 +63,7 @@ async fn main() {
                 .limit(20)
                 //.kind(Kind::Custom(123))
                 //.identifier("myid5000")
-                .author(keys_a.public_key())],
+                .author(keys_a.public_key().clone())],
             Order::Desc,
         )
         .await;

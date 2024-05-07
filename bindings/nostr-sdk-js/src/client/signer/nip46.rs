@@ -69,7 +69,7 @@ impl JsNip46Signer {
     /// Get signer public key
     #[wasm_bindgen(js_name = signerPublicKey)]
     pub fn signer_public_key(&self) -> JsPublicKey {
-        self.inner.signer_public_key().into()
+        self.inner.signer_public_key().clone().into()
     }
 
     /// Get Nostr Connect URI in **bunker** format.

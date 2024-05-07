@@ -171,19 +171,23 @@ impl Filter {
     /// Add event author Public Key
     pub fn author(self: Arc<Self>, author: &PublicKey) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.author(**author);
+        builder.inner = builder.inner.author(author.deref());
         builder
     }
 
     pub fn authors(self: Arc<Self>, authors: &[Arc<PublicKey>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.authors(authors.iter().map(|pk| ***pk));
+        builder.inner = builder
+            .inner
+            .authors(authors.iter().map(|pk| pk.as_ref().deref()));
         builder
     }
 
     pub fn remove_authors(self: Arc<Self>, authors: &[Arc<PublicKey>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.remove_authors(authors.iter().map(|pk| ***pk));
+        builder.inner = builder
+            .inner
+            .remove_authors(authors.iter().map(|pk| pk.as_ref().deref()));
         builder
     }
 
@@ -228,20 +232,24 @@ impl Filter {
     /// Add Public Key (`p` tag)
     pub fn pubkey(self: Arc<Self>, pubkey: &PublicKey) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.pubkey(**pubkey);
+        builder.inner = builder.inner.pubkey(pubkey.deref());
         builder
     }
 
     /// Add Public Keys (`p` tag)
     pub fn pubkeys(self: Arc<Self>, pubkeys: &[Arc<PublicKey>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.pubkeys(pubkeys.iter().map(|pk| ***pk));
+        builder.inner = builder
+            .inner
+            .pubkeys(pubkeys.iter().map(|pk| pk.as_ref().deref()));
         builder
     }
 
     pub fn remove_pubkeys(self: Arc<Self>, pubkeys: &[Arc<PublicKey>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.remove_pubkeys(pubkeys.iter().map(|pk| ***pk));
+        builder.inner = builder
+            .inner
+            .remove_pubkeys(pubkeys.iter().map(|pk| pk.as_ref().deref()));
         builder
     }
 
@@ -454,9 +462,12 @@ impl From<FilterRecord> for nostr::Filter {
     fn from(f: FilterRecord) -> Self {
         Self {
             ids: f.ids.map(|ids| ids.into_iter().map(|v| **v).collect()),
-            authors: f
-                .authors
-                .map(|authors| authors.into_iter().map(|v| **v).collect()),
+            authors: f.authors.map(|authors| {
+                authors
+                    .into_iter()
+                    .map(|v| v.as_ref().deref().clone())
+                    .collect()
+            }),
             kinds: f
                 .kinds
                 .map(|kinds| kinds.into_iter().map(|v| **v).collect()),

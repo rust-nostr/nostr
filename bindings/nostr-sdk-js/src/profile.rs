@@ -26,18 +26,18 @@ impl JsProfile {
     #[wasm_bindgen(constructor)]
     pub fn new(public_key: &JsPublicKey, metadata: &JsMetadata) -> Self {
         Self {
-            inner: Profile::new(**public_key, metadata.deref().clone()),
+            inner: Profile::new(public_key.deref().clone(), metadata.deref().clone()),
         }
     }
 
     /// Get profile public key
     pub fn public_key(&self) -> JsPublicKey {
-        self.inner.public_key().into()
+        self.inner.public_key().clone().into()
     }
 
     /// Get profile metadata
     pub fn metadata(&self) -> JsMetadata {
-        self.inner.metadata().into()
+        self.inner.metadata().clone().into()
     }
 
     /// Get profile name
@@ -45,8 +45,8 @@ impl JsProfile {
     /// Steps (go to next step if field is `None` or `empty`):
     /// * Check `display_name` field
     /// * Check `name` field
-    /// * Return cutted public key (ex. `00000000:00000002`)
+    /// * Return cut public key (ex. `00000000:00000002`)
     pub fn name(&self) -> String {
-        self.inner.name()
+        self.inner.name().to_string()
     }
 }

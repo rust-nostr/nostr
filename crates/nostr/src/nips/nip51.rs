@@ -35,7 +35,7 @@ impl From<MuteList> for Vec<Tag> {
         let mut tags =
             Vec::with_capacity(public_keys.len() + hashtags.len() + event_ids.len() + words.len());
 
-        tags.extend(public_keys.into_iter().map(Tag::public_key));
+        tags.extend(public_keys.iter().map(Tag::public_key));
         tags.extend(hashtags.into_iter().map(Tag::hashtag));
         tags.extend(event_ids.into_iter().map(Tag::event));
         tags.extend(

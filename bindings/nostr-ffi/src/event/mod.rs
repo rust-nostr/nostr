@@ -18,7 +18,7 @@ pub mod unsigned;
 pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::{Kind, KindEnum};
-pub use self::tag::{RelayMetadata, Tag, TagKind};
+pub use self::tag::{Tag, TagKind};
 pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
 use crate::nips::nip01::Coordinate;
@@ -52,7 +52,7 @@ impl Event {
 
     /// Get event author (`pubkey` field)
     pub fn author(&self) -> PublicKey {
-        self.inner.author().into()
+        self.inner.author().clone().into()
     }
 
     pub fn created_at(&self) -> Timestamp {
@@ -158,7 +158,7 @@ impl Event {
     pub fn public_keys(&self) -> Vec<Arc<PublicKey>> {
         self.inner
             .public_keys()
-            .copied()
+            .cloned()
             .map(|p| Arc::new(p.into()))
             .collect()
     }

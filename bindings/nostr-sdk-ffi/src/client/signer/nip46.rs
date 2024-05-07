@@ -70,7 +70,7 @@ impl Nip46Signer {
 
     /// Get signer public key
     pub fn signer_public_key(&self) -> PublicKey {
-        self.inner.signer_public_key().into()
+        self.inner.signer_public_key().clone().into()
     }
 
     /// Get Nostr Connect URI in **bunker** format.

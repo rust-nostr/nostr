@@ -31,7 +31,7 @@ use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::NostrDatabase;
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, Order, TempEvent,
+    FlatBufferEncode, Order,
 };
 use tokio::sync::Mutex;
 use wasm_bindgen::{JsCast, JsValue};
@@ -199,7 +199,7 @@ impl WebDatabase {
             .filter_map(js_value_to_string)
             .filter_map(|v| {
                 let bytes = hex::decode(v).ok()?;
-                TempEvent::decode(&bytes).ok()
+                Event::decode(&bytes).ok()
             });
 
         // Build indexes
@@ -442,33 +442,6 @@ impl_nostr_database!({
         filters: Vec<Filter>,
         order: Order,
     ) -> Result<Vec<Event>, IndexedDBError> {
-        let tx = self
-            .db
-            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
-        let store = tx.object_store(EVENTS_CF)?;
-
-        let ids: Vec<EventId> = self.indexes.query(filters, order).await;
-        let mut events: Vec<Event> = Vec::with_capacity(ids.len());
-
-        for event_id in ids.into_iter() {
-            let key = JsValue::from(event_id.to_hex());
-            if let Some(jsvalue) = store.get(&key)?.await? {
-                let event_hex: String =
-                    js_value_to_string(jsvalue).ok_or(DatabaseError::NotFound)?;
-                let bytes: Vec<u8> = hex::decode(event_hex).map_err(DatabaseError::backend)?;
-                let event: Event = Event::decode(&bytes).map_err(DatabaseError::backend)?;
-                events.push(event);
-            }
-        }
-
-        Ok(events)
-    }
-
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, IndexedDBError> {
         Ok(self.indexes.query(filters, order).await)
     }
 

@@ -114,15 +114,15 @@ impl UnwrappedGift {
         let secret_key: &SecretKey = receiver_keys.secret_key()?;
 
         // Decrypt and verify seal
-        let seal: String = nip44::decrypt(secret_key, gift_wrap.author_ref(), gift_wrap.content())?;
+        let seal: String = nip44::decrypt(secret_key, gift_wrap.author(), gift_wrap.content())?;
         let seal: Event = Event::from_json(seal)?;
         seal.verify_with_ctx(secp)?;
 
         // Decrypt rumor
-        let rumor: String = nip44::decrypt(secret_key, seal.author_ref(), seal.content())?;
+        let rumor: String = nip44::decrypt(secret_key, seal.author(), seal.content())?;
 
         Ok(UnwrappedGift {
-            sender: seal.author(),
+            sender: seal.author().clone(),
             rumor: UnsignedEvent::from_json(rumor)?,
         })
     }
@@ -156,7 +156,7 @@ mod tests {
 
         // Compose Gift Wrap event
         let rumor: UnsignedEvent =
-            EventBuilder::text_note("Test", []).to_unsigned_event(sender_keys.public_key());
+            EventBuilder::text_note("Test", []).to_unsigned_event(sender_keys.public_key().clone());
         let event: Event = EventBuilder::gift_wrap(
             &sender_keys,
             &receiver_keys.public_key(),
@@ -167,7 +167,7 @@ mod tests {
         assert_eq!(
             extract_rumor(&receiver_keys, &event).unwrap(),
             UnwrappedGift {
-                sender: sender_keys.public_key(),
+                sender: sender_keys.public_key().clone(),
                 rumor,
             }
         );

@@ -36,7 +36,7 @@ impl JsImage {
 
 #[wasm_bindgen(js_name = User)]
 pub struct JsUser {
-    #[wasm_bindgen(js_name = publicKey)]
+    #[wasm_bindgen(getter_with_clone, js_name = publicKey)]
     pub public_key: JsPublicKey,
     #[wasm_bindgen(getter_with_clone)]
     pub url: Option<String>,
@@ -128,7 +128,7 @@ impl Deref for JsLiveEventHost {
 impl JsLiveEventHost {
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> JsPublicKey {
-        self.inner.public_key.into()
+        self.inner.public_key.clone().into()
     }
 
     #[wasm_bindgen(getter, js_name = relayUrl)]

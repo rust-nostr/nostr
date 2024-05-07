@@ -1011,7 +1011,7 @@ impl Client {
         let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
-            pubkeys.extend(event.public_keys());
+            pubkeys.extend(event.public_keys().cloned());
         }
 
         Ok(pubkeys)
@@ -1023,8 +1023,10 @@ impl Client {
         timeout: Option<Duration>,
     ) -> Result<HashMap<PublicKey, Metadata>, Error> {
         let public_keys = self.get_contact_list_public_keys(timeout).await?;
-        let mut contacts: HashMap<PublicKey, Metadata> =
-            public_keys.iter().map(|p| (*p, Metadata::new())).collect();
+        let mut contacts: HashMap<PublicKey, Metadata> = public_keys
+            .iter()
+            .map(|p| (p.clone(), Metadata::new()))
+            .collect();
 
         let chunk_size: usize = self.opts.req_filters_chunk_size as usize;
         for chunk in public_keys.chunks(chunk_size) {
@@ -1032,7 +1034,7 @@ impl Client {
             for public_key in chunk.iter() {
                 filters.push(
                     Filter::new()
-                        .author(*public_key)
+                        .author(public_key.clone())
                         .kind(Kind::Metadata)
                         .limit(1),
                 );
@@ -1040,7 +1042,7 @@ impl Client {
             let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(event.content())?;
-                if let Some(m) = contacts.get_mut(&event.author()) {
+                if let Some(m) = contacts.get_mut(event.author()) {
                     *m = metadata
                 };
             }
@@ -1066,7 +1068,7 @@ impl Client {
     ///         .unwrap();
     ///
     /// client
-    ///     .send_direct_msg(alice_pubkey, "My first DM from rust-nostr!", None)
+    ///     .send_direct_msg(&alice_pubkey, "My first DM from rust-nostr!", None)
     ///     .await
     ///     .unwrap();
     /// # }
@@ -1074,14 +1076,14 @@ impl Client {
     #[cfg(feature = "nip04")]
     pub async fn send_direct_msg<S>(
         &self,
-        receiver: PublicKey,
+        receiver: &PublicKey,
         msg: S,
         reply_to: Option<EventId>,
     ) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
-        let signer = self.signer().await?;
+        let signer: NostrSigner = self.signer().await?;
         let content: String = signer.nip04_encrypt(receiver, msg.into()).await?;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(reply_to.is_some()));
@@ -1262,7 +1264,7 @@ impl Client {
     #[inline]
     pub async fn mute_channel_user<S>(
         &self,
-        pubkey: PublicKey,
+        pubkey: &PublicKey,
         reason: Option<S>,
     ) -> Result<EventId, Error>
     where
@@ -1325,13 +1327,13 @@ impl Client {
     #[cfg(feature = "nip59")]
     pub async fn gift_wrap(
         &self,
-        receiver: PublicKey,
+        receiver: &PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
     ) -> Result<(), Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
-        let public_key: PublicKey = signer.public_key().await?;
+        let public_key: PublicKey = signer.public_key().await?.into_owned();
         let rumor = rumor.to_unsigned_event(public_key);
 
         // Compose seal
@@ -1342,7 +1344,7 @@ impl Client {
         let seal: Event = self.sign_event_builder(seal).await?;
 
         // Compose gift wrap
-        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal, expiration)?;
+        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(receiver, &seal, expiration)?;
 
         // Send event
         self.send_event(gift_wrap).await?;
@@ -1356,7 +1358,7 @@ impl Client {
     #[deprecated(since = "0.31.0", note = "Use `send_private_msg` instead.")]
     pub async fn send_sealed_msg<S>(
         &self,
-        receiver: PublicKey,
+        receiver: &PublicKey,
         message: S,
         expiration: Option<Timestamp>,
     ) -> std::result::Result<(), Error>
@@ -1373,7 +1375,7 @@ impl Client {
     #[cfg(feature = "nip59")]
     pub async fn send_private_msg<S>(
         &self,
-        receiver: PublicKey,
+        receiver: &PublicKey,
         message: S,
         expiration: Option<Timestamp>,
     ) -> Result<(), Error>

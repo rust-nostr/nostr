@@ -21,7 +21,7 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, NostrDatabase, Order, TempEvent,
+    FlatBufferEncode, NostrDatabase, Order,
 };
 use rusqlite::config::DbConfig;
 use tokio::sync::RwLock;
@@ -51,8 +51,10 @@ impl SQLiteDatabase {
         let cfg = Config::new(path.as_ref());
         let pool = cfg.create_pool(Runtime::Tokio1)?;
 
-        // Execute migrations
+        // Acquire connection
         let conn = pool.get().await?;
+
+        // Execute migrations
         migration::run(&conn).await?;
 
         let this = Self {
@@ -80,10 +82,9 @@ impl SQLiteDatabase {
                 let mut events = BTreeSet::new();
                 while let Ok(Some(row)) = rows.next() {
                     let buf: Vec<u8> = row.get(0)?;
-                    let raw = TempEvent::decode(&buf)?;
-                    events.insert(raw);
+                    events.insert(Event::decode(&buf)?);
                 }
-                Ok::<BTreeSet<TempEvent>, Error>(events)
+                Ok::<BTreeSet<Event>, Error>(events)
             })
             .await??;
 
@@ -320,35 +321,6 @@ impl NostrDatabase for SQLiteDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
-        let conn = self.acquire().await?;
-        let ids: Vec<EventId> = self.indexes.query(filters, order).await;
-        conn.interact(move |conn| {
-            let mut events = Vec::with_capacity(ids.len());
-            for chunk in ids.chunks(BATCH_SIZE) {
-                let mut stmt = conn.prepare_cached(&format!(
-                    "SELECT event FROM events WHERE {};",
-                    chunk
-                        .iter()
-                        .map(|id| format!("event_id = '{id}'"))
-                        .collect::<Vec<_>>()
-                        .join(" OR ")
-                ))?;
-                let mut rows = stmt.query([])?;
-                while let Ok(Some(row)) = rows.next() {
-                    let buf: Vec<u8> = row.get(0)?;
-                    events.push(Event::decode(&buf)?);
-                }
-            }
-            Ok(events)
-        })
-        .await?
-    }
-
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err> {
         Ok(self.indexes.query(filters, order).await)
     }
 

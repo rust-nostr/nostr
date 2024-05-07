@@ -945,7 +945,7 @@ impl NostrWalletConnectURI {
         lud16: Option<String>,
     ) -> Result<Self> {
         Ok(nip47::NostrWalletConnectURI::new(
-            **public_key,
+            public_key.deref().clone(),
             Url::parse(&relay_url)?,
             random_secret_key.deref().clone(),
             lud16,
@@ -960,7 +960,7 @@ impl NostrWalletConnectURI {
 
     /// App Pubkey
     pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.public_key.into())
+        Arc::new(self.inner.public_key.clone().into())
     }
 
     /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.

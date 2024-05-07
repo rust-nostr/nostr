@@ -22,6 +22,7 @@ pub mod vanity;
 
 pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
+use crate::util::hex;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 
@@ -38,6 +39,8 @@ pub enum Error {
     InvalidChar(char),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
+    /// Hex decode error
+    Hex(hex::Error),
 }
 
 #[cfg(feature = "std")]
@@ -51,6 +54,7 @@ impl fmt::Display for Error {
             Self::SkMissing => write!(f, "Secret key missing"),
             Self::InvalidChar(c) => write!(f, "Unsupported char: {c}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Hex(e) => write!(f, "Hex: {e}"),
         }
     }
 }
@@ -58,6 +62,12 @@ impl fmt::Display for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+impl From<hex::Error> for Error {
+    fn from(e: hex::Error) -> Self {
+        Self::Hex(e)
     }
 }
 
@@ -185,12 +195,13 @@ impl Keys {
 
     /// Get public key
     #[inline]
-    pub fn public_key(&self) -> PublicKey {
-        self.public_key
+    pub fn public_key(&self) -> &PublicKey {
+        &self.public_key
     }
 
     /// Get public key
     #[inline]
+    #[deprecated(since = "0.31.0", note = "Use `public_key` instead")]
     pub fn public_key_ref(&self) -> &PublicKey {
         &self.public_key
     }

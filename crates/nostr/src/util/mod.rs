@@ -4,9 +4,10 @@
 
 //! Util
 
+use alloc::borrow::Cow;
 use alloc::string::String;
 
-use bitcoin::secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey};
+use bitcoin::secp256k1::{self, ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::{rand, All, Secp256k1};
 #[cfg(feature = "std")]
@@ -19,19 +20,24 @@ pub mod hex;
 pub mod hkdf;
 
 use crate::nips::nip01::Coordinate;
+use crate::nips::nip19::Nip19Profile;
 use crate::{EventId, PublicKey, SecretKey, Tag};
 
 /// Generate shared key
 ///
 /// **Important: use of a strong cryptographic hash function may be critical to security! Do NOT use
 /// unless you understand cryptographical implications.**
-pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> [u8; 32] {
+pub fn generate_shared_key(
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
+) -> Result<[u8; 32], secp256k1::Error> {
+    let public_key: &XOnlyPublicKey = public_key.get_xonly_public_key()?;
     let public_key_normalized: NormalizedPublicKey =
-        NormalizedPublicKey::from_x_only_public_key(**public_key, Parity::Even);
+        NormalizedPublicKey::from_x_only_public_key(*public_key, Parity::Even);
     let ssp: [u8; 64] = ecdh::shared_secret_point(&public_key_normalized, secret_key);
     let mut shared_key: [u8; 32] = [0u8; 32];
     shared_key.copy_from_slice(&ssp[..32]);
-    shared_key
+    Ok(shared_key)
 }
 
 /// Secp256k1 global context
@@ -94,5 +100,34 @@ impl From<EventId> for EventIdOrCoordinate {
 impl From<Coordinate> for EventIdOrCoordinate {
     fn from(coordinate: Coordinate) -> Self {
         Self::Coordinate(coordinate)
+    }
+}
+
+#[allow(missing_docs)]
+pub trait IntoPublicKey {
+    fn into_public_key(self) -> PublicKey;
+}
+
+impl IntoPublicKey for PublicKey {
+    fn into_public_key(self) -> PublicKey {
+        self
+    }
+}
+
+impl IntoPublicKey for &PublicKey {
+    fn into_public_key(self) -> PublicKey {
+        self.clone()
+    }
+}
+
+impl IntoPublicKey for Cow<'_, PublicKey> {
+    fn into_public_key(self) -> PublicKey {
+        self.into_owned()
+    }
+}
+
+impl IntoPublicKey for Nip19Profile {
+    fn into_public_key(self) -> PublicKey {
+        self.public_key
     }
 }

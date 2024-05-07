@@ -42,7 +42,7 @@ impl ZapEntity {
     #[uniffi::constructor]
     pub fn public_key(public_key: &PublicKey) -> Self {
         Self {
-            inner: client::ZapEntity::PublicKey(**public_key),
+            inner: client::ZapEntity::PublicKey(public_key.deref().clone()),
         }
     }
 }

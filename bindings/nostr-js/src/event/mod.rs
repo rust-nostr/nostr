@@ -61,7 +61,7 @@ impl JsEvent {
     /// Get event author (`pubkey` field)
     #[wasm_bindgen(getter)]
     pub fn author(&self) -> JsPublicKey {
-        self.inner.author().into()
+        self.inner.author().clone().into()
     }
 
     #[wasm_bindgen(js_name = createdAt, getter)]

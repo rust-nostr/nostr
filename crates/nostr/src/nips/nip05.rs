@@ -94,9 +94,9 @@ where
 }
 
 #[inline]
-fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
+fn get_relays_from_json(json: Value, pk: &PublicKey) -> Vec<Url> {
     json.get("relays")
-        .and_then(|relays| relays.get(pk.to_string()))
+        .and_then(|relays| relays.get(pk.to_hex()))
         .and_then(|value| serde_json::from_value(value.clone()).ok())
         .unwrap_or_default()
 }
@@ -200,7 +200,7 @@ where
     let json: Value = serde_json::from_str(&res.text().await?)?;
 
     let public_key = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
-    let relays = get_relays_from_json(json, public_key);
+    let relays = get_relays_from_json(json, &public_key);
 
     Ok(Nip19Profile { public_key, relays })
 }
@@ -225,7 +225,7 @@ where
     let json: Value = serde_json::from_str(&res.text()?)?;
 
     let public_key = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
-    let relays = get_relays_from_json(json, public_key);
+    let relays = get_relays_from_json(json, &public_key);
 
     Ok(Nip19Profile { public_key, relays })
 }

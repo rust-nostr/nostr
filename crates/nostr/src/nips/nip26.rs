@@ -189,6 +189,7 @@ where
     let unhashed_token = DelegationToken::new(delegatee_public_key, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_digest_slice(hashed_token.as_byte_array())?;
+    let delegator_public_key = delegator_public_key.get_xonly_public_key()?;
     secp.verify_schnorr(&signature, &message, delegator_public_key)?;
     Ok(())
 }
@@ -261,7 +262,7 @@ impl DelegationTag {
         let signature =
             sign_delegation_with_ctx(secp, rng, delegator_keys, delegatee_pubkey, &conditions)?;
         Ok(Self {
-            delegator_pubkey: delegator_keys.public_key(),
+            delegator_pubkey: delegator_keys.public_key().clone(),
             conditions,
             signature,
         })
@@ -269,8 +270,8 @@ impl DelegationTag {
 
     /// Get delegator public key
     #[inline]
-    pub fn delegator_pubkey(&self) -> PublicKey {
-        self.delegator_pubkey
+    pub fn delegator_pubkey(&self) -> &PublicKey {
+        &self.delegator_pubkey
     }
 
     /// Get conditions
@@ -728,9 +729,9 @@ mod tests {
             format!("nostr:delegation:{delegatee_public_key}:{conditions}");
         let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
         let message = Message::from_digest_slice(hashed_token.as_byte_array()).unwrap();
+        let public_key = delegator_keys.public_key().get_xonly_public_key().unwrap();
 
-        let verify_result =
-            SECP256K1.verify_schnorr(&signature, &message, &delegator_keys.public_key());
+        let verify_result = SECP256K1.verify_schnorr(&signature, &message, public_key);
         assert!(verify_result.is_ok());
     }
 
@@ -782,11 +783,11 @@ mod tests {
         let delegator_sk =
             SecretKey::from_hex("b2f3673ee3a659283e6599080e0ab0e669a3c2640914375a9b0b357faae08b17")
                 .unwrap();
-        let delegator_pubkey = Keys::new_with_ctx(&secp, delegator_sk).public_key();
+        let delegator_keys = Keys::new_with_ctx(&secp, delegator_sk);
         let conditions = Conditions::from_str("kind=1&created_at<1678659553").unwrap();
         let signature = Signature::from_str("435091ab4c4a11e594b1a05e0fa6c2f6e3b6eaa87c53f2981a3d6980858c40fdcaffde9a4c461f352a109402a4278ff4dbf90f9ebd05f96dac5ae36a6364a976").unwrap();
         let d = DelegationTag {
-            delegator_pubkey,
+            delegator_pubkey: delegator_keys.public_key().clone(),
             conditions,
             signature,
         };

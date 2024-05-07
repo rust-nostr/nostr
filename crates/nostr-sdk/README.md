@@ -100,7 +100,7 @@ async fn main() -> Result<()> {
     let public_key = PublicKey::from_bech32(
         "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
     )?;
-    client.zap(public_key, 1000, None).await?;
+    client.zap(&public_key, 1000, None).await?;
 
     // Zap profile
     let details = ZapDetails::new(ZapType::Public).message("Test");

@@ -18,9 +18,7 @@ mod event_generated;
 mod event_seen_by_generated;
 
 use self::event_generated::event_fbs;
-pub(crate) use self::event_generated::event_fbs::StringVector;
 use self::event_seen_by_generated::event_seen_by_fbs;
-use crate::temp::TempEvent;
 
 /// FlatBuffers Error
 #[derive(Debug, Error)]
@@ -62,8 +60,8 @@ impl FlatBufferEncode for Event {
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
         fbb.reset();
 
-        let id = event_fbs::Fixed32Bytes::new(&self.id.to_bytes());
-        let pubkey = event_fbs::Fixed32Bytes::new(&self.author_ref().to_bytes());
+        let id = event_fbs::Fixed32Bytes::new(self.id.as_bytes());
+        let pubkey = event_fbs::Fixed32Bytes::new(self.author().as_bytes());
         let sig = event_fbs::Fixed64Bytes::new(self.sig.as_ref());
         let tags = self
             .iter_tags()
@@ -112,27 +110,14 @@ impl FlatBufferDecode for Event {
             .collect::<Result<Vec<Tag>, _>>()?;
 
         Ok(Self::new(
-            EventId::from_slice(&ev.id().ok_or(Error::NotFound)?.0)?,
-            PublicKey::from_slice(&ev.pubkey().ok_or(Error::NotFound)?.0)?,
+            EventId::owned(ev.id().ok_or(Error::NotFound)?.0),
+            PublicKey::unchecked(ev.pubkey().ok_or(Error::NotFound)?.0),
             Timestamp::from(ev.created_at()),
             Kind::from(ev.kind() as u16),
             tags,
             ev.content().ok_or(Error::NotFound)?.to_owned(),
             Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
         ))
-    }
-}
-
-impl FlatBufferDecode for TempEvent {
-    #[tracing::instrument(skip_all, level = "trace")]
-    fn decode(buf: &[u8]) -> Result<Self, Error> {
-        let ev = event_fbs::root_as_event(buf)?;
-        let id = ev.id().ok_or(Error::NotFound)?.0;
-        let pubkey = ev.pubkey().ok_or(Error::NotFound)?.0;
-        let created_at = ev.created_at();
-        let kind = ev.kind() as u16;
-        let tags = ev.tags().ok_or(Error::NotFound)?;
-        Ok(Self::new(id, pubkey, created_at, kind, tags))
     }
 }
 

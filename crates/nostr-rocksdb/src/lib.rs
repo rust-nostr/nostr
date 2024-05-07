@@ -21,7 +21,7 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, NostrDatabase, Order, TempEvent,
+    FlatBufferEncode, NostrDatabase, Order,
 };
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, IteratorMode,
@@ -119,7 +119,7 @@ impl RocksDatabase {
             .db
             .full_iterator_cf(&cf, IteratorMode::Start)
             .flatten()
-            .filter_map(|(_, value)| TempEvent::decode(&value).ok())
+            .filter_map(|(_, value)| Event::decode(&value).ok())
             .collect();
 
         // Build indexes
@@ -304,37 +304,6 @@ impl NostrDatabase for RocksDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
-        let ids: Vec<EventId> = self.indexes.query(filters, order).await;
-
-        let this = self.clone();
-        tokio::task::spawn_blocking(move || {
-            let cf = this.cf_handle(EVENTS_CF)?;
-
-            let mut events: Vec<Event> = Vec::with_capacity(ids.len());
-
-            let span = tracing::trace_span!("query-batched-multi-get");
-            let list = span.in_scope(|| this.db.batched_multi_get_cf(&cf, ids, false));
-
-            let span = tracing::trace_span!("query-decode-events");
-            span.in_scope(|| {
-                for v in list.into_iter().flatten().flatten() {
-                    let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
-                    events.push(event);
-                }
-                Ok(())
-            })?;
-
-            Ok(events)
-        })
-        .await
-        .map_err(DatabaseError::backend)?
-    }
-
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err> {
         Ok(self.indexes.query(filters, order).await)
     }
 

@@ -27,18 +27,21 @@ impl Profile {
     #[uniffi::constructor]
     pub fn new(public_key: &PublicKey, metadata: Arc<Metadata>) -> Self {
         Self {
-            inner: database::Profile::new(**public_key, metadata.as_ref().deref().clone()),
+            inner: database::Profile::new(
+                public_key.deref().clone(),
+                metadata.as_ref().deref().clone(),
+            ),
         }
     }
 
     /// Get profile public key
     pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.public_key().into())
+        Arc::new(self.inner.public_key().clone().into())
     }
 
     /// Get profile metadata
     pub fn metadata(&self) -> Arc<Metadata> {
-        Arc::new(self.inner.metadata().into())
+        Arc::new(self.inner.metadata().clone().into())
     }
 
     /// Get profile name
@@ -46,8 +49,8 @@ impl Profile {
     /// Steps (go to next step if field is `None` or `empty`):
     /// * Check `display_name` field
     /// * Check `name` field
-    /// * Return cutted public key (ex. `00000000:00000002`)
+    /// * Return cut public key (ex. `00000000:00000002`)
     pub fn name(&self) -> String {
-        self.inner.name()
+        self.inner.name().into_owned()
     }
 }

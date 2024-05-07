@@ -8,6 +8,7 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
+use std::borrow::Cow;
 use std::fmt;
 
 use nostr::key;
@@ -113,19 +114,19 @@ impl NostrSigner {
     }
 
     /// Get signer public key
-    pub async fn public_key(&self) -> Result<PublicKey, Error> {
+    pub async fn public_key(&self) -> Result<Cow<PublicKey>, Error> {
         match self {
-            Self::Keys(keys) => Ok(keys.public_key()),
+            Self::Keys(keys) => Ok(Cow::Borrowed(keys.public_key())),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
-            Self::NIP07(s) => Ok(s.get_public_key().await?),
+            Self::NIP07(s) => Ok(Cow::Owned(s.get_public_key().await?)),
             #[cfg(feature = "nip46")]
-            Self::NIP46(s) => Ok(s.signer_public_key()),
+            Self::NIP46(s) => Ok(Cow::Borrowed(s.signer_public_key())),
         }
     }
 
     /// Sign an [EventBuilder]
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
-        let public_key: PublicKey = self.public_key().await?;
+        let public_key: PublicKey = self.public_key().await?.into_owned();
         let unsigned: UnsignedEvent = builder.to_unsigned_event(public_key);
         self.sign_event(unsigned).await
     }
@@ -143,13 +144,17 @@ impl NostrSigner {
 
     /// NIP04 encrypt
     #[cfg(feature = "nip04")]
-    pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip04_encrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        content: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
         let content: &[u8] = content.as_ref();
         match self {
-            Self::Keys(keys) => Ok(nip04::encrypt(keys.secret_key()?, &public_key, content)?),
+            Self::Keys(keys) => Ok(nip04::encrypt(keys.secret_key()?, public_key, content)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
@@ -161,7 +166,7 @@ impl NostrSigner {
     #[cfg(feature = "nip04")]
     pub async fn nip04_decrypt<T>(
         &self,
-        public_key: PublicKey,
+        public_key: &PublicKey,
         encrypted_content: T,
     ) -> Result<String, Error>
     where
@@ -171,7 +176,7 @@ impl NostrSigner {
         match self {
             Self::Keys(keys) => Ok(nip04::decrypt(
                 keys.secret_key()?,
-                &public_key,
+                public_key,
                 encrypted_content,
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
@@ -183,7 +188,11 @@ impl NostrSigner {
 
     /// NIP44 encryption with [NostrSigner]
     #[cfg(feature = "nip44")]
-    pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip44_encrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        content: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
@@ -191,7 +200,7 @@ impl NostrSigner {
         match self {
             Self::Keys(keys) => Ok(nip44::encrypt(
                 keys.secret_key()?,
-                &public_key,
+                public_key,
                 content,
                 nip44::Version::default(),
             )?),
@@ -204,13 +213,17 @@ impl NostrSigner {
 
     /// NIP44 decryption with [NostrSigner]
     #[cfg(feature = "nip44")]
-    pub async fn nip44_decrypt<T>(&self, public_key: PublicKey, payload: T) -> Result<String, Error>
+    pub async fn nip44_decrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        payload: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
         let payload: &[u8] = payload.as_ref();
         match self {
-            Self::Keys(keys) => Ok(nip44::decrypt(keys.secret_key()?, &public_key, payload)?),
+            Self::Keys(keys) => Ok(nip44::decrypt(keys.secret_key()?, public_key, payload)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip44_decrypt(public_key, payload).await?),
             #[cfg(feature = "nip46")]

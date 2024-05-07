@@ -179,16 +179,6 @@ mod inner {
                 .collect())
         }
 
-        async fn event_ids_by_filters(
-            &self,
-            filters: Vec<Filter>,
-            _order: Order,
-        ) -> Result<Vec<EventId>, Self::Err> {
-            let filters = filters.into_iter().map(|f| Arc::new(f.into())).collect();
-            let res = self.inner.query(filters).map_err(DatabaseError::backend)?;
-            Ok(res.into_iter().map(|e| *e.id()).collect())
-        }
-
         async fn negentropy_items(
             &self,
             filter: Filter,

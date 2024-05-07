@@ -30,7 +30,7 @@ impl Contact {
     pub fn new(pk: &PublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
         let relay_url = relay_url.map(|relay_url| UncheckedUrl::from(&relay_url));
         Self {
-            inner: nostr::Contact::new(**pk, relay_url, alias),
+            inner: nostr::Contact::new(pk.deref().clone(), relay_url, alias),
         }
     }
 
@@ -39,7 +39,7 @@ impl Contact {
     }
 
     pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.public_key.into())
+        Arc::new(self.inner.public_key.clone().into())
     }
 
     pub fn relay_url(&self) -> Option<String> {

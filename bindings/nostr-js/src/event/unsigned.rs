@@ -49,7 +49,7 @@ impl JsUnsignedEvent {
 
     #[wasm_bindgen(getter)]
     pub fn pubkey(&self) -> JsPublicKey {
-        self.inner.pubkey.into()
+        self.inner.pubkey.clone().into()
     }
 
     #[wasm_bindgen(js_name = createdAt, getter)]

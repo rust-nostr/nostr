@@ -77,13 +77,16 @@ impl EventBuilder {
     }
 
     pub fn to_unsigned_event(&self, public_key: &PublicKey) -> UnsignedEvent {
-        self.inner.clone().to_unsigned_event(**public_key).into()
+        self.inner
+            .clone()
+            .to_unsigned_event(public_key.deref())
+            .into()
     }
 
     pub fn to_unsigned_pow_event(&self, public_key: &PublicKey, difficulty: u8) -> UnsignedEvent {
         self.inner
             .clone()
-            .to_unsigned_pow_event(**public_key, difficulty)
+            .to_unsigned_pow_event(public_key.deref(), difficulty)
             .into()
     }
 
@@ -167,7 +170,7 @@ impl EventBuilder {
         Ok(Self {
             inner: nostr::EventBuilder::encrypted_direct_msg(
                 sender_keys.deref(),
-                **receiver_pubkey,
+                receiver_pubkey.deref(),
                 content,
                 reply_to.map(|id| **id),
             )?,
@@ -212,7 +215,7 @@ impl EventBuilder {
         Self {
             inner: nostr::EventBuilder::reaction_extended(
                 **event_id,
-                **public_key,
+                public_key.deref(),
                 **kind,
                 reaction,
             ),
@@ -258,7 +261,7 @@ impl EventBuilder {
     #[uniffi::constructor]
     pub fn mute_channel_user(public_key: &PublicKey, reason: Option<String>) -> Self {
         Self {
-            inner: nostr::EventBuilder::mute_channel_user(**public_key, reason),
+            inner: nostr::EventBuilder::mute_channel_user(public_key.deref(), reason),
         }
     }
 
@@ -278,7 +281,7 @@ impl EventBuilder {
         Ok(Self {
             inner: nostr::EventBuilder::nostr_connect(
                 sender_keys.deref(),
-                **receiver_pubkey,
+                receiver_pubkey.deref(),
                 msg.try_into()?,
             )?,
         })
@@ -307,7 +310,7 @@ impl EventBuilder {
         Ok(Self {
             inner: nostr::EventBuilder::live_event_msg(
                 live_event_id,
-                **live_event_host,
+                live_event_host.deref().clone(),
                 content,
                 relay_url,
                 tags,
@@ -487,7 +490,7 @@ impl EventBuilder {
     #[uniffi::constructor]
     pub fn private_msg_rumor(receiver: &PublicKey, message: &str) -> Self {
         Self {
-            inner: nostr::EventBuilder::private_msg_rumor(**receiver, message),
+            inner: nostr::EventBuilder::private_msg_rumor(receiver.deref(), message),
         }
     }
 
@@ -589,7 +592,9 @@ impl EventBuilder {
     #[uniffi::constructor]
     pub fn follow_sets(publick_keys: Vec<Arc<PublicKey>>) -> Self {
         Self {
-            inner: nostr::EventBuilder::follow_sets(publick_keys.into_iter().map(|p| **p)),
+            inner: nostr::EventBuilder::follow_sets(
+                publick_keys.iter().map(|p| p.as_ref().deref()),
+            ),
         }
     }
 

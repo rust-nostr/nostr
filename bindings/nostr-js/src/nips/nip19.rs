@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use nostr::nips::nip19::{FromBech32, Nip19Event, Nip19Profile, ToBech32};
 use nostr::nips::nip21::NostrURI;
 use wasm_bindgen::prelude::*;
@@ -26,7 +28,7 @@ impl JsNip19Event {
     #[wasm_bindgen(constructor)]
     pub fn new(event_id: &JsEventId, author: Option<JsPublicKey>, relays: Vec<String>) -> Self {
         let mut inner = Nip19Event::new(**event_id, relays);
-        inner.author = author.map(|p| *p);
+        inner.author = author.map(|p| p.deref().clone());
         Self { inner }
     }
 
@@ -60,7 +62,7 @@ impl JsNip19Event {
     }
 
     pub fn author(&self) -> Option<JsPublicKey> {
-        self.inner.author.map(|p| p.into())
+        self.inner.author.clone().map(|p| p.into())
     }
 
     pub fn relays(&self) -> Vec<String> {
@@ -85,7 +87,7 @@ impl JsNip19Profile {
     #[wasm_bindgen(constructor)]
     pub fn new(public_key: &JsPublicKey, relays: Vec<String>) -> Result<JsNip19Profile> {
         Ok(Self {
-            inner: Nip19Profile::new(**public_key, relays).map_err(into_err)?,
+            inner: Nip19Profile::new(public_key.deref().clone(), relays).map_err(into_err)?,
         })
     }
 
@@ -115,7 +117,7 @@ impl JsNip19Profile {
 
     #[wasm_bindgen(js_name = publicKey)]
     pub fn public_key(&self) -> JsPublicKey {
-        self.inner.public_key.into()
+        self.inner.public_key.clone().into()
     }
 
     pub fn relays(&self) -> Vec<String> {
