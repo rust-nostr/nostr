@@ -196,6 +196,16 @@ impl EventBuilder {
         }
     }
 
+    /// Add tags
+    #[inline]
+    pub fn add_tags<I>(mut self, tags: I) -> Self
+    where
+        I: IntoIterator<Item = Tag>,
+    {
+        self.tags.extend(tags);
+        self
+    }
+
     /// Set a custom `created_at` UNIX timestamp
     #[inline]
     pub fn custom_created_at(mut self, created_at: Timestamp) -> Self {

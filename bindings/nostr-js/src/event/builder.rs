@@ -53,6 +53,13 @@ impl JsEventBuilder {
         }
     }
 
+    /// Add tags
+    pub fn add_tags(self, tags: Vec<JsTag>) -> Self {
+        self.inner
+            .add_tags(tags.into_iter().map(|t| t.into()))
+            .into()
+    }
+
     /// Set a custom `created_at` UNIX timestamp
     #[wasm_bindgen(js_name = customCreatedAt)]
     pub fn custom_created_at(self, created_at: &JsTimestamp) -> Self {

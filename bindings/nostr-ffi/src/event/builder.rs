@@ -56,6 +56,14 @@ impl EventBuilder {
         }
     }
 
+    /// Add tags
+    pub fn add_tags(self: Arc<Self>, tags: &[Arc<Tag>]) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        let tags = tags.iter().map(|t| t.as_ref().deref().clone());
+        builder.inner = builder.inner.add_tags(tags);
+        builder
+    }
+
     /// Set a custom `created_at` UNIX timestamp
     pub fn custom_created_at(self: Arc<Self>, created_at: &Timestamp) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
