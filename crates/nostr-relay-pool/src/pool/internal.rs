@@ -423,6 +423,87 @@ impl InternalRelayPool {
         }
     }
 
+    pub async fn subscribe_to<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        opts: SubscribeOptions,
+    ) -> Result<SubscriptionId, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let id: SubscriptionId = SubscriptionId::generate();
+        self.subscribe_with_id_to(urls, id.clone(), filters, opts)
+            .await?;
+        Ok(id)
+    }
+
+    pub async fn subscribe_with_id_to<I, U>(
+        &self,
+        urls: I,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+        opts: SubscribeOptions,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Compose URLs
+        let urls: HashSet<Url> = urls
+            .into_iter()
+            .map(|u| u.try_into_url())
+            .collect::<Result<_, _>>()?;
+
+        // Check if urls set is empty
+        if urls.is_empty() {
+            return Err(Error::NoRelaysSpecified);
+        }
+
+        // Get relays
+        let relays: HashMap<Url, Relay> = self.relays().await;
+
+        // Check if relays map is empty
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
+        // If passed only 1 url, not use threads
+        if urls.len() == 1 {
+            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            relay.subscribe_with_id(id, filters, opts).await?;
+        } else {
+            // Check if urls set contains ONLY already added relays
+            if !urls.iter().all(|url| relays.contains_key(url)) {
+                return Err(Error::RelayNotFound);
+            }
+
+            let mut handles = Vec::with_capacity(urls.len());
+
+            // Subscribe
+            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+                let id: SubscriptionId = id.clone();
+                let filters: Vec<Filter> = filters.clone();
+                let handle = thread::spawn(async move {
+                    if let Err(e) = relay.subscribe_with_id(id, filters, opts).await {
+                        tracing::error!("Impossible to subscribe to {url}: {e}")
+                    }
+                })?;
+                handles.push(handle);
+            }
+
+            for handle in handles.into_iter() {
+                handle.join().await?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn unsubscribe(&self, id: SubscriptionId, opts: RelaySendOptions) {
         let relays = self.relays().await;
         self.remove_subscription(&id).await;

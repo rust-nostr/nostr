@@ -531,17 +531,17 @@ impl Client {
         self.pool.subscriptions().await
     }
 
-    /// Get subscription
+    /// Get pool subscription
     #[inline]
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
         self.pool.subscription(id).await
     }
 
-    /// Subscribe to filters
+    /// Subscribe to filters to all connected relays
     ///
     /// This method create a new subscription. None of the previous subscriptions will be edited/closed when you call this!
-    /// So remember to unsubscribe when you no longer need it. You can get all your active (non-auto-closing) subscriptions
-    /// by calling `client.subscriptions().await`
+    /// So remember to unsubscribe when you no longer need it. You can get all your active **pool** (non-auto-closing) subscriptions
+    /// by calling `client.subscriptions().await`.
     ///
     /// # Auto-closing subscription
     ///
@@ -585,7 +585,7 @@ impl Client {
         self.pool.subscribe(filters, opts).await
     }
 
-    /// Subscribe to filters with custom [SubscriptionId]
+    /// Subscribe to filters with custom [SubscriptionId] to all connected relays
     ///
     /// # Auto-closing subscription
     ///
@@ -629,6 +629,61 @@ impl Client {
             .close_on(opts)
             .send_opts(send_opts);
         self.pool.subscribe_with_id(id, filters, opts).await
+    }
+
+    /// Subscribe to filters to specific relays
+    ///
+    /// This method create a new subscription. None of the previous subscriptions will be edited/closed when you call this!
+    /// So remember to unsubscribe when you no longer need it.
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
+    #[inline]
+    pub async fn subscribe_to<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        opts: Option<SubscribeAutoCloseOptions>,
+    ) -> Result<SubscriptionId, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+        let opts: SubscribeOptions = SubscribeOptions::default()
+            .close_on(opts)
+            .send_opts(send_opts);
+        Ok(self.pool.subscribe_to(urls, filters, opts).await?)
+    }
+
+    /// Subscribe to filters with custom [SubscriptionId] to specific relays
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
+    #[inline]
+    pub async fn subscribe_with_id_to<I, U>(
+        &self,
+        urls: I,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+        opts: Option<SubscribeAutoCloseOptions>,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
+        let opts: SubscribeOptions = SubscribeOptions::default()
+            .close_on(opts)
+            .send_opts(send_opts);
+        Ok(self
+            .pool
+            .subscribe_with_id_to(urls, id, filters, opts)
+            .await?)
     }
 
     /// Unsubscribe

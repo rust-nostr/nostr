@@ -203,11 +203,12 @@ impl Client {
         })
     }
 
-    /// Subscribe to filters
+    /// Subscribe to filters to all connected relays
     ///
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    #[uniffi::method(default(opts = None))]
     pub fn subscribe(
         &self,
         filters: Vec<Arc<Filter>>,
@@ -225,11 +226,12 @@ impl Client {
         })
     }
 
-    /// Subscribe to filters with custom subscription ID
+    /// Subscribe to filters with custom subscription ID to all connected relays
     ///
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    #[uniffi::method(default(opts = None))]
     pub fn subscribe_with_id(
         &self,
         id: String,
@@ -244,6 +246,56 @@ impl Client {
             self.inner
                 .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| **o))
                 .await
+        })
+    }
+
+    /// Subscribe to filters to specific relays
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    #[uniffi::method(default(opts = None))]
+    pub fn subscribe_to(
+        &self,
+        urls: Vec<String>,
+        filters: Vec<Arc<Filter>>,
+        opts: Option<Arc<SubscribeAutoCloseOptions>>,
+    ) -> Result<String> {
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        block_on(async move {
+            Ok(self
+                .inner
+                .subscribe_to(urls, filters, opts.map(|o| **o))
+                .await?
+                .to_string())
+        })
+    }
+
+    /// Subscribe to filters with custom subscription ID to specific relays
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    #[uniffi::method(default(opts = None))]
+    pub fn subscribe_with_id_to(
+        &self,
+        urls: Vec<String>,
+        id: String,
+        filters: Vec<Arc<Filter>>,
+        opts: Option<Arc<SubscribeAutoCloseOptions>>,
+    ) -> Result<()> {
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        block_on(async move {
+            Ok(self
+                .inner
+                .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, opts.map(|o| **o))
+                .await?)
         })
     }
 

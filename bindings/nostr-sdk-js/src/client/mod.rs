@@ -174,7 +174,7 @@ impl JsClient {
         self.inner.disconnect().await.map_err(into_err)
     }
 
-    /// Subscribe to filters
+    /// Subscribe to filters to all connected relays
     ///
     /// ### Auto-closing subscription
     ///
@@ -191,7 +191,7 @@ impl JsClient {
             .to_string()
     }
 
-    /// Subscribe to filters with custom subscription ID
+    /// Subscribe to filters with custom subscription ID to all connected relays
     ///
     /// ### Auto-closing subscription
     ///
@@ -207,6 +207,47 @@ impl JsClient {
         self.inner
             .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| *o))
             .await
+    }
+
+    /// Subscribe to filters to specific relays
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    #[wasm_bindgen(js_name = subscribeTo)]
+    pub async fn subscribe_to(
+        &self,
+        urls: Vec<String>,
+        filters: Vec<JsFilter>,
+        opts: Option<JsSubscribeAutoCloseOptions>,
+    ) -> Result<String> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+        Ok(self
+            .inner
+            .subscribe_to(urls, filters, opts.map(|o| *o))
+            .await
+            .map_err(into_err)?
+            .to_string())
+    }
+
+    /// Subscribe to filters with custom subscription ID to specific relays
+    ///
+    /// ### Auto-closing subscription
+    ///
+    /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+    #[wasm_bindgen(js_name = subscribeWithIdTo)]
+    pub async fn subscribe_with_id_to(
+        &self,
+        urls: Vec<String>,
+        id: &str,
+        filters: Vec<JsFilter>,
+        opts: Option<JsSubscribeAutoCloseOptions>,
+    ) -> Result<()> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+        self.inner
+            .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, opts.map(|o| *o))
+            .await
+            .map_err(into_err)
     }
 
     /// Unsubscribe
