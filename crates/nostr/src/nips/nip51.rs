@@ -12,6 +12,7 @@ use super::nip01::Coordinate;
 use crate::{EventId, PublicKey, Tag, TagStandard, UncheckedUrl, Url};
 
 /// Things the user doesn't want to see in their feeds
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MuteList {
     /// Public Keys
     pub public_keys: Vec<PublicKey>,
@@ -50,6 +51,7 @@ impl From<MuteList> for Vec<Tag> {
 }
 
 /// Uncategorized, "global" list of things a user wants to save
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Bookmarks {
     /// Event IDs
     pub event_ids: Vec<EventId>,
@@ -87,6 +89,7 @@ impl From<Bookmarks> for Vec<Tag> {
 }
 
 /// Topics a user may be interested in and pointers
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Interests {
     /// Hashtags
     pub hashtags: Vec<String>,
@@ -111,6 +114,7 @@ impl From<Interests> for Vec<Tag> {
 }
 
 /// User preferred emojis and pointers to emoji sets
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Emojis {
     /// Emojis
     pub emojis: Vec<(String, UncheckedUrl)>,
@@ -132,6 +136,7 @@ impl From<Emojis> for Vec<Tag> {
 }
 
 /// Groups of articles picked by users as interesting and/or belonging to the same category
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ArticlesCuration {
     /// Coordinates
     pub coordinate: Vec<Coordinate>,
