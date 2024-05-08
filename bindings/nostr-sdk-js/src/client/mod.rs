@@ -120,7 +120,10 @@ impl JsClient {
     ///
     /// Return `false` if the relay already exists.
     ///
-    /// This method use perviously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
+    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribeTo` method instead of `subscribe`,
+    /// to avoid to set pool subscriptions.
+    ///
+    /// This method use previously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
     #[wasm_bindgen(js_name = addRelay)]
@@ -129,6 +132,9 @@ impl JsClient {
     }
 
     /// Add multiple relays
+    ///
+    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribeTo` method instead of `subscribe`,
+    /// to avoid to set pool subscriptions.
     ///
     /// Connection is **NOT** automatically started with relays, remember to call `connect` method!
     #[wasm_bindgen(js_name = addRelays)]

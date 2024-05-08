@@ -127,7 +127,7 @@ impl InternalRelayPool {
         subscriptions.get(id).cloned()
     }
 
-    async fn update_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
+    async fn update_pool_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
         let mut subscriptions = self.subscriptions.write().await;
         let current: &mut Vec<Filter> = subscriptions.entry(id).or_default();
         *current = filters;
@@ -148,14 +148,31 @@ impl InternalRelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
+        // Convert into url
         let url: Url = url.try_into_url()?;
+
+        // Get relays
         let mut relays = self.relays.write().await;
+
+        // Check if map already contains url
         if !relays.contains_key(&url) {
+            // Compose new relay
             let relay = Relay::custom(url, self.database.clone(), opts);
+
+            // Set notification sender
             relay
                 .set_notification_sender(Some(self.notification_sender.clone()))
                 .await;
+
+            // Set relay subscriptions
+            let subscriptions = self.subscriptions().await;
+            for (id, filters) in subscriptions.into_iter() {
+                relay.inner.update_subscription(id, filters).await;
+            }
+
+            // Insert relay into map
             relays.insert(relay.url(), relay);
+
             Ok(true)
         } else {
             Ok(false)
@@ -409,7 +426,8 @@ impl InternalRelayPool {
         // Check if isn't auto-closing subscription
         if !opts.is_auto_closing() {
             // Update pool subscriptions
-            self.update_subscription(id.clone(), filters.clone()).await;
+            self.update_pool_subscription(id.clone(), filters.clone())
+                .await;
         }
 
         // Subscribe
@@ -624,9 +642,8 @@ impl InternalRelayPool {
             let mut handles = Vec::with_capacity(relays.len());
 
             for relay in relays.into_values() {
-                let pool = self.clone();
                 let handle = thread::spawn(async move {
-                    pool.connect_relay(&relay, connection_timeout).await;
+                    relay.connect(connection_timeout).await;
                 });
                 handles.push(handle);
             }
@@ -638,7 +655,7 @@ impl InternalRelayPool {
             }
         } else {
             for relay in relays.values() {
-                self.connect_relay(relay, None).await;
+                relay.connect(None).await;
             }
         }
     }
@@ -649,14 +666,6 @@ impl InternalRelayPool {
             relay.terminate().await?;
         }
         Ok(())
-    }
-
-    pub(crate) async fn connect_relay(&self, relay: &Relay, connection_timeout: Option<Duration>) {
-        let subscriptions = self.subscriptions().await;
-        for (id, filters) in subscriptions.into_iter() {
-            relay.inner.update_subscription(id, filters).await;
-        }
-        relay.connect(connection_timeout).await;
     }
 
     #[inline]

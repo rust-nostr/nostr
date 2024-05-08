@@ -291,7 +291,10 @@ impl Client {
     ///
     /// Return `false` if the relay already exists.
     ///
-    /// This method use perviously set or default [Options] to configure the [Relay] (ex. set proxy, set min POW, set relay limits, ...).
+    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+    /// to avoid to set pool subscriptions.
+    ///
+    /// This method use previously set or default [Options] to configure the [Relay] (ex. set proxy, set min POW, set relay limits, ...).
     /// To use custom [RelayOptions], check `Client::add_relay_with_opts`.
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
@@ -349,6 +352,9 @@ impl Client {
     ///
     /// Return `false` if the relay already exists.
     ///
+    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+    /// to avoid to set pool subscriptions.
+    ///
     /// Note: **this method ignore the options set in [`Options`]**.
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
@@ -383,6 +389,9 @@ impl Client {
     }
 
     /// Add multiple relays
+    ///
+    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+    /// to avoid to set pool subscriptions.
     ///
     /// Connection is **NOT** automatically started with relays, remember to call `client.connect()`!
     #[inline]
