@@ -34,6 +34,10 @@
 * [Nostr Database](): Databases abstraction, indexes and in-memory database implementation
 * [Nostr SDK](./nostr-sdk/01-index.md): High level nostr client library
 
+## Communication
+
+It's available a Matrix space with some rooms at [#rustnostr:matrix.org](https://matrix.to/#/#rustnostr:matrix.org).
+
 ## State
 
 **These libraries are in ALPHA state**, things that are implemented generally work but the **API will change in breaking ways**.
