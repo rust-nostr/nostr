@@ -28,7 +28,7 @@ use nostrdb::{Config, Filter as NdbFilter, Ndb, NdbStrVariant, Note, QueryResult
 
 const MAX_RESULTS: i32 = 10_000;
 
-// Wrap `Ndb` into `NdbDatabase` because only traits defined in the current crate can be implemented for types defined outside of the crate!
+// Wrap `Ndb` into `NdbDatabase` because only traits defined in the current crate can be implemented for types defined outside the crate!
 
 /// [`nostrdb`](https://github.com/damus-io/nostrdb) backend
 #[derive(Debug, Clone)]
@@ -92,7 +92,6 @@ impl NostrDatabase for NdbDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
-        // TODO: avoid `event.clone()`
         let msg = RelayMessage::event(SubscriptionId::new("ndb"), event.clone());
         let json: String = msg.as_json();
         self.db
@@ -115,7 +114,7 @@ impl NostrDatabase for NdbDatabase {
 
     async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let res = self.db.get_note_by_id(&txn, &event_id.to_bytes());
+        let res = self.db.get_note_by_id(&txn, event_id.as_bytes());
         Ok(res.is_ok())
     }
 
@@ -151,7 +150,7 @@ impl NostrDatabase for NdbDatabase {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let note = self
             .db
-            .get_note_by_id(&txn, &event_id.to_bytes())
+            .get_note_by_id(&txn, event_id.as_bytes())
             .map_err(DatabaseError::backend)?;
         ndb_note_to_event(note)
     }
@@ -181,11 +180,7 @@ impl NostrDatabase for NdbDatabase {
     ) -> Result<Vec<EventId>, Self::Err> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
-        let mut ids: Vec<EventId> = Vec::with_capacity(res.len());
-        for r in res.into_iter() {
-            ids.push(ndb_note_to_id(r.note)?);
-        }
-        Ok(ids)
+        Ok(res.into_iter().map(|r| ndb_note_to_id(r.note)).collect())
     }
 
     async fn negentropy_items(
@@ -194,11 +189,10 @@ impl NostrDatabase for NdbDatabase {
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, vec![filter])?;
-        let mut items: Vec<(EventId, Timestamp)> = Vec::with_capacity(res.len());
-        for r in res.into_iter() {
-            items.push(ndb_note_to_neg_item(r.note)?);
-        }
-        Ok(items)
+        Ok(res
+            .into_iter()
+            .map(|r| ndb_note_to_neg_item(r.note))
+            .collect())
     }
 
     async fn delete(&self, _filter: Filter) -> Result<(), Self::Err> {
@@ -261,7 +255,7 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 
 #[inline(always)]
 fn ndb_note_to_event(note: Note) -> Result<Event, DatabaseError> {
-    let id = EventId::from_slice(note.id()).map_err(DatabaseError::nostr)?;
+    let id = EventId::owned(*note.id());
     let public_key = PublicKey::from_slice(note.pubkey()).map_err(DatabaseError::nostr)?;
     let sig = Signature::from_slice(note.sig()).map_err(DatabaseError::nostr)?;
 
@@ -283,7 +277,7 @@ fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
     for tag in ndb_tags.iter() {
         let tag_str: Vec<String> = tag
             .into_iter()
-            .map(|nstr| match nstr.variant() {
+            .map(|s| match s.variant() {
                 NdbStrVariant::Id(id) => hex::encode(id),
                 NdbStrVariant::Str(s) => s.to_owned(),
             })
@@ -295,13 +289,13 @@ fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
 }
 
 #[inline(always)]
-fn ndb_note_to_id(note: Note) -> Result<EventId, DatabaseError> {
-    EventId::from_slice(note.id()).map_err(DatabaseError::nostr)
+fn ndb_note_to_id(note: Note) -> EventId {
+    EventId::owned(*note.id())
 }
 
 #[inline(always)]
-fn ndb_note_to_neg_item(note: Note) -> Result<(EventId, Timestamp), DatabaseError> {
-    let id = EventId::from_slice(note.id()).map_err(DatabaseError::nostr)?;
+fn ndb_note_to_neg_item(note: Note) -> (EventId, Timestamp) {
+    let id = EventId::owned(*note.id());
     let created_at = Timestamp::from(note.created_at());
-    Ok((id, created_at))
+    (id, created_at)
 }
