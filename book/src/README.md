@@ -1,4 +1,4 @@
-<div align="center">
+<div style="text-align: center;">
     <h1>
         <code>rust-nostr</code>
     </h1>
