@@ -4,18 +4,169 @@
 
 use core::ops::Deref;
 
-use nostr_sdk::{
-    FilterOptions, NegentropyDirection, NegentropyOptions, SubscribeAutoCloseOptions,
-    SubscribeOptions,
-};
+use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use super::flags::JsRelayServiceFlags;
+use super::limits::JsRelayLimits;
 use crate::duration::JsDuration;
+
+/// `Relay` options
+#[wasm_bindgen(js_name = RelayOptions)]
+pub struct JsRelayOptions {
+    inner: RelayOptions,
+}
+
+impl Deref for JsRelayOptions {
+    type Target = RelayOptions;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl From<RelayOptions> for JsRelayOptions {
+    fn from(inner: RelayOptions) -> Self {
+        Self { inner }
+    }
+}
+
+#[wasm_bindgen(js_class = RelayOptions)]
+impl JsRelayOptions {
+    /// New default relay options
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            inner: RelayOptions::new(),
+        }
+    }
+
+    /// Set Relay Service Flags
+    pub fn flags(self, flags: &JsRelayServiceFlags) -> Self {
+        self.inner.flags(**flags).into()
+    }
+
+    /// Set read flag
+    pub fn read(self, read: bool) -> Self {
+        self.inner.read(read).into()
+    }
+
+    /// Set write flag
+    pub fn write(self, write: bool) -> Self {
+        self.inner.write(write).into()
+    }
+
+    /// Set ping flag
+    pub fn ping(self, ping: bool) -> Self {
+        self.inner.ping(ping).into()
+    }
+
+    /// Minimum POW for received events (default: 0)
+    pub fn pow(self, difficulty: u8) -> Self {
+        self.inner.pow(difficulty).into()
+    }
+
+    /// Update `pow` option
+    pub fn update_pow_difficulty(&self, difficulty: u8) {
+        self.inner.update_pow_difficulty(difficulty);
+    }
+
+    /// Enable/disable auto reconnection (default: true)
+    pub fn reconnect(self, reconnect: bool) -> Self {
+        self.inner.reconnect(reconnect).into()
+    }
+
+    /// Update `reconnect` option
+    pub fn update_reconnect(&self, reconnect: bool) {
+        self.inner.update_reconnect(reconnect);
+    }
+
+    /// Retry connection time (default: 10 sec)
+    ///
+    /// Are allowed values `>=` 5 secs
+    pub fn retry_sec(self, retry_sec: u64) -> Self {
+        self.inner.retry_sec(retry_sec).into()
+    }
+
+    /// Set retry_sec option
+    pub fn update_retry_sec(&self, retry_sec: u64) {
+        self.inner.update_retry_sec(retry_sec);
+    }
+
+    /// Automatically adjust retry seconds based on success/attempts (default: true)
+    pub fn adjust_retry_sec(self, adjust_retry_sec: bool) -> Self {
+        self.inner.adjust_retry_sec(adjust_retry_sec).into()
+    }
+
+    /// Set adjust_retry_sec option
+    pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
+        self.inner.update_adjust_retry_sec(adjust_retry_sec);
+    }
+
+    /// Set custom limits
+    pub fn limits(self, limits: &JsRelayLimits) -> Self {
+        self.inner.limits(**limits).into()
+    }
+}
+
+#[wasm_bindgen(js_name = RelaySendOptions)]
+pub struct JsRelaySendOptions {
+    inner: RelaySendOptions,
+}
+
+impl Deref for JsRelaySendOptions {
+    type Target = RelaySendOptions;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl From<RelaySendOptions> for JsRelaySendOptions {
+    fn from(inner: RelaySendOptions) -> Self {
+        Self { inner }
+    }
+}
+
+#[wasm_bindgen(js_class = RelaySendOptions)]
+impl JsRelaySendOptions {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            inner: RelaySendOptions::default(),
+        }
+    }
+
+    /// Skip wait for disconnected relay (default: true)
+    pub fn skip_disconnected(self, value: bool) -> Self {
+        self.inner.skip_disconnected(value).into()
+    }
+
+    /// Skip wait for confirmation that message is sent (default: false)
+    pub fn skip_send_confirmation(self, value: bool) -> Self {
+        self.inner.skip_send_confirmation(value).into()
+    }
+
+    /// Timeout for sending event (default: 20 secs)
+    ///
+    /// If `None`, the default timeout will be used
+    pub fn timeout(self, timeout: Option<JsDuration>) -> Self {
+        self.inner.timeout(timeout.map(|d| *d)).into()
+    }
+}
 
 /// Filter options
 #[wasm_bindgen(js_name = FilterOptions)]
 pub struct JsFilterOptions {
     inner: FilterOptions,
+}
+
+impl Deref for JsFilterOptions {
+    type Target = FilterOptions;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 #[wasm_bindgen(js_class = FilterOptions)]

@@ -2,7 +2,12 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
+use js_sys::Array;
 use nostr_js::error::{into_err, Result};
+use nostr_js::event::{JsEvent, JsEventArray, JsEventId};
+use nostr_js::message::JsClientMessage;
 use nostr_js::nips::nip11::JsRelayInformationDocument;
 use nostr_js::types::JsFilter;
 use nostr_sdk::prelude::*;
@@ -13,7 +18,10 @@ pub mod limits;
 pub mod options;
 
 use self::flags::JsAtomicRelayServiceFlags;
-use self::options::JsSubscribeOptions;
+use self::options::{
+    JsFilterOptions, JsNegentropyOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions,
+};
+use crate::duration::JsDuration;
 
 #[wasm_bindgen]
 extern "C" {
@@ -66,6 +74,16 @@ impl From<RelayStatus> for JsRelayStatus {
 
 #[wasm_bindgen(js_class = Relay)]
 impl JsRelay {
+    /// Create new `Relay` with `in-memory` database
+    #[wasm_bindgen(constructor)]
+    pub fn new(url: &str, opts: Option<JsRelayOptions>) -> Result<JsRelay> {
+        let url: Url = Url::parse(url).map_err(into_err)?;
+        let opts: RelayOptions = opts.map(|o| o.deref().clone()).unwrap_or_default();
+        Ok(Self {
+            inner: Relay::with_opts(url, opts),
+        })
+    }
+
     /// Get relay url
     pub fn url(&self) -> String {
         self.inner.url().to_string()
@@ -90,6 +108,82 @@ impl JsRelay {
     /// Get `RelayInformationDocument`
     pub async fn document(&self) -> JsRelayInformationDocument {
         self.inner.document().await.into()
+    }
+
+    // TODO: ad subscriptions
+
+    // TODO: add subscription
+
+    /// Get options
+    pub fn opts(&self) -> JsRelayOptions {
+        self.inner.opts().into()
+    }
+
+    // TODO: add stats
+
+    /// Get number of messages in queue
+    pub fn queue(&self) -> u64 {
+        self.inner.queue() as u64
+    }
+
+    /// Connect to relay and keep alive connection
+    pub async fn connect(&self, connection_timeout: Option<JsDuration>) {
+        self.inner.connect(connection_timeout.map(|d| *d)).await
+    }
+
+    /// Disconnect from relay and set status to 'Stopped'
+    pub async fn stop(&self) -> Result<()> {
+        self.inner.stop().await.map_err(into_err)
+    }
+
+    /// Disconnect from relay and set status to 'Terminated'
+    pub async fn terminate(&self) -> Result<()> {
+        self.inner.terminate().await.map_err(into_err)
+    }
+
+    /// Send msg to relay
+    #[wasm_bindgen(js_name = sendMsg)]
+    pub async fn send_msg(&self, msg: &JsClientMessage, opts: &JsRelaySendOptions) -> Result<()> {
+        self.inner
+            .send_msg(msg.deref().clone(), **opts)
+            .await
+            .map_err(into_err)
+    }
+
+    /// Send multiple `ClientMessage` at once
+    #[wasm_bindgen(js_name = batchMsg)]
+    pub async fn batch_msg(
+        &self,
+        msgs: Vec<JsClientMessage>,
+        opts: &JsRelaySendOptions,
+    ) -> Result<()> {
+        let msgs = msgs.into_iter().map(|msg| msg.deref().clone()).collect();
+        self.inner.batch_msg(msgs, **opts).await.map_err(into_err)
+    }
+
+    /// Send event and wait for `OK` relay msg
+    #[wasm_bindgen(js_name = sendEvent)]
+    pub async fn send_event(
+        &self,
+        event: &JsEvent,
+        opts: &JsRelaySendOptions,
+    ) -> Result<JsEventId> {
+        Ok(self
+            .inner
+            .send_event(event.deref().clone(), **opts)
+            .await
+            .map_err(into_err)?
+            .into())
+    }
+
+    /// Send multiple `Event` at once
+    #[wasm_bindgen(js_name = batchEvent)]
+    pub async fn batch_event(&self, events: Vec<JsEvent>, opts: &JsRelaySendOptions) -> Result<()> {
+        let events = events.into_iter().map(|e| e.deref().clone()).collect();
+        self.inner
+            .batch_event(events, **opts)
+            .await
+            .map_err(into_err)
     }
 
     /// Subscribe to filters
@@ -126,6 +220,73 @@ impl JsRelay {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
             .subscribe_with_id(SubscriptionId::new(id), filters, **opts) // TODO: allow to pass opts as reference
+            .await
+            .map_err(into_err)
+    }
+
+    /// Unsubscribe
+    pub async fn unsubscribe(&self, id: String, opts: &JsRelaySendOptions) -> Result<()> {
+        self.inner
+            .unsubscribe(SubscriptionId::new(id), **opts)
+            .await
+            .map_err(into_err)
+    }
+
+    /// Unsubscribe from all subscriptions
+    #[wasm_bindgen(js_name = unsubscribeAll)]
+    pub async fn unsubscribe_all(&self, opts: &JsRelaySendOptions) -> Result<()> {
+        self.inner.unsubscribe_all(**opts).await.map_err(into_err)
+    }
+
+    /// Get events of filters
+    ///
+    /// Get events from local database and relay
+    #[wasm_bindgen(js_name = getEventsOf)]
+    pub async fn get_events_of(
+        &self,
+        filters: Vec<JsFilter>,
+        timeout: &JsDuration,
+        opts: &JsFilterOptions,
+    ) -> Result<JsEventArray> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+        let events: Vec<Event> = self
+            .inner
+            .get_events_of(filters, **timeout, **opts)
+            .await
+            .map_err(into_err)?;
+        let events: JsEventArray = events
+            .into_iter()
+            .map(|e| {
+                let e: JsEvent = e.into();
+                JsValue::from(e)
+            })
+            .collect::<Array>()
+            .unchecked_into();
+        Ok(events)
+    }
+
+    /// Count events of filters
+    pub async fn count_events_of(
+        &self,
+        filters: Vec<JsFilter>,
+        timeout: &JsDuration,
+    ) -> Result<u64> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+        Ok(self
+            .inner
+            .count_events_of(filters, **timeout)
+            .await
+            .map_err(into_err)? as u64)
+    }
+
+    /// Negentropy reconciliation
+    ///
+    /// Use events stored in database
+    ///
+    /// <https://github.com/hoytech/negentropy>
+    pub async fn reconcile(&self, filter: &JsFilter, opts: &JsNegentropyOptions) -> Result<()> {
+        self.inner
+            .reconcile(filter.deref().clone(), **opts)
             .await
             .map_err(into_err)
     }
