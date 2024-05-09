@@ -82,15 +82,15 @@ impl RelayOptions {
     }
 
     /// Minimum POW for received events (default: 0)
-    pub fn pow(self: Arc<Self>, diffculty: u8) -> Self {
+    pub fn pow(self: Arc<Self>, difficulty: u8) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.pow(diffculty);
+        builder.inner = builder.inner.pow(difficulty);
         builder
     }
 
     /// Update `pow` option
-    pub fn update_pow_difficulty(&self, diffculty: u8) {
-        self.inner.update_pow_difficulty(diffculty);
+    pub fn update_pow_difficulty(&self, difficulty: u8) {
+        self.inner.update_pow_difficulty(difficulty);
     }
 
     /// Enable/disable auto reconnection (default: true)
