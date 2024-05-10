@@ -1367,8 +1367,6 @@ impl Client {
     }
 
     /// Send a Zap!
-    ///
-    /// This method automatically create a split zap to support Rust Nostr development.
     #[inline]
     #[cfg(feature = "nip57")]
     pub async fn zap<T>(

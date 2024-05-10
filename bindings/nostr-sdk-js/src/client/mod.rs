@@ -600,8 +600,6 @@ impl JsClient {
     }
 
     /// Send a Zap!
-    ///
-    /// This method automatically create a split zap to support Rust Nostr development.
     pub async fn zap(
         &self,
         to: &JsZapEntity,

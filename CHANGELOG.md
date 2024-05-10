@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * sdk: inline `Client`, `ClientBuilder` and `Options` methods ([Yuki Kishimoto])
 * sdk: update `tokio` features ([Yuki Kishimoto])
 * sdk: update visibility of `Options` field ([Yuki Kishimoto])
+* sdk: remove zap split to support `rust-nostr` development from `Client::zap` method ([Yuki Kishimoto])
 * signer: update fingerprint of `NostrConnectRemoteSigner::serve` method ([Yuki Kishimoto])
 * ffi(nostr): set default args for `Nip19Profile` and `Nip19Event` constructors ([Yuki Kishimoto])
 * ffi(nostr): set default args for `nip05::verify` function ([Yuki Kishimoto])

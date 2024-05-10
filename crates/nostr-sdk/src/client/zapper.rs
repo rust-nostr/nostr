@@ -10,10 +10,6 @@ use nostr::prelude::*;
 
 use super::{Client, Error};
 
-const SUPPORT_RUST_NOSTR_LUD16: &str = "yuki@getalby.com"; // TODO: use a rust-nostr dedicated LUD16
-const SUPPORT_RUST_NOSTR_PERCENTAGE: f64 = 0.05; // 5%
-const SUPPORT_RUST_NOSTR_MSG: &str = "Zap split to support Rust Nostr development!";
-
 /// Zap entity
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ZapEntity {
@@ -80,7 +76,7 @@ impl ZapDetails {
 
 impl Client {
     /// Steps
-    /// 1. Check if zapper is set and availabe
+    /// 1. Check if zapper is set and available
     /// 2. Get metadata of pubkey/author of event
     /// 3. Get invoice
     /// 4. Send payment
@@ -126,54 +122,26 @@ impl Client {
         };
 
         // Compose zap split and get invoices
-        let invoices: Vec<String> = self
-            .zap_split(public_key, lud, satoshi, details, to.event_id())
+        let invoice: String = self
+            .compose_zap(public_key, lud, satoshi, details, to.event_id())
             .await?;
 
         let zapper = self.zapper().await?;
-        for invoice in invoices.into_iter() {
-            zapper.pay(invoice).await?;
-        }
+        zapper.pay(invoice).await?;
+
         Ok(())
     }
 
-    /// Split zap to support Rust Nostr development
-    async fn zap_split(
+    /// Compose zap and get invoice
+    async fn compose_zap(
         &self,
         public_key: PublicKey,
         lud: Lud06OrLud16,
         satoshi: u64,
         details: Option<ZapDetails>,
         event_id: Option<EventId>,
-    ) -> Result<Vec<String>, Error> {
-        let mut invoices: Vec<String> = Vec::with_capacity(2);
-        let mut msats: u64 = satoshi * 1000;
-
-        let rust_nostr_sats: u64 = (satoshi as f64 * SUPPORT_RUST_NOSTR_PERCENTAGE) as u64;
-        let rust_nostr_msats: u64 = rust_nostr_sats * 1000;
-        let rust_nostr_lud = LightningAddress::parse(SUPPORT_RUST_NOSTR_LUD16)?;
-        let rust_nostr_lud = Lud06OrLud16::Lud16(rust_nostr_lud);
-
-        // Check if LUD is equal to Rust Nostr LUD
-        if rust_nostr_lud != lud {
-            match lnurl_pay::api::get_invoice(
-                rust_nostr_lud,
-                rust_nostr_msats,
-                Some(SUPPORT_RUST_NOSTR_MSG.to_string()),
-                None,
-                None,
-            )
-            .await
-            {
-                Ok(invoice) => {
-                    invoices.push(invoice);
-                    msats = satoshi * 1000 - rust_nostr_msats;
-                }
-                Err(e) => {
-                    tracing::error!("Impossible to get invoice for Rust Nostr: {e}");
-                }
-            }
-        }
+    ) -> Result<String, Error> {
+        let msats: u64 = satoshi * 1000;
 
         // Compose zap request
         let zap_request: Option<String> = match details {
@@ -203,8 +171,7 @@ impl Client {
         // Get invoice
         let invoice: String =
             lnurl_pay::api::get_invoice(lud, msats, None, zap_request, None).await?;
-        invoices.push(invoice);
 
-        Ok(invoices)
+        Ok(invoice)
     }
 }
