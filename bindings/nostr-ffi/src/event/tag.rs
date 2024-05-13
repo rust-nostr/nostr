@@ -547,12 +547,12 @@ impl Tag {
 /// Standardized tag
 #[derive(Enum)]
 pub enum TagStandard {
-    Event {
+    EventTag {
         event_id: Arc<EventId>,
         relay_url: Option<String>,
         marker: Option<Marker>,
     },
-    PublicKey {
+    PublicKeyTag {
         public_key: Arc<PublicKey>,
         relay_url: Option<String>,
         alias: Option<String>,
@@ -576,7 +576,7 @@ pub enum TagStandard {
     Reference {
         reference: String,
     },
-    RelayMetadata {
+    RelayMetadataTag {
         relay_url: String,
         rw: Option<RelayMetadata>,
     },
@@ -592,7 +592,7 @@ pub enum TagStandard {
     ExternalIdentity {
         identity: Identity,
     },
-    Coordinate {
+    CoordinateTag {
         coordinate: Arc<Coordinate>,
         relay_url: Option<String>,
     },
@@ -662,7 +662,7 @@ pub enum TagStandard {
     PublishedAt {
         timestamp: Arc<Timestamp>,
     },
-    Url {
+    UrlTag {
         url: String,
     },
     MimeType {
@@ -700,7 +700,7 @@ pub enum TagStandard {
     Ends {
         timestamp: Arc<Timestamp>,
     },
-    LiveEventStatus {
+    LiveEventStatusTag {
         status: LiveEventStatus,
     },
     CurrentParticipants {
@@ -733,7 +733,7 @@ pub enum TagStandard {
     Request {
         event: Arc<Event>,
     },
-    DataVendingMachineStatus {
+    DataVendingMachineStatusTag {
         status: DataVendingMachineStatus,
         extra_info: Option<String>,
     },
@@ -755,7 +755,7 @@ impl From<tag::TagStandard> for TagStandard {
                 event_id,
                 relay_url,
                 marker,
-            } => Self::Event {
+            } => Self::EventTag {
                 event_id: Arc::new(event_id.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.map(|m| m.into()),
@@ -765,7 +765,7 @@ impl From<tag::TagStandard> for TagStandard {
                 relay_url,
                 alias,
                 uppercase,
-            } => Self::PublicKey {
+            } => Self::PublicKeyTag {
                 public_key: Arc::new(public_key.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 alias,
@@ -794,7 +794,7 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::RelayMetadata {
                 relay_url,
                 metadata,
-            } => Self::RelayMetadata {
+            } => Self::RelayMetadataTag {
                 relay_url: relay_url.to_string(),
                 rw: metadata.map(|rw| rw.into()),
             },
@@ -804,7 +804,7 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::Coordinate {
                 coordinate,
                 relay_url,
-            } => Self::Coordinate {
+            } => Self::CoordinateTag {
                 coordinate: Arc::new(coordinate.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
             },
@@ -856,7 +856,7 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::Amount { millisats, bolt11 } => Self::Amount { millisats, bolt11 },
             tag::TagStandard::Name(name) => Self::Name { name },
             tag::TagStandard::Lnurl(lnurl) => Self::Lnurl { lnurl },
-            tag::TagStandard::Url(url) => Self::Url {
+            tag::TagStandard::Url(url) => Self::UrlTag {
                 url: url.to_string(),
             },
             tag::TagStandard::MimeType(mime) => Self::MimeType { mime },
@@ -882,7 +882,7 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::Ends(timestamp) => Self::Ends {
                 timestamp: Arc::new(timestamp.into()),
             },
-            tag::TagStandard::LiveEventStatus(s) => Self::LiveEventStatus { status: s.into() },
+            tag::TagStandard::LiveEventStatus(s) => Self::LiveEventStatusTag { status: s.into() },
             tag::TagStandard::CurrentParticipants(num) => Self::CurrentParticipants { num },
             tag::TagStandard::TotalParticipants(num) => Self::TotalParticipants { num },
             tag::TagStandard::AbsoluteURL(url) => Self::AbsoluteURL {
@@ -908,7 +908,7 @@ impl From<tag::TagStandard> for TagStandard {
                 event: Arc::new(event.into()),
             },
             tag::TagStandard::DataVendingMachineStatus { status, extra_info } => {
-                Self::DataVendingMachineStatus {
+                Self::DataVendingMachineStatusTag {
                     status: status.into(),
                     extra_info,
                 }
@@ -925,7 +925,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
 
     fn try_from(value: TagStandard) -> Result<Self, Self::Error> {
         match value {
-            TagStandard::Event {
+            TagStandard::EventTag {
                 event_id,
                 relay_url,
                 marker,
@@ -934,7 +934,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 relay_url: relay_url.map(UncheckedUrl::from),
                 marker: marker.map(tag::Marker::from),
             }),
-            TagStandard::PublicKey {
+            TagStandard::PublicKeyTag {
                 public_key,
                 relay_url,
                 alias,
@@ -966,7 +966,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 },
             }),
             TagStandard::Reference { reference } => Ok(Self::Reference(reference)),
-            TagStandard::RelayMetadata { relay_url, rw } => Ok(Self::RelayMetadata {
+            TagStandard::RelayMetadataTag { relay_url, rw } => Ok(Self::RelayMetadata {
                 relay_url: Url::from_str(&relay_url)?,
                 metadata: rw.map(|rw| rw.into()),
             }),
@@ -976,7 +976,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::ExternalIdentity { identity } => {
                 Ok(Self::ExternalIdentity(identity.into()))
             }
-            TagStandard::Coordinate {
+            TagStandard::CoordinateTag {
                 coordinate,
                 relay_url,
             } => Ok(Self::Coordinate {
@@ -1022,7 +1022,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Lnurl { lnurl } => Ok(Self::Lnurl(lnurl)),
             TagStandard::Name { name } => Ok(Self::Name(name)),
             TagStandard::PublishedAt { timestamp } => Ok(Self::PublishedAt(**timestamp)),
-            TagStandard::Url { url } => Ok(Self::Url(Url::parse(&url)?)),
+            TagStandard::UrlTag { url } => Ok(Self::Url(Url::parse(&url)?)),
             TagStandard::MimeType { mime } => Ok(Self::MimeType(mime)),
             TagStandard::Aes256Gcm { key, iv } => Ok(Self::Aes256Gcm { key, iv }),
             TagStandard::Sha256 { hash } => Ok(Self::Sha256(Sha256Hash::from_str(&hash)?)),
@@ -1034,7 +1034,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Recording { url } => Ok(Self::Recording(UncheckedUrl::from(url))),
             TagStandard::Starts { timestamp } => Ok(Self::Starts(**timestamp)),
             TagStandard::Ends { timestamp } => Ok(Self::Ends(**timestamp)),
-            TagStandard::LiveEventStatus { status } => Ok(Self::LiveEventStatus(status.into())),
+            TagStandard::LiveEventStatusTag { status } => Ok(Self::LiveEventStatus(status.into())),
             TagStandard::CurrentParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagStandard::TotalParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagStandard::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
@@ -1051,7 +1051,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             }),
             TagStandard::Encrypted => Ok(Self::Encrypted),
             TagStandard::Request { event } => Ok(Self::Request(event.as_ref().deref().clone())),
-            TagStandard::DataVendingMachineStatus { status, extra_info } => {
+            TagStandard::DataVendingMachineStatusTag { status, extra_info } => {
                 Ok(Self::DataVendingMachineStatus {
                     status: status.into(),
                     extra_info,
