@@ -38,28 +38,28 @@ async fn main() -> Result<()> {
 
     let subscription = Filter::new()
         .pubkey(keys.public_key())
-        .kind(Kind::EncryptedDirectMessage)
-        .since(Timestamp::now());
+        .kind(Kind::GiftWrap)
+        .limit(0); // Limit set to 0 to get only new events! Timestamp::now() CAN'T be used for gift wrap since the timestamps are tweaked!
 
     client.subscribe(vec![subscription], None).await;
 
     client
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind() == Kind::EncryptedDirectMessage {
-                    match nip04::decrypt(keys.secret_key()?, event.author_ref(), event.content()) {
-                        Ok(msg) => {
-                            let content: String = match msg.as_str() {
-                                "/rand" => rand::random::<u16>().to_string(),
-                                "/help" => help(),
-                                _ => {
-                                    String::from("Invalid command, send /help to see all commands.")
-                                }
-                            };
+                if event.kind() == Kind::GiftWrap {
+                    match UnwrappedGift::from_gift_wrap(&keys, &event) {
+                        Ok(UnwrappedGift { rumor, sender }) => {
+                            if rumor.kind == Kind::PrivateDirectMessage {
+                                let content: String = match rumor.content.as_str() {
+                                    "/rand" => rand::random::<u16>().to_string(),
+                                    "/help" => help(),
+                                    _ => String::from(
+                                        "Invalid command, send /help to see all commands.",
+                                    ),
+                                };
 
-                            client
-                                .send_direct_msg(event.author(), content, None)
-                                .await?;
+                                client.send_private_msg(sender, content, None).await?;
+                            }
                         }
                         Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
                     }

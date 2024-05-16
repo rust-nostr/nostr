@@ -50,18 +50,7 @@ async fn main() -> Result<()> {
     client
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind() == Kind::EncryptedDirectMessage {
-                    if let Ok(msg) =
-                        nip04::decrypt(my_keys.secret_key()?, event.author_ref(), event.content())
-                    {
-                        println!("New DM: {msg}");
-                        client
-                            .send_direct_msg(event.author(), msg, Some(event.id()))
-                            .await?;
-                    } else {
-                        tracing::error!("Impossible to decrypt direct message");
-                    }
-                } else if event.kind() == Kind::GiftWrap {
+                if event.kind() == Kind::GiftWrap {
                     let UnwrappedGift { rumor, .. } = nip59::extract_rumor(&my_keys, &event)?;
                     println!("Rumor: {}", rumor.as_json());
                 } else {

@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * sdk: add `Client::reconcile_with` and `Client::reconcile_advanced` ([Yuki Kishimoto])
 * sdk: add `Client::subscribe_to` and `Client::subscribe_with_id_to` methods ([Yuki Kishimoto])
 * sdk: add initial blacklist support ([Yuki Kishimoto])
+* sdk: deprecate `Client::send_direct_msg` ([Yuki Kishimoto])
 * ffi(nostr): add `gift_wrap_from_seal` func ([Yuki Kishimoto])
 * js(nostr): add missing methods to `JsContact` ([Yuki Kishimoto])
 * js(nostr): expose `util::generate_shared_key` ([Yuki Kishimoto])

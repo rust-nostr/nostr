@@ -1,4 +1,4 @@
-const { Keys, Client, NostrSigner, Filter, Timestamp, nip04Decrypt, initLogger, LogLevel, loadWasmAsync } = require("../");
+const { Keys, Client, NostrSigner, Filter, UnwrappedGift, initLogger, LogLevel, loadWasmAsync } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -21,7 +21,7 @@ async function main() {
 
     await client.connect();
 
-    const filter = new Filter().pubkey(keys.publicKey).kind(4).since(Timestamp.now());
+    const filter = new Filter().pubkey(keys.publicKey).kind(1059).limit(0); // Limit set to 0 to get only new events! Timestamp.now() CAN'T be used for gift wrap since the timestamps are tweaked!
     console.log('filter', filter.asJson());
 
     await client.subscribe([filter]); 
@@ -30,15 +30,17 @@ async function main() {
         // Handle event
         handleEvent: async (relayUrl, subscriptionId, event) => {
             console.log("Received new event from ", relayUrl);
-            if (event.kind == 4) {
+            if (event.kind === 1059) {
                 try {
-                    let content = nip04Decrypt(keys.secretKey, event.author, event.content);
-                    console.log("Message:", content);
-                    await client.sendDirectMsg(event.author, "Echo: " + content);
+                    let content = UnwrappedGift.fromGiftWrap(keys, event);
+                    let sender = content.sender;
+                    let rumor = content.rumor;
 
-                    if (content == "stop") {
+                    if (rumor.content === "stop") {
                         return true
                     }
+
+                    await client.sendPrivateMsg(sender, "Echo: " + rumor.content);
                 } catch (error) {
                     console.log("Impossible to decrypt DM:", error);
                 }

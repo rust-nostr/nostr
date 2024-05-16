@@ -509,7 +509,7 @@ impl Client {
 
     /// Encrypted direct msg
     ///
-    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
+    /// <div class="warning"><strong>Unsecure!</strong> Use `send_private_msg` instead!</div>
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
     pub fn send_direct_msg(
@@ -518,6 +518,7 @@ impl Client {
         msg: String,
         reply: Option<Arc<EventId>>,
     ) -> Result<Arc<EventId>> {
+        #[allow(deprecated)]
         block_on(async move {
             Ok(Arc::new(
                 self.inner
@@ -525,6 +526,24 @@ impl Client {
                     .await?
                     .into(),
             ))
+        })
+    }
+
+    /// Send private direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[uniffi::method(default(reply_to = None))]
+    pub fn send_private_msg(
+        &self,
+        receiver: &PublicKey,
+        message: String,
+        reply_to: Option<Arc<EventId>>,
+    ) -> Result<()> {
+        block_on(async move {
+            Ok(self
+                .inner
+                .send_private_msg(**receiver, message, reply_to.map(|t| **t))
+                .await?)
         })
     }
 
@@ -608,24 +627,6 @@ impl Client {
                     rumor.as_ref().deref().clone(),
                     expiration.map(|t| **t),
                 )
-                .await?)
-        })
-    }
-
-    /// Send private direct message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[uniffi::method(default(expiration = None))]
-    pub fn send_private_msg(
-        &self,
-        receiver: &PublicKey,
-        message: String,
-        expiration: Option<Arc<Timestamp>>,
-    ) -> Result<()> {
-        block_on(async move {
-            Ok(self
-                .inner
-                .send_private_msg(**receiver, message, expiration.map(|t| **t))
                 .await?)
         })
     }

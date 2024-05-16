@@ -1263,7 +1263,7 @@ impl EventBuilder {
         receiver_pubkey: &PublicKey,
         rumor: UnsignedEvent,
     ) -> Result<Self, Error> {
-        let content = nip44::encrypt(
+        let content: String = nip44::encrypt(
             sender_keys.secret_key()?,
             receiver_pubkey,
             rumor.as_json(),
@@ -1332,7 +1332,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::private_msg_rumor(receiver, message)
+        Self::private_msg_rumor(receiver, message, None)
     }
 
     /// Private Direct message rumor
@@ -1345,15 +1345,18 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub fn private_msg_rumor<S>(receiver: PublicKey, message: S) -> Self
+    pub fn private_msg_rumor<S>(receiver: PublicKey, message: S, reply_to: Option<EventId>) -> Self
     where
         S: Into<String>,
     {
-        Self::new(
-            Kind::PrivateDirectMessage,
-            message,
-            [Tag::public_key(receiver)],
-        )
+        let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(reply_to.is_some()));
+        tags.push(Tag::public_key(receiver));
+
+        if let Some(id) = reply_to {
+            tags.push(Tag::event(id));
+        }
+
+        Self::new(Kind::PrivateDirectMessage, message, tags)
     }
 
     /// Mute list

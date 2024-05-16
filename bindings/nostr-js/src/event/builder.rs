@@ -512,9 +512,13 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[wasm_bindgen(js_name = privateMsgRumor)]
-    pub fn private_msg_rumor(receiver: &JsPublicKey, message: &str) -> Self {
+    pub fn private_msg_rumor(
+        receiver: &JsPublicKey,
+        message: &str,
+        reply_to: Option<JsEventId>,
+    ) -> Self {
         Self {
-            inner: EventBuilder::private_msg_rumor(**receiver, message),
+            inner: EventBuilder::private_msg_rumor(**receiver, message, reply_to.map(|id| *id)),
         }
     }
 

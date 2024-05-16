@@ -992,7 +992,7 @@ impl Client {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Vec<Event> = self.get_events_of(vec![filter], None).await?;
+        let events: Vec<Event> = self.get_events_of(vec![filter], None).await?; // TODO: add timeout?
         match events.first() {
             Some(event) => Ok(Metadata::from_json(event.content())?),
             None => Err(Error::MetadataNotFound),
@@ -1182,25 +1182,7 @@ impl Client {
     /// Send encrypted direct message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// let alice_pubkey =
-    ///     PublicKey::from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
-    ///         .unwrap();
-    ///
-    /// client
-    ///     .send_direct_msg(alice_pubkey, "My first DM from rust-nostr!", None)
-    ///     .await
-    ///     .unwrap();
-    /// # }
-    /// ```
+    #[deprecated(note = "Unsecure! Use `send_private_msg` instead.")]
     #[cfg(feature = "nip04")]
     pub async fn send_direct_msg<S>(
         &self,
@@ -1223,6 +1205,24 @@ impl Client {
         let builder: EventBuilder = EventBuilder::new(Kind::EncryptedDirectMessage, content, tags);
 
         self.send_event_builder(builder).await
+    }
+
+    /// Send private direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
+    #[cfg(feature = "nip59")]
+    pub async fn send_private_msg<S>(
+        &self,
+        receiver: PublicKey,
+        message: S,
+        reply_to: Option<EventId>,
+    ) -> Result<(), Error>
+    where
+        S: Into<String>,
+    {
+        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
+        self.gift_wrap(receiver, rumor, None).await
     }
 
     /// Repost
@@ -1486,30 +1486,12 @@ impl Client {
         &self,
         receiver: PublicKey,
         message: S,
-        expiration: Option<Timestamp>,
+        _expiration: Option<Timestamp>,
     ) -> std::result::Result<(), Error>
     where
         S: Into<String>,
     {
-        self.send_private_msg(receiver, message, expiration).await
-    }
-
-    /// Send private direct message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[inline]
-    #[cfg(feature = "nip59")]
-    pub async fn send_private_msg<S>(
-        &self,
-        receiver: PublicKey,
-        message: S,
-        expiration: Option<Timestamp>,
-    ) -> Result<(), Error>
-    where
-        S: Into<String>,
-    {
-        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message);
-        self.gift_wrap(receiver, rumor, expiration).await
+        self.send_private_msg(receiver, message, None).await
     }
 
     /// File metadata

@@ -495,7 +495,7 @@ impl JsClient {
 
     /// Send encrypted direct message
     ///
-    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
+    /// <div class="warning"><strong>Unsecure!</strong> Use `sendPrivateMsg` instead!</div>
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
     #[wasm_bindgen(js_name = sendDirectMsg)]
@@ -505,11 +505,28 @@ impl JsClient {
         msg: &str,
         reply: Option<JsEventId>,
     ) -> Result<JsEventId> {
+        #[allow(deprecated)]
         self.inner
             .send_direct_msg(**receiver, msg, reply.map(|id| id.into()))
             .await
             .map_err(into_err)
             .map(|id| id.into())
+    }
+
+    /// Send private direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[wasm_bindgen(js_name = sendPrivateMsg)]
+    pub async fn send_private_msg(
+        &self,
+        receiver: &JsPublicKey,
+        message: &str,
+        reply_to: Option<JsEventId>,
+    ) -> Result<()> {
+        self.inner
+            .send_private_msg(**receiver, message, reply_to.map(|t| *t))
+            .await
+            .map_err(into_err)
     }
 
     /// Repost
@@ -674,22 +691,6 @@ impl JsClient {
     ) -> Result<()> {
         self.inner
             .gift_wrap(**receiver, rumor.deref().clone(), expiration.map(|t| *t))
-            .await
-            .map_err(into_err)
-    }
-
-    /// Send private direct message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[wasm_bindgen(js_name = sendPrivateMsg)]
-    pub async fn send_private_msg(
-        &self,
-        receiver: &JsPublicKey,
-        message: &str,
-        expiration: Option<JsTimestamp>,
-    ) -> Result<()> {
-        self.inner
-            .send_private_msg(**receiver, message, expiration.map(|t| *t))
             .await
             .map_err(into_err)
     }

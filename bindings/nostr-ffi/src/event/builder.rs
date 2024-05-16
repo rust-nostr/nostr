@@ -492,10 +492,18 @@ impl EventBuilder {
     /// </div>
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[uniffi::constructor]
-    pub fn private_msg_rumor(receiver: &PublicKey, message: &str) -> Self {
+    #[uniffi::constructor(default(reply_to = None))]
+    pub fn private_msg_rumor(
+        receiver: &PublicKey,
+        message: &str,
+        reply_to: Option<Arc<EventId>>,
+    ) -> Self {
         Self {
-            inner: nostr::EventBuilder::private_msg_rumor(**receiver, message),
+            inner: nostr::EventBuilder::private_msg_rumor(
+                **receiver,
+                message,
+                reply_to.map(|id| **id),
+            ),
         }
     }
 
