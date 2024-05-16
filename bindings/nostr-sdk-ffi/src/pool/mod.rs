@@ -298,7 +298,6 @@ impl RelayPool {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
-    #[uniffi::method(default(opts = None))]
     pub fn subscribe_to(
         &self,
         urls: Vec<String>,
@@ -323,7 +322,6 @@ impl RelayPool {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
-    #[uniffi::method(default(opts = None))]
     pub fn subscribe_with_id_to(
         &self,
         urls: Vec<String>,
