@@ -12,6 +12,10 @@ use uniffi::Enum;
 use crate::error::Result;
 use crate::{NostrError, PublicKey, SecretKey};
 
+/// Generate shared key
+///
+/// **Important: use of a strong cryptographic hash function may be critical to security! Do NOT use
+/// unless you understand cryptographical implications.**
 #[uniffi::export]
 pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> Vec<u8> {
     util::generate_shared_key(secret_key.deref(), public_key.deref()).to_vec()

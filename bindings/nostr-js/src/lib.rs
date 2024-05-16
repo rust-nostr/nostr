@@ -16,6 +16,7 @@ pub mod key;
 pub mod message;
 pub mod nips;
 pub mod types;
+pub mod util;
 
 #[wasm_bindgen]
 extern "C" {

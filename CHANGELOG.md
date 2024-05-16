@@ -60,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * sdk: add initial blacklist support ([Yuki Kishimoto])
 * ffi(nostr): add `gift_wrap_from_seal` func ([Yuki Kishimoto])
 * js(nostr): add missing methods to `JsContact` ([Yuki Kishimoto])
+* js(nostr): expose `util::generate_shared_key` ([Yuki Kishimoto])
 * js(sdk): expose `Relay::subscribe` and `Relay::subscribe_with_id` methods ([Yuki Kishimoto])
 * js(sdk): partially complete `JsRelay` ([Yuki Kishimoto])
 * cli: add `sync` command ([Yuki Kishimoto])
