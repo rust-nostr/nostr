@@ -16,8 +16,8 @@ use nostr_database::DynNostrDatabase;
 use nostr_relay_pool::pool::{self, Error as RelayPoolError, RelayPool};
 use nostr_relay_pool::relay::Error as RelayError;
 use nostr_relay_pool::{
-    FilterOptions, NegentropyOptions, Relay, RelayOptions, RelayPoolNotification, RelaySendOptions,
-    SubscribeAutoCloseOptions, SubscribeOptions,
+    FilterOptions, NegentropyOptions, Relay, RelayBlacklist, RelayOptions, RelayPoolNotification,
+    RelaySendOptions, SubscribeAutoCloseOptions, SubscribeOptions,
 };
 use nostr_signer::prelude::*;
 #[cfg(feature = "nip57")]
@@ -241,6 +241,72 @@ impl Client {
     #[inline]
     pub fn database(&self) -> Arc<DynNostrDatabase> {
         self.pool.database()
+    }
+
+    /// Get blacklist
+    #[inline]
+    pub fn blacklist(&self) -> RelayBlacklist {
+        self.pool.blacklist()
+    }
+
+    /// Mute [EventId]s
+    ///
+    /// Add [EventId]s to blacklist
+    /// 
+    /// <div class="warning">Mute list event is not currently created/updated!</div>
+    pub async fn mute_ids<I>(&self, ids: I)
+    where
+        I: IntoIterator<Item = EventId>,
+    {
+        let blacklist: RelayBlacklist = self.blacklist();
+        blacklist.add_ids(ids).await;
+
+        // TODO: create/update mute list event?
+    }
+
+    /// Unmute [EventId]s
+    ///
+    /// Remove [EventId]s from blacklist
+    /// 
+    /// <div class="warning">Mute list event is not currently created/updated!</div>
+    pub async fn unmute_ids<'a, I>(&self, ids: I)
+    where
+        I: IntoIterator<Item = &'a EventId>,
+    {
+        let blacklist: RelayBlacklist = self.blacklist();
+        blacklist.remove_ids(ids).await;
+
+        // TODO: update mute list event?
+    }
+
+    /// Mute [PublicKey]s
+    ///
+    /// Add [PublicKey]s to blacklist
+    /// 
+    /// <div class="warning">Mute list event is not currently created/updated!</div>
+    pub async fn mute_public_keys<I>(&self, public_keys: I)
+    where
+        I: IntoIterator<Item = PublicKey>,
+    {
+        let blacklist: RelayBlacklist = self.blacklist();
+        blacklist.add_public_keys(public_keys).await;
+
+        // TODO: create/update mute list event?
+    }
+
+    /// Unmute [PublicKey]s
+    ///
+    /// Remove [PublicKey]s from blacklist
+    /// 
+    /// <div class="warning">Mute list event is not currently created/updated!</div>
+    pub async fn unmute_public_keys<'a, I>(&self, public_keys: I)
+    where
+        I: IntoIterator<Item = &'a PublicKey>,
+    {
+        let blacklist: RelayBlacklist = self.blacklist();
+        blacklist.remove_public_keys(public_keys).await;
+
+        // TODO: update mute list event?
     }
 
     /// Start a previously stopped client

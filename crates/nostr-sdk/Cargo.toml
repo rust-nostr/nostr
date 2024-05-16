@@ -65,6 +65,10 @@ tokio = { workspace = true, features = ["macros"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
+name = "blacklist"
+required-features = ["all-nips"]
+
+[[example]]
 name = "client-with-opts"
 required-features = ["all-nips"]
 

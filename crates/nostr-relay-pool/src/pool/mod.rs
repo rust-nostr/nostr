@@ -25,7 +25,7 @@ pub use self::error::Error;
 use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
-use crate::relay::{Relay, RelayStatus};
+use crate::relay::{Relay, RelayBlacklist, RelayStatus};
 use crate::SubscribeOptions;
 
 /// Relay Pool Notification
@@ -124,6 +124,12 @@ impl RelayPool {
     #[inline]
     pub fn database(&self) -> Arc<DynNostrDatabase> {
         self.inner.database()
+    }
+
+    /// Get blacklist
+    #[inline]
+    pub fn blacklist(&self) -> RelayBlacklist {
+        self.inner.blacklist()
     }
 
     /// Get relays

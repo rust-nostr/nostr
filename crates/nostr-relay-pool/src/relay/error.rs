@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use async_utility::thread;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
-use nostr::{event, negentropy, EventId};
+use nostr::{event, negentropy, EventId, PublicKey};
 use nostr_database::DatabaseError;
 use thiserror::Error;
 
@@ -112,12 +112,18 @@ pub enum Error {
     /// Event expired
     #[error("event expired")]
     EventExpired,
-    /// POW diffculty too low
+    /// POW difficulty too low
     #[error("POW difficulty too low (min. {min})")]
     PowDifficultyTooLow {
         /// Min. difficulty
         min: u8,
     },
+    /// Event ID blacklisted
+    #[error("Received event with blacklisted ID: {0}")]
+    EventIdBlacklisted(EventId),
+    /// Public key blacklisted
+    #[error("Received event authored by blacklisted public key: {0}")]
+    PublicKeyBlacklisted(PublicKey),
     /// Notification Handler error
     #[error("notification handler error: {0}")]
     Handler(String),

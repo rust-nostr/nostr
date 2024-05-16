@@ -30,6 +30,7 @@ use nostr_database::{DynNostrDatabase, Order};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
+use super::blacklist::RelayBlacklist;
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions,
@@ -75,6 +76,7 @@ pub(crate) struct InternalRelay {
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
     stats: RelayConnectionStats,
+    blacklist: RelayBlacklist,
     database: Arc<DynNostrDatabase>,
     scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
@@ -101,7 +103,12 @@ impl AtomicDestroyer for InternalRelay {
 }
 
 impl InternalRelay {
-    pub fn new(url: Url, database: Arc<DynNostrDatabase>, opts: RelayOptions) -> Self {
+    pub fn new(
+        url: Url,
+        database: Arc<DynNostrDatabase>,
+        blacklist: RelayBlacklist,
+        opts: RelayOptions,
+    ) -> Self {
         let (relay_sender, relay_receiver) = mpsc::channel::<Message>(1024);
         let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
 
@@ -112,6 +119,7 @@ impl InternalRelay {
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
+            blacklist,
             database,
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
@@ -156,6 +164,11 @@ impl InternalRelay {
     #[inline]
     pub fn flags(&self) -> AtomicRelayServiceFlags {
         self.opts.flags.clone()
+    }
+
+    #[inline]
+    pub fn blacklist(&self) -> RelayBlacklist {
+        self.blacklist.clone()
     }
 
     #[inline]
@@ -744,6 +757,16 @@ impl InternalRelay {
                 // Deserialize partial event (id, pubkey and sig)
                 let partial_event: PartialEvent = PartialEvent::from_raw(&event)?;
 
+                // Check blacklist (ID)
+                if self.blacklist.has_id(&partial_event.id).await {
+                    return Err(Error::EventIdBlacklisted(partial_event.id));
+                }
+
+                // Check blacklist (author public key)
+                if self.blacklist.has_public_key(&partial_event.pubkey).await {
+                    return Err(Error::PublicKeyBlacklisted(partial_event.pubkey));
+                }
+
                 // Check min POW
                 let difficulty: u8 = self.opts.get_pow_difficulty();
                 if difficulty > 0 && !partial_event.id.check_pow(difficulty) {
@@ -766,6 +789,8 @@ impl InternalRelay {
 
                 // Deserialize missing event fields
                 let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event);
+
+                // TODO: check if word/hashtag is blacklisted
 
                 // Check if event is replaceable and has coordinate
                 if missing.kind.is_replaceable() || missing.kind.is_parameterized_replaceable() {

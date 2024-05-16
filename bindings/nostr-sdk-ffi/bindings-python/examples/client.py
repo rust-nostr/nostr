@@ -1,5 +1,4 @@
-from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, Nip46Signer, init_logger, LogLevel, \
-    NostrConnectUri
+from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, init_logger, LogLevel
 from datetime import timedelta
 import time
 
@@ -7,7 +6,7 @@ import time
 init_logger(LogLevel.INFO)
 
 # Initialize client without signer
-# client = Client(None)
+# client = Client()
 
 # Or, initialize with Keys signer
 keys = Keys.generate()

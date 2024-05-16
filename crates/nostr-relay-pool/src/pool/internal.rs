@@ -20,7 +20,7 @@ use tokio::sync::{broadcast, Mutex, RwLock};
 use super::options::RelayPoolOptions;
 use super::{Error, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
-use crate::relay::Relay;
+use crate::relay::{Relay, RelayBlacklist};
 use crate::SubscribeOptions;
 
 #[derive(Debug, Clone)]
@@ -29,6 +29,7 @@ pub struct InternalRelayPool {
     relays: Arc<RwLock<HashMap<Url, Relay>>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
+    blacklist: RelayBlacklist,
     // opts: RelayPoolOptions,
 }
 
@@ -59,7 +60,8 @@ impl InternalRelayPool {
             relays: Arc::new(RwLock::new(HashMap::new())),
             notification_sender,
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
-            //opts,
+            blacklist: RelayBlacklist::empty(), // TODO: allow to initialize pool with custom blacklist?
+                                                //opts,
         }
     }
 
@@ -97,6 +99,10 @@ impl InternalRelayPool {
 
     pub fn database(&self) -> Arc<DynNostrDatabase> {
         self.database.clone()
+    }
+
+    pub fn blacklist(&self) -> RelayBlacklist {
+        self.blacklist.clone()
     }
 
     pub async fn relays(&self) -> HashMap<Url, Relay> {
@@ -157,7 +163,7 @@ impl InternalRelayPool {
         // Check if map already contains url
         if !relays.contains_key(&url) {
             // Compose new relay
-            let relay = Relay::custom(url, self.database.clone(), opts);
+            let relay = Relay::custom(url, self.database.clone(), self.blacklist.clone(), opts);
 
             // Set notification sender
             relay

@@ -16,7 +16,7 @@ use uniffi::Object;
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
 use crate::relay::options::{FilterOptions, NegentropyOptions};
-use crate::relay::{RelayOptions, RelaySendOptions, SubscribeOptions};
+use crate::relay::{RelayBlacklist, RelayOptions, RelaySendOptions, SubscribeOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
 
 #[derive(Object)]
@@ -66,6 +66,11 @@ impl RelayPool {
     /// Get database
     pub fn database(&self) -> Arc<NostrDatabase> {
         Arc::new(self.inner.database().into())
+    }
+
+    /// Get blacklist
+    pub fn blacklist(&self) -> RelayBlacklist {
+        self.inner.blacklist().into()
     }
 
     /// Get relays

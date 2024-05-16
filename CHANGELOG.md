@@ -56,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * sdk: add `Client::connect_with_timeout` ([Yuki Kishimoto])
 * sdk: add `Client::reconcile_with` and `Client::reconcile_advanced` ([Yuki Kishimoto])
 * sdk: add `Client::subscribe_to` and `Client::subscribe_with_id_to` methods ([Yuki Kishimoto])
+* sdk: add initial blacklist support ([Yuki Kishimoto])
 * ffi(nostr): add `gift_wrap_from_seal` func ([Yuki Kishimoto])
 * js(nostr): add missing methods to `JsContact` ([Yuki Kishimoto])
 * js(sdk): expose `Relay::subscribe` and `Relay::subscribe_with_id` methods ([Yuki Kishimoto])

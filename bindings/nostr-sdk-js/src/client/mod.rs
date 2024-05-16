@@ -27,6 +27,7 @@ use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
+use crate::relay::blacklist::JsRelayBlacklist;
 use crate::relay::options::{JsNegentropyOptions, JsSubscribeAutoCloseOptions};
 use crate::relay::{JsRelay, JsRelayArray};
 
@@ -90,6 +91,55 @@ impl JsClient {
     #[wasm_bindgen(getter)]
     pub fn database(&self) -> JsNostrDatabase {
         self.inner.database().into()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn blacklist(&self) -> JsRelayBlacklist {
+        self.inner.blacklist().into()
+    }
+
+    /// Mute event IDs
+    ///
+    /// Add event IDs to blacklist
+    /// 
+    /// <div class="warning">Mute list event is not currently created/updated!</div>
+    #[wasm_bindgen(js_name = muteIds)]
+    pub async fn mute_ids(&self, ids: Vec<JsEventId>) {
+        self.inner.mute_ids(ids.into_iter().map(|id| *id)).await
+    }
+
+    /// Unmute event IDs
+    ///
+    /// Remove event IDs from blacklist
+    /// 
+    /// <div class="warning">Mute list event is not currently created/updated!</div>
+    #[wasm_bindgen(js_name = unmuteIds)]
+    pub async fn unmute_ids(&self, ids: Vec<JsEventId>) {
+        self.inner.unmute_ids(ids.iter().map(|id| id.deref())).await
+    }
+
+    /// Mute public keys
+    ///
+    /// Add public keys to blacklist
+    /// 
+    /// <div class="warning">Mute list event is not currently created/updated!</div>
+    #[wasm_bindgen(js_name = mutePublicKeys)]
+    pub async fn mute_public_keys(&self, public_keys: Vec<JsPublicKey>) {
+        self.inner
+            .mute_public_keys(public_keys.into_iter().map(|p| *p))
+            .await
+    }
+
+    /// Unmute public keys
+    ///
+    /// Remove public keys from blacklist
+    /// 
+    /// <div class="warning">Mute list event is not currently created/updated!</div>
+    #[wasm_bindgen(js_name = unmutePublicKeys)]
+    pub async fn unmute_public_keys(&self, public_keys: Vec<JsPublicKey>) {
+        self.inner
+            .unmute_public_keys(public_keys.iter().map(|p| p.deref()))
+            .await
     }
 
     /// Completely shutdown `Client`

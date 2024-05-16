@@ -21,6 +21,7 @@ use nostr::{
 use nostr_database::{DynNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
+mod blacklist;
 mod error;
 pub mod flags;
 mod internal;
@@ -29,6 +30,7 @@ pub mod options;
 pub mod stats;
 mod status;
 
+pub use self::blacklist::RelayBlacklist;
 pub use self::error::Error;
 pub use self::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 use self::internal::InternalRelay;
@@ -104,14 +106,20 @@ impl Relay {
     #[inline]
     pub fn with_opts(url: Url, opts: RelayOptions) -> Self {
         let database = Arc::new(MemoryDatabase::default());
-        Self::custom(url, database, opts)
+        let blacklist: RelayBlacklist = RelayBlacklist::empty();
+        Self::custom(url, database, blacklist, opts)
     }
 
-    /// Create new `Relay` with **custom** `options` and/or `database`
+    /// Create new `Relay` with **custom** `options`, `blacklist` and/or `database`
     #[inline]
-    pub fn custom(url: Url, database: Arc<DynNostrDatabase>, opts: RelayOptions) -> Self {
+    pub fn custom(
+        url: Url,
+        database: Arc<DynNostrDatabase>,
+        blacklist: RelayBlacklist,
+        opts: RelayOptions,
+    ) -> Self {
         Self {
-            inner: AtomicDestructor::new(InternalRelay::new(url, database, opts)),
+            inner: AtomicDestructor::new(InternalRelay::new(url, database, blacklist, opts)),
         }
     }
 
@@ -138,6 +146,12 @@ impl Relay {
     #[inline]
     pub fn flags(&self) -> AtomicRelayServiceFlags {
         self.inner.flags()
+    }
+
+    /// Get blacklist
+    #[inline]
+    pub fn blacklist(&self) -> RelayBlacklist {
+        self.inner.blacklist()
     }
 
     /// Check if [`Relay`] is connected

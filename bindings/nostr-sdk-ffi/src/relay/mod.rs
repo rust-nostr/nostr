@@ -12,11 +12,13 @@ use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{block_on, pool, FilterOptions, SubscriptionId, Url};
 use uniffi::Object;
 
+pub mod blacklist;
 pub mod limits;
 pub mod options;
 pub mod stats;
 pub mod status;
 
+pub use self::blacklist::RelayBlacklist;
 pub use self::limits::RelayLimits;
 use self::options::NegentropyOptions;
 pub use self::options::{RelayOptions, RelaySendOptions, SubscribeOptions};
@@ -60,12 +62,18 @@ impl Relay {
 
     /// Create new `Relay` with **custom** `options` and/or `database`
     #[uniffi::constructor]
-    pub fn custom(url: String, database: &NostrDatabase, opts: &RelayOptions) -> Result<Self> {
+    pub fn custom(
+        url: String,
+        database: &NostrDatabase,
+        blacklist: &RelayBlacklist,
+        opts: &RelayOptions,
+    ) -> Result<Self> {
         let url: Url = Url::parse(&url)?;
         let database: Arc<DynNostrDatabase> = database.into();
+        let blacklist = blacklist.deref().clone();
         let opts = opts.deref().clone();
         Ok(Self {
-            inner: nostr_sdk::Relay::custom(url, database, opts),
+            inner: nostr_sdk::Relay::custom(url, database, blacklist, opts),
         })
     }
 
@@ -88,6 +96,11 @@ impl Relay {
     pub fn flags(&self) -> AtomicRelayServiceFlags {
         self.inner.flags()
     } */
+
+    /// Get blacklist
+    pub fn blacklist(&self) -> RelayBlacklist {
+        self.inner.blacklist().into()
+    }
 
     /// Check if `Relay` is connected
     pub fn is_connected(&self) -> bool {
