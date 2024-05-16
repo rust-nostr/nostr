@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: allow to set a `Timestamp` tweak range ([Yuki Kishimoto])
 * nostr: adj. NIP59 timestamp tweak range ([Yuki Kishimoto])
 * nostr: reorganize `tag` module ([Yuki Kishimoto])
+* nostr: manually impl `fmt::Debug` for `Publickey` ([Yuki Kishimoto])
 * database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
 * pool: inline `RelayPool` methods ([Yuki Kishimoto])
 * sdk: inline `Client`, `ClientBuilder` and `Options` methods ([Yuki Kishimoto])

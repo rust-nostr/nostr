@@ -17,7 +17,7 @@ use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::NostrURI;
 
 /// Public Key
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PublicKey {
     inner: XOnlyPublicKey,
 }
@@ -33,6 +33,12 @@ impl Deref for PublicKey {
 impl From<XOnlyPublicKey> for PublicKey {
     fn from(inner: XOnlyPublicKey) -> Self {
         Self { inner }
+    }
+}
+
+impl fmt::Debug for PublicKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("PublicKey").field(&self.to_bytes()).finish()
     }
 }
 
