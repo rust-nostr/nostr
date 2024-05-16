@@ -252,7 +252,7 @@ impl Client {
     /// Mute [EventId]s
     ///
     /// Add [EventId]s to blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     pub async fn mute_ids<I>(&self, ids: I)
     where
@@ -267,7 +267,7 @@ impl Client {
     /// Unmute [EventId]s
     ///
     /// Remove [EventId]s from blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     pub async fn unmute_ids<'a, I>(&self, ids: I)
     where
@@ -282,7 +282,7 @@ impl Client {
     /// Mute [PublicKey]s
     ///
     /// Add [PublicKey]s to blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     pub async fn mute_public_keys<I>(&self, public_keys: I)
     where
@@ -297,7 +297,7 @@ impl Client {
     /// Unmute [PublicKey]s
     ///
     /// Remove [PublicKey]s from blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     pub async fn unmute_public_keys<'a, I>(&self, public_keys: I)
     where

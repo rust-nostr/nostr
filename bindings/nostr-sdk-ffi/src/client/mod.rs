@@ -95,7 +95,7 @@ impl Client {
     /// Mute event IDs
     ///
     /// Add event IDs to blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     pub fn mute_ids(&self, ids: Vec<Arc<EventId>>) {
         block_on(async { self.inner.mute_ids(ids.into_iter().map(|id| **id)).await })
@@ -104,7 +104,7 @@ impl Client {
     /// Unmute event IDs
     ///
     /// Remove event IDs from blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     pub fn unmute_ids(&self, ids: &[Arc<EventId>]) {
         block_on(async {
@@ -117,7 +117,7 @@ impl Client {
     /// Mute public keys
     ///
     /// Add public keys to blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     pub fn mute_public_keys(&self, public_keys: Vec<Arc<PublicKey>>) {
         block_on(async {
@@ -130,7 +130,7 @@ impl Client {
     /// Unmute public keys
     ///
     /// Remove public keys from blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     pub fn unmute_public_keys(&self, public_keys: &[Arc<PublicKey>]) {
         block_on(async {

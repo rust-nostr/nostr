@@ -101,7 +101,7 @@ impl JsClient {
     /// Mute event IDs
     ///
     /// Add event IDs to blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     #[wasm_bindgen(js_name = muteIds)]
     pub async fn mute_ids(&self, ids: Vec<JsEventId>) {
@@ -111,7 +111,7 @@ impl JsClient {
     /// Unmute event IDs
     ///
     /// Remove event IDs from blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     #[wasm_bindgen(js_name = unmuteIds)]
     pub async fn unmute_ids(&self, ids: Vec<JsEventId>) {
@@ -121,7 +121,7 @@ impl JsClient {
     /// Mute public keys
     ///
     /// Add public keys to blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     #[wasm_bindgen(js_name = mutePublicKeys)]
     pub async fn mute_public_keys(&self, public_keys: Vec<JsPublicKey>) {
@@ -133,7 +133,7 @@ impl JsClient {
     /// Unmute public keys
     ///
     /// Remove public keys from blacklist
-    /// 
+    ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
     #[wasm_bindgen(js_name = unmutePublicKeys)]
     pub async fn unmute_public_keys(&self, public_keys: Vec<JsPublicKey>) {
