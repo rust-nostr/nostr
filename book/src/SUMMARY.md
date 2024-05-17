@@ -33,4 +33,5 @@
     * [Options](./nostr-sdk/04-00-options.md)
         * [Proxy](./nostr-sdk/04-01-proxy.md)
 
-[Donate](./donate.md)
+[Changelog](changelog.md)
+[Donate](donate.md)
