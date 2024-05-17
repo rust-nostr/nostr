@@ -23,7 +23,7 @@ You may be interested in:
 
 ```toml
 [dependencies]
-nostr = "0.30"
+nostr = "0.31"
 ```
 
 ```rust,no_run
