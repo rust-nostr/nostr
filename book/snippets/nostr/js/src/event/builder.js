@@ -14,12 +14,12 @@ function eventBuilder() {
 
     // Compose reply to above text note
     let replyEvent =
-        EventBuilder.textNote("Reply to hello", [Tag.parse(["e", textnoteEvent.id.toHex()])])
+        EventBuilder.textNote("Reply to hello", [Tag.event(textnoteEvent.id)])
             .toEvent(keys);
 
     // Compose POW event
     let powEvent =
-        EventBuilder.textNote("Another reply with POW", [Tag.parse(["e", textnoteEvent.id.toHex()])])
+        EventBuilder.textNote("Another reply with POW", [Tag.event(textnoteEvent.id)])
             .toPowEvent(keys, 20);
 
     // Compose note with custom timestamp

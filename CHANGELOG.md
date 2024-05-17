@@ -5,9 +5,13 @@
 <!-- The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), -->
 <!-- and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). -->
 
-## [Unreleased]
+## [v0.31.0]
 
 ### Summary
+
+Reworked `Tag`, added `TagStandard` enum, simplified the way to subscribe and/or reconcile to subset of relays 
+(respectively, `client.subscribe_to` and `client.reconcile_with`), added blacklist support to mute public keys or event IDs, 
+removed zap split from `client.zap` method, many improvements and more!
 
 ### Changed
 
@@ -168,5 +172,6 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [Xiao Yu]: https://github.com/kasugamirai
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.30.0...HEAD
-[v0.30.0]: https://github.com/rust-nostr/nostr/compare/v0.30.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.31.0...HEAD
+[v0.31.0]: https://github.com/rust-nostr/nostr/compare/v0.30.0...v0.31.0
+[v0.30.0]: https://github.com/rust-nostr/nostr/compare/v0.29.0...v0.30.0
