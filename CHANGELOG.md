@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * nostr: manually impl `fmt::Debug` for `Publickey` ([Yuki Kishimoto])
 * database: small improvements to flatbuffers `Event::encode` ([Yuki Kishimoto])
 * sqlite: bump `rusqlite` to `0.31` and `deadpool-sqlite` to `0.8` ([Yuki Kishimoto])
+* ndb: bump `nostrdb` to `0.3.3` ([Yuki Kishimoto])
 * rocksdb: bump `rocksdb` to `0.22` and set MSRV to `1.66.0` ([Yuki Kishimoto])
 * pool: inline `RelayPool` methods ([Yuki Kishimoto])
 * sdk: inline `Client`, `ClientBuilder` and `Options` methods ([Yuki Kishimoto])

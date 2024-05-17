@@ -15,5 +15,5 @@ keywords = ["nostr", "database", "ndb", "nostrdb"]
 async-trait.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
-nostrdb = "0.3.2"
+nostrdb = "0.3.3"
 tracing = { workspace = true, features = ["std", "attributes"] }

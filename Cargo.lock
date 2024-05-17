@@ -1879,9 +1879,9 @@ dependencies = [
 
 [[package]]
 name = "nostrdb"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4d574f011d7bca4fcb7167da332da7a73d5612b24a187df08f5a000de08d3f4"
+checksum = "4c9f900e272f974ff492e8414c7e581f6e18771cf62ddc6ec200cc49774d4ea0"
 dependencies = [
  "bindgen",
  "cc",
