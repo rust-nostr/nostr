@@ -64,7 +64,7 @@ afterEvaluate {
                 from(components["release"])
                 pom {
                     name.set("nostr-sdk")
-                    description.set("Nostr high level client library.")
+                    description.set("High level Nostr client library.")
                     url.set("https://rust-nostr.org")
                     licenses {
                         license {
