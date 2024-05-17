@@ -408,6 +408,11 @@ impl Tag {
         }
     }
 
+    /// Check if `Tag` is an event `root`
+    pub fn is_root(&self) -> bool {
+        self.inner.is_root()
+    }
+
     /// Check if `Tag` is an event `reply`
     pub fn is_reply(&self) -> bool {
         self.inner.is_reply()

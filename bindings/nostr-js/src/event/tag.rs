@@ -313,8 +313,16 @@ impl JsTag {
         }
     }
 
+    /// Check if `Tag` is an event `root`
+    #[inline]
+    #[wasm_bindgen(js_name = isRoot)]
+    pub fn is_root(&self) -> bool {
+        self.inner.is_root()
+    }
+
     /// Check if `Tag` is an event `reply`
     #[inline]
+    #[wasm_bindgen(js_name = isReply)]
     pub fn is_reply(&self) -> bool {
         self.inner.is_reply()
     }

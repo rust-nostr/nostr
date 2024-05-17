@@ -277,6 +277,18 @@ impl Tag {
         Self::new_with_empty_cell(buf)
     }
 
+    /// Check if tag is an event `root`
+    #[inline]
+    pub fn is_root(&self) -> bool {
+        matches!(
+            self.as_standardized(),
+            Some(TagStandard::Event {
+                marker: Some(Marker::Root),
+                ..
+            })
+        )
+    }
+
     /// Check if tag is an event `reply`
     #[inline]
     pub fn is_reply(&self) -> bool {
