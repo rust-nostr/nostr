@@ -313,7 +313,7 @@ impl NostrDatabase for RocksDatabase {
             let mut events: Vec<Event> = Vec::with_capacity(ids.len());
 
             let span = tracing::trace_span!("query-batched-multi-get");
-            let list = span.in_scope(|| this.db.batched_multi_get_cf(&cf, ids, false));
+            let list = span.in_scope(|| this.db.batched_multi_get_cf(&cf, ids.iter(), false));
 
             let span = tracing::trace_span!("query-decode-events");
             span.in_scope(|| {

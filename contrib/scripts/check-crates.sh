@@ -39,7 +39,7 @@ buildargs=(
 )
 
 skip_msrv=(
-  "-p nostr-sdk --features ndb" # MSRV: 1.70.0
+  "-p nostr-sdk --features ndb"     # MSRV: 1.70.0
 )
 
 for arg in "${buildargs[@]}";
