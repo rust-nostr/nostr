@@ -288,6 +288,17 @@ impl Tag {
             })
         )
     }
+    /// Check if tag is an event `root`
+    #[inline]
+    pub fn is_root(&self) -> bool {
+        matches!(
+            self.as_standardized(),
+            Some(TagStandard::Event {
+                marker: Some(Marker::Root),
+                ..
+            })
+        )
+    }
 }
 
 impl Serialize for Tag {
