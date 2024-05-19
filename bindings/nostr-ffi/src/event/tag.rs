@@ -408,12 +408,12 @@ impl Tag {
         }
     }
 
-    /// Check if `Tag` is an event `root`
+    /// Check if is a standard event tag with `root` marker
     pub fn is_root(&self) -> bool {
         self.inner.is_root()
     }
 
-    /// Check if `Tag` is an event `reply`
+    /// Check if is a standard event tag with `reply` marker
     pub fn is_reply(&self) -> bool {
         self.inner.is_reply()
     }

@@ -277,7 +277,7 @@ impl Tag {
         Self::new_with_empty_cell(buf)
     }
 
-    /// Check if tag is an event `root`
+    /// Check if is a standard event tag with `root` marker
     #[inline]
     pub fn is_root(&self) -> bool {
         matches!(
@@ -289,7 +289,7 @@ impl Tag {
         )
     }
 
-    /// Check if tag is an event `reply`
+    /// Check if is a standard event tag with `reply` marker
     #[inline]
     pub fn is_reply(&self) -> bool {
         matches!(
