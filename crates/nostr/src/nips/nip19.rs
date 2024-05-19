@@ -421,7 +421,7 @@ impl Nip19Event {
                 // the pubkey of the event"
                 AUTHOR => {
                     if author.is_none() {
-                        author = Some(PublicKey::from_slice(bytes)?);
+                        author = PublicKey::from_slice(bytes).ok(); // NOT propagate error if public key is invalid
                     }
                 }
                 RELAY => {
@@ -796,6 +796,12 @@ mod tests {
         assert_eq!(coordinate.public_key, expected_pubkey);
         assert_eq!(coordinate.kind, expected_kind);
         assert_eq!(coordinate.identifier, exected_identifier);
+    }
+
+    #[test]
+    fn test_parse_nevent_with_malformed_public_key() {
+        let event = Nip19Event::from_bech32("nevent1qqsqye53g5jg5pzw87q6a3nstkf2wu7jph87nala2nvfyw5u3ewlhfspr9mhxue69uhkymmnw3ezumr9vd682unfveujumn9wspyqve5xasnyvehxqunqvryxyukydr9xsmn2d3jxgcn2wf5v5uxyerpxucrvct9x43nwwp4v3jnqwt9x5uk2dpkxq6kvwf3vycrxe35893ska2ytu").unwrap();
+        assert!(event.author.is_none());
     }
 }
 
