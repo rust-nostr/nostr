@@ -14,6 +14,7 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::ops::Deref;
+use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
@@ -48,6 +49,43 @@ use crate::{Alphabet, JsonUtil, PublicKey, SingleLetterTag, Timestamp};
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
+const ID: &str = "id";
+const PUBKEY: &str = "pubkey";
+const CREATED_AT: &str = "created_at";
+const KIND: &str = "kind";
+const TAGS: &str = "tags";
+const CONTENT: &str = "content";
+const SIG: &str = "sig";
+
+/// Supported event keys
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum EventKey {
+    Id,
+    PubKey,
+    CreatedAt,
+    Kind,
+    Tags,
+    Content,
+    Sig,
+}
+
+impl FromStr for EventKey {
+    type Err = Error;
+
+    fn from_str(key: &str) -> Result<Self, Self::Err> {
+        match key {
+            ID => Ok(Self::Id),
+            PUBKEY => Ok(Self::PubKey),
+            CREATED_AT => Ok(Self::CreatedAt),
+            KIND => Ok(Self::Kind),
+            TAGS => Ok(Self::Tags),
+            CONTENT => Ok(Self::Content),
+            SIG => Ok(Self::Sig),
+            k => Err(Error::UnknownKey(k.to_string())),
+        }
+    }
+}
+
 /// [`Event`] error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
@@ -55,6 +93,8 @@ pub enum Error {
     InvalidSignature,
     /// Invalid event id
     InvalidId,
+    /// Unknown JSON event key
+    UnknownKey(String),
     /// Error serializing or deserializing JSON data
     Json(String),
     /// Secp256k1 error
@@ -69,6 +109,7 @@ impl fmt::Display for Error {
         match self {
             Self::InvalidSignature => write!(f, "Invalid signature"),
             Self::InvalidId => write!(f, "Invalid event id"),
+            Self::UnknownKey(key) => write!(f, "Unknown JSON event key: {key}"),
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
         }
@@ -93,7 +134,7 @@ pub struct Event {
     /// Event
     inner: EventIntermediate,
     /// JSON deserialization key order
-    deser_order: Vec<String>,
+    deser_order: Vec<EventKey>,
     /// Tags indexes
     #[cfg(feature = "std")]
     tags_indexes: Arc<OnceCell<TagsIndexes>>,
@@ -102,13 +143,13 @@ pub struct Event {
 impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Event")
-            .field("id", &self.inner.id)
-            .field("pubkey", &self.inner.pubkey)
-            .field("created_at", &self.inner.created_at)
-            .field("kind", &self.inner.kind)
-            .field("tags", &self.inner.tags)
-            .field("content", &self.inner.content)
-            .field("sig", &self.inner.sig)
+            .field(ID, &self.inner.id)
+            .field(PUBKEY, &self.inner.pubkey)
+            .field(CREATED_AT, &self.inner.created_at)
+            .field(KIND, &self.inner.kind)
+            .field(TAGS, &self.inner.tags)
+            .field(CONTENT, &self.inner.content)
+            .field(SIG, &self.inner.sig)
             .finish()
     }
 }
@@ -531,15 +572,14 @@ impl Serialize for Event {
         } else {
             let mut s = serializer.serialize_struct("Event", 7)?;
             for key in self.deser_order.iter() {
-                match key.as_str() {
-                    "id" => s.serialize_field("id", &self.inner.id)?,
-                    "pubkey" => s.serialize_field("pubkey", &self.inner.pubkey)?,
-                    "created_at" => s.serialize_field("created_at", &self.inner.created_at)?,
-                    "kind" => s.serialize_field("kind", &self.inner.kind)?,
-                    "tags" => s.serialize_field("tags", &self.inner.tags)?,
-                    "content" => s.serialize_field("content", &self.inner.content)?,
-                    "sig" => s.serialize_field("sig", &self.inner.sig)?,
-                    _ => return Err(serde::ser::Error::custom(format!("Unknown key: {}", key))),
+                match key {
+                    EventKey::Id => s.serialize_field(ID, &self.inner.id)?,
+                    EventKey::PubKey => s.serialize_field(PUBKEY, &self.inner.pubkey)?,
+                    EventKey::CreatedAt => s.serialize_field(CREATED_AT, &self.inner.created_at)?,
+                    EventKey::Kind => s.serialize_field(KIND, &self.inner.kind)?,
+                    EventKey::Tags => s.serialize_field(TAGS, &self.inner.tags)?,
+                    EventKey::Content => s.serialize_field(CONTENT, &self.inner.content)?,
+                    EventKey::Sig => s.serialize_field(SIG, &self.inner.sig)?,
                 }
             }
             s.end()
@@ -554,10 +594,13 @@ impl<'de> Deserialize<'de> for Event {
     {
         let value: Value = Value::deserialize(deserializer)?;
 
-        let mut deser_order: Vec<String> = Vec::with_capacity(7);
-        if let Value::Object(map) = &value {
-            deser_order = map.keys().cloned().collect();
-        }
+        let deser_order: Vec<EventKey> = if let Value::Object(map) = &value {
+            map.keys()
+                .filter_map(|k| EventKey::from_str(k).ok())
+                .collect()
+        } else {
+            Vec::new()
+        };
 
         Ok(Self {
             inner: serde_json::from_value(value).map_err(serde::de::Error::custom)?,
@@ -661,13 +704,13 @@ mod tests {
         assert_eq!(
             event.deser_order,
             vec![
-                "kind",
-                "pubkey",
-                "content",
-                "created_at",
-                "id",
-                "sig",
-                "tags"
+                EventKey::Kind,
+                EventKey::PubKey,
+                EventKey::Content,
+                EventKey::CreatedAt,
+                EventKey::Id,
+                EventKey::Sig,
+                EventKey::Tags
             ]
         );
         assert_eq!(json, reserialized_json);
@@ -676,6 +719,45 @@ mod tests {
         let event = Event::from_json(json).unwrap();
         let reserialized_json = event.as_json();
         assert_eq!(json, reserialized_json);
+    }
+
+    #[test]
+    fn test_event_with_unknown_fields() {
+        let json: &str = r##"{
+               "citedNotesCache": [],
+               "citedUsersCache": [
+                 "aac07d95089ce6adf08b9156d43c1a4ab594c6130b7dcb12ec199008c5819a2f"
+               ],
+               "content": "#JoininBox is a minimalistic, security focused Linux environment for #JoinMarket with a terminal based graphical menu.\n\nnostr:npub14tq8m9ggnnn2muytj9tdg0q6f26ef3snpd7ukyhvrxgq33vpnghs8shy62 👍🧡\n\nhttps://www.nobsbitcoin.com/joininbox-v0-8-0/",
+                "created_at": 1687070234,
+                "id": "c8acc12a232ea6caedfaaf0c52148635de6ffd312c3f432c6eca11720c102e54",
+                "kind": 1,
+                "pubkey": "27154fb873badf69c3ea83a0da6e65d6a150d2bf8f7320fc3314248d74645c64",
+                "sig": "e27062b1b7187ffa0b521dab23fff6c6b62c00fd1b029e28368d7d070dfb225f7e598e3b1c6b1e2335b286ec3702492bce152035105b934f594cd7323d84f0ee",
+                "tags": [
+                    [
+                "t",
+                "joininbox"
+                ],
+                [
+                    "t",
+                    "joinmarket"
+                ],
+                [
+                    "p",
+                    "aac07d95089ce6adf08b9156d43c1a4ab594c6130b7dcb12ec199008c5819a2f"
+                ]
+                ]
+        }"##;
+
+        // Deserialize
+        let event = Event::from_json(json).unwrap();
+
+        // Re-serialize
+        let re_serialized_json = event.as_json();
+
+        let expected_json: &str = r##"{"content":"#JoininBox is a minimalistic, security focused Linux environment for #JoinMarket with a terminal based graphical menu.\n\nnostr:npub14tq8m9ggnnn2muytj9tdg0q6f26ef3snpd7ukyhvrxgq33vpnghs8shy62 👍🧡\n\nhttps://www.nobsbitcoin.com/joininbox-v0-8-0/","created_at":1687070234,"id":"c8acc12a232ea6caedfaaf0c52148635de6ffd312c3f432c6eca11720c102e54","kind":1,"pubkey":"27154fb873badf69c3ea83a0da6e65d6a150d2bf8f7320fc3314248d74645c64","sig":"e27062b1b7187ffa0b521dab23fff6c6b62c00fd1b029e28368d7d070dfb225f7e598e3b1c6b1e2335b286ec3702492bce152035105b934f594cd7323d84f0ee","tags":[["t","joininbox"],["t","joinmarket"],["p","aac07d95089ce6adf08b9156d43c1a4ab594c6130b7dcb12ec199008c5819a2f"]]}"##;
+        assert_eq!(re_serialized_json, expected_json.trim());
     }
 }
 
