@@ -61,10 +61,17 @@ where
     }
 
     /// Serialize to JSON string
+    ///
+    /// This method could panic! Use `try_as_json` for error propagation.
     #[inline]
     fn as_json(&self) -> String {
-        // TODO: remove unwrap
         serde_json::to_string(self).unwrap()
+    }
+
+    /// Serialize to JSON string
+    #[inline]
+    fn try_as_json(&self) -> Result<String, Self::Err> {
+        Ok(serde_json::to_string(self)?)
     }
 }
 

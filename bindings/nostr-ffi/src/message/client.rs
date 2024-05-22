@@ -249,8 +249,8 @@ impl ClientMessage {
         Self { inner: e.into() }
     }
 
-    pub fn as_json(&self) -> String {
-        self.inner.as_json()
+    pub fn as_json(&self) -> Result<String> {
+        Ok(self.inner.try_as_json()?)
     }
 
     /// Clone `ClientMessage` and convert it to `ClientMessageEnum`
