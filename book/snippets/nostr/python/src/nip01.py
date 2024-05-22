@@ -45,7 +45,3 @@ def nip01():
     print(f"     Banner    : {metadata.get_banner()}")
     print(f"     NIP05     : {metadata.get_nip05()}")
     # ANCHOR_END: create-metadata
-
-if __name__ == "__main__":
-    nip01()
-
