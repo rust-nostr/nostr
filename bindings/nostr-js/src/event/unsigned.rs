@@ -81,8 +81,8 @@ impl JsUnsignedEvent {
     }
 
     #[wasm_bindgen(js_name = asJson)]
-    pub fn as_json(&self) -> String {
-        self.inner.as_json()
+    pub fn as_json(&self) -> Result<String> {
+        self.inner.try_as_json().map_err(into_err)
     }
 
     /// Sign an unsigned event

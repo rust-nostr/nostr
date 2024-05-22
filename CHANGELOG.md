@@ -62,6 +62,7 @@ removed zap split from `client.zap` method, many improvements and more!
 * nostr: add `SecretKey::generate` ([Yuki Kishimoto])
 * nostr: add `Tag` struct ([Yuki Kishimoto])
 * nostr: add `EventBuilder::add_tags` method ([Yuki Kishimoto])
+* nostr: add `JsonUtil::try_as_json` method ([Yuki Kishimoto])
 * database: add `author` index ([Yuki Kishimoto])
 * pool: add `RelayPool::start` ([Yuki Kishimoto])
 * pool: add `NegentropyDirection` default ([Yuki Kishimoto])
