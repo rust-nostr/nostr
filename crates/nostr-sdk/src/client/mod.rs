@@ -1417,14 +1417,16 @@ impl Client {
 
     /// Create an auth event
     ///
+    /// Send the event ONLY to the target relay.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
     pub async fn auth<S>(&self, challenge: S, relay: Url) -> Result<EventId, Error>
     where
         S: Into<String>,
     {
-        let builder = EventBuilder::auth(challenge, relay);
-        self.send_event_builder(builder).await
+        let builder = EventBuilder::auth(challenge, relay.clone());
+        self.send_event_builder_to([relay], builder).await
     }
 
     /// Create zap receipt event
