@@ -21,6 +21,7 @@
 * nostr: add `Tag::is_root` method ([Xiao Yu])
 * nostr: add `JsonUtil::try_as_json` method ([Yuki Kishimoto])
 * pool: allow to set event limits per kind ([Yuki Kishimoto])
+* sdk: add support to automatic authentication to relays (NIP-42) ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed

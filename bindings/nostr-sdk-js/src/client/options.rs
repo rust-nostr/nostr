@@ -89,6 +89,14 @@ impl JsOptions {
         self.inner.send_timeout(send_timeout.map(|d| *d)).into()
     }
 
+    /// Auto authenticate to relays (default: true)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[wasm_bindgen(js_name = automaticAuthentication)]
+    pub fn automatic_authentication(self, enabled: bool) -> Self {
+        self.inner.automatic_authentication(enabled).into()
+    }
+
     /// Set custom relay limits
     #[wasm_bindgen(js_name = relayLimits)]
     pub fn relay_limits(self, limits: &JsRelayLimits) -> Self {

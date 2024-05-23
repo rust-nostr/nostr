@@ -27,6 +27,7 @@ use thiserror::Error;
 use tokio::sync::{broadcast, RwLock};
 
 pub mod builder;
+mod handler;
 pub mod options;
 #[cfg(feature = "nip57")]
 mod zapper;
@@ -174,13 +175,17 @@ impl Client {
 
     /// Compose [`Client`] from [`ClientBuilder`]
     pub fn from_builder(builder: ClientBuilder) -> Self {
-        Self {
+        let client = Self {
             pool: RelayPool::with_database(builder.opts.pool, builder.database),
             signer: Arc::new(RwLock::new(builder.signer)),
             #[cfg(feature = "nip57")]
             zapper: Arc::new(RwLock::new(builder.zapper)),
             opts: builder.opts,
-        }
+        };
+
+        client.spawn_notification_handler();
+
+        client
     }
 
     /// Update default difficulty for new [`Event`]

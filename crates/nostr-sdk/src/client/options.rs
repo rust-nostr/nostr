@@ -25,6 +25,7 @@ pub struct Options {
     pub(super) timeout: Duration,
     pub(super) connection_timeout: Option<Duration>,
     send_timeout: Option<Duration>,
+    pub(super) nip42_auto_authentication: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) proxy: Proxy,
     pub(super) relay_limits: RelayLimits,
@@ -43,6 +44,7 @@ impl Default for Options {
             timeout: Duration::from_secs(60),
             connection_timeout: None,
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
+            nip42_auto_authentication: true,
             #[cfg(not(target_arch = "wasm32"))]
             proxy: Proxy::default(),
             relay_limits: RelayLimits::default(),
@@ -162,6 +164,15 @@ impl Options {
     #[inline]
     pub fn send_timeout(mut self, timeout: Option<Duration>) -> Self {
         self.send_timeout = timeout;
+        self
+    }
+
+    /// Auto authenticate to relays (default: true)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
+    pub fn automatic_authentication(mut self, enabled: bool) -> Self {
+        self.nip42_auto_authentication = enabled;
         self
     }
 

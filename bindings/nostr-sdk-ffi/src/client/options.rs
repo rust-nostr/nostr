@@ -100,6 +100,15 @@ impl Options {
         builder
     }
 
+    /// Auto authenticate to relays (default: true)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    pub fn automatic_authentication(self: Arc<Self>, enabled: bool) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.automatic_authentication(enabled);
+        builder
+    }
+
     /// Proxy
     pub fn proxy(self: Arc<Self>, proxy: &Proxy) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
