@@ -11,7 +11,7 @@ def generate():
     print(" Public keys:")
     print(f"     hex:    {public_key.to_hex()}")
     print(f"     bech32: {public_key.to_bech32()}")
-    print(" Secret keys:")
+    print("\n Secret keys:")
     print(f"     hex:    {secret_key.to_hex()}")
     print(f"     bech32: {secret_key.to_bech32()}")
 
@@ -34,7 +34,7 @@ def restore():
 # ANCHOR: vanity
 def vanity():
     keys = Keys.vanity(["yuk0"], True, 8)
-
-    print(f"Public keys: {keys.public_key().to_bech32()}")
-    print(f"Secret keys: {keys.secret_key().to_bech32()}")
+    print("\n Vanity:")
+    print(f"     Public keys: {keys.public_key().to_bech32()}")
+    print(f"     Secret keys: {keys.secret_key().to_bech32()}")
 # ANCHOR_END: vanity

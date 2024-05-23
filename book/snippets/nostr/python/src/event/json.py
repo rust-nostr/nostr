@@ -7,4 +7,5 @@ def event_json():
 
     # Serialize as json
     json = event.as_json()
-    print(f"{json}")
+    print("\nEvent JSON:")
+    print(f" {json}")

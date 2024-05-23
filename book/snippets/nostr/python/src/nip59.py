@@ -2,6 +2,7 @@ from nostr_protocol import Keys, EventBuilder, Event, gift_wrap, UnwrappedGift, 
 
 
 def nip59():
+    print("\nGift Wrapping (NIP-59):")
     # Sender Keys
     alice_keys = Keys.parse("5c0c523f52a5b6fad39ed2403092df8cebc36318b39383bca6c00808626fab3a")
 
@@ -13,11 +14,12 @@ def nip59():
 
     # Build gift wrap with sender keys
     gw: Event = gift_wrap(alice_keys, bob_keys.public_key(), rumor, None)
-    print(f"Gift Wrap: {gw.as_json()}")
+    print(f" Gift Wrap:\n{gw.as_json()}")
 
     # Extract rumor from gift wrap with receiver keys
+    print("\n Unwrapped Gift:")
     unwrapped_gift = UnwrappedGift.from_gift_wrap(bob_keys, gw)
     sender = unwrapped_gift.sender()
     rumor: UnsignedEvent = unwrapped_gift.rumor()
-    print(f"Sender: {sender.to_bech32()}")
-    print(f"Rumor: {rumor.as_json()}")
+    print(f"     Sender: {sender.to_bech32()}")
+    print(f"     Rumor: {rumor.as_json()}")
