@@ -23,7 +23,7 @@ use nostr::nips::nip01::Coordinate;
 use nostr::nips::nip11::RelayInformationDocument;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr::{
-    ClientMessage, Event, EventId, Filter, JsonUtil, Keys, MissingPartialEvent, PartialEvent,
+    ClientMessage, Event, EventId, Filter, JsonUtil, Keys, Kind, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
 use nostr_database::{DynNostrDatabase, Order};
@@ -733,8 +733,10 @@ impl InternalRelay {
                 subscription_id,
                 event,
             } => {
+                let kind: Kind = Kind::from(event.kind);
+
                 // Check event size
-                if let Some(max_size) = self.opts.limits.events.max_size {
+                if let Some(max_size) = self.opts.limits.events.get_max_size(&kind) {
                     let size: usize = event.as_json().as_bytes().len();
                     let max_size: usize = max_size as usize;
                     if size > max_size {
@@ -743,7 +745,7 @@ impl InternalRelay {
                 }
 
                 // Check tags limit
-                if let Some(max_num_tags) = self.opts.limits.events.max_num_tags {
+                if let Some(max_num_tags) = self.opts.limits.events.get_max_num_tags(&kind) {
                     let size: usize = event.tags.len();
                     let max_num_tags: usize = max_num_tags as usize;
                     if size > max_num_tags {

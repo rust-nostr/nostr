@@ -92,6 +92,6 @@ impl JsOptions {
     /// Set custom relay limits
     #[wasm_bindgen(js_name = relayLimits)]
     pub fn relay_limits(self, limits: &JsRelayLimits) -> Self {
-        self.inner.relay_limits(**limits).into()
+        self.inner.relay_limits(limits.deref().clone()).into()
     }
 }

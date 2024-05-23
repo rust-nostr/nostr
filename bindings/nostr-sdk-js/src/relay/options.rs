@@ -105,7 +105,7 @@ impl JsRelayOptions {
 
     /// Set custom limits
     pub fn limits(self, limits: &JsRelayLimits) -> Self {
-        self.inner.limits(**limits).into()
+        self.inner.limits(limits.deref().clone()).into()
     }
 }
 

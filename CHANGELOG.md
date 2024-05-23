@@ -7,9 +7,18 @@
 
 ## [Unreleased]
 
+### Summary
+
+### Changed
+
 ### Added
 
 * nostr: add `Tag::is_root` method ([Xiao Yu])
+* pool: allow to set event limits per kind ([Yuki Kishimoto])
+
+### Fixed
+
+### Removed
 
 ## [v0.31.0]
 

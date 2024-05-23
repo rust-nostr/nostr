@@ -134,7 +134,7 @@ impl RelayOptions {
     /// Set custom limits
     pub fn limits(self: Arc<Self>, limits: &RelayLimits) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.limits(**limits);
+        builder.inner = builder.inner.limits(limits.deref().clone());
         builder
     }
 }

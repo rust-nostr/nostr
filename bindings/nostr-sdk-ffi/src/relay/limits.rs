@@ -6,6 +6,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
+use nostr_ffi::Kind;
 use nostr_sdk::pool::relay;
 use uniffi::Object;
 
@@ -56,10 +57,31 @@ impl RelayLimits {
         builder
     }
 
+    /// Maximum size per kind of normalised JSON, in bytes.
+    pub fn event_max_size_per_kind(self: Arc<Self>, kind: &Kind, max_size: Option<u32>) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner.events = builder.inner.events.set_max_size_per_kind(**kind, max_size);
+        builder
+    }
+
     /// Maximum number of tags allowed (default: 2_000)
     pub fn event_max_num_tags(self: Arc<Self>, max_num_tags: Option<u16>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner.events.max_num_tags = max_num_tags;
+        builder
+    }
+
+    /// Maximum number of tags allowed per kind
+    pub fn event_max_num_tags_per_kind(
+        self: Arc<Self>,
+        kind: &Kind,
+        max_num_tags: Option<u16>,
+    ) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner.events = builder
+            .inner
+            .events
+            .set_max_num_tags_per_kind(**kind, max_num_tags);
         builder
     }
 }
