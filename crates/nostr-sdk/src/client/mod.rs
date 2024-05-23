@@ -9,6 +9,7 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
+use atomic_destructor::StealthClone;
 use nostr::event::builder::Error as EventBuilderError;
 use nostr::prelude::*;
 use nostr::types::metadata::Error as MetadataError;
@@ -99,6 +100,18 @@ impl Default for Client {
     #[inline]
     fn default() -> Self {
         Self::builder().build()
+    }
+}
+
+impl StealthClone for Client {
+    fn stealth_clone(&self) -> Self {
+        Self {
+            pool: self.pool.stealth_clone(),
+            signer: self.signer.clone(),
+            #[cfg(feature = "nip57")]
+            zapper: self.zapper.clone(),
+            opts: self.opts.clone(),
+        }
     }
 }
 

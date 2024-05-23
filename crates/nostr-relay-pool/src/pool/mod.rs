@@ -9,7 +9,7 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
-use atomic_destructor::AtomicDestructor;
+use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr::{
     ClientMessage, Event, EventId, Filter, RelayMessage, Result, SubscriptionId, Timestamp,
     TryIntoUrl, Url,
@@ -69,6 +69,15 @@ pub struct RelayPool {
 impl Default for RelayPool {
     fn default() -> Self {
         Self::new(RelayPoolOptions::default())
+    }
+}
+
+impl StealthClone for RelayPool {
+    #[inline(always)]
+    fn stealth_clone(&self) -> Self {
+        Self {
+            inner: self.inner.stealth_clone(),
+        }
     }
 }
 

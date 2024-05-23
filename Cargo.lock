@@ -226,9 +226,9 @@ dependencies = [
 
 [[package]]
 name = "atomic-destructor"
-version = "0.1.1"
+version = "0.2.0-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4653a42bf04120a1d4e92452e006b4e3af4ab4afff8fb4af0f1bbb98418adf3e"
+checksum = "ae01806bc74f2720abfe9d6fcb8c89518ba2d30d99abbb82ed5710a6435971ca"
 dependencies = [
  "tracing",
 ]
@@ -1786,6 +1786,7 @@ name = "nostr-sdk"
 version = "0.31.0"
 dependencies = [
  "async-utility",
+ "atomic-destructor",
  "lnurl-pay",
  "nostr",
  "nostr-database",
