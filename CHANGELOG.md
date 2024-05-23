@@ -11,12 +11,19 @@
 
 ### Changed
 
+* nostr: ignore malformed public keys during NIP19 event (`nevent`) parsing ([Yuki Kishimoto])
+* pool: increase default kind 3 event limit to `840000` bytes and `10000` tags ([Yuki Kishimoto])
+
 ### Added
 
 * nostr: add `Tag::is_root` method ([Xiao Yu])
+* nostr: add `JsonUtil::try_as_json` method ([Yuki Kishimoto])
 * pool: allow to set event limits per kind ([Yuki Kishimoto])
+* book: add some python examples ([RydalWater])
 
 ### Fixed
+
+* nostr: fix re-serialization of events that contains unknown keys during deserialization ([Yuki Kishimoto])
 
 ### Removed
 
@@ -71,7 +78,6 @@ removed zap split from `client.zap` method, many improvements and more!
 * nostr: add `SecretKey::generate` ([Yuki Kishimoto])
 * nostr: add `Tag` struct ([Yuki Kishimoto])
 * nostr: add `EventBuilder::add_tags` method ([Yuki Kishimoto])
-* nostr: add `JsonUtil::try_as_json` method ([Yuki Kishimoto])
 * database: add `author` index ([Yuki Kishimoto])
 * pool: add `RelayPool::start` ([Yuki Kishimoto])
 * pool: add `NegentropyDirection` default ([Yuki Kishimoto])
@@ -92,7 +98,6 @@ removed zap split from `client.zap` method, many improvements and more!
 ### Fixed
 
 * nostr: fix NIP19 event (`nevent`) serialization ([Yuki Kishimoto])
-* nostr: fix re-serialization of events that contains unknown keys during deserialization ([Yuki Kishimoto])
 
 ### Removed
 
@@ -187,6 +192,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [rustedmoon]: https://github.com/rustedmoon
 [benthecarman]: https://github.com/benthecarman
 [Xiao Yu]: https://github.com/kasugamirai
+[RydalWater]: https://github.com/RydalWater
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.31.0...HEAD
