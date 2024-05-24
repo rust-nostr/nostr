@@ -12,7 +12,7 @@ use crate::key::JsPublicKey;
 
 /// Verify NIP05
 #[wasm_bindgen(js_name = verifyNip05)]
-pub async fn verify_nip05(public_key: &JsPublicKey, nip05: &str) -> Result<()> {
+pub async fn verify_nip05(public_key: &JsPublicKey, nip05: &str) -> Result<bool> {
     nip05::verify(public_key.deref(), nip05, None)
         .await
         .map_err(into_err)

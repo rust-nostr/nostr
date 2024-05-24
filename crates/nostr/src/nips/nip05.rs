@@ -101,17 +101,17 @@ fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
         .unwrap_or_default()
 }
 
-fn verify_json<S>(public_key: &PublicKey, json: &Value, name: S) -> Result<(), Error>
+fn verify_json<S>(public_key: &PublicKey, json: &Value, name: S) -> bool
 where
     S: AsRef<str>,
 {
     if let Some(pubkey) = get_key_from_json(json, name) {
         if &pubkey == public_key {
-            return Ok(());
+            return true;
         }
     }
 
-    Err(Error::ImpossibleToVerify)
+    false
 }
 
 /// Verify NIP05
@@ -121,7 +121,7 @@ pub async fn verify<S>(
     public_key: &PublicKey,
     nip05: S,
     _proxy: Option<SocketAddr>,
-) -> Result<(), Error>
+) -> Result<bool, Error>
 where
     S: AsRef<str>,
 {
@@ -144,7 +144,7 @@ where
 
     let res = client.get(url).send().await?;
     let json: Value = serde_json::from_str(&res.text().await?)?;
-    verify_json(public_key, &json, name)
+    Ok(verify_json(public_key, &json, name))
 }
 
 /// Verify NIP05
@@ -154,7 +154,7 @@ pub fn verify_blocking<S>(
     public_key: &PublicKey,
     nip05: S,
     proxy: Option<SocketAddr>,
-) -> Result<(), Error>
+) -> Result<bool, Error>
 where
     S: AsRef<str>,
 {
@@ -169,7 +169,7 @@ where
     let client: Client = builder.build()?;
     let res = client.get(url).send()?;
     let json: Value = serde_json::from_str(&res.text()?)?;
-    verify_json(public_key, &json, name)
+    Ok(verify_json(public_key, &json, name))
 }
 
 /// Get [Nip19Profile] from NIP05 (public key and list of advertised relays)
@@ -255,12 +255,12 @@ mod tests {
         let public_key =
             PublicKey::from_hex("68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272")
                 .unwrap();
-        assert!(verify_json(&public_key, &json, name).is_ok());
-        assert!(verify_json(&public_key, &json, "yuki").is_ok());
+        assert!(verify_json(&public_key, &json, name));
+        assert!(verify_json(&public_key, &json, "yuki"));
 
         let public_key =
             PublicKey::from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a")
                 .unwrap();
-        assert!(verify_json(&public_key, &json, "yuki").is_err());
+        assert!(!verify_json(&public_key, &json, "yuki"));
     }
 }

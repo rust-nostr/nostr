@@ -13,7 +13,7 @@ use crate::nips::nip19::Nip19Profile;
 use crate::PublicKey;
 
 #[uniffi::export(default(proxy = None))]
-pub fn verify_nip05(public_key: &PublicKey, nip05: &str, proxy: Option<String>) -> Result<()> {
+pub fn verify_nip05(public_key: &PublicKey, nip05: &str, proxy: Option<String>) -> Result<bool> {
     let proxy: Option<SocketAddr> = match proxy {
         Some(proxy) => Some(proxy.parse()?),
         None => None,
