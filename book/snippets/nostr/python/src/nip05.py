@@ -23,7 +23,6 @@ def nip05():
     print(f"     Content   : {event.content()}")
     
     # ANCHOR: verify-nip05
-    # Deserialize Metadata from event
     print("\nVerify NIP-05:")
     nip_05 = "yuki@yukikishimoto.com"
     public_key = PublicKey.parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
