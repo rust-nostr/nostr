@@ -460,27 +460,31 @@ impl Event {
 
     /// Extract public keys from tags (`p` tag)
     ///
-    /// **This method extract ONLY `TagStandard::PublicKey`**
+    /// **This method extract ONLY `TagStandard::PublicKey` and `TagStandard::PublicKeyReport` variants**
     #[inline]
     pub fn public_keys(&self) -> impl Iterator<Item = &PublicKey> {
         self.iter_tags().filter_map(|t| match t.as_standardized() {
             Some(TagStandard::PublicKey { public_key, .. }) => Some(public_key),
+            Some(TagStandard::PublicKeyReport(public_key, ..)) => Some(public_key),
             _ => None,
         })
     }
 
     /// Extract event IDs from tags (`e` tag)
     ///
-    /// **This method extract ONLY `TagStandard::Event`**
+    /// **This method extract ONLY `TagStandard::Event` and `TagStandard::EventReport` variants**
     #[inline]
     pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
         self.iter_tags().filter_map(|t| match t.as_standardized() {
             Some(TagStandard::Event { event_id, .. }) => Some(event_id),
+            Some(TagStandard::EventReport(event_id, ..)) => Some(event_id),
             _ => None,
         })
     }
 
     /// Extract coordinates from tags (`a` tag)
+    ///
+    /// **This method extract ONLY `TagStandard::Coordinate`**
     #[inline]
     pub fn coordinates(&self) -> impl Iterator<Item = &Coordinate> {
         self.iter_tags().filter_map(|t| match t.as_standardized() {

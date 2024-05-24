@@ -155,6 +155,8 @@ impl Event {
     }
 
     /// Extract public keys from tags (`p` tag)
+    ///
+    /// **This method extract ONLY supported standard variants**
     pub fn public_keys(&self) -> Vec<Arc<PublicKey>> {
         self.inner
             .public_keys()
@@ -164,6 +166,8 @@ impl Event {
     }
 
     /// Extract event IDs from tags (`e` tag)
+    ///
+    /// **This method extract ONLY supported standard variants**
     pub fn event_ids(&self) -> Vec<Arc<EventId>> {
         self.inner
             .event_ids()
@@ -173,6 +177,8 @@ impl Event {
     }
 
     /// Extract coordinates from tags (`a` tag)
+    ///
+    /// **This method extract ONLY supported standard variants**
     pub fn coordinates(&self) -> Vec<Arc<Coordinate>> {
         self.inner
             .coordinates()
