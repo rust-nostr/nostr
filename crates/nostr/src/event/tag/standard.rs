@@ -37,6 +37,8 @@ pub enum TagStandard {
         event_id: EventId,
         relay_url: Option<UncheckedUrl>,
         marker: Option<Marker>,
+        /// Should be the public key of the author of the referenced event
+        public_key: Option<PublicKey>,
     },
     PublicKey {
         public_key: PublicKey,
@@ -371,6 +373,7 @@ impl TagStandard {
                             event_id,
                             relay_url: Some(UncheckedUrl::empty()),
                             marker: None,
+                            public_key: None,
                         })
                     } else {
                         match Report::from_str(tag_2) {
@@ -379,6 +382,7 @@ impl TagStandard {
                                 event_id,
                                 relay_url: Some(UncheckedUrl::from(tag_2)),
                                 marker: None,
+                                public_key: None,
                             }),
                         }
                     }
@@ -479,6 +483,7 @@ impl TagStandard {
                     event_id: EventId::from_hex(tag_1)?,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker: (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
+                    public_key: None,
                 }),
                 TagKind::Delegation => Ok(Self::Delegation {
                     delegator: PublicKey::from_hex(tag_1)?,
@@ -496,6 +501,15 @@ impl TagStandard {
             let tag_4: &str = tag[4].as_ref();
 
             return match tag_kind {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::E,
+                    uppercase: false,
+                }) => Ok(Self::Event {
+                    event_id: EventId::from_hex(tag_1)?,
+                    relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
+                    marker: (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
+                    public_key: Some(PublicKey::from_hex(tag_4)?),
+                }),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::P,
                     ..
@@ -521,6 +535,7 @@ impl TagStandard {
             event_id,
             relay_url: None,
             marker: None,
+            public_key: None,
         }
     }
 
@@ -675,6 +690,7 @@ impl From<TagStandard> for Vec<String> {
                 event_id,
                 relay_url,
                 marker,
+                public_key,
             } => {
                 let mut tag = vec![tag_kind, event_id.to_hex()];
                 if let Some(relay_url) = relay_url {
@@ -685,6 +701,9 @@ impl From<TagStandard> for Vec<String> {
                         tag.push(String::new());
                     }
                     tag.push(marker.to_string());
+                }
+                if let Some(public_key) = public_key {
+                    tag.push(public_key.to_string());
                 }
                 tag
             }

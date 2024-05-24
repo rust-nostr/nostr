@@ -373,6 +373,7 @@ mod tests {
             .unwrap(),
             relay_url: None,
             marker: Some(Marker::Reply),
+            public_key: None,
         };
         assert!(tag.is_reply());
 
@@ -383,6 +384,7 @@ mod tests {
             .unwrap(),
             relay_url: None,
             marker: Some(Marker::Root),
+            public_key: None,
         };
         assert!(!tag.is_reply());
     }
@@ -548,7 +550,8 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::empty()),
-                marker: None
+                marker: None,
+                public_key: None,
             })
             .to_vec()
         );
@@ -565,7 +568,8 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
-                marker: None
+                marker: None,
+                public_key: None,
             })
             .to_vec()
         );
@@ -712,7 +716,8 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: None,
-                marker: Some(Marker::Reply)
+                marker: Some(Marker::Reply),
+                public_key: None,
             })
             .to_vec()
         );
@@ -939,7 +944,8 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::empty()),
-                marker: None
+                marker: None,
+                public_key: None,
             })
         );
 
@@ -956,7 +962,8 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
-                marker: None
+                marker: None,
+                public_key: None,
             })
         );
 
@@ -1116,7 +1123,33 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: None,
-                marker: Some(Marker::Reply)
+                marker: Some(Marker::Reply),
+                public_key: None,
+            })
+        );
+
+        assert_eq!(
+            Tag::parse(&[
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "",
+                "reply",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            ])
+            .unwrap(),
+            Tag::from_standardized_without_cell(TagStandard::Event {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: None,
+                marker: Some(Marker::Reply),
+                public_key: Some(
+                    PublicKey::from_hex(
+                        "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                    )
+                    .unwrap()
+                ),
             })
         );
 

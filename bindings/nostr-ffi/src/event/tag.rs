@@ -426,6 +426,8 @@ pub enum TagStandard {
         event_id: Arc<EventId>,
         relay_url: Option<String>,
         marker: Option<Marker>,
+        /// Should be the public key of the author of the referenced event
+        public_key: Option<Arc<PublicKey>>,
     },
     PublicKeyTag {
         public_key: Arc<PublicKey>,
@@ -630,10 +632,12 @@ impl From<tag::TagStandard> for TagStandard {
                 event_id,
                 relay_url,
                 marker,
+                public_key,
             } => Self::EventTag {
                 event_id: Arc::new(event_id.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.map(|m| m.into()),
+                public_key: public_key.map(|p| Arc::new(p.into())),
             },
             tag::TagStandard::PublicKey {
                 public_key,
@@ -804,10 +808,12 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 event_id,
                 relay_url,
                 marker,
+                public_key,
             } => Ok(Self::Event {
                 event_id: **event_id,
                 relay_url: relay_url.map(UncheckedUrl::from),
                 marker: marker.map(nip10::Marker::from),
+                public_key: public_key.map(|p| **p),
             }),
             TagStandard::PublicKeyTag {
                 public_key,

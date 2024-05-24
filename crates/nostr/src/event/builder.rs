@@ -442,6 +442,7 @@ impl EventBuilder {
                     event_id: root.id(),
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
+                    public_key: Some(root.author()),
                 }));
                 tags.push(Tag::public_key(root.author()));
 
@@ -464,6 +465,7 @@ impl EventBuilder {
                     event_id: reply_to.id(),
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
+                    public_key: Some(reply_to.author()),
                 }));
             }
         }
@@ -473,6 +475,7 @@ impl EventBuilder {
             event_id: reply_to.id(),
             relay_url,
             marker: Some(Marker::Reply),
+            public_key: Some(reply_to.author()),
         }));
         tags.push(Tag::public_key(reply_to.author()));
 
@@ -556,6 +559,7 @@ impl EventBuilder {
                 event_id,
                 relay_url,
                 marker: None,
+                public_key: None,
             })],
         ))
     }
@@ -595,6 +599,7 @@ impl EventBuilder {
                         event_id: event.id(),
                         relay_url,
                         marker: None,
+                        public_key: Some(event.author()),
                     }),
                     Tag::public_key(event.author()),
                 ],
@@ -608,6 +613,7 @@ impl EventBuilder {
                         event_id: event.id(),
                         relay_url,
                         marker: None,
+                        public_key: Some(event.author()),
                     }),
                     Tag::public_key(event.author()),
                     Tag::from_standardized_without_cell(TagStandard::Kind(event.kind())),
@@ -694,6 +700,7 @@ impl EventBuilder {
                 event_id: channel_id,
                 relay_url: relay_url.map(|u| u.into()),
                 marker: None,
+                public_key: None,
             })],
         )
     }
@@ -713,6 +720,7 @@ impl EventBuilder {
                 event_id: channel_id,
                 relay_url: Some(relay_url.into()),
                 marker: Some(Marker::Root),
+                public_key: None,
             })],
         )
     }
@@ -1116,6 +1124,7 @@ impl EventBuilder {
                             event_id: badge_award_event.id(),
                             relay_url: relay_url.clone(),
                             marker: None,
+                            public_key: None,
                         });
                     tags.extend_from_slice(&[a_tag, badge_award_event_tag]);
                 }

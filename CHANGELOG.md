@@ -14,6 +14,7 @@
 * Bump `atomic-destructor` to `v0.2.0-alpha.2` ([Yuki Kishimoto])
 * nostr: ignore malformed public keys during NIP19 event (`nevent`) parsing ([Yuki Kishimoto])
 * nostr: update `Event::pubic_keys` and `Event_event_ids` methods ([Yuki Kishimoto])
+* nostr: adj. NIP-10 support ([Yuki Kishimoto])
 * pool: increase default kind 3 event limit to `840000` bytes and `10000` tags ([Yuki Kishimoto])
 * sdk: send NIP-42 event only to target relay ([Yuki Kishimoto])
 
@@ -21,6 +22,7 @@
 
 * nostr: add `Tag::is_root` method ([Xiao Yu])
 * nostr: add `JsonUtil::try_as_json` method ([Yuki Kishimoto])
+* nostr: add `public_key` field to `TagStandard::Event` ([Yuki Kishimoto])
 * pool: allow to set event limits per kind ([Yuki Kishimoto])
 * sdk: add support to automatic authentication to relays (NIP-42) ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
