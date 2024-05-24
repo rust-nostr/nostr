@@ -33,6 +33,9 @@ use crate::{
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TagStandard {
+    /// Event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md> and <https://github.com/nostr-protocol/nips/blob/master/10.md>
     Event {
         event_id: EventId,
         relay_url: Option<UncheckedUrl>,
@@ -40,6 +43,13 @@ pub enum TagStandard {
         /// Should be the public key of the author of the referenced event
         public_key: Option<PublicKey>,
     },
+    /// Report event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
+    EventReport(EventId, Report),
+    /// Public Key
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     PublicKey {
         public_key: PublicKey,
         relay_url: Option<UncheckedUrl>,
@@ -47,15 +57,11 @@ pub enum TagStandard {
         /// Whether the p tag is an uppercase P or not
         uppercase: bool,
     },
-    /// Report event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
-    EventReport(EventId, Report),
     /// Report public key
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     PublicKeyReport(PublicKey, Report),
-    PubKeyLiveEvent {
+    PublicKeyLiveEvent {
         public_key: PublicKey,
         relay_url: Option<UncheckedUrl>,
         marker: LiveEventMarker,
@@ -175,71 +181,76 @@ impl TagStandard {
             None => return Err(Error::KindNotFound),
         };
 
-        Self::inaternal_parse(&tag_kind, tag)
+        Self::internal_parse(tag_kind, tag)
     }
 
-    fn inaternal_parse<S>(tag_kind: &TagKind, tag: &[S]) -> Result<Self, Error>
+    fn internal_parse<S>(tag_kind: TagKind, tag: &[S]) -> Result<Self, Error>
     where
         S: AsRef<str>,
     {
+        match tag_kind {
+            TagKind::SingleLetter(single_letter) => match single_letter {
+                // Parse `a` tag
+                SingleLetterTag {
+                    character: Alphabet::A,
+                    uppercase: false,
+                } => {
+                    return parse_a_tag(tag);
+                }
+                // Parse `e` tag
+                SingleLetterTag {
+                    character: Alphabet::E,
+                    uppercase: false,
+                } => {
+                    return parse_e_tag(tag);
+                }
+                // Parse `l` tag
+                SingleLetterTag {
+                    character: Alphabet::L,
+                    uppercase: false,
+                } => {
+                    let labels = tag.iter().skip(1).map(|u| u.as_ref().to_string()).collect();
+                    return Ok(Self::Label(labels));
+                }
+                // Parse `p` tag
+                SingleLetterTag {
+                    character: Alphabet::P,
+                    uppercase,
+                } => {
+                    return parse_p_tag(tag, uppercase);
+                }
+                _ => (), // Covered later
+            },
+            TagKind::Anon => {
+                return Ok(Self::Anon {
+                    msg: extract_optional_string(tag, 1).map(|s| s.to_string()),
+                })
+            }
+            TagKind::ContentWarning => {
+                return Ok(Self::ContentWarning {
+                    reason: extract_optional_string(tag, 1).map(|s| s.to_string()),
+                })
+            }
+            TagKind::Delegation => return parse_delegation_tag(tag),
+            TagKind::Encrypted => return Ok(Self::Encrypted),
+            TagKind::Relays => {
+                // Relays vec is of unknown length so checked here based on kind
+                let urls = tag
+                    .iter()
+                    .skip(1)
+                    .map(|u| UncheckedUrl::from(u.as_ref()))
+                    .collect::<Vec<UncheckedUrl>>();
+                return Ok(Self::Relays(urls));
+            }
+            _ => (), // Covered later
+        };
+
         let tag_len: usize = tag.len();
-
-        // Check `relays` tag
-        if tag_kind.eq(&TagKind::Relays) {
-            // Relays vec is of unknown length so checked here based on kind
-            let urls = tag
-                .iter()
-                .skip(1)
-                .map(|u| UncheckedUrl::from(u.as_ref()))
-                .collect::<Vec<UncheckedUrl>>();
-            return Ok(Self::Relays(urls));
-        }
-
-        // Check `l` tag
-        if tag_kind.eq(&TagKind::SingleLetter(SingleLetterTag {
-            character: Alphabet::L,
-            uppercase: false,
-        })) {
-            let labels = tag.iter().skip(1).map(|u| u.as_ref().to_string()).collect();
-            return Ok(Self::Label(labels));
-        }
-
-        if tag_len == 1 {
-            return match tag_kind {
-                TagKind::ContentWarning => Ok(Self::ContentWarning { reason: None }),
-                TagKind::Anon => Ok(Self::Anon { msg: None }),
-                TagKind::Encrypted => Ok(Self::Encrypted),
-                _ => Err(Error::UnknownStardardizedTag),
-            };
-        }
 
         if tag_len == 2 {
             let tag_1: &str = tag[1].as_ref();
 
             return match tag_kind {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::A,
-                    uppercase: false,
-                }) => Ok(Self::Coordinate {
-                    coordinate: Coordinate::from_str(tag_1)?,
-                    relay_url: None,
-                }),
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::P,
-                    uppercase,
-                }) => {
-                    let public_key = PublicKey::from_hex(tag_1)?;
-                    Ok(Self::PublicKey {
-                        public_key,
-                        relay_url: None,
-                        alias: None,
-                        uppercase: *uppercase,
-                    })
-                }
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::E,
-                    uppercase: false,
-                }) => Ok(Self::event(EventId::from_hex(tag_1)?)),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::R,
                     uppercase: false,
@@ -282,9 +293,6 @@ impl TagStandard {
                     uppercase: false,
                 }) => Ok(Self::AbsoluteURL(UncheckedUrl::from(tag_1))),
                 TagKind::Relay => Ok(Self::Relay(UncheckedUrl::from(tag_1))),
-                TagKind::ContentWarning => Ok(Self::ContentWarning {
-                    reason: Some(tag_1.to_string()),
-                }),
                 TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
@@ -320,9 +328,6 @@ impl TagStandard {
                 TagKind::TotalParticipants => Ok(Self::TotalParticipants(tag_1.parse()?)),
                 TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
                 TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
-                TagKind::Anon => Ok(Self::Anon {
-                    msg: (!tag_1.is_empty()).then_some(tag_1.to_string()),
-                }),
                 TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
                 TagKind::Word => Ok(Self::Word(tag_1.to_string())),
                 TagKind::SingleLetter(SingleLetterTag {
@@ -340,67 +345,12 @@ impl TagStandard {
 
             return match tag_kind {
                 TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::P,
-                    uppercase: false,
-                }) => {
-                    let public_key = PublicKey::from_hex(tag_1)?;
-                    if tag_2.is_empty() {
-                        Ok(Self::PublicKey {
-                            public_key,
-                            relay_url: Some(UncheckedUrl::empty()),
-                            alias: None,
-                            uppercase: false,
-                        })
-                    } else {
-                        match Report::from_str(tag_2) {
-                            Ok(report) => Ok(Self::PublicKeyReport(public_key, report)),
-                            Err(_) => Ok(Self::PublicKey {
-                                public_key,
-                                relay_url: Some(UncheckedUrl::from(tag_2)),
-                                alias: None,
-                                uppercase: false,
-                            }),
-                        }
-                    }
-                }
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::E,
-                    uppercase: false,
-                }) => {
-                    let event_id = EventId::from_hex(tag_1)?;
-                    if tag_2.is_empty() {
-                        Ok(Self::Event {
-                            event_id,
-                            relay_url: Some(UncheckedUrl::empty()),
-                            marker: None,
-                            public_key: None,
-                        })
-                    } else {
-                        match Report::from_str(tag_2) {
-                            Ok(report) => Ok(Self::EventReport(event_id, report)),
-                            Err(_) => Ok(Self::Event {
-                                event_id,
-                                relay_url: Some(UncheckedUrl::from(tag_2)),
-                                marker: None,
-                                public_key: None,
-                            }),
-                        }
-                    }
-                }
-                TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::I,
                     uppercase: false,
                 }) => Ok(Self::ExternalIdentity(Identity::new(tag_1, tag_2)?)),
                 TagKind::Nonce => Ok(Self::POW {
                     nonce: tag_1.parse()?,
                     difficulty: tag_2.parse()?,
-                }),
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::A,
-                    uppercase: false,
-                }) => Ok(Self::Coordinate {
-                    coordinate: Coordinate::from_str(tag_1)?,
-                    relay_url: Some(UncheckedUrl::from(tag_2)),
                 }),
                 TagKind::Image => Ok(Self::Image(
                     UncheckedUrl::from(tag_1),
@@ -444,81 +394,6 @@ impl TagStandard {
                     }),
                     Err(_) => Err(Error::UnknownStardardizedTag),
                 },
-                _ => Err(Error::UnknownStardardizedTag),
-            };
-        }
-
-        if tag_len == 4 {
-            let tag_1: &str = tag[1].as_ref();
-            let tag_2: &str = tag[2].as_ref();
-            let tag_3: &str = tag[3].as_ref();
-
-            return match tag_kind {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::P,
-                    uppercase,
-                }) => {
-                    let public_key: PublicKey = PublicKey::from_hex(tag_1)?;
-                    let relay_url: Option<UncheckedUrl> = Some(UncheckedUrl::from(tag_2));
-
-                    match LiveEventMarker::from_str(tag_3) {
-                        Ok(marker) => Ok(Self::PubKeyLiveEvent {
-                            public_key,
-                            relay_url,
-                            marker,
-                            proof: None,
-                        }),
-                        Err(_) => Ok(Self::PublicKey {
-                            public_key,
-                            relay_url,
-                            alias: Some(tag_3.to_string()),
-                            uppercase: *uppercase,
-                        }),
-                    }
-                }
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::E,
-                    uppercase: false,
-                }) => Ok(Self::Event {
-                    event_id: EventId::from_hex(tag_1)?,
-                    relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
-                    marker: (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
-                    public_key: None,
-                }),
-                TagKind::Delegation => Ok(Self::Delegation {
-                    delegator: PublicKey::from_hex(tag_1)?,
-                    conditions: Conditions::from_str(tag_2)?,
-                    sig: Signature::from_str(tag_3)?,
-                }),
-                _ => Err(Error::UnknownStardardizedTag),
-            };
-        }
-
-        if tag_len == 5 {
-            let tag_1: &str = tag[1].as_ref();
-            let tag_2: &str = tag[2].as_ref();
-            let tag_3: &str = tag[3].as_ref();
-            let tag_4: &str = tag[4].as_ref();
-
-            return match tag_kind {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::E,
-                    uppercase: false,
-                }) => Ok(Self::Event {
-                    event_id: EventId::from_hex(tag_1)?,
-                    relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
-                    marker: (!tag_3.is_empty()).then_some(Marker::from(tag_3)),
-                    public_key: Some(PublicKey::from_hex(tag_4)?),
-                }),
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::P,
-                    ..
-                }) => Ok(Self::PubKeyLiveEvent {
-                    public_key: PublicKey::from_hex(tag_1)?,
-                    relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
-                    marker: LiveEventMarker::from_str(tag_3)?,
-                    proof: Signature::from_str(tag_4).ok(),
-                }),
                 _ => Err(Error::UnknownStardardizedTag),
             };
         }
@@ -575,7 +450,7 @@ impl TagStandard {
                 character: Alphabet::P,
                 uppercase: *uppercase,
             }),
-            Self::PublicKeyReport(..) | Self::PubKeyLiveEvent { .. } => {
+            Self::PublicKeyReport(..) | Self::PublicKeyLiveEvent { .. } => {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::P,
                     uppercase: false,
@@ -728,7 +603,7 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::PublicKeyReport(pk, report) => {
                 vec![tag_kind, pk.to_string(), report.to_string()]
             }
-            TagStandard::PubKeyLiveEvent {
+            TagStandard::PublicKeyLiveEvent {
                 public_key,
                 relay_url,
                 marker,
@@ -905,5 +780,164 @@ impl From<TagStandard> for Vec<String> {
                 tag
             }
         }
+    }
+}
+
+fn parse_a_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    if tag.len() >= 2 {
+        let coordinate = Coordinate::from_str(tag[1].as_ref())?;
+        let relay_url: Option<UncheckedUrl> = tag
+            .get(2)
+            .map(|r| r.as_ref())
+            .and_then(|t| (!t.is_empty()).then_some(UncheckedUrl::from(t)));
+        Ok(TagStandard::Coordinate {
+            coordinate,
+            relay_url,
+        })
+    } else {
+        Err(Error::UnknownStardardizedTag)
+    }
+}
+
+fn parse_e_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    if tag.len() >= 2 {
+        let event_id: EventId = EventId::from_hex(tag[1].as_ref())?;
+
+        let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref());
+        let tag_3: Option<&str> = tag.get(3).map(|r| r.as_ref());
+        let tag_4: Option<&str> = tag.get(4).map(|r| r.as_ref());
+
+        // Check if it's a report
+        if let Some(tag_2) = tag_2 {
+            return match Report::from_str(tag_2) {
+                Ok(report) => Ok(TagStandard::EventReport(event_id, report)),
+                Err(_) => Ok(TagStandard::Event {
+                    event_id,
+                    relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
+                    marker: tag_3.and_then(|t| (!t.is_empty()).then_some(Marker::from(t))),
+                    public_key: match tag_4 {
+                        Some(public_key) => Some(PublicKey::from_hex(public_key)?),
+                        None => None,
+                    },
+                }),
+            };
+        }
+
+        Ok(TagStandard::event(event_id))
+    } else {
+        Err(Error::UnknownStardardizedTag)
+    }
+}
+
+fn parse_p_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    if tag.len() >= 2 {
+        let public_key: PublicKey = PublicKey::from_hex(tag[1].as_ref())?;
+
+        if tag.len() >= 5 && !uppercase {
+            let tag_2: &str = tag[2].as_ref();
+            let tag_3: &str = tag[3].as_ref();
+            let tag_4: &str = tag[4].as_ref();
+
+            return Ok(TagStandard::PublicKeyLiveEvent {
+                public_key,
+                relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
+                marker: LiveEventMarker::from_str(tag_3)?,
+                proof: Signature::from_str(tag_4).ok(),
+            });
+        }
+
+        if tag.len() >= 4 && !uppercase {
+            let tag_2: &str = tag[2].as_ref();
+            let tag_3: &str = tag[3].as_ref();
+
+            let relay_url: Option<UncheckedUrl> =
+                (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2));
+
+            return match LiveEventMarker::from_str(tag_3) {
+                Ok(marker) => Ok(TagStandard::PublicKeyLiveEvent {
+                    public_key,
+                    relay_url,
+                    marker,
+                    proof: None,
+                }),
+                Err(_) => Ok(TagStandard::PublicKey {
+                    public_key,
+                    relay_url,
+                    alias: (!tag_3.is_empty()).then_some(tag_3.to_string()),
+                    uppercase,
+                }),
+            };
+        }
+
+        if tag.len() >= 3 && !uppercase {
+            let tag_2: &str = tag[2].as_ref();
+
+            return if tag_2.is_empty() {
+                Ok(TagStandard::PublicKey {
+                    public_key,
+                    relay_url: None,
+                    alias: None,
+                    uppercase,
+                })
+            } else {
+                match Report::from_str(tag_2) {
+                    Ok(report) => Ok(TagStandard::PublicKeyReport(public_key, report)),
+                    Err(_) => Ok(TagStandard::PublicKey {
+                        public_key,
+                        relay_url: Some(UncheckedUrl::from(tag_2)),
+                        alias: None,
+                        uppercase,
+                    }),
+                }
+            };
+        }
+
+        Ok(TagStandard::PublicKey {
+            public_key,
+            relay_url: None,
+            alias: None,
+            uppercase,
+        })
+    } else {
+        Err(Error::UnknownStardardizedTag)
+    }
+}
+
+fn parse_delegation_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    if tag.len() == 4 {
+        let tag_1: &str = tag[1].as_ref();
+        let tag_2: &str = tag[2].as_ref();
+        let tag_3: &str = tag[3].as_ref();
+
+        Ok(TagStandard::Delegation {
+            delegator: PublicKey::from_hex(tag_1)?,
+            conditions: Conditions::from_str(tag_2)?,
+            sig: Signature::from_str(tag_3)?,
+        })
+    } else {
+        Err(Error::UnknownStardardizedTag)
+    }
+}
+
+#[inline]
+fn extract_optional_string<S>(tag: &[S], index: usize) -> Option<&str>
+where
+    S: AsRef<str>,
+{
+    match tag.get(index).map(|t| t.as_ref()) {
+        Some(t) => (!t.is_empty()).then_some(t),
+        None => None,
     }
 }

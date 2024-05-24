@@ -444,7 +444,7 @@ pub enum TagStandard {
         public_key: Arc<PublicKey>,
         report: Report,
     },
-    PubKeyLiveEvent {
+    PublicKeyLiveEvent {
         public_key: Arc<PublicKey>,
         relay_url: Option<String>,
         marker: LiveEventMarker,
@@ -658,12 +658,12 @@ impl From<tag::TagStandard> for TagStandard {
                 public_key: Arc::new(pk.into()),
                 report: report.into(),
             },
-            tag::TagStandard::PubKeyLiveEvent {
+            tag::TagStandard::PublicKeyLiveEvent {
                 public_key,
                 relay_url,
                 marker,
                 proof,
-            } => Self::PubKeyLiveEvent {
+            } => Self::PublicKeyLiveEvent {
                 public_key: Arc::new(public_key.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.into(),
@@ -832,12 +832,12 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::PubKeyReport { public_key, report } => {
                 Ok(Self::PublicKeyReport(**public_key, report.into()))
             }
-            TagStandard::PubKeyLiveEvent {
+            TagStandard::PublicKeyLiveEvent {
                 public_key,
                 relay_url,
                 marker,
                 proof,
-            } => Ok(Self::PubKeyLiveEvent {
+            } => Ok(Self::PublicKeyLiveEvent {
                 public_key: **public_key,
                 relay_url: relay_url.map(UncheckedUrl::from),
                 marker: marker.into(),

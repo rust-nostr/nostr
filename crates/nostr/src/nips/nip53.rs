@@ -207,7 +207,7 @@ impl From<LiveEvent> for Vec<Tag> {
         }) = host
         {
             tags.push(Tag::from_standardized_without_cell(
-                TagStandard::PubKeyLiveEvent {
+                TagStandard::PublicKeyLiveEvent {
                     public_key,
                     relay_url,
                     marker: LiveEventMarker::Host,
@@ -218,7 +218,7 @@ impl From<LiveEvent> for Vec<Tag> {
 
         for (public_key, relay_url) in speakers.into_iter() {
             tags.push(Tag::from_standardized_without_cell(
-                TagStandard::PubKeyLiveEvent {
+                TagStandard::PublicKeyLiveEvent {
                     public_key,
                     relay_url,
                     marker: LiveEventMarker::Speaker,
@@ -229,7 +229,7 @@ impl From<LiveEvent> for Vec<Tag> {
 
         for (public_key, relay_url) in participants.into_iter() {
             tags.push(Tag::from_standardized_without_cell(
-                TagStandard::PubKeyLiveEvent {
+                TagStandard::PublicKeyLiveEvent {
                     public_key,
                     relay_url,
                     marker: LiveEventMarker::Participant,

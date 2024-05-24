@@ -16,6 +16,7 @@
 * nostr: update `Event::pubic_keys` and `Event_event_ids` methods ([Yuki Kishimoto])
 * nostr: adj. NIP-10 support ([Yuki Kishimoto])
 * nostr: change fingerprint of `nip05::verify` ([Yuki Kishimoto])
+* nostr: rework `TagStandard::parse` ([Yuki Kishimoto])
 * pool: increase default kind 3 event limit to `840000` bytes and `10000` tags ([Yuki Kishimoto])
 * sdk: send NIP-42 event only to target relay ([Yuki Kishimoto])
 
