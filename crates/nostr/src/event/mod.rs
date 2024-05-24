@@ -460,7 +460,7 @@ impl Event {
 
     /// Extract public keys from tags (`p` tag)
     ///
-    /// **This method extract ONLY `TagStandard::PublicKey` and `TagStandard::PublicKeyReport` variants**
+    /// **This method extract ONLY `TagStandard::PublicKey`, `TagStandard::PublicKeyReport` and `TagStandard::PublicKeyLiveEvent` variants**
     #[inline]
     pub fn public_keys(&self) -> impl Iterator<Item = &PublicKey> {
         self.iter_tags().filter_map(|t| match t.as_standardized() {

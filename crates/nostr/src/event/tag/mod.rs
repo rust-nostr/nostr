@@ -653,7 +653,7 @@ mod tests {
                 "wss://relay.damus.io",
                 "Speaker",
             ],
-            Tag::from_standardized_without_cell(TagStandard::PubKeyLiveEvent {
+            Tag::from_standardized_without_cell(TagStandard::PublicKeyLiveEvent {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
@@ -672,7 +672,7 @@ mod tests {
                 "",
                 "Participant",
             ],
-            Tag::from_standardized_without_cell(TagStandard::PubKeyLiveEvent {
+            Tag::from_standardized_without_cell(TagStandard::PublicKeyLiveEvent {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
@@ -748,7 +748,7 @@ mod tests {
                 "Host",
                 "a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"
             ],
-            Tag::from_standardized_without_cell(TagStandard::PubKeyLiveEvent {
+            Tag::from_standardized_without_cell(TagStandard::PublicKeyLiveEvent {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 ).unwrap(),
