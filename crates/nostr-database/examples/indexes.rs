@@ -69,5 +69,7 @@ async fn main() {
         .await;
     println!("Got {} ids", ids.len());
 
-    loop {}
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
 }

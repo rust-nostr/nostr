@@ -24,8 +24,10 @@ async fn main() {
             .unwrap();
     let keys_b = Keys::new(secret_key);
 
-    let mut opts = MemoryDatabaseOptions::default();
-    opts.events = true;
+    let opts = MemoryDatabaseOptions {
+        events: true,
+        ..Default::default()
+    };
     let database = MemoryDatabase::with_opts(opts);
 
     for i in 0..100_000 {
@@ -74,5 +76,7 @@ async fn main() {
         .unwrap();
     println!("Got {} events", events.len());
 
-    loop {}
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
 }

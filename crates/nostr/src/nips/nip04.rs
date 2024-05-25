@@ -191,7 +191,7 @@ mod tests {
             decrypt(
                 receiver_keys.secret_key().unwrap(),
                 &sender_pk,
-                &encrypted_content
+                encrypted_content
             )
             .unwrap(),
             content

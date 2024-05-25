@@ -361,7 +361,7 @@ mod tests {
     use crate::nips::nip44;
     use crate::Keys;
 
-    const JSON_VECTORS: &'static str = include_str!("nip44.vectors.json");
+    const JSON_VECTORS: &str = include_str!("nip44.vectors.json");
 
     fn val(c: u8, idx: usize) -> u8 {
         match c {
@@ -418,11 +418,11 @@ mod tests {
 
             let sec1 = {
                 let sec1hex = vector.get("sec1").unwrap().as_str().unwrap();
-                SecretKey::from_str(&sec1hex).unwrap()
+                SecretKey::from_str(sec1hex).unwrap()
             };
             let pub2 = {
                 let pub2hex = vector.get("pub2").unwrap().as_str().unwrap();
-                PublicKey::from_str(&pub2hex).unwrap()
+                PublicKey::from_str(pub2hex).unwrap()
             };
             let conversation_key: [u8; 32] = {
                 let ckeyhex = vector.get("conversation_key").unwrap().as_str().unwrap();
@@ -493,11 +493,11 @@ mod tests {
 
             let sec1 = {
                 let sec1hex = vector.get("sec1").unwrap().as_str().unwrap();
-                SecretKey::from_str(&sec1hex).unwrap()
+                SecretKey::from_str(sec1hex).unwrap()
             };
             let pub2 = {
                 let sec2hex = vector.get("sec2").unwrap().as_str().unwrap();
-                let secret_key = SecretKey::from_str(&sec2hex).unwrap();
+                let secret_key = SecretKey::from_str(sec2hex).unwrap();
                 Keys::new(secret_key).public_key()
             };
             let conversation_key: ConversationKey = {
@@ -523,7 +523,7 @@ mod tests {
             let computed_ciphertext = internal_encrypt_to_bytes_with_rng(
                 &mut OsRng,
                 &conversation_key,
-                &plaintext,
+                plaintext,
                 Some(&nonce),
             )
             .unwrap();

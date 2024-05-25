@@ -261,12 +261,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            decrypt(
-                bob_keys.secret_key().unwrap(),
-                &alice_pk,
-                &encrypted_content
-            )
-            .unwrap(),
+            decrypt(bob_keys.secret_key().unwrap(), &alice_pk, encrypted_content).unwrap(),
             content
         );
     }
