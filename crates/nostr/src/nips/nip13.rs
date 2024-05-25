@@ -389,7 +389,7 @@ pub mod tests {
 
     #[test]
     fn check_find_prefixes_for_pow() {
-        assert_eq!(get_prefixes_for_difficulty(0).is_empty(), true);
+        assert!(get_prefixes_for_difficulty(0).is_empty());
 
         assert_eq!(
             get_prefixes_for_difficulty(1),

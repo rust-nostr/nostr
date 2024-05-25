@@ -315,7 +315,7 @@ mod tests {
             height: 640,
         };
         let tags = vec![
-            Tag::from_standardized_without_cell(TagStandard::Dim(dim.clone())),
+            Tag::from_standardized_without_cell(TagStandard::Dim(dim)),
             Tag::from_standardized_without_cell(TagStandard::Sha256(hash)),
             Tag::from_standardized_without_cell(TagStandard::MimeType(String::from("image/jpeg"))),
         ];
@@ -333,7 +333,7 @@ mod tests {
             height: 640,
         };
         let tags = vec![
-            Tag::from_standardized_without_cell(TagStandard::Dim(dim.clone())),
+            Tag::from_standardized_without_cell(TagStandard::Dim(dim)),
             Tag::from_standardized_without_cell(TagStandard::Sha256(hash)),
             Tag::from_standardized_without_cell(TagStandard::Url(url.clone())),
         ];
@@ -350,7 +350,7 @@ mod tests {
             height: 640,
         };
         let tags = vec![
-            Tag::from_standardized_without_cell(TagStandard::Dim(dim.clone())),
+            Tag::from_standardized_without_cell(TagStandard::Dim(dim)),
             Tag::from_standardized_without_cell(TagStandard::Url(url.clone())),
             Tag::from_standardized_without_cell(TagStandard::MimeType(String::from("image/jpeg"))),
         ];

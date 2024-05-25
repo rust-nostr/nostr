@@ -1642,10 +1642,9 @@ mod tests {
             .tags
             .clone()
             .iter()
-            .find(|t| t.kind() == TagKind::Preimage)
-            .is_some();
+            .any(|t| t.kind() == TagKind::Preimage);
 
-        assert_eq!(true, has_preimage_tag);
+        assert!(has_preimage_tag);
     }
 
     #[test]
@@ -1662,10 +1661,9 @@ mod tests {
             .tags
             .clone()
             .iter()
-            .find(|t| t.kind() == TagKind::Preimage)
-            .is_some();
+            .any(|t| t.kind() == TagKind::Preimage);
 
-        assert_eq!(false, has_preimage_tag);
+        assert!(!has_preimage_tag);
     }
 
     #[test]
@@ -1674,13 +1672,11 @@ mod tests {
         let event_builder =
             EventBuilder::define_badge(badge_id, None, None, None, None, Vec::new());
 
-        let has_id = event_builder
-            .tags
-            .clone()
-            .iter()
-            .find(|t| t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D)))
-            .is_some();
-        assert_eq!(true, has_id);
+        let has_id =
+            event_builder.tags.clone().iter().any(|t| {
+                t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D))
+            });
+        assert!(has_id);
 
         assert_eq!(Kind::BadgeDefinition, event_builder.kind);
     }
@@ -1700,13 +1696,11 @@ mod tests {
         let event_builder =
             EventBuilder::define_badge(badge_id, name, description, image_url, image_size, thumbs);
 
-        let has_id = event_builder
-            .tags
-            .clone()
-            .iter()
-            .find(|t| t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D)))
-            .is_some();
-        assert_eq!(true, has_id);
+        let has_id =
+            event_builder.tags.clone().iter().any(|t| {
+                t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D))
+            });
+        assert!(has_id);
 
         assert_eq!(Kind::BadgeDefinition, event_builder.kind);
     }
@@ -1732,7 +1726,7 @@ mod tests {
                 "content": "",
                 "sig": "cf154350a615f0355d165b52c7ecccce563d9a935801181e9016d077f38d31a1dc992a757ef8d652a416885f33d836cf408c79f5d983d6f1f03c966ace946d59"
               }}"#,
-            pub_key.to_string()
+            pub_key
         );
         let badge_definition_event: Event =
             serde_json::from_str(&badge_definition_event_json).unwrap();
@@ -1752,8 +1746,7 @@ mod tests {
                 ["p", "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df", "wss://nostr.oxtr.dev"]
             ]
             }}"#,
-            pub_key.to_string(),
-            pub_key.to_string()
+            pub_key, pub_key
         );
         let example_event: Event = serde_json::from_str(&example_event_json).unwrap();
 
@@ -1803,7 +1796,7 @@ mod tests {
 
         let awarded_pubkeys = vec![
             Tag::from_standardized(TagStandard::PublicKey {
-                public_key: pub_key.clone(),
+                public_key: pub_key,
                 relay_url: Some(relay_url.clone()),
                 alias: None,
                 uppercase: false,
@@ -1858,11 +1851,11 @@ mod tests {
                 ["e", "{}", "wss://nostr.oxtr.dev"]
             ]
             }}"#,
-            pub_key.to_string(),
-            badge_one_pubkey.to_string(),
-            bravery_badge_award.id().to_string(),
-            badge_two_pubkey.to_string(),
-            honor_badge_award.id().to_string(),
+            pub_key,
+            badge_one_pubkey,
+            bravery_badge_award.id(),
+            badge_two_pubkey,
+            honor_badge_award.id(),
         );
         let example_event: Event = serde_json::from_str(&example_event_json).unwrap();
 
