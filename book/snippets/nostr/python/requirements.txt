@@ -1,1 +1,2 @@
 nostr-protocol==0.12.0
+mnemonic==0.21
