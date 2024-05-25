@@ -3,6 +3,7 @@ def nip01():
     # Generate random keys
     keys = Keys.generate()
 
+    print()
     # ANCHOR: create-event
     # Create metadata object with desired content
     metadata_content = Metadata()\
@@ -18,7 +19,7 @@ def nip01():
     builder = EventBuilder.metadata(metadata_content)
 
     # Signed event and print details
-    print("\nCreating Metadata Event:")
+    print("Creating Metadata Event:")
     event = builder.to_event(keys)
 
     print(" Event Details:")
@@ -31,9 +32,10 @@ def nip01():
     print(f"     JSON      : {event.as_json()}")
     # ANCHOR_END: create-event
 
+    print()
     # ANCHOR: create-metadata
     # Deserialize Metadata from event
-    print("\nDeserializing Metadata Event:")
+    print("Deserializing Metadata Event:")
     metadata = Metadata().from_json(event.content())
     
     print(" Metadata Details:")

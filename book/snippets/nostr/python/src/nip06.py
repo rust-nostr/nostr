@@ -3,9 +3,10 @@ from mnemonic import Mnemonic
 from nostr_protocol import Keys
 
 def nip06():
+    print()
     # ANCHOR: keys-from-seed24
     # Generate random Seed Phrase (24 words e.g. 256 bits entropy)
-    print("\nKeys from 24 word Seed Phrase:")
+    print("Keys from 24 word Seed Phrase:")
     words = Mnemonic("english").generate(strength=256)
     passphrase = ""
 
@@ -17,10 +18,10 @@ def nip06():
     print(f" Secret key bech32: {keys.secret_key().to_bech32()}")
     # ANCHOR_END: keys-from-seed24
   
-
+    print()
     # ANCHOR: keys-from-seed12
     # Generate random Seed Phrase (12 words e.g. 128 bits entropy)
-    print("\nKeys from 12 word Seed Phrase:")
+    print("Keys from 12 word Seed Phrase:")
     words = Mnemonic("english").generate(strength=128)
     passphrase = ""
 
@@ -32,13 +33,13 @@ def nip06():
     print(f" Secret key bech32: {keys.secret_key().to_bech32()}")
     # ANCHOR_END: keys-from-seed12
 
-
+    print()
     # ANCHOR: keys-from-seed-accounts
     # Advanced (with accounts) from the example wordlist
     words = "leader monkey parrot ring guide accident before fence cannon height naive bean"
     passphrase = ""
 
-    print("\nAccounts (0-5) from 12 word Seed Phrase (with passphrase):")
+    print("Accounts (0-5) from 12 word Seed Phrase (with passphrase):")
     print(f" Seed Words (12): {words}")
     print(" Accounts (0-5) :")
 
@@ -48,12 +49,12 @@ def nip06():
         print(f"     Account #{account} bech32: {nsec}")
     # ANCHOR_END: keys-from-seed-accounts
 
-
+    print()
     # ANCHOR: keys-from-seed-accounts-pass
     # Advanced (with accounts) from the same wordlist with in inclusion of passphrase
     words = "leader monkey parrot ring guide accident before fence cannon height naive bean"
     passphrase = "RustNostr"
-    print("\nAccounts (0-5) from 12 word Seed Phrase (with passphrase):")
+    print("Accounts (0-5) from 12 word Seed Phrase (with passphrase):")
     print(f" Seed Words (12): {words}")
     print(f" Passphrase     : {passphrase}")
     print(" Accounts (0-5) :")
