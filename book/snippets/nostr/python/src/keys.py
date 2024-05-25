@@ -11,11 +11,10 @@ def generate():
     print(" Public keys:")
     print(f"     hex:    {public_key.to_hex()}")
     print(f"     bech32: {public_key.to_bech32()}")
-    print("\n Secret keys:")
+    print()
+    print(" Secret keys:")
     print(f"     hex:    {secret_key.to_hex()}")
     print(f"     bech32: {secret_key.to_bech32()}")
-
-
 # ANCHOR_END: generate
 
 # ANCHOR: restore
@@ -27,14 +26,13 @@ def restore():
 
     secret_key = SecretKey.from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
     keys = Keys(secret_key)
-
-
 # ANCHOR_END: restore
 
+print()
 # ANCHOR: vanity
 def vanity():
     keys = Keys.vanity(["yuk0"], True, 8)
-    print("\n Vanity:")
+    print(" Vanity:")
     print(f"     Public keys: {keys.public_key().to_bech32()}")
     print(f"     Secret keys: {keys.secret_key().to_bech32()}")
 # ANCHOR_END: vanity
