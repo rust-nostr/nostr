@@ -12,6 +12,7 @@
 ### Changed
 
 * Bump `atomic-destructor` to `v0.2.0-alpha.2` ([Yuki Kishimoto])
+* Bump `uniffi` to `v0.27.2` ([Yuki Kishimoto])
 * nostr: ignore malformed public keys during NIP19 event (`nevent`) parsing ([Yuki Kishimoto])
 * nostr: update `Event::pubic_keys` and `Event_event_ids` methods ([Yuki Kishimoto])
 * nostr: adj. NIP-10 support ([Yuki Kishimoto])
