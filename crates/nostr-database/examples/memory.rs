@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::time::Duration;
+
 use nostr::prelude::*;
 use nostr::{EventBuilder, Filter, Keys, Kind, Metadata, Tag};
 use nostr_database::memory::MemoryDatabase;
@@ -24,8 +26,10 @@ async fn main() {
             .unwrap();
     let keys_b = Keys::new(secret_key);
 
-    let mut opts = MemoryDatabaseOptions::default();
-    opts.events = true;
+    let opts = MemoryDatabaseOptions {
+        events: true,
+        ..Default::default()
+    };
     let database = MemoryDatabase::with_opts(opts);
 
     for i in 0..100_000 {
@@ -74,5 +78,7 @@ async fn main() {
         .unwrap();
     println!("Got {} events", events.len());
 
-    loop {}
+    loop {
+        tokio::time::sleep(Duration::from_secs(60)).await;
+    }
 }

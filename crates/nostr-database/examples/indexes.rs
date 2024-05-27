@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::time::Duration;
+
 use nostr::prelude::*;
 use nostr_database::{DatabaseIndexes, Order};
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -69,5 +71,7 @@ async fn main() {
         .await;
     println!("Got {} ids", ids.len());
 
-    loop {}
+    loop {
+        tokio::time::sleep(Duration::from_secs(60)).await;
+    }
 }
