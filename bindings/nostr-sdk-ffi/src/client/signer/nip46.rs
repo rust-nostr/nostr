@@ -6,8 +6,9 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::nips::nip46::NostrConnectURI;
-use nostr_ffi::{Keys, PublicKey};
+use nostr_ffi::nips::nip46::{Nip46Request, NostrConnectURI};
+use nostr_ffi::{Keys, PublicKey, SecretKey};
+use nostr_sdk::nostr::nips::nip46::Request;
 use nostr_sdk::{block_on, signer};
 use uniffi::Object;
 
@@ -77,4 +78,97 @@ impl Nip46Signer {
     pub fn nostr_connect_uri(&self) -> NostrConnectURI {
         block_on(async move { self.inner.nostr_connect_uri().await.into() })
     }
+}
+
+/// Nostr Connect Signer
+///
+/// Signer that listen for requests from client, handle them and send the response.
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/46.md>
+#[derive(Object)]
+pub struct NostrConnectRemoteSigner {
+    inner: signer::NostrConnectRemoteSigner,
+}
+
+#[uniffi::export]
+impl NostrConnectRemoteSigner {
+    #[uniffi::constructor(default(secret = None, opts = None))]
+    pub fn new(
+        secret_key: &SecretKey,
+        relays: Vec<String>,
+        secret: Option<String>,
+        opts: Option<Arc<RelayOptions>>,
+    ) -> Result<Self> {
+        block_on(async move {
+            Ok(Self {
+                inner: signer::NostrConnectRemoteSigner::new(
+                    secret_key.deref().clone(),
+                    relays,
+                    secret,
+                    opts.map(|o| o.as_ref().deref().clone()),
+                )
+                .await?,
+            })
+        })
+    }
+
+    /// Construct remote signer from client URI (`nostrconnect://..`)
+    #[uniffi::constructor(default(secret = None, opts = None))]
+    pub fn from_uri(
+        uri: &NostrConnectURI,
+        secret_key: &SecretKey,
+        secret: Option<String>,
+        opts: Option<Arc<RelayOptions>>,
+    ) -> Result<Self> {
+        block_on(async move {
+            Ok(Self {
+                inner: signer::NostrConnectRemoteSigner::from_uri(
+                    uri.deref().clone(),
+                    secret_key.deref().clone(),
+                    secret,
+                    opts.map(|o| o.as_ref().deref().clone()),
+                )
+                .await?,
+            })
+        })
+    }
+
+    /// Get signer relays
+    pub fn relays(&self) -> Vec<String> {
+        block_on(async move {
+            self.inner
+                .relays()
+                .await
+                .into_iter()
+                .map(|r| r.to_string())
+                .collect()
+        })
+    }
+
+    /// Get Nostr Connect URI
+    pub fn nostr_connect_uri(&self) -> NostrConnectURI {
+        block_on(async move { self.inner.nostr_connect_uri().await.into() })
+    }
+
+    /// Serve signer
+    pub fn serve(&self, actions: Arc<dyn NostrConnectSignerActions>) -> Result<()> {
+        block_on(async move {
+            let actions = FFINostrConnectSignerActions(actions);
+            Ok(self.inner.serve(actions).await?)
+        })
+    }
+}
+
+struct FFINostrConnectSignerActions(Arc<dyn NostrConnectSignerActions>);
+
+impl signer::NostrConnectSignerActions for FFINostrConnectSignerActions {
+    fn approve(&self, req: &Request) -> bool {
+        self.0.approve(req.to_owned().into())
+    }
+}
+
+#[uniffi::export(with_foreign)]
+pub trait NostrConnectSignerActions: Send + Sync {
+    /// Approve
+    fn approve(&self, req: Nip46Request) -> bool;
 }

@@ -19,7 +19,7 @@ pub mod nip46;
 pub mod prelude;
 
 #[cfg(feature = "nip46")]
-pub use self::nip46::Nip46Signer;
+pub use self::nip46::{Nip46Signer, NostrConnectRemoteSigner, NostrConnectSignerActions};
 
 /// Nostr Signer error
 #[derive(Debug, Error)]
