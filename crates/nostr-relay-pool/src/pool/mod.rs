@@ -459,7 +459,7 @@ impl RelayPool {
         urls: I,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> std::result::Result<(), Error>
+    ) -> Result<(), Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -487,7 +487,7 @@ impl RelayPool {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> std::result::Result<(), Error>
+    ) -> Result<(), Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

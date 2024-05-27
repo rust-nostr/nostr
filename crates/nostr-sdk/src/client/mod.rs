@@ -1507,7 +1507,7 @@ impl Client {
         receiver: PublicKey,
         message: S,
         _expiration: Option<Timestamp>,
-    ) -> std::result::Result<(), Error>
+    ) -> Result<(), Error>
     where
         S: Into<String>,
     {
