@@ -27,25 +27,18 @@ pub struct NWC {
 impl NWC {
     /// Compose new `NWC` client
     #[uniffi::constructor]
-    pub fn new(uri: &NostrWalletConnectURI) -> Result<Self> {
-        block_on(async move {
-            Ok(Self {
-                inner: nwc::NWC::new(uri.deref().clone()).await?,
-            })
-        })
+    pub fn new(uri: &NostrWalletConnectURI) -> Self {
+        Self {
+            inner: nwc::NWC::new(uri.deref().clone()),
+        }
     }
 
     /// Compose new `NWC` client with `NostrWalletConnectOptions`
     #[uniffi::constructor]
-    pub fn with_opts(
-        uri: &NostrWalletConnectURI,
-        opts: &NostrWalletConnectOptions,
-    ) -> Result<Self> {
-        block_on(async move {
-            Ok(Self {
-                inner: nwc::NWC::with_opts(uri.deref().clone(), opts.deref().clone()).await?,
-            })
-        })
+    pub fn with_opts(uri: &NostrWalletConnectURI, opts: &NostrWalletConnectOptions) -> Self {
+        Self {
+            inner: nwc::NWC::with_opts(uri.deref().clone(), opts.deref().clone()),
+        }
     }
 
     /// Pay invoice

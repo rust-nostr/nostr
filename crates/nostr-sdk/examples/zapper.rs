@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
 
     // Parse NWC URI and compose NWC client
     let uri = NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
-    let nwc = NWC::new(uri).await?;
+    let nwc = NWC::new(uri);
 
     // Compose client
     let secret_key =

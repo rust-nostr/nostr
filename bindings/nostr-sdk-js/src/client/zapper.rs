@@ -73,11 +73,11 @@ impl JsNostrZapper {
         })
     }
 
-    pub async fn nwc(uri: &JsNostrWalletConnectURI) -> Result<JsNostrZapper> {
-        let zapper = NWC::new(uri.deref().clone()).await.map_err(into_err)?;
-        Ok(Self {
+    pub fn nwc(uri: &JsNostrWalletConnectURI) -> Self {
+        let zapper = NWC::new(uri.deref().clone());
+        Self {
             inner: zapper.into_nostr_zapper(),
-        })
+        }
     }
 }
 

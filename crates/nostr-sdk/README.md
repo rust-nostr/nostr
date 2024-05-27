@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
 
     // Configure zapper
     let uri = NostrWalletConnectURI::from_str("nostr+walletconnect://...")?;
-    let zapper = NWC::new(uri).await?; // Use `WebLNZapper::new().await` for WebLN
+    let zapper = NWC::new(uri); // Use `WebLNZapper::new().await` for WebLN
     client.set_zapper(zapper).await;
 
     // Send SAT without zap event

@@ -34,23 +34,18 @@ pub struct JsNwc {
 impl JsNwc {
     /// Compose new `NWC` client
     #[wasm_bindgen(constructor)]
-    pub async fn new(uri: &JsNostrWalletConnectURI) -> Result<JsNwc> {
-        Ok(Self {
-            inner: NWC::new(uri.deref().clone()).await.map_err(into_err)?,
-        })
+    pub fn new(uri: &JsNostrWalletConnectURI) -> Self {
+        Self {
+            inner: NWC::new(uri.deref().clone()),
+        }
     }
 
     /// Compose new `NWC` client with `NostrWalletConnectOptions`
     #[wasm_bindgen(js_name = withOpts)]
-    pub async fn with_opts(
-        uri: &JsNostrWalletConnectURI,
-        opts: &JsNostrWalletConnectOptions,
-    ) -> Result<JsNwc> {
-        Ok(Self {
-            inner: NWC::with_opts(uri.deref().clone(), opts.deref().clone())
-                .await
-                .map_err(into_err)?,
-        })
+    pub fn with_opts(uri: &JsNostrWalletConnectURI, opts: &JsNostrWalletConnectOptions) -> Self {
+        Self {
+            inner: NWC::with_opts(uri.deref().clone(), opts.deref().clone()),
+        }
     }
 
     /// Pay invoice

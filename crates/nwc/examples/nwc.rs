@@ -18,15 +18,16 @@ async fn main() -> Result<()> {
         .expect("Failed to read line");
 
     // Parse URI and compose NWC client
-    let uri = NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
-    let nwc = NWC::new(uri).await?;
+    let uri: NostrWalletConnectURI =
+        NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
+    let nwc: NWC = NWC::new(uri);
 
     // Get info
-    let info = nwc.get_info().await?;
+    let info: GetInfoResponseResult = nwc.get_info().await?;
     println!("{info:?}");
 
     // Get balance
-    let balance = nwc.get_balance().await?;
+    let balance: u64 = nwc.get_balance().await?;
     println!("Balance: {balance}");
 
     Ok(())

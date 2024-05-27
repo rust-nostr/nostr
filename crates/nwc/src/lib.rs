@@ -10,6 +10,8 @@
 #![allow(unknown_lints)] // TODO: remove when MSRV >= 1.72.0, required for `clippy::arc_with_non_send_sync`
 #![allow(clippy::arc_with_non_send_sync)]
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 pub extern crate nostr;
@@ -22,7 +24,7 @@ use nostr::nips::nip47::{
     MakeInvoiceResponseResult, NostrWalletConnectURI, PayInvoiceRequestParams,
     PayInvoiceResponseResult, PayKeysendRequestParams, PayKeysendResponseResult, Request, Response,
 };
-use nostr::{Event, EventId, Filter, Kind, Timestamp};
+use nostr::{Event, EventId, Filter, Kind, SubscriptionId, Timestamp};
 use nostr_relay_pool::{Relay, RelayNotification, RelaySendOptions, SubscribeOptions};
 use nostr_zapper::{async_trait, NostrZapper, ZapperBackend};
 
@@ -35,52 +37,68 @@ pub use self::error::Error;
 #[doc(hidden)]
 pub use self::options::NostrWalletConnectOptions;
 
+const ID: &str = "nwc";
+
 /// Nostr Wallet Connect client
 #[derive(Debug, Clone)]
 pub struct NWC {
     uri: NostrWalletConnectURI,
     relay: Relay,
     opts: NostrWalletConnectOptions,
+    /// Is NWC client initialized?
+    initialized: Arc<AtomicBool>,
 }
 
 impl NWC {
     /// Compose new [NWC] client
-    pub async fn new(uri: NostrWalletConnectURI) -> Result<Self, Error> {
-        Self::with_opts(uri, NostrWalletConnectOptions::default()).await
+    pub fn new(uri: NostrWalletConnectURI) -> Self {
+        Self::with_opts(uri, NostrWalletConnectOptions::default())
     }
 
     /// Compose new [NWC] client with [NostrWalletConnectOptions]
-    pub async fn with_opts(
-        uri: NostrWalletConnectURI,
-        opts: NostrWalletConnectOptions,
-    ) -> Result<Self, Error> {
-        // Compose relay
-        let relay = Relay::with_opts(uri.relay_url.clone(), opts.relay.clone());
-        relay.connect(Some(Duration::from_secs(10))).await;
-
-        let this = Self { uri, relay, opts };
-
-        // Subscribe
-        this.subscribe().await?;
-
-        Ok(this)
+    pub fn with_opts(uri: NostrWalletConnectURI, opts: NostrWalletConnectOptions) -> Self {
+        Self {
+            relay: Relay::with_opts(uri.relay_url.clone(), opts.relay.clone()),
+            uri,
+            opts,
+            initialized: Arc::new(AtomicBool::new(false)),
+        }
     }
 
-    async fn subscribe(&self) -> Result<(), Error> {
-        let filter = Filter::new()
-            .author(self.uri.public_key)
-            .kind(Kind::WalletConnectResponse)
-            .since(Timestamp::now());
+    fn is_initialized(&self) -> bool {
+        self.initialized.load(Ordering::SeqCst)
+    }
 
-        // Subscribe
-        self.relay
-            .subscribe(vec![filter], SubscribeOptions::default())
-            .await?;
+    /// Connect and subscribe
+    async fn init(&self) -> Result<(), Error> {
+        if !self.is_initialized() {
+            self.relay.connect(Some(Duration::from_secs(10))).await;
+
+            let filter = Filter::new()
+                .author(self.uri.public_key)
+                .kind(Kind::WalletConnectResponse)
+                .since(Timestamp::now());
+
+            // Subscribe
+            self.relay
+                .subscribe_with_id(
+                    SubscriptionId::new(ID),
+                    vec![filter],
+                    SubscribeOptions::default(),
+                )
+                .await?;
+
+            // Mark as initialized
+            self.initialized.store(true, Ordering::SeqCst);
+        }
 
         Ok(())
     }
 
     async fn send_request(&self, req: Request) -> Result<Response, Error> {
+        // Initialize
+        self.init().await?;
+
         // Convert request to event
         let event: Event = req.to_event(&self.uri)?;
         let event_id: EventId = event.id;
