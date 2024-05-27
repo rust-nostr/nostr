@@ -27,6 +27,7 @@
 * nostr: add `public_key` field to `TagStandard::Event` ([Yuki Kishimoto])
 * pool: allow to set event limits per kind ([Yuki Kishimoto])
 * sdk: add support to automatic authentication to relays (NIP-42) ([Yuki Kishimoto])
+* ffi(nostr): add `Nip46Request` ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed

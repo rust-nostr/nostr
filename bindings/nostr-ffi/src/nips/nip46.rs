@@ -12,7 +12,92 @@ use uniffi::{Enum, Object};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
-use crate::NostrError;
+use crate::{NostrError, PublicKey, UnsignedEvent};
+
+/// Request (NIP-46)
+#[derive(Enum)]
+pub enum Nip46Request {
+    /// Connect
+    Connect {
+        /// Remote public key
+        public_key: Arc<PublicKey>,
+        /// Optional secret
+        secret: Option<String>,
+    },
+    /// Get public key
+    GetPublicKey,
+    /// Sign [`UnsignedEvent`]
+    SignEvent(Arc<UnsignedEvent>),
+    /// Get relays
+    GetRelays,
+    /// Encrypt text (NIP04)
+    Nip04Encrypt {
+        /// Pubkey
+        public_key: Arc<PublicKey>,
+        /// Plain text
+        text: String,
+    },
+    /// Decrypt (NIP04)
+    Nip04Decrypt {
+        /// Pubkey
+        public_key: Arc<PublicKey>,
+        /// Ciphertext
+        ciphertext: String,
+    },
+    /// Encrypt text (NIP44)
+    Nip44Encrypt {
+        /// Pubkey
+        public_key: Arc<PublicKey>,
+        /// Plain text
+        text: String,
+    },
+    /// Decrypt (NIP44)
+    Nip44Decrypt {
+        /// Pubkey
+        public_key: Arc<PublicKey>,
+        /// Ciphertext
+        ciphertext: String,
+    },
+    /// Ping
+    Ping,
+}
+
+impl From<Request> for Nip46Request {
+    fn from(req: Request) -> Self {
+        match req {
+            Request::Connect { public_key, secret } => Self::Connect {
+                public_key: Arc::new(public_key.into()),
+                secret,
+            },
+            Request::GetPublicKey => Self::GetPublicKey,
+            Request::SignEvent(unsigned) => Self::SignEvent(Arc::new(unsigned.into())),
+            Request::GetRelays => Self::GetRelays,
+            Request::Nip04Encrypt { public_key, text } => Self::Nip04Encrypt {
+                public_key: Arc::new(public_key.into()),
+                text,
+            },
+            Request::Nip04Decrypt {
+                public_key,
+                ciphertext,
+            } => Self::Nip04Decrypt {
+                public_key: Arc::new(public_key.into()),
+                ciphertext,
+            },
+            Request::Nip44Encrypt { public_key, text } => Self::Nip44Encrypt {
+                public_key: Arc::new(public_key.into()),
+                text,
+            },
+            Request::Nip44Decrypt {
+                public_key,
+                ciphertext,
+            } => Self::Nip44Decrypt {
+                public_key: Arc::new(public_key.into()),
+                ciphertext,
+            },
+            Request::Ping => Self::Ping,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]
