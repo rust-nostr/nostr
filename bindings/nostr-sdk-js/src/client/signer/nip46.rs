@@ -35,9 +35,9 @@ impl From<Nip46Signer> for JsNip46Signer {
 
 #[wasm_bindgen(js_class = Nip46Signer)]
 impl JsNip46Signer {
-    /// New NIP46 remote signer
-    #[wasm_bindgen(constructor)]
-    pub async fn new(
+    /// Construct Nostr Connect client
+    #[wasm_bindgen]
+    pub async fn init(
         uri: &JsNostrConnectURI,
         app_keys: &JsKeys,
         timeout: &JsDuration,

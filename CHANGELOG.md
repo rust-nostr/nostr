@@ -22,6 +22,7 @@
 * sdk: send NIP-42 event only to target relay ([Yuki Kishimoto])
 * nwc: change `NWC::new` and `NWC::with_opts` fingerprint ([Yuki Kishimoto])
 * js(sdk): change `JsNostrZapper::nwc` fingerprint ([Yuki Kishimoto])
+* js(sdk): rename `JsNip46Signer::new` to `JsNip46Signer::init` ([Yuki Kishimoto])
 
 ### Added
 
