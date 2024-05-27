@@ -8,10 +8,11 @@ use std::sync::Arc;
 use nostr_js::error::{into_err, Result};
 use nostr_js::event::JsEventId;
 use nostr_js::key::JsPublicKey;
-use nostr_js::nips::nip47::JsNostrWalletConnectURI;
 use nostr_js::nips::nip57::JsZapType;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
+
+use crate::nwc::JsNwc;
 
 /// Zap entity
 #[wasm_bindgen(js_name = ZapEntity)]
@@ -73,8 +74,8 @@ impl JsNostrZapper {
         })
     }
 
-    pub fn nwc(uri: &JsNostrWalletConnectURI) -> Self {
-        let zapper = NWC::new(uri.deref().clone());
+    pub fn nwc(client: &JsNwc) -> Self {
+        let zapper: NWC = client.deref().clone();
         Self {
             inner: zapper.into_nostr_zapper(),
         }

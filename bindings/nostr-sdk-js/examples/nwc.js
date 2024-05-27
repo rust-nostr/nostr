@@ -9,7 +9,7 @@ async function main() {
     let uri = NostrWalletConnectURI.parse("nostr+walletconnect://..");
 
     // Initialize NWC client
-    let nwc = await new NWC(uri);
+    let nwc = new NWC(uri);
 
     // Get info
     let info = await nwc.getInfo();

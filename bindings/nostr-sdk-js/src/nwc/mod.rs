@@ -30,6 +30,14 @@ pub struct JsNwc {
     inner: NWC,
 }
 
+impl Deref for JsNwc {
+    type Target = NWC;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 #[wasm_bindgen(js_class = NWC)]
 impl JsNwc {
     /// Compose new `NWC` client

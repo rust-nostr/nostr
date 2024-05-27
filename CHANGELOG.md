@@ -21,6 +21,7 @@
 * pool: increase default kind 3 event limit to `840000` bytes and `10000` tags ([Yuki Kishimoto])
 * sdk: send NIP-42 event only to target relay ([Yuki Kishimoto])
 * nwc: change `NWC::new` and `NWC::with_opts` fingerprint ([Yuki Kishimoto])
+* js(sdk): change `JsNostrZapper::nwc` fingerprint ([Yuki Kishimoto])
 
 ### Added
 
