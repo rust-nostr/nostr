@@ -29,7 +29,7 @@ jobs:
         run: bash ./scripts/generate-linux-x86_64.sh
 
       - name: "Build wheel"
-        run: python3 setup.py bdist_wheel --plat-name manylinux_2_31_x86_64 --verbose
+        run: python -m build --wheel --plat-name manylinux_2_31_x86_64 --verbose
 
       - uses: actions/upload-artifact@v3
         with:
@@ -67,7 +67,7 @@ jobs:
         run: bash ./scripts/generate-linux-aarch64.sh
 
       - name: "Build wheel"
-        run: python3 setup.py bdist_wheel --plat-name manylinux_2_31_aarch64 --verbose
+        run: python -m build --wheel --plat-name manylinux_2_31_aarch64 --verbose
 
       - uses: actions/upload-artifact@v3
         with:
@@ -100,7 +100,7 @@ jobs:
       - name: "Build wheel"
         # Specifying the plat-name argument is necessary to build a wheel with the correct name,
         # see issue #350 for more information
-        run: python3 setup.py bdist_wheel --plat-name macosx_11_0_arm64 --verbose
+        run: python -m build --wheel --plat-name macosx_11_0_arm64 --verbose
 
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v3
@@ -134,7 +134,7 @@ jobs:
       - name: "Build wheel"
         # Specifying the plat-name argument is necessary to build a wheel with the correct name,
         # see issue #350 for more information
-        run: python3 setup.py bdist_wheel --plat-name macosx_11_0_x86_64 --verbose
+        run: python -m build --wheel --plat-name macosx_11_0_x86_64 --verbose
 
       - uses: actions/upload-artifact@v3
         with:
@@ -163,7 +163,7 @@ jobs:
         run: bash ./scripts/generate-windows.sh
 
       - name: "Build wheel"
-        run: python setup.py bdist_wheel --verbose
+        run: python -m build --wheel --verbose
 
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v3
