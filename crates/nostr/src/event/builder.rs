@@ -916,6 +916,21 @@ impl EventBuilder {
             tags.push(tag);
         }
 
+        // add a tag
+        if let Some(tag) = zap_request
+            .iter_tags()
+            .find(|t| {
+                t.kind()
+                    == TagKind::SingleLetter(SingleLetterTag {
+                        character: Alphabet::A,
+                        uppercase: false,
+                    })
+            })
+            .cloned()
+        {
+            tags.push(tag);
+        }
+
         // add p tag
         if let Some(tag) = zap_request
             .iter_tags()
