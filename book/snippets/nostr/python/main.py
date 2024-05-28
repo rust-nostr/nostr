@@ -6,6 +6,7 @@ from src.event.builder import event_builder
 from src.nip01 import nip01
 from src.nip05 import nip05
 from src.nip06 import nip06
+from src.nip19 import nip19
 from src.nip44 import nip44
 from src.nip59 import nip59
 
@@ -19,6 +20,7 @@ def main():
     nip01()
     nip05()
     nip06()
+    nip19()
     nip44()
     nip59()
 
