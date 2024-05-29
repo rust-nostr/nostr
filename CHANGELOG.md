@@ -19,6 +19,7 @@
 * nostr: change fingerprint of `nip05::verify` ([Yuki Kishimoto])
 * nostr: rework `TagStandard::parse` ([Yuki Kishimoto])
 * nostr: add `a` tag to zap receipts ([benthecarman])
+* nostr: change NIP-07 `Error::Wasm` variant value from `JsValue` to `String` ([Yuki Kishimoto])
 * pool: increase default kind 3 event limit to `840000` bytes and `10000` tags ([Yuki Kishimoto])
 * sdk: send NIP-42 event only to target relay ([Yuki Kishimoto])
 * nwc: change `NWC::new` and `NWC::with_opts` fingerprint ([Yuki Kishimoto])

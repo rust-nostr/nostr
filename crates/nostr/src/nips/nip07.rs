@@ -32,7 +32,7 @@ pub enum Error {
     /// Unsigned error
     Unsigned(unsigned::Error),
     /// Generic WASM error
-    Wasm(JsValue),
+    Wasm(String),
     /// Impossible to get window
     NoGlobalWindowObject,
     /// Impossible to get window
@@ -53,7 +53,7 @@ impl fmt::Display for Error {
             Self::Keys(e) => write!(f, "Keys: {e}"),
             Self::Event(e) => write!(f, "Event: {e}"),
             Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
-            Self::Wasm(e) => write!(f, "{e:?}"),
+            Self::Wasm(e) => write!(f, "{e}"),
             Self::NoGlobalWindowObject => write!(f, "No global `window` object"),
             Self::NamespaceNotFound(n) => write!(f, "`{n}` namespace not found"),
             Self::ObjectKeyNotFound(n) => write!(f, "Key `{n}` not found in object"),
@@ -87,8 +87,9 @@ impl From<unsigned::Error> for Error {
 }
 
 impl From<JsValue> for Error {
+    #[inline]
     fn from(e: JsValue) -> Self {
-        Self::Wasm(e)
+        Self::Wasm(format!("{e:?}"))
     }
 }
 
