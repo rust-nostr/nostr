@@ -1,4 +1,4 @@
-from nostr_protocol import Keys, EventBuilder, Nip19Profile, Nip19, Nip19Event, Coordinate, Kind, Nip19Enum
+from nostr_protocol import Keys, EventBuilder, Nip19Profile, Nip19, Nip19Event, Coordinate, Kind
 def nip19():
     keys = Keys.generate()
 
