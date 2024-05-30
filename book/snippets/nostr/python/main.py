@@ -10,6 +10,7 @@ from src.nip19 import nip19
 from src.nip21 import nip21
 from src.nip44 import nip44
 from src.nip59 import nip59
+from src.nip65 import nip65
 
 
 def main():
@@ -25,6 +26,7 @@ def main():
     nip21()
     nip44()
     nip59()
+    nip65()
 
 
 main()
