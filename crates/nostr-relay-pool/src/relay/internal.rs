@@ -318,6 +318,18 @@ impl InternalRelay {
                             );
                         }
 
+                        // Log high latency
+                        #[cfg(not(target_arch = "wasm32"))]
+                        if let Some(latency) = relay.stats.latency().await {
+                            if latency >= Duration::from_secs(1) {
+                                tracing::warn!(
+                                    "Latency of '{}' relay is high, averaging over {} ms!",
+                                    relay.url(),
+                                    latency.as_millis()
+                                );
+                            }
+                        }
+
                         // Schedule relay for termination
                         // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
                         if relay.is_scheduled_for_stop() {
