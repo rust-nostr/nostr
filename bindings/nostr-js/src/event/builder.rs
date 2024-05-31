@@ -109,12 +109,18 @@ impl JsEventBuilder {
             .into()
     }
 
+    /// Profile metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn metadata(metadata: &JsMetadata) -> Self {
         Self {
             inner: EventBuilder::metadata(metadata.deref()),
         }
     }
 
+    /// Relay list metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[wasm_bindgen(js_name = relayList)]
     pub fn relay_list(relays: Vec<JsRelayListItem>) -> Result<JsEventBuilder> {
         let mut list = Vec::with_capacity(relays.len());
@@ -128,6 +134,9 @@ impl JsEventBuilder {
         })
     }
 
+    /// Text note
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = textNote)]
     pub fn text_note(content: &str, tags: Vec<JsTag>) -> Self {
         Self {
@@ -157,6 +166,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Long-form text note (generally referred to as "articles" or "blog posts").
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/23.md>
     #[wasm_bindgen(js_name = longFormTextNote)]
     pub fn long_form_text_note(content: &str, tags: Vec<JsTag>) -> Self {
         Self {
@@ -164,6 +176,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Contact/Follow list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[inline]
     #[wasm_bindgen(js_name = contactList)]
     pub fn contact_list(list: Vec<JsContact>) -> Self {
@@ -194,12 +209,17 @@ impl JsEventBuilder {
     }
 
     /// Repost
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
     pub fn repost(event: &JsEvent, relay_url: Option<String>) -> Self {
         Self {
             inner: EventBuilder::repost(event.deref(), relay_url.map(UncheckedUrl::from)),
         }
     }
 
+    /// Event deletion
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[wasm_bindgen]
     pub fn delete(ids: Vec<JsEventId>, reason: Option<String>) -> Self {
         let ids = ids.into_iter().map(|id| *id);
@@ -236,12 +256,18 @@ impl JsEventBuilder {
         }
     }
 
+    /// Create new channel
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     pub fn channel(metadata: &JsMetadata) -> Self {
         Self {
             inner: EventBuilder::channel(metadata.deref()),
         }
     }
 
+    /// Channel metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[wasm_bindgen(js_name = channelMetadata)]
     pub fn channel_metadata(
         channel_id: &JsEventId,
@@ -257,6 +283,9 @@ impl JsEventBuilder {
         })
     }
 
+    /// Channel message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[wasm_bindgen(js_name = channelMsg)]
     pub fn channel_msg(
         channel_id: &JsEventId,
@@ -269,6 +298,9 @@ impl JsEventBuilder {
         })
     }
 
+    /// Hide message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[wasm_bindgen(js_name = hideChannelMsg)]
     pub fn hide_channel_msg(message_id: &JsEventId, reason: Option<String>) -> Self {
         Self {
@@ -276,6 +308,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Mute channel user
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[wasm_bindgen(js_name = muteChannelUser)]
     pub fn mute_channel_user(pubkey: &JsPublicKey, reason: Option<String>) -> Self {
         Self {
@@ -283,6 +318,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Authentication of clients to relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[wasm_bindgen]
     pub fn auth(challenge: &str, relay: &str) -> Result<JsEventBuilder> {
         let url = Url::parse(relay).map_err(into_err)?;
@@ -291,6 +329,11 @@ impl JsEventBuilder {
         })
     }
 
+    // TODO: add nostr_connect method
+
+    /// Live Event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
     #[wasm_bindgen(js_name = liveEvent)]
     pub fn live_event(live_event: &JsLiveEvent) -> Self {
         Self {
@@ -298,6 +341,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Live Event Message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
     #[wasm_bindgen(js_name = liveEventMsg)]
     pub fn live_event_msg(
         live_event_id: &str,
@@ -320,6 +366,9 @@ impl JsEventBuilder {
         })
     }
 
+    /// Reporting
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     #[wasm_bindgen]
     pub fn report(tags: Vec<JsTag>, content: &str) -> Self {
         Self {
@@ -327,6 +376,13 @@ impl JsEventBuilder {
         }
     }
 
+    /// Create **public** zap request event
+    ///
+    /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
+    ///
+    /// To build a **private** or **anonymous** zap request use `nip57PrivateZapRequest(...)` or `nip57AnonymousZapRequest(...)` functions.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     #[wasm_bindgen(js_name = publicZapRequest)]
     pub fn public_zap_request(data: &JsZapRequestData) -> Self {
         Self {
@@ -334,6 +390,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Zap Receipt
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     #[wasm_bindgen(js_name = zapReceipt)]
     pub fn zap_receipt(bolt11: &str, preimage: Option<String>, zap_request: &JsEvent) -> Self {
         Self {
@@ -341,6 +400,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Badge definition
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     #[wasm_bindgen(js_name = defineBadge)]
     pub fn define_badge(
         badge_id: String,
@@ -362,6 +424,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Badge award
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     #[wasm_bindgen(js_name = awardBadge)]
     pub fn award_badge(
         badge_definition: &JsEvent,
@@ -376,6 +441,9 @@ impl JsEventBuilder {
         })
     }
 
+    /// Profile badges
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     #[wasm_bindgen(js_name = profileBadges)]
     pub fn profile_badges(
         badge_definitions: Vec<JsEvent>,
@@ -392,6 +460,9 @@ impl JsEventBuilder {
         })
     }
 
+    /// Data Vending Machine (DVM) - Job Request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[wasm_bindgen(js_name = jobRequest)]
     pub fn job_request(kind: u16, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
         Ok(Self {
@@ -400,6 +471,9 @@ impl JsEventBuilder {
         })
     }
 
+    /// Data Vending Machine (DVM) - Job Result
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[wasm_bindgen(js_name = jobResult)]
     pub fn job_result(
         job_request: &JsEvent,
@@ -416,6 +490,9 @@ impl JsEventBuilder {
         })
     }
 
+    /// Data Vending Machine (DVM) - Job Feedback
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[wasm_bindgen(js_name = jobFeedback)]
     pub fn job_feedback(
         job_request: &JsEvent,
@@ -437,6 +514,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// File metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
     #[wasm_bindgen(js_name = fileMetadata)]
     pub fn file_metadata(description: &str, metadata: &JsFileMetadata) -> Self {
         Self {
@@ -444,6 +524,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// HTTP Auth
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/98.md>
     #[wasm_bindgen(js_name = httpAuth)]
     pub fn http_auth(data: &JsHttpData) -> Self {
         Self {
@@ -451,6 +534,9 @@ impl JsEventBuilder {
         }
     }
 
+    /// Set stall data
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
     #[wasm_bindgen(js_name = stallData)]
     pub fn stall_data(data: &JsStallData) -> Self {
         Self {
@@ -458,12 +544,17 @@ impl JsEventBuilder {
         }
     }
 
+    /// Set product data
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
     #[wasm_bindgen(js_name = productData)]
     pub fn product_data(data: &JsProductData) -> Self {
         Self {
             inner: EventBuilder::product_data(data.deref().clone()),
         }
     }
+
+    // TODO: add seal
 
     /// Gift Wrap from seal
     ///

@@ -95,6 +95,9 @@ impl EventBuilder {
             .into()
     }
 
+    /// Profile metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[uniffi::constructor]
     pub fn metadata(metadata: &Metadata) -> Self {
         Self {
@@ -102,6 +105,9 @@ impl EventBuilder {
         }
     }
 
+    /// Relay list metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[uniffi::constructor]
     pub fn relay_list(map: HashMap<String, Option<RelayMetadata>>) -> Result<Self> {
         let mut list = Vec::with_capacity(map.len());
@@ -115,6 +121,9 @@ impl EventBuilder {
         })
     }
 
+    /// Text note
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[uniffi::constructor]
     pub fn text_note(content: &str, tags: &[Arc<Tag>]) -> Self {
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
@@ -145,6 +154,9 @@ impl EventBuilder {
         }
     }
 
+    /// Long-form text note (generally referred to as "articles" or "blog posts").
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/23.md>
     #[uniffi::constructor]
     pub fn long_form_text_note(content: &str, tags: &[Arc<Tag>]) -> Self {
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
@@ -153,6 +165,9 @@ impl EventBuilder {
         }
     }
 
+    /// Contact/Follow list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[uniffi::constructor]
     pub fn contact_list(list: &[Arc<Contact>]) -> Self {
         let list: Vec<ContactSdk> = list.iter().map(|c| c.as_ref().deref().clone()).collect();
@@ -182,6 +197,9 @@ impl EventBuilder {
         })
     }
 
+    /// Repost
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
     #[uniffi::constructor]
     pub fn repost(event: &Event, relay_url: Option<String>) -> Self {
         Self {
@@ -189,7 +207,9 @@ impl EventBuilder {
         }
     }
 
-    /// Create delete event
+    /// Event deletion
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[uniffi::constructor]
     pub fn delete(ids: &[Arc<EventId>], reason: Option<String>) -> Self {
         let ids = ids.iter().map(|e| ***e);
@@ -202,6 +222,8 @@ impl EventBuilder {
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
     #[uniffi::constructor]
     pub fn reaction(event: &Event, reaction: &str) -> Self {
         Self {
@@ -210,6 +232,8 @@ impl EventBuilder {
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
     #[uniffi::constructor]
     pub fn reaction_extended(
         event_id: &EventId,
@@ -227,6 +251,9 @@ impl EventBuilder {
         }
     }
 
+    /// Create new channel
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[uniffi::constructor]
     pub fn channel(metadata: &Metadata) -> Self {
         Self {
@@ -234,6 +261,9 @@ impl EventBuilder {
         }
     }
 
+    /// Channel metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[uniffi::constructor]
     pub fn channel_metadata(
         channel_id: &EventId,
@@ -249,6 +279,9 @@ impl EventBuilder {
         })
     }
 
+    /// Channel message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[uniffi::constructor]
     pub fn channel_msg(channel_id: &EventId, relay_url: &str, content: &str) -> Result<Self> {
         Ok(Self {
@@ -256,6 +289,9 @@ impl EventBuilder {
         })
     }
 
+    /// Hide message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[uniffi::constructor]
     pub fn hide_channel_msg(message_id: &EventId, reason: Option<String>) -> Self {
         Self {
@@ -263,6 +299,9 @@ impl EventBuilder {
         }
     }
 
+    /// Mute channel user
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[uniffi::constructor]
     pub fn mute_channel_user(public_key: &PublicKey, reason: Option<String>) -> Self {
         Self {
@@ -270,6 +309,9 @@ impl EventBuilder {
         }
     }
 
+    /// Authentication of clients to relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[uniffi::constructor]
     pub fn auth(challenge: &str, relay_url: &str) -> Result<Self> {
         Ok(Self {
@@ -277,6 +319,9 @@ impl EventBuilder {
         })
     }
 
+    /// Nostr Connect / Nostr Remote Signing
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
     #[uniffi::constructor]
     pub fn nostr_connect(
         sender_keys: &Keys,
@@ -292,6 +337,9 @@ impl EventBuilder {
         })
     }
 
+    /// Live Event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
     #[uniffi::constructor]
     pub fn live_event(live_event: LiveEvent) -> Self {
         Self {
@@ -299,6 +347,9 @@ impl EventBuilder {
         }
     }
 
+    /// Live Event Message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
     #[uniffi::constructor]
     pub fn live_event_msg(
         live_event_id: &str,
@@ -323,6 +374,9 @@ impl EventBuilder {
         })
     }
 
+    /// Reporting
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     #[uniffi::constructor]
     pub fn report(tags: &[Arc<Tag>], content: &str) -> Self {
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
@@ -345,6 +399,9 @@ impl EventBuilder {
         }
     }
 
+    /// Zap Receipt
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     #[uniffi::constructor]
     pub fn zap_receipt(bolt11: &str, preimage: Option<String>, zap_request: &Event) -> Self {
         Self {
@@ -352,6 +409,9 @@ impl EventBuilder {
         }
     }
 
+    /// Badge definition
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     #[uniffi::constructor]
     pub fn define_badge(
         badge_id: String,
@@ -376,6 +436,9 @@ impl EventBuilder {
         }
     }
 
+    /// Badge award
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     #[uniffi::constructor]
     pub fn award_badge(badge_definition: &Event, awarded_pubkeys: &[Arc<Tag>]) -> Result<Self> {
         Ok(Self {
@@ -386,6 +449,9 @@ impl EventBuilder {
         })
     }
 
+    /// Profile badges
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     #[uniffi::constructor]
     pub fn profile_badges(
         badge_definitions: &[Arc<Event>],
@@ -407,7 +473,7 @@ impl EventBuilder {
         })
     }
 
-    /// Data Vending Machine - Job Request
+    /// Data Vending Machine (DVM) - Job Request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[uniffi::constructor]
@@ -420,6 +486,9 @@ impl EventBuilder {
         })
     }
 
+    /// Data Vending Machine (DVM) - Job Result
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[uniffi::constructor]
     pub fn job_result(
         job_request: &Event,
@@ -435,6 +504,9 @@ impl EventBuilder {
         })
     }
 
+    /// Data Vending Machine (DVM) - Job Feedback
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[uniffi::constructor]
     pub fn job_feedback(
         job_request: &Event,
@@ -456,6 +528,9 @@ impl EventBuilder {
         }
     }
 
+    /// File metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
     #[uniffi::constructor]
     pub fn file_metadata(description: &str, metadata: &FileMetadata) -> Self {
         Self {
@@ -463,6 +538,9 @@ impl EventBuilder {
         }
     }
 
+    /// HTTP Auth
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/98.md>
     #[uniffi::constructor]
     pub fn http_auth(data: HttpData) -> Self {
         Self {
@@ -470,6 +548,9 @@ impl EventBuilder {
         }
     }
 
+    /// Set stall data
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
     #[uniffi::constructor]
     pub fn stall_data(data: &StallData) -> Self {
         Self {
@@ -477,12 +558,17 @@ impl EventBuilder {
         }
     }
 
+    /// Set product data
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
     #[uniffi::constructor]
     pub fn product_data(data: ProductData) -> Self {
         Self {
             inner: nostr::EventBuilder::product_data(data.into()),
         }
     }
+
+    // TODO: add seal
 
     /// Private Direct message rumor
     ///

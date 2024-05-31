@@ -386,7 +386,7 @@ impl EventBuilder {
         Self::new(Kind::Metadata, metadata.as_json(), [])
     }
 
-    /// Relay list metadata (NIP65)
+    /// Relay list metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     pub fn relay_list<I>(iter: I) -> Self
@@ -527,7 +527,9 @@ impl EventBuilder {
         Self::new(Kind::LongFormTextNote, content, tags)
     }
 
-    /// Contact list
+    /// Contact/Follow list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub fn contact_list<I>(contacts: I) -> Self
     where
         I: IntoIterator<Item = Contact>,
@@ -589,6 +591,8 @@ impl EventBuilder {
     }
 
     /// Repost
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
     pub fn repost(event: &Event, relay_url: Option<UncheckedUrl>) -> Self {
         if event.kind == Kind::TextNote {
             Self::new(
@@ -622,7 +626,9 @@ impl EventBuilder {
         }
     }
 
-    /// Create delete event
+    /// Event deletion
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[inline]
     pub fn delete<I, T>(ids: I) -> Self
     where
@@ -632,7 +638,9 @@ impl EventBuilder {
         Self::delete_with_reason(ids, "")
     }
 
-    /// Create delete event with reason
+    /// Event deletion with reason
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     pub fn delete_with_reason<I, T, S>(ids: I, reason: S) -> Self
     where
         I: IntoIterator<Item = T>,
@@ -647,6 +655,8 @@ impl EventBuilder {
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
     #[inline]
     pub fn reaction<S>(event: &Event, reaction: S) -> Self
     where
@@ -656,6 +666,8 @@ impl EventBuilder {
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
     pub fn reaction_extended<S>(
         event_id: EventId,
         public_key: PublicKey,
@@ -764,7 +776,7 @@ impl EventBuilder {
         )
     }
 
-    /// Create an auth event
+    /// Authentication of clients to relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
@@ -782,7 +794,7 @@ impl EventBuilder {
         )
     }
 
-    /// Nostr Connect
+    /// Nostr Connect / Nostr Remote Signing
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
     #[inline]
@@ -831,7 +843,7 @@ impl EventBuilder {
         Self::new(Kind::LiveEventMessage, content, tags)
     }
 
-    /// Create report event
+    /// Reporting
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     #[inline]
@@ -880,7 +892,7 @@ impl EventBuilder {
         Self::new(Kind::ZapRequest, message, tags)
     }
 
-    /// Create zap receipt event
+    /// Zap Receipt
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
     #[cfg(feature = "nip57")]
@@ -959,7 +971,7 @@ impl EventBuilder {
         Self::new(Kind::ZapReceipt, "", tags)
     }
 
-    /// Create a badge definition event
+    /// Badge definition
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     ///
@@ -1033,7 +1045,7 @@ impl EventBuilder {
         Self::new(Kind::BadgeDefinition, "", tags)
     }
 
-    /// Create a badge award event
+    /// Badge award
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     pub fn award_badge<I>(badge_definition: &Event, awarded_pubkeys: I) -> Result<Self, Error>
@@ -1070,7 +1082,7 @@ impl EventBuilder {
         Ok(Self::new(Kind::BadgeAward, "", tags))
     }
 
-    /// Create a profile badges event
+    /// Profile badges
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     pub fn profile_badges(
@@ -1150,7 +1162,7 @@ impl EventBuilder {
         Ok(EventBuilder::new(Kind::ProfileBadges, "", tags))
     }
 
-    /// Data Vending Machine - Job Request
+    /// Data Vending Machine (DVM) - Job Request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     pub fn job_request<I>(kind: Kind, tags: I) -> Result<Self, Error>
@@ -1167,7 +1179,7 @@ impl EventBuilder {
         }
     }
 
-    /// Data Vending Machine - Job Result
+    /// Data Vending Machine (DVM) - Job Result
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     pub fn job_result(
@@ -1210,7 +1222,7 @@ impl EventBuilder {
         }
     }
 
-    /// Data Vending Machine - Job Feedback
+    /// Data Vending Machine (DVM) - Job Feedback
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     pub fn job_feedback(
