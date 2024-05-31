@@ -38,11 +38,13 @@ pub struct NostrLibrary;
 
 #[uniffi::export]
 impl NostrLibrary {
+    #[inline]
     #[uniffi::constructor]
     pub fn new() -> Self {
         Self
     }
 
+    #[inline]
     pub fn git_hash_version(&self) -> Option<String> {
         option_env!("GIT_HASH").map(|v| v.to_string())
     }

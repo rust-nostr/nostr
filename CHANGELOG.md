@@ -24,6 +24,7 @@
 * pool: increase default kind 3 event limit to `840000` bytes and `10000` tags ([Yuki Kishimoto])
 * sdk: send NIP-42 event only to target relay ([Yuki Kishimoto])
 * nwc: change `NWC::new` and `NWC::with_opts` fingerprint ([Yuki Kishimoto])
+* bindings(sdk): log git hash after logger initialization ([Yuki Kishimoto])
 * ffi(nostr): set default args values where possible for `EventBuilder` constructors ([Yuki Kishimoto])
 * js(sdk): change `JsNostrZapper::nwc` fingerprint ([Yuki Kishimoto])
 * js(sdk): rename `JsNip46Signer::new` to `JsNip46Signer::init` ([Yuki Kishimoto])
