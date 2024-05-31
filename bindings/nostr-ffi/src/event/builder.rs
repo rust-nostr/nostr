@@ -137,7 +137,7 @@ impl EventBuilder {
     /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(root = None, relay_url = None))]
     pub fn text_note_reply(
         content: String,
         reply_to: &Event,
@@ -180,7 +180,7 @@ impl EventBuilder {
     /// Create encrypted direct msg event
     ///
     /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(reply_to = None))]
     pub fn encrypted_direct_msg(
         sender_keys: &Keys,
         receiver_pubkey: &PublicKey,
@@ -200,7 +200,7 @@ impl EventBuilder {
     /// Repost
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(relay_url = None))]
     pub fn repost(event: &Event, relay_url: Option<String>) -> Self {
         Self {
             inner: nostr::EventBuilder::repost(event.deref(), relay_url.map(UncheckedUrl::from)),
@@ -210,7 +210,7 @@ impl EventBuilder {
     /// Event deletion
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(reason = None))]
     pub fn delete(ids: &[Arc<EventId>], reason: Option<String>) -> Self {
         let ids = ids.iter().map(|e| ***e);
         Self {
@@ -264,11 +264,11 @@ impl EventBuilder {
     /// Channel metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(relay_url = None))]
     pub fn channel_metadata(
         channel_id: &EventId,
-        relay_url: Option<String>,
         metadata: &Metadata,
+        relay_url: Option<String>,
     ) -> Result<Self> {
         let relay_url = match relay_url {
             Some(url) => Some(Url::parse(&url)?),
@@ -292,7 +292,7 @@ impl EventBuilder {
     /// Hide message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(reason = None))]
     pub fn hide_channel_msg(message_id: &EventId, reason: Option<String>) -> Self {
         Self {
             inner: nostr::EventBuilder::hide_channel_msg(**message_id, reason),
@@ -302,7 +302,7 @@ impl EventBuilder {
     /// Mute channel user
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(reason = None))]
     pub fn mute_channel_user(public_key: &PublicKey, reason: Option<String>) -> Self {
         Self {
             inner: nostr::EventBuilder::mute_channel_user(**public_key, reason),
@@ -412,7 +412,7 @@ impl EventBuilder {
     /// Badge definition
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(name = None, description = None, image = None, image_dimensions = None, thumbnails = []))]
     pub fn define_badge(
         badge_id: String,
         name: Option<String>,
@@ -489,7 +489,7 @@ impl EventBuilder {
     /// Data Vending Machine (DVM) - Job Result
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(bolt11 = None))]
     pub fn job_result(
         job_request: &Event,
         amount_millisats: u64,
@@ -507,7 +507,7 @@ impl EventBuilder {
     /// Data Vending Machine (DVM) - Job Feedback
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(bolt11 = None, payload = None))]
     pub fn job_feedback(
         job_request: &Event,
         status: DataVendingMachineStatus,
