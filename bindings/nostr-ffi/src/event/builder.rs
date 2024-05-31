@@ -350,26 +350,23 @@ impl EventBuilder {
     /// Live Event Message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(relay_url = None))]
     pub fn live_event_msg(
         live_event_id: &str,
         live_event_host: &PublicKey,
         content: &str,
         relay_url: Option<String>,
-        tags: &[Arc<Tag>],
     ) -> Result<Self> {
         let relay_url = match relay_url {
             Some(url) => Some(Url::parse(&url)?),
             None => None,
         };
-        let tags = tags.iter().map(|t| t.as_ref().deref().clone()).collect();
         Ok(Self {
             inner: nostr::EventBuilder::live_event_msg(
                 live_event_id,
                 **live_event_host,
                 content,
                 relay_url,
-                tags,
             ),
         })
     }

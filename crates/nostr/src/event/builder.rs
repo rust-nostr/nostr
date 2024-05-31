@@ -828,19 +828,21 @@ impl EventBuilder {
         live_event_host: PublicKey,
         content: S,
         relay_url: Option<Url>,
-        mut tags: Vec<Tag>,
     ) -> Self
     where
         S: Into<String>,
     {
-        tags.push(Tag::from_standardized_without_cell(
-            TagStandard::Coordinate {
-                coordinate: Coordinate::new(Kind::LiveEvent, live_event_host)
-                    .identifier(live_event_id),
-                relay_url: relay_url.map(|u| u.into()),
-            },
-        ));
-        Self::new(Kind::LiveEventMessage, content, tags)
+        Self::new(
+            Kind::LiveEventMessage,
+            content,
+            [Tag::from_standardized_without_cell(
+                TagStandard::Coordinate {
+                    coordinate: Coordinate::new(Kind::LiveEvent, live_event_host)
+                        .identifier(live_event_id),
+                    relay_url: relay_url.map(|u| u.into()),
+                },
+            )],
+        )
     }
 
     /// Reporting
@@ -1050,7 +1052,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     pub fn award_badge<I>(badge_definition: &Event, awarded_pubkeys: I) -> Result<Self, Error>
     where
-        I: IntoIterator<Item = Tag>,
+        I: IntoIterator<Item = Tag>, // TODO: change to `PublicKey`?
     {
         let badge_id = badge_definition
             .iter_tags()

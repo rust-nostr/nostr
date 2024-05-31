@@ -350,7 +350,6 @@ impl JsEventBuilder {
         live_event_host: &JsPublicKey,
         content: &str,
         relay_url: Option<String>,
-        tags: Vec<JsTag>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
             inner: EventBuilder::live_event_msg(
@@ -361,7 +360,6 @@ impl JsEventBuilder {
                     Some(url) => Some(Url::from_str(&url).map_err(into_err)?),
                     None => None,
                 },
-                tags.into_iter().map(|t| t.into()).collect(),
             ),
         })
     }
