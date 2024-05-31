@@ -31,6 +31,9 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
 use super::blacklist::RelayBlacklist;
+#[cfg(not(target_arch = "wasm32"))]
+use super::constants::{HIGH_LATENCY, PING_INTERVAL};
+use super::constants::{MIN_ATTEMPTS, MIN_UPTIME};
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions,
@@ -42,11 +45,6 @@ use super::{Error, RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
 
 type Message = (RelayEvent, Option<oneshot::Sender<bool>>);
-
-const MIN_ATTEMPTS: usize = 1;
-const MIN_UPTIME: f64 = 0.90;
-#[cfg(not(target_arch = "wasm32"))]
-const PING_INTERVAL: u64 = 55;
 
 /// Relay event
 #[derive(Debug)]
@@ -321,7 +319,9 @@ impl InternalRelay {
                         // Log high latency
                         #[cfg(not(target_arch = "wasm32"))]
                         if let Some(latency) = relay.stats.latency().await {
-                            if latency >= Duration::from_secs(1) {
+                            let reads: usize = relay.stats.latency_reads().await;
+
+                            if latency >= HIGH_LATENCY && reads >= 3 {
                                 tracing::warn!(
                                     "Latency of '{}' relay is high, averaging over {} ms!",
                                     relay.url(),

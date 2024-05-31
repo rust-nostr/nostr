@@ -22,6 +22,7 @@
 * nostr: change NIP-07 `Error::Wasm` variant value from `JsValue` to `String` ([Yuki Kishimoto])
 * nostr: update `EventBuilder::live_event_msg` fingerprint ([Yuki Kishimoto])
 * pool: increase default kind 3 event limit to `840000` bytes and `10000` tags ([Yuki Kishimoto])
+* pool: improve accuracy of latency calculation ([Yuki Kishimoto])
 * sdk: send NIP-42 event only to target relay ([Yuki Kishimoto])
 * nwc: change `NWC::new` and `NWC::with_opts` fingerprint ([Yuki Kishimoto])
 * bindings(sdk): log git hash after logger initialization ([Yuki Kishimoto])

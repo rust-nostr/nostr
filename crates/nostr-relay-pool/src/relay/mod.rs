@@ -22,6 +22,7 @@ use nostr_database::{DynNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
 mod blacklist;
+mod constants;
 mod error;
 pub mod flags;
 mod internal;
