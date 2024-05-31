@@ -35,6 +35,7 @@
 * sdk: add support to automatic authentication to relays (NIP-42) ([Yuki Kishimoto])
 * ffi(nostr): add `Nip46Request` ([Yuki Kishimoto])
 * ffi(sdk): add `NostrConnectRemoteSigner` ([Yuki Kishimoto])
+* js(nostr): add missing NIP-57 functions ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed

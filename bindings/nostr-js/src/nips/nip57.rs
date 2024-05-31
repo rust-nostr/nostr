@@ -4,13 +4,14 @@
 
 use std::ops::Deref;
 
-use nostr::nips::nip57::{ZapRequestData, ZapType};
+use nostr::nips::nip57::{self, ZapRequestData, ZapType};
 use nostr::UncheckedUrl;
 use wasm_bindgen::prelude::*;
 
 use super::nip01::JsCoordinate;
-use crate::event::JsEventId;
-use crate::key::JsPublicKey;
+use crate::error::{into_err, Result};
+use crate::event::{JsEvent, JsEventId};
+use crate::key::{JsKeys, JsPublicKey, JsSecretKey};
 
 #[wasm_bindgen(js_name = ZapType)]
 pub enum JsZapType {
@@ -125,4 +126,47 @@ impl JsZapRequestData {
     pub fn event_coordinate(&self) -> Option<JsCoordinate> {
         self.inner.event_coordinate.clone().map(|e| e.into())
     }
+}
+
+#[wasm_bindgen(js_name = nip57AnonymousZapRequest)]
+pub fn nip57_anonymous_zap_request(data: &JsZapRequestData) -> Result<JsEvent> {
+    Ok(nip57::anonymous_zap_request(data.deref().clone())
+        .map_err(into_err)?
+        .into())
+}
+
+#[wasm_bindgen(js_name = nip57PrivateZapRequest)]
+pub fn nip57_private_zap_request(data: &JsZapRequestData, keys: &JsKeys) -> Result<JsEvent> {
+    Ok(
+        nip57::private_zap_request(data.deref().clone(), keys.deref())
+            .map_err(into_err)?
+            .into(),
+    )
+}
+
+#[wasm_bindgen(js_name = nip57DecryptSentPrivateZapMessage)]
+pub fn decrypt_sent_private_zap_message(
+    secret_key: &JsSecretKey,
+    public_key: &JsPublicKey,
+    private_zap: &JsEvent,
+) -> Result<JsEvent> {
+    Ok(nip57::decrypt_sent_private_zap_message(
+        secret_key.deref(),
+        public_key.deref(),
+        private_zap.deref(),
+    )
+    .map_err(into_err)?
+    .into())
+}
+
+#[wasm_bindgen(js_name = nip57DecryptReceivedPrivateZapMessage)]
+pub fn decrypt_received_private_zap_message(
+    secret_key: &JsSecretKey,
+    private_zap: &JsEvent,
+) -> Result<JsEvent> {
+    Ok(
+        nip57::decrypt_received_private_zap_message(secret_key.deref(), private_zap.deref())
+            .map_err(into_err)?
+            .into(),
+    )
 }
