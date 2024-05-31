@@ -23,7 +23,7 @@ rust-version = "1.64.0"
 [workspace.dependencies]
 async-trait = "0.1"
 async-utility = "0.2"
-atomic-destructor = { version = "0.2.0-alpha.2", default-features = false }
+atomic-destructor = { version = "0.2", default-features = false }
 js-sys = "0.3"
 nostr = { version = "0.31", path = "./crates/nostr", default-features = false }
 nostr-database = { version = "0.31", path = "./crates/nostr-database", default-features = false }
