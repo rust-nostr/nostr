@@ -293,15 +293,15 @@ impl InternalRelay {
             self.status().await
         {
             if self.opts.get_reconnect() {
-                if connection_timeout.is_some() {
-                    self.try_connect(connection_timeout).await
+                // If connection timeout is not null, try to connect
+                match connection_timeout {
+                    Some(..) => self.try_connect(connection_timeout).await,
+                    None => {
+                        self.set_status(RelayStatus::Pending).await;
+                    }
                 }
 
                 tracing::debug!("Auto connect loop started for {}", self.url);
-
-                if connection_timeout.is_none() {
-                    self.set_status(RelayStatus::Pending).await;
-                }
 
                 let relay = self.clone();
                 let _ = thread::spawn(async move {
@@ -364,21 +364,8 @@ impl InternalRelay {
                             _ => (),
                         };
 
-                        let retry_sec: u64 = if relay.opts.get_adjust_retry_sec() {
-                            let var: u64 =
-                                relay.stats.attempts().saturating_sub(relay.stats.success()) as u64;
-                            if var >= 3 {
-                                let retry_interval: i64 =
-                                    cmp::min(MIN_RETRY_SEC * (1 + var), MAX_ADJ_RETRY_SEC) as i64;
-                                let jitter: i64 = rand::thread_rng().gen_range(-1..=1);
-                                retry_interval.saturating_add(jitter) as u64
-                            } else {
-                                relay.opts().get_retry_sec()
-                            }
-                        } else {
-                            relay.opts().get_retry_sec()
-                        };
-
+                        // Sleep
+                        let retry_sec: u64 = relay.calculate_retry_sec();
                         tracing::trace!("{} retry time set to {retry_sec} secs", relay.url);
                         thread::sleep(Duration::from_secs(retry_sec)).await;
                     }
@@ -392,6 +379,25 @@ impl InternalRelay {
         }
     }
 
+    /// Depending on attempts and success, use default or incremental retry time
+    fn calculate_retry_sec(&self) -> u64 {
+        if self.opts.get_adjust_retry_sec() {
+            // diff = attempts - success
+            let diff: u64 = self.stats.attempts().saturating_sub(self.stats.success()) as u64;
+
+            // Use incremental retry time if diff >= 3
+            if diff >= 3 {
+                let retry_interval: i64 =
+                    cmp::min(MIN_RETRY_SEC * (1 + diff), MAX_ADJ_RETRY_SEC) as i64;
+                let jitter: i64 = rand::thread_rng().gen_range(-1..=1);
+                return retry_interval.saturating_add(jitter) as u64;
+            }
+        }
+
+        // Use default retry time
+        self.opts.get_retry_sec()
+    }
+
     #[cfg(feature = "nip11")]
     fn request_nip11_document(&self) {
         let relay = self.clone();
@@ -399,7 +405,7 @@ impl InternalRelay {
             match RelayInformationDocument::get(relay.url(), relay.proxy()).await {
                 Ok(document) => relay.set_document(document).await,
                 Err(e) => tracing::error!(
-                    "Impossible to get information document from {}: {}",
+                    "Impossible to get information document from '{}': {}",
                     relay.url,
                     e
                 ),
@@ -409,38 +415,45 @@ impl InternalRelay {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn spawn_pinger(&self) -> Option<AbortHandle> {
-        let relay = self.clone();
-        thread::abortable(async move {
-            if relay.opts.flags.has_ping() {
-                tracing::debug!("Relay Ping Thread Started");
+        if self.opts.flags.has_ping() {
+            let relay = self.clone();
+            thread::abortable(async move {
+                tracing::debug!("Relay Ping Thread started for '{}'", relay.url);
 
                 loop {
+                    // If last nonce is NOT 0, check if relay replied
+                    // Break loop if relay not replied
                     if relay.stats.ping.last_nonce() != 0 && !relay.stats.ping.replied() {
-                        tracing::warn!("{} not replied to ping", relay.url);
+                        tracing::warn!("'{}' not replied to ping", relay.url);
                         relay.stats.ping.reset();
                         break;
                     }
 
+                    // Generate and save nonce
                     let nonce: u64 = rand::random();
                     relay.stats.ping.set_last_nonce(nonce);
                     relay.stats.ping.set_replied(false);
 
-                    if let Err(e) = relay.send_relay_event(RelayEvent::Ping { nonce }, None) {
-                        tracing::error!("Impossible to ping {}: {e}", relay.url);
+                    // Ping
+                    if let Err(e) = relay.ping(nonce) {
+                        tracing::error!("Impossible to ping '{}': {e}", relay.url);
                         break;
                     };
 
+                    // Sleep
                     thread::sleep(Duration::from_secs(PING_INTERVAL)).await;
                 }
 
-                tracing::debug!("Exited from Ping Thread of {}", relay.url);
+                tracing::debug!("Exited from Ping Thread for '{}'", relay.url);
 
                 if let Err(err) = relay.disconnect().await {
-                    tracing::error!("Impossible to disconnect {}: {}", relay.url, err);
+                    tracing::error!("Impossible to disconnect '{}': {}", relay.url, err);
                 }
-            }
-        })
-        .ok()
+            })
+            .ok()
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -457,107 +470,113 @@ impl InternalRelay {
     ) {
         let relay = self.clone();
         let _ = thread::spawn(async move {
-            tracing::debug!("Relay Message Handler started for {}", relay.url);
+            tracing::debug!("Relay Message Handler started for '{}'", relay.url);
 
             let sender = async {
                 let mut rx = relay.relay_receiver.lock().await;
                 while let Some((relay_event, oneshot_sender)) = rx.recv().await {
                     match relay_event {
+                        // Try to send client messages to relay
                         RelayEvent::Batch(msgs) => {
-                            let msgs: Vec<String> =
-                                msgs.into_iter().map(|msg| msg.as_json()).collect();
-                            let size: usize = msgs.iter().map(|msg| msg.as_bytes().len()).sum();
-                            let len = msgs.len();
+                            // Serialize messages to JSON and compose WebSocket text message
+                            let msgs: Vec<WsMessage> = msgs
+                                .into_iter()
+                                .map(|msg| WsMessage::Text(msg.as_json()))
+                                .collect();
 
-                            if len == 1 {
-                                if let Some(json) = msgs.first() {
-                                    tracing::debug!(
-                                        "Sending {json} to {} (size: {size} bytes)",
-                                        relay.url
-                                    );
-                                }
+                            // Calculate messages size
+                            let size: usize = msgs.iter().map(|msg| msg.len()).sum();
+                            let len: usize = msgs.len();
+
+                            // Compose log msg without prefix ("Sending" or "Sent")
+                            let partial_log_msg: String = if len == 1 {
+                                let json = &msgs[0]; // SAFETY: len checked above (len == 1)
+                                format!("'{json}' to '{}' (size: {size} bytes)", relay.url)
                             } else {
-                                tracing::debug!(
-                                    "Sending {len} messages to {} (size: {size} bytes)",
-                                    relay.url
-                                );
-                            }
+                                format!("{len} messages to '{}' (size: {size} bytes)", relay.url)
+                            };
 
-                            let msgs = msgs.into_iter().map(|msg| Ok(WsMessage::Text(msg)));
-                            let mut stream = futures_util::stream::iter(msgs);
-                            match ws_tx.send_all(&mut stream).await {
-                                Ok(_) => {
+                            tracing::trace!("Sending {partial_log_msg}");
+
+                            // Send WebSocket messages
+                            let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
+                            let status: bool = match ws_tx.send_all(&mut stream).await {
+                                Ok(..) => {
+                                    tracing::debug!("Sent {partial_log_msg}");
                                     relay.stats.add_bytes_sent(size);
-                                    if let Some(sender) = oneshot_sender {
-                                        if sender.send(true).is_err() {
-                                            tracing::error!("Impossible to send oneshot msg");
-                                        }
-                                    }
+                                    true
                                 }
                                 Err(e) => {
                                     tracing::error!(
-                                        "Impossible to send {len} messages to {}: {}",
-                                        relay.url(),
-                                        e.to_string()
+                                        "Impossible to send {len} messages to '{}': {e}",
+                                        relay.url,
                                     );
-                                    if let Some(sender) = oneshot_sender {
-                                        if let Err(e) = sender.send(false) {
-                                            tracing::error!(
-                                                "Impossible to send oneshot msg: {}",
-                                                e
-                                            );
-                                        }
-                                    }
-                                    break;
+                                    false
                                 }
+                            };
+
+                            // Send oneshot message
+                            if let Some(sender) = oneshot_sender {
+                                if sender.send(status).is_err() {
+                                    tracing::error!(
+                                        "Impossible to send '{status}' oneshot msg for '{}",
+                                        relay.url
+                                    );
+                                }
+                            }
+
+                            // If error, break receiver loop
+                            if !status {
+                                break;
                             }
                         }
                         #[cfg(not(target_arch = "wasm32"))]
                         RelayEvent::Ping { nonce } => {
-                            if relay.opts.flags.has_ping() {
-                                match ws_tx
-                                    .send(WsMessage::Ping(nonce.to_string().as_bytes().to_vec()))
-                                    .await
-                                {
-                                    Ok(_) => {
-                                        relay.stats.ping.just_sent().await;
-                                        tracing::debug!("Ping {} (nonce {})", relay.url, nonce);
-                                    }
-                                    Err(e) => {
-                                        tracing::error!(
-                                            "Impossible to ping {}: {}",
-                                            relay.url(),
-                                            e.to_string()
-                                        );
-                                    }
+                            match ws_tx
+                                .send(WsMessage::Ping(nonce.to_string().as_bytes().to_vec()))
+                                .await
+                            {
+                                Ok(_) => {
+                                    relay.stats.ping.just_sent().await;
+                                    tracing::debug!("Ping '{}' (nonce: {nonce})", relay.url);
+                                }
+                                Err(e) => {
+                                    tracing::error!("Impossible to ping '{}': {e}", relay.url);
                                 }
                             }
                         }
                         #[cfg(not(target_arch = "wasm32"))]
                         RelayEvent::Close => {
-                            let _ = ws_tx.close().await;
                             relay.set_status(RelayStatus::Disconnected).await;
-                            tracing::info!("Disconnected from {}", relay.url);
+                            tracing::info!("Disconnected from '{}'", relay.url);
                             break;
                         }
                         RelayEvent::Stop => {
                             if relay.is_scheduled_for_stop() {
-                                let _ = ws_tx.close().await;
                                 relay.set_status(RelayStatus::Stopped).await;
                                 relay.schedule_for_stop(false);
-                                tracing::info!("Stopped {}", relay.url);
+                                tracing::info!("Stopped '{}'", relay.url);
                                 break;
                             }
                         }
                         RelayEvent::Terminate => {
                             if relay.is_scheduled_for_termination() {
-                                let _ = ws_tx.close().await;
                                 relay.set_status(RelayStatus::Terminated).await;
                                 relay.schedule_for_termination(false);
-                                tracing::info!("Completely disconnected from {}", relay.url);
+                                tracing::info!("Completely disconnected from '{}'", relay.url);
                                 break;
                             }
                         }
+                    }
+                }
+
+                // Close WebSocket
+                match ws_tx.close().await {
+                    Ok(..) => {
+                        tracing::debug!("WebSocket closed for '{}'", relay.url);
+                    }
+                    Err(e) => {
+                        tracing::error!("Impossible to close WebSocket for '{}': {e}", relay.url);
                     }
                 }
             };
@@ -615,17 +634,17 @@ impl InternalRelay {
                 }
             };
 
-            // Wait that one of the futures terminate
+            // Wait that one of the futures terminate/complete
             tokio::select! {
                 _ = receiver => {
-                    tracing::trace!("Relay connection closed for {}", relay.url);
+                    tracing::trace!("Relay connection closed for '{}'", relay.url);
                 }
                 _ = sender => {
-                    tracing::trace!("Relay sender exited for {}", relay.url);
+                    tracing::trace!("Relay sender exited for '{}'", relay.url);
                 }
             }
 
-            tracing::debug!("Exited from Message Handler of {}", relay.url);
+            tracing::debug!("Exited from Message Handler for '{}'", relay.url);
 
             // Abort pinger
             #[cfg(not(target_arch = "wasm32"))]
@@ -642,7 +661,7 @@ impl InternalRelay {
 
         // Set RelayStatus to `Connecting`
         self.set_status(RelayStatus::Connecting).await;
-        tracing::debug!("Connecting to {}", url);
+        tracing::debug!("Connecting to '{url}'");
 
         // Request `RelayInformationDocument`
         #[cfg(feature = "nip11")]
@@ -660,9 +679,11 @@ impl InternalRelay {
         // Connect
         match async_wsocket::connect(&self.url, self.proxy(), timeout).await {
             Ok((ws_tx, ws_rx)) => {
+                // Update status
                 self.set_status(RelayStatus::Connected).await;
-                tracing::info!("Connected to {url}");
+                tracing::info!("Connected to '{url}'");
 
+                // Increment success stats
                 self.stats.new_success();
 
                 // Spawn pinger
@@ -673,21 +694,16 @@ impl InternalRelay {
 
                 // Subscribe to relay
                 if self.opts.flags.has_read() {
-                    if let Err(e) = self
-                        .resubscribe_all(RelaySendOptions::default().skip_send_confirmation(true))
-                        .await
-                    {
-                        tracing::error!(
-                            "Impossible to subscribe to {}: {}",
-                            self.url(),
-                            e.to_string()
-                        )
+                    let opts: RelaySendOptions =
+                        RelaySendOptions::default().skip_send_confirmation(true);
+                    if let Err(e) = self.resubscribe_all(opts).await {
+                        tracing::error!("Impossible to subscribe to '{url}': {e}")
                     }
                 }
             }
-            Err(err) => {
+            Err(e) => {
                 self.set_status(RelayStatus::Disconnected).await;
-                tracing::error!("Impossible to connect to {}: {}", url, err);
+                tracing::error!("Impossible to connect to '{url}': {e}");
             }
         };
     }
@@ -698,14 +714,14 @@ impl InternalRelay {
             Ok(Some(message)) => {
                 match &message {
                     RelayMessage::Notice { message } => {
-                        tracing::warn!("Notice from {}: {message}", self.url)
+                        tracing::warn!("Notice from '{}': {message}", self.url)
                     }
                     RelayMessage::Ok {
                         event_id,
                         status,
                         message,
                     } => {
-                        tracing::debug!("Received OK from {} for event {event_id}: status={status}, message={message}", self.url);
+                        tracing::debug!("Received OK from '{}' for event {event_id}: status={status}, message={message}", self.url);
                     }
                     _ => (),
                 }
@@ -715,7 +731,10 @@ impl InternalRelay {
                     .await;
             }
             Ok(None) | Err(Error::MessageHandle(MessageHandleError::EmptyMsg)) => (),
-            Err(e) => tracing::error!("Impossible to handle relay message from {}: {e}", self.url),
+            Err(e) => tracing::error!(
+                "Impossible to handle relay message from '{}': {e}",
+                self.url
+            ),
         }
     }
 
@@ -737,7 +756,7 @@ impl InternalRelay {
 
         // Deserialize message
         let msg = RawRelayMessage::from_json(msg)?;
-        tracing::trace!("Received message from {}: {:?}", self.url, msg);
+        tracing::trace!("Received message from '{}': {:?}", self.url, msg);
 
         // Handle msg
         match msg {
@@ -899,6 +918,13 @@ impl InternalRelay {
         self.relay_sender
             .try_send((relay_msg, sender))
             .map_err(|_| Error::MessageNotSent)
+    }
+
+    #[inline]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn ping(&self, nonce: u64) -> Result<(), Error> {
+        self.send_relay_event(RelayEvent::Ping { nonce }, None)?;
+        Ok(())
     }
 
     #[cfg(not(target_arch = "wasm32"))]
