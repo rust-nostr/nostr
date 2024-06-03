@@ -82,6 +82,7 @@ removed zap split from `client.zap` method, many improvements and more!
 * pool: refactoring and adj. `relay` internal module ([Yuki Kishimoto])
 * pool: log when websocket messages are successfully sent ([Yuki Kishimoto])
 * pool: always close the WebSocket when receiver loop is terminated ([Yuki Kishimoto])
+* pool: bump `async-wsocket` to `v0.5` ([Yuki Kishimoto])
 * sdk: inline `Client`, `ClientBuilder` and `Options` methods ([Yuki Kishimoto])
 * sdk: update `tokio` features ([Yuki Kishimoto])
 * sdk: update visibility of `Options` field ([Yuki Kishimoto])

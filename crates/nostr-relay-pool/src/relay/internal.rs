@@ -581,14 +581,11 @@ impl InternalRelay {
                 }
             };
 
-            // TODO: use a single receiver (require changes to `async-wsocket`)
-
-            // Native receiver
-            #[cfg(not(target_arch = "wasm32"))]
             let receiver = async {
                 while let Some(msg) = ws_rx.next().await {
                     if let Ok(msg) = msg {
                         match msg {
+                            #[cfg(not(target_arch = "wasm32"))]
                             WsMessage::Pong(bytes) => {
                                 if relay.opts.flags.has_ping() {
                                     match String::from_utf8(bytes) {
@@ -622,15 +619,6 @@ impl InternalRelay {
                             }
                         }
                     }
-                }
-            };
-
-            // WASM receiver
-            #[cfg(target_arch = "wasm32")]
-            let receiver = async {
-                while let Some(msg) = ws_rx.next().await {
-                    let data: &[u8] = msg.as_ref();
-                    relay.handle_relay_message_infallible(data).await;
                 }
             };
 
