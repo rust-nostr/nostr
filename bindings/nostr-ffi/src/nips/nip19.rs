@@ -11,7 +11,7 @@ use uniffi::{Enum, Object};
 use super::nip01::Coordinate;
 use super::nip49::EncryptedSecretKey;
 use crate::error::Result;
-use crate::{EventId, PublicKey, SecretKey};
+use crate::{EventId, Kind, PublicKey, SecretKey};
 
 /// A representation any `fNIP19` bech32 nostr object. Useful for decoding
 /// `NIP19` bech32 strings without necessarily knowing what you're decoding
@@ -100,10 +100,16 @@ impl From<nip19::Nip19Event> for Nip19Event {
 
 #[uniffi::export]
 impl Nip19Event {
-    #[uniffi::constructor(default(author = None, relays = []))]
-    pub fn new(event_id: &EventId, author: Option<Arc<PublicKey>>, relays: &[String]) -> Self {
+    #[uniffi::constructor(default(author = None, kind = None, relays = []))]
+    pub fn new(
+        event_id: &EventId,
+        author: Option<Arc<PublicKey>>,
+        kind: Option<Arc<Kind>>,
+        relays: &[String],
+    ) -> Self {
         let mut inner = nip19::Nip19Event::new(**event_id, relays);
         inner.author = author.map(|p| **p);
+        inner.kind = kind.map(|k| **k);
         Self { inner }
     }
 
@@ -135,6 +141,10 @@ impl Nip19Event {
 
     pub fn author(&self) -> Option<Arc<PublicKey>> {
         self.inner.author.map(|p| Arc::new(p.into()))
+    }
+
+    pub fn kind(&self) -> Option<Arc<Kind>> {
+        self.inner.kind.map(|k| Arc::new(k.into()))
     }
 
     pub fn relays(&self) -> Vec<String> {

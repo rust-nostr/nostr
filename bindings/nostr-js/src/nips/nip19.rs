@@ -2,8 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr::nips::nip19::{FromBech32, Nip19Event, Nip19Profile, ToBech32};
-use nostr::nips::nip21::NostrURI;
+use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
@@ -24,9 +23,15 @@ impl From<Nip19Event> for JsNip19Event {
 #[wasm_bindgen(js_class = Nip19Event)]
 impl JsNip19Event {
     #[wasm_bindgen(constructor)]
-    pub fn new(event_id: &JsEventId, author: Option<JsPublicKey>, relays: Vec<String>) -> Self {
+    pub fn new(
+        event_id: &JsEventId,
+        author: Option<JsPublicKey>,
+        kind: Option<u16>,
+        relays: Vec<String>,
+    ) -> Self {
         let mut inner = Nip19Event::new(**event_id, relays);
         inner.author = author.map(|p| *p);
+        inner.kind = kind.map(Kind::from);
         Self { inner }
     }
 
@@ -61,6 +66,10 @@ impl JsNip19Event {
 
     pub fn author(&self) -> Option<JsPublicKey> {
         self.inner.author.map(|p| p.into())
+    }
+
+    pub fn kind(&self) -> Option<u16> {
+        self.inner.kind.map(|k| k.as_u16())
     }
 
     pub fn relays(&self) -> Vec<String> {

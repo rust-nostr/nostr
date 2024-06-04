@@ -375,6 +375,7 @@ impl ToBech32 for EventId {
 pub struct Nip19Event {
     pub event_id: EventId,
     pub author: Option<PublicKey>,
+    pub kind: Option<Kind>,
     pub relays: Vec<String>,
 }
 
@@ -388,6 +389,7 @@ impl Nip19Event {
         Self {
             event_id,
             author: None,
+            kind: None,
             relays: relays.into_iter().map(|u| u.into()).collect(),
         }
     }
@@ -399,9 +401,17 @@ impl Nip19Event {
         self
     }
 
+    /// Add kind
+    #[inline]
+    pub fn kind(mut self, kind: Kind) -> Self {
+        self.kind = Some(kind);
+        self
+    }
+
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut event_id: Option<EventId> = None;
         let mut author: Option<PublicKey> = None;
+        let mut kind: Option<Kind> = None;
         let mut relays: Vec<String> = Vec::new();
 
         while !data.is_empty() {
@@ -427,6 +437,16 @@ impl Nip19Event {
                 RELAY => {
                     relays.push(String::from_utf8(bytes.to_vec())?);
                 }
+                KIND => {
+                    if kind.is_none() {
+                        // The kind value must be a 32-bit unsigned number according to
+                        // https://github.com/nostr-protocol/nips/blob/37f6cbb775126b386414220f783ca0f5f85e7614/19.md#shareable-identifiers-with-extra-metadata
+                        let k: u16 =
+                            u32::from_be_bytes(bytes.try_into().map_err(|_| Error::TryFromSlice)?)
+                                as u16;
+                        kind = Some(Kind::from(k));
+                    }
+                }
                 _ => (),
             };
 
@@ -436,6 +456,7 @@ impl Nip19Event {
         Ok(Self {
             event_id: event_id.ok_or_else(|| Error::FieldMissing("event id".to_string()))?,
             author,
+            kind,
             relays,
         })
     }
@@ -480,6 +501,12 @@ impl ToBech32 for Nip19Event {
             bytes.push(AUTHOR); // Type
             bytes.push(32); // Len
             bytes.extend(author.to_bytes()); // Value
+        }
+
+        if let Some(kind) = &self.kind {
+            bytes.push(KIND); // Type
+            bytes.push(4); // Len
+            bytes.extend(kind.as_u32().to_be_bytes()); // Value
         }
 
         for relay in self.relays.iter() {
@@ -778,8 +805,21 @@ mod tests {
                 .unwrap();
 
         assert_eq!(nip19_event.author, Some(expected_pubkey));
-
+        assert_eq!(nip19_event.kind, None);
         assert_eq!(nip19_event.to_bech32().unwrap(), nevent);
+
+        // Test serialization and deserialization
+        let event = Nip19Event {
+            event_id: EventId::from_hex(
+                "d94a3f4dd87b9a3b0bed183b32e916fa29c8020107845d1752d72697fe5309a5",
+            )
+            .unwrap(),
+            author: None,
+            kind: Some(Kind::TextNote),
+            relays: Vec::new(),
+        };
+        let serialized = event.to_bech32().unwrap();
+        assert_eq!(event, Nip19Event::from_bech32(serialized).unwrap());
     }
 
     #[test]
