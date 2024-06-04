@@ -20,6 +20,7 @@ use self::options::JsNostrWalletConnectOptions;
 
 #[wasm_bindgen]
 extern "C" {
+    /// Array
     #[wasm_bindgen(typescript_type = "LookupInvoiceResponseResult[]")]
     pub type JsLookupInvoiceResponseResultArray;
 }

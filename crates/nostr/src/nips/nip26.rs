@@ -417,12 +417,12 @@ impl Condition {
     }
 }
 
-impl ToString for Condition {
-    fn to_string(&self) -> String {
+impl fmt::Display for Condition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Kind(k) => format!("kind={k}"),
-            Self::CreatedBefore(t) => format!("created_at<{t}"),
-            Self::CreatedAfter(t) => format!("created_at>{t}"),
+            Self::Kind(k) => write!(f, "kind={k}"),
+            Self::CreatedBefore(t) => write!(f, "created_at<{t}"),
+            Self::CreatedAfter(t) => write!(f, "created_at>{t}"),
         }
     }
 }

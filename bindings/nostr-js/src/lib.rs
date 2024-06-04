@@ -20,6 +20,7 @@ pub mod util;
 
 #[wasm_bindgen]
 extern "C" {
+    /// String array
     #[wasm_bindgen(typescript_type = "string[]")]
     pub type JsStringArray;
 }

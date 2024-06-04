@@ -26,6 +26,7 @@ use crate::duration::JsDuration;
 
 #[wasm_bindgen]
 extern "C" {
+    /// Array
     #[wasm_bindgen(typescript_type = "JsRelay[]")]
     pub type JsRelayArray;
 }

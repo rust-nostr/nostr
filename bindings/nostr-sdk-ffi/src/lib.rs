@@ -18,10 +18,6 @@ pub mod pool;
 pub mod profile;
 pub mod relay;
 
-trait FromResult<T>: Sized {
-    fn from_result(_: T) -> error::Result<Self>;
-}
-
 pub use self::client::{Client, ClientBuilder, Options};
 pub use self::database::NostrDatabase;
 pub use self::error::NostrSdkError;

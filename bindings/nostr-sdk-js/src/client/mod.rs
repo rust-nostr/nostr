@@ -786,9 +786,11 @@ interface HandleNotification {
 
 #[wasm_bindgen]
 extern "C" {
+    /// Handle notification
     #[wasm_bindgen(typescript_type = "HandleNotification")]
     pub type HandleNotification;
 
+    /// handle event
     #[wasm_bindgen(structural, method, js_name = handleEvent)]
     pub async fn handle_event(
         this: &HandleNotification,
@@ -797,6 +799,7 @@ extern "C" {
         event: JsEvent,
     ) -> JsValue;
 
+    /// Handle message
     #[wasm_bindgen(structural, method, js_name = handleMsg)]
     pub async fn handle_msg(
         this: &HandleNotification,
