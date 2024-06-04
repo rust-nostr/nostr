@@ -11,7 +11,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::futures_util::stream::AbortHandle;
 use async_utility::{futures_util, thread, time};
 use async_wsocket::futures_util::{Future, SinkExt, StreamExt};
 use async_wsocket::{Sink, Stream, WsMessage};
@@ -32,8 +31,8 @@ use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 
 use super::blacklist::RelayBlacklist;
 #[cfg(not(target_arch = "wasm32"))]
-use super::constants::{HIGH_LATENCY, PING_INTERVAL};
-use super::constants::{MIN_ATTEMPTS, MIN_UPTIME, WEBSOCKET_TX_TIMEOUT};
+use super::constants::HIGH_LATENCY;
+use super::constants::{MIN_ATTEMPTS, MIN_UPTIME, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT};
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions,
@@ -60,9 +59,6 @@ enum RelayEvent {
         /// Nonce
         nonce: u64,
     },
-    /// Close
-    #[cfg(not(target_arch = "wasm32"))]
-    Close,
     /// Stop
     Stop,
     /// Completely disconnect
@@ -437,67 +433,16 @@ impl InternalRelay {
         });
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    fn spawn_pinger(&self) -> Option<AbortHandle> {
-        if self.opts.flags.has_ping() {
-            let relay = self.clone();
-            thread::abortable(async move {
-                tracing::debug!("Relay Ping Thread started for '{}'", relay.url);
-
-                loop {
-                    // If last nonce is NOT 0, check if relay replied
-                    // Break loop if relay not replied
-                    if relay.stats.ping.last_nonce() != 0 && !relay.stats.ping.replied() {
-                        tracing::warn!("'{}' not replied to ping", relay.url);
-                        relay.stats.ping.reset();
-                        break;
-                    }
-
-                    // Generate and save nonce
-                    let nonce: u64 = rand::random();
-                    relay.stats.ping.set_last_nonce(nonce);
-                    relay.stats.ping.set_replied(false);
-
-                    // Ping
-                    if let Err(e) = relay.ping(nonce) {
-                        tracing::error!("Impossible to ping '{}': {e}", relay.url);
-                        break;
-                    };
-
-                    // Sleep
-                    thread::sleep(Duration::from_secs(PING_INTERVAL)).await;
-                }
-
-                tracing::debug!("Exited from Ping Thread for '{}'", relay.url);
-
-                if let Err(err) = relay.disconnect().await {
-                    tracing::error!("Impossible to disconnect '{}': {}", relay.url, err);
-                }
-            })
-            .ok()
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    #[cfg(target_arch = "wasm32")]
-    fn spawn_pinger(&self) -> Option<AbortHandle> {
-        None
-    }
-
-    fn spawn_message_handler(
-        &self,
-        mut ws_tx: Sink,
-        mut ws_rx: Stream,
-        _ping_abort_handle: Option<AbortHandle>,
-    ) {
+    fn spawn_message_handler(&self, mut ws_tx: Sink, mut ws_rx: Stream) -> Result<(), Error> {
         let relay = self.clone();
-        let _ = thread::spawn(async move {
+        thread::spawn(async move {
             tracing::debug!("Relay Message Handler started for '{}'", relay.url);
 
             let sender = async {
+                // Lock relay receiver
                 let mut rx = relay.relay_receiver.lock().await;
+
+                // Iterate receiver
                 while let Some(Message { event, shot }) = rx.recv().await {
                     match event {
                         // Try to send client messages to relay
@@ -520,35 +465,17 @@ impl InternalRelay {
                                 format!("{len} messages to '{}'", relay.url)
                             };
 
-                            tracing::trace!("Sending {partial_log_msg} (size: {size} bytes)");
+                            tracing::debug!("Sending {partial_log_msg} (size: {size} bytes)");
 
                             // Send WebSocket messages
-                            // Use timeout to disconnect client if network goes offline
-                            let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
-                            let fut = ws_tx.send_all(&mut stream);
-
-                            let status: bool = match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), fut)
-                                .await
-                            {
-                                Some(res) => match res {
-                                    Ok(..) => {
-                                        tracing::debug!(
-                                            "Sent {partial_log_msg} (size: {size} bytes)"
-                                        );
-                                        relay.stats.add_bytes_sent(size);
-                                        true
-                                    }
-                                    Err(e) => {
-                                        tracing::error!(
-                                            "Impossible to send {partial_log_msg}: {e}"
-                                        );
-                                        false
-                                    }
-                                },
-                                None => {
-                                    tracing::error!(
-                                        "Impossible to send {partial_log_msg}: WebSocket timeout"
-                                    );
+                            let status: bool = match send_ws_msgs(&mut ws_tx, msgs).await {
+                                Ok(()) => {
+                                    // TODO: tracing::debug!("Sent {partial_log_msg} (size: {size} bytes)");
+                                    relay.stats.add_bytes_sent(size);
+                                    true
+                                }
+                                Err(e) => {
+                                    tracing::error!("Impossible to send {partial_log_msg}: {e}");
                                     false
                                 }
                             };
@@ -570,23 +497,20 @@ impl InternalRelay {
                         }
                         #[cfg(not(target_arch = "wasm32"))]
                         RelayEvent::Ping { nonce } => {
-                            match ws_tx
-                                .send(WsMessage::Ping(nonce.to_string().as_bytes().to_vec()))
-                                .await
-                            {
-                                Ok(_) => {
+                            // Compose ping message
+                            let msg = WsMessage::Ping(nonce.to_string().as_bytes().to_vec());
+
+                            // Send WebSocket message
+                            match send_ws_msgs(&mut ws_tx, [msg]).await {
+                                Ok(()) => {
                                     relay.stats.ping.just_sent().await;
                                     tracing::debug!("Ping '{}' (nonce: {nonce})", relay.url);
                                 }
                                 Err(e) => {
                                     tracing::error!("Impossible to ping '{}': {e}", relay.url);
+                                    break;
                                 }
                             }
-                        }
-                        #[cfg(not(target_arch = "wasm32"))]
-                        RelayEvent::Close => {
-                            relay.set_status(RelayStatus::Disconnected, true).await;
-                            break;
                         }
                         RelayEvent::Stop => {
                             if relay.is_scheduled_for_stop() {
@@ -606,17 +530,12 @@ impl InternalRelay {
                 }
 
                 // Close WebSocket
-                if let Some(res) = time::timeout(Some(WEBSOCKET_TX_TIMEOUT), ws_tx.close()).await {
-                    match res {
-                        Ok(..) => {
-                            tracing::debug!("WebSocket closed for '{}'", relay.url);
-                        }
-                        Err(e) => {
-                            tracing::error!(
-                                "Impossible to close WebSocket for '{}': {e}",
-                                relay.url
-                            );
-                        }
+                match close_ws(&mut ws_tx).await {
+                    Ok(..) => {
+                        tracing::debug!("WebSocket closed for '{}'", relay.url);
+                    }
+                    Err(e) => {
+                        tracing::error!("Impossible to close WebSocket for '{}': {e}", relay.url);
                     }
                 }
             };
@@ -633,7 +552,7 @@ impl InternalRelay {
                                             Ok(nonce) => {
                                                 if relay.stats.ping.last_nonce() == nonce {
                                                     tracing::debug!(
-                                                        "Pong from {} match nonce: {}",
+                                                        "Pong from '{}' match nonce: {}",
                                                         relay.url,
                                                         nonce
                                                     );
@@ -662,6 +581,46 @@ impl InternalRelay {
                 }
             };
 
+            #[cfg(not(target_arch = "wasm32"))]
+            let pinger = async {
+                if relay.opts.flags.has_ping() {
+                    loop {
+                        // If last nonce is NOT 0, check if relay replied
+                        // Break loop if relay not replied
+                        if relay.stats.ping.last_nonce() != 0 && !relay.stats.ping.replied() {
+                            tracing::warn!("'{}' not replied to ping", relay.url);
+                            relay.stats.ping.reset();
+                            break;
+                        }
+
+                        // Generate and save nonce
+                        let nonce: u64 = rand::random();
+                        relay.stats.ping.set_last_nonce(nonce);
+                        relay.stats.ping.set_replied(false);
+
+                        // Ping
+                        if let Err(e) = relay.ping(nonce) {
+                            tracing::error!("Impossible to ping '{}': {e}", relay.url);
+                            break;
+                        };
+
+                        // Sleep
+                        thread::sleep(PING_INTERVAL).await;
+                    }
+                } else {
+                    loop {
+                        thread::sleep(PING_INTERVAL).await;
+                    }
+                }
+            };
+
+            #[cfg(target_arch = "wasm32")]
+            let pinger = async {
+                loop {
+                    thread::sleep(PING_INTERVAL).await;
+                }
+            };
+
             // Wait that one of the futures terminate/complete
             tokio::select! {
                 _ = receiver => {
@@ -669,6 +628,9 @@ impl InternalRelay {
                 }
                 _ = sender => {
                     tracing::trace!("Relay sender exited for '{}'", relay.url);
+                }
+                _ = pinger => {
+                    tracing::trace!("Relay pinger exited for '{}'", relay.url);
                 }
             }
 
@@ -678,13 +640,8 @@ impl InternalRelay {
             }
 
             tracing::debug!("Exited from Message Handler for '{}'", relay.url);
-
-            // Abort pinger
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(handle) = _ping_abort_handle {
-                handle.abort();
-            }
-        });
+        })?;
+        Ok(())
     }
 
     async fn try_connect(&self, connection_timeout: Option<Duration>) {
@@ -717,18 +674,21 @@ impl InternalRelay {
                 // Increment success stats
                 self.stats.new_success();
 
-                // Spawn pinger
-                let ping_abort_handle: Option<AbortHandle> = self.spawn_pinger();
-
                 // Spawn message handler
-                self.spawn_message_handler(ws_tx, ws_rx, ping_abort_handle);
-
-                // Subscribe to relay
-                if self.opts.flags.has_read() {
-                    let opts: RelaySendOptions =
-                        RelaySendOptions::default().skip_send_confirmation(true);
-                    if let Err(e) = self.resubscribe_all(opts).await {
-                        tracing::error!("Impossible to subscribe to '{url}': {e}")
+                match self.spawn_message_handler(ws_tx, ws_rx) {
+                    Ok(()) => {
+                        // Subscribe to relay
+                        if self.opts.flags.has_read() {
+                            let opts: RelaySendOptions =
+                                RelaySendOptions::default().skip_send_confirmation(true);
+                            if let Err(e) = self.resubscribe_all(opts).await {
+                                tracing::error!("Impossible to subscribe to '{url}': {e}")
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        self.set_status(RelayStatus::Disconnected, false).await;
+                        tracing::error!("Impossible to spawn message handler for '{url}': {e}");
                     }
                 }
             }
@@ -955,14 +915,6 @@ impl InternalRelay {
     #[cfg(not(target_arch = "wasm32"))]
     fn ping(&self, nonce: u64) -> Result<(), Error> {
         self.send_relay_event(RelayEvent::Ping { nonce }, None)?;
-        Ok(())
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    async fn disconnect(&self) -> Result<(), Error> {
-        if !self.is_disconnected().await {
-            self.send_relay_event(RelayEvent::Close, None)?;
-        }
         Ok(())
     }
 
@@ -1776,5 +1728,25 @@ impl InternalRelay {
             Err(Error::NegentropyNotSupported) => Ok(false),
             Err(e) => Err(e),
         }
+    }
+}
+
+/// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
+async fn send_ws_msgs<I>(tx: &mut Sink, msgs: I) -> Result<(), Error>
+where
+    I: IntoIterator<Item = WsMessage>,
+{
+    let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
+    match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send_all(&mut stream)).await {
+        Some(res) => res.map_err(Error::websocket),
+        None => Err(Error::WebSocketTimeout),
+    }
+}
+
+/// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
+async fn close_ws(tx: &mut Sink) -> Result<(), Error> {
+    match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {
+        Some(res) => res.map_err(Error::websocket),
+        None => Err(Error::WebSocketTimeout),
     }
 }

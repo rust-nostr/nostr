@@ -35,6 +35,9 @@ pub enum Error {
     /// Message response timeout
     #[error("recv message response timeout")]
     RecvTimeout,
+    /// WebSocket timeout
+    #[error("WebSocket timeout")]
+    WebSocketTimeout,
     /// Generic timeout
     #[error("timeout")]
     Timeout,
@@ -127,4 +130,17 @@ pub enum Error {
     /// Notification Handler error
     #[error("notification handler error: {0}")]
     Handler(String),
+    /// WebSocket error
+    #[error("{0}")]
+    WebSocket(Box<dyn std::error::Error + Send + Sync>),
+}
+
+impl Error {
+    #[inline]
+    pub(super) fn websocket<E>(error: E) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self::WebSocket(Box::new(error))
+    }
 }

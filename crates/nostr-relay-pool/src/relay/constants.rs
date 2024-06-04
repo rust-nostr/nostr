@@ -2,16 +2,14 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-#[cfg(not(target_arch = "wasm32"))]
 use core::time::Duration;
 
 pub const MIN_ATTEMPTS: usize = 1;
 pub const MIN_UPTIME: f64 = 0.90;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub const PING_INTERVAL: u64 = 55; // Used also for latency calculation
+pub const PING_INTERVAL: Duration = Duration::from_secs(50); // Used also for latency calculation
 
-pub const WEBSOCKET_TX_TIMEOUT: Duration = Duration::from_secs(30);
+pub const WEBSOCKET_TX_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Maximum number of reads to be saved in memory to calculate latency
 #[cfg(not(target_arch = "wasm32"))]
