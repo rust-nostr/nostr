@@ -15,7 +15,7 @@ keywords = ["nostr", "database", "sqlite"]
 async-trait.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
-rusqlite = { version = "0.30", features = ["bundled"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }

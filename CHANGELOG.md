@@ -29,6 +29,7 @@
 * pool: use timeout for WebSocket message sender ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.5` ([Yuki Kishimoto])
 * sdk: send NIP-42 event only to target relay ([Yuki Kishimoto])
+* sqlite: bump `rusqlite` to `v0.31` ([Yuki Kishimoto])
 * nwc: change `NWC::new` and `NWC::with_opts` fingerprint ([Yuki Kishimoto])
 * bindings(sdk): log git hash after logger initialization ([Yuki Kishimoto])
 * ffi(nostr): set default args values where possible for `EventBuilder` constructors ([Yuki Kishimoto])
