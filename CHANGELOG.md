@@ -46,6 +46,7 @@
 ### Fixed
 
 * nostr: fix re-serialization of events that contains unknown keys during deserialization ([Yuki Kishimoto])
+* pool: fix relay doesn't auto reconnect in certain cases ([Yuki Kishimoto])
 
 ### Removed
 

@@ -193,6 +193,12 @@ impl InternalRelay {
         self.status().await == RelayStatus::Connected
     }
 
+    /// Check if is `disconnected`, `stopped` or `terminated`
+    #[inline]
+    pub async fn is_disconnected(&self) -> bool {
+        self.status().await.is_disconnected()
+    }
+
     #[cfg(feature = "nip11")]
     pub async fn document(&self) -> RelayInformationDocument {
         let document = self.document.read().await;
@@ -665,6 +671,11 @@ impl InternalRelay {
                 _ = sender => {
                     tracing::trace!("Relay sender exited for '{}'", relay.url);
                 }
+            }
+
+            // Check if relay is marked as disconnected. If not, update status.
+            if !relay.is_disconnected().await {
+                relay.set_status(RelayStatus::Disconnected, true).await;
             }
 
             tracing::debug!("Exited from Message Handler for '{}'", relay.url);
