@@ -33,7 +33,7 @@ use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
 use super::blacklist::RelayBlacklist;
 #[cfg(not(target_arch = "wasm32"))]
 use super::constants::{HIGH_LATENCY, PING_INTERVAL};
-use super::constants::{MIN_ATTEMPTS, MIN_UPTIME};
+use super::constants::{MIN_ATTEMPTS, MIN_UPTIME, WEBSOCKET_TX_TIMEOUT};
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions,
@@ -47,7 +47,6 @@ use crate::pool::RelayPoolNotification;
 struct Message {
     event: RelayEvent,
     shot: Option<oneshot::Sender<bool>>,
-    timeout: Option<Duration>,
 }
 
 /// Relay event
@@ -499,12 +498,7 @@ impl InternalRelay {
 
             let sender = async {
                 let mut rx = relay.relay_receiver.lock().await;
-                while let Some(Message {
-                    event,
-                    shot,
-                    timeout,
-                }) = rx.recv().await
-                {
+                while let Some(Message { event, shot }) = rx.recv().await {
                     match event {
                         // Try to send client messages to relay
                         RelayEvent::Batch(msgs) => {
@@ -521,41 +515,41 @@ impl InternalRelay {
                             // Compose log msg without prefix ("Sending" or "Sent")
                             let partial_log_msg: String = if len == 1 {
                                 let json = &msgs[0]; // SAFETY: len checked above (len == 1)
-                                format!("'{json}' to '{}' (size: {size} bytes)", relay.url)
+                                format!("'{json}' to '{}'", relay.url)
                             } else {
-                                format!("{len} messages to '{}' (size: {size} bytes)", relay.url)
+                                format!("{len} messages to '{}'", relay.url)
                             };
 
-                            tracing::trace!("Sending {partial_log_msg}");
+                            tracing::trace!("Sending {partial_log_msg} (size: {size} bytes)");
 
                             // Send WebSocket messages
+                            // Use timeout to disconnect client if network goes offline
                             let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
-                            let (status, exit): (bool, bool) = match time::timeout(
-                                timeout,
-                                ws_tx.send_all(&mut stream),
-                            )
-                            .await
+                            let fut = ws_tx.send_all(&mut stream);
+
+                            let status: bool = match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), fut)
+                                .await
                             {
                                 Some(res) => match res {
                                     Ok(..) => {
-                                        tracing::debug!("Sent {partial_log_msg}");
+                                        tracing::debug!(
+                                            "Sent {partial_log_msg} (size: {size} bytes)"
+                                        );
                                         relay.stats.add_bytes_sent(size);
-                                        (true, false)
+                                        true
                                     }
                                     Err(e) => {
                                         tracing::error!(
-                                            "Impossible to send {len} messages to '{}': {e}",
-                                            relay.url,
+                                            "Impossible to send {partial_log_msg}: {e}"
                                         );
-                                        (false, true)
+                                        false
                                     }
                                 },
                                 None => {
                                     tracing::error!(
-                                        "Impossible to send {len} messages to '{}': WebSocket timeout",
-                                        relay.url,
+                                        "Impossible to send {partial_log_msg}: WebSocket timeout"
                                     );
-                                    (false, false) // TODO: exit from loop?
+                                    false
                                 }
                             };
 
@@ -570,7 +564,7 @@ impl InternalRelay {
                             }
 
                             // If error, break receiver loop
-                            if exit {
+                            if !status {
                                 break;
                             }
                         }
@@ -612,12 +606,17 @@ impl InternalRelay {
                 }
 
                 // Close WebSocket
-                match ws_tx.close().await {
-                    Ok(..) => {
-                        tracing::debug!("WebSocket closed for '{}'", relay.url);
-                    }
-                    Err(e) => {
-                        tracing::error!("Impossible to close WebSocket for '{}': {e}", relay.url);
+                if let Some(res) = time::timeout(Some(WEBSOCKET_TX_TIMEOUT), ws_tx.close()).await {
+                    match res {
+                        Ok(..) => {
+                            tracing::debug!("WebSocket closed for '{}'", relay.url);
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                "Impossible to close WebSocket for '{}': {e}",
+                                relay.url
+                            );
+                        }
                     }
                 }
             };
@@ -946,38 +945,31 @@ impl InternalRelay {
         &self,
         event: RelayEvent,
         shot: Option<oneshot::Sender<bool>>,
-        timeout: Option<Duration>,
     ) -> Result<(), Error> {
         self.relay_sender
-            .try_send(Message {
-                event,
-                shot,
-                timeout,
-            })
+            .try_send(Message { event, shot })
             .map_err(|_| Error::MessageNotSent)
     }
 
     #[inline]
     #[cfg(not(target_arch = "wasm32"))]
     fn ping(&self, nonce: u64) -> Result<(), Error> {
-        self.send_relay_event(RelayEvent::Ping { nonce }, None, None)?;
+        self.send_relay_event(RelayEvent::Ping { nonce }, None)?;
         Ok(())
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     async fn disconnect(&self) -> Result<(), Error> {
-        let status = self.status().await;
-        if !status.is_disconnected() {
-            self.send_relay_event(RelayEvent::Close, None, None)?;
+        if !self.is_disconnected().await {
+            self.send_relay_event(RelayEvent::Close, None)?;
         }
         Ok(())
     }
 
     pub async fn stop(&self) -> Result<(), Error> {
         self.schedule_for_stop(true);
-        let status = self.status().await;
-        if !status.is_disconnected() {
-            self.send_relay_event(RelayEvent::Stop, None, None)?;
+        if !self.is_disconnected().await {
+            self.send_relay_event(RelayEvent::Stop, None)?;
         }
         self.send_notification(RelayNotification::Stop).await;
         Ok(())
@@ -985,9 +977,8 @@ impl InternalRelay {
 
     pub async fn terminate(&self) -> Result<(), Error> {
         self.schedule_for_termination(true);
-        let status = self.status().await;
-        if !status.is_disconnected() {
-            self.send_relay_event(RelayEvent::Terminate, None, None)?;
+        if !self.is_disconnected().await {
+            self.send_relay_event(RelayEvent::Terminate, None)?;
         }
         self.send_notification(RelayNotification::Shutdown).await;
         Ok(())
@@ -1021,19 +1012,16 @@ impl InternalRelay {
         }
 
         if opts.skip_send_confirmation {
-            self.send_relay_event(RelayEvent::Batch(msgs), None, Some(opts.timeout))
+            self.send_relay_event(RelayEvent::Batch(msgs), None)
         } else {
             // Create new oneshot channel
             let (tx, rx) = oneshot::channel::<bool>();
 
-            // Send message using timeout passed by options
-            self.send_relay_event(RelayEvent::Batch(msgs), Some(tx), Some(opts.timeout))?;
-
-            // Create new timeout (options one + 1 secs) to give enough time to sender thread to reply with oneshot
-            let timeout: Duration = opts.timeout + Duration::from_secs(1);
+            // Send message
+            self.send_relay_event(RelayEvent::Batch(msgs), Some(tx))?;
 
             // Wait for oneshot reply
-            match time::timeout(Some(timeout), rx).await {
+            match time::timeout(Some(opts.timeout), rx).await {
                 Some(result) => match result {
                     Ok(val) => {
                         if val {
@@ -1044,7 +1032,7 @@ impl InternalRelay {
                     }
                     Err(_) => Err(Error::OneShotRecvError),
                 },
-                _ => Err(Error::RecvTimeout),
+                None => Err(Error::RecvTimeout),
             }
         }
     }

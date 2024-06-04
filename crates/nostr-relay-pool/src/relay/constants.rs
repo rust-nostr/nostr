@@ -11,6 +11,8 @@ pub const MIN_UPTIME: f64 = 0.90;
 #[cfg(not(target_arch = "wasm32"))]
 pub const PING_INTERVAL: u64 = 55; // Used also for latency calculation
 
+pub const WEBSOCKET_TX_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Maximum number of reads to be saved in memory to calculate latency
 #[cfg(not(target_arch = "wasm32"))]
 pub const LATENCY_MAX_VALUES: usize = 50;
