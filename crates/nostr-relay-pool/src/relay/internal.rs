@@ -153,10 +153,25 @@ impl InternalRelay {
         *status
     }
 
-    async fn set_status(&self, status: RelayStatus) {
+    async fn set_status(&self, status: RelayStatus, log: bool) {
         // Change status
         let mut s = self.status.write().await;
         *s = status;
+
+        // Log
+        if log {
+            match status {
+                RelayStatus::Initialized => tracing::trace!("'{}' relay initialized.", self.url),
+                RelayStatus::Pending => tracing::trace!("'{}' relay is pending.", self.url),
+                RelayStatus::Connecting => tracing::debug!("Connecting to '{}'", self.url),
+                RelayStatus::Connected => tracing::info!("Connected to '{}'", self.url),
+                RelayStatus::Disconnected => tracing::info!("Disconnected from '{}'", self.url),
+                RelayStatus::Stopped => tracing::info!("Stopped '{}'", self.url),
+                RelayStatus::Terminated => {
+                    tracing::info!("Completely disconnected from '{}'", self.url)
+                }
+            }
+        }
 
         // Send notification
         self.send_notification(RelayNotification::RelayStatus { status })
@@ -301,7 +316,7 @@ impl InternalRelay {
                 match connection_timeout {
                     Some(..) => self.try_connect(connection_timeout).await,
                     None => {
-                        self.set_status(RelayStatus::Pending).await;
+                        self.set_status(RelayStatus::Pending, true).await;
                     }
                 }
 
@@ -337,7 +352,7 @@ impl InternalRelay {
                         // Schedule relay for termination
                         // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
                         if relay.is_scheduled_for_stop() {
-                            relay.set_status(RelayStatus::Stopped).await;
+                            relay.set_status(RelayStatus::Stopped, true).await;
                             relay.schedule_for_stop(false);
                             tracing::debug!(
                                 "Auto connect loop terminated for {} [stop - schedule]",
@@ -345,7 +360,7 @@ impl InternalRelay {
                             );
                             break;
                         } else if relay.is_scheduled_for_termination() {
-                            relay.set_status(RelayStatus::Terminated).await;
+                            relay.set_status(RelayStatus::Terminated, true).await;
                             relay.schedule_for_termination(false);
                             tracing::debug!(
                                 "Auto connect loop terminated for {} [schedule]",
@@ -570,23 +585,20 @@ impl InternalRelay {
                         }
                         #[cfg(not(target_arch = "wasm32"))]
                         RelayEvent::Close => {
-                            relay.set_status(RelayStatus::Disconnected).await;
-                            tracing::info!("Disconnected from '{}'", relay.url);
+                            relay.set_status(RelayStatus::Disconnected, true).await;
                             break;
                         }
                         RelayEvent::Stop => {
                             if relay.is_scheduled_for_stop() {
-                                relay.set_status(RelayStatus::Stopped).await;
+                                relay.set_status(RelayStatus::Stopped, true).await;
                                 relay.schedule_for_stop(false);
-                                tracing::info!("Stopped '{}'", relay.url);
                                 break;
                             }
                         }
                         RelayEvent::Terminate => {
                             if relay.is_scheduled_for_termination() {
-                                relay.set_status(RelayStatus::Terminated).await;
+                                relay.set_status(RelayStatus::Terminated, true).await;
                                 relay.schedule_for_termination(false);
-                                tracing::info!("Completely disconnected from '{}'", relay.url);
                                 break;
                             }
                         }
@@ -671,8 +683,7 @@ impl InternalRelay {
         let url: String = self.url.to_string();
 
         // Set RelayStatus to `Connecting`
-        self.set_status(RelayStatus::Connecting).await;
-        tracing::debug!("Connecting to '{url}'");
+        self.set_status(RelayStatus::Connecting, true).await;
 
         // Request `RelayInformationDocument`
         #[cfg(feature = "nip11")]
@@ -691,8 +702,7 @@ impl InternalRelay {
         match async_wsocket::connect(&self.url, self.proxy(), timeout).await {
             Ok((ws_tx, ws_rx)) => {
                 // Update status
-                self.set_status(RelayStatus::Connected).await;
-                tracing::info!("Connected to '{url}'");
+                self.set_status(RelayStatus::Connected, true).await;
 
                 // Increment success stats
                 self.stats.new_success();
@@ -713,7 +723,7 @@ impl InternalRelay {
                 }
             }
             Err(e) => {
-                self.set_status(RelayStatus::Disconnected).await;
+                self.set_status(RelayStatus::Disconnected, false).await;
                 tracing::error!("Impossible to connect to '{url}': {e}");
             }
         };
