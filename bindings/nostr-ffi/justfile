@@ -120,22 +120,22 @@ bindings-swift: ios-universal darwin-universal assemble-swift-package
 
 [linux]
 python:
-	rm -rf bindings-python/dist bindings-python/build
+	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt
 	cargo build --release
 	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.so --language python --no-format -o bindings-python/src/nostr/
 	cp ../../target/release/libnostr_ffi.so bindings-python/src/nostr/
-	cd bindings-python && python -m build --wheel
+	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall
 
 [macos]
 python:
-	rm -rf bindings-python/dist bindings-python/build
+	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt
 	cargo build --release
 	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.a --language python --no-format -o bindings-python/src/nostr/
 	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/
-	cd bindings-python && python -m build --wheel
+	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall
 
 [windows]
@@ -145,5 +145,5 @@ python:
 	cargo run -p uniffi-bindgen generate --library ..\..\target\release\nostr_ffi.dll --language python --no-format -o bindings-python\src\nostr\
 	copy ..\..\target\release\nostr_ffi.dll bindings-python\src\nostr
 	del /F /Q bindings-python\dist\* 2>nul || exit /b 0
-	cd bindings-python && python -m build --wheel
+	cd bindings-python && python setup.py --verbose bdist_wheel
 	FOR %%i in (.\bindings-python\dist\*.whl) DO pip install %i --force-reinstall
