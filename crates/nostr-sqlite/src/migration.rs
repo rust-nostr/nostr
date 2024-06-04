@@ -4,11 +4,10 @@
 
 use std::cmp::Ordering;
 
-use deadpool_sqlite::Object;
 use rusqlite::Connection;
 use thiserror::Error;
 
-use super::Error;
+use super::{Error, Pool};
 
 /// Latest database version
 pub const DB_VERSION: usize = 1;
@@ -39,8 +38,8 @@ pub fn curr_db_version(conn: &mut Connection) -> Result<usize, Error> {
 }
 
 /// Upgrade DB to latest version, and execute pragma settings
-pub(crate) async fn run(conn: &Object) -> Result<(), Error> {
-    conn.interact(|conn| {
+pub(crate) async fn run(pool: &Pool) -> Result<(), Error> {
+    pool.interact(|conn| {
         // check the version.
         let mut curr_version = curr_db_version(conn)?;
         tracing::info!("DB version = {:?}", curr_version);

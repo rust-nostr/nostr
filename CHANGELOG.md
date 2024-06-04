@@ -52,8 +52,11 @@
 
 * nostr: fix re-serialization of events that contains unknown keys during deserialization ([Yuki Kishimoto])
 * pool: fix relay doesn't auto reconnect in certain cases ([Yuki Kishimoto])
+* sqlite: fix SQLite database panics when used outside the client context in bindings ([Yuki Kishimoto])
 
 ### Removed
+
+* sqlite: removed `deadpool-sqlite` dep ([Yuki Kishimoto])
 
 ## [v0.31.0]
 

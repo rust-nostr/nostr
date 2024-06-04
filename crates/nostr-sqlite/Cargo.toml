@@ -13,7 +13,6 @@ keywords = ["nostr", "database", "sqlite"]
 
 [dependencies]
 async-trait.workspace = true
-deadpool-sqlite = "0.7"
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 rusqlite = { version = "0.30", features = ["bundled"] }

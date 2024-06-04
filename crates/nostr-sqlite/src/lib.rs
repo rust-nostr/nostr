@@ -16,7 +16,6 @@ pub extern crate nostr;
 pub extern crate nostr_database as database;
 
 use async_trait::async_trait;
-use deadpool_sqlite::{Config, Object, Pool, Runtime};
 use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
@@ -24,20 +23,23 @@ use nostr_database::{
     FlatBufferEncode, NostrDatabase, Order, TempEvent,
 };
 use rusqlite::config::DbConfig;
+use rusqlite::Connection;
 use tokio::sync::RwLock;
 
 mod error;
 mod migration;
+mod pool;
 
 pub use self::error::Error;
 use self::migration::STARTUP_SQL;
+use self::pool::Pool;
 
 const BATCH_SIZE: usize = 100;
 
 /// SQLite Nostr Database
 #[derive(Debug, Clone)]
 pub struct SQLiteDatabase {
-    db: Pool,
+    pool: Pool,
     indexes: DatabaseIndexes,
     fbb: Arc<RwLock<FlatBufferBuilder<'static>>>,
 }
@@ -48,32 +50,28 @@ impl SQLiteDatabase {
     where
         P: AsRef<Path>,
     {
-        let cfg = Config::new(path.as_ref());
-        let pool = cfg.create_pool(Runtime::Tokio1)?;
+        let conn = Connection::open(path)?;
+        let pool: Pool = Pool::new(conn);
 
         // Execute migrations
-        let conn = pool.get().await?;
-        migration::run(&conn).await?;
+        migration::run(&pool).await?;
 
         let this = Self {
-            db: pool,
+            pool,
             indexes: DatabaseIndexes::new(),
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
         // Build indexes
-        this.build_indexes(&conn).await?;
+        this.build_indexes().await?;
 
         Ok(this)
     }
 
-    async fn acquire(&self) -> Result<Object, Error> {
-        Ok(self.db.get().await?)
-    }
-
     #[tracing::instrument(skip_all)]
-    async fn build_indexes(&self, conn: &Object) -> Result<(), Error> {
-        let events = conn
+    async fn build_indexes(&self) -> Result<(), Error> {
+        let events = self
+            .pool
             .interact(move |conn| {
                 let mut stmt = conn.prepare_cached("SELECT event FROM events;")?;
                 let mut rows = stmt.query([])?;
@@ -92,23 +90,23 @@ impl SQLiteDatabase {
 
         // Discard events
         if !to_discard.is_empty() {
-            let conn = self.acquire().await?;
-            conn.interact(move |conn| {
-                for chunk in to_discard.chunks(BATCH_SIZE) {
-                    let delete_query = format!(
-                        "DELETE FROM events WHERE {};",
-                        chunk
-                            .iter()
-                            .map(|id| format!("event_id = '{id}'"))
-                            .collect::<Vec<_>>()
-                            .join(" OR ")
-                    );
-                    conn.execute(&delete_query, [])?;
-                }
+            self.pool
+                .interact(move |conn| {
+                    for chunk in to_discard.chunks(BATCH_SIZE) {
+                        let delete_query = format!(
+                            "DELETE FROM events WHERE {};",
+                            chunk
+                                .iter()
+                                .map(|id| format!("event_id = '{id}'"))
+                                .collect::<Vec<_>>()
+                                .join(" OR ")
+                        );
+                        conn.execute(&delete_query, [])?;
+                    }
 
-                Ok::<(), Error>(())
-            })
-            .await??;
+                    Ok::<(), Error>(())
+                })
+                .await??;
         }
         Ok(())
     }
@@ -131,24 +129,24 @@ impl NostrDatabase for SQLiteDatabase {
         } = self.indexes.index_event(event).await;
 
         if !to_discard.is_empty() {
-            let conn = self.acquire().await?;
             let to_discard: Vec<EventId> = to_discard.into_iter().collect();
-            conn.interact(move |conn| {
-                for chunk in to_discard.chunks(BATCH_SIZE) {
-                    let delete_query = format!(
-                        "DELETE FROM events WHERE {};",
-                        chunk
-                            .iter()
-                            .map(|id| format!("event_id = '{id}'"))
-                            .collect::<Vec<_>>()
-                            .join(" OR ")
-                    );
-                    conn.execute(&delete_query, [])?;
-                }
+            self.pool
+                .interact(move |conn| {
+                    for chunk in to_discard.chunks(BATCH_SIZE) {
+                        let delete_query = format!(
+                            "DELETE FROM events WHERE {};",
+                            chunk
+                                .iter()
+                                .map(|id| format!("event_id = '{id}'"))
+                                .collect::<Vec<_>>()
+                                .join(" OR ")
+                        );
+                        conn.execute(&delete_query, [])?;
+                    }
 
-                Ok::<(), Error>(())
-            })
-            .await??;
+                    Ok::<(), Error>(())
+                })
+                .await??;
         }
 
         if to_store {
@@ -160,14 +158,14 @@ impl NostrDatabase for SQLiteDatabase {
             let value: Vec<u8> = event.encode(&mut fbb).to_vec();
 
             // Save event
-            let conn = self.acquire().await?;
-            conn.interact(move |conn| {
-                let mut stmt = conn.prepare_cached(
-                    "INSERT OR IGNORE INTO events (event_id, event) VALUES (?, ?);",
-                )?;
-                stmt.execute((event_id.to_hex(), value))
-            })
-            .await??;
+            self.pool
+                .interact(move |conn| {
+                    let mut stmt = conn.prepare_cached(
+                        "INSERT OR IGNORE INTO events (event_id, event) VALUES (?, ?);",
+                    )?;
+                    stmt.execute((event_id.to_hex(), value))
+                })
+                .await??;
 
             Ok(true)
         } else {
@@ -177,9 +175,6 @@ impl NostrDatabase for SQLiteDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
-        // Acquire database conn lock
-        let conn = self.acquire().await?;
-
         // Acquire FlatBuffers Builder
         let mut fbb = self.fbb.write().await;
 
@@ -197,19 +192,20 @@ impl NostrDatabase for SQLiteDatabase {
             .collect();
 
         // Bulk save
-        conn.interact(move |conn| {
-            let tx = conn.transaction()?;
+        self.pool
+            .interact(move |conn| {
+                let tx = conn.transaction()?;
 
-            for (event_id, value) in events.into_iter() {
-                tx.execute(
-                    "INSERT OR IGNORE INTO events (event_id, event) VALUES (?, ?);",
-                    (event_id.to_hex(), value),
-                )?;
-            }
+                for (event_id, value) in events.into_iter() {
+                    tx.execute(
+                        "INSERT OR IGNORE INTO events (event_id, event) VALUES (?, ?);",
+                        (event_id.to_hex(), value),
+                    )?;
+                }
 
-            tx.commit()
-        })
-        .await??;
+                tx.commit()
+            })
+            .await??;
 
         Ok(())
     }
@@ -218,11 +214,29 @@ impl NostrDatabase for SQLiteDatabase {
         if self.indexes.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else {
-            let conn = self.acquire().await?;
             let event_id: String = event_id.to_hex();
-            conn.interact(move |conn| {
+            self.pool
+                .interact(move |conn| {
+                    let mut stmt = conn.prepare_cached(
+                        "SELECT EXISTS(SELECT 1 FROM events WHERE event_id = ? LIMIT 1);",
+                    )?;
+                    let mut rows = stmt.query([event_id])?;
+                    let exists: u8 = match rows.next()? {
+                        Some(row) => row.get(0)?,
+                        None => 0,
+                    };
+                    Ok(exists == 1)
+                })
+                .await?
+        }
+    }
+
+    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
+        let event_id: String = event_id.to_hex();
+        self.pool
+            .interact(move |conn| {
                 let mut stmt = conn.prepare_cached(
-                    "SELECT EXISTS(SELECT 1 FROM events WHERE event_id = ? LIMIT 1);",
+                    "SELECT EXISTS(SELECT 1 FROM event_seen_by_relays WHERE event_id = ? LIMIT 1);",
                 )?;
                 let mut rows = stmt.query([event_id])?;
                 let exists: u8 = match rows.next()? {
@@ -232,24 +246,6 @@ impl NostrDatabase for SQLiteDatabase {
                 Ok(exists == 1)
             })
             .await?
-        }
-    }
-
-    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        let conn = self.acquire().await?;
-        let event_id: String = event_id.to_hex();
-        conn.interact(move |conn| {
-            let mut stmt = conn.prepare_cached(
-                "SELECT EXISTS(SELECT 1 FROM event_seen_by_relays WHERE event_id = ? LIMIT 1);",
-            )?;
-            let mut rows = stmt.query([event_id])?;
-            let exists: u8 = match rows.next()? {
-                Some(row) => row.get(0)?,
-                None => 0,
-            };
-            Ok(exists == 1)
-        })
-        .await?
     }
 
     async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
@@ -268,14 +264,14 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
-        let conn = self.acquire().await?;
-        conn.interact(move |conn| {
-            let mut stmt = conn.prepare_cached(
+        self.pool
+            .interact(move |conn| {
+                let mut stmt = conn.prepare_cached(
                 "INSERT OR IGNORE INTO event_seen_by_relays (event_id, relay_url) VALUES (?, ?);",
             )?;
-            stmt.execute((event_id.to_hex(), relay_url.to_string()))
-        })
-        .await??;
+                stmt.execute((event_id.to_hex(), relay_url.to_string()))
+            })
+            .await??;
         Ok(())
     }
 
@@ -283,34 +279,36 @@ impl NostrDatabase for SQLiteDatabase {
         &self,
         event_id: EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err> {
-        let conn = self.acquire().await?;
-        conn.interact(move |conn| {
-            let mut stmt = conn
-                .prepare_cached("SELECT relay_url FROM event_seen_by_relays WHERE event_id = ?;")?;
-            let mut rows = stmt.query([event_id.to_hex()])?;
-            let mut relays = HashSet::new();
-            while let Ok(Some(row)) = rows.next() {
-                let url: String = row.get(0)?;
-                relays.insert(Url::parse(&url)?);
-            }
-            Ok(Some(relays))
-        })
-        .await?
+        self.pool
+            .interact(move |conn| {
+                let mut stmt = conn.prepare_cached(
+                    "SELECT relay_url FROM event_seen_by_relays WHERE event_id = ?;",
+                )?;
+                let mut rows = stmt.query([event_id.to_hex()])?;
+                let mut relays = HashSet::new();
+                while let Ok(Some(row)) = rows.next() {
+                    let url: String = row.get(0)?;
+                    relays.insert(Url::parse(&url)?);
+                }
+                Ok(Some(relays))
+            })
+            .await?
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
-        let conn = self.acquire().await?;
-        conn.interact(move |conn| {
-            let mut stmt = conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
-            let mut rows = stmt.query([event_id.to_hex()])?;
-            let row = rows
-                .next()?
-                .ok_or_else(|| Error::NotFound("event".into()))?;
-            let buf: Vec<u8> = row.get(0)?;
-            Ok(Event::decode(&buf)?)
-        })
-        .await?
+        self.pool
+            .interact(move |conn| {
+                let mut stmt =
+                    conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
+                let mut rows = stmt.query([event_id.to_hex()])?;
+                let row = rows
+                    .next()?
+                    .ok_or_else(|| Error::NotFound("event".into()))?;
+                let buf: Vec<u8> = row.get(0)?;
+                Ok(Event::decode(&buf)?)
+            })
+            .await?
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
@@ -320,28 +318,28 @@ impl NostrDatabase for SQLiteDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
-        let conn = self.acquire().await?;
         let ids: Vec<EventId> = self.indexes.query(filters, order).await;
-        conn.interact(move |conn| {
-            let mut events = Vec::with_capacity(ids.len());
-            for chunk in ids.chunks(BATCH_SIZE) {
-                let mut stmt = conn.prepare_cached(&format!(
-                    "SELECT event FROM events WHERE {};",
-                    chunk
-                        .iter()
-                        .map(|id| format!("event_id = '{id}'"))
-                        .collect::<Vec<_>>()
-                        .join(" OR ")
-                ))?;
-                let mut rows = stmt.query([])?;
-                while let Ok(Some(row)) = rows.next() {
-                    let buf: Vec<u8> = row.get(0)?;
-                    events.push(Event::decode(&buf)?);
+        self.pool
+            .interact(move |conn| {
+                let mut events = Vec::with_capacity(ids.len());
+                for chunk in ids.chunks(BATCH_SIZE) {
+                    let mut stmt = conn.prepare_cached(&format!(
+                        "SELECT event FROM events WHERE {};",
+                        chunk
+                            .iter()
+                            .map(|id| format!("event_id = '{id}'"))
+                            .collect::<Vec<_>>()
+                            .join(" OR ")
+                    ))?;
+                    let mut rows = stmt.query([])?;
+                    while let Ok(Some(row)) = rows.next() {
+                        let buf: Vec<u8> = row.get(0)?;
+                        events.push(Event::decode(&buf)?);
+                    }
                 }
-            }
-            Ok(events)
-        })
-        .await?
+                Ok(events)
+            })
+            .await?
     }
 
     async fn event_ids_by_filters(
@@ -362,28 +360,28 @@ impl NostrDatabase for SQLiteDatabase {
     async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
         match self.indexes.delete(filter).await {
             Some(ids) => {
-                let conn = self.acquire().await?;
                 let ids: Vec<EventId> = ids.into_iter().collect();
-                conn.interact(move |conn| {
-                    for chunk in ids.chunks(BATCH_SIZE) {
-                        let delete_query = format!(
-                            "DELETE FROM events WHERE {};",
-                            chunk
-                                .iter()
-                                .map(|id| format!("event_id = '{id}'"))
-                                .collect::<Vec<_>>()
-                                .join(" OR ")
-                        );
-                        conn.execute(&delete_query, [])?;
-                    }
+                self.pool
+                    .interact(move |conn| {
+                        for chunk in ids.chunks(BATCH_SIZE) {
+                            let delete_query = format!(
+                                "DELETE FROM events WHERE {};",
+                                chunk
+                                    .iter()
+                                    .map(|id| format!("event_id = '{id}'"))
+                                    .collect::<Vec<_>>()
+                                    .join(" OR ")
+                            );
+                            conn.execute(&delete_query, [])?;
+                        }
 
-                    Ok::<(), Error>(())
-                })
-                .await??;
+                        Ok::<(), Error>(())
+                    })
+                    .await??;
             }
             None => {
-                let conn = self.acquire().await?;
-                conn.interact(move |conn| conn.execute("DELETE FROM events;", []))
+                self.pool
+                    .interact(move |conn| conn.execute("DELETE FROM events;", []))
                     .await??;
             }
         };
@@ -392,22 +390,21 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {
-        let conn = self.acquire().await?;
+        self.pool
+            .interact(|conn| {
+                // Reset DB
+                conn.set_db_config(DbConfig::SQLITE_DBCONFIG_RESET_DATABASE, true)?;
+                conn.execute("VACUUM;", [])?;
+                conn.set_db_config(DbConfig::SQLITE_DBCONFIG_RESET_DATABASE, false)?;
 
-        conn.interact(|conn| {
-            // Reset DB
-            conn.set_db_config(DbConfig::SQLITE_DBCONFIG_RESET_DATABASE, true)?;
-            conn.execute("VACUUM;", [])?;
-            conn.set_db_config(DbConfig::SQLITE_DBCONFIG_RESET_DATABASE, false)?;
+                // Execute migrations
+                conn.execute_batch(STARTUP_SQL)?;
 
-            // Execute migrations
-            conn.execute_batch(STARTUP_SQL)?;
+                Ok::<(), Error>(())
+            })
+            .await??;
 
-            Ok::<(), Error>(())
-        })
-        .await??;
-
-        migration::run(&conn).await?;
+        migration::run(&self.pool).await?;
 
         self.indexes.clear().await;
 

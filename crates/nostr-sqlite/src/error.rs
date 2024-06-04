@@ -2,9 +2,9 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use deadpool_sqlite::{CreatePoolError, InteractError, PoolError};
 use nostr_database::{flatbuffers, DatabaseError};
 use thiserror::Error;
+use tokio::task::JoinError;
 
 use crate::migration::MigrationError;
 
@@ -16,13 +16,7 @@ pub enum Error {
     Sqlite(#[from] rusqlite::Error),
     /// Pool error
     #[error(transparent)]
-    CreateDeadPool(#[from] CreatePoolError),
-    /// Pool error
-    #[error(transparent)]
-    DeadPool(#[from] PoolError),
-    /// Pool error
-    #[error("{0}")]
-    DeadPoolInteract(String),
+    JoinError(#[from] JoinError),
     /// Migration error
     #[error(transparent)]
     Migration(#[from] MigrationError),
@@ -38,12 +32,6 @@ pub enum Error {
     /// Not found
     #[error("sqlite: {0} not found")]
     NotFound(String),
-}
-
-impl From<InteractError> for Error {
-    fn from(e: InteractError) -> Self {
-        Self::DeadPoolInteract(e.to_string())
-    }
 }
 
 impl From<Error> for DatabaseError {
