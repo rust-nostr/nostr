@@ -78,32 +78,8 @@ impl Keys {
     /// Derive `Keys` from BIP-39 mnemonics (ENGLISH wordlist).
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
-    #[uniffi::constructor]
-    pub fn from_mnemonic(mnemonic: String, passphrase: Option<String>) -> Result<Self> {
-        Ok(Self {
-            inner: key::Keys::from_mnemonic(mnemonic, passphrase)?,
-        })
-    }
-
-    /// Derive `Keys` from BIP-39 mnemonics with **custom account** (ENGLISH wordlist).
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
-    #[uniffi::constructor]
-    pub fn from_mnemonic_with_account(
-        mnemonic: String,
-        passphrase: Option<String>,
-        account: Option<u32>,
-    ) -> Result<Self> {
-        Ok(Self {
-            inner: key::Keys::from_mnemonic_with_account(mnemonic, passphrase, account)?,
-        })
-    }
-
-    /// Derive `Keys` from BIP-39 mnemonics with **custom** `account`, `type` and/or `index` (ENGLISH wordlist).
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
-    #[uniffi::constructor]
-    pub fn from_mnemonic_advanced(
+    #[uniffi::constructor(default(passphrase = None, account = None, typ = None, index = None))]
+    pub fn from_mnemonic(
         mnemonic: String,
         passphrase: Option<String>,
         account: Option<u32>,

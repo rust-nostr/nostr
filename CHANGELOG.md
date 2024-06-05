@@ -33,6 +33,7 @@
 * nwc: change `NWC::new` and `NWC::with_opts` fingerprint ([Yuki Kishimoto])
 * bindings(sdk): log git hash after logger initialization ([Yuki Kishimoto])
 * ffi(nostr): set default args values where possible for `EventBuilder` constructors ([Yuki Kishimoto])
+* ffi(nostr): merge `Keys::from_mnemonic_*` constructors into `Keys::from_menmonic` ([Yuki Kishimoto])
 * js(sdk): change `JsNostrZapper::nwc` fingerprint ([Yuki Kishimoto])
 * js(sdk): rename `JsNip46Signer::new` to `JsNip46Signer::init` ([Yuki Kishimoto])
 
@@ -59,6 +60,7 @@
 ### Removed
 
 * sqlite: removed `deadpool-sqlite` dep ([Yuki Kishimoto])
+* ffi(nostr): remove `Keys::from_mnemonic_with_account` and `Keys::from_mnemonic_advanced` ([Yuki Kishimoto])
 
 ## [v0.31.0]
 
