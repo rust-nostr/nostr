@@ -1240,7 +1240,7 @@ impl Client {
         S: Into<String>,
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
-        self.gift_wrap(receiver, rumor, None).await
+        self.gift_wrap(receiver, rumor, false, None).await
     }
 
     /// Repost
@@ -1475,6 +1475,7 @@ impl Client {
         &self,
         receiver: PublicKey,
         rumor: EventBuilder,
+        ephemeral: bool,
         expiration: Option<Timestamp>,
     ) -> Result<(), Error> {
         // Compose rumor
@@ -1490,7 +1491,8 @@ impl Client {
         let seal: Event = self.sign_event_builder(seal).await?;
 
         // Compose gift wrap
-        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal, expiration)?;
+        let gift_wrap: Event =
+            EventBuilder::gift_wrap_from_seal(&receiver, &seal, ephemeral, expiration)?;
 
         // Send event
         self.send_event(gift_wrap).await?;

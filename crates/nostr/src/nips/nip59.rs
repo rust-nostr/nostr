@@ -107,7 +107,7 @@ impl UnwrappedGift {
         C: Verification,
     {
         // Check event kind
-        if gift_wrap.kind != Kind::GiftWrap {
+        if gift_wrap.kind != Kind::GiftWrap && gift_wrap.kind != Kind::EphemeralGiftWrap {
             return Err(Error::NotGiftWrap);
         }
 
@@ -161,6 +161,7 @@ mod tests {
             &sender_keys,
             &receiver_keys.public_key(),
             rumor.clone(),
+            false,
             None,
         )
         .unwrap();

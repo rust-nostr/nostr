@@ -1319,7 +1319,8 @@ impl EventBuilder {
     pub fn gift_wrap_from_seal(
         receiver: &PublicKey,
         seal: &Event,
-        expiration: Option<Timestamp>,
+        ephemeral: bool,
+        expiration: Option<Timestamp>, // TODO: remove this and add `EventBuilder::expiration`?
     ) -> Result<Event, Error> {
         if seal.kind != Kind::Seal {
             return Err(Error::WrongKind {
@@ -1343,7 +1344,13 @@ impl EventBuilder {
             tags.push(Tag::expiration(timestamp));
         }
 
-        Self::new(Kind::GiftWrap, content, tags)
+        let kind: Kind = if ephemeral {
+            Kind::EphemeralGiftWrap
+        } else {
+            Kind::GiftWrap
+        };
+
+        Self::new(kind, content, tags)
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
             .to_event(&keys)
     }
@@ -1357,10 +1364,11 @@ impl EventBuilder {
         sender_keys: &Keys,
         receiver: &PublicKey,
         rumor: UnsignedEvent,
-        expiration: Option<Timestamp>,
+        ephemeral: bool,
+        expiration: Option<Timestamp>, // TODO: remove this and add `EventBuilder::expiration`?
     ) -> Result<Event, Error> {
         let seal: Event = Self::seal(sender_keys, receiver, rumor)?.to_event(sender_keys)?;
-        Self::gift_wrap_from_seal(receiver, &seal, expiration)
+        Self::gift_wrap_from_seal(receiver, &seal, ephemeral, expiration)
     }
 
     /// GiftWrapped Sealed Direct message

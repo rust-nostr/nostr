@@ -137,6 +137,7 @@ kind_variants! {
     BadgeDefinition => 30009, "Badge Definition (NIP58)",
     Seal => 13, "Seal <https://github.com/nostr-protocol/nips/blob/master/59.md>",
     GiftWrap => 1059, "Gift Wrap <https://github.com/nostr-protocol/nips/blob/master/59.md>",
+    EphemeralGiftWrap => 21059, "Ephemeral Gift Wrap",
     PrivateDirectMessage => 14, "Private Direct message <https://github.com/nostr-protocol/nips/blob/master/17.md>",
     SetStall => 30017, "Set stall (NIP15)",
     SetProduct => 30018, "Set product (NIP15)",

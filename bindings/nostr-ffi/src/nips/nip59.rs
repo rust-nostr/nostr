@@ -19,12 +19,14 @@ pub fn gift_wrap(
     sender_keys: &Keys,
     receiver_pubkey: &PublicKey,
     rumor: &UnsignedEvent,
+    ephemeral: bool,
     expiration: Option<Arc<Timestamp>>,
 ) -> Result<Event> {
     Ok(EventBuilder::gift_wrap(
         sender_keys.deref(),
         receiver_pubkey.deref(),
         rumor.deref().clone(),
+        ephemeral,
         expiration.map(|t| **t),
     )?
     .into())
@@ -37,12 +39,16 @@ pub fn gift_wrap(
 pub fn gift_wrap_from_seal(
     receiver: &PublicKey,
     seal: &Event,
+    ephemeral: bool,
     expiration: Option<Arc<Timestamp>>,
 ) -> Result<Event> {
-    Ok(
-        EventBuilder::gift_wrap_from_seal(receiver.deref(), seal.deref(), expiration.map(|t| **t))?
-            .into(),
-    )
+    Ok(EventBuilder::gift_wrap_from_seal(
+        receiver.deref(),
+        seal.deref(),
+        ephemeral,
+        expiration.map(|t| **t),
+    )?
+    .into())
 }
 
 /// Unwrapped Gift Wrap

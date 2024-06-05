@@ -48,6 +48,7 @@
 * nostr: add `JsonUtil::try_as_json` method ([Yuki Kishimoto])
 * nostr: add `public_key` field to `TagStandard::Event` ([Yuki Kishimoto])
 * nostr: add support to `nrelay` NIP-19 entity ([Yuki Kishimoto])
+* nostr: add support to ephemeral gift wrap ([Yuki Kishimoto])
 * pool: allow to set event limits per kind ([Yuki Kishimoto])
 * pool: log warn when high latency ([Yuki Kishimoto])
 * sdk: add support to automatic authentication to relays (NIP-42) ([Yuki Kishimoto])

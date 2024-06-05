@@ -687,10 +687,16 @@ impl JsClient {
         &self,
         receiver: &JsPublicKey,
         rumor: &JsEventBuilder,
+        ephemeral: bool,
         expiration: Option<JsTimestamp>,
     ) -> Result<()> {
         self.inner
-            .gift_wrap(**receiver, rumor.deref().clone(), expiration.map(|t| *t))
+            .gift_wrap(
+                **receiver,
+                rumor.deref().clone(),
+                ephemeral,
+                expiration.map(|t| *t),
+            )
             .await
             .map_err(into_err)
     }
