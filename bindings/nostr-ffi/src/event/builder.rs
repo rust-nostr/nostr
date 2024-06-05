@@ -234,18 +234,18 @@ impl EventBuilder {
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(kind = None))]
     pub fn reaction_extended(
         event_id: &EventId,
         public_key: &PublicKey,
-        kind: &Kind,
         reaction: &str,
+        kind: Option<Arc<Kind>>,
     ) -> Self {
         Self {
             inner: nostr::EventBuilder::reaction_extended(
                 **event_id,
                 **public_key,
-                **kind,
+                kind.map(|k| **k),
                 reaction,
             ),
         }

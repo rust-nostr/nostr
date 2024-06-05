@@ -662,7 +662,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::reaction_extended(event.id(), event.author(), event.kind(), reaction)
+        Self::reaction_extended(event.id(), event.author(), Some(event.kind()), reaction)
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
@@ -671,21 +671,22 @@ impl EventBuilder {
     pub fn reaction_extended<S>(
         event_id: EventId,
         public_key: PublicKey,
-        kind: Kind,
+        kind: Option<Kind>,
         reaction: S,
     ) -> Self
     where
         S: Into<String>,
     {
-        Self::new(
-            Kind::Reaction,
-            reaction,
-            [
-                Tag::event(event_id),
-                Tag::public_key(public_key),
-                Tag::from_standardized_without_cell(TagStandard::Kind(kind)),
-            ],
-        )
+        let mut tags: Vec<Tag> = Vec::with_capacity(2 + usize::from(kind.is_some()));
+
+        tags.push(Tag::event(event_id));
+        tags.push(Tag::public_key(public_key));
+
+        if let Some(kind) = kind {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind(kind)));
+        }
+
+        Self::new(Kind::Reaction, reaction, tags)
     }
 
     /// Create new channel

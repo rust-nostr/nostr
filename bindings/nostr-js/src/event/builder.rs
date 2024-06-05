@@ -243,14 +243,14 @@ impl JsEventBuilder {
     pub fn reaction_extended(
         event_id: &JsEventId,
         public_key: &JsPublicKey,
-        kind: u16,
+        kind: Option<u16>,
         reaction: &str,
     ) -> Self {
         Self {
             inner: nostr::EventBuilder::reaction_extended(
                 **event_id,
                 **public_key,
-                kind.into(),
+                kind.map(|k| k.into()),
                 reaction,
             ),
         }
