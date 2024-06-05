@@ -316,22 +316,16 @@ impl NostrDatabase for SQLiteDatabase {
         Ok(self.indexes.count(filters).await)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip_all)]
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
         let ids: Vec<EventId> = self.indexes.query(filters, order).await;
         self.pool
             .interact(move |conn| {
                 let mut events = Vec::with_capacity(ids.len());
-                for chunk in ids.chunks(BATCH_SIZE) {
-                    let mut stmt = conn.prepare_cached(&format!(
-                        "SELECT event FROM events WHERE {};",
-                        chunk
-                            .iter()
-                            .map(|id| format!("event_id = '{id}'"))
-                            .collect::<Vec<_>>()
-                            .join(" OR ")
-                    ))?;
-                    let mut rows = stmt.query([])?;
+                let mut stmt =
+                    conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
+                for id in ids.into_iter() {
+                    let mut rows = stmt.query([id.to_hex()])?;
                     while let Ok(Some(row)) = rows.next() {
                         let buf: Vec<u8> = row.get(0)?;
                         events.push(Event::decode(&buf)?);
