@@ -8,7 +8,7 @@ use uniffi::{Enum, Object};
 
 use crate::error::Result;
 use crate::nips::nip01::Coordinate;
-use crate::nips::nip19::{Nip19Event, Nip19Profile};
+use crate::nips::nip19::{Nip19Event, Nip19Profile, Nip19Relay};
 use crate::{EventId, PublicKey};
 
 /// A representation any `NIP21` object. Useful for decoding
@@ -26,6 +26,8 @@ pub enum Nip21Enum {
     Event { event: Arc<Nip19Event> },
     /// nostr::naddr
     Coord { coordinate: Arc<Coordinate> },
+    /// nostr::naddr
+    Relay { relay: Arc<Nip19Relay> },
 }
 
 impl From<nip21::Nip21> for Nip21Enum {
@@ -45,6 +47,9 @@ impl From<nip21::Nip21> for Nip21Enum {
             },
             nip21::Nip21::Coordinate(coordinate) => Self::Coord {
                 coordinate: Arc::new(coordinate.into()),
+            },
+            nip21::Nip21::Relay(val) => Self::Relay {
+                relay: Arc::new(val.into()),
             },
         }
     }
@@ -66,7 +71,7 @@ impl From<nip21::Nip21> for Nip21 {
 impl Nip21 {
     /// Parse NIP21 string
     #[uniffi::constructor]
-    pub fn parse(uri: String) -> Result<Self> {
+    pub fn parse(uri: &str) -> Result<Self> {
         Ok(Self {
             inner: nip21::Nip21::parse(uri)?,
         })

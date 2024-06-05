@@ -47,6 +47,7 @@
 * nostr: add `Tag::is_root` method ([Xiao Yu])
 * nostr: add `JsonUtil::try_as_json` method ([Yuki Kishimoto])
 * nostr: add `public_key` field to `TagStandard::Event` ([Yuki Kishimoto])
+* nostr: add support to `nrelay` NIP-19 entity ([Yuki Kishimoto])
 * pool: allow to set event limits per kind ([Yuki Kishimoto])
 * pool: log warn when high latency ([Yuki Kishimoto])
 * sdk: add support to automatic authentication to relays (NIP-42) ([Yuki Kishimoto])
@@ -58,6 +59,7 @@
 ### Fixed
 
 * nostr: fix re-serialization of events that contains unknown keys during deserialization ([Yuki Kishimoto])
+* nostr: fix `Nip21::to_nostr_uri` serialization ([Yuki Kishimoto])
 * pool: fix relay doesn't auto reconnect in certain cases ([Yuki Kishimoto])
 * sqlite: fix SQLite database panics when used outside the client context in bindings ([Yuki Kishimoto])
 * sqlite: fix wrong event order when querying ([Yuki Kishimoto])

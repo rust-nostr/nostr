@@ -131,3 +131,54 @@ impl JsNip19Profile {
         self.inner.relays.iter().map(|u| u.to_string()).collect()
     }
 }
+
+#[wasm_bindgen(js_name = Nip19Relay)]
+pub struct JsNip19Relay {
+    inner: Nip19Relay,
+}
+
+impl From<Nip19Relay> for JsNip19Relay {
+    fn from(inner: Nip19Relay) -> Self {
+        Self { inner }
+    }
+}
+
+#[wasm_bindgen(js_class = Nip19Relay)]
+impl JsNip19Relay {
+    #[wasm_bindgen(constructor)]
+    pub fn new(url: &str) -> Result<JsNip19Relay> {
+        let url: Url = Url::parse(url).map_err(into_err)?;
+        Ok(Self {
+            inner: Nip19Relay::new(url),
+        })
+    }
+
+    #[wasm_bindgen(js_name = fromBech32)]
+    pub fn from_bech32(bech32: &str) -> Result<JsNip19Relay> {
+        Ok(Self {
+            inner: Nip19Relay::from_bech32(bech32).map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = fromNostrUri)]
+    pub fn from_nostr_uri(uri: &str) -> Result<JsNip19Relay> {
+        Ok(Self {
+            inner: Nip19Relay::from_nostr_uri(uri).map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = toBech32)]
+    pub fn to_bech32(&self) -> Result<String> {
+        self.inner.to_bech32().map_err(into_err)
+    }
+
+    #[wasm_bindgen(js_name = toNostrUri)]
+    pub fn to_nostr_uri(&self) -> Result<String> {
+        self.inner.to_nostr_uri().map_err(into_err)
+    }
+
+    #[wasm_bindgen]
+    pub fn url(&self) -> String {
+        self.inner.url.to_string()
+    }
+}

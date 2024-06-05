@@ -10,7 +10,7 @@ use alloc::string::String;
 use core::fmt;
 
 use super::nip01::Coordinate;
-use super::nip19::{self, FromBech32, Nip19, Nip19Event, Nip19Profile, ToBech32};
+use super::nip19::{self, FromBech32, Nip19, Nip19Event, Nip19Profile, Nip19Relay, ToBech32};
 use crate::{EventId, PublicKey};
 
 /// URI scheme
@@ -100,6 +100,7 @@ impl NostrURI for EventId {}
 impl NostrURI for Nip19Profile {}
 impl NostrURI for Nip19Event {}
 impl NostrURI for Coordinate {}
+impl NostrURI for Nip19Relay {}
 
 /// A representation any `NIP21` object. Useful for decoding
 /// `NIP21` strings without necessarily knowing what you're decoding
@@ -116,6 +117,8 @@ pub enum Nip21 {
     Event(Nip19Event),
     /// nostr::naddr
     Coordinate(Coordinate),
+    /// nostr::nrelay
+    Relay(Nip19Relay),
 }
 
 impl From<Nip21> for Nip19 {
@@ -126,6 +129,7 @@ impl From<Nip21> for Nip19 {
             Nip21::EventId(val) => Self::EventId(val),
             Nip21::Event(val) => Self::Event(val),
             Nip21::Coordinate(val) => Self::Coordinate(val),
+            Nip21::Relay(val) => Self::Relay(val),
         }
     }
 }
@@ -147,6 +151,7 @@ impl TryFrom<Nip19> for Nip21 {
             Nip19::EventId(val) => Ok(Self::EventId(val)),
             Nip19::Event(val) => Ok(Self::Event(val)),
             Nip19::Coordinate(val) => Ok(Self::Coordinate(val)),
+            Nip19::Relay(val) => Ok(Self::Relay(val)),
         }
     }
 }
@@ -166,11 +171,12 @@ impl Nip21 {
     /// Serialize to NIP21 nostr URI
     pub fn to_nostr_uri(&self) -> Result<String, Error> {
         match self {
-            Self::Pubkey(val) => Ok(val.to_bech32()?),
-            Self::Profile(val) => Ok(val.to_bech32()?),
-            Self::EventId(val) => Ok(val.to_bech32()?),
-            Self::Event(val) => Ok(val.to_bech32()?),
-            Self::Coordinate(val) => Ok(val.to_bech32()?),
+            Self::Pubkey(val) => Ok(val.to_nostr_uri()?),
+            Self::Profile(val) => Ok(val.to_nostr_uri()?),
+            Self::EventId(val) => Ok(val.to_nostr_uri()?),
+            Self::Event(val) => Ok(val.to_nostr_uri()?),
+            Self::Coordinate(val) => Ok(val.to_nostr_uri()?),
+            Self::Relay(val) => Ok(val.to_nostr_uri()?),
         }
     }
 
@@ -197,6 +203,12 @@ mod tests {
                 .unwrap();
         assert_eq!(
             pubkey.to_nostr_uri().unwrap(),
+            String::from("nostr:npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
+        );
+
+        let generic = Nip21::Pubkey(pubkey);
+        assert_eq!(
+            generic.to_nostr_uri().unwrap(),
             String::from("nostr:npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
         );
     }
