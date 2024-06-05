@@ -34,7 +34,7 @@ impl RelayInformationDocument {
         }
     }
 
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(proxy = None))]
     pub fn get(url: String, proxy: Option<String>) -> Result<Self> {
         let url: Url = Url::parse(&url)?;
         let proxy: Option<SocketAddr> = match proxy {

@@ -47,16 +47,26 @@ impl From<Coordinate> for nip01::Coordinate {
 
 #[uniffi::export]
 impl Coordinate {
-    #[uniffi::constructor]
-    pub fn new(kind: &Kind, public_key: &PublicKey) -> Self {
+    #[uniffi::constructor(default(identifier = "", relays = []))]
+    pub fn new(
+        kind: &Kind,
+        public_key: &PublicKey,
+        identifier: String,
+        relays: Vec<String>,
+    ) -> Self {
         Self {
-            inner: nip01::Coordinate::new(**kind, **public_key),
+            inner: nip01::Coordinate {
+                kind: **kind,
+                public_key: **public_key,
+                identifier,
+                relays,
+            },
         }
     }
 
     #[uniffi::constructor]
-    pub fn parse(coordinate: String) -> Result<Self> {
-        Ok(nip01::Coordinate::from_str(&coordinate)?.into())
+    pub fn parse(coordinate: &str) -> Result<Self> {
+        Ok(nip01::Coordinate::from_str(coordinate)?.into())
     }
 
     #[uniffi::constructor]

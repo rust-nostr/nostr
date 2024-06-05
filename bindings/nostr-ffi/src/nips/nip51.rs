@@ -18,9 +18,13 @@ use crate::{EventId, NostrError, PublicKey};
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[derive(Record)]
 pub struct MuteList {
+    #[uniffi(default = [])]
     pub public_keys: Vec<Arc<PublicKey>>,
+    #[uniffi(default = [])]
     pub hashtags: Vec<String>,
+    #[uniffi(default = [])]
     pub event_ids: Vec<Arc<EventId>>,
+    #[uniffi(default = [])]
     pub words: Vec<String>,
 }
 
@@ -40,9 +44,13 @@ impl From<MuteList> for nip51::MuteList {
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[derive(Record)]
 pub struct Bookmarks {
+    #[uniffi(default = [])]
     pub event_ids: Vec<Arc<EventId>>,
+    #[uniffi(default = [])]
     pub coordinate: Vec<Arc<Coordinate>>,
+    #[uniffi(default = [])]
     pub hashtags: Vec<String>,
+    #[uniffi(default = [])]
     pub urls: Vec<String>,
 }
 
@@ -74,7 +82,9 @@ impl TryFrom<Bookmarks> for nip51::Bookmarks {
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
 #[derive(Record)]
 pub struct Interests {
+    #[uniffi(default = [])]
     pub hashtags: Vec<String>,
+    #[uniffi(default = [])]
     pub coordinate: Vec<Arc<Coordinate>>,
 }
 
@@ -112,8 +122,10 @@ impl From<EmojiInfo> for (String, UncheckedUrl) {
 #[derive(Record)]
 pub struct Emojis {
     /// Emojis
+    #[uniffi(default = [])]
     pub emojis: Vec<EmojiInfo>,
     /// Coordinates
+    #[uniffi(default = [])]
     pub coordinate: Vec<Arc<Coordinate>>,
 }
 
@@ -136,8 +148,10 @@ impl From<Emojis> for nip51::Emojis {
 #[derive(Record)]
 pub struct ArticlesCuration {
     /// Coordinates
+    #[uniffi(default = [])]
     pub coordinate: Vec<Arc<Coordinate>>,
     /// Event IDs
+    #[uniffi(default = [])]
     pub event_ids: Vec<Arc<EventId>>,
 }
 

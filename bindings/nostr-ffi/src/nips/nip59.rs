@@ -14,7 +14,7 @@ use crate::{Event, Keys, PublicKey, Timestamp, UnsignedEvent};
 /// Build Gift Wrap
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-#[uniffi::export]
+#[uniffi::export(default(expiration = None))]
 pub fn gift_wrap(
     sender_keys: &Keys,
     receiver_pubkey: &PublicKey,
@@ -33,7 +33,7 @@ pub fn gift_wrap(
 /// Build Gift Wrap from Seal
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-#[uniffi::export]
+#[uniffi::export(default(expiration = None))]
 pub fn gift_wrap_from_seal(
     receiver: &PublicKey,
     seal: &Event,

@@ -32,7 +32,7 @@
 * sqlite: bump `rusqlite` to `v0.31` ([Yuki Kishimoto])
 * nwc: change `NWC::new` and `NWC::with_opts` fingerprint ([Yuki Kishimoto])
 * bindings(sdk): log git hash after logger initialization ([Yuki Kishimoto])
-* ffi(nostr): set default args values where possible for `EventBuilder` constructors ([Yuki Kishimoto])
+* ffi(nostr): set default args values where possible ([Yuki Kishimoto])
 * ffi(nostr): merge `Keys::from_mnemonic_*` constructors into `Keys::from_menmonic` ([Yuki Kishimoto])
 * js(sdk): change `JsNostrZapper::nwc` fingerprint ([Yuki Kishimoto])
 * js(sdk): rename `JsNip46Signer::new` to `JsNip46Signer::init` ([Yuki Kishimoto])

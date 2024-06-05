@@ -16,22 +16,31 @@ use crate::JsonValue;
 #[derive(Record)]
 pub struct MetadataRecord {
     /// Name
+    #[uniffi(default = None)]
     pub name: Option<String>,
     /// Display name
+    #[uniffi(default = None)]
     pub display_name: Option<String>,
     /// Description
+    #[uniffi(default = None)]
     pub about: Option<String>,
     /// Website url
+    #[uniffi(default = None)]
     pub website: Option<String>,
     /// Picture url
+    #[uniffi(default = None)]
     pub picture: Option<String>,
     /// Banner url
+    #[uniffi(default = None)]
     pub banner: Option<String>,
     /// NIP05 (ex. name@example.com)
+    #[uniffi(default = None)]
     pub nip05: Option<String>,
     /// LNURL
+    #[uniffi(default = None)]
     pub lud06: Option<String>,
     /// Lightning Address
+    #[uniffi(default = None)]
     pub lud16: Option<String>,
 }
 
