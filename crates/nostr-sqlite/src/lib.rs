@@ -34,8 +34,6 @@ pub use self::error::Error;
 use self::migration::STARTUP_SQL;
 use self::pool::Pool;
 
-const BATCH_SIZE: usize = 100;
-
 /// SQLite Nostr Database
 #[derive(Debug, Clone)]
 pub struct SQLiteDatabase {
@@ -86,24 +84,16 @@ impl SQLiteDatabase {
             .await??;
 
         // Build indexes
-        let to_discard: Vec<EventId> = self.indexes.bulk_index(events).await.into_iter().collect();
+        let to_discard: HashSet<EventId> = self.indexes.bulk_index(events).await;
 
         // Discard events
         if !to_discard.is_empty() {
             self.pool
                 .interact(move |conn| {
-                    for chunk in to_discard.chunks(BATCH_SIZE) {
-                        let delete_query = format!(
-                            "DELETE FROM events WHERE {};",
-                            chunk
-                                .iter()
-                                .map(|id| format!("event_id = '{id}'"))
-                                .collect::<Vec<_>>()
-                                .join(" OR ")
-                        );
-                        conn.execute(&delete_query, [])?;
+                    let mut stmt = conn.prepare_cached("DELETE FROM events WHERE event_id = ?;")?;
+                    for id in to_discard.into_iter() {
+                        stmt.execute([id.to_hex()])?;
                     }
-
                     Ok::<(), Error>(())
                 })
                 .await??;
@@ -129,21 +119,12 @@ impl NostrDatabase for SQLiteDatabase {
         } = self.indexes.index_event(event).await;
 
         if !to_discard.is_empty() {
-            let to_discard: Vec<EventId> = to_discard.into_iter().collect();
             self.pool
                 .interact(move |conn| {
-                    for chunk in to_discard.chunks(BATCH_SIZE) {
-                        let delete_query = format!(
-                            "DELETE FROM events WHERE {};",
-                            chunk
-                                .iter()
-                                .map(|id| format!("event_id = '{id}'"))
-                                .collect::<Vec<_>>()
-                                .join(" OR ")
-                        );
-                        conn.execute(&delete_query, [])?;
+                    let mut stmt = conn.prepare_cached("DELETE FROM events WHERE event_id = ?;")?;
+                    for id in to_discard.into_iter() {
+                        stmt.execute([id.to_hex()])?;
                     }
-
                     Ok::<(), Error>(())
                 })
                 .await??;
@@ -354,21 +335,13 @@ impl NostrDatabase for SQLiteDatabase {
     async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
         match self.indexes.delete(filter).await {
             Some(ids) => {
-                let ids: Vec<EventId> = ids.into_iter().collect();
                 self.pool
                     .interact(move |conn| {
-                        for chunk in ids.chunks(BATCH_SIZE) {
-                            let delete_query = format!(
-                                "DELETE FROM events WHERE {};",
-                                chunk
-                                    .iter()
-                                    .map(|id| format!("event_id = '{id}'"))
-                                    .collect::<Vec<_>>()
-                                    .join(" OR ")
-                            );
-                            conn.execute(&delete_query, [])?;
+                        let mut stmt =
+                            conn.prepare_cached("DELETE FROM events WHERE event_id = ?;")?;
+                        for id in ids.into_iter() {
+                            stmt.execute([id.to_hex()])?;
                         }
-
                         Ok::<(), Error>(())
                     })
                     .await??;
