@@ -566,10 +566,12 @@ impl Client {
     /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[uniffi::method(default(expiration = None))]
     pub async fn gift_wrap(
         &self,
         receiver: &PublicKey,
         rumor: Arc<EventBuilder>,
+        ephemeral: bool,
         expiration: Option<Arc<Timestamp>>,
     ) -> Result<()> {
         Ok(self
@@ -577,6 +579,7 @@ impl Client {
             .gift_wrap(
                 **receiver,
                 rumor.as_ref().deref().clone(),
+                ephemeral,
                 expiration.map(|t| **t),
             )
             .await?)

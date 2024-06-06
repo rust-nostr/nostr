@@ -207,6 +207,8 @@ pub enum KindEnum {
     Seal,
     /// Gift Wrap (NIP59)
     GiftWrap,
+    /// Ephemeral Gift Wrap
+    EphemeralGiftWrap,
     /// Private Direct message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
@@ -307,6 +309,7 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::BadgeDefinition => Self::BadgeDefinition,
             nostr::Kind::Seal => Self::Seal,
             nostr::Kind::GiftWrap => Self::GiftWrap,
+            nostr::Kind::EphemeralGiftWrap => Self::EphemeralGiftWrap,
             nostr::Kind::PrivateDirectMessage => Self::PrivateDirectMessage,
             nostr::Kind::LongFormTextNote => Self::LongFormTextNote,
             nostr::Kind::ApplicationSpecificData => Self::ApplicationSpecificData,
@@ -385,6 +388,7 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::BadgeDefinition => Self::BadgeDefinition,
             KindEnum::Seal => Self::Seal,
             KindEnum::GiftWrap => Self::GiftWrap,
+            KindEnum::EphemeralGiftWrap => Self::EphemeralGiftWrap,
             KindEnum::PrivateDirectMessage => Self::PrivateDirectMessage,
             KindEnum::LongFormTextNote => Self::LongFormTextNote,
             KindEnum::ApplicationSpecificData => Self::ApplicationSpecificData,
