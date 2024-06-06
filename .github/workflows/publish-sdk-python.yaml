@@ -4,14 +4,23 @@ on: [workflow_dispatch]
 
 jobs:
   build-linux-x86_64:
-    name: "Build manylinux_2_31 x86_64 wheel"
+    name: "Build manylinux_2_28_x86_64 wheel"
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python: ["3.9", "3.10", "3.11", "3.12"]
+        python:
+          - cp39-cp39
+          - cp310-cp310
+          - cp311-cp311
+          - cp312-cp312
     defaults:
       run:
         working-directory: bindings/nostr-sdk-ffi/bindings-python
+    container:
+      image: quay.io/pypa/manylinux_2_28_x86_64
+      env:
+        PLAT: manylinux_2_28_x86_64
+        PYBIN: "/opt/python/${{ matrix.python }}/bin"
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
@@ -20,20 +29,15 @@ jobs:
         with:
           toolchain: stable
 
-      - name: "Setup Python"
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python }}
-
       - name: "Generate nostr_sdk.py and binaries"
         run: bash ./scripts/generate-linux-x86_64.sh
 
       - name: "Build wheel"
-        run: python3 setup.py bdist_wheel --plat-name manylinux_2_31_x86_64 --verbose
+        run: ${PYBIN}/python setup.py bdist_wheel --plat-name manylinux_2_28_x86_64 --verbose
 
       - uses: actions/upload-artifact@v3
         with:
-          name: nostr_sdk-manylinux_2_31_x86_64-${{ matrix.python }}
+          name: nostr_sdk-manylinux_2_28_x86_64-${{ matrix.python }}
           path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
 
   build-linux-aarch64:

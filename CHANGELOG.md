@@ -41,6 +41,7 @@
 * ffi(sdk): no longer spawn a thread when calling `handle_notifications` ([Yuki Kishimoto])
 * js(sdk): change `JsNostrZapper::nwc` fingerprint ([Yuki Kishimoto])
 * js(sdk): rename `JsNip46Signer::new` to `JsNip46Signer::init` ([Yuki Kishimoto])
+* ci: build python wheels for `manylinux_2_28_x86_64` ([Yuki Kishimoto])
 
 ### Added
 
