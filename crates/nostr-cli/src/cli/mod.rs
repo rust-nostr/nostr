@@ -44,12 +44,15 @@ pub enum Command {
     },
     /// Query
     Query {
-        /// Kind
+        /// Event ID
         #[clap(short, long)]
-        kind: Option<Kind>,
+        id: Option<EventId>,
         /// Author
         #[clap(short, long)]
         author: Option<PublicKey>,
+        /// Kind
+        #[clap(short, long)]
+        kind: Option<Kind>,
         /// Identifier (`d` tag)
         #[clap(short, long)]
         identifier: Option<String>,

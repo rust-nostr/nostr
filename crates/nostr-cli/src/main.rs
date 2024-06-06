@@ -145,8 +145,9 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             Ok(())
         }
         Command::Query {
-            kind,
+            id,
             author,
+            kind,
             identifier,
             search,
             since,
@@ -160,12 +161,16 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
 
             let mut filter = Filter::new();
 
-            if let Some(kind) = kind {
-                filter = filter.kind(kind);
+            if let Some(id) = id {
+                filter = filter.id(id);
             }
 
             if let Some(author) = author {
                 filter = filter.author(author);
+            }
+
+            if let Some(kind) = kind {
+                filter = filter.kind(kind);
             }
 
             if let Some(identifier) = identifier {
