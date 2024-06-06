@@ -67,6 +67,9 @@ async def main():
     # To handle notifications and continue with code execution, use:
     # asyncio.create_task(client.handle_notifications(NotificationHandler()))
 
+    # Keep up the script (if using the create_task)
+    # while True:
+    #   await asyncio.sleep(5)
 
 if __name__ == '__main__':
     asyncio.run(main())
