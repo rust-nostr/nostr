@@ -283,6 +283,15 @@ impl Event {
             .and_then(|t| t.content())
     }
 
+    /// Get content of all tags that match [TagKind].
+    #[inline]
+    pub fn get_tags_content(&self, kind: TagKind) -> Vec<&str> {
+        self.iter_tags()
+            .filter(|t| t.kind() == kind)
+            .filter_map(|t| t.content())
+            .collect()
+    }
+
     /// Get reference to event content
     #[inline]
     pub fn content(&self) -> &str {

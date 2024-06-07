@@ -88,6 +88,16 @@ impl JsEvent {
             .map(|c| c.to_string())
     }
 
+    /// Get content of all tags that match `TagKind`.
+    #[wasm_bindgen(js_name = getTagsContent)]
+    pub fn get_tags_content(&self, kind: &str) -> Vec<String> {
+        self.inner
+            .get_tags_content(TagKind::from(kind))
+            .into_iter()
+            .map(|c| c.to_string())
+            .collect()
+    }
+
     #[wasm_bindgen(getter)]
     pub fn content(&self) -> String {
         self.inner.content().to_string()

@@ -82,6 +82,15 @@ impl Event {
             .map(|c| c.to_string())
     }
 
+    /// Get content of all tags that match `TagKind`.
+    pub fn get_tags_content(&self, kind: TagKind) -> Vec<String> {
+        self.inner
+            .get_tags_content(kind.into())
+            .into_iter()
+            .map(|c| c.to_string())
+            .collect()
+    }
+
     #[inline]
     pub fn content(&self) -> String {
         self.inner.content().to_string()
