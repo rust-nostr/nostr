@@ -1605,7 +1605,7 @@ dependencies = [
 
 [[package]]
 name = "nostr"
-version = "0.31.1"
+version = "0.32.0"
 dependencies = [
  "aes",
  "base64",
@@ -1654,7 +1654,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-database"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "flatbuffers",
@@ -1676,7 +1676,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-indexeddb"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "indexed_db_futures",
@@ -1702,7 +1702,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-ndb"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "nostr",
@@ -1726,7 +1726,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-relay-pool"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-utility",
  "async-wsocket",
@@ -1741,7 +1741,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-rocksdb"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "jobserver",
@@ -1756,7 +1756,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sdk"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-utility",
  "atomic-destructor",
@@ -1807,7 +1807,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-signer"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-utility",
  "dialoguer",
@@ -1821,7 +1821,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sqlite"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "nostr",
@@ -1835,7 +1835,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-webln"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "nostr-zapper",
  "webln",
@@ -1843,7 +1843,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-zapper"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-trait",
  "nostr",
@@ -1887,7 +1887,7 @@ dependencies = [
 
 [[package]]
 name = "nwc"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "async-utility",
  "nostr",

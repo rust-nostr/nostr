@@ -21,11 +21,6 @@ You may be interested in:
 
 ## Getting started
 
-```toml
-[dependencies]
-nostr = "0.31"
-```
-
 ```rust,no_run
 use nostr::prelude::*;
 

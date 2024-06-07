@@ -25,12 +25,6 @@ other lower-level crates. If you're attempting something more custom, you might 
 
 ## Getting started
 
-```toml
-[dependencies]
-nostr-sdk = "0.31"
-tokio = { version = "1", features = ["full"] }
-```
-
 ```rust,no_run
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::str::FromStr;
