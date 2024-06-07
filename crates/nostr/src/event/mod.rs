@@ -483,6 +483,7 @@ impl Event {
         self.iter_tags().filter_map(|t| match t.as_standardized() {
             Some(TagStandard::PublicKey { public_key, .. }) => Some(public_key),
             Some(TagStandard::PublicKeyReport(public_key, ..)) => Some(public_key),
+            Some(TagStandard::PublicKeyLiveEvent { public_key, .. }) => Some(public_key),
             _ => None,
         })
     }

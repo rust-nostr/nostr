@@ -64,6 +64,7 @@
 * nostr: fix re-serialization of events that contains unknown keys during deserialization ([Yuki Kishimoto])
 * nostr: fix `Nip21::to_nostr_uri` serialization ([Yuki Kishimoto])
 * pool: fix relay doesn't auto reconnect in certain cases ([Yuki Kishimoto])
+* nostr: add missing `TagStandard::PublicKeyLiveEvent` variant to `Event::public_keys` ([Yuki Kishimoto])
 * sqlite: fix SQLite database panics when used outside the client context in bindings ([Yuki Kishimoto])
 * sqlite: fix wrong event order when querying ([Yuki Kishimoto])
 
