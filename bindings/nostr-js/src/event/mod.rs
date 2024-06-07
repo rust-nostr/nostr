@@ -18,6 +18,7 @@ pub use self::tag::JsTag;
 pub use self::unsigned::JsUnsignedEvent;
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
+use crate::nips::nip01::JsCoordinate;
 use crate::types::JsTimestamp;
 
 #[wasm_bindgen]
@@ -108,14 +109,138 @@ impl JsEvent {
         self.inner.signature().to_string()
     }
 
+    /// Verify both `EventId` and `Signature`
     #[wasm_bindgen]
     pub fn verify(&self) -> bool {
         self.inner.verify().is_ok()
     }
 
+    /// Verify if the `EventId` it's composed correctly
+    #[wasm_bindgen]
+    pub fn verify_id(&self) -> bool {
+        self.inner.verify_id().is_ok()
+    }
+
+    /// Verify only event `Signature`
+    #[wasm_bindgen]
+    pub fn verify_signature(&self) -> bool {
+        self.inner.verify_signature().is_ok()
+    }
+
+    /// Check POW
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    #[wasm_bindgen(js_name = checkPow)]
+    pub fn check_pow(&self, difficulty: u8) -> bool {
+        self.inner.check_pow(difficulty)
+    }
+
+    /// Get `Timestamp` expiration if set
+    #[wasm_bindgen]
+    pub fn expiration(&self) -> Option<JsTimestamp> {
+        self.inner.expiration().map(|t| (*t).into())
+    }
+
+    /// Returns `true` if the event has an expiration tag that is expired.
+    /// If an event has no `Expiration` tag, then it will return `false`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    #[wasm_bindgen(js_name = isExpired)]
+    pub fn is_expired(&self) -> bool {
+        self.inner.is_expired()
+    }
+
+    /// Returns `true` if the event has an expiration tag that is expired.
+    /// If an event has no `Expiration` tag, then it will return `false`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    #[wasm_bindgen(js_name = isExpiredAt)]
+    pub fn is_expired_at(&self, now: &JsTimestamp) -> bool {
+        self.inner.is_expired_at(now.deref())
+    }
+
+    /// Check if `Kind` is a NIP90 job request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[wasm_bindgen(js_name = isJobRequest)]
+    pub fn is_job_request(&self) -> bool {
+        self.inner.is_job_request()
+    }
+
+    /// Check if `Kind` is a NIP90 job result
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[wasm_bindgen(js_name = isJobResult)]
+    pub fn is_job_result(&self) -> bool {
+        self.inner.is_job_result()
+    }
+
+    /// Check if event `Kind` is `Regular`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[wasm_bindgen(js_name = isRegular)]
+    pub fn is_regular(&self) -> bool {
+        self.inner.is_regular()
+    }
+
+    /// Check if event `Kind` is `Replaceable`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[wasm_bindgen(js_name = isReplaceable)]
+    pub fn is_replaceable(&self) -> bool {
+        self.inner.is_replaceable()
+    }
+
+    /// Check if event `Kind` is `Ephemeral`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[wasm_bindgen(js_name = isEphemeral)]
+    pub fn is_ephemeral(&self) -> bool {
+        self.inner.is_ephemeral()
+    }
+
+    /// Check if event `Kind` is `Parameterized replaceable`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[wasm_bindgen(js_name = isParametrizedReplaceable)]
+    pub fn is_parameterized_replaceable(&self) -> bool {
+        self.inner.is_parameterized_replaceable()
+    }
+
+    /// Extract identifier (`d` tag), if exists.
+    #[wasm_bindgen]
+    pub fn identifier(&self) -> Option<String> {
+        self.inner.identifier().map(|i| i.to_string())
+    }
+
+    /// Extract public keys from tags (`p` tag)
+    ///
+    /// **This method extract ONLY supported standard variants**
+    #[wasm_bindgen(js_name = publicKeys)]
+    pub fn public_keys(&self) -> Vec<JsPublicKey> {
+        self.inner.public_keys().map(|p| (*p).into()).collect()
+    }
+
+    /// Extract event IDs from tags (`e` tag)
+    ///
+    /// **This method extract ONLY supported standard variants**
+    #[wasm_bindgen(js_name = eventIds)]
+    pub fn event_ids(&self) -> Vec<JsEventId> {
+        self.inner.event_ids().map(|e| (*e).into()).collect()
+    }
+
+    /// Extract coordinates from tags (`a` tag)
+    ///
+    /// **This method extract ONLY supported standard variants**
+    #[wasm_bindgen]
+    pub fn coordinates(&self) -> Vec<JsCoordinate> {
+        self.inner.coordinates().map(|c| c.clone().into()).collect()
+    }
+
     /// Extract hashtags from tags (`t` tag)
     ///
     /// **This method extract ONLY supported standard variants**
+    #[wasm_bindgen]
     pub fn hashtags(&self) -> Vec<String> {
         self.inner.hashtags().map(|t| t.to_owned()).collect()
     }

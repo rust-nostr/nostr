@@ -58,6 +58,7 @@
 * ffi(nostr): add `Nip46Request` ([Yuki Kishimoto])
 * ffi(sdk): add `NostrConnectRemoteSigner` ([Yuki Kishimoto])
 * js(nostr): add missing NIP-57 functions ([Yuki Kishimoto])
+* js(nostr): expose missing methods to `JsEvent` ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed
