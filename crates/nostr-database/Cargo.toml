@@ -17,7 +17,7 @@ flatbuf = ["dep:flatbuffers"]
 
 [dependencies]
 async-trait.workspace = true
-flatbuffers = { version = "23.5", optional = true }
+flatbuffers = { version = "24.3", optional = true }
 lru = "0.12"
 nostr = { workspace = true, features = ["std"] }
 thiserror.workspace = true
