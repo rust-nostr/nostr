@@ -275,6 +275,14 @@ impl Event {
         self.inner.tags.into_iter()
     }
 
+    /// Get content of **first** tag that match [TagKind].
+    #[inline]
+    pub fn get_tag_content(&self, kind: TagKind) -> Option<&str> {
+        self.iter_tags()
+            .find(|t| t.kind() == kind)
+            .and_then(|t| t.content())
+    }
+
     /// Get reference to event content
     #[inline]
     pub fn content(&self) -> &str {

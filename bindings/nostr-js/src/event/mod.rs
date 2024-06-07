@@ -80,6 +80,14 @@ impl JsEvent {
         self.inner.tags.iter().cloned().map(JsTag::from).collect()
     }
 
+    /// Get content of **first** tag that match tag kind (ex. `e`, `p`, `title`, ...)
+    #[wasm_bindgen(js_name = getTagContent)]
+    pub fn get_tag_content(&self, kind: &str) -> Option<String> {
+        self.inner
+            .get_tag_content(TagKind::from(kind))
+            .map(|c| c.to_string())
+    }
+
     #[wasm_bindgen(getter)]
     pub fn content(&self) -> String {
         self.inner.content().to_string()

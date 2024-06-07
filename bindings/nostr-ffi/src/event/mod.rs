@@ -75,6 +75,13 @@ impl Event {
             .collect()
     }
 
+    /// Get content of **first** tag that match `TagKind`.
+    pub fn get_tag_content(&self, kind: TagKind) -> Option<String> {
+        self.inner
+            .get_tag_content(kind.into())
+            .map(|c| c.to_string())
+    }
+
     #[inline]
     pub fn content(&self) -> String {
         self.inner.content().to_string()
