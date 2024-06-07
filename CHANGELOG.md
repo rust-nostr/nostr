@@ -32,6 +32,7 @@
 * sdk: send NIP-42 event only to target relay ([Yuki Kishimoto])
 * sqlite: bump `rusqlite` to `v0.31` ([Yuki Kishimoto])
 * nwc: change `NWC::new` and `NWC::with_opts` fingerprint ([Yuki Kishimoto])
+* ffi: migrate kotlin packages to `org.rust-nostr` ([Yuki Kishimoto])
 * bindings(sdk): log git hash after logger initialization ([Yuki Kishimoto])
 * ffi(nostr): set default args values where possible ([Yuki Kishimoto])
 * ffi(nostr): convert `verify_nip05` and `get_nip05_profile` to async functions ([Yuki Kishimoto])

@@ -1,10 +1,7 @@
-// library version is defined in gradle.properties
-val libraryVersion: String by project
-
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android") version "1.9.22"
-    id("maven-publish")
+    id("com.vanniktech.maven.publish") version "0.28.0"
     id("signing")
 }
 
@@ -39,13 +36,6 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
-
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
 }
 
 dependencies {
@@ -54,44 +44,43 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
 }
 
-afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("maven") {
-                groupId = "io.github.rust-nostr"
-                artifactId = "nostr-sdk"
-                version = libraryVersion
+mavenPublishing {
+    configure(com.vanniktech.maven.publish.AndroidMultiVariantLibrary(
+        sourcesJar = true,
+        publishJavadocJar = true,
+    ))
 
-                from(components["release"])
-                pom {
-                    name.set("nostr-sdk")
-                    description.set("High level Nostr client library.")
-                    url.set("https://rust-nostr.org")
-                    licenses {
-                        license {
-                            name.set("MIT")
-                            url.set("https://github.com/rust-nostr/nostr/blob/master/LICENSE")
-                        }
-                    }
-                    developers {
-                        developer {
-                            id.set("yukibtc")
-                            name.set("Yuki Kishimoto")
-                            email.set("yukikishimoto@protonmail.com")
-                        }
-                    }
-                    scm {
-                        connection.set("scm:git:github.com/rust-nostr/nostr.git")
-                        developerConnection.set("scm:git:ssh://github.com/rust-nostr/nostr.git")
-                        url.set("https://github.com/rust-nostr/nostr")
-                    }
-                }
-            }
-        }
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
+
+    signAllPublications()
+
+    coordinates("org.rust-nostr", "nostr-sdk", "0.12.0")
+
+    pom {
+      name.set("nostr-sdk")
+      description.set("High level Nostr client library.")
+      url.set("https://rust-nostr.org")
+      licenses {
+          license {
+              name.set("MIT")
+              url.set("https://github.com/rust-nostr/nostr/blob/master/LICENSE")
+          }
+      }
+      developers {
+          developer {
+              id.set("yukibtc")
+              name.set("Yuki Kishimoto")
+              email.set("yukikishimoto@protonmail.com")
+          }
+      }
+      scm {
+          connection.set("scm:git:github.com/rust-nostr/nostr.git")
+          developerConnection.set("scm:git:ssh://github.com/rust-nostr/nostr.git")
+          url.set("https://github.com/rust-nostr/nostr")
+      }
     }
 }
 
 signing {
     useGpgCmd()
-    sign(publishing.publications)
 }

@@ -71,7 +71,7 @@ bindings-android: sdk-root kotlin assemble-aar
 # Publish android bindings
 [confirm]
 publish-android: bindings-android
-	cd bindings-android && ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+	cd bindings-android && ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
 [private]
 ios-universal:

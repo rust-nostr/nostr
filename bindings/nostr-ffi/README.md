@@ -31,7 +31,7 @@ just python
 
 ### Kotlin
 
-For most users, we recommend using our official Kotlin package: [io.github.rust-nostr:nostr](https://central.sonatype.com/artifact/io.github.rust-nostr/nostr/).
+For most users, we recommend using our official Kotlin package: [org.rust-nostr:nostr](https://central.sonatype.com/artifact/org.rust-nostr/nostr/).
 
 If you want to compile from source or need more options, read on.
 
