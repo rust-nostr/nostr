@@ -511,6 +511,17 @@ impl Event {
         })
     }
 
+    /// Extract hashtags from tags (`t` tag)
+    ///
+    /// **This method extract ONLY `TagStandard::Hashtag`**
+    #[inline]
+    pub fn hashtags(&self) -> impl Iterator<Item = &String> {
+        self.iter_tags().filter_map(|t| match t.as_standardized() {
+            Some(TagStandard::Hashtag(hashtag)) => Some(hashtag),
+            _ => None,
+        })
+    }
+
     pub(crate) fn build_tags_indexes(&self) -> TagsIndexes {
         let mut idx: TagsIndexes = TagsIndexes::new();
         for (single_letter_tag, content) in self

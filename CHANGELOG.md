@@ -51,6 +51,7 @@
 * nostr: add support to `nrelay` NIP-19 entity ([Yuki Kishimoto])
 * nostr: add `Event::get_tag_content` method ([Yuki Kishimoto])
 * nostr: add `Event::get_tags_content` method ([Yuki Kishimoto])
+* nostr: add `Event::hashtags` method ([Yuki Kishimoto])
 * pool: allow to set event limits per kind ([Yuki Kishimoto])
 * pool: log warn when high latency ([Yuki Kishimoto])
 * sdk: add support to automatic authentication to relays (NIP-42) ([Yuki Kishimoto])

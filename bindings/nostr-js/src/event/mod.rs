@@ -113,6 +113,13 @@ impl JsEvent {
         self.inner.verify().is_ok()
     }
 
+    /// Extract hashtags from tags (`t` tag)
+    ///
+    /// **This method extract ONLY supported standard variants**
+    pub fn hashtags(&self) -> Vec<String> {
+        self.inner.hashtags().map(|t| t.to_owned()).collect()
+    }
+
     #[wasm_bindgen(js_name = fromJson)]
     pub fn from_json(json: &str) -> Result<JsEvent> {
         Ok(Self {

@@ -220,6 +220,13 @@ impl Event {
             .collect()
     }
 
+    /// Extract hashtags from tags (`t` tag)
+    ///
+    /// **This method extract ONLY supported standard variants**
+    pub fn hashtags(&self) -> Vec<String> {
+        self.inner.hashtags().map(|t| t.to_owned()).collect()
+    }
+
     #[inline]
     #[uniffi::constructor]
     pub fn from_json(json: &str) -> Result<Self> {
