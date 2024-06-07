@@ -24,6 +24,21 @@ impl From<nip11::RelayInformationDocument> for RelayInformationDocument {
     }
 }
 
+#[uniffi::export(async_runtime = "tokio", default(proxy = None))]
+pub async fn nip11_get_information_document(
+    url: &str,
+    proxy: Option<String>,
+) -> Result<RelayInformationDocument> {
+    let url: Url = Url::parse(url)?;
+    let proxy: Option<SocketAddr> = match proxy {
+        Some(proxy) => Some(proxy.parse()?),
+        None => None,
+    };
+    Ok(RelayInformationDocument {
+        inner: nip11::RelayInformationDocument::get(url, proxy).await?,
+    })
+}
+
 #[uniffi::export]
 impl RelayInformationDocument {
     #[uniffi::constructor]
@@ -32,18 +47,6 @@ impl RelayInformationDocument {
         Self {
             inner: nip11::RelayInformationDocument::new(),
         }
-    }
-
-    #[uniffi::constructor(default(proxy = None))]
-    pub async fn get(url: &str, proxy: Option<String>) -> Result<Self> {
-        let url: Url = Url::parse(url)?;
-        let proxy: Option<SocketAddr> = match proxy {
-            Some(proxy) => Some(proxy.parse()?),
-            None => None,
-        };
-        Ok(Self {
-            inner: nip11::RelayInformationDocument::get(url, proxy).await?,
-        })
     }
 
     pub fn name(&self) -> Option<String> {
