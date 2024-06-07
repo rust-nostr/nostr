@@ -35,7 +35,7 @@ def nip19():
     print()
     # ANCHOR: nip19-nevent-encode
     # Create NIP-19 event including author and relays data
-    nevent = Nip19Event(event.id(),keys.public_key(),relays)
+    nevent = Nip19Event(event.id(), keys.public_key(), kind=None, relays=relays)
     print(f" Event (encoded): {nevent.to_bech32()}")
     # ANCHOR_END: nip19-nevent-encode
 

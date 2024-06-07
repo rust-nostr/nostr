@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import asyncio
+
 from src.keys import generate, restore, vanity
 from src.event.json import event_json
 from src.event.builder import event_builder
@@ -13,14 +15,14 @@ from src.nip59 import nip59
 from src.nip65 import nip65
 
 
-def main():
+async def main():
     generate()
     restore()
     vanity()
     event_json()
     event_builder()
     nip01()
-    nip05()
+    await nip05()
     nip06()
     nip19()
     nip21()
@@ -28,5 +30,5 @@ def main():
     nip59()
     nip65()
 
-
-main()
+if __name__ == '__main__':
+    asyncio.run(main())

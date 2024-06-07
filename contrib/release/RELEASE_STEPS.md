@@ -5,18 +5,18 @@
 * Try to compile `kotlin` bindings (`nostr-ffi` and `nostr-sdk-ffi`) since compilation could fail during gradlew due to enumerations names.
 
 * Bump bindings libraries
-  * Android in `gradle.properties`
+  * Android in `lib/build.gradle.kts`
   * Python in `setup.py`
   * Js in `package.json`
-  * Swift Package not require version update
+  * Swift Package NOT require version update
 
 * Bump rust crates
-    * Bump version in README.md files
 
 * Commit and push (**without tag**)
     * `ffi: bump to vX.X.X`
     * `js: bump to vX.X.X`
-    * `rust: bump to X.X.X`
+    * `rust: bump to vX.X.X`
+    * If packages have the same version use `Bump to vX.X.X`
 
 * Release crates and bindings
     * Publish crates with `just release` or `bash ./contrib/scripts/release.sh`

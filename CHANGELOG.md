@@ -5,9 +5,15 @@
 <!-- The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), -->
 <!-- and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). -->
 
-## [Unreleased]
+## [v0.32.0]
 
 ### Summary
+
+Added `async`/`future` support to Python, Kotlin and Swift, added automatic authentication to relays (NIP-42, can be deactivated in client options),
+improvements to relay limits, many bug fixes (relays not auto reconnect, wrong query order for SQLite, 
+tokio panic when using SQLite database in bindings) and more!
+
+Note for kotlin devs: from this release the packages will be published at `org.rust-nostr` instead of `io.github.rust-nostr`.
 
 ### Changed
 
@@ -246,6 +252,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [RydalWater]: https://github.com/RydalWater
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.31.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.32.0...HEAD
+[v0.32.0]: https://github.com/rust-nostr/nostr/compare/v0.31.0...v0.32.0
 [v0.31.0]: https://github.com/rust-nostr/nostr/compare/v0.30.0...v0.31.0
 [v0.30.0]: https://github.com/rust-nostr/nostr/compare/v0.29.0...v0.30.0

@@ -1,10 +1,4 @@
-## rust-nostr release is out! 🦀
-
-### Versions
-
-* Rust: <VERSION_TO_REPLACE>
-* JavaScript: <VERSION_TO_REPLACE>
-* Python, Kotlin and Swift: <VERSION_TO_REPLACE>
+## rust-nostr v<VERSION_TO_REPLACE> is out! 🦀
 
 ### Summary
 
@@ -14,7 +8,9 @@ Full changelog: https://rust-nostr.org/changelog
 
 ### Contributors
 
-Thanks to <CONTRIBUTORS_TO_REPLACE> for contributing!
+Thanks to all contributors!
+
+<LIST_OF_CONTRIBUTORS_TO_REPLACE>
 
 ### Links
 

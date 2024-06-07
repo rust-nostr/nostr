@@ -9,14 +9,14 @@ Add the `nostr-sdk` dependency in your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-nostr-sdk = "0.31"
+nostr-sdk = "0.32"
 ```
 
 Alternatively, you can add it directly from `git` source:
 
 ```toml
 [dependencies]
-nostr-sdk = { git = "https://github.com/rust-nostr/nostr", tag = "v0.31.0" }
+nostr-sdk = { git = "https://github.com/rust-nostr/nostr", tag = "v0.32.0" }
 ```
 
 ```admonish info
@@ -43,7 +43,7 @@ pip install nostr-sdk
 Alternatively, you can manually add the dependency in your `requrements.txt`, `setup.py`, etc.:
 
 ```
-nostr-sdk==0.12.1
+nostr-sdk==0.32.1
 ```
 
 Import the library in your code:
@@ -100,7 +100,7 @@ Alternatively, you can manually add the dependency in your `package.json` file:
 ```json
 {
     "dependencies": {
-        "@rust-nostr/nostr-sdk": "0.14.1"
+        "@rust-nostr/nostr-sdk": "0.32.0"
     }
 }
 ```
@@ -152,7 +152,7 @@ repositories {
 }
 
 dependencies { 
-    implementation("io.github.rust-nostr:nostr-sdk:0.12.1")
+    implementation("org.rust-nostr:nostr-sdk:0.32.1")
 }
 ```
 
@@ -202,7 +202,7 @@ as a package dependency in Xcode.
 Add the following to the dependencies array in your `Package.swift`:
 
 ``` swift
-.package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.12.1"),
+.package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.32.1"),
 ```
 
 </section>

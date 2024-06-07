@@ -45,7 +45,7 @@ def nip06():
 
     # Use Seed Phrase and account to multiple Nostr keys
     for account in range(0,6):
-        nsec = Keys.from_mnemonic_with_account(words,passphrase,account).secret_key().to_bech32()
+        nsec = Keys.from_mnemonic(words, passphrase, account).secret_key().to_bech32()
         print(f"     Account #{account} bech32: {nsec}")
     # ANCHOR_END: keys-from-seed-accounts
 
@@ -61,6 +61,6 @@ def nip06():
 
     # Use Seed Phrase and account to multiple Nostr keys
     for account in range(0,6):
-        nsec = Keys.from_mnemonic_with_account(words,passphrase,account).secret_key().to_bech32()
+        nsec = Keys.from_mnemonic(words, passphrase, account).secret_key().to_bech32()
         print(f"     Account #{account} bech32: {nsec}")
     # ANCHOR_END: keys-from-seed-accounts-pass

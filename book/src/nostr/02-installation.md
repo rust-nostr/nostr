@@ -9,14 +9,14 @@ Add the `nostr` dependency in your `Cargo.toml` file:
 
 ```toml,ignore
 [dependencies]
-nostr = "0.31"
+nostr = "0.32"
 ```
 
 Alternatively, you can add it directly from `git` source:
 
 ```toml,ignore
 [dependencies]
-nostr = { git = "https://github.com/rust-nostr/nostr", tag = "v0.31.0" }
+nostr = { git = "https://github.com/rust-nostr/nostr", tag = "v0.32.0" }
 ```
 
 ```admonish info
@@ -43,7 +43,7 @@ pip install nostr-protocol
 Alternatively, you can manually add the dependency in your `requrements.txt`, `setup.py`, etc.:
 
 ```
-nostr-protocol==0.12.1
+nostr-protocol==0.32.1
 ```
 
 Import the library in your code:
@@ -52,24 +52,37 @@ Import the library in your code:
 from nostr_protocol import *
 ```
 
-### Support matrix
+## Support matrix
 
 The wheels are distributed for the following python `versions` and `platforms`.
 If your `version`/`platform` is not currently supported, you can compile the wheel by your self following [these instructions](https://github.com/rust-nostr/nostr/blob/master/bindings/nostr-ffi/README.md#python).
 
-#### Python version
+### Python version
 
 | 3.8 | 3.9 | 3.10 | 3.11 | 3.12 | 3.13 |
 | --- | --- | ---- | ---- | ---- | ---- |
 | ❌  | ✅  |  ✅  |  ✅  |  ✅  |  ❌  |
 
-#### Platform support
+### Platform support
 
-|   OS       | i686 | x64 | aarch64 | arm |
-| ---------- | ---- | --- | ------- | --- |
-| Linux      | ❌   | ✅  | ✅      | ❌  |
-| macOS      | ❌   | ✅  | ✅      | ❌  |
-| Windows    | ❌   | ✅  | ❌      | ❌  |
+|   OS       | x64 | aarch64 | arm | i686 |
+| ---------- | --- | ------- | --- |------|
+| Linux      | ✅  | ✅      | ❌  | ❌   |
+| macOS      | ✅  | ✅      | ❌  | ❌   |
+| Windows    | ✅  | ❌      | ❌  | ❌   |
+
+## Known issues
+
+### No running event loop
+
+If you receive `no running event loop` error at runtime, add the following line to your code:
+
+```python
+import asyncio
+from nostr_sdk import uniffi_set_event_loop
+
+uniffi_set_event_loop(asyncio.get_running_loop())
+```
 
 </section>
 
@@ -87,7 +100,7 @@ Alternatively, you can manually add the dependency in your `package.json` file:
 ```json
 {
     "dependencies": {
-        "@rust-nostr/nostr": "0.14.1"
+        "@rust-nostr/nostr": "0.32.0"
     }
 }
 ```
@@ -139,7 +152,7 @@ repositories {
 }
 
 dependencies { 
-    implementation("io.github.rust-nostr:nostr:0.12.1")
+    implementation("org.rust-nostr:nostr:0.32.1")
 }
 ```
 
@@ -188,7 +201,7 @@ as a package dependency in Xcode.
 Add the following to the dependencies array in your `Package.swift`:
 
 ``` swift
-.package(url: "https://github.com/rust-nostr/nostr-swift.git", from: "0.12.1"),
+.package(url: "https://github.com/rust-nostr/nostr-swift.git", from: "0.32.1"),
 ```
 
 Import the library in your code:

@@ -55,7 +55,7 @@ def nip21():
 
     # ANCHOR: nevent
     relays = ["wss://relay.damus.io"]
-    nevent = Nip19Event(event.id(), keys.public_key(), relays)
+    nevent = Nip19Event(event.id(), keys.public_key(), kind=None, relays=relays)
 
     # URI nevent
     nevent_uri = nevent.to_nostr_uri()
