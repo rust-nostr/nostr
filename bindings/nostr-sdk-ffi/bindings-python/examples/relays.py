@@ -30,7 +30,7 @@ async def main():
 
             print("###########################################")
 
-        time.sleep(10.0)
+        await asyncio.sleep(10.0)
 
 
 if __name__ == '__main__':

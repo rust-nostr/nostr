@@ -41,7 +41,7 @@ async def main():
     print(f" hex:    {event_id.to_hex()}")
     print(f" bech32: {event_id.to_bech32()}")
 
-    time.sleep(2.0)
+    await asyncio.sleep(2.0)
 
     # Get events from relays
     print("Getting events from relays...")
