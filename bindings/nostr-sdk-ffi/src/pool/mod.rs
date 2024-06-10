@@ -7,7 +7,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::thread;
 use nostr_ffi::{ClientMessage, Event, EventId, Filter};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{RelayPoolOptions, SubscriptionId};
@@ -422,40 +421,33 @@ impl RelayPool {
     }
 
     /// Handle relay pool notifications
-    ///
-    /// <div class="warning">Python bindings needs to call `uniffi_set_event_loop(asyncio.get_running_loop())` before this method!</div>
-    pub fn handle_notifications(
-        self: Arc<Self>,
-        handler: Arc<dyn HandleNotification>,
-    ) -> Result<()> {
-        thread::spawn(async move {
-            self.inner
-                .handle_notifications(|notification| async {
-                    match notification {
-                        nostr_sdk::RelayPoolNotification::Message { relay_url, message } => {
-                            handler
-                                .handle_msg(relay_url.to_string(), Arc::new(message.into()))
-                                .await;
-                        }
-                        nostr_sdk::RelayPoolNotification::Event {
-                            relay_url,
-                            subscription_id,
-                            event,
-                        } => {
-                            handler
-                                .handle(
-                                    relay_url.to_string(),
-                                    subscription_id.to_string(),
-                                    Arc::new((*event).into()),
-                                )
-                                .await;
-                        }
-                        _ => (),
+    pub async fn handle_notifications(&self, handler: Arc<dyn HandleNotification>) -> Result<()> {
+        Ok(self
+            .inner
+            .handle_notifications(|notification| async {
+                match notification {
+                    nostr_sdk::RelayPoolNotification::Message { relay_url, message } => {
+                        handler
+                            .handle_msg(relay_url.to_string(), Arc::new(message.into()))
+                            .await;
                     }
-                    Ok(false)
-                })
-                .await
-        })?;
-        Ok(())
+                    nostr_sdk::RelayPoolNotification::Event {
+                        relay_url,
+                        subscription_id,
+                        event,
+                    } => {
+                        handler
+                            .handle(
+                                relay_url.to_string(),
+                                subscription_id.to_string(),
+                                Arc::new((*event).into()),
+                            )
+                            .await;
+                    }
+                    _ => (),
+                }
+                Ok(false)
+            })
+            .await?)
     }
 }
