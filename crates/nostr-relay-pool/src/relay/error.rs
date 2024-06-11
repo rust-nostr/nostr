@@ -41,6 +41,12 @@ pub enum Error {
     /// Generic timeout
     #[error("timeout")]
     Timeout,
+    /// Message response timeout
+    #[error("Can't send message to the '{channel}' channel")]
+    CantSendChannelMessage {
+        /// Name of channel
+        channel: String,
+    },
     /// Message not sent
     #[error("message not sent")]
     MessageNotSent,

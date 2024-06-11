@@ -27,7 +27,7 @@ use nostr::{
 };
 use nostr_database::{DynNostrDatabase, Order};
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, oneshot, Mutex, RwLock};
+use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, RwLock};
 
 use super::blacklist::RelayBlacklist;
 #[cfg(not(target_arch = "wasm32"))]
@@ -43,26 +43,99 @@ use super::stats::RelayConnectionStats;
 use super::{Error, RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
 
-struct Message {
-    event: RelayEvent,
+struct NostrMessage {
+    msgs: Vec<ClientMessage>,
     shot: Option<oneshot::Sender<bool>>,
 }
 
-/// Relay event
-#[derive(Debug)]
-enum RelayEvent {
-    /// Send messages
-    Batch(Vec<ClientMessage>),
-    /// Ping
-    #[cfg(not(target_arch = "wasm32"))]
-    Ping {
-        /// Nonce
-        nonce: u64,
-    },
+#[derive(Debug, Clone, Copy)]
+enum RelayServiceEvent {
+    /// None
+    None,
     /// Stop
     Stop,
     /// Completely disconnect
     Terminate,
+}
+
+#[derive(Debug, Clone)]
+struct RelayChannels {
+    nostr: (Sender<NostrMessage>, Arc<Mutex<Receiver<NostrMessage>>>),
+    ping: (watch::Sender<u64>, Arc<Mutex<watch::Receiver<u64>>>),
+    service: (
+        watch::Sender<RelayServiceEvent>,
+        Arc<Mutex<watch::Receiver<RelayServiceEvent>>>,
+    ),
+}
+
+impl RelayChannels {
+    pub fn new() -> Self {
+        let (tx_nostr, rx_nostr) = mpsc::channel::<NostrMessage>(1024);
+        let (tx_ping, rx_ping) = watch::channel::<u64>(0);
+        let (tx_service, rx_service) = watch::channel::<RelayServiceEvent>(RelayServiceEvent::None);
+
+        Self {
+            nostr: (tx_nostr, Arc::new(Mutex::new(rx_nostr))),
+            ping: (tx_ping, Arc::new(Mutex::new(rx_ping))),
+            service: (tx_service, Arc::new(Mutex::new(rx_service))),
+        }
+    }
+
+    #[inline]
+    pub fn send_nostr_msg(&self, msg: NostrMessage) -> Result<(), Error> {
+        self.nostr
+            .0
+            .try_send(msg)
+            .map_err(|_| Error::CantSendChannelMessage {
+                channel: String::from("nostr"),
+            })
+    }
+
+    #[inline]
+    pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<NostrMessage>> {
+        self.nostr.1.lock().await
+    }
+
+    #[inline]
+    pub fn nostr_queue(&self) -> usize {
+        self.nostr.0.max_capacity() - self.nostr.0.capacity()
+    }
+
+    #[inline]
+    pub fn nostr_capacity(&self) -> usize {
+        self.nostr.0.capacity()
+    }
+
+    #[inline]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn ping(&self, nonce: u64) -> Result<(), Error> {
+        self.ping
+            .0
+            .send(nonce)
+            .map_err(|_| Error::CantSendChannelMessage {
+                channel: String::from("ping"),
+            })
+    }
+
+    #[inline]
+    pub async fn rx_ping(&self) -> MutexGuard<'_, watch::Receiver<u64>> {
+        self.ping.1.lock().await
+    }
+
+    #[inline]
+    pub async fn rx_service(&self) -> MutexGuard<'_, watch::Receiver<RelayServiceEvent>> {
+        self.service.1.lock().await
+    }
+
+    #[inline]
+    pub fn send_service_msg(&self, event: RelayServiceEvent) -> Result<(), Error> {
+        self.service
+            .0
+            .send(event)
+            .map_err(|_| Error::CantSendChannelMessage {
+                channel: String::from("service"),
+            })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -75,10 +148,9 @@ pub(crate) struct InternalRelay {
     stats: RelayConnectionStats,
     blacklist: RelayBlacklist,
     database: Arc<DynNostrDatabase>,
+    channels: RelayChannels,
     scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
-    relay_sender: Sender<Message>,
-    relay_receiver: Arc<Mutex<Receiver<Message>>>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
@@ -106,7 +178,6 @@ impl InternalRelay {
         blacklist: RelayBlacklist,
         opts: RelayOptions,
     ) -> Self {
-        let (relay_sender, relay_receiver) = mpsc::channel::<Message>(1024);
         let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
 
         Self {
@@ -118,10 +189,9 @@ impl InternalRelay {
             stats: RelayConnectionStats::new(),
             blacklist,
             database,
+            channels: RelayChannels::new(),
             scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
-            relay_sender,
-            relay_receiver: Arc::new(Mutex::new(relay_receiver)),
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: Arc::new(RwLock::new(None)),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
@@ -239,7 +309,7 @@ impl InternalRelay {
 
     #[inline]
     pub fn queue(&self) -> usize {
-        self.relay_sender.max_capacity() - self.relay_sender.capacity()
+        self.channels.nostr_queue()
     }
 
     #[inline]
@@ -306,8 +376,8 @@ impl InternalRelay {
     }
 
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        self.schedule_for_stop(false);
-        self.schedule_for_termination(false);
+        self.schedule_for_stop(false); // TODO: remove?
+        self.schedule_for_termination(false); // TODO: remove?
 
         if let RelayStatus::Initialized | RelayStatus::Stopped | RelayStatus::Terminated =
             self.status().await
@@ -317,6 +387,7 @@ impl InternalRelay {
                 match connection_timeout {
                     Some(..) => self.try_connect(connection_timeout).await,
                     None => {
+                        // Set status to 'pending' so it'll connect in next step
                         self.set_status(RelayStatus::Pending, true).await;
                     }
                 }
@@ -326,13 +397,13 @@ impl InternalRelay {
                 let relay = self.clone();
                 let _ = thread::spawn(async move {
                     loop {
-                        let queue = relay.queue();
+                        let queue: usize = relay.queue();
                         if queue > 0 {
                             tracing::info!(
                                 "{} messages queued for {} (capacity: {})",
                                 queue,
                                 relay.url(),
-                                relay.relay_sender.capacity()
+                                relay.channels.nostr_capacity()
                             );
                         }
 
@@ -439,14 +510,15 @@ impl InternalRelay {
             tracing::debug!("Relay Message Handler started for '{}'", relay.url);
 
             let sender = async {
-                // Lock relay receiver
-                let mut rx = relay.relay_receiver.lock().await;
+                // Lock receivers
+                let mut rx_nostr = relay.channels.rx_nostr().await;
+                let mut rx_ping = relay.channels.rx_ping().await;
+                let mut rx_service = relay.channels.rx_service().await;
 
-                // Iterate receiver
-                while let Some(Message { event, shot }) = rx.recv().await {
-                    match event {
-                        // Try to send client messages to relay
-                        RelayEvent::Batch(msgs) => {
+                loop {
+                    tokio::select! {
+                        // Nostr channel receiver
+                        Some(NostrMessage { msgs, shot }) = rx_nostr.recv() => {
                             // Serialize messages to JSON and compose WebSocket text message
                             let msgs: Vec<WsMessage> = msgs
                                 .into_iter()
@@ -495,37 +567,56 @@ impl InternalRelay {
                                 break;
                             }
                         }
-                        #[cfg(not(target_arch = "wasm32"))]
-                        RelayEvent::Ping { nonce } => {
-                            // Compose ping message
-                            let msg = WsMessage::Ping(nonce.to_string().as_bytes().to_vec());
+                        // Ping channel receiver
+                        Ok(()) = rx_ping.changed() => {
+                            #[cfg(not(target_arch = "wasm32"))]
+                            {
+                                 // Get nonce and mark as seen
+                                let nonce: u64 = *rx_ping.borrow_and_update();
 
-                            // Send WebSocket message
-                            match send_ws_msgs(&mut ws_tx, [msg]).await {
-                                Ok(()) => {
-                                    relay.stats.ping.just_sent().await;
-                                    tracing::debug!("Ping '{}' (nonce: {nonce})", relay.url);
+                                // Compose ping message
+                                let msg = WsMessage::Ping(nonce.to_string().as_bytes().to_vec());
+
+                                // Send WebSocket message
+                                match send_ws_msgs(&mut ws_tx, [msg]).await {
+                                    Ok(()) => {
+                                        relay.stats.ping.just_sent().await;
+                                        tracing::debug!("Ping '{}' (nonce: {nonce})", relay.url);
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("Impossible to ping '{}': {e}", relay.url);
+                                        break;
+                                    }
                                 }
-                                Err(e) => {
-                                    tracing::error!("Impossible to ping '{}': {e}", relay.url);
-                                    break;
+                            }
+                        }
+                        // Service channel receiver (stop, shutdown, ..)
+                        Ok(()) = rx_service.changed() => {
+                            // Get service and mark as seen
+                            let service: RelayServiceEvent = *rx_service.borrow_and_update();
+
+                            match service {
+                                // Do nothing
+                                RelayServiceEvent::None => {},
+                                // Stop
+                                RelayServiceEvent::Stop => {
+                                    if relay.is_scheduled_for_stop() {
+                                        relay.set_status(RelayStatus::Stopped, true).await;
+                                        relay.schedule_for_stop(false);
+                                        break;
+                                    }
+                                }
+                                // Terminate
+                                RelayServiceEvent::Terminate => {
+                                    if relay.is_scheduled_for_termination() {
+                                        relay.set_status(RelayStatus::Terminated, true).await;
+                                        relay.schedule_for_termination(false);
+                                        break;
+                                    }
                                 }
                             }
                         }
-                        RelayEvent::Stop => {
-                            if relay.is_scheduled_for_stop() {
-                                relay.set_status(RelayStatus::Stopped, true).await;
-                                relay.schedule_for_stop(false);
-                                break;
-                            }
-                        }
-                        RelayEvent::Terminate => {
-                            if relay.is_scheduled_for_termination() {
-                                relay.set_status(RelayStatus::Terminated, true).await;
-                                relay.schedule_for_termination(false);
-                                break;
-                            }
-                        }
+                        else => break
                     }
                 }
 
@@ -599,7 +690,7 @@ impl InternalRelay {
                         relay.stats.ping.set_replied(false);
 
                         // Ping
-                        if let Err(e) = relay.ping(nonce) {
+                        if let Err(e) = relay.channels.ping(nonce) {
                             tracing::error!("Impossible to ping '{}': {e}", relay.url);
                             break;
                         };
@@ -900,37 +991,20 @@ impl InternalRelay {
         }
     }
 
-    #[inline]
-    fn send_relay_event(
-        &self,
-        event: RelayEvent,
-        shot: Option<oneshot::Sender<bool>>,
-    ) -> Result<(), Error> {
-        self.relay_sender
-            .try_send(Message { event, shot })
-            .map_err(|_| Error::MessageNotSent)
-    }
-
-    #[inline]
-    #[cfg(not(target_arch = "wasm32"))]
-    fn ping(&self, nonce: u64) -> Result<(), Error> {
-        self.send_relay_event(RelayEvent::Ping { nonce }, None)?;
-        Ok(())
-    }
-
     pub async fn stop(&self) -> Result<(), Error> {
-        self.schedule_for_stop(true);
+        self.schedule_for_stop(true); // TODO: remove?
         if !self.is_disconnected().await {
-            self.send_relay_event(RelayEvent::Stop, None)?;
+            self.channels.send_service_msg(RelayServiceEvent::Stop)?;
         }
         self.send_notification(RelayNotification::Stop).await;
         Ok(())
     }
 
     pub async fn terminate(&self) -> Result<(), Error> {
-        self.schedule_for_termination(true);
+        self.schedule_for_termination(true); // TODO: remove?
         if !self.is_disconnected().await {
-            self.send_relay_event(RelayEvent::Terminate, None)?;
+            self.channels
+                .send_service_msg(RelayServiceEvent::Terminate)?;
         }
         self.send_notification(RelayNotification::Shutdown).await;
         Ok(())
@@ -964,13 +1038,17 @@ impl InternalRelay {
         }
 
         if opts.skip_send_confirmation {
-            self.send_relay_event(RelayEvent::Batch(msgs), None)
+            self.channels
+                .send_nostr_msg(NostrMessage { msgs, shot: None })
         } else {
             // Create new oneshot channel
             let (tx, rx) = oneshot::channel::<bool>();
 
             // Send message
-            self.send_relay_event(RelayEvent::Batch(msgs), Some(tx))?;
+            self.channels.send_nostr_msg(NostrMessage {
+                msgs,
+                shot: Some(tx),
+            })?;
 
             // Wait for oneshot reply
             match time::timeout(Some(opts.timeout), rx).await {
