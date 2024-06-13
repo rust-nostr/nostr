@@ -699,7 +699,7 @@ impl Filter {
 
     /// Determine if [Filter] match given [Event].
     ///
-    /// The `search` filed is not supported yet!
+    /// The `search` field is not supported yet!
     #[inline]
     pub fn match_event(&self, event: &Event) -> bool {
         self.ids_match(event)

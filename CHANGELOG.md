@@ -32,6 +32,8 @@
 
 ### Added
 
+* book: add some python examples ([RydalWater])
+
 ### Fixed
 
 ### Removed
