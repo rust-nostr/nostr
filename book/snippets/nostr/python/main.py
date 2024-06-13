@@ -3,6 +3,7 @@
 import asyncio
 
 from src.keys import generate, restore, vanity
+from src.filters import filters
 from src.event.json import event_json
 from src.event.builder import event_builder
 from src.nip01 import nip01
@@ -21,6 +22,7 @@ async def main():
     vanity()
     event_json()
     event_builder()
+    filters()
     nip01()
     await nip05()
     nip06()
