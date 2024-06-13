@@ -46,12 +46,29 @@ alloc = [
     "serde/alloc",
     "serde_json/alloc",
 ]
-all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59"]
+all-nips = [
+    "nip04",
+    "nip05",
+    "nip06",
+    "nip07",
+    "nip11",
+    "nip44",
+    "nip46",
+    "nip47",
+    "nip49",
+    "nip57",
+    "nip59",
+]
 nip03 = ["dep:nostr-ots"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip05 = ["dep:reqwest"]
 nip06 = ["dep:bip39"]
-nip07 = ["dep:js-sys", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys"]
+nip07 = [
+    "dep:js-sys",
+    "dep:wasm-bindgen",
+    "dep:wasm-bindgen-futures",
+    "dep:web-sys",
+]
 nip11 = ["dep:reqwest"]
 nip44 = ["dep:base64", "dep:chacha20"]
 nip46 = ["nip04", "nip44"]
@@ -62,23 +79,36 @@ nip59 = ["nip44"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
-base64 = { version = "0.21", default-features = false, optional = true }
+base64 = { version = "0.22.1", default-features = false, optional = true }
 bip39 = { version = "2.0", default-features = false, optional = true }
-bitcoin = { version = "0.31", default-features = false, features = ["rand", "serde"] }
+bitcoin = { version = "0.31", default-features = false, features = [
+    "rand",
+    "serde",
+] }
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
-chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
+chacha20poly1305 = { version = "0.10", default-features = false, features = [
+    "getrandom",
+], optional = true }
 negentropy = { version = "0.3", default-features = false }
 nostr-ots = { version = "0.2", optional = true }
 once_cell.workspace = true
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "socks"], optional = true }
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls",
+    "socks",
+], optional = true }
 scrypt = { version = "0.11", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json.workspace = true
 tracing.workspace = true
 unicode-normalization = { version = "0.1", default-features = false, optional = true }
-url = { version = "2.5", default-features = false, features = ["serde"], optional = true } # Used in std
-url-fork = { version = "3.0", default-features = false, features = ["serde"], optional = true } # Used for no_std
+url = { version = "2.5", default-features = false, features = [
+    "serde",
+], optional = true } # Used in std
+url-fork = { version = "3.0", default-features = false, features = [
+    "serde",
+], optional = true } # Used for no_std
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
