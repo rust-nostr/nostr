@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='nostr-sdk',
-    version='0.32.1',
+    version='0.32.2',
     description="High level Nostr client library.",
     long_description=long_description,
     long_description_content_type='text/markdown',

@@ -43,7 +43,7 @@ pip install nostr-sdk
 Alternatively, you can manually add the dependency in your `requrements.txt`, `setup.py`, etc.:
 
 ```
-nostr-sdk==0.32.1
+nostr-sdk==0.32.2
 ```
 
 Import the library in your code:
@@ -152,7 +152,7 @@ repositories {
 }
 
 dependencies { 
-    implementation("org.rust-nostr:nostr-sdk:0.32.1")
+    implementation("org.rust-nostr:nostr-sdk:0.32.2")
 }
 ```
 
@@ -202,7 +202,7 @@ as a package dependency in Xcode.
 Add the following to the dependencies array in your `Package.swift`:
 
 ``` swift
-.package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.32.1"),
+.package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.32.2"),
 ```
 
 </section>
