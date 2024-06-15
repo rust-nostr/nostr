@@ -50,7 +50,7 @@ use crate::{Alphabet, ImageDimensions, JsonUtil, SingleLetterTag, UncheckedUrl, 
 /// Wrong kind error
 #[derive(Debug)]
 pub enum WrongKindError {
-    /// Singe kind
+    /// Single kind
     Single(Kind),
     /// Range
     Range(Range<u16>),
