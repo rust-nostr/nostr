@@ -31,7 +31,7 @@ use crate::nips::nip10::Marker;
 use crate::nips::nip56::Report;
 use crate::nips::nip65::RelayMetadata;
 use crate::types::url::Url;
-use crate::{PublicKey, SingleLetterTag, Timestamp};
+use crate::{ImageDimensions, PublicKey, SingleLetterTag, Timestamp, UncheckedUrl};
 
 /// Tag
 #[derive(Debug, Clone)]
@@ -255,6 +255,30 @@ impl Tag {
         T: Into<String>,
     {
         Self::from_standardized_without_cell(TagStandard::Hashtag(hashtag.into()))
+    }
+
+    /// Compose `["title", "<title>"]` tag
+    #[inline]
+    pub fn title<T>(title: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::from_standardized_without_cell(TagStandard::Title(title.into()))
+    }
+
+    /// Compose image tag
+    #[inline]
+    pub fn image(url: UncheckedUrl, dimensions: Option<ImageDimensions>) -> Self {
+        Self::from_standardized_without_cell(TagStandard::Image(url, dimensions))
+    }
+
+    /// Compose `["description", "<description>"]` tag
+    #[inline]
+    pub fn description<T>(description: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::from_standardized_without_cell(TagStandard::Description(description.into()))
     }
 
     /// Compose custom tag

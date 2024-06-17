@@ -313,6 +313,30 @@ impl JsTag {
         }
     }
 
+    /// Compose `["title", "<title>"]` tag
+    #[inline]
+    pub fn title(title: &str) -> Self {
+        Self {
+            inner: Tag::title(title),
+        }
+    }
+
+    /// Compose image tag
+    #[inline]
+    pub fn image(url: &str, dimensions: Option<JsImageDimensions>) -> Self {
+        Self {
+            inner: Tag::image(UncheckedUrl::from(url), dimensions.map(|d| d.into())),
+        }
+    }
+
+    /// Compose `["description", "<description>"]` tag
+    #[inline]
+    pub fn description(description: &str) -> Self {
+        Self {
+            inner: Tag::description(description),
+        }
+    }
+
     /// Check if is a standard event tag with `root` marker
     #[inline]
     #[wasm_bindgen(js_name = isRoot)]

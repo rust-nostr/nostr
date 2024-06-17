@@ -37,6 +37,7 @@
 ### Added
 
 * nostr: add `EventBuilder::interest_set` ([Yuki Kishimoto])
+* nostr: add `title`, `image` and `description` constructors to `Tag` ([Yuki Kishimoto])
 * pool: add `SendOutput` and `SendEventOutput` structs ([Yuki Kishimoto])
 * js(sdk): partially expose `JsRelayPool` ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])

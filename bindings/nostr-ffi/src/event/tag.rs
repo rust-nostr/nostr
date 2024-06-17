@@ -397,6 +397,33 @@ impl Tag {
         }
     }
 
+    /// Compose `["title", "<title>"]` tag
+    #[inline]
+    #[uniffi::constructor]
+    pub fn title(title: &str) -> Self {
+        Self {
+            inner: tag::Tag::title(title),
+        }
+    }
+
+    /// Compose image tag
+    #[inline]
+    #[uniffi::constructor(default(dimensions = None))]
+    pub fn image(url: &str, dimensions: Option<Arc<ImageDimensions>>) -> Self {
+        Self {
+            inner: tag::Tag::image(UncheckedUrl::from(url), dimensions.map(|d| **d)),
+        }
+    }
+
+    /// Compose `["description", "<description>"]` tag
+    #[inline]
+    #[uniffi::constructor]
+    pub fn description(description: &str) -> Self {
+        Self {
+            inner: tag::Tag::description(description),
+        }
+    }
+
     /// Compose custom tag
     ///
     /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
