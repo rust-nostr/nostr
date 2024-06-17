@@ -723,7 +723,15 @@ impl Response {
                     ResponseResult::LookupInvoice(result)
                 }
                 Method::ListTransactions => {
-                    let result: Vec<LookupInvoiceResponseResult> = serde_json::from_value(result)?;
+                    let transactions: Value =
+                        result
+                            .get("transactions")
+                            .cloned()
+                            .ok_or(Error::UnexpectedResult(String::from(
+                                "Missing 'transactions' field",
+                            )))?;
+                    let result: Vec<LookupInvoiceResponseResult> =
+                        serde_json::from_value(transactions)?;
                     ResponseResult::ListTransactions(result)
                 }
                 Method::GetBalance => {

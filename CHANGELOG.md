@@ -38,6 +38,8 @@
 
 ### Fixed
 
+* nostr: fix NIP-47 `list_transactions` response deserialization ([Yuki Kishimoto])
+
 ### Removed
 
 ## [v0.32.0]
