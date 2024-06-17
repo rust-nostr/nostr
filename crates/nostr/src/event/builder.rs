@@ -1508,95 +1508,115 @@ impl EventBuilder {
     /// Follow set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[inline]
-    pub fn follow_set<I>(public_keys: I) -> Self
+    pub fn follow_set<ID, I>(identifier: ID, public_keys: I) -> Self
     where
+        ID: Into<String>,
         I: IntoIterator<Item = PublicKey>,
     {
+        let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(
             Kind::FollowSet,
             "",
-            public_keys.into_iter().map(Tag::public_key),
+            tags.into_iter()
+                .chain(public_keys.into_iter().map(Tag::public_key)),
         )
     }
 
     /// Relay set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[inline]
-    pub fn relay_set<I>(relay: I) -> Self
+    pub fn relay_set<ID, I>(identifier: ID, relays: I) -> Self
     where
+        ID: Into<String>,
         I: IntoIterator<Item = UncheckedUrl>,
     {
+        let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(
             Kind::RelaySet,
             "",
-            relay
-                .into_iter()
-                .map(|r| Tag::from_standardized_without_cell(TagStandard::Relay(r))),
+            tags.into_iter().chain(
+                relays
+                    .into_iter()
+                    .map(|r| Tag::from_standardized_without_cell(TagStandard::Relay(r))),
+            ),
         )
     }
 
     /// Bookmark set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[inline]
-    pub fn bookmarks_set(list: Bookmarks) -> Self {
-        let tags: Vec<Tag> = list.into();
+    pub fn bookmarks_set<ID>(identifier: ID, list: Bookmarks) -> Self
+    where
+        ID: Into<String>,
+    {
+        let mut tags: Vec<Tag> = list.into();
+        tags.push(Tag::identifier(identifier));
         Self::new(Kind::BookmarkSet, "", tags)
     }
 
     /// Article Curation set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[inline]
-    pub fn articles_curation_set(list: ArticlesCuration) -> Self {
-        let tags: Vec<Tag> = list.into();
+    pub fn articles_curation_set<ID>(identifier: ID, list: ArticlesCuration) -> Self
+    where
+        ID: Into<String>,
+    {
+        let mut tags: Vec<Tag> = list.into();
+        tags.push(Tag::identifier(identifier));
         Self::new(Kind::ArticlesCurationSet, "", tags)
     }
 
     /// Videos Curation set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[inline]
-    pub fn videos_curation_set<I>(video: I) -> Self
+    pub fn videos_curation_set<ID, I>(identifier: ID, video: I) -> Self
     where
+        ID: Into<String>,
         I: IntoIterator<Item = Coordinate>,
     {
+        let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(
             Kind::VideosCurationSet,
             "",
-            video.into_iter().map(Tag::from),
+            tags.into_iter()
+                .chain(video.into_iter().map(Tag::coordinate)),
         )
     }
 
     /// Interest set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[inline]
-    pub fn interest_set<I, S>(hashtags: I) -> Self
+    pub fn interest_set<ID, I, S>(identifier: ID, hashtags: I) -> Self
     where
+        ID: Into<String>,
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
+        let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(
             Kind::InterestSet,
             "",
-            hashtags.into_iter().map(|t| Tag::hashtag(t)),
+            tags.into_iter()
+                .chain(hashtags.into_iter().map(Tag::hashtag)),
         )
     }
 
     /// Emoji set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    pub fn emoji_set<I>(emoji: I) -> Self
+    pub fn emoji_set<ID, I>(identifier: ID, emojis: I) -> Self
     where
+        ID: Into<String>,
         I: IntoIterator<Item = (String, UncheckedUrl)>,
     {
-        let tags = emoji.into_iter().map(|(s, url)| {
-            Tag::from_standardized_without_cell(TagStandard::Emoji { shortcode: s, url })
-        });
-        Self::new(Kind::EmojiSet, "", tags)
+        let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
+        Self::new(
+            Kind::EmojiSet,
+            "",
+            tags.into_iter().chain(emojis.into_iter().map(|(s, url)| {
+                Tag::from_standardized_without_cell(TagStandard::Emoji { shortcode: s, url })
+            })),
+        )
     }
 
     /// Label

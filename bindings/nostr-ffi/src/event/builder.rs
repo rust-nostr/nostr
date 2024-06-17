@@ -686,9 +686,12 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn follow_set(public_keys: Vec<Arc<PublicKey>>) -> Self {
+    pub fn follow_set(identifier: &str, public_keys: Vec<Arc<PublicKey>>) -> Self {
         Self {
-            inner: nostr::EventBuilder::follow_set(public_keys.into_iter().map(|p| **p)),
+            inner: nostr::EventBuilder::follow_set(
+                identifier,
+                public_keys.into_iter().map(|p| **p),
+            ),
         }
     }
 
@@ -696,9 +699,12 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn relay_set(relays: Vec<String>) -> Self {
+    pub fn relay_set(identifier: &str, relays: Vec<String>) -> Self {
         Self {
-            inner: nostr::EventBuilder::relay_set(relays.into_iter().map(UncheckedUrl::from)),
+            inner: nostr::EventBuilder::relay_set(
+                identifier,
+                relays.into_iter().map(UncheckedUrl::from),
+            ),
         }
     }
 
@@ -706,9 +712,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn bookmarks_set(list: Bookmarks) -> Result<Self> {
+    pub fn bookmarks_set(identifier: &str, list: Bookmarks) -> Result<Self> {
         Ok(Self {
-            inner: nostr::EventBuilder::bookmarks_set(list.try_into()?),
+            inner: nostr::EventBuilder::bookmarks_set(identifier, list.try_into()?),
         })
     }
 
@@ -716,9 +722,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn articles_curation_set(list: ArticlesCuration) -> Self {
+    pub fn articles_curation_set(identifier: &str, list: ArticlesCuration) -> Self {
         Self {
-            inner: nostr::EventBuilder::articles_curation_set(list.into()),
+            inner: nostr::EventBuilder::articles_curation_set(identifier, list.into()),
         }
     }
 
@@ -726,9 +732,10 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn videos_curation_set(video: Vec<Arc<Coordinate>>) -> Self {
+    pub fn videos_curation_set(identifier: &str, video: Vec<Arc<Coordinate>>) -> Self {
         Self {
             inner: nostr::EventBuilder::videos_curation_set(
+                identifier,
                 video.into_iter().map(|c| c.as_ref().deref().clone()),
             ),
         }
@@ -738,9 +745,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn interest_set(hashtags: Vec<String>) -> Self {
+    pub fn interest_set(identifier: &str, hashtags: Vec<String>) -> Self {
         Self {
-            inner: nostr::EventBuilder::interest_set(hashtags),
+            inner: nostr::EventBuilder::interest_set(identifier, hashtags),
         }
     }
 
@@ -748,9 +755,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn emoji_set(emojis: Vec<EmojiInfo>) -> Self {
+    pub fn emoji_set(identifier: &str, emojis: Vec<EmojiInfo>) -> Self {
         Self {
-            inner: nostr::EventBuilder::emoji_set(emojis.into_iter().map(|e| e.into())),
+            inner: nostr::EventBuilder::emoji_set(identifier, emojis.into_iter().map(|e| e.into())),
         }
     }
 
