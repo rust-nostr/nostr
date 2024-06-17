@@ -33,6 +33,7 @@
 
 ### Added
 
+* nostr: add `EventBuilder::interest_set` ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed

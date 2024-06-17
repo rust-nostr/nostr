@@ -1570,6 +1570,22 @@ impl EventBuilder {
         )
     }
 
+    /// Interest set
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[inline]
+    pub fn interest_set<I, S>(hashtags: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        Self::new(
+            Kind::InterestSet,
+            "",
+            hashtags.into_iter().map(|t| Tag::hashtag(t)),
+        )
+    }
+
     /// Emoji set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>

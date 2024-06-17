@@ -734,6 +734,16 @@ impl EventBuilder {
         }
     }
 
+    /// Interest set
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[uniffi::constructor]
+    pub fn interest_set(hashtags: Vec<String>) -> Self {
+        Self {
+            inner: nostr::EventBuilder::interest_set(hashtags),
+        }
+    }
+
     /// Emoji set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>

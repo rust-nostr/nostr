@@ -751,6 +751,16 @@ impl JsEventBuilder {
         }
     }
 
+    /// Interest set
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
+    #[wasm_bindgen(js_name = interestSet)]
+    pub fn interest_set(hashtags: Vec<String>) -> Self {
+        Self {
+            inner: EventBuilder::interest_set(hashtags),
+        }
+    }
+
     /// Emoji set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
