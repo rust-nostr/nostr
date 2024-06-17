@@ -21,7 +21,10 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    client.publish_text_note("Hello world", []).await?;
+    let output = client.publish_text_note("Hello world", []).await?;
+    println!("Event ID: {}", output.id.to_bech32()?);
+    println!("Sent to: {:?}", output.success);
+    // println!("Not set to: {:?}", output.failed);
 
     // Create a text note POW event and broadcast to all connected relays
     let event: Event =

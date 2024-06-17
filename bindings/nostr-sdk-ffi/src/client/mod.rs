@@ -26,6 +26,7 @@ pub use self::options::Options;
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
+use crate::pool::result::{SendEventOutput, SendOutput};
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
 use crate::relay::{RelayBlacklist, RelayOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -390,37 +391,44 @@ impl Client {
             .collect())
     }
 
-    pub async fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<()> {
-        Ok(self.inner.send_msg(msg.as_ref().deref().clone()).await?)
+    pub async fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<SendOutput> {
+        Ok(self
+            .inner
+            .send_msg(msg.as_ref().deref().clone())
+            .await?
+            .into())
     }
 
-    pub async fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<()> {
+    pub async fn send_msg_to(
+        &self,
+        urls: Vec<String>,
+        msg: Arc<ClientMessage>,
+    ) -> Result<SendOutput> {
         Ok(self
             .inner
             .send_msg_to(urls, msg.as_ref().deref().clone())
-            .await?)
+            .await?
+            .into())
     }
 
-    pub async fn send_event(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event(event.as_ref().deref().clone())
-                .await?
-                .into(),
-        ))
+    pub async fn send_event(&self, event: Arc<Event>) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .send_event(event.as_ref().deref().clone())
+            .await?
+            .into())
     }
 
     pub async fn send_event_to(
         &self,
         urls: Vec<String>,
         event: Arc<Event>,
-    ) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event_to(urls, event.as_ref().deref().clone())
-                .await?
-                .into(),
-        ))
+    ) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .send_event_to(urls, event.as_ref().deref().clone())
+            .await?
+            .into())
     }
 
     /// Signs the `EventBuilder` into an `Event` using the `NostrSigner`
@@ -436,13 +444,12 @@ impl Client {
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to all relays.
     ///
     /// Rise an error if the [`NostrSigner`] is not set.
-    pub async fn send_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event_builder(builder.as_ref().deref().clone())
-                .await?
-                .into(),
-        ))
+    pub async fn send_event_builder(&self, builder: Arc<EventBuilder>) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .send_event_builder(builder.as_ref().deref().clone())
+            .await?
+            .into())
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
@@ -452,22 +459,20 @@ impl Client {
         &self,
         urls: Vec<String>,
         builder: Arc<EventBuilder>,
-    ) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event_builder_to(urls, builder.as_ref().deref().clone())
-                .await?
-                .into(),
-        ))
+    ) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .send_event_builder_to(urls, builder.as_ref().deref().clone())
+            .await?
+            .into())
     }
 
-    pub async fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .set_metadata(metadata.as_ref().deref())
-                .await?
-                .into(),
-        ))
+    pub async fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .set_metadata(metadata.as_ref().deref())
+            .await?
+            .into())
     }
 
     /// Encrypted direct msg
@@ -480,14 +485,13 @@ impl Client {
         receiver: &PublicKey,
         msg: String,
         reply: Option<Arc<EventId>>,
-    ) -> Result<Arc<EventId>> {
+    ) -> Result<SendEventOutput> {
         #[allow(deprecated)]
-        Ok(Arc::new(
-            self.inner
-                .send_direct_msg(**receiver, msg, reply.map(|r| **r))
-                .await?
-                .into(),
-        ))
+        Ok(self
+            .inner
+            .send_direct_msg(**receiver, msg, reply.map(|r| **r))
+            .await?
+            .into())
     }
 
     /// Send private direct message
@@ -499,11 +503,12 @@ impl Client {
         receiver: &PublicKey,
         message: String,
         reply_to: Option<Arc<EventId>>,
-    ) -> Result<()> {
+    ) -> Result<SendEventOutput> {
         Ok(self
             .inner
             .send_private_msg(**receiver, message, reply_to.map(|t| **t))
-            .await?)
+            .await?
+            .into())
     }
 
     /// Repost
@@ -511,43 +516,37 @@ impl Client {
         &self,
         event: Arc<Event>,
         relay_url: Option<String>,
-    ) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .repost(event.as_ref().deref(), relay_url.map(UncheckedUrl::from))
-                .await?
-                .into(),
-        ))
+    ) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .repost(event.as_ref().deref(), relay_url.map(UncheckedUrl::from))
+            .await?
+            .into())
     }
 
     /// Like event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn like(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner.like(event.as_ref().deref()).await?.into(),
-        ))
+    pub async fn like(&self, event: Arc<Event>) -> Result<SendEventOutput> {
+        Ok(self.inner.like(event.as_ref().deref()).await?.into())
     }
 
     /// Disike event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn dislike(&self, event: Arc<Event>) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner.dislike(event.as_ref().deref()).await?.into(),
-        ))
+    pub async fn dislike(&self, event: Arc<Event>) -> Result<SendEventOutput> {
+        Ok(self.inner.dislike(event.as_ref().deref()).await?.into())
     }
 
     /// React to an [`Event`]
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn reaction(&self, event: Arc<Event>, reaction: String) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .reaction(event.as_ref().deref(), reaction)
-                .await?
-                .into(),
-        ))
+    pub async fn reaction(&self, event: Arc<Event>, reaction: String) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .reaction(event.as_ref().deref(), reaction)
+            .await?
+            .into())
     }
 
     /// Send a Zap!
@@ -571,7 +570,7 @@ impl Client {
         receiver: &PublicKey,
         rumor: Arc<EventBuilder>,
         expiration: Option<Arc<Timestamp>>,
-    ) -> Result<()> {
+    ) -> Result<SendEventOutput> {
         Ok(self
             .inner
             .gift_wrap(
@@ -579,20 +578,20 @@ impl Client {
                 rumor.as_ref().deref().clone(),
                 expiration.map(|t| **t),
             )
-            .await?)
+            .await?
+            .into())
     }
 
     pub async fn file_metadata(
         &self,
         description: String,
         metadata: Arc<FileMetadata>,
-    ) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .file_metadata(description, metadata.as_ref().deref().clone())
-                .await?
-                .into(),
-        ))
+    ) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .file_metadata(description, metadata.as_ref().deref().clone())
+            .await?
+            .into())
     }
 
     pub async fn reconcile(&self, filter: Arc<Filter>, opts: Arc<NegentropyOptions>) -> Result<()> {

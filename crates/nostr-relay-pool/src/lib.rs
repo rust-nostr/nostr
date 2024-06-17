@@ -15,7 +15,7 @@ pub mod prelude;
 pub mod relay;
 
 pub use self::pool::options::RelayPoolOptions;
-pub use self::pool::{RelayPool, RelayPoolNotification};
+pub use self::pool::{RelayPool, RelayPoolNotification, SendEventOutput, SendOutput};
 pub use self::relay::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 pub use self::relay::limits::RelayLimits;
 pub use self::relay::options::{

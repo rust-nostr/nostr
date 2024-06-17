@@ -36,17 +36,17 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish events
-    let id = client
+    let output = client
         .publish_text_note("Testing rust-nostr NIP46 signer [bunker]", [])
         .await?;
-    println!("Published text note: {id}\n");
+    println!("Published text note: {output}\n");
 
     let receiver =
         PublicKey::from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")?;
     client
         .send_private_msg(receiver, "Hello from rust-nostr", None)
         .await?;
-    println!("Sent DM: {id}");
+    println!("Sent DM: {output}");
 
     Ok(())
 }

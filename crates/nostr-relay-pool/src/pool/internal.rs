@@ -7,10 +7,10 @@
 use std::collections::btree_set::IntoIter;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter::Rev;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_utility::thread::JoinHandle;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
 use nostr::{ClientMessage, Event, EventId, Filter, SubscriptionId, Timestamp, TryIntoUrl, Url};
@@ -18,7 +18,7 @@ use nostr_database::{DynNostrDatabase, IntoNostrDatabase, Order};
 use tokio::sync::{broadcast, Mutex, RwLock};
 
 use super::options::RelayPoolOptions;
-use super::{Error, RelayPoolNotification};
+use super::{Error, RelayPoolNotification, SendEventOutput, SendOutput};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist};
 use crate::SubscribeOptions;
@@ -206,7 +206,11 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
+    pub async fn send_msg(
+        &self,
+        msg: ClientMessage,
+        opts: RelaySendOptions,
+    ) -> Result<SendOutput, Error> {
         let relays = self.relays().await;
         self.send_msg_to(relays.into_keys(), msg, opts).await
     }
@@ -215,7 +219,7 @@ impl InternalRelayPool {
         &self,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<SendOutput, Error> {
         let relays = self.relays().await;
         self.batch_msg_to(relays.into_keys(), msgs, opts).await
     }
@@ -225,7 +229,7 @@ impl InternalRelayPool {
         urls: I,
         msg: ClientMessage,
         opts: RelaySendOptions,
-    ) -> Result<(), Error>
+    ) -> Result<SendOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -239,7 +243,7 @@ impl InternalRelayPool {
         urls: I,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error>
+    ) -> Result<SendOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -275,24 +279,33 @@ impl InternalRelayPool {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             relay.batch_msg(msgs, opts).await?;
+            Ok(SendOutput::success(url))
         } else {
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
                 return Err(Error::RelayNotFound);
             }
 
-            let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-            let mut handles = Vec::with_capacity(urls.len());
+            let result: Arc<Mutex<SendOutput>> = Arc::new(Mutex::new(SendOutput::default()));
+            let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
 
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
-                let msgs = msgs.clone();
-                let sent = sent_to_at_least_one_relay.clone();
-                let handle = thread::spawn(async move {
+                let msgs: Vec<ClientMessage> = msgs.clone();
+                let result: Arc<Mutex<SendOutput>> = result.clone();
+                let handle: JoinHandle<()> = thread::spawn(async move {
                     match relay.batch_msg(msgs, opts).await {
                         Ok(_) => {
-                            sent.store(true, Ordering::SeqCst);
+                            // Success, insert relay url in 'success' set result
+                            let mut result = result.lock().await;
+                            result.success.insert(url);
                         }
-                        Err(e) => tracing::error!("Impossible to send msg to {url}: {e}"),
+                        Err(e) => {
+                            tracing::error!("Impossible to send msg to {url}: {e}");
+
+                            // Failed, insert relay url in 'failed' map result
+                            let mut result = result.lock().await;
+                            result.failed.insert(url, Some(e.to_string()));
+                        }
                     }
                 })?;
                 handles.push(handle);
@@ -302,15 +315,21 @@ impl InternalRelayPool {
                 handle.join().await?;
             }
 
-            if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
+            let result = result.lock().await;
+
+            if result.success.is_empty() {
                 return Err(Error::MsgNotSent);
             }
-        }
 
-        Ok(())
+            Ok(result.clone()) // TODO: remove clone
+        }
     }
 
-    pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
+    pub async fn send_event(
+        &self,
+        event: Event,
+        opts: RelaySendOptions,
+    ) -> Result<SendEventOutput, Error> {
         let relays: HashMap<Url, Relay> = self.relays().await;
         self.send_event_to(relays.into_keys(), event, opts).await
     }
@@ -319,7 +338,7 @@ impl InternalRelayPool {
         &self,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<SendOutput, Error> {
         let relays = self.relays().await;
         self.batch_event_to(relays.into_keys(), events, opts).await
     }
@@ -329,15 +348,19 @@ impl InternalRelayPool {
         urls: I,
         event: Event,
         opts: RelaySendOptions,
-    ) -> Result<EventId, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let event_id: EventId = event.id;
-        self.batch_event_to(urls, vec![event], opts).await?;
-        Ok(event_id)
+        let result: SendOutput = self.batch_event_to(urls, vec![event], opts).await?;
+        Ok(SendEventOutput {
+            id: event_id,
+            success: result.success,
+            failed: result.failed,
+        })
     }
 
     pub async fn batch_event_to<I, U>(
@@ -345,7 +368,7 @@ impl InternalRelayPool {
         urls: I,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error>
+    ) -> Result<SendOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -379,24 +402,33 @@ impl InternalRelayPool {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             relay.batch_event(events, opts).await?;
+            Ok(SendOutput::success(url))
         } else {
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
                 return Err(Error::RelayNotFound);
             }
 
-            let sent_to_at_least_one_relay: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+            let result: Arc<Mutex<SendOutput>> = Arc::new(Mutex::new(SendOutput::default()));
             let mut handles = Vec::with_capacity(urls.len());
 
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
-                let events = events.clone();
-                let sent = sent_to_at_least_one_relay.clone();
+                let events: Vec<Event> = events.clone();
+                let result: Arc<Mutex<SendOutput>> = result.clone();
                 let handle = thread::spawn(async move {
                     match relay.batch_event(events, opts).await {
                         Ok(_) => {
-                            sent.store(true, Ordering::SeqCst);
+                            // Success, insert relay url in 'success' set result
+                            let mut result = result.lock().await;
+                            result.success.insert(url);
                         }
-                        Err(e) => tracing::error!("Impossible to send event to {url}: {e}"),
+                        Err(e) => {
+                            tracing::error!("Impossible to send event to {url}: {e}");
+
+                            // Failed, insert relay url in 'failed' map result
+                            let mut result = result.lock().await;
+                            result.failed.insert(url, Some(e.to_string()));
+                        }
                     }
                 })?;
                 handles.push(handle);
@@ -406,12 +438,14 @@ impl InternalRelayPool {
                 handle.join().await?;
             }
 
-            if !sent_to_at_least_one_relay.load(Ordering::SeqCst) {
+            let result = result.lock().await;
+
+            if result.success.is_empty() {
                 return Err(Error::EventNotPublished);
             }
-        }
 
-        Ok(())
+            Ok(result.clone()) // TODO: remove clone
+        }
     }
 
     pub async fn subscribe(&self, filters: Vec<Filter>, opts: SubscribeOptions) -> SubscriptionId {

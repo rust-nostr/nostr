@@ -18,5 +18,6 @@ pub mod database;
 pub mod duration;
 pub mod logger;
 pub mod nwc;
+pub mod pool;
 pub mod profile;
 pub mod relay;

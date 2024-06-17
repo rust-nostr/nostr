@@ -20,10 +20,12 @@ use tokio::sync::broadcast;
 mod error;
 mod internal;
 pub mod options;
+mod result;
 
 pub use self::error::Error;
 use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
+pub use self::result::{SendEventOutput, SendOutput};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist, RelayStatus};
 use crate::SubscribeOptions;
@@ -228,7 +230,11 @@ impl RelayPool {
 
     /// Send client message to all connected relays
     #[inline]
-    pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
+    pub async fn send_msg(
+        &self,
+        msg: ClientMessage,
+        opts: RelaySendOptions,
+    ) -> Result<SendOutput, Error> {
         self.inner.send_msg(msg, opts).await
     }
 
@@ -238,7 +244,7 @@ impl RelayPool {
         &self,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<SendOutput, Error> {
         self.inner.batch_msg(msgs, opts).await
     }
 
@@ -251,7 +257,7 @@ impl RelayPool {
         urls: I,
         msg: ClientMessage,
         opts: RelaySendOptions,
-    ) -> Result<(), Error>
+    ) -> Result<SendOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -269,7 +275,7 @@ impl RelayPool {
         urls: I,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error>
+    ) -> Result<SendOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -280,7 +286,11 @@ impl RelayPool {
 
     /// Send event to **all connected relays** and wait for `OK` message
     #[inline]
-    pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
+    pub async fn send_event(
+        &self,
+        event: Event,
+        opts: RelaySendOptions,
+    ) -> Result<SendEventOutput, Error> {
         self.inner.send_event(event, opts).await
     }
 
@@ -290,7 +300,7 @@ impl RelayPool {
         &self,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<SendOutput, Error> {
         self.inner.batch_event(events, opts).await
     }
 
@@ -301,7 +311,7 @@ impl RelayPool {
         urls: I,
         event: Event,
         opts: RelaySendOptions,
-    ) -> Result<EventId, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -317,7 +327,7 @@ impl RelayPool {
         urls: I,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error>
+    ) -> Result<SendOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

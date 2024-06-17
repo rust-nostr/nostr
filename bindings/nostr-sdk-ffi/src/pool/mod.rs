@@ -7,11 +7,14 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, EventId, Filter};
+use nostr_ffi::{ClientMessage, Event, Filter};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{RelayPoolOptions, SubscriptionId};
 use uniffi::Object;
 
+pub mod result;
+
+use self::result::{SendEventOutput, SendOutput};
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
 use crate::relay::options::{FilterOptions, NegentropyOptions};
@@ -147,11 +150,12 @@ impl RelayPool {
         &self,
         msg: Arc<ClientMessage>,
         opts: Arc<RelaySendOptions>,
-    ) -> Result<()> {
+    ) -> Result<SendOutput> {
         Ok(self
             .inner
             .send_msg(msg.as_ref().deref().clone(), **opts)
-            .await?)
+            .await?
+            .into())
     }
 
     /// Send multiple client messages at once to all connected relays
@@ -159,12 +163,12 @@ impl RelayPool {
         &self,
         msgs: Vec<Arc<ClientMessage>>,
         opts: &RelaySendOptions,
-    ) -> Result<()> {
+    ) -> Result<SendOutput> {
         let msgs = msgs
             .into_iter()
             .map(|msg| msg.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.batch_msg(msgs, **opts).await?)
+        Ok(self.inner.batch_msg(msgs, **opts).await?.into())
     }
 
     /// Send client message to specific relays
@@ -175,11 +179,12 @@ impl RelayPool {
         urls: Vec<String>,
         msg: Arc<ClientMessage>,
         opts: Arc<RelaySendOptions>,
-    ) -> Result<()> {
+    ) -> Result<SendOutput> {
         Ok(self
             .inner
             .send_msg_to(urls, msg.as_ref().deref().clone(), **opts)
-            .await?)
+            .await?
+            .into())
     }
 
     /// Send multiple client messages at once to specific relays
@@ -190,22 +195,25 @@ impl RelayPool {
         urls: Vec<String>,
         msgs: Vec<Arc<ClientMessage>>,
         opts: &RelaySendOptions,
-    ) -> Result<()> {
+    ) -> Result<SendOutput> {
         let msgs = msgs
             .into_iter()
             .map(|msg| msg.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.batch_msg_to(urls, msgs, **opts).await?)
+        Ok(self.inner.batch_msg_to(urls, msgs, **opts).await?.into())
     }
 
     /// Send event to **all connected relays** and wait for `OK` message
-    pub async fn send_event(&self, event: &Event, opts: &RelaySendOptions) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event(event.deref().clone(), **opts)
-                .await?
-                .into(),
-        ))
+    pub async fn send_event(
+        &self,
+        event: &Event,
+        opts: &RelaySendOptions,
+    ) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .send_event(event.deref().clone(), **opts)
+            .await?
+            .into())
     }
 
     /// Send multiple `Event` at once to **all connected relays** and wait for `OK` message
@@ -213,12 +221,12 @@ impl RelayPool {
         &self,
         events: Vec<Arc<Event>>,
         opts: &RelaySendOptions,
-    ) -> Result<()> {
+    ) -> Result<SendOutput> {
         let events = events
             .into_iter()
             .map(|e| e.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.batch_event(events, **opts).await?)
+        Ok(self.inner.batch_event(events, **opts).await?.into())
     }
 
     /// Send event to **specific relays** and wait for `OK` message
@@ -227,13 +235,12 @@ impl RelayPool {
         urls: Vec<String>,
         event: &Event,
         opts: &RelaySendOptions,
-    ) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner
-                .send_event_to(urls, event.deref().clone(), **opts)
-                .await?
-                .into(),
-        ))
+    ) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .send_event_to(urls, event.deref().clone(), **opts)
+            .await?
+            .into())
     }
 
     /// Send multiple events at once to **specific relays** and wait for `OK` message
@@ -242,12 +249,16 @@ impl RelayPool {
         urls: Vec<String>,
         events: Vec<Arc<Event>>,
         opts: &RelaySendOptions,
-    ) -> Result<()> {
+    ) -> Result<SendOutput> {
         let events = events
             .into_iter()
             .map(|e| e.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.batch_event_to(urls, events, **opts).await?)
+        Ok(self
+            .inner
+            .batch_event_to(urls, events, **opts)
+            .await?
+            .into())
     }
 
     /// Subscribe to filters to all connected relays

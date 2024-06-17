@@ -3,7 +3,7 @@ const { Keys, Client, NostrSigner, Metadata, EventId, PublicKey, EventBuilder, l
 async function main() {
     await loadWasmAsync();
 
-    initLogger(LogLevel.debug());
+    initLogger(LogLevel.info());
 
     // Generate random keys
     let keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
@@ -21,6 +21,7 @@ async function main() {
     await client.addRelay("wss://relay.damus.io");
     await client.addRelay("wss://nos.lol");
     await client.addRelay("wss://nostr.oxtr.dev");
+    await client.addRelay("wss://nostr.wine");
 
     await client.connect();
 
@@ -35,7 +36,10 @@ async function main() {
     
     await client.setMetadata(metadata);
 
-    await client.publishTextNote("My first text note from rust-nostr WASM!", []);
+    let output = await client.publishTextNote("My first text note from rust-nostr WASM!", []);
+    console.log("Event ID", output.id.toBech32());
+    console.log("Successfully sent to:", output.success);
+    console.log("Failed to sent to:", output.failed);
 
     // Send custom event
     let event_id = EventId.fromBech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r");

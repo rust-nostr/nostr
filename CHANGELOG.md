@@ -30,11 +30,13 @@
 * nostr: rename NIP-51 `EventBuilder` set constructors and `Kind` variants ([Yuki Kishimoto])
 * nostr: small adj. to NIP-47 `ListTransactionsRequestParams` and `LookupInvoiceResponseResult` structs ([Yuki Kishimoto])
 * pool: use per-purpose dedicated relay channels ([Yuki Kishimoto])
+* pool: return relay urls to which `messages`/`events` have or not been sent for `send_*` and `batch_*` methods ([Yuki Kishimoto])
 * ffi(sdk): convert `RelayPool::handle_notifications` method to async/future ([Yuki Kishimoto])
 
 ### Added
 
 * nostr: add `EventBuilder::interest_set` ([Yuki Kishimoto])
+* pool: add `SendOutput` and `SendEventOutput` structs ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed

@@ -27,6 +27,7 @@ use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
+use crate::pool::result::{JsSendEventOutput, JsSendOutput};
 use crate::relay::blacklist::JsRelayBlacklist;
 use crate::relay::options::{JsNegentropyOptions, JsSubscribeAutoCloseOptions};
 use crate::relay::{JsRelay, JsRelayArray};
@@ -376,20 +377,26 @@ impl JsClient {
 
     /// Send client message
     #[wasm_bindgen(js_name = sendMsg)]
-    pub async fn send_msg(&self, msg: &JsClientMessage) -> Result<()> {
+    pub async fn send_msg(&self, msg: &JsClientMessage) -> Result<JsSendOutput> {
         self.inner
             .send_msg(msg.deref().clone())
             .await
             .map_err(into_err)
+            .map(Into::into)
     }
 
     /// Send client message to a specific relay
     #[wasm_bindgen(js_name = sendMsgTo)]
-    pub async fn send_msg_to(&self, urls: Vec<String>, msg: &JsClientMessage) -> Result<()> {
+    pub async fn send_msg_to(
+        &self,
+        urls: Vec<String>,
+        msg: &JsClientMessage,
+    ) -> Result<JsSendOutput> {
         self.inner
             .send_msg_to(urls, msg.deref().clone())
             .await
             .map_err(into_err)
+            .map(Into::into)
     }
 
     /// Send event
@@ -397,7 +404,7 @@ impl JsClient {
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `sendMsg` method instead.
     #[wasm_bindgen(js_name = sendEvent)]
-    pub async fn send_event(&self, event: &JsEvent) -> Result<JsEventId> {
+    pub async fn send_event(&self, event: &JsEvent) -> Result<JsSendEventOutput> {
         self.inner
             .send_event(event.deref().clone())
             .await
@@ -410,7 +417,11 @@ impl JsClient {
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `sendMsgTo` method instead.
     #[wasm_bindgen(js_name = sendEventTo)]
-    pub async fn send_event_to(&self, urls: Vec<String>, event: &JsEvent) -> Result<JsEventId> {
+    pub async fn send_event_to(
+        &self,
+        urls: Vec<String>,
+        event: &JsEvent,
+    ) -> Result<JsSendEventOutput> {
         self.inner
             .send_event_to(urls, event.deref().clone())
             .await
@@ -432,7 +443,7 @@ impl JsClient {
     ///
     /// Rise an error if the [`NostrSigner`] is not set.
     #[wasm_bindgen(js_name = sendEventBuilder)]
-    pub async fn send_event_builder(&self, builder: &JsEventBuilder) -> Result<JsEventId> {
+    pub async fn send_event_builder(&self, builder: &JsEventBuilder) -> Result<JsSendEventOutput> {
         self.inner
             .send_event_builder(builder.deref().clone())
             .await
@@ -448,7 +459,7 @@ impl JsClient {
         &self,
         urls: Vec<String>,
         builder: &JsEventBuilder,
-    ) -> Result<JsEventId> {
+    ) -> Result<JsSendEventOutput> {
         self.inner
             .send_event_builder_to(urls, builder.deref().clone())
             .await
@@ -460,7 +471,7 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = setMetadata)]
-    pub async fn set_metadata(&self, metadata: &JsMetadata) -> Result<JsEventId> {
+    pub async fn set_metadata(&self, metadata: &JsMetadata) -> Result<JsSendEventOutput> {
         self.inner
             .set_metadata(metadata.deref())
             .await
@@ -472,7 +483,11 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = publishTextNote)]
-    pub async fn publish_text_note(&self, content: String, tags: Vec<JsTag>) -> Result<JsEventId> {
+    pub async fn publish_text_note(
+        &self,
+        content: String,
+        tags: Vec<JsTag>,
+    ) -> Result<JsSendEventOutput> {
         self.inner
             .publish_text_note(content, tags.into_iter().map(|t| t.into()))
             .await
@@ -484,7 +499,7 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[wasm_bindgen(js_name = setContactList)]
-    pub async fn set_contact_list(&self, list: Vec<JsContact>) -> Result<JsEventId> {
+    pub async fn set_contact_list(&self, list: Vec<JsContact>) -> Result<JsSendEventOutput> {
         let list = list.into_iter().map(|c| c.into());
         self.inner
             .set_contact_list(list)
@@ -504,7 +519,7 @@ impl JsClient {
         receiver: &JsPublicKey,
         msg: &str,
         reply: Option<JsEventId>,
-    ) -> Result<JsEventId> {
+    ) -> Result<JsSendEventOutput> {
         #[allow(deprecated)]
         self.inner
             .send_direct_msg(**receiver, msg, reply.map(|id| id.into()))
@@ -522,15 +537,20 @@ impl JsClient {
         receiver: &JsPublicKey,
         message: &str,
         reply_to: Option<JsEventId>,
-    ) -> Result<()> {
+    ) -> Result<JsSendEventOutput> {
         self.inner
             .send_private_msg(**receiver, message, reply_to.map(|t| *t))
             .await
             .map_err(into_err)
+            .map(Into::into)
     }
 
     /// Repost
-    pub async fn repost(&self, event: &JsEvent, relay_url: Option<String>) -> Result<JsEventId> {
+    pub async fn repost(
+        &self,
+        event: &JsEvent,
+        relay_url: Option<String>,
+    ) -> Result<JsSendEventOutput> {
         self.inner
             .repost(event.deref(), relay_url.map(UncheckedUrl::from))
             .await
@@ -542,7 +562,7 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[wasm_bindgen(js_name = deleteEvent)]
-    pub async fn delete_event(&self, event_id: &JsEventId) -> Result<JsEventId> {
+    pub async fn delete_event(&self, event_id: &JsEventId) -> Result<JsSendEventOutput> {
         self.inner
             .delete_event(**event_id)
             .await
@@ -553,7 +573,7 @@ impl JsClient {
     /// Like event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn like(&self, event: &JsEvent) -> Result<JsEventId> {
+    pub async fn like(&self, event: &JsEvent) -> Result<JsSendEventOutput> {
         self.inner
             .like(event.deref())
             .await
@@ -564,7 +584,7 @@ impl JsClient {
     /// Disike event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn dislike(&self, event: &JsEvent) -> Result<JsEventId> {
+    pub async fn dislike(&self, event: &JsEvent) -> Result<JsSendEventOutput> {
         self.inner
             .dislike(event.deref())
             .await
@@ -575,7 +595,7 @@ impl JsClient {
     /// React to an [`Event`]
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn reaction(&self, event: &JsEvent, reaction: &str) -> Result<JsEventId> {
+    pub async fn reaction(&self, event: &JsEvent, reaction: &str) -> Result<JsSendEventOutput> {
         self.inner
             .reaction(event.deref(), reaction)
             .await
@@ -587,7 +607,7 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[wasm_bindgen(js_name = newChannel)]
-    pub async fn new_channel(&self, metadata: &JsMetadata) -> Result<JsEventId> {
+    pub async fn new_channel(&self, metadata: &JsMetadata) -> Result<JsSendEventOutput> {
         self.inner
             .new_channel(metadata.deref())
             .await
@@ -604,7 +624,7 @@ impl JsClient {
         channel_id: &JsEventId,
         relay_url: Option<String>,
         metadata: &JsMetadata,
-    ) -> Result<JsEventId> {
+    ) -> Result<JsSendEventOutput> {
         let relay_url: Option<Url> = match relay_url {
             Some(relay_url) => Some(Url::parse(&relay_url).map_err(into_err)?),
             None => None,
@@ -625,7 +645,7 @@ impl JsClient {
         channel_id: &JsEventId,
         relay_url: &str,
         msg: &str,
-    ) -> Result<JsEventId> {
+    ) -> Result<JsSendEventOutput> {
         let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
         self.inner
             .send_channel_msg(**channel_id, relay_url, msg)
@@ -642,7 +662,7 @@ impl JsClient {
         &self,
         message_id: &JsEventId,
         reason: Option<String>,
-    ) -> Result<JsEventId> {
+    ) -> Result<JsSendEventOutput> {
         self.inner
             .hide_channel_msg(**message_id, reason)
             .await
@@ -658,7 +678,7 @@ impl JsClient {
         &self,
         pubkey: &JsPublicKey,
         reason: Option<String>,
-    ) -> Result<JsEventId> {
+    ) -> Result<JsSendEventOutput> {
         self.inner
             .mute_channel_user(**pubkey, reason)
             .await
@@ -688,11 +708,12 @@ impl JsClient {
         receiver: &JsPublicKey,
         rumor: &JsEventBuilder,
         expiration: Option<JsTimestamp>,
-    ) -> Result<()> {
+    ) -> Result<JsSendEventOutput> {
         self.inner
             .gift_wrap(**receiver, rumor.deref().clone(), expiration.map(|t| *t))
             .await
             .map_err(into_err)
+            .map(Into::into)
     }
 
     /// Negentropy reconciliation

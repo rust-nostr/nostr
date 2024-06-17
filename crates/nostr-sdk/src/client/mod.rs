@@ -18,7 +18,7 @@ use nostr_relay_pool::pool::{self, Error as RelayPoolError, RelayPool};
 use nostr_relay_pool::relay::Error as RelayError;
 use nostr_relay_pool::{
     FilterOptions, NegentropyOptions, Relay, RelayBlacklist, RelayOptions, RelayPoolNotification,
-    RelaySendOptions, SubscribeAutoCloseOptions, SubscribeOptions,
+    RelaySendOptions, SendEventOutput, SendOutput, SubscribeAutoCloseOptions, SubscribeOptions,
 };
 use nostr_signer::prelude::*;
 #[cfg(feature = "nip57")]
@@ -866,7 +866,7 @@ impl Client {
 
     /// Send client message to **all relays**
     #[inline]
-    pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
+    pub async fn send_msg(&self, msg: ClientMessage) -> Result<SendOutput, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_msg(msg, opts).await?)
     }
@@ -877,13 +877,13 @@ impl Client {
         &self,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<SendOutput, Error> {
         Ok(self.pool.batch_msg(msgs, opts).await?)
     }
 
     /// Send client message to a **specific relays**
     #[inline]
-    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<(), Error>
+    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<SendOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -900,7 +900,7 @@ impl Client {
         urls: I,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error>
+    ) -> Result<SendOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -914,7 +914,7 @@ impl Client {
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
     #[inline]
-    pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
+    pub async fn send_event(&self, event: Event) -> Result<SendEventOutput, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_event(event, opts).await?)
     }
@@ -925,7 +925,7 @@ impl Client {
         &self,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<SendOutput, Error> {
         Ok(self.pool.batch_event(events, opts).await?)
     }
 
@@ -934,7 +934,7 @@ impl Client {
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
     #[inline]
-    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<EventId, Error>
+    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -951,7 +951,7 @@ impl Client {
         urls: I,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<(), Error>
+    ) -> Result<SendOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -979,7 +979,10 @@ impl Client {
     ///
     /// Rise an error if the [`NostrSigner`] is not set.
     #[inline]
-    pub async fn send_event_builder(&self, builder: EventBuilder) -> Result<EventId, Error> {
+    pub async fn send_event_builder(
+        &self,
+        builder: EventBuilder,
+    ) -> Result<SendEventOutput, Error> {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event(event).await
     }
@@ -992,7 +995,7 @@ impl Client {
         &self,
         urls: I,
         builder: EventBuilder,
-    ) -> Result<EventId, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1040,7 +1043,7 @@ impl Client {
     /// # }
     /// ```
     #[inline]
-    pub async fn set_metadata(&self, metadata: &Metadata) -> Result<EventId, Error> {
+    pub async fn set_metadata(&self, metadata: &Metadata) -> Result<SendEventOutput, Error> {
         let builder = EventBuilder::metadata(metadata);
         self.send_event_builder(builder).await
     }
@@ -1049,7 +1052,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
-    pub async fn set_relay_list<I>(&self, relays: I) -> Result<EventId, Error>
+    pub async fn set_relay_list<I>(&self, relays: I) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = (Url, Option<RelayMetadata>)>,
     {
@@ -1076,7 +1079,11 @@ impl Client {
     /// # }
     /// ```
     #[inline]
-    pub async fn publish_text_note<S, I>(&self, content: S, tags: I) -> Result<EventId, Error>
+    pub async fn publish_text_note<S, I>(
+        &self,
+        content: S,
+        tags: I,
+    ) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
@@ -1089,7 +1096,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[inline]
-    pub async fn set_contact_list<I>(&self, list: I) -> Result<EventId, Error>
+    pub async fn set_contact_list<I>(&self, list: I) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = Contact>,
     {
@@ -1207,7 +1214,7 @@ impl Client {
         receiver: PublicKey,
         msg: S,
         reply_to: Option<EventId>,
-    ) -> Result<EventId, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
     {
@@ -1235,7 +1242,7 @@ impl Client {
         receiver: PublicKey,
         message: S,
         reply_to: Option<EventId>,
-    ) -> Result<(), Error>
+    ) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
     {
@@ -1249,7 +1256,7 @@ impl Client {
         &self,
         event: &Event,
         relay_url: Option<UncheckedUrl>,
-    ) -> Result<EventId, Error> {
+    ) -> Result<SendEventOutput, Error> {
         let builder = EventBuilder::repost(event, relay_url);
         self.send_event_builder(builder).await
     }
@@ -1258,7 +1265,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[inline]
-    pub async fn delete_event<T>(&self, id: T) -> Result<EventId, Error>
+    pub async fn delete_event<T>(&self, id: T) -> Result<SendEventOutput, Error>
     where
         T: Into<EventIdOrCoordinate>,
     {
@@ -1288,7 +1295,7 @@ impl Client {
     /// # }
     /// ```
     #[inline]
-    pub async fn like(&self, event: &Event) -> Result<EventId, Error> {
+    pub async fn like(&self, event: &Event) -> Result<SendEventOutput, Error> {
         self.reaction(event, "+").await
     }
 
@@ -1314,7 +1321,7 @@ impl Client {
     /// # }
     /// ```
     #[inline]
-    pub async fn dislike(&self, event: &Event) -> Result<EventId, Error> {
+    pub async fn dislike(&self, event: &Event) -> Result<SendEventOutput, Error> {
         self.reaction(event, "-").await
     }
 
@@ -1340,7 +1347,7 @@ impl Client {
     /// # }
     /// ```
     #[inline]
-    pub async fn reaction<S>(&self, event: &Event, reaction: S) -> Result<EventId, Error>
+    pub async fn reaction<S>(&self, event: &Event, reaction: S) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
     {
@@ -1352,7 +1359,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[inline]
-    pub async fn new_channel(&self, metadata: &Metadata) -> Result<EventId, Error> {
+    pub async fn new_channel(&self, metadata: &Metadata) -> Result<SendEventOutput, Error> {
         let builder = EventBuilder::channel(metadata);
         self.send_event_builder(builder).await
     }
@@ -1366,7 +1373,7 @@ impl Client {
         channel_id: EventId,
         relay_url: Option<Url>,
         metadata: &Metadata,
-    ) -> Result<EventId, Error> {
+    ) -> Result<SendEventOutput, Error> {
         let builder = EventBuilder::channel_metadata(channel_id, relay_url, metadata);
         self.send_event_builder(builder).await
     }
@@ -1380,7 +1387,7 @@ impl Client {
         channel_id: EventId,
         relay_url: Url,
         msg: S,
-    ) -> Result<EventId, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
     {
@@ -1396,7 +1403,7 @@ impl Client {
         &self,
         message_id: EventId,
         reason: Option<S>,
-    ) -> Result<EventId, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
     {
@@ -1412,7 +1419,7 @@ impl Client {
         &self,
         pubkey: PublicKey,
         reason: Option<S>,
-    ) -> Result<EventId, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
     {
@@ -1426,7 +1433,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
-    pub async fn auth<S>(&self, challenge: S, relay: Url) -> Result<EventId, Error>
+    pub async fn auth<S>(&self, challenge: S, relay: Url) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
     {
@@ -1444,7 +1451,7 @@ impl Client {
         bolt11: S,
         preimage: Option<S>,
         zap_request: &Event,
-    ) -> Result<EventId, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
     {
@@ -1476,7 +1483,7 @@ impl Client {
         receiver: PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
-    ) -> Result<(), Error> {
+    ) -> Result<SendEventOutput, Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
         let public_key: PublicKey = signer.public_key().await?;
@@ -1493,25 +1500,7 @@ impl Client {
         let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal, expiration)?;
 
         // Send event
-        self.send_event(gift_wrap).await?;
-
-        Ok(())
-    }
-
-    /// Send GiftWrapper Sealed Direct message
-    #[inline]
-    #[cfg(feature = "nip59")]
-    #[deprecated(since = "0.31.0", note = "Use `send_private_msg` instead.")]
-    pub async fn send_sealed_msg<S>(
-        &self,
-        receiver: PublicKey,
-        message: S,
-        _expiration: Option<Timestamp>,
-    ) -> Result<(), Error>
-    where
-        S: Into<String>,
-    {
-        self.send_private_msg(receiver, message, None).await
+        self.send_event(gift_wrap).await
     }
 
     /// File metadata
@@ -1522,7 +1511,7 @@ impl Client {
         &self,
         description: S,
         metadata: FileMetadata,
-    ) -> Result<EventId, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         S: Into<String>,
     {

@@ -24,7 +24,7 @@ async def main():
     client = Client(signer)
 
     # Add relays and connect
-    await client.add_relays(["wss://relay.damus.io", "wss://nos.lol"])
+    await client.add_relays(["wss://relay.damus.io", "wss://nos.lol", "wss://nostr.wine"])
     await client.connect()
 
     # Send an event using the Nostr Signer
@@ -36,10 +36,12 @@ async def main():
     custom_keys = Keys.generate()
     print("Mining a POW text note...")
     event = EventBuilder.text_note("Hello from rust-nostr Python bindings!", []).to_pow_event(custom_keys, 20)
-    event_id = await client.send_event(event)
+    output = await client.send_event(event)
     print("Event sent:")
-    print(f" hex:    {event_id.to_hex()}")
-    print(f" bech32: {event_id.to_bech32()}")
+    print(f" hex:    {output.id.to_hex()}")
+    print(f" bech32: {output.id.to_bech32()}")
+    print(f" Successfully sent to:    {output.success}")
+    print(f" Failed to send to: {output.failed}")
 
     await asyncio.sleep(2.0)
 
