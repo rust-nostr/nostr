@@ -682,65 +682,65 @@ impl EventBuilder {
         }
     }
 
-    /// Follow sets
+    /// Follow set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn follow_sets(publick_keys: Vec<Arc<PublicKey>>) -> Self {
+    pub fn follow_set(public_keys: Vec<Arc<PublicKey>>) -> Self {
         Self {
-            inner: nostr::EventBuilder::follow_sets(publick_keys.into_iter().map(|p| **p)),
+            inner: nostr::EventBuilder::follow_set(public_keys.into_iter().map(|p| **p)),
         }
     }
 
-    /// Relay sets
+    /// Relay set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn relay_sets(relay: Vec<String>) -> Self {
+    pub fn relay_set(relays: Vec<String>) -> Self {
         Self {
-            inner: nostr::EventBuilder::relay_sets(relay.into_iter().map(UncheckedUrl::from)),
+            inner: nostr::EventBuilder::relay_set(relays.into_iter().map(UncheckedUrl::from)),
         }
     }
 
-    /// Bookmark sets
+    /// Bookmark set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn bookmarks_sets(list: Bookmarks) -> Result<Self> {
+    pub fn bookmarks_set(list: Bookmarks) -> Result<Self> {
         Ok(Self {
-            inner: nostr::EventBuilder::bookmarks_sets(list.try_into()?),
+            inner: nostr::EventBuilder::bookmarks_set(list.try_into()?),
         })
     }
 
-    /// Article Curation sets
+    /// Article Curation set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn articles_curation_sets(list: ArticlesCuration) -> Self {
+    pub fn articles_curation_set(list: ArticlesCuration) -> Self {
         Self {
-            inner: nostr::EventBuilder::articles_curation_sets(list.into()),
+            inner: nostr::EventBuilder::articles_curation_set(list.into()),
         }
     }
 
-    /// Videos Curation sets
+    /// Videos Curation set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn videos_curation_sets(video: Vec<Arc<Coordinate>>) -> Self {
+    pub fn videos_curation_set(video: Vec<Arc<Coordinate>>) -> Self {
         Self {
-            inner: nostr::EventBuilder::videos_curation_sets(
+            inner: nostr::EventBuilder::videos_curation_set(
                 video.into_iter().map(|c| c.as_ref().deref().clone()),
             ),
         }
     }
 
-    /// Emoji sets
+    /// Emoji set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
-    pub fn emoji_sets(emojis: Vec<EmojiInfo>) -> Self {
+    pub fn emoji_set(emojis: Vec<EmojiInfo>) -> Self {
         Self {
-            inner: nostr::EventBuilder::emoji_sets(emojis.into_iter().map(|e| e.into())),
+            inner: nostr::EventBuilder::emoji_set(emojis.into_iter().map(|e| e.into())),
         }
     }
 

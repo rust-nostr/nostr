@@ -27,6 +27,7 @@
 
 ### Changed
 
+* nostr: rename NIP-51 `EventBuilder` set constructors and `Kind` variants ([Yuki Kishimoto])
 * pool: use per-purpose dedicated relay channels ([Yuki Kishimoto])
 * ffi(sdk): convert `RelayPool::handle_notifications` method to async/future ([Yuki Kishimoto])
 

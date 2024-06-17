@@ -701,63 +701,63 @@ impl JsEventBuilder {
         }
     }
 
-    /// Follow sets
+    /// Follow set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[wasm_bindgen(js_name = followSets)]
-    pub fn follow_sets(public_keys: Vec<JsPublicKey>) -> Self {
+    #[wasm_bindgen(js_name = followSet)]
+    pub fn follow_set(public_keys: Vec<JsPublicKey>) -> Self {
         Self {
-            inner: EventBuilder::follow_sets(public_keys.into_iter().map(|p| p.into())),
+            inner: EventBuilder::follow_set(public_keys.into_iter().map(|p| p.into())),
         }
     }
 
-    /// Relay sets
+    /// Relay set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[wasm_bindgen(js_name = relaySets)]
-    pub fn relay_sets(relays: Vec<String>) -> Self {
+    #[wasm_bindgen(js_name = relaySet)]
+    pub fn relay_set(relays: Vec<String>) -> Self {
         Self {
-            inner: EventBuilder::relay_sets(relays.into_iter().map(UncheckedUrl::from)),
+            inner: EventBuilder::relay_set(relays.into_iter().map(UncheckedUrl::from)),
         }
     }
 
-    /// Bookmark sets
+    /// Bookmark set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[wasm_bindgen(js_name = bookmarksSets)]
-    pub fn bookmarks_sets(list: &JsBookmarks) -> Result<JsEventBuilder> {
+    #[wasm_bindgen(js_name = bookmarksSet)]
+    pub fn bookmarks_set(list: &JsBookmarks) -> Result<JsEventBuilder> {
         Ok(Self {
-            inner: EventBuilder::bookmarks_sets(list.clone().try_into()?),
+            inner: EventBuilder::bookmarks_set(list.clone().try_into()?),
         })
     }
 
-    /// Article Curation sets
+    /// Article Curation set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[wasm_bindgen(js_name = articlesCurationSets)]
-    pub fn articles_curation_sets(list: &JsArticlesCuration) -> Self {
+    #[wasm_bindgen(js_name = articlesCurationSet)]
+    pub fn articles_curation_set(list: &JsArticlesCuration) -> Self {
         Self {
-            inner: EventBuilder::articles_curation_sets(list.clone().into()),
+            inner: EventBuilder::articles_curation_set(list.clone().into()),
         }
     }
 
-    /// Videos Curation sets
+    /// Videos Curation set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[wasm_bindgen(js_name = videosCurationSets)]
-    pub fn videos_curation_sets(video: Vec<JsCoordinate>) -> Self {
+    #[wasm_bindgen(js_name = videosCurationSet)]
+    pub fn videos_curation_set(video: Vec<JsCoordinate>) -> Self {
         Self {
-            inner: EventBuilder::videos_curation_sets(video.into_iter().map(|c| c.deref().clone())),
+            inner: EventBuilder::videos_curation_set(video.into_iter().map(|c| c.deref().clone())),
         }
     }
 
-    /// Emoji sets
+    /// Emoji set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    #[wasm_bindgen(js_name = emojiSets)]
-    pub fn emoji_sets(emoji: Vec<JsEmojiInfo>) -> Self {
+    #[wasm_bindgen(js_name = emojiSet)]
+    pub fn emoji_set(emoji: Vec<JsEmojiInfo>) -> Self {
         Self {
-            inner: EventBuilder::emoji_sets(emoji.into_iter().map(|e| e.into())),
+            inner: EventBuilder::emoji_set(emoji.into_iter().map(|e| e.into())),
         }
     }
 

@@ -153,38 +153,38 @@ pub enum KindEnum {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     Emojis,
-    /// Follow Sets
+    /// Follow Set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    FollowSets,
-    /// Relay Sets
+    FollowSet,
+    /// Relay Set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    RelaySets,
-    /// Bookmark Sets
+    RelaySet,
+    /// Bookmark Set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    BookmarkSets,
-    /// Articles Curation Sets
+    BookmarkSet,
+    /// Articles Curation Set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    ArticlesCurationSets,
-    /// Videos Curation Sets
+    ArticlesCurationSet,
+    /// Videos Curation Set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    VideosCurationSets,
-    /// Interest Sets
+    VideosCurationSet,
+    /// Interest Set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    InterestSets,
-    /// Emoji Sets
+    InterestSet,
+    /// Emoji Set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    EmojiSets,
-    /// Release Artifact Sets
+    EmojiSet,
+    /// Release Artifact Set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    ReleaseArtifactSets,
+    ReleaseArtifactSet,
     /// Relay List Metadata (NIP65)
     RelayList,
     /// Client Authentication (NIP42)
@@ -288,14 +288,14 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::SimpleGroups => Self::SimpleGroups,
             nostr::Kind::Interests => Self::Interests,
             nostr::Kind::Emojis => Self::Emojis,
-            nostr::Kind::FollowSets => Self::FollowSets,
-            nostr::Kind::RelaySets => Self::RelaySets,
-            nostr::Kind::BookmarkSets => Self::BookmarkSets,
-            nostr::Kind::ArticlesCurationSets => Self::ArticlesCurationSets,
-            nostr::Kind::VideosCurationSets => Self::VideosCurationSets,
-            nostr::Kind::InterestSets => Self::InterestSets,
-            nostr::Kind::EmojiSets => Self::EmojiSets,
-            nostr::Kind::ReleaseArtifactSets => Self::ReleaseArtifactSets,
+            nostr::Kind::FollowSet => Self::FollowSet,
+            nostr::Kind::RelaySet => Self::RelaySet,
+            nostr::Kind::BookmarkSet => Self::BookmarkSet,
+            nostr::Kind::ArticlesCurationSet => Self::ArticlesCurationSet,
+            nostr::Kind::VideosCurationSet => Self::VideosCurationSet,
+            nostr::Kind::InterestSet => Self::InterestSet,
+            nostr::Kind::EmojiSet => Self::EmojiSet,
+            nostr::Kind::ReleaseArtifactSet => Self::ReleaseArtifactSet,
             nostr::Kind::RelayList => Self::RelayList,
             nostr::Kind::Authentication => Self::Authentication,
             nostr::Kind::WalletConnectRequest => Self::WalletConnectRequest,
@@ -366,14 +366,14 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::SimpleGroups => Self::SimpleGroups,
             KindEnum::Interests => Self::Interests,
             KindEnum::Emojis => Self::Emojis,
-            KindEnum::FollowSets => Self::FollowSets,
-            KindEnum::RelaySets => Self::RelaySets,
-            KindEnum::BookmarkSets => Self::BookmarkSets,
-            KindEnum::ArticlesCurationSets => Self::ArticlesCurationSets,
-            KindEnum::VideosCurationSets => Self::VideosCurationSets,
-            KindEnum::InterestSets => Self::InterestSets,
-            KindEnum::EmojiSets => Self::EmojiSets,
-            KindEnum::ReleaseArtifactSets => Self::ReleaseArtifactSets,
+            KindEnum::FollowSet => Self::FollowSet,
+            KindEnum::RelaySet => Self::RelaySet,
+            KindEnum::BookmarkSet => Self::BookmarkSet,
+            KindEnum::ArticlesCurationSet => Self::ArticlesCurationSet,
+            KindEnum::VideosCurationSet => Self::VideosCurationSet,
+            KindEnum::InterestSet => Self::InterestSet,
+            KindEnum::EmojiSet => Self::EmojiSet,
+            KindEnum::ReleaseArtifactSet => Self::ReleaseArtifactSet,
             KindEnum::RelayList => Self::RelayList,
             KindEnum::Authentication => Self::Authentication,
             KindEnum::WalletConnectRequest => Self::WalletConnectRequest,

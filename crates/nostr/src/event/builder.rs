@@ -1505,31 +1505,31 @@ impl EventBuilder {
         Self::new(Kind::Emojis, "", tags)
     }
 
-    /// Follow sets
+    /// Follow set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[inline]
-    pub fn follow_sets<I>(public_keys: I) -> Self
+    pub fn follow_set<I>(public_keys: I) -> Self
     where
         I: IntoIterator<Item = PublicKey>,
     {
         Self::new(
-            Kind::FollowSets,
+            Kind::FollowSet,
             "",
             public_keys.into_iter().map(Tag::public_key),
         )
     }
 
-    /// Relay sets
+    /// Relay set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[inline]
-    pub fn relay_sets<I>(relay: I) -> Self
+    pub fn relay_set<I>(relay: I) -> Self
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
         Self::new(
-            Kind::RelaySets,
+            Kind::RelaySet,
             "",
             relay
                 .into_iter()
@@ -1537,50 +1537,50 @@ impl EventBuilder {
         )
     }
 
-    /// Bookmark sets
+    /// Bookmark set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[inline]
-    pub fn bookmarks_sets(list: Bookmarks) -> Self {
+    pub fn bookmarks_set(list: Bookmarks) -> Self {
         let tags: Vec<Tag> = list.into();
-        Self::new(Kind::BookmarkSets, "", tags)
+        Self::new(Kind::BookmarkSet, "", tags)
     }
 
-    /// Article Curation sets
+    /// Article Curation set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[inline]
-    pub fn articles_curation_sets(list: ArticlesCuration) -> Self {
+    pub fn articles_curation_set(list: ArticlesCuration) -> Self {
         let tags: Vec<Tag> = list.into();
-        Self::new(Kind::ArticlesCurationSets, "", tags)
+        Self::new(Kind::ArticlesCurationSet, "", tags)
     }
 
-    /// Videos Curation sets
+    /// Videos Curation set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[inline]
-    pub fn videos_curation_sets<I>(video: I) -> Self
+    pub fn videos_curation_set<I>(video: I) -> Self
     where
         I: IntoIterator<Item = Coordinate>,
     {
         Self::new(
-            Kind::VideosCurationSets,
+            Kind::VideosCurationSet,
             "",
             video.into_iter().map(Tag::from),
         )
     }
 
-    /// Emoji sets
+    /// Emoji set
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-    pub fn emoji_sets<I>(emoji: I) -> Self
+    pub fn emoji_set<I>(emoji: I) -> Self
     where
         I: IntoIterator<Item = (String, UncheckedUrl)>,
     {
         let tags = emoji.into_iter().map(|(s, url)| {
             Tag::from_standardized_without_cell(TagStandard::Emoji { shortcode: s, url })
         });
-        Self::new(Kind::EmojiSets, "", tags)
+        Self::new(Kind::EmojiSet, "", tags)
     }
 
     /// Label
