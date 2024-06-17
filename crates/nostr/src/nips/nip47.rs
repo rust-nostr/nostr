@@ -18,7 +18,7 @@ use serde_json::Value;
 use super::nip04;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{ParseError, Url};
-use crate::{key, Event, JsonUtil, PublicKey, SecretKey};
+use crate::{key, Event, JsonUtil, PublicKey, SecretKey, Timestamp};
 #[cfg(feature = "std")]
 use crate::{EventBuilder, Keys, Kind, Tag};
 
@@ -358,14 +358,14 @@ pub enum TransactionType {
 }
 
 /// List Transactions Request Params
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ListTransactionsRequestParams {
     /// Starting timestamp in seconds since epoch
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub from: Option<u64>,
+    pub from: Option<Timestamp>,
     /// Ending timestamp in seconds since epoch
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub until: Option<u64>,
+    pub until: Option<Timestamp>,
     /// Number of invoices to return
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<u64>,
@@ -584,14 +584,15 @@ pub struct LookupInvoiceResponseResult {
     /// Fees paid in millisatoshis
     pub fees_paid: u64,
     /// Creation timestamp in seconds since epoch
-    pub created_at: u64,
+    pub created_at: Timestamp,
     /// Expiration timestamp in seconds since epoch
-    pub expires_at: u64,
+    pub expires_at: Timestamp,
     /// Settled timestamp in seconds since epoch
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub settled_at: Option<u64>,
+    pub settled_at: Option<Timestamp>,
     /// Optional metadata about the payment
-    pub metadata: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Value>,
 }
 
 /// NIP47 `get_balance` Response Result
@@ -1069,5 +1070,48 @@ mod tests {
         } else {
             panic!("Invalid request params");
         }
+    }
+
+    #[test]
+    fn test_parse_list_transactions_result() {
+        let json = r#"{
+            "result_type": "list_transactions",
+            "result": {
+                "transactions": [
+                    {
+                       "type": "incoming",
+                       "invoice": "abcd",
+                       "description": "string",
+                       "payment_hash": "",
+                       "amount": 123,
+                       "fees_paid": 1,
+                       "created_at": 123456,
+                       "expires_at": 1234567
+                   }
+                ]
+            }
+        }"#;
+        let result = Response::from_json(json).unwrap();
+        assert_eq!(result.result_type, Method::ListTransactions);
+        assert!(result.error.is_none());
+        assert_eq!(
+            result.result,
+            Some(ResponseResult::ListTransactions(vec![
+                LookupInvoiceResponseResult {
+                    transaction_type: Some(TransactionType::Incoming),
+                    invoice: Some(String::from("abcd")),
+                    description: Some(String::from("string")),
+                    amount: 123,
+                    fees_paid: 1,
+                    created_at: Timestamp::from(123456),
+                    expires_at: Timestamp::from(1234567),
+                    description_hash: None,
+                    payment_hash: String::new(),
+                    metadata: None,
+                    settled_at: None,
+                    preimage: None
+                }
+            ]))
+        )
     }
 }

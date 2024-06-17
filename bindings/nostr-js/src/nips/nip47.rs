@@ -10,6 +10,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 use crate::key::{JsPublicKey, JsSecretKey};
+use crate::types::time::JsTimestamp;
 
 /// NIP47 Response Error codes
 #[wasm_bindgen(js_name = Nip47ErrorCode)]
@@ -327,9 +328,9 @@ impl From<JsLookupInvoiceRequestParams> for LookupInvoiceRequestParams {
 #[wasm_bindgen(js_name = ListTransactionsRequestParams)]
 pub struct JsListTransactionsRequestParams {
     /// Starting timestamp in seconds since epoch
-    pub from: Option<u64>,
+    pub from: Option<JsTimestamp>,
     /// Ending timestamp in seconds since epoch
-    pub until: Option<u64>,
+    pub until: Option<JsTimestamp>,
     /// Number of invoices to return
     pub limit: Option<u64>,
     /// Offset of the first invoice to return
@@ -343,8 +344,8 @@ pub struct JsListTransactionsRequestParams {
 impl From<ListTransactionsRequestParams> for JsListTransactionsRequestParams {
     fn from(value: ListTransactionsRequestParams) -> Self {
         Self {
-            from: value.from,
-            until: value.until,
+            from: value.from.map(|t| t.into()),
+            until: value.until.map(|t| t.into()),
             limit: value.limit,
             offset: value.offset,
             unpaid: value.unpaid,
@@ -356,8 +357,8 @@ impl From<ListTransactionsRequestParams> for JsListTransactionsRequestParams {
 impl From<JsListTransactionsRequestParams> for ListTransactionsRequestParams {
     fn from(value: JsListTransactionsRequestParams) -> Self {
         Self {
-            from: value.from,
-            until: value.until,
+            from: value.from.map(|t| *t),
+            until: value.until.map(|t| *t),
             limit: value.limit,
             offset: value.offset,
             unpaid: value.unpaid,
@@ -464,14 +465,14 @@ pub struct JsLookupInvoiceResponseResult {
     /// Fees paid in millisatoshis
     pub fees_paid: u64,
     /// Creation timestamp in seconds since epoch
-    pub created_at: u64,
+    pub created_at: JsTimestamp,
     /// Expiration timestamp in seconds since epoch
-    pub expires_at: u64,
+    pub expires_at: JsTimestamp,
     /// Settled timestamp in seconds since epoch
-    pub settled_at: Option<u64>,
-    /// Optional metadata about the payment
-    #[wasm_bindgen(getter_with_clone)]
-    pub metadata: String,
+    pub settled_at: Option<JsTimestamp>,
+    // /// Optional metadata about the payment
+    // #[wasm_bindgen(getter_with_clone)]
+    // pub metadata: String, // TODO: this is not a string
 }
 
 impl From<LookupInvoiceResponseResult> for JsLookupInvoiceResponseResult {
@@ -485,10 +486,10 @@ impl From<LookupInvoiceResponseResult> for JsLookupInvoiceResponseResult {
             payment_hash: value.payment_hash,
             amount: value.amount,
             fees_paid: value.fees_paid,
-            created_at: value.created_at,
-            expires_at: value.expires_at,
-            settled_at: value.settled_at,
-            metadata: value.metadata.to_string(),
+            created_at: value.created_at.into(),
+            expires_at: value.expires_at.into(),
+            settled_at: value.settled_at.map(|t| t.into()),
+            // metadata: value.metadata.to_string(),
         }
     }
 }
@@ -504,10 +505,10 @@ impl From<JsLookupInvoiceResponseResult> for LookupInvoiceResponseResult {
             payment_hash: value.payment_hash,
             amount: value.amount,
             fees_paid: value.fees_paid,
-            created_at: value.created_at,
-            expires_at: value.expires_at,
-            settled_at: value.settled_at,
-            metadata: value.metadata.into(),
+            created_at: *value.created_at,
+            expires_at: *value.expires_at,
+            settled_at: value.settled_at.map(|t| *t),
+            metadata: None,
         }
     }
 }

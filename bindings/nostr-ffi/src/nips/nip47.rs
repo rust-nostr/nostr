@@ -10,7 +10,7 @@ use nostr::{JsonUtil, Url};
 use uniffi::{Enum, Object, Record};
 
 use crate::error::Result;
-use crate::{PublicKey, SecretKey};
+use crate::{JsonValue, PublicKey, SecretKey, Timestamp};
 
 /// NIP47 Response Error codes
 #[derive(Enum)]
@@ -480,9 +480,9 @@ impl From<LookupInvoiceRequestParams> for nip47::LookupInvoiceRequestParams {
 #[derive(Record)]
 pub struct ListTransactionsRequestParams {
     /// Starting timestamp in seconds since epoch
-    pub from: Option<u64>,
+    pub from: Option<Arc<Timestamp>>,
     /// Ending timestamp in seconds since epoch
-    pub until: Option<u64>,
+    pub until: Option<Arc<Timestamp>>,
     /// Number of invoices to return
     pub limit: Option<u64>,
     /// Offset of the first invoice to return
@@ -496,8 +496,8 @@ pub struct ListTransactionsRequestParams {
 impl From<nip47::ListTransactionsRequestParams> for ListTransactionsRequestParams {
     fn from(value: nip47::ListTransactionsRequestParams) -> Self {
         Self {
-            from: value.from,
-            until: value.until,
+            from: value.from.map(|t| Arc::new(t.into())),
+            until: value.until.map(|t| Arc::new(t.into())),
             limit: value.limit,
             offset: value.offset,
             unpaid: value.unpaid,
@@ -509,8 +509,8 @@ impl From<nip47::ListTransactionsRequestParams> for ListTransactionsRequestParam
 impl From<ListTransactionsRequestParams> for nip47::ListTransactionsRequestParams {
     fn from(value: ListTransactionsRequestParams) -> Self {
         Self {
-            from: value.from,
-            until: value.until,
+            from: value.from.map(|t| **t),
+            until: value.until.map(|t| **t),
             limit: value.limit,
             offset: value.offset,
             unpaid: value.unpaid,
@@ -651,13 +651,13 @@ pub struct LookupInvoiceResponseResult {
     /// Fees paid in millisatoshis
     pub fees_paid: u64,
     /// Creation timestamp in seconds since epoch
-    pub created_at: u64,
+    pub created_at: Arc<Timestamp>,
     /// Expiration timestamp in seconds since epoch
-    pub expires_at: u64,
+    pub expires_at: Arc<Timestamp>,
     /// Settled timestamp in seconds since epoch
-    pub settled_at: Option<u64>,
+    pub settled_at: Option<Arc<Timestamp>>,
     /// Optional metadata about the payment
-    pub metadata: String,
+    pub metadata: Option<JsonValue>,
 }
 
 impl From<nip47::LookupInvoiceResponseResult> for LookupInvoiceResponseResult {
@@ -671,10 +671,10 @@ impl From<nip47::LookupInvoiceResponseResult> for LookupInvoiceResponseResult {
             payment_hash: value.payment_hash,
             amount: value.amount,
             fees_paid: value.fees_paid,
-            created_at: value.created_at,
-            expires_at: value.expires_at,
-            settled_at: value.settled_at,
-            metadata: value.metadata.to_string(),
+            created_at: Arc::new(value.created_at.into()),
+            expires_at: Arc::new(value.expires_at.into()),
+            settled_at: value.settled_at.map(|t| Arc::new(t.into())),
+            metadata: value.metadata.and_then(|m| m.try_into().ok()),
         }
     }
 }
@@ -690,10 +690,10 @@ impl From<LookupInvoiceResponseResult> for nip47::LookupInvoiceResponseResult {
             payment_hash: value.payment_hash,
             amount: value.amount,
             fees_paid: value.fees_paid,
-            created_at: value.created_at,
-            expires_at: value.expires_at,
-            settled_at: value.settled_at,
-            metadata: value.metadata.into(),
+            created_at: **value.created_at,
+            expires_at: **value.expires_at,
+            settled_at: value.settled_at.map(|t| **t),
+            metadata: value.metadata.and_then(|m| m.try_into().ok()),
         }
     }
 }

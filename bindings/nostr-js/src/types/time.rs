@@ -7,6 +7,7 @@ use std::ops::Deref;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
+#[derive(Clone, Copy)]
 #[wasm_bindgen(js_name = Timestamp)]
 pub struct JsTimestamp {
     inner: Timestamp,
