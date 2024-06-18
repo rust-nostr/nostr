@@ -56,8 +56,6 @@ pub enum RelayPoolNotification {
         /// Relay Status
         status: RelayStatus,
     },
-    /// Stop
-    Stop,
     /// Shutdown
     Shutdown,
 }
@@ -99,22 +97,6 @@ impl RelayPool {
         Self {
             inner: AtomicDestructor::new(InternalRelayPool::with_database(opts, database)),
         }
-    }
-
-    /// Start
-    ///
-    /// Internally call `connect` without wait for connection.
-    #[inline]
-    pub async fn start(&self) {
-        self.inner.connect(None).await
-    }
-
-    /// Stop
-    ///
-    /// Call `connect` to re-start relays connections
-    #[inline]
-    pub async fn stop(&self) -> Result<(), Error> {
-        self.inner.stop().await
     }
 
     /// Completely shutdown pool
@@ -516,12 +498,11 @@ impl RelayPool {
     {
         let mut notifications = self.notifications();
         while let Ok(notification) = notifications.recv().await {
-            let stop: bool = RelayPoolNotification::Stop == notification;
             let shutdown: bool = RelayPoolNotification::Shutdown == notification;
             let exit: bool = func(notification)
                 .await
                 .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit || stop || shutdown {
+            if exit || shutdown {
                 break;
             }
         }

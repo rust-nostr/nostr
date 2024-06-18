@@ -45,21 +45,6 @@ impl RelayPool {
         }
     }
 
-    /// Start
-    ///
-    /// Internally call `connect` without wait for connection.
-    #[inline]
-    pub async fn start(&self) {
-        self.inner.start().await
-    }
-
-    /// Stop
-    ///
-    /// Call `connect` to re-start relays connections
-    pub async fn stop(&self) -> Result<()> {
-        Ok(self.inner.stop().await?)
-    }
-
     /// Completely shutdown pool
     pub async fn shutdown(&self) -> Result<()> {
         Ok(self.inner.clone().shutdown().await?)

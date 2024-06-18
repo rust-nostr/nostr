@@ -19,8 +19,6 @@ pub enum RelayStatus {
     Connected,
     /// Relay disconnected, will retry to connect again
     Disconnected,
-    /// Stop
-    Stopped,
     /// Relay completely disconnected
     Terminated,
 }
@@ -33,15 +31,14 @@ impl fmt::Display for RelayStatus {
             Self::Connecting => write!(f, "Connecting"),
             Self::Connected => write!(f, "Connected"),
             Self::Disconnected => write!(f, "Disconnected"),
-            Self::Stopped => write!(f, "Stopped"),
             Self::Terminated => write!(f, "Terminated"),
         }
     }
 }
 
 impl RelayStatus {
-    /// Check if is `disconnected`, `stopped` or `terminated`
+    /// Check if is `disconnected` or `terminated`
     pub(crate) fn is_disconnected(&self) -> bool {
-        matches!(self, Self::Disconnected | Self::Stopped | Self::Terminated)
+        matches!(self, Self::Disconnected | Self::Terminated)
     }
 }

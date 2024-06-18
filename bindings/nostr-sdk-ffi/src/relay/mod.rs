@@ -154,11 +154,6 @@ impl Relay {
         self.inner.connect(connection_timeout).await
     }
 
-    /// Disconnect from relay and set status to 'Stopped'
-    pub async fn stop(&self) -> Result<()> {
-        Ok(self.inner.stop().await?)
-    }
-
     /// Disconnect from relay and set status to 'Terminated'
     pub async fn terminate(&self) -> Result<()> {
         Ok(self.inner.terminate().await?)

@@ -88,10 +88,6 @@ name = "bot"
 required-features = ["all-nips"]
 
 [[example]]
-name = "client-stop"
-required-features = ["all-nips"]
-
-[[example]]
 name = "rocksdb"
 required-features = ["all-nips", "rocksdb"]
 

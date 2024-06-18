@@ -38,7 +38,7 @@ impl Client {
                             }
                         }
                     }
-                    RelayPoolNotification::Shutdown => break, // TODO: handle also 'Stop' msg?
+                    RelayPoolNotification::Shutdown => break,
                     _ => (),
                 }
             }

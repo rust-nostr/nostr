@@ -54,8 +54,6 @@ pub enum JsRelayStatus {
     Connected,
     /// Relay disconnected, will retry to connect again
     Disconnected,
-    /// Stop
-    Stopped,
     /// Relay completely disconnected
     Terminated,
 }
@@ -68,7 +66,6 @@ impl From<RelayStatus> for JsRelayStatus {
             RelayStatus::Connecting => Self::Connecting,
             RelayStatus::Connected => Self::Connected,
             RelayStatus::Disconnected => Self::Disconnected,
-            RelayStatus::Stopped => Self::Stopped,
             RelayStatus::Terminated => Self::Terminated,
         }
     }
@@ -131,11 +128,6 @@ impl JsRelay {
     /// Connect to relay and keep alive connection
     pub async fn connect(&self, connection_timeout: Option<JsDuration>) {
         self.inner.connect(connection_timeout.map(|d| *d)).await
-    }
-
-    /// Disconnect from relay and set status to 'Stopped'
-    pub async fn stop(&self) -> Result<()> {
-        self.inner.stop().await.map_err(into_err)
     }
 
     /// Disconnect from relay and set status to 'Terminated'

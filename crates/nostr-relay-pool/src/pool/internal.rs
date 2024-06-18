@@ -65,17 +65,6 @@ impl InternalRelayPool {
         }
     }
 
-    pub async fn stop(&self) -> Result<(), Error> {
-        let relays = self.relays().await;
-        for relay in relays.values() {
-            relay.stop().await?;
-        }
-        if let Err(e) = self.notification_sender.send(RelayPoolNotification::Stop) {
-            tracing::error!("Impossible to send STOP notification: {e}");
-        }
-        Ok(())
-    }
-
     pub async fn shutdown(&self) -> Result<(), Error> {
         // Disconnect all relays
         self.disconnect().await?;

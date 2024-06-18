@@ -52,8 +52,6 @@ struct NostrMessage {
 enum RelayServiceEvent {
     /// None
     None,
-    /// Stop
-    Stop,
     /// Completely disconnect
     Terminate,
 }
@@ -149,7 +147,6 @@ pub(crate) struct InternalRelay {
     blacklist: RelayBlacklist,
     database: Arc<DynNostrDatabase>,
     channels: RelayChannels,
-    scheduled_for_stop: Arc<AtomicBool>,
     scheduled_for_termination: Arc<AtomicBool>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
@@ -190,7 +187,6 @@ impl InternalRelay {
             blacklist,
             database,
             channels: RelayChannels::new(),
-            scheduled_for_stop: Arc::new(AtomicBool::new(false)),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: Arc::new(RwLock::new(None)),
@@ -231,7 +227,6 @@ impl InternalRelay {
                 RelayStatus::Connecting => tracing::debug!("Connecting to '{}'", self.url),
                 RelayStatus::Connected => tracing::info!("Connected to '{}'", self.url),
                 RelayStatus::Disconnected => tracing::info!("Disconnected from '{}'", self.url),
-                RelayStatus::Stopped => tracing::info!("Stopped '{}'", self.url),
                 RelayStatus::Terminated => {
                     tracing::info!("Completely disconnected from '{}'", self.url)
                 }
@@ -239,7 +234,7 @@ impl InternalRelay {
         }
 
         // Send notification
-        self.send_notification(RelayNotification::RelayStatus { status })
+        self.send_notification(RelayNotification::RelayStatus { status }, true)
             .await;
     }
 
@@ -313,16 +308,6 @@ impl InternalRelay {
     }
 
     #[inline]
-    fn is_scheduled_for_stop(&self) -> bool {
-        self.scheduled_for_stop.load(Ordering::SeqCst)
-    }
-
-    #[inline]
-    fn schedule_for_stop(&self, value: bool) {
-        self.scheduled_for_stop.store(value, Ordering::SeqCst);
-    }
-
-    #[inline]
     fn is_scheduled_for_termination(&self) -> bool {
         self.scheduled_for_termination.load(Ordering::SeqCst)
     }
@@ -341,47 +326,47 @@ impl InternalRelay {
         *external_notification_sender = notification_sender;
     }
 
-    async fn send_notification(&self, notification: RelayNotification) {
+    async fn send_notification(&self, notification: RelayNotification, external: bool) {
         // Send internal notification
         let _ = self.internal_notification_sender.send(notification.clone());
 
         // Send external notification
-        let external_notification_sender = self.external_notification_sender.read().await;
-        if let Some(external_notification_sender) = external_notification_sender.as_ref() {
-            // Convert relay to notification to pool notification
-            let notification: RelayPoolNotification = match notification {
-                RelayNotification::Event {
-                    subscription_id,
-                    event,
-                } => RelayPoolNotification::Event {
-                    relay_url: self.url(),
-                    subscription_id,
-                    event,
-                },
-                RelayNotification::Message { message } => RelayPoolNotification::Message {
-                    relay_url: self.url(),
-                    message,
-                },
-                RelayNotification::RelayStatus { status } => RelayPoolNotification::RelayStatus {
-                    relay_url: self.url(),
-                    status,
-                },
-                RelayNotification::Shutdown => RelayPoolNotification::Shutdown,
-                RelayNotification::Stop => RelayPoolNotification::Stop,
-            };
+        if external {
+            let external_notification_sender = self.external_notification_sender.read().await;
+            if let Some(external_notification_sender) = external_notification_sender.as_ref() {
+                // Convert relay to notification to pool notification
+                let notification: RelayPoolNotification = match notification {
+                    RelayNotification::Event {
+                        subscription_id,
+                        event,
+                    } => RelayPoolNotification::Event {
+                        relay_url: self.url(),
+                        subscription_id,
+                        event,
+                    },
+                    RelayNotification::Message { message } => RelayPoolNotification::Message {
+                        relay_url: self.url(),
+                        message,
+                    },
+                    RelayNotification::RelayStatus { status } => {
+                        RelayPoolNotification::RelayStatus {
+                            relay_url: self.url(),
+                            status,
+                        }
+                    }
+                    RelayNotification::Shutdown => RelayPoolNotification::Shutdown,
+                };
 
-            // Send notification
-            let _ = external_notification_sender.send(notification);
+                // Send notification
+                let _ = external_notification_sender.send(notification);
+            }
         }
     }
 
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        self.schedule_for_stop(false); // TODO: remove?
         self.schedule_for_termination(false); // TODO: remove?
 
-        if let RelayStatus::Initialized | RelayStatus::Stopped | RelayStatus::Terminated =
-            self.status().await
-        {
+        if let RelayStatus::Initialized | RelayStatus::Terminated = self.status().await {
             if self.opts.get_reconnect() {
                 // If connection timeout is not null, try to connect
                 match connection_timeout {
@@ -423,15 +408,7 @@ impl InternalRelay {
 
                         // Schedule relay for termination
                         // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
-                        if relay.is_scheduled_for_stop() {
-                            relay.set_status(RelayStatus::Stopped, true).await;
-                            relay.schedule_for_stop(false);
-                            tracing::debug!(
-                                "Auto connect loop terminated for {} [stop - schedule]",
-                                relay.url
-                            );
-                            break;
-                        } else if relay.is_scheduled_for_termination() {
+                        if relay.is_scheduled_for_termination() {
                             relay.set_status(RelayStatus::Terminated, true).await;
                             relay.schedule_for_termination(false);
                             tracing::debug!(
@@ -448,7 +425,7 @@ impl InternalRelay {
                             | RelayStatus::Disconnected => {
                                 relay.try_connect(connection_timeout).await
                             }
-                            RelayStatus::Stopped | RelayStatus::Terminated => {
+                            RelayStatus::Terminated => {
                                 tracing::debug!("Auto connect loop terminated for {}", relay.url);
                                 break;
                             }
@@ -598,14 +575,6 @@ impl InternalRelay {
                             match service {
                                 // Do nothing
                                 RelayServiceEvent::None => {},
-                                // Stop
-                                RelayServiceEvent::Stop => {
-                                    if relay.is_scheduled_for_stop() {
-                                        relay.set_status(RelayStatus::Stopped, true).await;
-                                        relay.schedule_for_stop(false);
-                                        break;
-                                    }
-                                }
                                 // Terminate
                                 RelayServiceEvent::Terminate => {
                                     if relay.is_scheduled_for_termination() {
@@ -809,7 +778,7 @@ impl InternalRelay {
                 }
 
                 // Send notification
-                self.send_notification(RelayNotification::Message { message })
+                self.send_notification(RelayNotification::Message { message }, true)
                     .await;
             }
             Ok(None) | Err(Error::MessageHandle(MessageHandleError::EmptyMsg)) => (),
@@ -975,10 +944,13 @@ impl InternalRelay {
                 // Check if seen
                 if !seen {
                     // Send notification
-                    self.send_notification(RelayNotification::Event {
-                        subscription_id: SubscriptionId::new(&subscription_id),
-                        event: event.clone(),
-                    })
+                    self.send_notification(
+                        RelayNotification::Event {
+                            subscription_id: SubscriptionId::new(&subscription_id),
+                            event: event.clone(),
+                        },
+                        true,
+                    )
                     .await;
                 }
 
@@ -991,22 +963,14 @@ impl InternalRelay {
         }
     }
 
-    pub async fn stop(&self) -> Result<(), Error> {
-        self.schedule_for_stop(true); // TODO: remove?
-        if !self.is_disconnected().await {
-            self.channels.send_service_msg(RelayServiceEvent::Stop)?;
-        }
-        self.send_notification(RelayNotification::Stop).await;
-        Ok(())
-    }
-
     pub async fn terminate(&self) -> Result<(), Error> {
         self.schedule_for_termination(true); // TODO: remove?
         if !self.is_disconnected().await {
             self.channels
                 .send_service_msg(RelayServiceEvent::Terminate)?;
         }
-        self.send_notification(RelayNotification::Shutdown).await;
+        self.send_notification(RelayNotification::Shutdown, false)
+            .await;
         Ok(())
     }
 
@@ -1255,7 +1219,7 @@ impl InternalRelay {
                                     return false; // No need to send CLOSE msg
                                 }
                             }
-                            RelayNotification::Stop | RelayNotification::Shutdown => {
+                            RelayNotification::Shutdown => {
                                 return false; // No need to send CLOSE msg
                             }
                             _ => (),
@@ -1271,7 +1235,7 @@ impl InternalRelay {
                                             return Ok(()); // No need to send CLOSE msg
                                         }
                                     }
-                                    RelayNotification::Stop | RelayNotification::Shutdown => {
+                                    RelayNotification::Shutdown => {
                                         return Ok(()); // No need to send CLOSE msg
                                     }
                                     _ => (),
@@ -1428,7 +1392,7 @@ impl InternalRelay {
                             return Err(Error::NotConnectedStatusChanged);
                         }
                     }
-                    RelayNotification::Stop | RelayNotification::Shutdown => break,
+                    RelayNotification::Shutdown => break,
                     _ => (),
                 }
             }
@@ -1459,7 +1423,7 @@ impl InternalRelay {
                                 return Err(Error::NotConnected);
                             }
                         }
-                        RelayNotification::Stop | RelayNotification::Shutdown => break,
+                        RelayNotification::Shutdown => break,
                         _ => (),
                     }
                 }
@@ -1766,7 +1730,7 @@ impl InternalRelay {
                         return Err(Error::NotConnectedStatusChanged);
                     }
                 }
-                RelayNotification::Stop | RelayNotification::Shutdown => break,
+                RelayNotification::Shutdown => break,
                 _ => (),
             };
 

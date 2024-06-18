@@ -134,14 +134,6 @@ impl Client {
             .await
     }
 
-    pub async fn start(&self) {
-        self.inner.start().await
-    }
-
-    pub async fn stop(&self) -> Result<()> {
-        Ok(self.inner.stop().await?)
-    }
-
     pub async fn shutdown(&self) -> Result<()> {
         Ok(self.inner.clone().shutdown().await?)
     }

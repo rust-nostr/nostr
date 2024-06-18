@@ -327,20 +327,6 @@ impl Client {
         // TODO: update mute list event?
     }
 
-    /// Start a previously stopped client
-    #[inline]
-    pub async fn start(&self) {
-        self.connect().await;
-    }
-
-    /// Stop the client
-    ///
-    /// Disconnect all relays and set their status to `RelayStatus::Stopped`.
-    #[inline]
-    pub async fn stop(&self) -> Result<(), Error> {
-        Ok(self.pool.stop().await?)
-    }
-
     /// Completely shutdown [`Client`]
     #[inline]
     pub async fn shutdown(self) -> Result<(), Error> {

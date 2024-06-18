@@ -47,22 +47,6 @@ impl JsRelayPool {
         }
     }
 
-    /// Start
-    ///
-    /// Internally call `connect` without wait for connection.
-    #[wasm_bindgen]
-    pub async fn start(&self) {
-        self.inner.start().await
-    }
-
-    /// Stop
-    ///
-    /// Call `connect` or `start` to re-start relays connections
-    #[wasm_bindgen]
-    pub async fn stop(&self) -> Result<()> {
-        self.inner.stop().await.map_err(into_err)
-    }
-
     /// Completely shutdown pool
     #[wasm_bindgen]
     pub async fn shutdown(&self) -> Result<()> {

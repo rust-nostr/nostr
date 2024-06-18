@@ -64,8 +64,6 @@ pub enum RelayNotification {
         /// Relay Status
         status: RelayStatus,
     },
-    /// Stop
-    Stop,
     /// Shutdown
     Shutdown,
 }
@@ -223,15 +221,10 @@ impl Relay {
         self.inner.connect(connection_timeout).await
     }
 
-    /// Disconnect from relay and set status to 'Stopped'
-    #[inline]
-    pub async fn stop(&self) -> Result<(), Error> {
-        self.inner.stop().await
-    }
-
     /// Disconnect from relay and set status to 'Terminated'
     #[inline]
     pub async fn terminate(&self) -> Result<(), Error> {
+        // TODO: rename to disconnect
         self.inner.terminate().await
     }
 
@@ -391,12 +384,11 @@ impl Relay {
     {
         let mut notifications = self.notifications();
         while let Ok(notification) = notifications.recv().await {
-            let stop: bool = RelayNotification::Stop == notification;
             let shutdown: bool = RelayNotification::Shutdown == notification;
             let exit: bool = func(notification)
                 .await
                 .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit || stop || shutdown {
+            if exit || shutdown {
                 break;
             }
         }

@@ -48,9 +48,14 @@
 ### Fixed
 
 * nostr: fix NIP-47 `list_transactions` response deserialization ([Yuki Kishimoto] and [lnbc1QWFyb24])
+* pool: fix shutdown notification sent to external channel on `Relay::terminate` method call ([Yuki Kishimoto])
 * js: fix "RuntimeError: memory access out of bounds" WASM error ([Yuki Kishimoto])
 
 ### Removed
+
+* pool: remove `RelayPoolNotification::Stop` ([Yuki Kishimoto])
+* pool: remove `RelayStatus::Stop` ([Yuki Kishimoto])
+* Remove all `start` and `stop` methods ([Yuki Kishimoto])
 
 ## [v0.32.0]
 
