@@ -10,7 +10,6 @@
 
 use std::fmt;
 
-use nostr::key;
 use nostr::prelude::*;
 use thiserror::Error;
 
@@ -46,6 +45,14 @@ pub enum Error {
     #[cfg(feature = "nip46")]
     #[error(transparent)]
     NIP46(#[from] nip46::Error),
+    /// NIP59 error
+    #[cfg(feature = "nip59")]
+    #[error(transparent)]
+    NIP59(#[from] nip59::Error),
+    /// Event error
+    #[cfg(feature = "nip59")]
+    #[error(transparent)]
+    Event(#[from] event::Error),
 }
 
 /// Nostr Signer Type
@@ -216,6 +223,35 @@ impl NostrSigner {
             #[cfg(feature = "nip46")]
             Self::NIP46(signer) => Ok(signer.nip44_decrypt(public_key, payload).await?),
         }
+    }
+
+    /// Unwrap Gift Wrap event
+    ///
+    /// Internally verify the `seal` event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    // TODO: find a way to merge this with the `Keys` implementation in `nostr` crate
+    #[cfg(feature = "nip59")]
+    pub async fn unwrap_gift_wrap(&self, gift_wrap: &Event) -> Result<UnwrappedGift, Error> {
+        // Check event kind
+        if gift_wrap.kind != Kind::GiftWrap {
+            return Err(Error::NIP59(nip59::Error::NotGiftWrap));
+        }
+
+        // Decrypt and verify seal
+        let seal: String = self
+            .nip44_decrypt(gift_wrap.author(), gift_wrap.content())
+            .await?;
+        let seal: Event = Event::from_json(seal)?;
+        seal.verify()?;
+
+        // Decrypt rumor
+        let rumor: String = self.nip44_decrypt(seal.author(), seal.content()).await?;
+
+        Ok(UnwrappedGift {
+            sender: seal.author(),
+            rumor: UnsignedEvent::from_json(rumor)?,
+        })
     }
 }
 

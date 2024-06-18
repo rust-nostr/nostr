@@ -12,6 +12,7 @@ The following crate feature flags are available:
 | `nip07` |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**) |
 | `nip44` |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                                |
 | `nip46` |   Yes   | Enable NIP-46: Nostr Connect                                                                 |
+| `nip59` |   Yes   | Enable NIP-59: Gift Wrap                                                                     |
 
 ## State
 

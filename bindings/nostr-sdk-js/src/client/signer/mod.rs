@@ -8,6 +8,7 @@ use nostr_js::error::{into_err, Result};
 use nostr_js::event::{JsEvent, JsEventBuilder, JsUnsignedEvent};
 use nostr_js::key::{JsKeys, JsPublicKey};
 use nostr_js::nips::nip07::JsNip07Signer;
+use nostr_js::nips::nip59::JsUnwrappedGift;
 use nostr_sdk::NostrSigner;
 use wasm_bindgen::prelude::*;
 
@@ -117,5 +118,20 @@ impl JsNostrSigner {
             .nip44_decrypt(**public_key, content)
             .await
             .map_err(into_err)
+    }
+
+    /// Unwrap Gift Wrap event
+    ///
+    /// Internally verify the `seal` event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[wasm_bindgen(js_name = unwrapGiftWrap)]
+    pub async fn unwrap_gift_wrap(&self, gift_wrap: &JsEvent) -> Result<JsUnwrappedGift> {
+        Ok(self
+            .inner
+            .unwrap_gift_wrap(gift_wrap.deref())
+            .await
+            .map_err(into_err)?
+            .into())
     }
 }

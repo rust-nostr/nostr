@@ -54,6 +54,12 @@ pub struct UnwrappedGift {
     inner: nip59::UnwrappedGift,
 }
 
+impl From<nip59::UnwrappedGift> for UnwrappedGift {
+    fn from(inner: nostr::prelude::UnwrappedGift) -> Self {
+        Self { inner }
+    }
+}
+
 #[uniffi::export]
 impl UnwrappedGift {
     /// Unwrap Gift Wrap event

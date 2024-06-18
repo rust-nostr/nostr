@@ -17,14 +17,14 @@ pub use negentropy::Negentropy;
 pub use serde_json::Value;
 
 // Internal modules
-pub use crate::event::builder::*;
-pub use crate::event::id::*;
-pub use crate::event::kind::*;
-pub use crate::event::tag::*;
-pub use crate::event::unsigned::*;
-pub use crate::event::*;
-pub use crate::key::*;
-pub use crate::message::*;
+pub use crate::event::builder::{self, *};
+pub use crate::event::id::{self, *};
+pub use crate::event::kind::{self, *};
+pub use crate::event::tag::{self, *};
+pub use crate::event::unsigned::{self, *};
+pub use crate::event::{self, *};
+pub use crate::key::{self, *};
+pub use crate::message::{self, *};
 // NIPs
 pub use crate::nips::nip01::{self, *};
 #[cfg(feature = "nip04")]

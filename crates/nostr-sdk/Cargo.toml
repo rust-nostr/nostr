@@ -34,7 +34,7 @@ nip46 = ["nostr/nip46", "nostr-signer/nip46"]
 nip47 = ["nostr/nip47", "dep:nwc"]
 nip49 = ["nostr/nip49"]
 nip57 = ["nostr/nip57", "dep:nostr-zapper", "dep:lnurl-pay"]
-nip59 = ["nostr/nip59"]
+nip59 = ["nostr/nip59", "nostr-signer/nip59"]
 
 [dependencies]
 async-utility.workspace = true

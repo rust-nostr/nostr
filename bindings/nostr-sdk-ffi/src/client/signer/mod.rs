@@ -4,6 +4,7 @@
 
 use std::ops::Deref;
 
+use nostr_ffi::nips::nip59::UnwrappedGift;
 use nostr_ffi::{Event, EventBuilder, Keys, PublicKey, UnsignedEvent};
 use nostr_sdk::signer;
 use uniffi::Object;
@@ -90,5 +91,14 @@ impl NostrSigner {
 
     pub async fn nip44_decrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
         Ok(self.inner.nip44_decrypt(**public_key, content).await?)
+    }
+
+    /// Unwrap Gift Wrap event
+    ///
+    /// Internally verify the `seal` event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    pub async fn unwrap_gift_wrap(&self, gift_wrap: &Event) -> Result<UnwrappedGift> {
+        Ok(self.inner.unwrap_gift_wrap(gift_wrap.deref()).await?.into())
     }
 }

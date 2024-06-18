@@ -19,6 +19,12 @@ pub struct JsUnwrappedGift {
     inner: UnwrappedGift,
 }
 
+impl From<UnwrappedGift> for JsUnwrappedGift {
+    fn from(inner: UnwrappedGift) -> Self {
+        Self { inner }
+    }
+}
+
 #[wasm_bindgen(js_class = UnwrappedGift)]
 impl JsUnwrappedGift {
     /// Unwrap Gift Wrap event
