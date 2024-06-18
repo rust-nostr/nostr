@@ -21,7 +21,7 @@ use super::options::RelayPoolOptions;
 use super::{Error, RelayPoolNotification, SendEventOutput, SendOutput};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist};
-use crate::SubscribeOptions;
+use crate::{util, SubscribeOptions};
 
 #[derive(Debug, Clone)]
 pub struct InternalRelayPool {
@@ -60,8 +60,8 @@ impl InternalRelayPool {
             relays: Arc::new(RwLock::new(HashMap::new())),
             notification_sender,
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
-            blacklist: RelayBlacklist::empty(), // TODO: allow to initialize pool with custom blacklist?
-                                                //opts,
+            blacklist: RelayBlacklist::empty(),
+            //opts,
         }
     }
 
@@ -315,13 +315,13 @@ impl InternalRelayPool {
                 handle.join().await?;
             }
 
-            let result = result.lock().await;
+            let result: SendOutput = util::take_mutex_ownership(result).await;
 
             if result.success.is_empty() {
                 return Err(Error::MsgNotSent);
             }
 
-            Ok(result.clone()) // TODO: remove clone
+            Ok(result)
         }
     }
 
@@ -438,13 +438,13 @@ impl InternalRelayPool {
                 handle.join().await?;
             }
 
-            let result = result.lock().await;
+            let result: SendOutput = util::take_mutex_ownership(result).await;
 
             if result.success.is_empty() {
                 return Err(Error::EventNotPublished);
             }
 
-            Ok(result.clone()) // TODO: remove clone
+            Ok(result)
         }
     }
 
