@@ -1503,6 +1503,18 @@ impl Client {
         self.send_event(gift_wrap).await
     }
 
+    /// Unwrap Gift Wrap event
+    ///
+    /// Internally verify the `seal` event.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
+    #[cfg(feature = "nip59")]
+    pub async fn unwrap_gift_wrap(&self, gift_wrap: &Event) -> Result<UnwrappedGift, Error> {
+        let signer: NostrSigner = self.signer().await?;
+        Ok(signer.unwrap_gift_wrap(gift_wrap).await?)
+    }
+
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>

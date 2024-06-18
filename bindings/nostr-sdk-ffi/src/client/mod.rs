@@ -7,6 +7,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
+use nostr_ffi::nips::nip59::UnwrappedGift;
 use nostr_ffi::{
     ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
     Timestamp,
@@ -580,6 +581,15 @@ impl Client {
             )
             .await?
             .into())
+    }
+
+    /// Unwrap Gift Wrap event
+    ///
+    /// Internally verify the `seal` event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    pub async fn unwrap_gift_wrap(&self, gift_wrap: &Event) -> Result<UnwrappedGift> {
+        Ok(self.inner.unwrap_gift_wrap(gift_wrap.deref()).await?.into())
     }
 
     pub async fn file_metadata(
