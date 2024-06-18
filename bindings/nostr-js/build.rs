@@ -11,4 +11,7 @@ fn main() {
             println!("cargo:rustc-env=GIT_HASH={git_hash}");
         }
     }
+
+    // 0x1E84800 bytes = 32MiB
+    println!("cargo:rustc-link-arg=-zstack-size=0x1E84800");
 }

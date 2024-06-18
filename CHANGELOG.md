@@ -33,6 +33,7 @@
 * pool: use per-purpose dedicated relay channels ([Yuki Kishimoto])
 * pool: return relay urls to which `messages`/`events` have or not been sent for `send_*` and `batch_*` methods ([Yuki Kishimoto])
 * ffi(sdk): convert `RelayPool::handle_notifications` method to async/future ([Yuki Kishimoto])
+* js: increase max stack size to `0x1E84800` bytes (32 MiB) ([Yuki Kishimoto])
 
 ### Added
 
@@ -45,6 +46,7 @@
 ### Fixed
 
 * nostr: fix NIP-47 `list_transactions` response deserialization ([Yuki Kishimoto] and [lnbc1QWFyb24])
+* js: fix "RuntimeError: memory access out of bounds" WASM error ([Yuki Kishimoto])
 
 ### Removed
 
