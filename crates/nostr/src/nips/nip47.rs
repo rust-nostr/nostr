@@ -586,7 +586,8 @@ pub struct LookupInvoiceResponseResult {
     /// Creation timestamp in seconds since epoch
     pub created_at: Timestamp,
     /// Expiration timestamp in seconds since epoch
-    pub expires_at: Timestamp,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<Timestamp>,
     /// Settled timestamp in seconds since epoch
     #[serde(skip_serializing_if = "Option::is_none")]
     pub settled_at: Option<Timestamp>,
@@ -1101,7 +1102,7 @@ mod tests {
                     amount: 123,
                     fees_paid: 1,
                     created_at: Timestamp::from(123456),
-                    expires_at: Timestamp::from(1234567),
+                    expires_at: Some(Timestamp::from(1234567)),
                     description_hash: None,
                     payment_hash: String::new(),
                     metadata: None,
