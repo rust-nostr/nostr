@@ -42,7 +42,7 @@
 
 ### Fixed
 
-* nostr: fix NIP-47 `list_transactions` response deserialization ([Yuki Kishimoto])
+* nostr: fix NIP-47 `list_transactions` response deserialization ([Yuki Kishimoto] and [lnbc1QWFyb24])
 
 ### Removed
 
@@ -291,6 +291,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [benthecarman]: https://github.com/benthecarman
 [Xiao Yu]: https://github.com/kasugamirai
 [RydalWater]: https://github.com/RydalWater
+[lnbc1QWFyb24]: https://github.com/lnbc1QWFyb24
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.32.0...HEAD

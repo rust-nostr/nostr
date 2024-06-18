@@ -467,7 +467,7 @@ pub struct JsLookupInvoiceResponseResult {
     /// Creation timestamp in seconds since epoch
     pub created_at: JsTimestamp,
     /// Expiration timestamp in seconds since epoch
-    pub expires_at: JsTimestamp,
+    pub expires_at: Option<JsTimestamp>,
     /// Settled timestamp in seconds since epoch
     pub settled_at: Option<JsTimestamp>,
     // /// Optional metadata about the payment
@@ -487,7 +487,7 @@ impl From<LookupInvoiceResponseResult> for JsLookupInvoiceResponseResult {
             amount: value.amount,
             fees_paid: value.fees_paid,
             created_at: value.created_at.into(),
-            expires_at: value.expires_at.into(),
+            expires_at: value.expires_at.map(|t| t.into()),
             settled_at: value.settled_at.map(|t| t.into()),
             // metadata: value.metadata.to_string(),
         }
@@ -506,7 +506,7 @@ impl From<JsLookupInvoiceResponseResult> for LookupInvoiceResponseResult {
             amount: value.amount,
             fees_paid: value.fees_paid,
             created_at: *value.created_at,
-            expires_at: *value.expires_at,
+            expires_at: value.expires_at.map(|t| *t),
             settled_at: value.settled_at.map(|t| *t),
             metadata: None,
         }

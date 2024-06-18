@@ -653,7 +653,7 @@ pub struct LookupInvoiceResponseResult {
     /// Creation timestamp in seconds since epoch
     pub created_at: Arc<Timestamp>,
     /// Expiration timestamp in seconds since epoch
-    pub expires_at: Arc<Timestamp>,
+    pub expires_at: Option<Arc<Timestamp>>,
     /// Settled timestamp in seconds since epoch
     pub settled_at: Option<Arc<Timestamp>>,
     /// Optional metadata about the payment
@@ -672,7 +672,7 @@ impl From<nip47::LookupInvoiceResponseResult> for LookupInvoiceResponseResult {
             amount: value.amount,
             fees_paid: value.fees_paid,
             created_at: Arc::new(value.created_at.into()),
-            expires_at: Arc::new(value.expires_at.into()),
+            expires_at: value.expires_at.map(|t| Arc::new(t.into())),
             settled_at: value.settled_at.map(|t| Arc::new(t.into())),
             metadata: value.metadata.and_then(|m| m.try_into().ok()),
         }
@@ -691,7 +691,7 @@ impl From<LookupInvoiceResponseResult> for nip47::LookupInvoiceResponseResult {
             amount: value.amount,
             fees_paid: value.fees_paid,
             created_at: **value.created_at,
-            expires_at: **value.expires_at,
+            expires_at: value.expires_at.map(|t| **t),
             settled_at: value.settled_at.map(|t| **t),
             metadata: value.metadata.and_then(|m| m.try_into().ok()),
         }
