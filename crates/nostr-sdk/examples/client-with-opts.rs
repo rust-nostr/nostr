@@ -49,13 +49,29 @@ async fn main() -> Result<()> {
     // Handle subscription notifications with `handle_notifications` method
     client
         .handle_notifications(|notification| async {
-            if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind() == Kind::GiftWrap {
-                    let UnwrappedGift { rumor, .. } = nip59::extract_rumor(&my_keys, &event)?;
-                    println!("Rumor: {}", rumor.as_json());
-                } else {
-                    println!("{:?}", event);
+            match notification {
+                ClientNotification::PrivateDirectMessage {
+                    sender,
+                    message,
+                    timestamp,
+                    ..
+                } => {
+                    println!(
+                        "Received a private direct message from {sender} at {timestamp}: {message}"
+                    );
                 }
+                // Manually handle pool events
+                ClientNotification::Pool(RelayPoolNotification::Event { event, .. }) => {
+                    // Check if event is a gift wrap
+                    if event.kind() == Kind::GiftWrap {
+                        // Extract rumor and sender
+                        let UnwrappedGift { rumor, .. } = nip59::extract_rumor(&my_keys, &event)?;
+                        println!("Rumor: {}", rumor.as_json());
+                    } else {
+                        println!("{:?}", event);
+                    }
+                }
+                _ => {}
             }
             Ok(false) // Set to true to exit from the loop
         })

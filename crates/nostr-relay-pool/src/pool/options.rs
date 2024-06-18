@@ -7,7 +7,8 @@
 /// Relay Pool Options
 #[derive(Debug, Clone, Copy)]
 pub struct RelayPoolOptions {
-    pub(super) notification_channel_size: usize,
+    /// Notification channel size
+    pub notification_channel_size: usize,
 }
 
 impl Default for RelayPoolOptions {

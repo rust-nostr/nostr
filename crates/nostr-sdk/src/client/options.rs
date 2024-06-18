@@ -26,6 +26,8 @@ pub struct Options {
     pub(super) connection_timeout: Option<Duration>,
     send_timeout: Option<Duration>,
     nip42_auto_authentication: Arc<AtomicBool>,
+    #[cfg(feature = "nip59")]
+    pub(super) nip17_auto_decryption: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) proxy: Proxy,
     pub(super) relay_limits: RelayLimits,
@@ -45,6 +47,8 @@ impl Default for Options {
             connection_timeout: None,
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
+            #[cfg(feature = "nip59")]
+            nip17_auto_decryption: false,
             #[cfg(not(target_arch = "wasm32"))]
             proxy: Proxy::default(),
             relay_limits: RelayLimits::default(),
@@ -173,6 +177,20 @@ impl Options {
     #[inline]
     pub fn automatic_authentication(mut self, enabled: bool) -> Self {
         self.nip42_auto_authentication = Arc::new(AtomicBool::new(enabled));
+        self
+    }
+
+    /// Auto decrypt private direct messages (default: false)
+    ///
+    /// If enabled, when the client will receive a NIP-17 private direct message
+    /// will automatically decrypt it by using the provided signer and will send
+    /// a notification to the client channel.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
+    #[cfg(feature = "nip59")]
+    pub fn automatic_decryption(mut self, enabled: bool) -> Self {
+        self.nip17_auto_decryption = enabled;
         self
     }
 

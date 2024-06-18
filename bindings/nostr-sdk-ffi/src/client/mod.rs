@@ -614,11 +614,14 @@ impl Client {
             .into())
     }
 
-    /// Handle notifications
-    pub async fn handle_notifications(&self, handler: Arc<dyn HandleNotification>) -> Result<()> {
+    /// Handle pool notifications
+    pub async fn handle_pool_notifications(
+        &self,
+        handler: Arc<dyn HandleNotification>,
+    ) -> Result<()> {
         Ok(self
             .inner
-            .handle_notifications(|notification| async {
+            .handle_pool_notifications(|notification| async {
                 match notification {
                     RelayPoolNotificationSdk::Message { relay_url, message } => {
                         handler
@@ -644,4 +647,6 @@ impl Client {
             })
             .await?)
     }
+
+    // TODO: add handle_notifications
 }

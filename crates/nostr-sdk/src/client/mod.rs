@@ -21,11 +21,13 @@ use tokio::sync::{broadcast, RwLock};
 
 pub mod builder;
 mod handler;
+mod notification;
 pub mod options;
 #[cfg(feature = "nip57")]
 mod zapper;
 
 pub use self::builder::ClientBuilder;
+pub use self::notification::ClientNotification;
 pub use self::options::Options;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Proxy, ProxyTarget};
@@ -88,6 +90,7 @@ pub struct Client {
     #[cfg(feature = "nip57")]
     zapper: Arc<RwLock<Option<Arc<DynNostrZapper>>>>,
     opts: Options,
+    notifications: broadcast::Sender<ClientNotification>,
 }
 
 impl Default for Client {
@@ -105,6 +108,7 @@ impl StealthClone for Client {
             #[cfg(feature = "nip57")]
             zapper: self.zapper.clone(),
             opts: self.opts.clone(),
+            notifications: self.notifications.clone(),
         }
     }
 }
@@ -168,12 +172,15 @@ impl Client {
 
     /// Compose [`Client`] from [`ClientBuilder`]
     pub fn from_builder(builder: ClientBuilder) -> Self {
+        let (notifications, ..) = broadcast::channel(builder.opts.pool.notification_channel_size);
+
         let client = Self {
             pool: RelayPool::with_database(builder.opts.pool, builder.database),
             signer: Arc::new(RwLock::new(builder.signer)),
             #[cfg(feature = "nip57")]
             zapper: Arc::new(RwLock::new(builder.zapper)),
             opts: builder.opts,
+            notifications,
         };
 
         client.spawn_notification_handler();
@@ -334,11 +341,19 @@ impl Client {
         Ok(self.pool.shutdown().await?)
     }
 
-    /// Get new notification listener
+    /// Get new client notification listener
     ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
-    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
+    pub fn notifications(&self) -> broadcast::Receiver<ClientNotification> {
+        self.notifications.subscribe()
+    }
+
+    /// Get new pool notification listener
+    ///
+    /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
+    #[inline]
+    pub fn pool_notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.pool.notifications()
     }
 
@@ -1586,13 +1601,33 @@ impl Client {
             .await?)
     }
 
-    /// Handle notifications
+    /// Handle pool notifications
     #[inline]
-    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
+    pub async fn handle_pool_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
         F: Fn(RelayPoolNotification) -> Fut,
         Fut: Future<Output = Result<bool>>,
     {
         Ok(self.pool.handle_notifications(func).await?)
+    }
+
+    /// Handle client notifications
+    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
+    where
+        F: Fn(ClientNotification) -> Fut,
+        Fut: Future<Output = Result<bool>>,
+    {
+        let mut notifications = self.notifications();
+        while let Ok(notification) = notifications.recv().await {
+            let shutdown: bool =
+                ClientNotification::Pool(RelayPoolNotification::Shutdown) == notification;
+            let exit: bool = func(notification)
+                .await
+                .map_err(|e| pool::Error::Handler(e.to_string()))?; // TODO: use a client error
+            if exit || shutdown {
+                break;
+            }
+        }
+        Ok(())
     }
 }

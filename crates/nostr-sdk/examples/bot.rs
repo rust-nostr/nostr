@@ -2,8 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::time::Duration;
-
 use nostr_sdk::prelude::*;
 
 const BECH32_SK: &str = "nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx";
@@ -14,10 +12,7 @@ async fn main() -> Result<()> {
 
     let secret_key = SecretKey::from_bech32(BECH32_SK)?;
     let keys = Keys::new(secret_key);
-    let opts = Options::new()
-        .skip_disconnected_relays(true)
-        .connection_timeout(Some(Duration::from_secs(10)))
-        .send_timeout(Some(Duration::from_secs(5)));
+    let opts = Options::new().automatic_decryption(true);
     let client = Client::with_opts(&keys, opts);
 
     println!("Bot public key: {}", keys.public_key().to_bech32()?);
@@ -26,7 +21,6 @@ async fn main() -> Result<()> {
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nostr.mom").await?;
     client.add_relay("wss://nostr.wine").await?;
-    client.add_relay("wss://relay.nostr.info").await?;
 
     client.connect().await;
 
@@ -45,25 +39,22 @@ async fn main() -> Result<()> {
 
     client
         .handle_notifications(|notification| async {
-            if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind() == Kind::GiftWrap {
-                    match UnwrappedGift::from_gift_wrap(&keys, &event) {
-                        Ok(UnwrappedGift { rumor, sender }) => {
-                            if rumor.kind == Kind::PrivateDirectMessage {
-                                let content: String = match rumor.content.as_str() {
-                                    "/rand" => rand::random::<u16>().to_string(),
-                                    "/help" => help(),
-                                    _ => String::from(
-                                        "Invalid command, send /help to see all commands.",
-                                    ),
-                                };
-
-                                client.send_private_msg(sender, content, None).await?;
-                            }
-                        }
-                        Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
-                    }
-                }
+            if let ClientNotification::PrivateDirectMessage {
+                sender,
+                message,
+                timestamp,
+                ..
+            } = notification
+            {
+                println!(
+                    "Received a private direct message from {sender}: {message} [{timestamp}]"
+                );
+                let content: String = match message.as_str() {
+                    "/rand" => rand::random::<u16>().to_string(),
+                    "/help" => help(),
+                    _ => String::from("Invalid command, send /help to see all commands."),
+                };
+                client.send_private_msg(sender, content, None).await?;
             }
             Ok(false) // Set to true to exit from the loop
         })
