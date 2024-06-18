@@ -161,8 +161,8 @@ impl AtomicDestroyer for InternalRelay {
     fn on_destroy(&self) {
         let relay = self.clone();
         let _ = thread::spawn(async move {
-            if let Err(e) = relay.terminate().await {
-                tracing::error!("Impossible to shutdown {} relay: {e}", relay.url);
+            if let Err(e) = relay.disconnect().await {
+                tracing::error!("Impossible to shutdown '{}': {e}", relay.url);
             }
         });
     }
@@ -963,7 +963,7 @@ impl InternalRelay {
         }
     }
 
-    pub async fn terminate(&self) -> Result<(), Error> {
+    pub async fn disconnect(&self) -> Result<(), Error> {
         self.schedule_for_termination(true); // TODO: remove?
         if !self.is_disconnected().await {
             self.channels

@@ -555,7 +555,7 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let relay = self.relay(url).await?;
-        relay.terminate().await?;
+        relay.disconnect().await?;
         Ok(())
     }
 

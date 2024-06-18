@@ -199,7 +199,7 @@ impl NWC {
 
     /// Completely shutdown [NWC] client
     pub async fn shutdown(self) -> Result<(), Error> {
-        Ok(self.relay.terminate().await?)
+        Ok(self.relay.disconnect().await?)
     }
 }
 

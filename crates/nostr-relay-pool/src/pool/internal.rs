@@ -182,14 +182,14 @@ impl InternalRelayPool {
         let url: Url = url.try_into_url()?;
         let mut relays = self.relays.write().await;
         if let Some(relay) = relays.remove(&url) {
-            relay.terminate().await?;
+            relay.disconnect().await?;
         }
         Ok(())
     }
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
         let mut relays = self.relays.write().await;
         for relay in relays.values() {
-            relay.terminate().await?;
+            relay.disconnect().await?;
         }
         relays.clear();
         Ok(())
@@ -692,7 +692,7 @@ impl InternalRelayPool {
     pub async fn disconnect(&self) -> Result<(), Error> {
         let relays = self.relays().await;
         for relay in relays.into_values() {
-            relay.terminate().await?;
+            relay.disconnect().await?;
         }
         Ok(())
     }

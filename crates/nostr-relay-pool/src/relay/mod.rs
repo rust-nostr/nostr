@@ -223,9 +223,8 @@ impl Relay {
 
     /// Disconnect from relay and set status to 'Terminated'
     #[inline]
-    pub async fn terminate(&self) -> Result<(), Error> {
-        // TODO: rename to disconnect
-        self.inner.terminate().await
+    pub async fn disconnect(&self) -> Result<(), Error> {
+        self.inner.disconnect().await
     }
 
     /// Send msg to relay
