@@ -10,16 +10,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use atomic_destructor::StealthClone;
-use nostr::event::builder::Error as EventBuilderError;
 use nostr::prelude::*;
-use nostr::types::metadata::Error as MetadataError;
 use nostr_database::DynNostrDatabase;
-use nostr_relay_pool::pool::{self, Error as RelayPoolError, RelayPool};
-use nostr_relay_pool::relay::Error as RelayError;
-use nostr_relay_pool::{
-    FilterOptions, NegentropyOptions, Relay, RelayBlacklist, RelayOptions, RelayPoolNotification,
-    RelaySendOptions, SendEventOutput, SendOutput, SubscribeAutoCloseOptions, SubscribeOptions,
-};
+use nostr_relay_pool::prelude::*;
 use nostr_signer::prelude::*;
 #[cfg(feature = "nip57")]
 use nostr_zapper::{DynNostrZapper, IntoNostrZapper, ZapperError};
@@ -43,11 +36,11 @@ pub use self::zapper::{ZapDetails, ZapEntity};
 #[derive(Debug, Error)]
 pub enum Error {
     /// [`Relay`] error
-    #[error("relay error: {0}")]
-    Relay(#[from] RelayError),
+    #[error(transparent)]
+    Relay(#[from] nostr_relay_pool::relay::Error),
     /// [`RelayPool`] error
-    #[error("relay pool error: {0}")]
-    RelayPool(#[from] RelayPoolError),
+    #[error(transparent)]
+    RelayPool(#[from] pool::Error),
     /// Signer error
     #[error(transparent)]
     Signer(#[from] nostr_signer::Error),
@@ -56,11 +49,11 @@ pub enum Error {
     #[error(transparent)]
     Zapper(#[from] ZapperError),
     /// [`EventBuilder`] error
-    #[error("event builder error: {0}")]
-    EventBuilder(#[from] EventBuilderError),
+    #[error(transparent)]
+    EventBuilder(#[from] event::builder::Error),
     /// Metadata error
     #[error(transparent)]
-    Metadata(#[from] MetadataError),
+    Metadata(#[from] metadata::Error),
     /// Signer not configured
     #[error("signer not configured")]
     SignerNotConfigured,
