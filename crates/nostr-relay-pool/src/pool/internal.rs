@@ -757,7 +757,7 @@ impl InternalRelayPool {
         if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: Relay = self.internal_relay(&url).await?;
-            Ok(relay.reconcile(filter, opts).await?)
+            Ok(relay.reconcile_with_items(filter, items, opts).await?)
         } else {
             let relays: HashMap<Url, Relay> = self.relays().await;
 

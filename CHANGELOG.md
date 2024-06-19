@@ -50,6 +50,7 @@
 
 * nostr: fix NIP-47 `list_transactions` response deserialization ([Yuki Kishimoto] and [lnbc1QWFyb24])
 * pool: fix shutdown notification sent to external channel on `Relay::terminate` method call ([Yuki Kishimoto])
+* pool: fix `RelayPool::reconcile_advanced` method uses database items instead of the passed ones ([Yuki Kishimoto])
 * js: fix "RuntimeError: memory access out of bounds" WASM error ([Yuki Kishimoto])
 
 ### Removed
