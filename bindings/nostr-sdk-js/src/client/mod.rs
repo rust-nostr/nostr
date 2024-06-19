@@ -83,6 +83,15 @@ impl JsClient {
         self.inner.update_min_pow_difficulty(difficulty);
     }
 
+    /// Auto authenticate to relays (default: true)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
+    #[wasm_bindgen(js_name = automaticAuthentication)]
+    pub fn automatic_authentication(&self, enable: bool) {
+        self.inner.automatic_authentication(enable);
+    }
+
     /// Get current nostr signer
     ///
     /// Rise error if it not set.

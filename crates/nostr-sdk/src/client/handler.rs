@@ -23,7 +23,7 @@ impl Client {
                 match notification {
                     RelayPoolNotification::Message { relay_url, message } => {
                         // Check if auto authentication (NIP42) is enabled
-                        if client.opts.nip42_auto_authentication {
+                        if client.opts.is_nip42_auto_authentication_enabled() {
                             if let RelayMessage::Auth { challenge } = message {
                                 match client.auth(challenge, relay_url.clone()).await {
                                     Ok(_) => {

@@ -79,6 +79,14 @@ impl Client {
         self.inner.update_min_pow_difficulty(difficulty);
     }
 
+    /// Auto authenticate to relays (default: true)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
+    pub fn automatic_authentication(&self, enable: bool) {
+        self.inner.automatic_authentication(enable);
+    }
+
     pub async fn signer(&self) -> Result<NostrSigner> {
         Ok(self.inner.signer().await?.into())
     }

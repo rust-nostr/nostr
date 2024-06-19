@@ -195,6 +195,14 @@ impl Client {
         self.opts.update_min_pow_difficulty(difficulty);
     }
 
+    /// Auto authenticate to relays (default: true)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
+    pub fn automatic_authentication(&self, enable: bool) {
+        self.opts.update_automatic_authentication(enable);
+    }
+
     /// Get current nostr signer
     ///
     /// Rise error if it not set.
