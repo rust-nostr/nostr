@@ -18,7 +18,7 @@ use nostr_database::{DynNostrDatabase, IntoNostrDatabase, Order};
 use tokio::sync::{broadcast, Mutex, RwLock};
 
 use super::options::RelayPoolOptions;
-use super::{Error, ReconciliationOutput, RelayPoolNotification, SendEventOutput, SendOutput};
+use super::{Error, Output, RelayPoolNotification, SendEventOutput};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist};
 use crate::{util, SubscribeOptions};
@@ -199,7 +199,7 @@ impl InternalRelayPool {
         &self,
         msg: ClientMessage,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error> {
+    ) -> Result<Output, Error> {
         let relays = self.relays().await;
         self.send_msg_to(relays.into_keys(), msg, opts).await
     }
@@ -208,7 +208,7 @@ impl InternalRelayPool {
         &self,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error> {
+    ) -> Result<Output, Error> {
         let relays = self.relays().await;
         self.batch_msg_to(relays.into_keys(), msgs, opts).await
     }
@@ -218,7 +218,7 @@ impl InternalRelayPool {
         urls: I,
         msg: ClientMessage,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -232,7 +232,7 @@ impl InternalRelayPool {
         urls: I,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -268,19 +268,19 @@ impl InternalRelayPool {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             relay.batch_msg(msgs, opts).await?;
-            Ok(SendOutput::success(url))
+            Ok(Output::success(url))
         } else {
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
                 return Err(Error::RelayNotFound);
             }
 
-            let result: Arc<Mutex<SendOutput>> = Arc::new(Mutex::new(SendOutput::default()));
+            let result: Arc<Mutex<Output>> = Arc::new(Mutex::new(Output::default()));
             let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
 
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
                 let msgs: Vec<ClientMessage> = msgs.clone();
-                let result: Arc<Mutex<SendOutput>> = result.clone();
+                let result: Arc<Mutex<Output>> = result.clone();
                 let handle: JoinHandle<()> = thread::spawn(async move {
                     match relay.batch_msg(msgs, opts).await {
                         Ok(_) => {
@@ -304,7 +304,7 @@ impl InternalRelayPool {
                 handle.join().await?;
             }
 
-            let result: SendOutput = util::take_mutex_ownership(result).await;
+            let result: Output = util::take_mutex_ownership(result).await;
 
             if result.success.is_empty() {
                 return Err(Error::MsgNotSent);
@@ -327,7 +327,7 @@ impl InternalRelayPool {
         &self,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error> {
+    ) -> Result<Output, Error> {
         let relays = self.relays().await;
         self.batch_event_to(relays.into_keys(), events, opts).await
     }
@@ -343,12 +343,9 @@ impl InternalRelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let event_id: EventId = event.id;
-        let result: SendOutput = self.batch_event_to(urls, vec![event], opts).await?;
         Ok(SendEventOutput {
-            id: event_id,
-            success: result.success,
-            failed: result.failed,
+            id: event.id,
+            output: self.batch_event_to(urls, vec![event], opts).await?,
         })
     }
 
@@ -357,7 +354,7 @@ impl InternalRelayPool {
         urls: I,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -391,19 +388,19 @@ impl InternalRelayPool {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             relay.batch_event(events, opts).await?;
-            Ok(SendOutput::success(url))
+            Ok(Output::success(url))
         } else {
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
                 return Err(Error::RelayNotFound);
             }
 
-            let result: Arc<Mutex<SendOutput>> = Arc::new(Mutex::new(SendOutput::default()));
+            let result: Arc<Mutex<Output>> = Arc::new(Mutex::new(Output::default()));
             let mut handles = Vec::with_capacity(urls.len());
 
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
                 let events: Vec<Event> = events.clone();
-                let result: Arc<Mutex<SendOutput>> = result.clone();
+                let result: Arc<Mutex<Output>> = result.clone();
                 let handle = thread::spawn(async move {
                     match relay.batch_event(events, opts).await {
                         Ok(_) => {
@@ -427,7 +424,7 @@ impl InternalRelayPool {
                 handle.join().await?;
             }
 
-            let result: SendOutput = util::take_mutex_ownership(result).await;
+            let result: Output = util::take_mutex_ownership(result).await;
 
             if result.success.is_empty() {
                 return Err(Error::EventNotPublished);
@@ -702,7 +699,7 @@ impl InternalRelayPool {
         &self,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<ReconciliationOutput, Error> {
+    ) -> Result<Output, Error> {
         let relays: HashMap<Url, Relay> = self.relays().await;
         self.reconcile_with(relays.into_keys(), filter, opts).await
     }
@@ -713,7 +710,7 @@ impl InternalRelayPool {
         urls: I,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<ReconciliationOutput, Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -730,7 +727,7 @@ impl InternalRelayPool {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<ReconciliationOutput, Error> {
+    ) -> Result<Output, Error> {
         let relays: HashMap<Url, Relay> = self.relays().await;
         self.reconcile_advanced(relays.into_keys(), filter, items, opts)
             .await
@@ -742,7 +739,7 @@ impl InternalRelayPool {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<ReconciliationOutput, Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -762,7 +759,7 @@ impl InternalRelayPool {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: Relay = self.internal_relay(&url).await?;
             relay.reconcile_with_items(filter, items, opts).await?;
-            Ok(ReconciliationOutput::success(url))
+            Ok(Output::success(url))
         } else {
             let relays: HashMap<Url, Relay> = self.relays().await;
 
@@ -772,13 +769,12 @@ impl InternalRelayPool {
             }
 
             // Filter relays and start query
-            let result: Arc<Mutex<ReconciliationOutput>> =
-                Arc::new(Mutex::new(ReconciliationOutput::default()));
+            let result: Arc<Mutex<Output>> = Arc::new(Mutex::new(Output::default()));
             let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
                 let filter: Filter = filter.clone();
                 let my_items: Vec<(EventId, Timestamp)> = items.clone();
-                let result: Arc<Mutex<ReconciliationOutput>> = result.clone();
+                let result: Arc<Mutex<Output>> = result.clone();
                 let handle: JoinHandle<()> = thread::spawn(async move {
                     match relay.reconcile_with_items(filter, my_items, opts).await {
                         Ok(_) => {
@@ -802,7 +798,7 @@ impl InternalRelayPool {
                 handle.join().await?;
             }
 
-            let result: ReconciliationOutput = util::take_mutex_ownership(result).await;
+            let result: Output = util::take_mutex_ownership(result).await;
 
             if result.success.is_empty() {
                 return Err(Error::NegentropyReconciliationFailed);

@@ -28,7 +28,7 @@ use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
-use crate::pool::result::{JsReconciliationOutput, JsSendEventOutput, JsSendOutput};
+use crate::pool::result::{JsOutput, JsSendEventOutput};
 use crate::relay::blacklist::JsRelayBlacklist;
 use crate::relay::options::{JsNegentropyOptions, JsSubscribeAutoCloseOptions};
 use crate::relay::{JsRelay, JsRelayArray};
@@ -378,7 +378,7 @@ impl JsClient {
 
     /// Send client message
     #[wasm_bindgen(js_name = sendMsg)]
-    pub async fn send_msg(&self, msg: &JsClientMessage) -> Result<JsSendOutput> {
+    pub async fn send_msg(&self, msg: &JsClientMessage) -> Result<JsOutput> {
         self.inner
             .send_msg(msg.deref().clone())
             .await
@@ -388,11 +388,7 @@ impl JsClient {
 
     /// Send client message to a specific relay
     #[wasm_bindgen(js_name = sendMsgTo)]
-    pub async fn send_msg_to(
-        &self,
-        urls: Vec<String>,
-        msg: &JsClientMessage,
-    ) -> Result<JsSendOutput> {
+    pub async fn send_msg_to(&self, urls: Vec<String>, msg: &JsClientMessage) -> Result<JsOutput> {
         self.inner
             .send_msg_to(urls, msg.deref().clone())
             .await
@@ -739,7 +735,7 @@ impl JsClient {
         &self,
         filter: &JsFilter,
         opts: &JsNegentropyOptions,
-    ) -> Result<JsReconciliationOutput> {
+    ) -> Result<JsOutput> {
         self.inner
             .reconcile(filter.deref().clone(), **opts)
             .await

@@ -15,19 +15,22 @@ pub struct JsFailedOutputItem {
     pub error: Option<String>,
 }
 
-/// Send output
-#[wasm_bindgen(js_name = SendOutput)]
-pub struct JsSendOutput {
-    /// Set of relay urls to which the message/s was successfully sent
+/// Output
+///
+/// Send or negentropy reconciliation output
+#[derive(Clone)]
+#[wasm_bindgen(js_name = Output)]
+pub struct JsOutput {
+    /// Set of relays that success
     #[wasm_bindgen(getter_with_clone)]
     pub success: Vec<String>,
-    /// Map of relay urls with related errors where the message/s wasn't sent
+    /// Map of relays that failed, with related errors.
     #[wasm_bindgen(getter_with_clone)]
     pub failed: Vec<JsFailedOutputItem>,
 }
 
-impl From<SendOutput> for JsSendOutput {
-    fn from(value: SendOutput) -> Self {
+impl From<Output> for JsOutput {
+    fn from(value: Output) -> Self {
         Self {
             success: value.success.into_iter().map(|u| u.to_string()).collect(),
             failed: value
@@ -47,54 +50,16 @@ impl From<SendOutput> for JsSendOutput {
 pub struct JsSendEventOutput {
     /// Event ID
     pub id: JsEventId,
-    /// Set of relay urls to which the message/s was successfully sent
+    /// Output
     #[wasm_bindgen(getter_with_clone)]
-    pub success: Vec<String>,
-    /// Map of relay urls with related errors where the message/s wasn't sent
-    #[wasm_bindgen(getter_with_clone)]
-    pub failed: Vec<JsFailedOutputItem>,
+    pub output: JsOutput,
 }
 
 impl From<SendEventOutput> for JsSendEventOutput {
     fn from(value: SendEventOutput) -> Self {
         Self {
             id: value.id.into(),
-            success: value.success.into_iter().map(|u| u.to_string()).collect(),
-            failed: value
-                .failed
-                .into_iter()
-                .map(|(u, e)| JsFailedOutputItem {
-                    url: u.to_string(),
-                    error: e,
-                })
-                .collect(),
-        }
-    }
-}
-
-/// Negentropy reconciliation output
-#[wasm_bindgen(js_name = ReconciliationOutput)]
-pub struct JsReconciliationOutput {
-    /// Set of relay urls to which the negentropy reconciliation success
-    #[wasm_bindgen(getter_with_clone)]
-    pub success: Vec<String>,
-    /// Map of relay urls with related errors where the negentropy reconciliation failed
-    #[wasm_bindgen(getter_with_clone)]
-    pub failed: Vec<JsFailedOutputItem>,
-}
-
-impl From<ReconciliationOutput> for JsReconciliationOutput {
-    fn from(value: ReconciliationOutput) -> Self {
-        Self {
-            success: value.success.into_iter().map(|u| u.to_string()).collect(),
-            failed: value
-                .failed
-                .into_iter()
-                .map(|(u, e)| JsFailedOutputItem {
-                    url: u.to_string(),
-                    error: e,
-                })
-                .collect(),
+            output: value.output.into(),
         }
     }
 }

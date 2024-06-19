@@ -845,7 +845,7 @@ impl Client {
 
     /// Send client message to **all relays**
     #[inline]
-    pub async fn send_msg(&self, msg: ClientMessage) -> Result<SendOutput, Error> {
+    pub async fn send_msg(&self, msg: ClientMessage) -> Result<Output, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_msg(msg, opts).await?)
     }
@@ -856,13 +856,13 @@ impl Client {
         &self,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error> {
+    ) -> Result<Output, Error> {
         Ok(self.pool.batch_msg(msgs, opts).await?)
     }
 
     /// Send client message to a **specific relays**
     #[inline]
-    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<SendOutput, Error>
+    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -879,7 +879,7 @@ impl Client {
         urls: I,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -904,7 +904,7 @@ impl Client {
         &self,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error> {
+    ) -> Result<Output, Error> {
         Ok(self.pool.batch_event(events, opts).await?)
     }
 
@@ -930,7 +930,7 @@ impl Client {
         urls: I,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<SendOutput, Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1518,7 +1518,7 @@ impl Client {
         &self,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<ReconciliationOutput, Error> {
+    ) -> Result<Output, Error> {
         Ok(self.pool.reconcile(filter, opts).await?)
     }
 
@@ -1531,7 +1531,7 @@ impl Client {
         urls: I,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<ReconciliationOutput, Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1547,7 +1547,7 @@ impl Client {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<ReconciliationOutput, Error> {
+    ) -> Result<Output, Error> {
         Ok(self.pool.reconcile_with_items(filter, items, opts).await?)
     }
 
@@ -1561,7 +1561,7 @@ impl Client {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<ReconciliationOutput, Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

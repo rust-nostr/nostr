@@ -9,16 +9,19 @@ use std::ops::Deref;
 
 use nostr::{EventId, Url};
 
-/// Send output
+/// Output
+///
+/// Send or negentropy reconciliation output
+// TODO: use a better name?
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct SendOutput {
-    /// Set of relay urls to which the message/s was successfully sent
+pub struct Output {
+    /// Set of relays that success
     pub success: HashSet<Url>,
-    /// Map of relay urls with related errors where the message/s wasn't sent
+    /// Map of relays that failed, with related errors.
     pub failed: HashMap<Url, Option<String>>,
 }
 
-impl SendOutput {
+impl Output {
     pub(super) fn success(url: Url) -> Self {
         let mut success: HashSet<Url> = HashSet::with_capacity(1);
         success.insert(url);
@@ -34,10 +37,8 @@ impl SendOutput {
 pub struct SendEventOutput {
     /// Event ID
     pub id: EventId,
-    /// Set of relay urls to which the message/s was successfully sent
-    pub success: HashSet<Url>,
-    /// Map of relay urls with related errors where the message/s wasn't sent
-    pub failed: HashMap<Url, Option<String>>,
+    /// Output
+    pub output: Output,
 }
 
 impl Deref for SendEventOutput {
@@ -51,25 +52,5 @@ impl Deref for SendEventOutput {
 impl fmt::Display for SendEventOutput {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.id)
-    }
-}
-
-/// Negentropy reconciliation output
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ReconciliationOutput {
-    /// Set of relay urls to which the negentropy reconciliation success
-    pub success: HashSet<Url>,
-    /// Map of relay urls with related errors where the negentropy reconciliation failed
-    pub failed: HashMap<Url, Option<String>>,
-}
-
-impl ReconciliationOutput {
-    pub(super) fn success(url: Url) -> Self {
-        let mut success: HashSet<Url> = HashSet::with_capacity(1);
-        success.insert(url);
-        Self {
-            success,
-            failed: HashMap::new(),
-        }
     }
 }

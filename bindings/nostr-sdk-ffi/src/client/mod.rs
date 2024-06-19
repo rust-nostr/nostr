@@ -27,7 +27,7 @@ pub use self::options::Options;
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
-use crate::pool::result::{ReconciliationOutput, SendEventOutput, SendOutput};
+use crate::pool::result::{Output, SendEventOutput};
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
 use crate::relay::{RelayBlacklist, RelayOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -384,7 +384,7 @@ impl Client {
             .collect())
     }
 
-    pub async fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<SendOutput> {
+    pub async fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<Output> {
         Ok(self
             .inner
             .send_msg(msg.as_ref().deref().clone())
@@ -392,11 +392,7 @@ impl Client {
             .into())
     }
 
-    pub async fn send_msg_to(
-        &self,
-        urls: Vec<String>,
-        msg: Arc<ClientMessage>,
-    ) -> Result<SendOutput> {
+    pub async fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<Output> {
         Ok(self
             .inner
             .send_msg_to(urls, msg.as_ref().deref().clone())
@@ -600,7 +596,7 @@ impl Client {
         &self,
         filter: Arc<Filter>,
         opts: Arc<NegentropyOptions>,
-    ) -> Result<ReconciliationOutput> {
+    ) -> Result<Output> {
         Ok(self
             .inner
             .reconcile(filter.as_ref().deref().clone(), **opts)

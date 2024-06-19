@@ -22,8 +22,7 @@ async fn main() -> Result<()> {
     let my_items = Vec::new();
     let filter = Filter::new().author(public_key).limit(10);
     let opts = NegentropyOptions::default();
-    let ReconciliationOutput { success, failed } =
-        client.reconcile_with_items(filter, my_items, opts).await?;
+    let Output { success, failed } = client.reconcile_with_items(filter, my_items, opts).await?;
     println!("Success: {success:?}");
     println!("Failed: {failed:?}");
 

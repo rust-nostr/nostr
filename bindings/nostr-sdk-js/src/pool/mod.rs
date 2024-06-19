@@ -14,7 +14,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod result;
 
-use self::result::{JsReconciliationOutput, JsSendEventOutput, JsSendOutput};
+use self::result::{JsOutput, JsSendEventOutput};
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
 use crate::relay::blacklist::JsRelayBlacklist;
@@ -157,7 +157,7 @@ impl JsRelayPool {
         &self,
         msg: &JsClientMessage,
         opts: &JsRelaySendOptions,
-    ) -> Result<JsSendOutput> {
+    ) -> Result<JsOutput> {
         Ok(self
             .inner
             .send_msg(msg.deref().clone(), **opts)
@@ -172,7 +172,7 @@ impl JsRelayPool {
         &self,
         msgs: Vec<JsClientMessage>,
         opts: &JsRelaySendOptions,
-    ) -> Result<JsSendOutput> {
+    ) -> Result<JsOutput> {
         let msgs = msgs.into_iter().map(|msg| msg.deref().clone()).collect();
         Ok(self
             .inner
@@ -191,7 +191,7 @@ impl JsRelayPool {
         urls: Vec<String>,
         msg: &JsClientMessage,
         opts: &JsRelaySendOptions,
-    ) -> Result<JsSendOutput> {
+    ) -> Result<JsOutput> {
         Ok(self
             .inner
             .send_msg_to(urls, msg.deref().clone(), **opts)
@@ -209,7 +209,7 @@ impl JsRelayPool {
         urls: Vec<String>,
         msgs: Vec<JsClientMessage>,
         opts: &JsRelaySendOptions,
-    ) -> Result<JsSendOutput> {
+    ) -> Result<JsOutput> {
         let msgs = msgs.into_iter().map(|msg| msg.deref().clone()).collect();
         Ok(self
             .inner
@@ -240,7 +240,7 @@ impl JsRelayPool {
         &self,
         events: Vec<JsEvent>,
         opts: &JsRelaySendOptions,
-    ) -> Result<JsSendOutput> {
+    ) -> Result<JsOutput> {
         let events = events.into_iter().map(|e| e.deref().clone()).collect();
         Ok(self
             .inner
@@ -273,7 +273,7 @@ impl JsRelayPool {
         urls: Vec<String>,
         events: Vec<JsEvent>,
         opts: &JsRelaySendOptions,
-    ) -> Result<JsSendOutput> {
+    ) -> Result<JsOutput> {
         let events = events.into_iter().map(|e| e.deref().clone()).collect();
         Ok(self
             .inner
@@ -433,7 +433,7 @@ impl JsRelayPool {
         &self,
         filter: &JsFilter,
         opts: &JsNegentropyOptions,
-    ) -> Result<JsReconciliationOutput> {
+    ) -> Result<JsOutput> {
         self.inner
             .reconcile(filter.deref().clone(), **opts)
             .await

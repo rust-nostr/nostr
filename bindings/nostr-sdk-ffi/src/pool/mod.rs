@@ -14,7 +14,7 @@ use uniffi::Object;
 
 pub mod result;
 
-use self::result::{ReconciliationOutput, SendEventOutput, SendOutput};
+use self::result::{Output, SendEventOutput};
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
 use crate::relay::options::{FilterOptions, NegentropyOptions};
@@ -135,7 +135,7 @@ impl RelayPool {
         &self,
         msg: Arc<ClientMessage>,
         opts: Arc<RelaySendOptions>,
-    ) -> Result<SendOutput> {
+    ) -> Result<Output> {
         Ok(self
             .inner
             .send_msg(msg.as_ref().deref().clone(), **opts)
@@ -148,7 +148,7 @@ impl RelayPool {
         &self,
         msgs: Vec<Arc<ClientMessage>>,
         opts: &RelaySendOptions,
-    ) -> Result<SendOutput> {
+    ) -> Result<Output> {
         let msgs = msgs
             .into_iter()
             .map(|msg| msg.as_ref().deref().clone())
@@ -164,7 +164,7 @@ impl RelayPool {
         urls: Vec<String>,
         msg: Arc<ClientMessage>,
         opts: Arc<RelaySendOptions>,
-    ) -> Result<SendOutput> {
+    ) -> Result<Output> {
         Ok(self
             .inner
             .send_msg_to(urls, msg.as_ref().deref().clone(), **opts)
@@ -180,7 +180,7 @@ impl RelayPool {
         urls: Vec<String>,
         msgs: Vec<Arc<ClientMessage>>,
         opts: &RelaySendOptions,
-    ) -> Result<SendOutput> {
+    ) -> Result<Output> {
         let msgs = msgs
             .into_iter()
             .map(|msg| msg.as_ref().deref().clone())
@@ -206,7 +206,7 @@ impl RelayPool {
         &self,
         events: Vec<Arc<Event>>,
         opts: &RelaySendOptions,
-    ) -> Result<SendOutput> {
+    ) -> Result<Output> {
         let events = events
             .into_iter()
             .map(|e| e.as_ref().deref().clone())
@@ -234,7 +234,7 @@ impl RelayPool {
         urls: Vec<String>,
         events: Vec<Arc<Event>>,
         opts: &RelaySendOptions,
-    ) -> Result<SendOutput> {
+    ) -> Result<Output> {
         let events = events
             .into_iter()
             .map(|e| e.as_ref().deref().clone())
@@ -395,11 +395,7 @@ impl RelayPool {
     /// Negentropy reconciliation
     ///
     /// Use events stored in database
-    pub async fn reconcile(
-        &self,
-        filter: &Filter,
-        opts: &NegentropyOptions,
-    ) -> Result<ReconciliationOutput> {
+    pub async fn reconcile(&self, filter: &Filter, opts: &NegentropyOptions) -> Result<Output> {
         Ok(self
             .inner
             .reconcile(filter.deref().clone(), **opts)
@@ -413,7 +409,7 @@ impl RelayPool {
         filter: &Filter,
         items: Vec<NegentropyItem>,
         opts: &NegentropyOptions,
-    ) -> Result<ReconciliationOutput> {
+    ) -> Result<Output> {
         let items = items
             .into_iter()
             .map(|item| (**item.id, **item.timestamp))
