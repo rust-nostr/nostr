@@ -14,7 +14,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod result;
 
-use self::result::{JsSendEventOutput, JsSendOutput};
+use self::result::{JsReconciliationOutput, JsSendEventOutput, JsSendOutput};
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
 use crate::relay::blacklist::JsRelayBlacklist;
@@ -429,11 +429,16 @@ impl JsRelayPool {
     /// Negentropy reconciliation
     ///
     /// Use events stored in database
-    pub async fn reconcile(&self, filter: &JsFilter, opts: &JsNegentropyOptions) -> Result<()> {
+    pub async fn reconcile(
+        &self,
+        filter: &JsFilter,
+        opts: &JsNegentropyOptions,
+    ) -> Result<JsReconciliationOutput> {
         self.inner
             .reconcile(filter.deref().clone(), **opts)
             .await
             .map_err(into_err)
+            .map(|o| o.into())
     }
 
     // /// Negentropy reconciliation with custom items

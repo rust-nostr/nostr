@@ -1514,7 +1514,11 @@ impl Client {
     ///
     /// <https://github.com/hoytech/negentropy>
     #[inline]
-    pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
+    pub async fn reconcile(
+        &self,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<ReconciliationOutput, Error> {
         Ok(self.pool.reconcile(filter, opts).await?)
     }
 
@@ -1527,7 +1531,7 @@ impl Client {
         urls: I,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<(), Error>
+    ) -> Result<ReconciliationOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1543,7 +1547,7 @@ impl Client {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<ReconciliationOutput, Error> {
         Ok(self.pool.reconcile_with_items(filter, items, opts).await?)
     }
 
@@ -1557,7 +1561,7 @@ impl Client {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<(), Error>
+    ) -> Result<ReconciliationOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

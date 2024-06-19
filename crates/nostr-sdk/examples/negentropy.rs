@@ -13,14 +13,19 @@ async fn main() -> Result<()> {
 
     let client = Client::default();
     client.add_relay("wss://atl.purplerelay.com").await?;
+    client.add_relay("wss://nostr.wine").await?;
+    client.add_relay("wss://relay.damus.io").await?;
+    client.add_relay("wss://nostr.oxtr.dev").await?;
 
     client.connect().await;
 
     let my_items = Vec::new();
     let filter = Filter::new().author(public_key).limit(10);
-    let relay = client.relay("wss://atl.purplerelay.com").await?;
     let opts = NegentropyOptions::default();
-    relay.reconcile_with_items(filter, my_items, opts).await?;
+    let ReconciliationOutput { success, failed } =
+        client.reconcile_with_items(filter, my_items, opts).await?;
+    println!("Success: {success:?}");
+    println!("Failed: {failed:?}");
 
     Ok(())
 }

@@ -14,7 +14,7 @@ use uniffi::Object;
 
 pub mod result;
 
-use self::result::{SendEventOutput, SendOutput};
+use self::result::{ReconciliationOutput, SendEventOutput, SendOutput};
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
 use crate::relay::options::{FilterOptions, NegentropyOptions};
@@ -395,8 +395,16 @@ impl RelayPool {
     /// Negentropy reconciliation
     ///
     /// Use events stored in database
-    pub async fn reconcile(&self, filter: &Filter, opts: &NegentropyOptions) -> Result<()> {
-        Ok(self.inner.reconcile(filter.deref().clone(), **opts).await?)
+    pub async fn reconcile(
+        &self,
+        filter: &Filter,
+        opts: &NegentropyOptions,
+    ) -> Result<ReconciliationOutput> {
+        Ok(self
+            .inner
+            .reconcile(filter.deref().clone(), **opts)
+            .await?
+            .into())
     }
 
     /// Negentropy reconciliation with custom items
@@ -405,7 +413,7 @@ impl RelayPool {
         filter: &Filter,
         items: Vec<NegentropyItem>,
         opts: &NegentropyOptions,
-    ) -> Result<()> {
+    ) -> Result<ReconciliationOutput> {
         let items = items
             .into_iter()
             .map(|item| (**item.id, **item.timestamp))
@@ -413,7 +421,8 @@ impl RelayPool {
         Ok(self
             .inner
             .reconcile_with_items(filter.deref().clone(), items, **opts)
-            .await?)
+            .await?
+            .into())
     }
 
     /// Handle relay pool notifications

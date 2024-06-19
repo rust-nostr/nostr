@@ -55,3 +55,25 @@ impl From<pool::SendEventOutput> for SendEventOutput {
         }
     }
 }
+
+/// Negentropy reconciliation output
+#[derive(Record)]
+pub struct ReconciliationOutput {
+    /// Set of relay urls to which the negentropy reconciliation success
+    pub success: Vec<String>,
+    /// Map of relay urls with related errors where the negentropy reconciliation failed
+    pub failed: HashMap<String, Option<String>>,
+}
+
+impl From<pool::ReconciliationOutput> for ReconciliationOutput {
+    fn from(value: pool::ReconciliationOutput) -> Self {
+        Self {
+            success: value.success.into_iter().map(|u| u.to_string()).collect(),
+            failed: value
+                .failed
+                .into_iter()
+                .map(|(u, e)| (u.to_string(), e))
+                .collect(),
+        }
+    }
+}

@@ -71,3 +71,30 @@ impl From<SendEventOutput> for JsSendEventOutput {
         }
     }
 }
+
+/// Negentropy reconciliation output
+#[wasm_bindgen(js_name = ReconciliationOutput)]
+pub struct JsReconciliationOutput {
+    /// Set of relay urls to which the negentropy reconciliation success
+    #[wasm_bindgen(getter_with_clone)]
+    pub success: Vec<String>,
+    /// Map of relay urls with related errors where the negentropy reconciliation failed
+    #[wasm_bindgen(getter_with_clone)]
+    pub failed: Vec<JsFailedOutputItem>,
+}
+
+impl From<ReconciliationOutput> for JsReconciliationOutput {
+    fn from(value: ReconciliationOutput) -> Self {
+        Self {
+            success: value.success.into_iter().map(|u| u.to_string()).collect(),
+            failed: value
+                .failed
+                .into_iter()
+                .map(|(u, e)| JsFailedOutputItem {
+                    url: u.to_string(),
+                    error: e,
+                })
+                .collect(),
+        }
+    }
+}

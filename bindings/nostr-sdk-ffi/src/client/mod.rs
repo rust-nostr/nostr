@@ -27,7 +27,7 @@ pub use self::options::Options;
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
-use crate::pool::result::{SendEventOutput, SendOutput};
+use crate::pool::result::{ReconciliationOutput, SendEventOutput, SendOutput};
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
 use crate::relay::{RelayBlacklist, RelayOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -596,11 +596,16 @@ impl Client {
             .into())
     }
 
-    pub async fn reconcile(&self, filter: Arc<Filter>, opts: Arc<NegentropyOptions>) -> Result<()> {
+    pub async fn reconcile(
+        &self,
+        filter: Arc<Filter>,
+        opts: Arc<NegentropyOptions>,
+    ) -> Result<ReconciliationOutput> {
         Ok(self
             .inner
             .reconcile(filter.as_ref().deref().clone(), **opts)
-            .await?)
+            .await?
+            .into())
     }
 
     /// Handle notifications

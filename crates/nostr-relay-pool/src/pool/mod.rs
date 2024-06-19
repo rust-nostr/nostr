@@ -25,7 +25,7 @@ mod result;
 pub use self::error::Error;
 use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
-pub use self::result::{SendEventOutput, SendOutput};
+pub use self::result::{ReconciliationOutput, SendEventOutput, SendOutput};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist, RelayStatus};
 use crate::SubscribeOptions;
@@ -440,7 +440,11 @@ impl RelayPool {
 
     /// Negentropy reconciliation with all connected relays
     #[inline]
-    pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
+    pub async fn reconcile(
+        &self,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<ReconciliationOutput, Error> {
         self.inner.reconcile(filter, opts).await
     }
 
@@ -451,7 +455,7 @@ impl RelayPool {
         urls: I,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<(), Error>
+    ) -> Result<ReconciliationOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -467,7 +471,7 @@ impl RelayPool {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<ReconciliationOutput, Error> {
         self.inner.reconcile_with_items(filter, items, opts).await
     }
 
@@ -479,7 +483,7 @@ impl RelayPool {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<(), Error>
+    ) -> Result<ReconciliationOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

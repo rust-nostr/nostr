@@ -53,3 +53,23 @@ impl fmt::Display for SendEventOutput {
         write!(f, "{}", self.id)
     }
 }
+
+/// Negentropy reconciliation output
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ReconciliationOutput {
+    /// Set of relay urls to which the negentropy reconciliation success
+    pub success: HashSet<Url>,
+    /// Map of relay urls with related errors where the negentropy reconciliation failed
+    pub failed: HashMap<Url, Option<String>>,
+}
+
+impl ReconciliationOutput {
+    pub(super) fn success(url: Url) -> Self {
+        let mut success: HashSet<Url> = HashSet::with_capacity(1);
+        success.insert(url);
+        Self {
+            success,
+            failed: HashMap::new(),
+        }
+    }
+}
