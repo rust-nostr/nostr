@@ -7,7 +7,6 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/65.md>
 
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
@@ -63,19 +62,16 @@ impl FromStr for RelayMetadata {
 
 /// Extracts the relay info (url, optional read/write flag) from the event
 #[inline]
-pub fn extract_relay_list(event: &Event) -> Vec<(&Url, &Option<RelayMetadata>)> {
-    event
-        .iter_tags()
-        .filter_map(|tag| {
-            if let Some(TagStandard::RelayMetadata {
-                relay_url,
-                metadata,
-            }) = tag.as_standardized()
-            {
-                Some((relay_url, metadata))
-            } else {
-                None
-            }
-        })
-        .collect()
+pub fn extract_relay_list(event: &Event) -> impl Iterator<Item = (&Url, &Option<RelayMetadata>)> {
+    event.iter_tags().filter_map(|tag| {
+        if let Some(TagStandard::RelayMetadata {
+            relay_url,
+            metadata,
+        }) = tag.as_standardized()
+        {
+            Some((relay_url, metadata))
+        } else {
+            None
+        }
+    })
 }

@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::time::Duration;
+
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -12,31 +14,18 @@ async fn main() -> Result<()> {
         PublicKey::from_bech32("npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c")?;
 
     let client = Client::default();
-    client.add_relay("wss://nostr.mikedilger.com").await?;
-
+    client.add_relay("wss://purplepag.es").await?;
     client.connect().await;
 
-    println!("Subscribing to Relay List Metadata");
-    client
-        .subscribe(
-            vec![Filter::new().author(public_key).kind(Kind::RelayList)],
-            None,
-        )
-        .await;
-
-    client
-        .handle_notifications(|notification| async {
-            if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind() == Kind::RelayList {
-                    let list = nip65::extract_relay_list(&event);
-                    println!("Found relay list metadata: {list:?}");
-                    return Ok(true); // Exit from loop
-                }
-            }
-
-            Ok(false)
-        })
+    let filter = Filter::new().author(public_key).kind(Kind::RelayList);
+    let events: Vec<Event> = client
+        .get_events_of(vec![filter], Some(Duration::from_secs(10)))
         .await?;
+    let event = events.first().unwrap();
+    println!("Found relay list metadata:");
+    for (url, metadata) in nip65::extract_relay_list(&event) {
+        println!("{url}: {metadata:?}");
+    }
 
     Ok(())
 }

@@ -30,6 +30,7 @@
 * nostr: rename NIP-51 `EventBuilder` set constructors and `Kind` variants ([Yuki Kishimoto])
 * nostr: small adj. to NIP-47 `ListTransactionsRequestParams` and `LookupInvoiceResponseResult` structs ([Yuki Kishimoto])
 * nostr: add `identifier` arg to NIP-51 `EventBuilder` set constructors ([Yuki Kishimoto])
+* nostr: change `nip65::extract_relay_list` fingerprint ([Yuki Kishimoto])
 * pool: use per-purpose dedicated relay channels ([Yuki Kishimoto])
 * pool: return relay urls to which `messages`/`events` have or not been sent for `send_*` and `batch_*` methods ([Yuki Kishimoto])
 * pool: rename `Relay::terminate` to `Relay::disconnect` ([Yuki Kishimoto])

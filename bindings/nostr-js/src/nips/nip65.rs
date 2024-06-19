@@ -27,7 +27,6 @@ impl JsRelayListItem {
 #[wasm_bindgen(js_name = extractRelayList)]
 pub fn extract_relay_list(event: &JsEvent) -> Vec<JsRelayListItem> {
     nip65::extract_relay_list(event.deref())
-        .into_iter()
         .map(|(s, r)| JsRelayListItem {
             url: s.to_string(),
             metadata: r.clone().map(|r| r.into()),
