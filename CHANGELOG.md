@@ -38,7 +38,8 @@
 * pool: rename `Relay::terminate` to `Relay::disconnect` ([Yuki Kishimoto])
 * pool: always send `RelayPoolNotification::Message` variant ([Yuki Kishimoto])
 * sdk: allow to change auto authentication to relays option (NIP-42) after client initialization ([Yuki Kishimoto])
-* sdk: Retrieve contact list public keys only from the latest events ([Xiao Yu])
+* sdk: retrieve contact list public keys only from the latest events ([Xiao Yu])
+* sdk: rename `Proxy` and `ProxyTarget` to `Connection` and `ConnectionTarget` ([Yuki Kishimoto])
 * bindings(nostr): allow to specify coordinates in `EventBuilder::delete` constructor ([Yuki Kishimoto])
 * ffi(sdk): convert `RelayPool::handle_notifications` method to async/future ([Yuki Kishimoto])
 * js: increase max stack size to `0x1E84800` bytes (32 MiB) ([Yuki Kishimoto])
@@ -53,6 +54,7 @@
 * pool: add `Output<EventId>::id` and `Output<SubscriptionId>::id` methods ([Yuki Kishimoto])
 * signer: add `NostrSigner::unwrap_gift_wrap` method ([Yuki Kishimoto])
 * sdk: add `Client::unwrap_gift_wrap` method ([Yuki Kishimoto])
+* sdk: add support to embedded tor client ([Yuki Kishimoto])
 * js(sdk): partially expose `JsRelayPool` ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 

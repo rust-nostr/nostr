@@ -133,6 +133,7 @@ The following crate feature flags are available:
 
 | Feature     | Default | Description                                                                                  |
 |-------------|:-------:|----------------------------------------------------------------------------------------------|
+| `tor`       |   No    | Enable support for embedded tor client                                                       |
 | `ndb`       |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend                        |
 | `sqlite`    |   No    | Enable SQLite storage backend                                                                |
 | `rocksdb`   |   No    | Enable RocksDB storage backend                                                               |

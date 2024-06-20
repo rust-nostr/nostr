@@ -13,11 +13,12 @@ keywords = ["nostr", "relay", "pool"]
 
 [features]
 default = []
+tor = ["async-wsocket/tor"]
 nip11 = ["nostr/nip11"]
 
 [dependencies]
 async-utility.workspace = true
-async-wsocket = "0.5"
+async-wsocket = { git = "https://github.com/yukibtc/async-wsocket", rev = "2a9392354db8eb5aaa8a2aff2068b93a940d7a78" }
 atomic-destructor = { workspace = true, features = ["tracing"] }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true

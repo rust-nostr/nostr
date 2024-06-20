@@ -11,6 +11,10 @@ readme = "README.md"
 rust-version.workspace = true
 keywords = ["nostr", "zapper", "nwc"]
 
+[features]
+default = []
+tor = ["nostr-relay-pool/tor"]
+
 [dependencies]
 async-utility.workspace = true
 nostr = { workspace = true, features = ["std", "nip47"] }
