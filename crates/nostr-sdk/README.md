@@ -133,9 +133,10 @@ The following crate feature flags are available:
 
 | Feature     | Default | Description                                                                                  |
 |-------------|:-------:|----------------------------------------------------------------------------------------------|
-| `ndb`       |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend                        |
+| `tor`       |   No    | Enable support for embedded tor client (MSRV `1.70.0`)                                       |
+| `ndb`       |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend (MSRV `1.70.0`)        |
 | `sqlite`    |   No    | Enable SQLite storage backend                                                                |
-| `rocksdb`   |   No    | Enable RocksDB storage backend                                                               |
+| `rocksdb`   |   No    | Enable RocksDB storage backend (MSRV `1.66.0`)                                               |
 | `indexeddb` |   No    | Enable Web's IndexedDb storage backend                                                       |
 | `webln`     |   No    | Enable WebLN zapper                                                                          |
 | `all-nips`  |   Yes   | Enable all NIPs                                                                              |
@@ -151,6 +152,16 @@ The following crate feature flags are available:
 | `nip49`     |   Yes   | Enable NIP-49: Private Key Encryption                                                        |
 | `nip57`     |   Yes   | Enable NIP-57: Zaps                                                                          |
 | `nip59`     |   Yes   | Enable NIP-59: Gift Wrap                                                                     |
+
+### Tor embedded client 
+
+The library used under the hood for websocket require a little change ([PR here](https://github.com/snapview/tungstenite-rs/pull/431)).
+Until it's merged, you have to add the following lines in your `Cargo.toml`:
+
+```toml
+[patch.crates-io]
+tungstenite = { git = "https://github.com/yukibtc/tungstenite-rs", branch = "tor" }
+```
 
 ## Supported NIPs
 

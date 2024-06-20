@@ -21,7 +21,7 @@ pub mod status;
 pub use self::blacklist::RelayBlacklist;
 pub use self::limits::RelayLimits;
 use self::options::NegentropyOptions;
-pub use self::options::{RelayOptions, RelaySendOptions, SubscribeOptions};
+pub use self::options::{ConnectionMode, RelayOptions, RelaySendOptions, SubscribeOptions};
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 use crate::error::Result;
@@ -141,9 +141,9 @@ impl Relay {
         self.inner.url().to_string()
     }
 
-    /// Get proxy
-    pub fn proxy(&self) -> Option<String> {
-        self.inner.proxy().map(|p| p.to_string())
+    /// Get connection mode
+    pub fn connection_mode(&self) -> ConnectionMode {
+        self.inner.connection_mode().into()
     }
 
     /// Get relay status

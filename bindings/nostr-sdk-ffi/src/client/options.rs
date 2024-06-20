@@ -9,10 +9,11 @@ use std::time::Duration;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
 use nostr_sdk::client::options;
+use nostr_sdk::pool;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
-use crate::relay::RelayLimits;
+use crate::relay::{ConnectionMode, RelayLimits};
 
 #[derive(Clone, Object)]
 pub struct Options {
@@ -118,10 +119,10 @@ impl Options {
         builder
     }
 
-    /// Proxy
-    pub fn proxy(self: Arc<Self>, proxy: &Proxy) -> Self {
+    /// Connection
+    pub fn connection(self: Arc<Self>, connection: &Connection) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.proxy(**proxy);
+        builder.inner = builder.inner.connection(**connection);
         builder
     }
 
@@ -133,33 +134,33 @@ impl Options {
     }
 }
 
-/// Proxy target
+/// Connection target
 #[derive(Enum)]
-pub enum ProxyTarget {
+pub enum ConnectionTarget {
     /// Use proxy for all relays
     All,
     /// Use proxy only for `.onion` relays
     Onion,
 }
 
-impl From<ProxyTarget> for options::ProxyTarget {
-    fn from(value: ProxyTarget) -> Self {
+impl From<ConnectionTarget> for options::ConnectionTarget {
+    fn from(value: ConnectionTarget) -> Self {
         match value {
-            ProxyTarget::All => Self::All,
-            ProxyTarget::Onion => Self::Onion,
+            ConnectionTarget::All => Self::All,
+            ConnectionTarget::Onion => Self::Onion,
         }
     }
 }
 
-/// Proxy
+/// Connection
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]
-pub struct Proxy {
-    inner: options::Proxy,
+pub struct Connection {
+    inner: options::Connection,
 }
 
-impl Deref for Proxy {
-    type Target = options::Proxy;
+impl Deref for Connection {
+    type Target = options::Connection;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -167,20 +168,41 @@ impl Deref for Proxy {
 }
 
 #[uniffi::export]
-impl Proxy {
-    /// Compose proxy (ex. `127.0.0.1:9050`)
+impl Connection {
     #[uniffi::constructor]
-    pub fn new(addr: &str) -> Result<Self> {
-        let addr: SocketAddr = addr.parse()?;
-        Ok(Self {
-            inner: options::Proxy::new(addr),
-        })
+    pub fn new() -> Self {
+        Self {
+            inner: options::Connection::default(),
+        }
     }
 
-    /// Set proxy target (default: all)
-    pub fn target(self: Arc<Self>, target: ProxyTarget) -> Self {
+    /// Set connection mode (default: direct)
+    pub fn mode(self: Arc<Self>, mode: ConnectionMode) -> Result<Self> {
+        let mode: pool::ConnectionMode = mode.try_into()?;
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.mode(mode);
+        Ok(builder)
+    }
+
+    /// Set connection target (default: all)
+    pub fn target(self: Arc<Self>, target: ConnectionTarget) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.target(target.into());
+        builder
+    }
+
+    /// Set proxy (ex. `127.0.0.1:9050`)
+    pub fn addr(self: Arc<Self>, addr: &str) -> Result<Self> {
+        let mut builder = unwrap_or_clone_arc(self);
+        let addr: SocketAddr = addr.parse()?;
+        builder.inner = builder.inner.proxy(addr);
+        Ok(builder)
+    }
+
+    /// Use embedded tor client
+    pub fn embedded_tor(self: Arc<Self>) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.embedded_tor();
         builder
     }
 }

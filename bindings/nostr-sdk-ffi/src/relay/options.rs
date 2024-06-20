@@ -2,16 +2,47 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
+use nostr_sdk::pool;
 use uniffi::{Enum, Object};
 
 use super::RelayLimits;
-use crate::error::Result;
+use crate::error::{NostrSdkError, Result};
+
+#[derive(Enum)]
+pub enum ConnectionMode {
+    Direct,
+    Proxy { addr: String },
+    Tor,
+}
+
+impl From<pool::ConnectionMode> for ConnectionMode {
+    fn from(mode: pool::ConnectionMode) -> Self {
+        match mode {
+            pool::ConnectionMode::Direct => Self::Direct,
+            pool::ConnectionMode::Proxy(addr) => Self::Proxy {
+                addr: addr.to_string(),
+            },
+            pool::ConnectionMode::Tor => Self::Tor,
+        }
+    }
+}
+
+impl TryFrom<ConnectionMode> for pool::ConnectionMode {
+    type Error = NostrSdkError;
+
+    fn try_from(mode: ConnectionMode) -> Result<Self, Self::Error> {
+        match mode {
+            ConnectionMode::Direct => Ok(Self::Direct),
+            ConnectionMode::Proxy { addr } => Ok(Self::Proxy(addr.parse()?)),
+            ConnectionMode::Tor => Ok(Self::Tor),
+        }
+    }
+}
 
 /// `Relay` options
 #[derive(Clone, Object)]
@@ -43,14 +74,11 @@ impl RelayOptions {
         }
     }
 
-    /// Set proxy
-    pub fn proxy(self: Arc<Self>, proxy: Option<String>) -> Result<Self> {
+    /// Set connection mode
+    pub fn connection_mode(self: Arc<Self>, mode: ConnectionMode) -> Result<Self> {
+        let mode: pool::ConnectionMode = mode.try_into()?;
         let mut builder = unwrap_or_clone_arc(self);
-        let proxy: Option<SocketAddr> = match proxy {
-            Some(proxy) => Some(proxy.parse()?),
-            None => None,
-        };
-        builder.inner = builder.inner.proxy(proxy);
+        builder.inner = builder.inner.connection_mode(mode);
         Ok(builder)
     }
 

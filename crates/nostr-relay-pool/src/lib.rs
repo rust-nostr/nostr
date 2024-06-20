@@ -11,6 +11,8 @@
 #![allow(clippy::arc_with_non_send_sync)]
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
 
+pub use async_wsocket::ConnectionMode;
+
 pub mod pool;
 pub mod prelude;
 pub mod relay;

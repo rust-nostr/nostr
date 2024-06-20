@@ -37,7 +37,9 @@
 * pool: take mutex ownership instead of clone in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: remove IDs collection from `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: better checks before perform queries or send messages to relays ([Yuki Kishimoto])
+* pool: bump `async-wsocket` to `v0.6` ([Yuki Kishimoto])
 * database: not match event if `Filter::search` field is set ([Yuki Kishimoto])
+* sdk: rename `Proxy` and `ProxyTarget` to `Connection` and `ConnectionTarget` ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])
 * cli: allow to specify relays in `open` command ([Yuki Kishimoto])
 
@@ -51,6 +53,7 @@
 * pool: add `RelayPoolNotification::Authenticated` variant ([Yuki Kishimoto])
 * sdk: add `Client::gift_wrap_to` and `Client::send_private_msg_to` ([reyamir])
 * sdk: add option to autoconnect relay on `Client::add_relay` method call ([Yuki Kishimoto])
+* sdk: add support to embedded tor client ([Yuki Kishimoto])
 * ffi(nostr): add `EventBuilder::seal` constructor ([Yuki Kishimoto])
 * cli: add `generate` command ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])

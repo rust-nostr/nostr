@@ -1,5 +1,5 @@
 import asyncio
-from nostr_sdk import Keys, Client, Options, EventBuilder, Proxy, ProxyTarget, init_logger, LogLevel
+from nostr_sdk import Keys, Client, Options, EventBuilder, Connection, ConnectionTarget, init_logger, LogLevel
 from datetime import timedelta
 
 
@@ -10,7 +10,7 @@ async def main():
     print(keys.public_key().to_bech32())
 
     # Configure client to use proxy for `.onion` relays
-    proxy = Proxy("127.0.0.1:9050").target(ProxyTarget.ONION)
+    proxy = Connection().proxy("127.0.0.1:9050").target(ConnectionTarget.ONION)
     opts = (Options()
             .connection_timeout(timedelta(seconds=60))
             .send_timeout(timedelta(seconds=10))

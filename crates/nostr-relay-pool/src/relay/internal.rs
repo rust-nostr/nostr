@@ -6,14 +6,13 @@
 
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::{futures_util, thread, time};
-use async_wsocket::futures_util::{Future, SinkExt, StreamExt};
-use async_wsocket::{Sink, Stream, WsMessage};
+use async_utility::{thread, time};
+use async_wsocket::futures_util::{self, Future, SinkExt, StreamExt};
+use async_wsocket::{ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
 use nostr::message::MessageHandleError;
 use nostr::negentropy::{Bytes, Negentropy};
@@ -217,14 +216,9 @@ impl InternalRelay {
         self.url.clone()
     }
 
-    pub fn proxy(&self) -> Option<SocketAddr> {
-        #[cfg(not(target_arch = "wasm32"))]
-        let proxy = self.opts.proxy;
-
-        #[cfg(target_arch = "wasm32")]
-        let proxy = None;
-
-        proxy
+    #[inline]
+    pub fn connection_mode(&self) -> ConnectionMode {
+        self.opts.connection_mode
     }
 
     pub async fn status(&self) -> RelayStatus {
@@ -550,17 +544,27 @@ impl InternalRelay {
 
     #[cfg(feature = "nip11")]
     fn request_nip11_document(&self) {
-        let relay = self.clone();
-        let _ = thread::spawn(async move {
-            match RelayInformationDocument::get(relay.url(), relay.proxy()).await {
-                Ok(document) => relay.set_document(document).await,
-                Err(e) => tracing::error!(
-                    "Impossible to get information document from '{}': {}",
-                    relay.url,
-                    e
-                ),
-            };
-        });
+        let (allowed, proxy) = match self.opts.connection_mode {
+            ConnectionMode::Direct => (true, None),
+            #[cfg(not(target_arch = "wasm32"))]
+            ConnectionMode::Proxy(proxy) => (true, Some(proxy)),
+            #[cfg(all(feature = "tor", not(target_arch = "wasm32")))]
+            ConnectionMode::Tor => (false, None),
+        };
+
+        if allowed {
+            let relay = self.clone();
+            let _ = thread::spawn(async move {
+                match RelayInformationDocument::get(relay.url(), proxy).await {
+                    Ok(document) => relay.set_document(document).await,
+                    Err(e) => tracing::error!(
+                        "Impossible to get information document from '{}': {}",
+                        relay.url,
+                        e
+                    ),
+                };
+            });
+        }
     }
 
     async fn sender_message_handler(&self, mut ws_tx: Sink) {
@@ -796,16 +800,24 @@ impl InternalRelay {
         self.request_nip11_document();
 
         // Compose timeout
-        let timeout: Option<Duration> = if self.stats.attempts() > 1 {
+        let timeout: Duration = if self.stats.attempts() > 1 {
             // Many attempts, use the default timeout
-            Some(Duration::from_secs(60))
+            #[cfg(feature = "tor")]
+            if let ConnectionMode::Tor = self.connection_mode() {
+                Duration::from_secs(120)
+            } else {
+                Duration::from_secs(60)
+            }
+
+            #[cfg(not(feature = "tor"))]
+            Duration::from_secs(60)
         } else {
             // First attempt, use external timeout
-            connection_timeout
+            connection_timeout.unwrap_or(Duration::from_secs(60))
         };
 
         // Connect
-        match async_wsocket::connect(&self.url, self.proxy(), timeout).await {
+        match async_wsocket::connect(&self.url, self.connection_mode(), timeout).await {
             Ok((ws_tx, ws_rx)) => {
                 // Update status
                 self.set_status(RelayStatus::Connected, true).await;

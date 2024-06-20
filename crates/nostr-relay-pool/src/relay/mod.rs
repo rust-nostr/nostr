@@ -6,12 +6,11 @@
 
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use async_wsocket::futures_util::Future;
+use async_wsocket::ConnectionMode;
 use atomic_destructor::AtomicDestructor;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
@@ -165,11 +164,10 @@ impl Relay {
         self.inner.url()
     }
 
-    /// Get proxy
+    /// Get connection mode
     #[inline]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn proxy(&self) -> Option<SocketAddr> {
-        self.inner.proxy()
+    pub fn connection_mode(&self) -> ConnectionMode {
+        self.inner.connection_mode()
     }
 
     /// Get [`RelayStatus`]

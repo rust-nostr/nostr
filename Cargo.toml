@@ -48,9 +48,11 @@ wasm-bindgen = { version = "0.2", default-features = false }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", default-features = false }
 
-# Pathces needed to reduce bindings size
 [patch.crates-io]
+# Patch needed to reduce bindings size
 bip39 = { git = "https://github.com/rust-bitcoin/rust-bip39", rev = "256a00e7c23c5b2ecc04df90894f60248c8d56d5" }
+# TODO: remove when https://github.com/snapview/tungstenite-rs/pull/431 will be merged
+tungstenite = { git = "https://github.com/yukibtc/tungstenite-rs", branch = "tor" }
 
 [profile.release]
 lto = true

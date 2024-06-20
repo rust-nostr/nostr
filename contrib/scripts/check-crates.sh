@@ -27,18 +27,19 @@ buildargs=(
     "-p nostr --no-default-features --features alloc"
     "-p nostr --no-default-features --features alloc,all-nips"
     "-p nostr-database"
-    "-p nostr-zapper"
     "-p nostr-sdk"
     "-p nostr-sdk --no-default-features"
     "-p nostr-sdk --features nip47,nip57"
-    "-p nostr-sdk --features nip47,nip57 --target wasm32-unknown-unknown"
+    #"-p nostr-sdk --features nip47,nip57 --target wasm32-unknown-unknown"
     "-p nostr-sdk --features indexeddb,webln --target wasm32-unknown-unknown"
     "-p nostr-sdk --features sqlite"
     "-p nostr-sdk --features ndb"
+    "-p nostr-sdk --features tor"
 )
 
 skip_msrv=(
   "-p nostr-sdk --features ndb"     # MSRV: 1.70.0
+  "-p nostr-sdk --features tor"     # MSRV: 1.70.0
 )
 
 for arg in "${buildargs[@]}";
