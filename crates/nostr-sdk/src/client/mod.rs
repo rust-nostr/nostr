@@ -1124,8 +1124,8 @@ impl Client {
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
         let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
-        for event in events.into_iter() {
-            for tag in event.into_iter_tags() {
+        if let Some(latest_event) = events.into_iter().max_by_key(|event| event.created_at()) {
+            for tag in latest_event.into_iter_tags() {
                 if let Some(TagStandard::PublicKey {
                     public_key,
                     relay_url,
@@ -1140,7 +1140,6 @@ impl Client {
 
         Ok(contact_list)
     }
-
     /// Get contact list public keys
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
