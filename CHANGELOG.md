@@ -36,6 +36,7 @@
 * pool: rename `Relay::terminate` to `Relay::disconnect` ([Yuki Kishimoto])
 * pool: merge `SendOutput` and `ReconciliationOutput` in a single `Output` struct ([Yuki Kishimoto])
 * sdk: allow to change auto authentication to relays option (NIP-42) after client initialization ([Yuki Kishimoto])
+* sdk: Retrieve contact list public keys only from the latest events ([Xiao Yu])
 * ffi(sdk): convert `RelayPool::handle_notifications` method to async/future ([Yuki Kishimoto])
 * js: increase max stack size to `0x1E84800` bytes (32 MiB) ([Yuki Kishimoto])
 
