@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
         .await?;
     let event = events.first().unwrap();
     println!("Found relay list metadata:");
-    for (url, metadata) in nip65::extract_relay_list(&event) {
+    for (url, metadata) in nip65::extract_relay_list(event) {
         println!("{url}: {metadata:?}");
     }
 
