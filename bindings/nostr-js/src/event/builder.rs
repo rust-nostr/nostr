@@ -221,8 +221,20 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[wasm_bindgen]
-    pub fn delete(ids: Vec<JsEventId>, reason: Option<String>) -> Self {
-        let ids = ids.into_iter().map(|id| *id);
+    pub fn delete(
+        ids: Vec<JsEventId>,
+        coordinates: Vec<JsCoordinate>,
+        reason: Option<String>,
+    ) -> Self {
+        let coordinates = coordinates
+            .into_iter()
+            .map(|c| c.deref().clone())
+            .map(EventIdOrCoordinate::from);
+        let ids = ids
+            .into_iter()
+            .map(|id| *id)
+            .map(EventIdOrCoordinate::from)
+            .chain(coordinates);
         Self {
             inner: match reason {
                 Some(reason) => EventBuilder::delete_with_reason(ids, reason),

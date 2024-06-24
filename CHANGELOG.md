@@ -37,6 +37,7 @@
 * pool: merge `SendOutput` and `ReconciliationOutput` in a single `Output` struct ([Yuki Kishimoto])
 * sdk: allow to change auto authentication to relays option (NIP-42) after client initialization ([Yuki Kishimoto])
 * sdk: Retrieve contact list public keys only from the latest events ([Xiao Yu])
+* bindings(nostr): allow to specify coordinates in `EventBuilder::delete` constructor ([Yuki Kishimoto])
 * ffi(sdk): convert `RelayPool::handle_notifications` method to async/future ([Yuki Kishimoto])
 * js: increase max stack size to `0x1E84800` bytes (32 MiB) ([Yuki Kishimoto])
 

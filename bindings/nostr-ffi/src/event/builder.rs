@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use nostr::util::EventIdOrCoordinate;
 use nostr::{Contact as ContactSdk, UncheckedUrl, Url};
 use uniffi::Object;
 
@@ -210,9 +211,21 @@ impl EventBuilder {
     /// Event deletion
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    #[uniffi::constructor(default(reason = None))]
-    pub fn delete(ids: &[Arc<EventId>], reason: Option<String>) -> Self {
-        let ids = ids.iter().map(|e| ***e);
+    #[uniffi::constructor(default(ids = [], coordinates = [], reason = None))]
+    pub fn delete(
+        ids: &[Arc<EventId>],
+        coordinates: &[Arc<Coordinate>],
+        reason: Option<String>,
+    ) -> Self {
+        let coordinates = coordinates
+            .iter()
+            .map(|c| c.as_ref().deref().clone())
+            .map(EventIdOrCoordinate::from);
+        let ids = ids
+            .iter()
+            .map(|e| ***e)
+            .map(EventIdOrCoordinate::from)
+            .chain(coordinates);
         Self {
             inner: match reason {
                 Some(reason) => nostr::EventBuilder::delete_with_reason(ids, reason),
