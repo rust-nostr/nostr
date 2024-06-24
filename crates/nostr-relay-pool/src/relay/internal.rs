@@ -915,14 +915,10 @@ impl InternalRelay {
                 }
 
                 // Check if event was already saved
-                if self
+                let saved: bool = self
                     .database
                     .has_event_already_been_saved(&partial_event.id)
-                    .await?
-                {
-                    tracing::trace!("Event {} already saved into database", partial_event.id);
-                    return Ok(None);
-                }
+                    .await?;
 
                 // Compose full event
                 let event: Event = partial_event.merge(missing)?;
@@ -932,11 +928,14 @@ impl InternalRelay {
                     return Err(Error::EventExpired);
                 }
 
-                // Verify event
-                event.verify()?;
+                // Check if saved
+                if !saved {
+                    // Verify event
+                    event.verify()?;
 
-                // Save event
-                self.database.save_event(&event).await?;
+                    // Save event
+                    self.database.save_event(&event).await?;
+                }
 
                 // Box event
                 let event: Box<Event> = Box::new(event);

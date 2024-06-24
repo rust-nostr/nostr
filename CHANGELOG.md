@@ -35,6 +35,7 @@
 * pool: return relay urls to which `messages`/`events` have or not been sent for `send_*` and `batch_*` methods ([Yuki Kishimoto])
 * pool: rename `Relay::terminate` to `Relay::disconnect` ([Yuki Kishimoto])
 * pool: merge `SendOutput` and `ReconciliationOutput` in a single `Output` struct ([Yuki Kishimoto])
+* pool: always send `RelayPoolNotification::Message` variant ([Yuki Kishimoto])
 * sdk: allow to change auto authentication to relays option (NIP-42) after client initialization ([Yuki Kishimoto])
 * sdk: Retrieve contact list public keys only from the latest events ([Xiao Yu])
 * bindings(nostr): allow to specify coordinates in `EventBuilder::delete` constructor ([Yuki Kishimoto])
