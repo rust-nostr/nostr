@@ -162,7 +162,7 @@ impl InternalRelayPool {
             // Set relay subscriptions
             let subscriptions = self.subscriptions().await;
             for (id, filters) in subscriptions.into_iter() {
-                relay.inner.update_subscription(id, filters).await;
+                relay.inner.update_subscription(id, filters, false).await;
             }
 
             // Insert relay into map
@@ -440,6 +440,7 @@ impl InternalRelayPool {
         id
     }
 
+    // TODO: return result/output like for send/batch messages/events methods
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,

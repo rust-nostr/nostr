@@ -136,6 +136,12 @@ impl RelayChannels {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+struct SubscriptionData {
+    pub filters: Vec<Filter>,
+    pub subscribed_at: Timestamp,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct InternalRelay {
     pub(super) url: Url,
@@ -150,7 +156,7 @@ pub(crate) struct InternalRelay {
     scheduled_for_termination: Arc<AtomicBool>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
-    subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
+    subscriptions: Arc<RwLock<HashMap<SubscriptionId, SubscriptionData>>>,
 }
 
 impl AtomicDestroyer for InternalRelay {
@@ -273,18 +279,48 @@ impl InternalRelay {
 
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
         let subscription = self.subscriptions.read().await;
-        subscription.clone()
+        subscription
+            .iter()
+            .map(|(k, v)| (k.clone(), v.filters.clone()))
+            .collect()
     }
 
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
         let subscription = self.subscriptions.read().await;
-        subscription.get(id).cloned()
+        subscription.get(id).map(|d| d.filters.clone())
     }
 
-    pub(crate) async fn update_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
+    pub(crate) async fn update_subscription(
+        &self,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+        update_subscribed_at: bool,
+    ) {
         let mut subscriptions = self.subscriptions.write().await;
-        let current: &mut Vec<Filter> = subscriptions.entry(id).or_default();
-        *current = filters;
+        let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
+        data.filters = filters;
+
+        if update_subscribed_at {
+            data.subscribed_at = Timestamp::now();
+        }
+    }
+
+    /// Check if should subscribe for current websocket session
+    pub(crate) async fn should_resubscribe(&self, id: &SubscriptionId) -> bool {
+        let subscriptions = self.subscriptions.read().await;
+        match subscriptions.get(id) {
+            Some(SubscriptionData { subscribed_at, .. }) => {
+                // Never subscribed -> SHOULD subscribe
+                if subscribed_at.is_zero() {
+                    return true;
+                }
+
+                // First connection and subscribed_at != 0 -> SHOULD NOT re-subscribe
+                // Many connections and subscription NOT done in current websocket session -> SHOULD re-subscribe
+                self.stats.connected_at() > *subscribed_at && self.stats.success() > 1
+            }
+            None => false,
+        }
     }
 
     pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {
@@ -1128,8 +1164,10 @@ impl InternalRelay {
 
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
-            if !filters.is_empty() {
+            if !filters.is_empty() && self.should_resubscribe(&id).await {
                 self.send_msg(ClientMessage::req(id, filters), opts).await?;
+            } else {
+                tracing::debug!("Skip re-subscription of '{id}'");
             }
         }
 
@@ -1163,116 +1201,120 @@ impl InternalRelay {
             return Err(Error::FiltersEmpty);
         }
 
-        // Compose and send message
+        // Compose and send REQ message
         let msg: ClientMessage = ClientMessage::req(id.clone(), filters.clone());
         self.send_msg(msg, opts.send_opts).await?;
 
         // Check if auto-close condition is set
-        if let Some(opts) = opts.auto_close {
-            let this = self.clone();
-            thread::spawn(async move {
-                let sub_id = id.clone();
-                let relay = this.clone();
-                let res = time::timeout(opts.timeout, async move {
-                    let mut counter = 0;
-                    let mut received_eose: bool = false;
+        match opts.auto_close {
+            Some(opts) => {
+                let this = self.clone();
+                thread::spawn(async move {
+                    let sub_id: SubscriptionId = id.clone();
+                    let relay = this.clone();
+                    let res: Option<bool> = time::timeout(opts.timeout, async move {
+                        let mut counter = 0;
+                        let mut received_eose: bool = false;
 
-                    let mut notifications = relay.internal_notification_sender.subscribe();
-                    while let Ok(notification) = notifications.recv().await {
-                        match notification {
-                            RelayNotification::Message { message, .. } => match message {
-                                RelayMessage::Event {
-                                    subscription_id, ..
-                                } => {
-                                    if subscription_id.eq(&id) {
-                                        if let FilterOptions::WaitForEventsAfterEOSE(num) =
-                                            opts.filter
-                                        {
-                                            if received_eose {
-                                                counter += 1;
-                                                if counter >= num {
-                                                    break;
+                        let mut notifications = relay.internal_notification_sender.subscribe();
+                        while let Ok(notification) = notifications.recv().await {
+                            match notification {
+                                RelayNotification::Message { message, .. } => match message {
+                                    RelayMessage::Event {
+                                        subscription_id, ..
+                                    } => {
+                                        if subscription_id.eq(&id) {
+                                            if let FilterOptions::WaitForEventsAfterEOSE(num) =
+                                                opts.filter
+                                            {
+                                                if received_eose {
+                                                    counter += 1;
+                                                    if counter >= num {
+                                                        break;
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
-                                RelayMessage::EndOfStoredEvents(subscription_id) => {
-                                    if subscription_id.eq(&id) {
-                                        tracing::debug!(
-                                            "Received EOSE for subscription {id} from {}",
-                                            relay.url
-                                        );
-                                        received_eose = true;
-                                        if let FilterOptions::ExitOnEOSE
-                                        | FilterOptions::WaitDurationAfterEOSE(_) = opts.filter
-                                        {
-                                            break;
+                                    RelayMessage::EndOfStoredEvents(subscription_id) => {
+                                        if subscription_id.eq(&id) {
+                                            tracing::debug!(
+                                                "Received EOSE for subscription {id} from {}",
+                                                relay.url
+                                            );
+                                            received_eose = true;
+                                            if let FilterOptions::ExitOnEOSE
+                                            | FilterOptions::WaitDurationAfterEOSE(_) =
+                                                opts.filter
+                                            {
+                                                break;
+                                            }
                                         }
-                                    }
-                                }
-                                _ => (),
-                            },
-                            RelayNotification::RelayStatus { status } => {
-                                if status.is_disconnected() {
-                                    return false; // No need to send CLOSE msg
-                                }
-                            }
-                            RelayNotification::Shutdown => {
-                                return false; // No need to send CLOSE msg
-                            }
-                            _ => (),
-                        }
-                    }
-
-                    if let FilterOptions::WaitDurationAfterEOSE(duration) = opts.filter {
-                        time::timeout(Some(duration), async {
-                            while let Ok(notification) = notifications.recv().await {
-                                match notification {
-                                    RelayNotification::RelayStatus { status } => {
-                                        if status.is_disconnected() {
-                                            return Ok(()); // No need to send CLOSE msg
-                                        }
-                                    }
-                                    RelayNotification::Shutdown => {
-                                        return Ok(()); // No need to send CLOSE msg
                                     }
                                     _ => (),
+                                },
+                                RelayNotification::RelayStatus { status } => {
+                                    if status.is_disconnected() {
+                                        return false; // No need to send CLOSE msg
+                                    }
                                 }
+                                RelayNotification::Shutdown => {
+                                    return false; // No need to send CLOSE msg
+                                }
+                                _ => (),
                             }
+                        }
 
-                            Ok::<(), Error>(())
-                        })
-                        .await;
+                        if let FilterOptions::WaitDurationAfterEOSE(duration) = opts.filter {
+                            time::timeout(Some(duration), async {
+                                while let Ok(notification) = notifications.recv().await {
+                                    match notification {
+                                        RelayNotification::RelayStatus { status } => {
+                                            if status.is_disconnected() {
+                                                return Ok(()); // No need to send CLOSE msg
+                                            }
+                                        }
+                                        RelayNotification::Shutdown => {
+                                            return Ok(()); // No need to send CLOSE msg
+                                        }
+                                        _ => (),
+                                    }
+                                }
+
+                                Ok::<(), Error>(())
+                            })
+                            .await;
+                        }
+
+                        true // Need to send CLOSE msg
+                    })
+                    .await;
+
+                    // Check if CLOSE needed
+                    let to_close: bool = res.unwrap_or_else(|| {
+                        tracing::warn!("Timeout reached for REQ {sub_id}, auto-closing.");
+                        true
+                    });
+
+                    if to_close {
+                        // Unsubscribe
+                        this.send_msg(
+                            ClientMessage::close(sub_id.clone()),
+                            RelaySendOptions::default(),
+                        )
+                        .await?;
+
+                        tracing::debug!("Subscription {sub_id} auto-closed");
                     }
 
-                    true // Need to send CLOSE msg
-                })
-                .await;
-
-                // Check if CLOSE needed
-                let to_close: bool = res.unwrap_or_else(|| {
-                    tracing::warn!("Timeout reached for REQ {sub_id}, auto-closing.");
-                    true
-                });
-
-                if to_close {
-                    // Unsubscribe
-                    this.send_msg(
-                        ClientMessage::close(sub_id.clone()),
-                        RelaySendOptions::default(),
-                    )
-                    .await?;
-
-                    tracing::debug!("Subscription {sub_id} auto-closed");
-                }
-
-                Ok::<(), Error>(())
-            })?;
-        } else {
-            // No auto-close subscription: update subscription filters
-            self.update_subscription(id.clone(), filters).await;
-        }
+                    Ok::<(), Error>(())
+                })?;
+            }
+            None => {
+                // No auto-close subscription: update subscription filters
+                self.update_subscription(id.clone(), filters, true).await;
+            }
+        };
 
         Ok(())
     }
