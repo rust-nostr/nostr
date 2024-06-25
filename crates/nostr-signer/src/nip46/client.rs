@@ -57,7 +57,7 @@ impl Nip46Signer {
         pool.connect(Some(Duration::from_secs(10))).await;
 
         // Subscribe
-        let notifications = subscribe(&app_keys, &pool).await;
+        let notifications = subscribe(&app_keys, &pool).await?;
 
         // Get signer public key
         let signer_public_key: PublicKey = match uri.signer_public_key() {
@@ -248,7 +248,10 @@ impl Nip46Signer {
     }
 }
 
-async fn subscribe(app_keys: &Keys, pool: &RelayPool) -> Receiver<RelayPoolNotification> {
+async fn subscribe(
+    app_keys: &Keys,
+    pool: &RelayPool,
+) -> Result<Receiver<RelayPoolNotification>, Error> {
     let public_key: PublicKey = app_keys.public_key();
 
     let filter = Filter::new()
@@ -260,9 +263,9 @@ async fn subscribe(app_keys: &Keys, pool: &RelayPool) -> Receiver<RelayPoolNotif
 
     // Subscribe
     pool.subscribe(vec![filter], SubscribeOptions::default())
-        .await;
+        .await?;
 
-    notifications
+    Ok(notifications)
 }
 
 async fn get_signer_public_key(

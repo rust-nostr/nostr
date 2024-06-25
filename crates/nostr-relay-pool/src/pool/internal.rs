@@ -18,7 +18,7 @@ use nostr_database::{DynNostrDatabase, IntoNostrDatabase, Order};
 use tokio::sync::{broadcast, Mutex, RwLock};
 
 use super::options::RelayPoolOptions;
-use super::{Error, Output, RelayPoolNotification, SendEventOutput};
+use super::{Error, Output, RelayPoolNotification, SendEventOutput, SubscribeOutput};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist};
 use crate::{util, SubscribeOptions};
@@ -434,22 +434,22 @@ impl InternalRelayPool {
         }
     }
 
-    pub async fn subscribe(&self, filters: Vec<Filter>, opts: SubscribeOptions) -> SubscriptionId {
+    pub async fn subscribe(
+        &self,
+        filters: Vec<Filter>,
+        opts: SubscribeOptions,
+    ) -> Result<SubscribeOutput, Error> {
         let id: SubscriptionId = SubscriptionId::generate();
-        self.subscribe_with_id(id.clone(), filters, opts).await;
-        id
+        let output: Output = self.subscribe_with_id(id.clone(), filters, opts).await?;
+        Ok(SubscribeOutput { id, output })
     }
 
-    // TODO: return result/output like for send/batch messages/events methods
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) {
-        // Get relays
-        let relays = self.relays().await;
-
+    ) -> Result<Output, Error> {
         // Check if isn't auto-closing subscription
         if !opts.is_auto_closing() {
             // Update pool subscriptions
@@ -457,15 +457,12 @@ impl InternalRelayPool {
                 .await;
         }
 
+        // Get relays
+        let relays = self.relays().await;
+
         // Subscribe
-        for relay in relays.values() {
-            if let Err(e) = relay
-                .subscribe_with_id(id.clone(), filters.clone(), opts)
-                .await
-            {
-                tracing::error!("{e}");
-            }
-        }
+        self.subscribe_with_id_to(relays.into_keys(), id, filters, opts)
+            .await
     }
 
     pub async fn subscribe_to<I, U>(
@@ -473,16 +470,17 @@ impl InternalRelayPool {
         urls: I,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) -> Result<SubscriptionId, Error>
+    ) -> Result<SubscribeOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let id: SubscriptionId = SubscriptionId::generate();
-        self.subscribe_with_id_to(urls, id.clone(), filters, opts)
+        let output: Output = self
+            .subscribe_with_id_to(urls, id.clone(), filters, opts)
             .await?;
-        Ok(id)
+        Ok(SubscribeOutput { id, output })
     }
 
     pub async fn subscribe_with_id_to<I, U>(
@@ -491,7 +489,7 @@ impl InternalRelayPool {
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) -> Result<(), Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -521,21 +519,35 @@ impl InternalRelayPool {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             relay.subscribe_with_id(id, filters, opts).await?;
+            Ok(Output::success(url))
         } else {
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
                 return Err(Error::RelayNotFound);
             }
 
-            let mut handles = Vec::with_capacity(urls.len());
+            let result: Arc<Mutex<Output>> = Arc::new(Mutex::new(Output::default()));
+            let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
 
             // Subscribe
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
                 let id: SubscriptionId = id.clone();
                 let filters: Vec<Filter> = filters.clone();
-                let handle = thread::spawn(async move {
-                    if let Err(e) = relay.subscribe_with_id(id, filters, opts).await {
-                        tracing::error!("Impossible to subscribe to {url}: {e}")
+                let result: Arc<Mutex<Output>> = result.clone();
+                let handle: JoinHandle<()> = thread::spawn(async move {
+                    match relay.subscribe_with_id(id, filters, opts).await {
+                        Ok(_) => {
+                            // Success, insert relay url in 'success' set result
+                            let mut result = result.lock().await;
+                            result.success.insert(url);
+                        }
+                        Err(e) => {
+                            tracing::error!("Impossible to subscribe to '{url}': {e}");
+
+                            // Failed, insert relay url in 'failed' map result
+                            let mut result = result.lock().await;
+                            result.failed.insert(url, Some(e.to_string()));
+                        }
                     }
                 })?;
                 handles.push(handle);
@@ -544,9 +556,15 @@ impl InternalRelayPool {
             for handle in handles.into_iter() {
                 handle.join().await?;
             }
-        }
 
-        Ok(())
+            let result: Output = util::take_mutex_ownership(result).await;
+
+            if result.success.is_empty() {
+                return Err(Error::NotSubscribed);
+            }
+
+            Ok(result)
+        }
     }
 
     pub async fn unsubscribe(&self, id: SubscriptionId, opts: RelaySendOptions) {

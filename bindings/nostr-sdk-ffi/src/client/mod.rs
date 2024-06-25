@@ -27,7 +27,7 @@ pub use self::options::Options;
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
-use crate::pool::result::{Output, SendEventOutput};
+use crate::pool::result::{Output, SendEventOutput, SubscribeOutput};
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
 use crate::relay::{RelayBlacklist, RelayOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -261,16 +261,16 @@ impl Client {
         &self,
         filters: Vec<Arc<Filter>>,
         opts: Option<Arc<SubscribeAutoCloseOptions>>,
-    ) -> String {
+    ) -> Result<SubscribeOutput> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-
-        self.inner
+        Ok(self
+            .inner
             .subscribe(filters, opts.map(|o| **o))
-            .await
-            .to_string()
+            .await?
+            .into())
     }
 
     /// Subscribe to filters with custom subscription ID to all connected relays
@@ -284,15 +284,16 @@ impl Client {
         id: String,
         filters: Vec<Arc<Filter>>,
         opts: Option<Arc<SubscribeAutoCloseOptions>>,
-    ) {
+    ) -> Result<Output> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-
-        self.inner
+        Ok(self
+            .inner
             .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| **o))
-            .await
+            .await?
+            .into())
     }
 
     /// Subscribe to filters to specific relays
@@ -306,7 +307,7 @@ impl Client {
         urls: Vec<String>,
         filters: Vec<Arc<Filter>>,
         opts: Option<Arc<SubscribeAutoCloseOptions>>,
-    ) -> Result<String> {
+    ) -> Result<SubscribeOutput> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
@@ -315,7 +316,7 @@ impl Client {
             .inner
             .subscribe_to(urls, filters, opts.map(|o| **o))
             .await?
-            .to_string())
+            .into())
     }
 
     /// Subscribe to filters with custom subscription ID to specific relays
@@ -330,7 +331,7 @@ impl Client {
         id: String,
         filters: Vec<Arc<Filter>>,
         opts: Option<Arc<SubscribeAutoCloseOptions>>,
-    ) -> Result<()> {
+    ) -> Result<Output> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
@@ -338,7 +339,8 @@ impl Client {
         Ok(self
             .inner
             .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, opts.map(|o| **o))
-            .await?)
+            .await?
+            .into())
     }
 
     pub async fn unsubscribe(&self, subscription_id: String) {

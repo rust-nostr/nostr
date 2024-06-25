@@ -25,7 +25,7 @@ mod result;
 pub use self::error::Error;
 use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
-pub use self::result::{Output, SendEventOutput};
+pub use self::result::{Output, SendEventOutput, SubscribeOutput};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist, RelayStatus};
 use crate::SubscribeOptions;
@@ -326,7 +326,11 @@ impl RelayPool {
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     #[inline]
-    pub async fn subscribe(&self, filters: Vec<Filter>, opts: SubscribeOptions) -> SubscriptionId {
+    pub async fn subscribe(
+        &self,
+        filters: Vec<Filter>,
+        opts: SubscribeOptions,
+    ) -> Result<SubscribeOutput, Error> {
         self.inner.subscribe(filters, opts).await
     }
 
@@ -343,7 +347,7 @@ impl RelayPool {
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) {
+    ) -> Result<Output, Error> {
         self.inner.subscribe_with_id(id, filters, opts).await
     }
 
@@ -358,7 +362,7 @@ impl RelayPool {
         urls: I,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) -> Result<SubscriptionId, Error>
+    ) -> Result<SubscribeOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -379,7 +383,7 @@ impl RelayPool {
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) -> Result<(), Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

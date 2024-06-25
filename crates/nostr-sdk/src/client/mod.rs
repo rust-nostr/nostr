@@ -634,7 +634,7 @@ impl Client {
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
-    /// # async fn main() {
+    /// # async fn main() -> Result<()> {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let subscription = Filter::new()
@@ -642,27 +642,28 @@ impl Client {
     ///     .since(Timestamp::now());
     ///
     /// // Subscribe
-    /// let sub_id = client.subscribe(vec![subscription], None).await;
+    /// let sub_id = client.subscribe(vec![subscription], None).await?;
     /// println!("Subscription ID: {sub_id}");
     ///
     /// // Auto-closing subscription
     /// let id = SubscriptionId::generate();
     /// let subscription = Filter::new().kind(Kind::TextNote).limit(10);
     /// let opts = SubscribeAutoCloseOptions::default().filter(FilterOptions::ExitOnEOSE);
-    /// let sub_id = client.subscribe(vec![subscription], Some(opts)).await;
+    /// let sub_id = client.subscribe(vec![subscription], Some(opts)).await?;
     /// println!("Subscription ID: {sub_id} [auto-closing]");
+    /// # Ok(())
     /// # }
     /// ```
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
-    ) -> SubscriptionId {
+    ) -> Result<SubscribeOutput, Error> {
         let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
         let opts: SubscribeOptions = SubscribeOptions::default()
             .close_on(opts)
             .send_opts(send_opts);
-        self.pool.subscribe(filters, opts).await
+        Ok(self.pool.subscribe(filters, opts).await?)
     }
 
     /// Subscribe to filters with custom [SubscriptionId] to all connected relays
@@ -678,7 +679,7 @@ impl Client {
     /// use nostr_sdk::prelude::*;
     ///
     /// # #[tokio::main]
-    /// # async fn main() {
+    /// # async fn main() -> Result<()> {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
     /// let id = SubscriptionId::new("myid");
@@ -687,7 +688,9 @@ impl Client {
     ///     .since(Timestamp::now());
     ///
     /// // Subscribe
-    /// client.subscribe_with_id(id, vec![subscription], None).await;
+    /// client
+    ///     .subscribe_with_id(id, vec![subscription], None)
+    ///     .await?;
     ///
     /// // Auto-closing subscription
     /// let id = SubscriptionId::generate();
@@ -695,7 +698,9 @@ impl Client {
     /// let opts = SubscribeAutoCloseOptions::default().filter(FilterOptions::ExitOnEOSE);
     /// client
     ///     .subscribe_with_id(id, vec![subscription], Some(opts))
-    ///     .await;
+    ///     .await?;
+    ///
+    /// # Ok(())
     /// # }
     /// ```
     pub async fn subscribe_with_id(
@@ -703,12 +708,12 @@ impl Client {
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
-    ) {
+    ) -> Result<Output, Error> {
         let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
         let opts: SubscribeOptions = SubscribeOptions::default()
             .close_on(opts)
             .send_opts(send_opts);
-        self.pool.subscribe_with_id(id, filters, opts).await
+        Ok(self.pool.subscribe_with_id(id, filters, opts).await?)
     }
 
     /// Subscribe to filters to specific relays
@@ -725,7 +730,7 @@ impl Client {
         urls: I,
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<SubscriptionId, Error>
+    ) -> Result<SubscribeOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -750,7 +755,7 @@ impl Client {
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<(), Error>
+    ) -> Result<Output, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

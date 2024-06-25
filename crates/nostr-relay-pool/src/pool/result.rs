@@ -7,7 +7,7 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Deref;
 
-use nostr::{EventId, Url};
+use nostr::{EventId, SubscriptionId, Url};
 
 /// Output
 ///
@@ -50,6 +50,29 @@ impl Deref for SendEventOutput {
 }
 
 impl fmt::Display for SendEventOutput {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
+/// Subscribe output
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SubscribeOutput {
+    /// Subscription ID
+    pub id: SubscriptionId,
+    /// Output
+    pub output: Output,
+}
+
+impl Deref for SubscribeOutput {
+    type Target = SubscriptionId;
+
+    fn deref(&self) -> &Self::Target {
+        &self.id
+    }
+}
+
+impl fmt::Display for SubscribeOutput {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.id)
     }

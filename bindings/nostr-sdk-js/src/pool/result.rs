@@ -63,3 +63,23 @@ impl From<SendEventOutput> for JsSendEventOutput {
         }
     }
 }
+
+/// Subscribe output
+#[wasm_bindgen(js_name = SubscribeOutput)]
+pub struct JsSubscribeOutput {
+    /// Subscription ID
+    #[wasm_bindgen(getter_with_clone)]
+    pub id: String,
+    /// Output
+    #[wasm_bindgen(getter_with_clone)]
+    pub output: JsOutput,
+}
+
+impl From<SubscribeOutput> for JsSubscribeOutput {
+    fn from(value: SubscribeOutput) -> Self {
+        Self {
+            id: value.id.to_string(),
+            output: value.output.into(),
+        }
+    }
+}

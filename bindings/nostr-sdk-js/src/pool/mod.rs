@@ -14,7 +14,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod result;
 
-use self::result::{JsOutput, JsSendEventOutput};
+use self::result::{JsOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
 use crate::relay::blacklist::JsRelayBlacklist;
@@ -291,14 +291,19 @@ impl JsRelayPool {
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     #[wasm_bindgen]
-    pub async fn subscribe(&self, filters: Vec<JsFilter>, opts: &JsSubscribeOptions) -> String {
+    pub async fn subscribe(
+        &self,
+        filters: Vec<JsFilter>,
+        opts: &JsSubscribeOptions,
+    ) -> Result<JsSubscribeOutput> {
         self.inner
             .subscribe(
                 filters.into_iter().map(|f| f.deref().clone()).collect(),
                 **opts,
             )
             .await
-            .to_string()
+            .map_err(into_err)
+            .map(|o| o.into())
     }
 
     /// Subscribe with custom subscription ID to all connected relays
@@ -314,7 +319,7 @@ impl JsRelayPool {
         id: &str,
         filters: Vec<JsFilter>,
         opts: &JsSubscribeOptions,
-    ) {
+    ) -> Result<JsOutput> {
         self.inner
             .subscribe_with_id(
                 SubscriptionId::new(id),
@@ -322,6 +327,8 @@ impl JsRelayPool {
                 **opts,
             )
             .await
+            .map_err(into_err)
+            .map(|o| o.into())
     }
 
     /// Subscribe to filters to specific relays
@@ -335,14 +342,13 @@ impl JsRelayPool {
         urls: Vec<String>,
         filters: Vec<JsFilter>,
         opts: &JsSubscribeOptions,
-    ) -> Result<String> {
+    ) -> Result<JsSubscribeOutput> {
         let filters = filters.into_iter().map(|f| f.deref().clone()).collect();
-        Ok(self
-            .inner
+        self.inner
             .subscribe_to(urls, filters, **opts)
             .await
-            .map_err(into_err)?
-            .to_string())
+            .map_err(into_err)
+            .map(|o| o.into())
     }
 
     /// Subscribe to filters with custom subscription ID to specific relays
@@ -357,12 +363,13 @@ impl JsRelayPool {
         id: String,
         filters: Vec<JsFilter>,
         opts: &JsSubscribeOptions,
-    ) -> Result<()> {
+    ) -> Result<JsOutput> {
         let filters = filters.into_iter().map(|f| f.deref().clone()).collect();
         self.inner
             .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, **opts)
             .await
             .map_err(into_err)
+            .map(|o| o.into())
     }
 
     /// Unsubscribe

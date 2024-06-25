@@ -102,7 +102,7 @@ impl NostrConnectRemoteSigner {
         Ok(())
     }
 
-    async fn subscribe(&self) {
+    async fn subscribe(&self) -> Result<(), Error> {
         let public_key: PublicKey = self.keys.public_key();
 
         let filter = Filter::new()
@@ -113,7 +113,9 @@ impl NostrConnectRemoteSigner {
         // Subscribe
         self.pool
             .subscribe(vec![filter], SubscribeOptions::default())
-            .await;
+            .await?;
+
+        Ok(())
     }
 
     /// Serve signer
@@ -121,7 +123,7 @@ impl NostrConnectRemoteSigner {
     where
         T: NostrConnectSignerActions,
     {
-        self.subscribe().await;
+        self.subscribe().await?;
 
         self.pool
             .handle_notifications(|notification| async {

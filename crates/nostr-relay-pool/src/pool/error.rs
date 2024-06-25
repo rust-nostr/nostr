@@ -43,6 +43,9 @@ pub enum Error {
     /// Event/s not published
     #[error("event/s not published")]
     EventNotPublished,
+    /// Not subscribed
+    #[error("not subscribed")]
+    NotSubscribed,
     /// Negentropy reconciliation failed
     #[error("negentropy reconciliation failed")]
     NegentropyReconciliationFailed,

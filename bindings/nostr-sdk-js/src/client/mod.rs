@@ -28,7 +28,7 @@ use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
-use crate::pool::result::{JsOutput, JsSendEventOutput};
+use crate::pool::result::{JsOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::relay::blacklist::JsRelayBlacklist;
 use crate::relay::options::{JsNegentropyOptions, JsSubscribeAutoCloseOptions};
 use crate::relay::{JsRelay, JsRelayArray};
@@ -250,12 +250,13 @@ impl JsClient {
         &self,
         filters: Vec<JsFilter>,
         opts: Option<JsSubscribeAutoCloseOptions>,
-    ) -> String {
+    ) -> Result<JsSubscribeOutput> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
             .subscribe(filters, opts.map(|o| *o))
             .await
-            .to_string()
+            .map_err(into_err)
+            .map(|o| o.into())
     }
 
     /// Subscribe to filters with custom subscription ID to all connected relays
@@ -269,11 +270,13 @@ impl JsClient {
         id: &str,
         filters: Vec<JsFilter>,
         opts: Option<JsSubscribeAutoCloseOptions>,
-    ) {
+    ) -> Result<JsOutput> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
             .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| *o))
             .await
+            .map_err(into_err)
+            .map(|o| o.into())
     }
 
     /// Subscribe to filters to specific relays
@@ -287,14 +290,13 @@ impl JsClient {
         urls: Vec<String>,
         filters: Vec<JsFilter>,
         opts: Option<JsSubscribeAutoCloseOptions>,
-    ) -> Result<String> {
+    ) -> Result<JsSubscribeOutput> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        Ok(self
-            .inner
+        self.inner
             .subscribe_to(urls, filters, opts.map(|o| *o))
             .await
-            .map_err(into_err)?
-            .to_string())
+            .map_err(into_err)
+            .map(|o| o.into())
     }
 
     /// Subscribe to filters with custom subscription ID to specific relays
@@ -309,12 +311,13 @@ impl JsClient {
         id: &str,
         filters: Vec<JsFilter>,
         opts: Option<JsSubscribeAutoCloseOptions>,
-    ) -> Result<()> {
+    ) -> Result<JsOutput> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
             .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, opts.map(|o| *o))
             .await
             .map_err(into_err)
+            .map(|o| o.into())
     }
 
     /// Unsubscribe

@@ -50,3 +50,21 @@ impl From<pool::SendEventOutput> for SendEventOutput {
         }
     }
 }
+
+/// Subscribe output
+#[derive(Record)]
+pub struct SubscribeOutput {
+    /// Subscription ID
+    pub id: String,
+    /// Output
+    pub output: Output,
+}
+
+impl From<pool::SubscribeOutput> for SubscribeOutput {
+    fn from(value: pool::SubscribeOutput) -> Self {
+        Self {
+            id: value.id.to_string(),
+            output: value.output.into(),
+        }
+    }
+}

@@ -14,7 +14,7 @@ use uniffi::Object;
 
 pub mod result;
 
-use self::result::{Output, SendEventOutput};
+use self::result::{Output, SendEventOutput, SubscribeOutput};
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
 use crate::relay::options::{FilterOptions, NegentropyOptions};
@@ -253,8 +253,13 @@ impl RelayPool {
     /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe(&self, filters: Vec<Arc<Filter>>, opts: &SubscribeOptions) -> String {
-        self.inner
+    pub async fn subscribe(
+        &self,
+        filters: Vec<Arc<Filter>>,
+        opts: &SubscribeOptions,
+    ) -> Result<SubscribeOutput> {
+        Ok(self
+            .inner
             .subscribe(
                 filters
                     .into_iter()
@@ -262,8 +267,8 @@ impl RelayPool {
                     .collect(),
                 **opts,
             )
-            .await
-            .to_string()
+            .await?
+            .into())
     }
 
     /// Subscribe with custom subscription ID to all connected relays
@@ -278,8 +283,9 @@ impl RelayPool {
         id: String,
         filters: Vec<Arc<Filter>>,
         opts: &SubscribeOptions,
-    ) {
-        self.inner
+    ) -> Result<Output> {
+        Ok(self
+            .inner
             .subscribe_with_id(
                 SubscriptionId::new(id),
                 filters
@@ -288,7 +294,8 @@ impl RelayPool {
                     .collect(),
                 **opts,
             )
-            .await
+            .await?
+            .into())
     }
 
     /// Subscribe to filters to specific relays
@@ -301,16 +308,12 @@ impl RelayPool {
         urls: Vec<String>,
         filters: Vec<Arc<Filter>>,
         opts: &SubscribeOptions,
-    ) -> Result<String> {
+    ) -> Result<SubscribeOutput> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        Ok(self
-            .inner
-            .subscribe_to(urls, filters, **opts)
-            .await?
-            .to_string())
+        Ok(self.inner.subscribe_to(urls, filters, **opts).await?.into())
     }
 
     /// Subscribe to filters with custom subscription ID to specific relays
@@ -324,7 +327,7 @@ impl RelayPool {
         id: String,
         filters: Vec<Arc<Filter>>,
         opts: &SubscribeOptions,
-    ) -> Result<()> {
+    ) -> Result<Output> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
@@ -332,7 +335,8 @@ impl RelayPool {
         Ok(self
             .inner
             .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, **opts)
-            .await?)
+            .await?
+            .into())
     }
 
     /// Unsubscribe
