@@ -47,6 +47,12 @@ impl Timestamp {
         supplier.to_timestamp(duration)
     }
 
+    /// Compose `0` timestamp
+    #[inline]
+    pub fn zero() -> Self {
+        Self(0)
+    }
+
     /// Get tweaked UNIX timestamp
     ///
     /// Remove a random number of seconds from now
@@ -90,6 +96,12 @@ impl Timestamp {
     #[inline]
     pub fn as_u64(&self) -> u64 {
         self.0
+    }
+
+    /// Check if timestamp is `0`
+    #[inline]
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
     }
 
     /// Convert [`Timestamp`] to human datetime
@@ -173,6 +185,13 @@ impl Timestamp {
         buf[18] = (b'0' + (secs_of_day % 10) as u8) as char;
 
         buf.into_iter().collect::<String>()
+    }
+}
+
+impl Default for Timestamp {
+    #[inline]
+    fn default() -> Self {
+        Self::zero()
     }
 }
 

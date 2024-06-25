@@ -46,6 +46,7 @@
 
 * nostr: add `EventBuilder::interest_set` ([Yuki Kishimoto])
 * nostr: add `title`, `image` and `description` constructors to `Tag` ([Yuki Kishimoto])
+* nostr: add `Timestamp::zero` and `Timestamp::is_zero` methods ([Yuki Kishimoto])
 * pool: add `SendOutput` and `SendEventOutput` structs ([Yuki Kishimoto])
 * pool: return `ReconciliationOutput` for all `reconcile*` methods ([Yuki Kishimoto])
 * signer: add `NostrSigner::unwrap_gift_wrap` method ([Yuki Kishimoto])
