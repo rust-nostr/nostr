@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use nostr_ffi::EventId;
-use nostr_sdk::pool;
+use nostr_sdk::{pool, SubscriptionId};
 use uniffi::Record;
 
 /// Output
@@ -20,11 +20,11 @@ pub struct Output {
     pub failed: HashMap<String, Option<String>>,
 }
 
-impl From<pool::Output> for Output {
-    fn from(value: pool::Output) -> Self {
+impl From<pool::Output<()>> for Output {
+    fn from(output: pool::Output<()>) -> Self {
         Self {
-            success: value.success.into_iter().map(|u| u.to_string()).collect(),
-            failed: value
+            success: output.success.into_iter().map(|u| u.to_string()).collect(),
+            failed: output
                 .failed
                 .into_iter()
                 .map(|(u, e)| (u.to_string(), e))
@@ -42,11 +42,18 @@ pub struct SendEventOutput {
     pub output: Output,
 }
 
-impl From<pool::SendEventOutput> for SendEventOutput {
-    fn from(value: pool::SendEventOutput) -> Self {
+impl From<pool::Output<nostr_sdk::EventId>> for SendEventOutput {
+    fn from(output: pool::Output<nostr_sdk::EventId>) -> Self {
         Self {
-            id: Arc::new(value.id.into()),
-            output: value.output.into(),
+            id: Arc::new(output.val.into()),
+            output: Output {
+                success: output.success.into_iter().map(|u| u.to_string()).collect(),
+                failed: output
+                    .failed
+                    .into_iter()
+                    .map(|(u, e)| (u.to_string(), e))
+                    .collect(),
+            },
         }
     }
 }
@@ -60,11 +67,18 @@ pub struct SubscribeOutput {
     pub output: Output,
 }
 
-impl From<pool::SubscribeOutput> for SubscribeOutput {
-    fn from(value: pool::SubscribeOutput) -> Self {
+impl From<pool::Output<SubscriptionId>> for SubscribeOutput {
+    fn from(output: pool::Output<SubscriptionId>) -> Self {
         Self {
-            id: value.id.to_string(),
-            output: value.output.into(),
+            id: output.val.to_string(),
+            output: Output {
+                success: output.success.into_iter().map(|u| u.to_string()).collect(),
+                failed: output
+                    .failed
+                    .into_iter()
+                    .map(|(u, e)| (u.to_string(), e))
+                    .collect(),
+            },
         }
     }
 }

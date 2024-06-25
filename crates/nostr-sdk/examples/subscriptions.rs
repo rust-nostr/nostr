@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
         .since(Timestamp::now());
 
     // Subscribe (auto generate subscription ID)
-    let SubscribeOutput { id: sub_id_1, .. } = client.subscribe(vec![subscription], None).await?;
+    let Output { val: sub_id_1, .. } = client.subscribe(vec![subscription], None).await?;
 
     // Subscribe with custom ID
     let sub_id_2 = SubscriptionId::new("other-id");

@@ -642,15 +642,15 @@ impl Client {
     ///     .since(Timestamp::now());
     ///
     /// // Subscribe
-    /// let sub_id = client.subscribe(vec![subscription], None).await?;
-    /// println!("Subscription ID: {sub_id}");
+    /// let output = client.subscribe(vec![subscription], None).await?;
+    /// println!("Subscription ID: {}", output.val);
     ///
     /// // Auto-closing subscription
     /// let id = SubscriptionId::generate();
     /// let subscription = Filter::new().kind(Kind::TextNote).limit(10);
     /// let opts = SubscribeAutoCloseOptions::default().filter(FilterOptions::ExitOnEOSE);
-    /// let sub_id = client.subscribe(vec![subscription], Some(opts)).await?;
-    /// println!("Subscription ID: {sub_id} [auto-closing]");
+    /// let output = client.subscribe(vec![subscription], Some(opts)).await?;
+    /// println!("Subscription ID: {} [auto-closing]", output.val);
     /// # Ok(())
     /// # }
     /// ```
@@ -658,7 +658,7 @@ impl Client {
         &self,
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<SubscribeOutput, Error> {
+    ) -> Result<Output<SubscriptionId>, Error> {
         let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
         let opts: SubscribeOptions = SubscribeOptions::default()
             .close_on(opts)
@@ -708,7 +708,7 @@ impl Client {
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
         let opts: SubscribeOptions = SubscribeOptions::default()
             .close_on(opts)
@@ -730,7 +730,7 @@ impl Client {
         urls: I,
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<SubscribeOutput, Error>
+    ) -> Result<Output<SubscriptionId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -755,7 +755,7 @@ impl Client {
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -858,7 +858,7 @@ impl Client {
 
     /// Send client message to **all relays**
     #[inline]
-    pub async fn send_msg(&self, msg: ClientMessage) -> Result<Output, Error> {
+    pub async fn send_msg(&self, msg: ClientMessage) -> Result<Output<()>, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_msg(msg, opts).await?)
     }
@@ -869,13 +869,13 @@ impl Client {
         &self,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         Ok(self.pool.batch_msg(msgs, opts).await?)
     }
 
     /// Send client message to a **specific relays**
     #[inline]
-    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<Output, Error>
+    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -892,7 +892,7 @@ impl Client {
         urls: I,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -906,7 +906,7 @@ impl Client {
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
     #[inline]
-    pub async fn send_event(&self, event: Event) -> Result<SendEventOutput, Error> {
+    pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
         Ok(self.pool.send_event(event, opts).await?)
     }
@@ -917,7 +917,7 @@ impl Client {
         &self,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         Ok(self.pool.batch_event(events, opts).await?)
     }
 
@@ -926,7 +926,7 @@ impl Client {
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
     #[inline]
-    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<SendEventOutput, Error>
+    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -943,7 +943,7 @@ impl Client {
         urls: I,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -974,7 +974,7 @@ impl Client {
     pub async fn send_event_builder(
         &self,
         builder: EventBuilder,
-    ) -> Result<SendEventOutput, Error> {
+    ) -> Result<Output<EventId>, Error> {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event(event).await
     }
@@ -987,7 +987,7 @@ impl Client {
         &self,
         urls: I,
         builder: EventBuilder,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1035,7 +1035,7 @@ impl Client {
     /// # }
     /// ```
     #[inline]
-    pub async fn set_metadata(&self, metadata: &Metadata) -> Result<SendEventOutput, Error> {
+    pub async fn set_metadata(&self, metadata: &Metadata) -> Result<Output<EventId>, Error> {
         let builder = EventBuilder::metadata(metadata);
         self.send_event_builder(builder).await
     }
@@ -1044,7 +1044,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
-    pub async fn set_relay_list<I>(&self, relays: I) -> Result<SendEventOutput, Error>
+    pub async fn set_relay_list<I>(&self, relays: I) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = (Url, Option<RelayMetadata>)>,
     {
@@ -1075,7 +1075,7 @@ impl Client {
         &self,
         content: S,
         tags: I,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
@@ -1088,7 +1088,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[inline]
-    pub async fn set_contact_list<I>(&self, list: I) -> Result<SendEventOutput, Error>
+    pub async fn set_contact_list<I>(&self, list: I) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = Contact>,
     {
@@ -1206,7 +1206,7 @@ impl Client {
         receiver: PublicKey,
         msg: S,
         reply_to: Option<EventId>,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
@@ -1234,7 +1234,7 @@ impl Client {
         receiver: PublicKey,
         message: S,
         reply_to: Option<EventId>,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
@@ -1248,7 +1248,7 @@ impl Client {
         &self,
         event: &Event,
         relay_url: Option<UncheckedUrl>,
-    ) -> Result<SendEventOutput, Error> {
+    ) -> Result<Output<EventId>, Error> {
         let builder = EventBuilder::repost(event, relay_url);
         self.send_event_builder(builder).await
     }
@@ -1257,7 +1257,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[inline]
-    pub async fn delete_event<T>(&self, id: T) -> Result<SendEventOutput, Error>
+    pub async fn delete_event<T>(&self, id: T) -> Result<Output<EventId>, Error>
     where
         T: Into<EventIdOrCoordinate>,
     {
@@ -1287,7 +1287,7 @@ impl Client {
     /// # }
     /// ```
     #[inline]
-    pub async fn like(&self, event: &Event) -> Result<SendEventOutput, Error> {
+    pub async fn like(&self, event: &Event) -> Result<Output<EventId>, Error> {
         self.reaction(event, "+").await
     }
 
@@ -1313,7 +1313,7 @@ impl Client {
     /// # }
     /// ```
     #[inline]
-    pub async fn dislike(&self, event: &Event) -> Result<SendEventOutput, Error> {
+    pub async fn dislike(&self, event: &Event) -> Result<Output<EventId>, Error> {
         self.reaction(event, "-").await
     }
 
@@ -1339,7 +1339,7 @@ impl Client {
     /// # }
     /// ```
     #[inline]
-    pub async fn reaction<S>(&self, event: &Event, reaction: S) -> Result<SendEventOutput, Error>
+    pub async fn reaction<S>(&self, event: &Event, reaction: S) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
@@ -1351,7 +1351,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[inline]
-    pub async fn new_channel(&self, metadata: &Metadata) -> Result<SendEventOutput, Error> {
+    pub async fn new_channel(&self, metadata: &Metadata) -> Result<Output<EventId>, Error> {
         let builder = EventBuilder::channel(metadata);
         self.send_event_builder(builder).await
     }
@@ -1365,7 +1365,7 @@ impl Client {
         channel_id: EventId,
         relay_url: Option<Url>,
         metadata: &Metadata,
-    ) -> Result<SendEventOutput, Error> {
+    ) -> Result<Output<EventId>, Error> {
         let builder = EventBuilder::channel_metadata(channel_id, relay_url, metadata);
         self.send_event_builder(builder).await
     }
@@ -1379,7 +1379,7 @@ impl Client {
         channel_id: EventId,
         relay_url: Url,
         msg: S,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
@@ -1395,7 +1395,7 @@ impl Client {
         &self,
         message_id: EventId,
         reason: Option<S>,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
@@ -1411,7 +1411,7 @@ impl Client {
         &self,
         pubkey: PublicKey,
         reason: Option<S>,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
@@ -1425,7 +1425,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
-    pub async fn auth<S>(&self, challenge: S, relay: Url) -> Result<SendEventOutput, Error>
+    pub async fn auth<S>(&self, challenge: S, relay: Url) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
@@ -1443,7 +1443,7 @@ impl Client {
         bolt11: S,
         preimage: Option<S>,
         zap_request: &Event,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
@@ -1475,7 +1475,7 @@ impl Client {
         receiver: PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
-    ) -> Result<SendEventOutput, Error> {
+    ) -> Result<Output<EventId>, Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
         let public_key: PublicKey = signer.public_key().await?;
@@ -1515,7 +1515,7 @@ impl Client {
         &self,
         description: S,
         metadata: FileMetadata,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
@@ -1531,7 +1531,7 @@ impl Client {
         &self,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         Ok(self.pool.reconcile(filter, opts).await?)
     }
 
@@ -1544,7 +1544,7 @@ impl Client {
         urls: I,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1560,7 +1560,7 @@ impl Client {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         Ok(self.pool.reconcile_with_items(filter, items, opts).await?)
     }
 
@@ -1574,7 +1574,7 @@ impl Client {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

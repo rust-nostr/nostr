@@ -25,7 +25,7 @@ mod result;
 pub use self::error::Error;
 use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
-pub use self::result::{Output, SendEventOutput, SubscribeOutput};
+pub use self::result::Output;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist, RelayStatus};
 use crate::SubscribeOptions;
@@ -216,7 +216,7 @@ impl RelayPool {
         &self,
         msg: ClientMessage,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         self.inner.send_msg(msg, opts).await
     }
 
@@ -226,7 +226,7 @@ impl RelayPool {
         &self,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         self.inner.batch_msg(msgs, opts).await
     }
 
@@ -239,7 +239,7 @@ impl RelayPool {
         urls: I,
         msg: ClientMessage,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -257,7 +257,7 @@ impl RelayPool {
         urls: I,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -272,7 +272,7 @@ impl RelayPool {
         &self,
         event: Event,
         opts: RelaySendOptions,
-    ) -> Result<SendEventOutput, Error> {
+    ) -> Result<Output<EventId>, Error> {
         self.inner.send_event(event, opts).await
     }
 
@@ -282,7 +282,7 @@ impl RelayPool {
         &self,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         self.inner.batch_event(events, opts).await
     }
 
@@ -293,7 +293,7 @@ impl RelayPool {
         urls: I,
         event: Event,
         opts: RelaySendOptions,
-    ) -> Result<SendEventOutput, Error>
+    ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -309,7 +309,7 @@ impl RelayPool {
         urls: I,
         events: Vec<Event>,
         opts: RelaySendOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -330,7 +330,7 @@ impl RelayPool {
         &self,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) -> Result<SubscribeOutput, Error> {
+    ) -> Result<Output<SubscriptionId>, Error> {
         self.inner.subscribe(filters, opts).await
     }
 
@@ -347,7 +347,7 @@ impl RelayPool {
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         self.inner.subscribe_with_id(id, filters, opts).await
     }
 
@@ -362,7 +362,7 @@ impl RelayPool {
         urls: I,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) -> Result<SubscribeOutput, Error>
+    ) -> Result<Output<SubscriptionId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -383,7 +383,7 @@ impl RelayPool {
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -448,7 +448,7 @@ impl RelayPool {
         &self,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         self.inner.reconcile(filter, opts).await
     }
 
@@ -459,7 +459,7 @@ impl RelayPool {
         urls: I,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -475,7 +475,7 @@ impl RelayPool {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Output, Error> {
+    ) -> Result<Output<()>, Error> {
         self.inner.reconcile_with_items(filter, items, opts).await
     }
 
@@ -487,7 +487,7 @@ impl RelayPool {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Output, Error>
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

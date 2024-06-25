@@ -21,8 +21,8 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    let SendEventOutput { id, output } = client.publish_text_note("Hello world", []).await?;
-    println!("Event ID: {}", id.to_bech32()?);
+    let output = client.publish_text_note("Hello world", []).await?;
+    println!("Event ID: {}", output.to_bech32()?);
     println!("Sent to: {:?}", output.success);
     println!("Not sent to: {:?}", output.failed);
 

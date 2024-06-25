@@ -29,8 +29,8 @@ pub struct JsOutput {
     pub failed: Vec<JsFailedOutputItem>,
 }
 
-impl From<Output> for JsOutput {
-    fn from(value: Output) -> Self {
+impl From<Output<()>> for JsOutput {
+    fn from(value: Output<()>) -> Self {
         Self {
             success: value.success.into_iter().map(|u| u.to_string()).collect(),
             failed: value
@@ -55,11 +55,21 @@ pub struct JsSendEventOutput {
     pub output: JsOutput,
 }
 
-impl From<SendEventOutput> for JsSendEventOutput {
-    fn from(value: SendEventOutput) -> Self {
+impl From<Output<EventId>> for JsSendEventOutput {
+    fn from(output: Output<EventId>) -> Self {
         Self {
-            id: value.id.into(),
-            output: value.output.into(),
+            id: output.val.into(),
+            output: JsOutput {
+                success: output.success.into_iter().map(|u| u.to_string()).collect(),
+                failed: output
+                    .failed
+                    .into_iter()
+                    .map(|(u, e)| JsFailedOutputItem {
+                        url: u.to_string(),
+                        error: e,
+                    })
+                    .collect(),
+            },
         }
     }
 }
@@ -75,11 +85,21 @@ pub struct JsSubscribeOutput {
     pub output: JsOutput,
 }
 
-impl From<SubscribeOutput> for JsSubscribeOutput {
-    fn from(value: SubscribeOutput) -> Self {
+impl From<Output<SubscriptionId>> for JsSubscribeOutput {
+    fn from(output: Output<SubscriptionId>) -> Self {
         Self {
-            id: value.id.to_string(),
-            output: value.output.into(),
+            id: output.val.to_string(),
+            output: JsOutput {
+                success: output.success.into_iter().map(|u| u.to_string()).collect(),
+                failed: output
+                    .failed
+                    .into_iter()
+                    .map(|(u, e)| JsFailedOutputItem {
+                        url: u.to_string(),
+                        error: e,
+                    })
+                    .collect(),
+            },
         }
     }
 }
