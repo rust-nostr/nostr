@@ -31,6 +31,7 @@
 * nostr: small adj. to NIP-47 `ListTransactionsRequestParams` and `LookupInvoiceResponseResult` structs ([Yuki Kishimoto])
 * nostr: add `identifier` arg to NIP-51 `EventBuilder` set constructors ([Yuki Kishimoto])
 * nostr: change `nip65::extract_relay_list` fingerprint ([Yuki Kishimoto])
+* nostr: avoid allocation where possible in NIP-05 module ([Yuki Kishimoto])
 * pool: use per-purpose dedicated relay channels ([Yuki Kishimoto])
 * pool: return relay urls to which `messages`/`events` have or not been sent for `send_*` and `batch_*` methods ([Yuki Kishimoto])
 * pool: return relay urls to which `subscription` have or not been success for `subscribe*` methods ([Yuki Kishimoto])

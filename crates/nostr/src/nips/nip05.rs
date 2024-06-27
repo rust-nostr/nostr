@@ -6,7 +6,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/05.md>
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 use std::net::SocketAddr;
@@ -68,26 +68,17 @@ impl From<key::Error> for Error {
     }
 }
 
-fn compose_url<S>(nip05: S) -> Result<(String, String), Error>
-where
-    S: AsRef<str>,
-{
-    let nip05: &str = nip05.as_ref();
-    let data: Vec<&str> = nip05.split('@').collect();
-    if data.len() != 2 {
-        return Err(Error::InvalidFormat);
+fn compose_url(nip05: &str) -> Result<(String, &str), Error> {
+    let mut split = nip05.split('@');
+    if let (Some(name), Some(domain)) = (split.next(), split.next()) {
+        let url = format!("https://{domain}/.well-known/nostr.json?name={name}");
+        return Ok((url, name));
     }
-    let name: &str = data[0];
-    let domain: &str = data[1];
-    let url = format!("https://{domain}/.well-known/nostr.json?name={name}");
-    Ok((url, name.to_string()))
+    Err(Error::InvalidFormat)
 }
 
-fn get_key_from_json<S>(json: &Value, name: S) -> Option<PublicKey>
-where
-    S: AsRef<str>,
-{
-    let name: &str = name.as_ref();
+#[inline]
+fn get_key_from_json(json: &Value, name: &str) -> Option<PublicKey> {
     json.get("names")
         .and_then(|names| names.get(name))
         .and_then(|value| value.as_str())
@@ -97,7 +88,7 @@ where
 #[inline]
 fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
     json.get("relays")
-        .and_then(|relays| relays.get(pk.to_string()))
+        .and_then(|relays| relays.get(pk.to_hex()))
         .and_then(|value| serde_json::from_value(value.clone()).ok())
         .unwrap_or_default()
 }
@@ -105,15 +96,12 @@ fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
 #[inline]
 fn get_nip46_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
     json.get("nip46")
-        .and_then(|relays| relays.get(pk.to_string()))
+        .and_then(|relays| relays.get(pk.to_hex()))
         .and_then(|value| serde_json::from_value(value.clone()).ok())
         .unwrap_or_default()
 }
 
-fn verify_json<S>(public_key: &PublicKey, json: &Value, name: S) -> bool
-where
-    S: AsRef<str>,
-{
+fn verify_json(public_key: &PublicKey, json: &Value, name: &str) -> bool {
     if let Some(pubkey) = get_key_from_json(json, name) {
         if &pubkey == public_key {
             return true;
@@ -123,10 +111,7 @@ where
     false
 }
 
-async fn make_req<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<(Value, String), Error>
-where
-    S: AsRef<str>,
-{
+async fn make_req(nip05: &str, _proxy: Option<SocketAddr>) -> Result<(Value, &str), Error> {
     let (url, name) = compose_url(nip05)?;
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -143,7 +128,7 @@ where
     let client: Client = Client::new();
 
     let res: Response = client.get(url).send().await?;
-    let json: Value = serde_json::from_str(&res.text().await?)?;
+    let json: Value = res.json().await?;
 
     Ok((json, name))
 }
@@ -159,7 +144,7 @@ pub async fn verify<S>(
 where
     S: AsRef<str>,
 {
-    let (json, name) = make_req(nip05, _proxy).await?;
+    let (json, name) = make_req(nip05.as_ref(), _proxy).await?;
     Ok(verify_json(public_key, &json, name))
 }
 
@@ -170,7 +155,7 @@ pub async fn get_profile<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<Nip1
 where
     S: AsRef<str>,
 {
-    let (json, name) = make_req(nip05, _proxy).await?;
+    let (json, name) = make_req(nip05.as_ref(), _proxy).await?;
 
     let public_key: PublicKey = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
     let relays: Vec<Url> = get_relays_from_json(json, public_key);
@@ -188,7 +173,7 @@ pub async fn get_nip46<S>(
 where
     S: AsRef<str>,
 {
-    let (json, name) = make_req(nip05, _proxy).await?;
+    let (json, name) = make_req(nip05.as_ref(), _proxy).await?;
 
     let public_key: PublicKey = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
     let relays: Vec<Url> = get_nip46_relays_from_json(json, public_key);
