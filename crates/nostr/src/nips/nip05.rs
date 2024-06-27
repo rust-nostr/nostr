@@ -17,7 +17,7 @@ use reqwest::{Client, Response};
 use serde_json::Value;
 use url::Url;
 
-use crate::nips::nip19::Nip19Profile;
+use super::nip19::Nip19Profile;
 use crate::{key, PublicKey};
 
 /// `NIP05` error
@@ -68,6 +68,23 @@ impl From<key::Error> for Error {
     }
 }
 
+/// NIP-05 profile
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/05.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct Nip05Profile {
+    /// Public key
+    pub public_key: PublicKey,
+    /// Relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/05.md>
+    pub relays: Vec<Url>,
+    /// NIP-46 relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
+    pub nip46: Vec<Url>,
+}
+
 fn compose_url(nip05: &str) -> Result<(String, &str), Error> {
     let mut split = nip05.split('@');
     if let (Some(name), Some(domain)) = (split.next(), split.next()) {
@@ -86,7 +103,7 @@ fn get_key_from_json(json: &Value, name: &str) -> Option<PublicKey> {
 }
 
 #[inline]
-fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
+fn get_relays_from_json(json: &Value, pk: PublicKey) -> Vec<Url> {
     json.get("relays")
         .and_then(|relays| relays.get(pk.to_hex()))
         .and_then(|value| serde_json::from_value(value.clone()).ok())
@@ -94,14 +111,14 @@ fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
 }
 
 #[inline]
-fn get_nip46_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
+fn get_nip46_relays_from_json(json: &Value, pk: PublicKey) -> Vec<Url> {
     json.get("nip46")
         .and_then(|relays| relays.get(pk.to_hex()))
         .and_then(|value| serde_json::from_value(value.clone()).ok())
         .unwrap_or_default()
 }
 
-fn verify_json(public_key: &PublicKey, json: &Value, name: &str) -> bool {
+fn verify_from_json(public_key: &PublicKey, json: &Value, name: &str) -> bool {
     if let Some(pubkey) = get_key_from_json(json, name) {
         if &pubkey == public_key {
             return true;
@@ -136,6 +153,8 @@ async fn make_req(nip05: &str, _proxy: Option<SocketAddr>) -> Result<(Value, &st
 /// Verify NIP05
 ///
 /// **Proxy is ignored for WASM targets!**
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/05.md>
 pub async fn verify<S>(
     public_key: &PublicKey,
     nip05: S,
@@ -145,40 +164,42 @@ where
     S: AsRef<str>,
 {
     let (json, name) = make_req(nip05.as_ref(), _proxy).await?;
-    Ok(verify_json(public_key, &json, name))
+    Ok(verify_from_json(public_key, &json, name))
 }
 
-/// Get [Nip19Profile] from NIP05 (public key and list of advertised relays)
+/// Get NIP-05 profile
 ///
 /// **Proxy is ignored for WASM targets!**
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/05.md>
+pub async fn profile<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<Nip05Profile, Error>
+where
+    S: AsRef<str>,
+{
+    let (json, name) = make_req(nip05.as_ref(), _proxy).await?;
+
+    let public_key: PublicKey = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
+    let relays: Vec<Url> = get_relays_from_json(&json, public_key);
+    let nip46: Vec<Url> = get_nip46_relays_from_json(&json, public_key);
+
+    Ok(Nip05Profile {
+        public_key,
+        relays,
+        nip46,
+    })
+}
+
+/// Get NIP-05 profile
+#[deprecated(since = "0.33.0", note = "use `profile` instead.")]
 pub async fn get_profile<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
 where
     S: AsRef<str>,
 {
-    let (json, name) = make_req(nip05.as_ref(), _proxy).await?;
-
-    let public_key: PublicKey = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
-    let relays: Vec<Url> = get_relays_from_json(json, public_key);
-
-    Ok(Nip19Profile { public_key, relays })
-}
-
-/// Get [Nip19Profile] from NIP05 (public key and list of advertised relays)
-///
-/// **Proxy is ignored for WASM targets!**
-pub async fn get_nip46<S>(
-    nip05: S,
-    _proxy: Option<SocketAddr>,
-) -> Result<(PublicKey, Vec<Url>), Error>
-where
-    S: AsRef<str>,
-{
-    let (json, name) = make_req(nip05.as_ref(), _proxy).await?;
-
-    let public_key: PublicKey = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
-    let relays: Vec<Url> = get_nip46_relays_from_json(json, public_key);
-
-    Ok((public_key, relays))
+    let profile: Nip05Profile = profile(nip05, _proxy).await?;
+    Ok(Nip19Profile {
+        public_key: profile.public_key,
+        relays: profile.relays,
+    })
 }
 
 #[cfg(test)]
@@ -206,12 +227,12 @@ mod tests {
         let public_key =
             PublicKey::from_hex("68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272")
                 .unwrap();
-        assert!(verify_json(&public_key, &json, name));
-        assert!(verify_json(&public_key, &json, "yuki"));
+        assert!(verify_from_json(&public_key, &json, name));
+        assert!(verify_from_json(&public_key, &json, "yuki"));
 
         let public_key =
             PublicKey::from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a")
                 .unwrap();
-        assert!(!verify_json(&public_key, &json, "yuki"));
+        assert!(!verify_from_json(&public_key, &json, "yuki"));
     }
 }
