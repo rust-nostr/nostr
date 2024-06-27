@@ -101,6 +101,14 @@ fn get_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
         .unwrap_or_default()
 }
 
+#[inline]
+fn get_nip46_relays_from_json(json: Value, pk: PublicKey) -> Vec<Url> {
+    json.get("nip46")
+        .and_then(|relays| relays.get(pk.to_string()))
+        .and_then(|value| serde_json::from_value(value.clone()).ok())
+        .unwrap_or_default()
+}
+
 fn verify_json<S>(public_key: &PublicKey, json: &Value, name: S) -> bool
 where
     S: AsRef<str>,
@@ -178,6 +186,42 @@ where
     let relays = get_relays_from_json(json, public_key);
 
     Ok(Nip19Profile { public_key, relays })
+}
+
+/// Get [Nip19Profile] from NIP05 (public key and list of advertised relays)
+///
+/// **Proxy is ignored for WASM targets!**
+pub async fn get_nip46<S>(
+    nip05: S,
+    _proxy: Option<SocketAddr>,
+) -> Result<(PublicKey, Vec<Url>), Error>
+where
+    S: AsRef<str>,
+{
+    use reqwest::Client;
+
+    let (url, name) = compose_url(nip05)?;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let client: Client = {
+        let mut builder = Client::builder();
+        if let Some(proxy) = _proxy {
+            let proxy = format!("socks5h://{proxy}");
+            builder = builder.proxy(Proxy::all(proxy)?);
+        }
+        builder.build()?
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let client: Client = Client::new();
+
+    let res = client.get(url).send().await?;
+    let json: Value = serde_json::from_str(&res.text().await?)?;
+
+    let public_key = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
+    let relays = get_nip46_relays_from_json(json, public_key);
+
+    Ok((public_key, relays))
 }
 
 #[cfg(test)]
