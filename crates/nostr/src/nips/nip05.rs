@@ -13,6 +13,7 @@ use std::net::SocketAddr;
 
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
+use reqwest::{Client, Response};
 use serde_json::Value;
 use url::Url;
 
@@ -122,6 +123,31 @@ where
     false
 }
 
+async fn make_req<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<(Value, String), Error>
+where
+    S: AsRef<str>,
+{
+    let (url, name) = compose_url(nip05)?;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let client: Client = {
+        let mut builder = Client::builder();
+        if let Some(proxy) = _proxy {
+            let proxy = format!("socks5h://{proxy}");
+            builder = builder.proxy(Proxy::all(proxy)?);
+        }
+        builder.build()?
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let client: Client = Client::new();
+
+    let res: Response = client.get(url).send().await?;
+    let json: Value = serde_json::from_str(&res.text().await?)?;
+
+    Ok((json, name))
+}
+
 /// Verify NIP05
 ///
 /// **Proxy is ignored for WASM targets!**
@@ -133,25 +159,7 @@ pub async fn verify<S>(
 where
     S: AsRef<str>,
 {
-    use reqwest::Client;
-
-    let (url, name) = compose_url(nip05)?;
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let client: Client = {
-        let mut builder = Client::builder();
-        if let Some(proxy) = _proxy {
-            let proxy = format!("socks5h://{proxy}");
-            builder = builder.proxy(Proxy::all(proxy)?);
-        }
-        builder.build()?
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let client: Client = Client::new();
-
-    let res = client.get(url).send().await?;
-    let json: Value = serde_json::from_str(&res.text().await?)?;
+    let (json, name) = make_req(nip05, _proxy).await?;
     Ok(verify_json(public_key, &json, name))
 }
 
@@ -162,28 +170,10 @@ pub async fn get_profile<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<Nip1
 where
     S: AsRef<str>,
 {
-    use reqwest::Client;
+    let (json, name) = make_req(nip05, _proxy).await?;
 
-    let (url, name) = compose_url(nip05)?;
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let client: Client = {
-        let mut builder = Client::builder();
-        if let Some(proxy) = _proxy {
-            let proxy = format!("socks5h://{proxy}");
-            builder = builder.proxy(Proxy::all(proxy)?);
-        }
-        builder.build()?
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let client: Client = Client::new();
-
-    let res = client.get(url).send().await?;
-    let json: Value = serde_json::from_str(&res.text().await?)?;
-
-    let public_key = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
-    let relays = get_relays_from_json(json, public_key);
+    let public_key: PublicKey = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
+    let relays: Vec<Url> = get_relays_from_json(json, public_key);
 
     Ok(Nip19Profile { public_key, relays })
 }
@@ -198,28 +188,10 @@ pub async fn get_nip46<S>(
 where
     S: AsRef<str>,
 {
-    use reqwest::Client;
+    let (json, name) = make_req(nip05, _proxy).await?;
 
-    let (url, name) = compose_url(nip05)?;
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let client: Client = {
-        let mut builder = Client::builder();
-        if let Some(proxy) = _proxy {
-            let proxy = format!("socks5h://{proxy}");
-            builder = builder.proxy(Proxy::all(proxy)?);
-        }
-        builder.build()?
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let client: Client = Client::new();
-
-    let res = client.get(url).send().await?;
-    let json: Value = serde_json::from_str(&res.text().await?)?;
-
-    let public_key = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
-    let relays = get_nip46_relays_from_json(json, public_key);
+    let public_key: PublicKey = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
+    let relays: Vec<Url> = get_nip46_relays_from_json(json, public_key);
 
     Ok((public_key, relays))
 }
