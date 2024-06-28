@@ -28,6 +28,7 @@ impl Default for NostrWalletConnectOptions {
 
 impl NostrWalletConnectOptions {
     /// New default NWC options
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
@@ -42,6 +43,7 @@ impl NostrWalletConnectOptions {
     }
 
     /// Set NWC requests timeout (default: 10 secs)
+    #[inline]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self

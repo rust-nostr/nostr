@@ -51,6 +51,7 @@ pub struct NWC {
 
 impl NWC {
     /// Compose new [NWC] client
+    #[inline]
     pub fn new(uri: NostrWalletConnectURI) -> Self {
         Self::with_opts(uri, NostrWalletConnectOptions::default())
     }
@@ -65,6 +66,7 @@ impl NWC {
         }
     }
 
+    #[inline]
     fn is_initialized(&self) -> bool {
         self.initialized.load(Ordering::SeqCst)
     }
@@ -198,6 +200,7 @@ impl NWC {
     }
 
     /// Completely shutdown [NWC] client
+    #[inline]
     pub async fn shutdown(self) -> Result<(), Error> {
         Ok(self.relay.disconnect().await?)
     }
@@ -208,10 +211,12 @@ impl NWC {
 impl NostrZapper for NWC {
     type Err = Error;
 
+    #[inline]
     fn backend(&self) -> ZapperBackend {
         ZapperBackend::NWC
     }
 
+    #[inline]
     async fn pay(&self, invoice: String) -> Result<(), Self::Err> {
         self.pay_invoice(invoice).await?;
         Ok(())
