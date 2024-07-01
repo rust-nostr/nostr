@@ -14,14 +14,13 @@ use std::sync::Arc;
 pub use async_trait::async_trait;
 pub use nostr;
 use nostr::nips::nip01::Coordinate;
-use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, PublicKey, Timestamp, Url};
+use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, Profile, PublicKey, Timestamp, Url};
 
 mod error;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuffers;
 pub mod index;
 pub mod memory;
-pub mod profile;
 mod tag_indexes;
 #[cfg(feature = "flatbuf")]
 mod temp;
@@ -31,7 +30,6 @@ pub use self::error::DatabaseError;
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
 pub use self::index::{DatabaseIndexes, EventIndexResult};
 pub use self::memory::{MemoryDatabase, MemoryDatabaseOptions};
-pub use self::profile::Profile;
 #[cfg(feature = "flatbuf")]
 pub use self::temp::TempEvent;
 
@@ -187,7 +185,7 @@ pub trait NostrDatabase: AsyncTraitDeps {
 pub trait NostrDatabaseExt: NostrDatabase {
     /// Get profile metadata
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn profile(&self, public_key: PublicKey) -> Result<Profile, Self::Err> {
+    async fn profile(&self, public_key: PublicKey) -> Result<Profile<Metadata>, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::Metadata)
@@ -198,10 +196,10 @@ pub trait NostrDatabaseExt: NostrDatabase {
                 Ok(metadata) => Ok(Profile::new(public_key, metadata)),
                 Err(e) => {
                     tracing::error!("Impossible to deserialize profile metadata: {e}");
-                    Ok(Profile::from(public_key))
+                    Ok(Profile::new(public_key, Metadata::default()))
                 }
             },
-            None => Ok(Profile::from(public_key)),
+            None => Ok(Profile::new(public_key, Metadata::default())),
         }
     }
 
@@ -224,7 +222,10 @@ pub trait NostrDatabaseExt: NostrDatabase {
 
     /// Get contact list with metadata of [`PublicKey`]
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn contacts(&self, public_key: PublicKey) -> Result<BTreeSet<Profile>, Self::Err> {
+    async fn contacts(
+        &self,
+        public_key: PublicKey,
+    ) -> Result<BTreeSet<Profile<Metadata>>, Self::Err> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::ContactList)
@@ -236,7 +237,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
                 let filter = Filter::new()
                     .authors(event.public_keys().copied())
                     .kind(Kind::Metadata);
-                let mut contacts: HashSet<Profile> = self
+                let mut contacts: HashSet<Profile<Metadata>> = self
                     .query(vec![filter], Order::Desc)
                     .await?
                     .into_iter()
@@ -248,7 +249,12 @@ pub trait NostrDatabaseExt: NostrDatabase {
                     .collect();
 
                 // Extend with missing public keys
-                contacts.extend(event.public_keys().copied().map(Profile::from));
+                contacts.extend(
+                    event
+                        .public_keys()
+                        .copied()
+                        .map(|p| Profile::new(p, Metadata::default())),
+                );
 
                 Ok(contacts.into_iter().collect())
             }

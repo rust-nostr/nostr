@@ -63,8 +63,8 @@ pub use self::message::{ClientMessage, RawRelayMessage, RelayMessage, Subscripti
 pub use self::nips::nip19::{FromBech32, ToBech32};
 #[doc(hidden)]
 pub use self::types::{
-    Alphabet, Contact, Filter, ImageDimensions, Metadata, SingleLetterTag, Timestamp, TryIntoUrl,
-    UncheckedUrl, Url,
+    Alphabet, Contact, Filter, ImageDimensions, Metadata, Profile, SingleLetterTag, Timestamp,
+    TryIntoUrl, UncheckedUrl, Url,
 };
 #[doc(hidden)]
 pub use self::util::JsonUtil;

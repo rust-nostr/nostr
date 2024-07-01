@@ -6,16 +6,16 @@ use std::ops::Deref;
 
 use nostr_js::key::JsPublicKey;
 use nostr_js::types::JsMetadata;
-use nostr_sdk::database::Profile;
+use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(js_name = Profile)]
 pub struct JsProfile {
-    inner: Profile,
+    inner: Profile<Metadata>,
 }
 
-impl From<Profile> for JsProfile {
-    fn from(inner: Profile) -> Self {
+impl From<Profile<Metadata>> for JsProfile {
+    fn from(inner: Profile<Metadata>) -> Self {
         Self { inner }
     }
 }
@@ -37,7 +37,7 @@ impl JsProfile {
 
     /// Get profile metadata
     pub fn metadata(&self) -> JsMetadata {
-        self.inner.metadata().into()
+        self.inner.metadata().clone().into()
     }
 
     /// Get profile name
@@ -45,8 +45,8 @@ impl JsProfile {
     /// Steps (go to next step if field is `None` or `empty`):
     /// * Check `display_name` field
     /// * Check `name` field
-    /// * Return cutted public key (ex. `00000000:00000002`)
+    /// * Return cut public key (ex. `00000000:00000002`)
     pub fn name(&self) -> String {
-        self.inner.name()
+        self.inner.name().to_string()
     }
 }

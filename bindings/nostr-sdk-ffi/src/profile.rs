@@ -6,17 +6,17 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::{Metadata, PublicKey};
-use nostr_sdk::database;
+use nostr_sdk::nostr;
 use uniffi::Object;
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]
 pub struct Profile {
-    inner: database::Profile,
+    inner: nostr::Profile<nostr::Metadata>,
 }
 
-impl From<database::Profile> for Profile {
-    fn from(inner: database::Profile) -> Self {
+impl From<nostr::Profile<nostr::Metadata>> for Profile {
+    fn from(inner: nostr::Profile<nostr::Metadata>) -> Self {
         Self { inner }
     }
 }
@@ -27,7 +27,7 @@ impl Profile {
     #[uniffi::constructor]
     pub fn new(public_key: &PublicKey, metadata: Arc<Metadata>) -> Self {
         Self {
-            inner: database::Profile::new(**public_key, metadata.as_ref().deref().clone()),
+            inner: nostr::Profile::new(**public_key, metadata.as_ref().deref().clone()),
         }
     }
 
@@ -38,7 +38,7 @@ impl Profile {
 
     /// Get profile metadata
     pub fn metadata(&self) -> Arc<Metadata> {
-        Arc::new(self.inner.metadata().into())
+        Arc::new(self.inner.metadata().clone().into())
     }
 
     /// Get profile name
@@ -46,8 +46,8 @@ impl Profile {
     /// Steps (go to next step if field is `None` or `empty`):
     /// * Check `display_name` field
     /// * Check `name` field
-    /// * Return cutted public key (ex. `00000000:00000002`)
+    /// * Return cut public key (ex. `00000000:00000002`)
     pub fn name(&self) -> String {
-        self.inner.name()
+        self.inner.name().to_string()
     }
 }

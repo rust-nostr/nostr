@@ -49,6 +49,7 @@
 * nostr: add `title`, `image` and `description` constructors to `Tag` ([Yuki Kishimoto])
 * nostr: add `Timestamp::zero` and `Timestamp::is_zero` methods ([Yuki Kishimoto])
 * nostr: add `nip05::get_nip46` function ([DanConwayDev])
+* nostr: add `Profile<T>` struct ([Yuki Kishimoto])
 * pool: add `Output<T>` struct ([Yuki Kishimoto])
 * pool: add `Output<EventId>::id` and `Output<SubscriptionId>::id` methods ([Yuki Kishimoto])
 * signer: add `NostrSigner::unwrap_gift_wrap` method ([Yuki Kishimoto])
