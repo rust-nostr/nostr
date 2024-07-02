@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use std::time::Duration;
 
 use nostr_sdk::prelude::*;
 
@@ -18,10 +17,10 @@ async fn main() -> Result<()> {
 
     // Configure client to use proxy for `.onion` relays
     let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
-    let proxy = Proxy::new(addr).target(ProxyTarget::Onion);
-    let opts = Options::new()
-        .connection_timeout(Some(Duration::from_secs(60)))
-        .proxy(proxy);
+    let connection = Connection::new()
+        .proxy(addr)
+        .target(ConnectionTarget::Onion);
+    let opts = Options::new().connection(connection);
     let client = Client::with_opts(&my_keys, opts);
 
     // Add relays
@@ -29,6 +28,7 @@ async fn main() -> Result<()> {
         .add_relays([
             "wss://relay.damus.io",
             "ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion",
+            "ws://2jsnlhfnelig5acq6iacydmzdbdmg7xwunm4xl6qwbvzacw4lwrjmlyd.onion",
         ])
         .await?;
 
@@ -40,9 +40,7 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    let subscription = Filter::new()
-        .pubkey(my_keys.public_key())
-        .since(Timestamp::now());
+    let subscription = Filter::new().pubkey(my_keys.public_key()).limit(0);
 
     client.subscribe(vec![subscription], None).await?;
 

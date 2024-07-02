@@ -4,11 +4,9 @@
 
 //! NWC Options
 
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::SocketAddr;
 use std::time::Duration;
 
-use nostr_relay_pool::RelayOptions;
+use nostr_relay_pool::{ConnectionMode, RelayOptions};
 
 /// NWC options
 #[derive(Debug, Clone)]
@@ -33,11 +31,10 @@ impl NostrWalletConnectOptions {
         Self::default()
     }
 
-    /// Set proxy
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn proxy(self, proxy: Option<SocketAddr>) -> Self {
+    /// Set connection mode
+    pub fn connection_mode(self, mode: ConnectionMode) -> Self {
         Self {
-            relay: self.relay.proxy(proxy),
+            relay: self.relay.connection_mode(mode),
             ..self
         }
     }

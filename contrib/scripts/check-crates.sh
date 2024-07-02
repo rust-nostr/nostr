@@ -35,10 +35,12 @@ buildargs=(
     "-p nostr-sdk --features indexeddb,webln --target wasm32-unknown-unknown"
     "-p nostr-sdk --features sqlite"
     "-p nostr-sdk --features ndb"
+    "-p nostr-sdk --features tor"
 )
 
 skip_msrv=(
   "-p nostr-sdk --features ndb"     # MSRV: 1.70.0
+  "-p nostr-sdk --features tor"     # MSRV: 1.70.0
 )
 
 for arg in "${buildargs[@]}";

@@ -10,8 +10,8 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use nostr_relay_pool::prelude::*;
 use nostr_relay_pool::relay::options::DEFAULT_SEND_TIMEOUT;
-use nostr_relay_pool::{RelayLimits, RelayPoolOptions, RelaySendOptions};
 
 /// Options
 #[derive(Debug, Clone)]
@@ -27,7 +27,7 @@ pub struct Options {
     send_timeout: Option<Duration>,
     nip42_auto_authentication: Arc<AtomicBool>,
     #[cfg(not(target_arch = "wasm32"))]
-    pub(super) proxy: Proxy,
+    pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
     pub(super) pool: RelayPoolOptions,
 }
@@ -46,7 +46,7 @@ impl Default for Options {
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
             #[cfg(not(target_arch = "wasm32"))]
-            proxy: Proxy::default(),
+            connection: Connection::default(),
             relay_limits: RelayLimits::default(),
             pool: RelayPoolOptions::default(),
         }
@@ -187,11 +187,11 @@ impl Options {
             .store(enabled, Ordering::SeqCst);
     }
 
-    /// Proxy
+    /// Connection mode and target
     #[inline]
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn proxy(mut self, proxy: Proxy) -> Self {
-        self.proxy = proxy;
+    pub fn connection(mut self, connection: Connection) -> Self {
+        self.connection = connection;
         self
     }
 
@@ -210,40 +210,71 @@ impl Options {
     }
 }
 
-/// Proxy target
+/// Connection target
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub enum ProxyTarget {
-    /// Use proxy for all relays
+pub enum ConnectionTarget {
+    /// All relays
     #[default]
     All,
-    /// Use proxy only for `.onion` relays
+    /// Only `.onion` relays
     Onion,
 }
 
-/// Proxy
+/// Connection
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct Proxy {
-    pub(super) addr: Option<SocketAddr>,
-    pub(super) target: ProxyTarget,
+pub struct Connection {
+    /// Mode
+    pub mode: ConnectionMode,
+    /// Target
+    pub target: ConnectionTarget,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl Proxy {
-    /// Compose proxy
+impl Connection {
+    /// New default connection config
     #[inline]
-    pub fn new(addr: SocketAddr) -> Self {
+    pub fn new() -> Self {
         Self {
-            addr: Some(addr),
-            target: ProxyTarget::default(),
+            mode: ConnectionMode::default(),
+            target: ConnectionTarget::default(),
         }
     }
 
-    /// Set proxy target (default: all)
+    /// Set connection mode (default: direct)
     #[inline]
-    pub fn target(mut self, target: ProxyTarget) -> Self {
+    pub fn mode(mut self, mode: ConnectionMode) -> Self {
+        self.mode = mode;
+        self
+    }
+
+    /// Set connection target (default: all)
+    #[inline]
+    pub fn target(mut self, target: ConnectionTarget) -> Self {
         self.target = target;
+        self
+    }
+
+    /// Set direct connection
+    #[inline]
+    pub fn direct(mut self) -> Self {
+        self.mode = ConnectionMode::Direct;
+        self
+    }
+
+    /// Set proxy
+    #[inline]
+    pub fn proxy(mut self, addr: SocketAddr) -> Self {
+        self.mode = ConnectionMode::Proxy(addr);
+        self
+    }
+
+    /// Use embedded tor client
+    #[inline]
+    #[cfg(feature = "tor")]
+    pub fn embedded_tor(mut self) -> Self {
+        self.mode = ConnectionMode::Tor;
         self
     }
 }

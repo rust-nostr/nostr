@@ -2,16 +2,16 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
-use nostr_sdk::nwc;
+use nostr_sdk::{nwc, pool};
 use uniffi::Object;
 
 use crate::error::Result;
+use crate::relay::options::ConnectionMode;
 
 /// NWC options
 #[derive(Clone, Object)]
@@ -37,14 +37,11 @@ impl NostrWalletConnectOptions {
         }
     }
 
-    /// Set proxy
-    pub fn proxy(self: Arc<Self>, proxy: Option<String>) -> Result<Self> {
-        let proxy: Option<SocketAddr> = match proxy {
-            Some(proxy) => Some(proxy.parse()?),
-            None => None,
-        };
+    /// Set connection mode
+    pub fn connection_mode(self: Arc<Self>, mode: ConnectionMode) -> Result<Self> {
+        let mode: pool::ConnectionMode = mode.try_into()?;
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.proxy(proxy);
+        builder.inner = builder.inner.connection_mode(mode);
         Ok(builder)
     }
 

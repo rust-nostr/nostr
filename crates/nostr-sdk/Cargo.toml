@@ -17,6 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["all-nips"]
+tor = ["nostr-relay-pool/tor"]
 ndb = ["dep:nostr-ndb"]
 rocksdb = ["dep:nostr-rocksdb"]
 sqlite = ["dep:nostr-sqlite"]
@@ -105,6 +106,10 @@ required-features = ["all-nips", "sqlite"]
 [[example]]
 name = "subscriptions"
 required-features = ["all-nips"]
+
+[[example]]
+name = "tor"
+required-features = ["tor"]
 
 [[example]]
 name = "negentropy"

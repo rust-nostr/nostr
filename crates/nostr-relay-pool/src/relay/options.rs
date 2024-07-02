@@ -10,6 +10,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_wsocket::ConnectionMode;
+
 use super::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 use crate::RelayLimits;
 
@@ -26,8 +28,7 @@ pub(super) const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
 /// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(super) proxy: Option<SocketAddr>,
+    pub(super) connection_mode: ConnectionMode,
     pub(super) flags: AtomicRelayServiceFlags,
     pow: Arc<AtomicU8>,
     reconnect: Arc<AtomicBool>,
@@ -39,8 +40,7 @@ pub struct RelayOptions {
 impl Default for RelayOptions {
     fn default() -> Self {
         Self {
-            #[cfg(not(target_arch = "wasm32"))]
-            proxy: None,
+            connection_mode: ConnectionMode::default(),
             flags: AtomicRelayServiceFlags::default(),
             pow: Arc::new(AtomicU8::new(0)),
             reconnect: Arc::new(AtomicBool::new(true)),
@@ -58,9 +58,20 @@ impl RelayOptions {
     }
 
     /// Set proxy
+    #[deprecated(since = "0.33.0", note = "Use `connection_mode` instead")]
     #[cfg(not(target_arch = "wasm32"))]
     pub fn proxy(mut self, proxy: Option<SocketAddr>) -> Self {
-        self.proxy = proxy;
+        match proxy {
+            Some(proxy) => self.connection_mode = ConnectionMode::Proxy(proxy),
+            None => self.connection_mode = ConnectionMode::Direct,
+        };
+        self
+    }
+
+    /// Set connection mode
+    #[inline]
+    pub fn connection_mode(mut self, mode: ConnectionMode) -> Self {
+        self.connection_mode = mode;
         self
     }
 

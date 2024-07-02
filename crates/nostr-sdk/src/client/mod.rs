@@ -28,7 +28,7 @@ mod zapper;
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::options::{Proxy, ProxyTarget};
+pub use self::options::{Connection, ConnectionTarget};
 #[cfg(feature = "nip57")]
 pub use self::zapper::{ZapDetails, ZapEntity};
 
@@ -392,22 +392,35 @@ impl Client {
         let url: Url = url.try_into_url().map_err(pool::Error::from)?;
         let opts: RelayOptions = RelayOptions::new();
 
-        // Set proxy
+        // Set connection mode
         #[cfg(not(target_arch = "wasm32"))]
-        let opts: RelayOptions = match self.opts.proxy.addr {
-            Some(addr) => match self.opts.proxy.target {
-                ProxyTarget::All => opts.proxy(Some(addr)),
-                ProxyTarget::Onion => {
+        let opts: RelayOptions = match self.opts.connection.mode {
+            ConnectionMode::Direct => opts,
+            ConnectionMode::Proxy(..) => match self.opts.connection.target {
+                ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode),
+                ConnectionTarget::Onion => {
                     let domain: &str = url.domain().unwrap_or_default();
 
                     if domain.ends_with(".onion") {
-                        opts.proxy(Some(addr))
+                        opts.connection_mode(self.opts.connection.mode)
                     } else {
                         opts
                     }
                 }
             },
-            None => opts,
+            #[cfg(feature = "tor")]
+            ConnectionMode::Tor => match self.opts.connection.target {
+                ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode),
+                ConnectionTarget::Onion => {
+                    let domain: &str = url.domain().unwrap_or_default();
+
+                    if domain.ends_with(".onion") {
+                        opts.connection_mode(self.opts.connection.mode)
+                    } else {
+                        opts
+                    }
+                }
+            },
         };
 
         // Set min POW difficulty and limits
