@@ -4,6 +4,7 @@ import asyncio
 
 from src.keys import generate, restore, vanity
 from src.timestamps import timestamps
+from src.tags import tags
 from src.filters import filters
 from src.event.json import event_json
 from src.event.builder import event_builder
@@ -16,7 +17,6 @@ from src.nip44 import nip44
 from src.nip59 import nip59
 from src.nip65 import nip65
 
-
 async def main():
     generate()
     restore()
@@ -24,6 +24,7 @@ async def main():
     event_json()
     event_builder()
     timestamps()
+    tags()
     filters()
     nip01()
     await nip05()
