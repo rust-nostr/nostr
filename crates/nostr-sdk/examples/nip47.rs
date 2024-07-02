@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
     client.send_event(req_event).await.unwrap();
 
     client
-        .handle_notifications(|notification| async {
+        .handle_pool_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 let res = nip47::Response::from_event(&nwc_uri, &event)?;
                 let PayInvoiceResponseResult { preimage } = res.to_pay_invoice()?;

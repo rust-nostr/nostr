@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
 
     // Handle subscription notifications with `handle_notifications` method
     client
-        .handle_notifications(|notification| async {
+        .handle_pool_notifications(|notification| async {
             if let RelayPoolNotification::Event {
                 subscription_id,
                 event,
