@@ -16,6 +16,6 @@ pub enum Marker {
     /// Mention
     Mention,
     /// Custom
-    #[type_hint(as ())]
+    #[type_hint(as())]
     Custom { custom: String },
 }

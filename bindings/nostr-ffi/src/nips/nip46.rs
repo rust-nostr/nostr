@@ -25,12 +25,13 @@ pub enum Nip46Request {
         #[from(Arc::new(~.into()))]
         public_key: Arc<PublicKey>,
         /// Optional secret
-        #[o2o(skip_repeat)] secret: Option<String>,
+        #[o2o(skip_repeat)]
+        secret: Option<String>,
     },
     /// Get public key
     GetPublicKey,
     /// Sign [`UnsignedEvent`]
-    #[type_hint(as ())]
+    #[type_hint(as())]
     SignEvent { unsigned: Arc<UnsignedEvent> },
     /// Get relays
     GetRelays,
@@ -39,28 +40,32 @@ pub enum Nip46Request {
         /// Pubkey
         public_key: Arc<PublicKey>,
         /// Plain text
-        #[o2o(skip_repeat)] text: String,
+        #[o2o(skip_repeat)]
+        text: String,
     },
     /// Decrypt (NIP04)
     Nip04Decrypt {
         /// Pubkey
         public_key: Arc<PublicKey>,
         /// Ciphertext
-        #[o2o(skip_repeat)] ciphertext: String,
+        #[o2o(skip_repeat)]
+        ciphertext: String,
     },
     /// Encrypt text (NIP44)
     Nip44Encrypt {
         /// Pubkey
         public_key: Arc<PublicKey>,
         /// Plain text
-        #[o2o(skip_repeat)] text: String,
+        #[o2o(skip_repeat)]
+        text: String,
     },
     /// Decrypt (NIP44)
     Nip44Decrypt {
         /// Pubkey
         public_key: Arc<PublicKey>,
         /// Ciphertext
-        #[o2o(skip_repeat)] ciphertext: String,
+        #[o2o(skip_repeat)]
+        ciphertext: String,
     },
     /// Ping
     Ping,

@@ -22,8 +22,12 @@ use crate::{EventId, Kind, PublicKey, SecretKey};
 pub enum Nip19Enum {
     /// nsec
     #[o2o(repeat())]
-    #[type_hint(as ())]
-    Secret { #[o2o(repeat(permeate()))] #[from(Arc::new(~.into()))] nsec: Arc<SecretKey> },
+    #[type_hint(as())]
+    Secret {
+        #[o2o(repeat(permeate()))]
+        #[from(Arc::new(~.into()))]
+        nsec: Arc<SecretKey>,
+    },
     /// Encrypted Secret Key
     EncryptedSecret { ncryptsec: Arc<EncryptedSecretKey> },
     /// npub
@@ -31,11 +35,13 @@ pub enum Nip19Enum {
     /// nprofile
     Profile { nprofile: Arc<Nip19Profile> },
     /// note
-    #[map(EventId)] Note { event_id: Arc<EventId> },
+    #[map(EventId)]
+    Note { event_id: Arc<EventId> },
     /// nevent
     Event { event: Arc<Nip19Event> },
     /// naddr
-    #[map(Coordinate)] Coord { coordinate: Arc<Coordinate> },
+    #[map(Coordinate)]
+    Coord { coordinate: Arc<Coordinate> },
     /// nrelay
     Relay { relay: Arc<Nip19Relay> },
 }

@@ -25,15 +25,20 @@ pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> Ve
 #[try_map_owned(Value, NostrError)]
 pub enum JsonValue {
     #[o2o(repeat)]
-    #[type_hint(as ())]
-    
+    #[type_hint(as())]
     Bool { bool: bool },
 
-    #[ghost({Value::Number(Number::from(number))})] 
-    NumberPosInt { #[into(Number::from(~))] number: u64 },
+    #[ghost({Value::Number(Number::from(number))})]
+    NumberPosInt {
+        #[into(Number::from(~))]
+        number: u64,
+    },
 
     #[ghost({Value::Number(Number::from(number))})]
-    NumberNegInt { #[into(Number::from(~))] number: i64 },
+    NumberNegInt {
+        #[into(Number::from(~))]
+        number: i64,
+    },
 
     #[into(Number)]
     #[from(Number,
@@ -56,21 +61,21 @@ pub enum JsonValue {
                 "Impossible to convert finite f64 to number",
             )))?
         )]
-        number: f64 
+        number: f64,
     },
 
-    #[map(String)] Str { s: String },
+    #[map(String)]
+    Str { s: String },
 
     Array {
-        #[map(~.into_iter().filter_map(|v| v.try_into().ok()).collect())] 
-        array: Vec<JsonValue> 
+        #[map(~.into_iter().filter_map(|v| v.try_into().ok()).collect())]
+        array: Vec<JsonValue>,
     },
-    Object { 
-        #[map(~.into_iter().filter_map(|(k, v)| Some((k, v.try_into().ok()?))).collect())] 
-        map: HashMap<String, JsonValue> 
+    Object {
+        #[map(~.into_iter().filter_map(|(k, v)| Some((k, v.try_into().ok()?))).collect())]
+        map: HashMap<String, JsonValue>,
     },
 
-    #[o2o(stop_repeat)] 
-
+    #[o2o(stop_repeat)]
     Null,
 }

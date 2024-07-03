@@ -223,8 +223,7 @@ pub enum KindEnum {
     JobFeedback,
 
     #[o2o(repeat)]
-    #[type_hint(as ())]
-    
+    #[type_hint(as())]
     JobRequest {
         kind: u16,
     },

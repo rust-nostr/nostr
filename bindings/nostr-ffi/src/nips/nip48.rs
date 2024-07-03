@@ -17,6 +17,6 @@ pub enum Protocol {
     /// Web
     Web,
     /// Custom
-    #[type_hint(as ())]
+    #[type_hint(as())]
     Custom { custom: String },
 }

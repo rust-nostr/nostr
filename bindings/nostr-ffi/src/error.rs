@@ -57,4 +57,3 @@ impl fmt::Display for NostrError {
         }
     }
 }
-
