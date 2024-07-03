@@ -16,6 +16,8 @@ use core::str::{self, FromStr, Utf8Error};
 use bitcoin::bech32::{self, Bech32, Hrp};
 
 use super::nip01::Coordinate;
+#[cfg(all(feature = "std", feature = "nip05"))]
+use super::nip05::Nip05Profile;
 #[cfg(feature = "nip49")]
 use super::nip49::{self, EncryptedSecretKey};
 use crate::event::id::{self, EventId};
@@ -534,6 +536,21 @@ impl ToBech32 for Nip19Event {
         }
 
         Ok(bech32::encode::<Bech32>(HRP_EVENT, &bytes)?)
+    }
+}
+
+#[cfg(all(feature = "std", feature = "nip05"))]
+impl ToBech32 for Nip05Profile {
+    type Err = Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        // Convert to NIP19 profile
+        let profile: Nip19Profile = Nip19Profile {
+            public_key: self.public_key,
+            relays: self.relays.clone(),
+        };
+        // Encode
+        profile.to_bech32()
     }
 }
 

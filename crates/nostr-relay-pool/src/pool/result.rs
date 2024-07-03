@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::Deref;
 
-use nostr::Url;
+use nostr::{EventId, SubscriptionId, Url};
 
 /// Output
 ///
@@ -45,5 +45,21 @@ where
 
     fn deref(&self) -> &Self::Target {
         &self.val
+    }
+}
+
+impl Output<EventId> {
+    /// Get event ID
+    #[inline]
+    pub fn id(&self) -> &EventId {
+        self.deref()
+    }
+}
+
+impl Output<SubscriptionId> {
+    /// Get subscription ID
+    #[inline]
+    pub fn id(&self) -> &SubscriptionId {
+        self.deref()
     }
 }
