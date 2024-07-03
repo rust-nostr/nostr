@@ -171,7 +171,7 @@ impl From<nip58::Error> for Error {
     }
 }
 
-/// [`Event`] builder
+/// Event builder
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct EventBuilder {
     kind: Kind,
@@ -290,7 +290,7 @@ impl EventBuilder {
         let mut tags: Vec<Tag> = self.tags;
 
         #[cfg(feature = "std")]
-        let now = Instant::now();
+        let now: Instant = Instant::now();
 
         loop {
             nonce += 1;
@@ -324,9 +324,7 @@ impl EventBuilder {
             tags.pop();
         }
     }
-}
 
-impl EventBuilder {
     /// Build [`Event`]
     #[inline]
     #[cfg(feature = "std")]
@@ -360,9 +358,7 @@ impl EventBuilder {
     pub fn to_unsigned_pow_event(self, pubkey: PublicKey, difficulty: u8) -> UnsignedEvent {
         self.to_unsigned_pow_event_with_supplier(&Instant::now(), pubkey, difficulty)
     }
-}
 
-impl EventBuilder {
     /// Profile metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
