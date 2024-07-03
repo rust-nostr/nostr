@@ -104,42 +104,28 @@ impl From<Interests> for nip51::Interests {
 /// Emoji
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-#[derive(Record)]
+#[derive(Record, o2o::o2o)]
+#[owned_into((String, UncheckedUrl))]
 pub struct EmojiInfo {
     pub shortcode: String,
+    #[into(UncheckedUrl::from(~))]
     pub url: String,
-}
-
-impl From<EmojiInfo> for (String, UncheckedUrl) {
-    fn from(value: EmojiInfo) -> Self {
-        (value.shortcode, UncheckedUrl::from(value.url))
-    }
 }
 
 /// User preferred emojis and pointers to emoji sets
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
-#[derive(Record)]
+#[derive(Record, o2o::o2o)]
+#[owned_into(nip51::Emojis)]
 pub struct Emojis {
     /// Emojis
     #[uniffi(default = [])]
+    #[into(~.into_iter().map(|e| e.into()).collect())]
     pub emojis: Vec<EmojiInfo>,
     /// Coordinates
     #[uniffi(default = [])]
+    #[into(~.into_iter().map(|c| c.as_ref().deref().clone()).collect())]
     pub coordinate: Vec<Arc<Coordinate>>,
-}
-
-impl From<Emojis> for nip51::Emojis {
-    fn from(value: Emojis) -> Self {
-        Self {
-            emojis: value.emojis.into_iter().map(|e| e.into()).collect(),
-            coordinate: value
-                .coordinate
-                .into_iter()
-                .map(|c| c.as_ref().deref().clone())
-                .collect(),
-        }
-    }
 }
 
 /// Groups of articles picked by users as interesting and/or belonging to the same category

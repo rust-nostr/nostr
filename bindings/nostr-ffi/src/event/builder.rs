@@ -27,16 +27,11 @@ use crate::{
     Timestamp, UnsignedEvent,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Object)]
+#[derive(Debug, Clone, PartialEq, Eq, Object, o2o::o2o)]
+#[from_owned(nostr::EventBuilder| return Self { inner: @ })]
 #[uniffi::export(Debug, Eq)]
 pub struct EventBuilder {
     inner: nostr::EventBuilder,
-}
-
-impl From<nostr::EventBuilder> for EventBuilder {
-    fn from(inner: nostr::EventBuilder) -> Self {
-        Self { inner }
-    }
 }
 
 impl Deref for EventBuilder {

@@ -13,7 +13,8 @@ use crate::error::Result;
 use crate::{JsonValue, PublicKey, SecretKey, Timestamp};
 
 /// NIP47 Response Error codes
-#[derive(Enum)]
+#[derive(Enum, o2o::o2o)]
+#[map_owned(nip47::ErrorCode)]
 pub enum ErrorCode {
     ///  The client is sending commands too fast.
     RateLimited,
@@ -35,40 +36,6 @@ pub enum ErrorCode {
     Internal,
     /// Other error
     Other,
-}
-
-impl From<nip47::ErrorCode> for ErrorCode {
-    fn from(value: nip47::ErrorCode) -> Self {
-        match value {
-            nip47::ErrorCode::RateLimited => Self::RateLimited,
-            nip47::ErrorCode::NotImplemented => Self::NotImplemented,
-            nip47::ErrorCode::InsufficientBalance => Self::InsufficientBalance,
-            nip47::ErrorCode::PaymentFailed => Self::PaymentFailed,
-            nip47::ErrorCode::NotFound => Self::NotFound,
-            nip47::ErrorCode::QuotaExceeded => Self::QuotaExceeded,
-            nip47::ErrorCode::Restricted => Self::Restricted,
-            nip47::ErrorCode::Unauthorized => Self::Unauthorized,
-            nip47::ErrorCode::Internal => Self::Internal,
-            nip47::ErrorCode::Other => Self::Other,
-        }
-    }
-}
-
-impl From<ErrorCode> for nip47::ErrorCode {
-    fn from(value: ErrorCode) -> Self {
-        match value {
-            ErrorCode::RateLimited => Self::RateLimited,
-            ErrorCode::NotImplemented => Self::NotImplemented,
-            ErrorCode::InsufficientBalance => Self::InsufficientBalance,
-            ErrorCode::PaymentFailed => Self::PaymentFailed,
-            ErrorCode::NotFound => Self::NotFound,
-            ErrorCode::QuotaExceeded => Self::QuotaExceeded,
-            ErrorCode::Restricted => Self::Restricted,
-            ErrorCode::Unauthorized => Self::Unauthorized,
-            ErrorCode::Internal => Self::Internal,
-            ErrorCode::Other => Self::Other,
-        }
-    }
 }
 
 /// NIP47 Error message

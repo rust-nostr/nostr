@@ -5,7 +5,8 @@ use nostr::nips::nip48;
 use uniffi::Enum;
 
 /// NIP48 Proxy Protocol
-#[derive(Enum)]
+#[derive(Enum, o2o::o2o)]
+#[map_owned(nip48::Protocol)]
 pub enum Protocol {
     /// ActivityPub
     ActivityPub,
@@ -16,29 +17,6 @@ pub enum Protocol {
     /// Web
     Web,
     /// Custom
+    #[type_hint(as ())]
     Custom { custom: String },
-}
-
-impl From<Protocol> for nip48::Protocol {
-    fn from(value: Protocol) -> Self {
-        match value {
-            Protocol::ActivityPub => Self::ActivityPub,
-            Protocol::ATProto => Self::ATProto,
-            Protocol::Rss => Self::Rss,
-            Protocol::Web => Self::Web,
-            Protocol::Custom { custom } => Self::Custom(custom),
-        }
-    }
-}
-
-impl From<nip48::Protocol> for Protocol {
-    fn from(value: nip48::Protocol) -> Self {
-        match value {
-            nip48::Protocol::ActivityPub => Self::ActivityPub,
-            nip48::Protocol::ATProto => Self::ATProto,
-            nip48::Protocol::Rss => Self::Rss,
-            nip48::Protocol::Web => Self::Web,
-            nip48::Protocol::Custom(custom) => Self::Custom { custom },
-        }
-    }
 }

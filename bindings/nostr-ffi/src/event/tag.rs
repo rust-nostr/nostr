@@ -839,7 +839,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             } => Ok(Self::Event {
                 event_id: **event_id,
                 relay_url: relay_url.map(UncheckedUrl::from),
-                marker: marker.map(nip10::Marker::from),
+                marker: marker.map(Marker::into),
                 public_key: public_key.map(|p| **p),
             }),
             TagStandard::PublicKeyTag {

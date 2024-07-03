@@ -121,7 +121,8 @@ impl RelayInformationDocument {
 
 /// These are limitations imposed by the relay on clients. Your client should
 /// expect that requests which exceed these practical limitations are rejected or fail immediately.
-#[derive(Record)]
+#[derive(Record, o2o::o2o)]
+#[from_owned(nip11::Limitation)]
 pub struct Limitation {
     /// Maximum number of bytes for incoming JSON that the relay will attempt to decode and act upon
     pub max_message_length: Option<i32>,
@@ -144,42 +145,11 @@ pub struct Limitation {
     /// Relay requires payment before a new connection may perform any action
     pub payment_required: Option<bool>,
     /// 'created_at' lower limit
+    #[from(~.map(|c| Arc::new(c.into())))]
     pub created_at_lower_limit: Option<Arc<Timestamp>>,
     /// 'created_at' upper limit
+    #[from(~.map(|c| Arc::new(c.into())))]
     pub created_at_upper_limit: Option<Arc<Timestamp>>,
-}
-
-impl From<nip11::Limitation> for Limitation {
-    fn from(inner: nip11::Limitation) -> Self {
-        let nip11::Limitation {
-            max_message_length,
-            max_subscriptions,
-            max_filters,
-            max_limit,
-            max_subid_length,
-            max_event_tags,
-            max_content_length,
-            min_pow_difficulty,
-            auth_required,
-            payment_required,
-            created_at_lower_limit,
-            created_at_upper_limit,
-        } = inner;
-        Self {
-            max_message_length,
-            max_subscriptions,
-            max_filters,
-            max_limit,
-            max_subid_length,
-            max_event_tags,
-            max_content_length,
-            min_pow_difficulty,
-            auth_required,
-            payment_required,
-            created_at_lower_limit: created_at_lower_limit.map(|c| Arc::new(c.into())),
-            created_at_upper_limit: created_at_upper_limit.map(|c| Arc::new(c.into())),
-        }
-    }
 }
 
 /// A retention schedule for the relay

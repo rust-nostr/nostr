@@ -11,6 +11,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 [dependencies]
 nostr = { workspace = true, features = ["std", "all-nips"] }
 uniffi = { workspace = true, features = ["tokio"] }
+o2o = { workspace = true }
 
 [dev-dependencies]
 uniffi = { workspace = true, features = ["bindgen-tests"] }

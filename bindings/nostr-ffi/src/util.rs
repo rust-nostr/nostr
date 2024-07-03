@@ -21,83 +21,56 @@ pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> Ve
     util::generate_shared_key(secret_key.deref(), public_key.deref()).to_vec()
 }
 
-#[derive(Enum)]
+#[derive(Enum, o2o::o2o)]
+#[try_map_owned(Value, NostrError)]
 pub enum JsonValue {
+    #[o2o(repeat)]
+    #[type_hint(as ())]
+    
     Bool { bool: bool },
-    NumberPosInt { number: u64 },
-    NumberNegInt { number: i64 },
-    NumberFloat { number: f64 },
-    Str { s: String },
-    Array { array: Vec<JsonValue> },
-    Object { map: HashMap<String, JsonValue> },
-    Null,
-}
 
-impl TryFrom<JsonValue> for Value {
-    type Error = NostrError;
+    #[ghost({Value::Number(Number::from(number))})] 
+    NumberPosInt { #[into(Number::from(~))] number: u64 },
 
-    fn try_from(value: JsonValue) -> Result<Self, Self::Error> {
-        Ok(match value {
-            JsonValue::Bool { bool } => Self::Bool(bool),
-            JsonValue::NumberPosInt { number } => Self::Number(Number::from(number)),
-            JsonValue::NumberNegInt { number } => Self::Number(Number::from(number)),
-            JsonValue::NumberFloat { number } => {
-                let float = Number::from_f64(number).ok_or(NostrError::Generic(String::from(
-                    "Impossible to convert finite f64 to number",
-                )))?;
-                Self::Number(float)
-            }
-            JsonValue::Str { s } => Self::String(s),
-            JsonValue::Array { array } => Self::Array(
-                array
-                    .into_iter()
-                    .filter_map(|v| v.try_into().ok())
-                    .collect(),
-            ),
-            JsonValue::Object { map } => Self::Object(
-                map.into_iter()
-                    .filter_map(|(k, v)| Some((k, v.try_into().ok()?)))
-                    .collect(),
-            ),
-            JsonValue::Null => Self::Null,
-        })
-    }
-}
+    #[ghost({Value::Number(Number::from(number))})]
+    NumberNegInt { #[into(Number::from(~))] number: i64 },
 
-impl TryFrom<Value> for JsonValue {
-    type Error = NostrError;
-
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        Ok(match value {
-            Value::Bool(bool) => Self::Bool { bool },
-            Value::Number(number) => match number.as_u64() {
-                Some(number) => Self::NumberPosInt { number },
-                None => match number.as_i64() {
-                    Some(number) => Self::NumberNegInt { number },
-                    None => match number.as_f64() {
-                        Some(number) => Self::NumberFloat { number },
-                        None => {
-                            return Err(NostrError::Generic(String::from(
-                                "Impossible to convert number",
-                            )))
-                        }
-                    },
+    #[into(Number)]
+    #[from(Number,
+        match f0.as_u64() {
+            Some(f0) => Self::NumberPosInt { number: f0 },
+            None => match f0.as_i64() {
+                Some(f0) => Self::NumberNegInt { number: f0 },
+                None => match f0.as_f64() {
+                    Some(f0) => Self::NumberFloat { number: f0 },
+                    None => Err(NostrError::Generic(String::from(
+                        "Impossible to convert number",
+                    )))?
                 },
             },
-            Value::String(s) => Self::Str { s },
-            Value::Array(array) => Self::Array {
-                array: array
-                    .into_iter()
-                    .filter_map(|v| v.try_into().ok())
-                    .collect(),
-            },
-            Value::Object(map) => Self::Object {
-                map: map
-                    .into_iter()
-                    .filter_map(|(k, v)| Some((k, v.try_into().ok()?)))
-                    .collect(),
-            },
-            Value::Null => Self::Null,
-        })
-    }
+        }
+    )]
+    NumberFloat {
+        #[into(
+            Number::from_f64(~).ok_or(NostrError::Generic(String::from(
+                "Impossible to convert finite f64 to number",
+            )))?
+        )]
+        number: f64 
+    },
+
+    #[map(String)] Str { s: String },
+
+    Array {
+        #[map(~.into_iter().filter_map(|v| v.try_into().ok()).collect())] 
+        array: Vec<JsonValue> 
+    },
+    Object { 
+        #[map(~.into_iter().filter_map(|(k, v)| Some((k, v.try_into().ok()?))).collect())] 
+        map: HashMap<String, JsonValue> 
+    },
+
+    #[o2o(stop_repeat)] 
+
+    Null,
 }

@@ -13,7 +13,8 @@ use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::{Event, EventId, Kind, PublicKey, Timestamp};
 
-#[derive(Enum)]
+#[derive(Enum, o2o::o2o)]
+#[owned_into(filter::Alphabet)]
 pub enum Alphabet {
     A,
     B,
@@ -41,39 +42,6 @@ pub enum Alphabet {
     X,
     Y,
     Z,
-}
-
-impl From<Alphabet> for filter::Alphabet {
-    fn from(value: Alphabet) -> Self {
-        match value {
-            Alphabet::A => Self::A,
-            Alphabet::B => Self::B,
-            Alphabet::C => Self::C,
-            Alphabet::D => Self::D,
-            Alphabet::E => Self::E,
-            Alphabet::F => Self::F,
-            Alphabet::G => Self::G,
-            Alphabet::H => Self::H,
-            Alphabet::I => Self::I,
-            Alphabet::J => Self::J,
-            Alphabet::K => Self::K,
-            Alphabet::L => Self::L,
-            Alphabet::M => Self::M,
-            Alphabet::N => Self::N,
-            Alphabet::O => Self::O,
-            Alphabet::P => Self::P,
-            Alphabet::Q => Self::Q,
-            Alphabet::R => Self::R,
-            Alphabet::S => Self::S,
-            Alphabet::T => Self::T,
-            Alphabet::U => Self::U,
-            Alphabet::V => Self::V,
-            Alphabet::W => Self::W,
-            Alphabet::X => Self::X,
-            Alphabet::Y => Self::Y,
-            Alphabet::Z => Self::Z,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]

@@ -17,10 +17,13 @@ use crate::{EventId, Kind, PublicKey, SecretKey};
 /// A representation any `NIP19` bech32 nostr object. Useful for decoding
 /// `NIP19` bech32 strings without necessarily knowing what you're decoding
 /// ahead of time.
-#[derive(Enum)]
+#[derive(Enum, o2o::o2o)]
+#[from_owned(nip19::Nip19)]
 pub enum Nip19Enum {
     /// nsec
-    Secret { nsec: Arc<SecretKey> },
+    #[o2o(repeat())]
+    #[type_hint(as ())]
+    Secret { #[o2o(repeat(permeate()))] #[from(Arc::new(~.into()))] nsec: Arc<SecretKey> },
     /// Encrypted Secret Key
     EncryptedSecret { ncryptsec: Arc<EncryptedSecretKey> },
     /// npub
@@ -28,44 +31,13 @@ pub enum Nip19Enum {
     /// nprofile
     Profile { nprofile: Arc<Nip19Profile> },
     /// note
-    Note { event_id: Arc<EventId> },
+    #[map(EventId)] Note { event_id: Arc<EventId> },
     /// nevent
     Event { event: Arc<Nip19Event> },
     /// naddr
-    Coord { coordinate: Arc<Coordinate> },
+    #[map(Coordinate)] Coord { coordinate: Arc<Coordinate> },
     /// nrelay
     Relay { relay: Arc<Nip19Relay> },
-}
-
-impl From<nip19::Nip19> for Nip19Enum {
-    fn from(value: nip19::Nip19) -> Self {
-        match value {
-            nip19::Nip19::Secret(nsec) => Self::Secret {
-                nsec: Arc::new(nsec.into()),
-            },
-            nip19::Nip19::EncryptedSecret(ncryptsec) => Self::EncryptedSecret {
-                ncryptsec: Arc::new(ncryptsec.into()),
-            },
-            nip19::Nip19::Pubkey(npub) => Self::Pubkey {
-                npub: Arc::new(npub.into()),
-            },
-            nip19::Nip19::Profile(nprofile) => Self::Profile {
-                nprofile: Arc::new(nprofile.into()),
-            },
-            nip19::Nip19::EventId(event_id) => Self::Note {
-                event_id: Arc::new(event_id.into()),
-            },
-            nip19::Nip19::Event(event) => Self::Event {
-                event: Arc::new(event.into()),
-            },
-            nip19::Nip19::Coordinate(coordinate) => Self::Coord {
-                coordinate: Arc::new(coordinate.into()),
-            },
-            nip19::Nip19::Relay(val) => Self::Relay {
-                relay: Arc::new(val.into()),
-            },
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Object)]

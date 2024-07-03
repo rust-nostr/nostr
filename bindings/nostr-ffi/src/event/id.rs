@@ -13,7 +13,8 @@ use super::Kind;
 use crate::error::Result;
 use crate::{PublicKey, Tag, Timestamp};
 
-#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object, o2o::o2o)]
+#[from_owned(nostr::EventId| return Self { inner: @ })]
 #[uniffi::export(Debug, Eq, Hash)]
 pub struct EventId {
     inner: nostr::EventId,
@@ -24,12 +25,6 @@ impl Deref for EventId {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
-    }
-}
-
-impl From<nostr::EventId> for EventId {
-    fn from(inner: nostr::EventId) -> Self {
-        Self { inner }
     }
 }
 

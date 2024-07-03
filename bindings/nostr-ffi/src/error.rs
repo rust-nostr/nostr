@@ -10,8 +10,40 @@ use uniffi::Error;
 
 pub type Result<T, E = NostrError> = std::result::Result<T, E>;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, o2o::o2o)]
 #[uniffi(flat_error)]
+#[from_owned(std::num::ParseIntError| repeat(), return Self::Generic(@.to_string()))]
+#[from_owned(std::char::ParseCharError)]
+#[from_owned(nostr::key::Error)]
+#[from_owned(nostr::key::vanity::Error)]
+#[from_owned(MessageHandleError)]
+#[from_owned(nostr::types::metadata::Error)]
+#[from_owned(nostr::event::Error)]
+#[from_owned(nostr::event::builder::Error)]
+#[from_owned(nostr::event::unsigned::Error)]
+#[from_owned(nostr::event::tag::Error)]
+#[from_owned(nostr::nips::nip01::Error)]
+#[from_owned(nostr::nips::nip04::Error)]
+#[from_owned(nostr::nips::nip05::Error)]
+#[from_owned(nostr::nips::nip06::Error)]
+#[from_owned(nostr::nips::nip11::Error)]
+#[from_owned(nostr::nips::nip19::Error)]
+#[from_owned(nostr::nips::nip21::Error)]
+#[from_owned(nostr::nips::nip26::Error)]
+#[from_owned(nostr::nips::nip44::Error)]
+#[from_owned(nostr::nips::nip46::Error)]
+#[from_owned(nostr::nips::nip47::Error)]
+#[from_owned(nostr::nips::nip49::Error)]
+#[from_owned(nostr::nips::nip53::Error)]
+#[from_owned(nostr::nips::nip57::Error)]
+#[from_owned(nostr::nips::nip59::Error)]
+#[from_owned(nostr::nips::nip90::Error)]
+#[from_owned(nostr::secp256k1::Error)]
+#[from_owned(nostr::types::url::ParseError)]
+#[from_owned(nostr::hashes::hex::HexToArrayError)]
+#[from_owned(nostr::serde_json::Error)]
+#[from_owned(nostr::event::id::Error)]
+#[from_owned(AddrParseError)]
 pub enum NostrError {
     Generic(String),
 }
@@ -26,194 +58,3 @@ impl fmt::Display for NostrError {
     }
 }
 
-impl From<std::num::ParseIntError> for NostrError {
-    fn from(e: std::num::ParseIntError) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<std::char::ParseCharError> for NostrError {
-    fn from(e: std::char::ParseCharError) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::key::Error> for NostrError {
-    fn from(e: nostr::key::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::key::vanity::Error> for NostrError {
-    fn from(e: nostr::key::vanity::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<MessageHandleError> for NostrError {
-    fn from(e: MessageHandleError) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::types::metadata::Error> for NostrError {
-    fn from(e: nostr::types::metadata::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::event::Error> for NostrError {
-    fn from(e: nostr::event::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::event::builder::Error> for NostrError {
-    fn from(e: nostr::event::builder::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::event::unsigned::Error> for NostrError {
-    fn from(e: nostr::event::unsigned::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::event::tag::Error> for NostrError {
-    fn from(e: nostr::event::tag::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip01::Error> for NostrError {
-    fn from(e: nostr::nips::nip01::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip04::Error> for NostrError {
-    fn from(e: nostr::nips::nip04::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip05::Error> for NostrError {
-    fn from(e: nostr::nips::nip05::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip06::Error> for NostrError {
-    fn from(e: nostr::nips::nip06::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip11::Error> for NostrError {
-    fn from(e: nostr::nips::nip11::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip19::Error> for NostrError {
-    fn from(e: nostr::nips::nip19::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip21::Error> for NostrError {
-    fn from(e: nostr::nips::nip21::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip26::Error> for NostrError {
-    fn from(e: nostr::nips::nip26::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip44::Error> for NostrError {
-    fn from(e: nostr::nips::nip44::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip46::Error> for NostrError {
-    fn from(e: nostr::nips::nip46::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip47::Error> for NostrError {
-    fn from(e: nostr::nips::nip47::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip49::Error> for NostrError {
-    fn from(e: nostr::nips::nip49::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip53::Error> for NostrError {
-    fn from(e: nostr::nips::nip53::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip57::Error> for NostrError {
-    fn from(e: nostr::nips::nip57::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip59::Error> for NostrError {
-    fn from(e: nostr::nips::nip59::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::nips::nip90::Error> for NostrError {
-    fn from(e: nostr::nips::nip90::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::secp256k1::Error> for NostrError {
-    fn from(e: nostr::secp256k1::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::types::url::ParseError> for NostrError {
-    fn from(e: nostr::types::url::ParseError) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::hashes::hex::HexToArrayError> for NostrError {
-    fn from(e: nostr::hashes::hex::HexToArrayError) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::serde_json::Error> for NostrError {
-    fn from(e: nostr::serde_json::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr::event::id::Error> for NostrError {
-    fn from(e: nostr::event::id::Error) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<AddrParseError> for NostrError {
-    fn from(e: AddrParseError) -> NostrError {
-        Self::Generic(e.to_string())
-    }
-}

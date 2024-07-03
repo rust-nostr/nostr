@@ -7,7 +7,8 @@ use std::ops::Deref;
 use uniffi::{Enum, Object};
 
 /// Event Kind
-#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[derive(Debug, PartialEq, Eq, Hash, Object, o2o::o2o)]
+#[from_owned(nostr::Kind| return Self { inner: @ })]
 #[uniffi::export(Debug, Eq, Hash)]
 pub struct Kind {
     inner: nostr::Kind,
@@ -17,12 +18,6 @@ impl Deref for Kind {
     type Target = nostr::Kind;
     fn deref(&self) -> &Self::Target {
         &self.inner
-    }
-}
-
-impl From<nostr::Kind> for Kind {
-    fn from(inner: nostr::Kind) -> Self {
-        Self { inner }
     }
 }
 
@@ -55,7 +50,8 @@ impl Kind {
     }
 }
 
-#[derive(Enum)]
+#[derive(Enum, o2o::o2o)]
+#[map_owned(nostr::Kind)]
 pub enum KindEnum {
     /// Metadata (NIP01 and NIP05)
     Metadata,
@@ -225,6 +221,10 @@ pub enum KindEnum {
     SetProduct,
     /// Job Feedback (NIP90)
     JobFeedback,
+
+    #[o2o(repeat)]
+    #[type_hint(as ())]
+    
     JobRequest {
         kind: u16,
     },
@@ -246,160 +246,4 @@ pub enum KindEnum {
     Custom {
         kind: u16,
     },
-}
-
-impl From<nostr::Kind> for KindEnum {
-    fn from(value: nostr::Kind) -> Self {
-        match value {
-            nostr::Kind::Metadata => Self::Metadata,
-            nostr::Kind::TextNote => Self::TextNote,
-            nostr::Kind::RecommendRelay => Self::RecommendRelay,
-            nostr::Kind::ContactList => Self::ContactList,
-            nostr::Kind::OpenTimestamps => Self::OpenTimestamps,
-            nostr::Kind::EncryptedDirectMessage => Self::EncryptedDirectMessage,
-            nostr::Kind::EventDeletion => Self::EventDeletion,
-            nostr::Kind::Repost => Self::Repost,
-            nostr::Kind::GenericRepost => Self::GenericRepost,
-            nostr::Kind::Reaction => Self::Reaction,
-            nostr::Kind::BadgeAward => Self::BadgeAward,
-            nostr::Kind::ChannelCreation => Self::ChannelCreation,
-            nostr::Kind::ChannelMetadata => Self::ChannelMetadata,
-            nostr::Kind::ChannelMessage => Self::ChannelMessage,
-            nostr::Kind::ChannelHideMessage => Self::ChannelHideMessage,
-            nostr::Kind::ChannelMuteUser => Self::ChannelMuteUser,
-            nostr::Kind::PublicChatReserved45 => Self::PublicChatReserved45,
-            nostr::Kind::PublicChatReserved46 => Self::PublicChatReserved46,
-            nostr::Kind::PublicChatReserved47 => Self::PublicChatReserved47,
-            nostr::Kind::PublicChatReserved48 => Self::PublicChatReserved48,
-            nostr::Kind::PublicChatReserved49 => Self::PublicChatReserved49,
-            nostr::Kind::Label => Self::Label,
-            nostr::Kind::WalletConnectInfo => Self::WalletConnectInfo,
-            nostr::Kind::Reporting => Self::Reporting,
-            nostr::Kind::ZapPrivateMessage => Self::ZapPrivateMessage,
-            nostr::Kind::ZapRequest => Self::ZapRequest,
-            nostr::Kind::ZapReceipt => Self::ZapReceipt,
-            nostr::Kind::MuteList => Self::MuteList,
-            nostr::Kind::PinList => Self::PinList,
-            nostr::Kind::Bookmarks => Self::Bookmarks,
-            nostr::Kind::Communities => Self::Communities,
-            nostr::Kind::PublicChats => Self::PublicChats,
-            nostr::Kind::BlockedRelays => Self::BlockedRelays,
-            nostr::Kind::SearchRelays => Self::SearchRelays,
-            nostr::Kind::SimpleGroups => Self::SimpleGroups,
-            nostr::Kind::Interests => Self::Interests,
-            nostr::Kind::Emojis => Self::Emojis,
-            nostr::Kind::FollowSet => Self::FollowSet,
-            nostr::Kind::RelaySet => Self::RelaySet,
-            nostr::Kind::BookmarkSet => Self::BookmarkSet,
-            nostr::Kind::ArticlesCurationSet => Self::ArticlesCurationSet,
-            nostr::Kind::VideosCurationSet => Self::VideosCurationSet,
-            nostr::Kind::InterestSet => Self::InterestSet,
-            nostr::Kind::EmojiSet => Self::EmojiSet,
-            nostr::Kind::ReleaseArtifactSet => Self::ReleaseArtifactSet,
-            nostr::Kind::RelayList => Self::RelayList,
-            nostr::Kind::Authentication => Self::Authentication,
-            nostr::Kind::WalletConnectRequest => Self::WalletConnectRequest,
-            nostr::Kind::WalletConnectResponse => Self::WalletConnectResponse,
-            nostr::Kind::NostrConnect => Self::NostrConnect,
-            nostr::Kind::LiveEvent => Self::LiveEvent,
-            nostr::Kind::LiveEventMessage => Self::LiveEventMessage,
-            nostr::Kind::ProfileBadges => Self::ProfileBadges,
-            nostr::Kind::BadgeDefinition => Self::BadgeDefinition,
-            nostr::Kind::Seal => Self::Seal,
-            nostr::Kind::GiftWrap => Self::GiftWrap,
-            nostr::Kind::PrivateDirectMessage => Self::PrivateDirectMessage,
-            nostr::Kind::LongFormTextNote => Self::LongFormTextNote,
-            nostr::Kind::ApplicationSpecificData => Self::ApplicationSpecificData,
-            nostr::Kind::FileMetadata => Self::FileMetadata,
-            nostr::Kind::HttpAuth => Self::HttpAuth,
-            nostr::Kind::SetStall => Self::SetStall,
-            nostr::Kind::SetProduct => Self::SetProduct,
-            nostr::Kind::JobFeedback => Self::JobFeedback,
-            nostr::Kind::JobRequest(kind) => Self::JobRequest { kind },
-            nostr::Kind::JobResult(kind) => Self::JobResult { kind },
-            nostr::Kind::Regular(u) => Self::Regular { kind: u },
-            nostr::Kind::Replaceable(u) => Self::Replaceable { kind: u },
-            nostr::Kind::Ephemeral(u) => Self::Ephemeral { kind: u },
-            nostr::Kind::ParameterizedReplaceable(u) => Self::ParameterizedReplaceable { kind: u },
-            nostr::Kind::Custom(u) => Self::Custom { kind: u },
-        }
-    }
-}
-
-impl From<KindEnum> for nostr::Kind {
-    fn from(value: KindEnum) -> Self {
-        match value {
-            KindEnum::Metadata => Self::Metadata,
-            KindEnum::TextNote => Self::TextNote,
-            KindEnum::RecommendRelay => Self::RecommendRelay,
-            KindEnum::ContactList => Self::ContactList,
-            KindEnum::OpenTimestamps => Self::OpenTimestamps,
-            KindEnum::EncryptedDirectMessage => Self::EncryptedDirectMessage,
-            KindEnum::EventDeletion => Self::EventDeletion,
-            KindEnum::Repost => Self::Repost,
-            KindEnum::GenericRepost => Self::GenericRepost,
-            KindEnum::Reaction => Self::Reaction,
-            KindEnum::BadgeAward => Self::BadgeAward,
-            KindEnum::ChannelCreation => Self::ChannelCreation,
-            KindEnum::ChannelMetadata => Self::ChannelMetadata,
-            KindEnum::ChannelMessage => Self::ChannelMessage,
-            KindEnum::ChannelHideMessage => Self::ChannelHideMessage,
-            KindEnum::ChannelMuteUser => Self::ChannelMuteUser,
-            KindEnum::PublicChatReserved45 => Self::PublicChatReserved45,
-            KindEnum::PublicChatReserved46 => Self::PublicChatReserved46,
-            KindEnum::PublicChatReserved47 => Self::PublicChatReserved47,
-            KindEnum::PublicChatReserved48 => Self::PublicChatReserved48,
-            KindEnum::PublicChatReserved49 => Self::PublicChatReserved49,
-            KindEnum::Label => Self::Label,
-            KindEnum::WalletConnectInfo => Self::WalletConnectInfo,
-            KindEnum::Reporting => Self::Reporting,
-            KindEnum::ZapPrivateMessage => Self::ZapPrivateMessage,
-            KindEnum::ZapRequest => Self::ZapRequest,
-            KindEnum::ZapReceipt => Self::ZapReceipt,
-            KindEnum::MuteList => Self::MuteList,
-            KindEnum::PinList => Self::PinList,
-            KindEnum::Bookmarks => Self::Bookmarks,
-            KindEnum::Communities => Self::Communities,
-            KindEnum::PublicChats => Self::PublicChats,
-            KindEnum::BlockedRelays => Self::BlockedRelays,
-            KindEnum::SearchRelays => Self::SearchRelays,
-            KindEnum::SimpleGroups => Self::SimpleGroups,
-            KindEnum::Interests => Self::Interests,
-            KindEnum::Emojis => Self::Emojis,
-            KindEnum::FollowSet => Self::FollowSet,
-            KindEnum::RelaySet => Self::RelaySet,
-            KindEnum::BookmarkSet => Self::BookmarkSet,
-            KindEnum::ArticlesCurationSet => Self::ArticlesCurationSet,
-            KindEnum::VideosCurationSet => Self::VideosCurationSet,
-            KindEnum::InterestSet => Self::InterestSet,
-            KindEnum::EmojiSet => Self::EmojiSet,
-            KindEnum::ReleaseArtifactSet => Self::ReleaseArtifactSet,
-            KindEnum::RelayList => Self::RelayList,
-            KindEnum::Authentication => Self::Authentication,
-            KindEnum::WalletConnectRequest => Self::WalletConnectRequest,
-            KindEnum::WalletConnectResponse => Self::WalletConnectResponse,
-            KindEnum::NostrConnect => Self::NostrConnect,
-            KindEnum::LiveEvent => Self::LiveEvent,
-            KindEnum::LiveEventMessage => Self::LiveEventMessage,
-            KindEnum::ProfileBadges => Self::ProfileBadges,
-            KindEnum::BadgeDefinition => Self::BadgeDefinition,
-            KindEnum::Seal => Self::Seal,
-            KindEnum::GiftWrap => Self::GiftWrap,
-            KindEnum::PrivateDirectMessage => Self::PrivateDirectMessage,
-            KindEnum::LongFormTextNote => Self::LongFormTextNote,
-            KindEnum::ApplicationSpecificData => Self::ApplicationSpecificData,
-            KindEnum::FileMetadata => Self::FileMetadata,
-            KindEnum::HttpAuth => Self::HttpAuth,
-            KindEnum::SetStall => Self::SetStall,
-            KindEnum::SetProduct => Self::SetProduct,
-            KindEnum::JobFeedback => Self::JobFeedback,
-            KindEnum::JobRequest { kind } => Self::JobRequest(kind),
-            KindEnum::JobResult { kind } => Self::JobResult(kind),
-            KindEnum::Regular { kind } => Self::Regular(kind),
-            KindEnum::Replaceable { kind } => Self::Replaceable(kind),
-            KindEnum::Ephemeral { kind } => Self::Ephemeral(kind),
-            KindEnum::ParameterizedReplaceable { kind } => Self::ParameterizedReplaceable(kind),
-            KindEnum::Custom { kind } => Self::Custom(kind),
-        }
-    }
 }

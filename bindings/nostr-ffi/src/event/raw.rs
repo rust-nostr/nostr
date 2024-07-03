@@ -8,7 +8,8 @@ use uniffi::{Object, Record};
 use crate::error::Result;
 
 /// Raw event
-#[derive(Record)]
+#[derive(Record, o2o::o2o)]
+#[map_owned(raw::RawEvent)]
 pub struct RawEventRecord {
     /// ID
     pub id: String,
@@ -24,34 +25,6 @@ pub struct RawEventRecord {
     pub content: String,
     /// Signature
     pub sig: String,
-}
-
-impl From<RawEventRecord> for raw::RawEvent {
-    fn from(value: RawEventRecord) -> Self {
-        Self {
-            id: value.id,
-            pubkey: value.pubkey,
-            created_at: value.created_at,
-            kind: value.kind,
-            tags: value.tags,
-            content: value.content,
-            sig: value.sig,
-        }
-    }
-}
-
-impl From<raw::RawEvent> for RawEventRecord {
-    fn from(value: raw::RawEvent) -> Self {
-        Self {
-            id: value.id,
-            pubkey: value.pubkey,
-            created_at: value.created_at,
-            kind: value.kind,
-            tags: value.tags,
-            content: value.content,
-            sig: value.sig,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]

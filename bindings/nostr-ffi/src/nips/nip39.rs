@@ -8,7 +8,8 @@ use uniffi::{Enum, Record};
 /// Supported external identity providers
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/39.md>
-#[derive(Enum)]
+#[derive(Enum, o2o::o2o)]
+#[map_owned(nip39::ExternalIdentity)]
 pub enum ExternalIdentity {
     /// github.com
     GitHub,
@@ -18,28 +19,6 @@ pub enum ExternalIdentity {
     Mastodon,
     /// telegram.org
     Telegram,
-}
-
-impl From<ExternalIdentity> for nip39::ExternalIdentity {
-    fn from(value: ExternalIdentity) -> Self {
-        match value {
-            ExternalIdentity::GitHub => Self::GitHub,
-            ExternalIdentity::Twitter => Self::Twitter,
-            ExternalIdentity::Mastodon => Self::Mastodon,
-            ExternalIdentity::Telegram => Self::Telegram,
-        }
-    }
-}
-
-impl From<nip39::ExternalIdentity> for ExternalIdentity {
-    fn from(value: nip39::ExternalIdentity) -> Self {
-        match value {
-            nip39::ExternalIdentity::GitHub => Self::GitHub,
-            nip39::ExternalIdentity::Twitter => Self::Twitter,
-            nip39::ExternalIdentity::Mastodon => Self::Mastodon,
-            nip39::ExternalIdentity::Telegram => Self::Telegram,
-        }
-    }
 }
 
 /// External identity
