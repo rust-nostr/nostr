@@ -289,13 +289,10 @@ impl Tag {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        // Collect values
-        let values: Vec<String> = values.into_iter().map(|v| v.into()).collect();
-
         // Compose tag
-        let mut buf: Vec<String> = Vec::with_capacity(1 + values.len());
+        let mut buf: Vec<String> = Vec::with_capacity(1);
         buf.push(kind.to_string());
-        buf.extend(values);
+        buf.extend(values.into_iter().map(|v| v.into()));
 
         // NOT USE `Self::new`!
         Self::new_with_empty_cell(buf)
