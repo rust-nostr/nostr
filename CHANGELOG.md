@@ -33,6 +33,7 @@
 * nostr: change `nip65::extract_relay_list` fingerprint ([Yuki Kishimoto])
 * nostr: avoid allocation where possible in NIP-05 module ([Yuki Kishimoto])
 * nostr: get NIP-46 relays from NIP-05 address ([DanConwayDev])
+* nostr: deprecate `EventBuilder::encrypted_direct_msg` ([Yuki Kishimoto])
 * pool: use per-purpose dedicated relay channels ([Yuki Kishimoto])
 * pool: return relay urls to which `messages`/`events` have or not been sent for `send_*` and `batch_*` methods ([Yuki Kishimoto])
 * pool: return relay urls to which `subscription` have or not been success for `subscribe*` methods ([Yuki Kishimoto])

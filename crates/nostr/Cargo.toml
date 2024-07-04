@@ -101,10 +101,6 @@ name = "metadata"
 required-features = ["std"]
 
 [[example]]
-name = "nip04"
-required-features = ["std", "nip04"]
-
-[[example]]
 name = "nip05"
 required-features = ["std", "nip05"]
 

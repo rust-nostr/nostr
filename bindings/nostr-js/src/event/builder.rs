@@ -198,6 +198,7 @@ impl JsEventBuilder {
         reply_to: Option<JsEventId>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
+            #[allow(deprecated)]
             inner: EventBuilder::encrypted_direct_msg(
                 sender_keys.deref(),
                 **receiver_pubkey,

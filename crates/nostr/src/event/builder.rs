@@ -567,6 +567,7 @@ impl EventBuilder {
     /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
+    #[deprecated(note = "Unsecure! Deprecated in favor of NIP-17!")]
     #[cfg(all(feature = "std", feature = "nip04"))]
     pub fn encrypted_direct_msg<S>(
         sender_keys: &Keys,
@@ -1676,6 +1677,7 @@ mod tests {
         );
 
         let content = "Mercury, the Winged Messenger";
+        #[allow(deprecated)]
         let event = EventBuilder::encrypted_direct_msg(
             &sender_keys,
             receiver_keys.public_key(),

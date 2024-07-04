@@ -189,6 +189,7 @@ impl EventBuilder {
         reply_to: Option<Arc<EventId>>,
     ) -> Result<Self> {
         Ok(Self {
+            #[allow(deprecated)]
             inner: nostr::EventBuilder::encrypted_direct_msg(
                 sender_keys.deref(),
                 **receiver_pubkey,
