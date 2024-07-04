@@ -56,6 +56,9 @@ impl fmt::Display for SecretKey {
 }
 
 impl SecretKey {
+    /// Secret Key len
+    pub const LEN: usize = 32;
+
     /// Try to parse [SecretKey] from `hex` or `bech32`
     pub fn parse<S>(secret_key: S) -> Result<Self, Error>
     where
@@ -137,7 +140,7 @@ impl SecretKey {
 
     /// Get secret key as `bytes`
     #[inline]
-    pub fn to_secret_bytes(&self) -> [u8; 32] {
+    pub fn to_secret_bytes(&self) -> [u8; Self::LEN] {
         self.inner.secret_bytes()
     }
 

@@ -49,6 +49,9 @@ impl fmt::Display for PublicKey {
 }
 
 impl PublicKey {
+    /// Public Key len
+    pub const LEN: usize = 32;
+
     /// Try to parse [PublicKey] from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     pub fn parse<S>(public_key: S) -> Result<Self, Error>
     where
@@ -101,7 +104,7 @@ impl PublicKey {
 
     /// Get public key as `bytes`
     #[inline]
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(&self) -> [u8; Self::LEN] {
         self.inner.serialize()
     }
 }

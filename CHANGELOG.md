@@ -51,6 +51,7 @@
 * nostr: add `Timestamp::zero` and `Timestamp::is_zero` methods ([Yuki Kishimoto])
 * nostr: add `Nip05Profile` struct ([Yuki Kishimoto])
 * nostr: add `nip05::profile` function ([Yuki Kishimoto])
+* nostr: add `LEN` const to `PublicKey`, `SecretKey` and `EncryptedSecretKey` ([Yuki Kishimoto])
 * pool: add `Output<T>` struct ([Yuki Kishimoto])
 * pool: add `Output<EventId>::id` and `Output<SubscriptionId>::id` methods ([Yuki Kishimoto])
 * signer: add `NostrSigner::unwrap_gift_wrap` method ([Yuki Kishimoto])
