@@ -17,7 +17,7 @@ async def main():
     #signer = NostrConnectRemoteSigner.from_uri(uri, secret_key)
 
     # Print bunker URI
-    bunker_uri = await signer.nostr_connect_uri()
+    bunker_uri = await signer.bunker_uri()
     print(f"Bunker URI: {bunker_uri.as_string()}")
 
     # Define signer actions

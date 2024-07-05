@@ -72,9 +72,9 @@ impl JsNip46Signer {
         self.inner.signer_public_key().into()
     }
 
-    /// Get Nostr Connect URI in **bunker** format.
-    #[wasm_bindgen(js_name = nostrConnectUri)]
-    pub async fn nostr_connect_uri(&self) -> JsNostrConnectURI {
-        self.inner.nostr_connect_uri().await.into()
+    /// Get `bunker` URI
+    #[wasm_bindgen(js_name = bunkerUri)]
+    pub async fn bunker_uri(&self) -> JsNostrConnectURI {
+        self.inner.bunker_uri().await.into()
     }
 }

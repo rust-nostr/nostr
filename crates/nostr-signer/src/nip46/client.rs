@@ -83,6 +83,7 @@ impl Nip46Signer {
     }
 
     /// Get local app keys
+    #[inline]
     pub fn local_keys(&self) -> &Keys {
         &self.app_keys
     }
@@ -93,12 +94,19 @@ impl Nip46Signer {
     }
 
     /// Get signer [PublicKey]
+    #[inline]
     pub fn signer_public_key(&self) -> PublicKey {
         self.signer_public_key
     }
 
     /// Get Nostr Connect URI in **bunker** format.
+    #[deprecated(since = "0.33.0", note = "Use `bunker_uri` instead")]
     pub async fn nostr_connect_uri(&self) -> NostrConnectURI {
+        self.bunker_uri().await
+    }
+
+    /// Get `bunker` URI
+    pub async fn bunker_uri(&self) -> NostrConnectURI {
         NostrConnectURI::Bunker {
             signer_public_key: self.signer_public_key,
             relays: self.relays().await,

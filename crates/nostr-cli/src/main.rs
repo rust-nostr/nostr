@@ -100,7 +100,7 @@ async fn run() -> Result<()> {
             };
 
             // Print bunker URI
-            let uri = signer.nostr_connect_uri().await;
+            let uri: NostrConnectURI = signer.bunker_uri().await;
             println!("\nBunker URI: {uri}\n");
 
             // Serve signer

@@ -28,7 +28,8 @@ async fn main() -> Result<()> {
     let signer = Nip46Signer::new(uri, app_keys, Duration::from_secs(60), None).await?; */
 
     // Get bunker URI for future connections
-    //let bunker_uri = signer.nostr_connect_uri().await;
+    let bunker_uri: NostrConnectURI = signer.bunker_uri().await;
+    println!("\nBunker URI: {bunker_uri}\n");
 
     // Compose client
     let client = Client::new(signer);

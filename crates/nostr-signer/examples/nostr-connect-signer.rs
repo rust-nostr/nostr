@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
     let signer = NostrConnectRemoteSigner::from_uri(uri, secret_key, None, None).await?;
 
     // Print bunker URI
-    let uri = signer.nostr_connect_uri().await;
+    let uri = signer.bunker_uri().await;
     println!("\n{uri}\n");
 
     // Serve signer

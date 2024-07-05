@@ -71,9 +71,9 @@ impl Nip46Signer {
         self.inner.signer_public_key().into()
     }
 
-    /// Get Nostr Connect URI in **bunker** format.
-    pub async fn nostr_connect_uri(&self) -> NostrConnectURI {
-        self.inner.nostr_connect_uri().await.into()
+    /// Get `bunker` URI
+    pub async fn bunker_uri(&self) -> NostrConnectURI {
+        self.inner.bunker_uri().await.into()
     }
 }
 
@@ -137,9 +137,9 @@ impl NostrConnectRemoteSigner {
             .collect()
     }
 
-    /// Get Nostr Connect URI
-    pub async fn nostr_connect_uri(&self) -> NostrConnectURI {
-        self.inner.nostr_connect_uri().await.into()
+    /// Get `bunker` URI
+    pub async fn bunker_uri(&self) -> NostrConnectURI {
+        self.inner.bunker_uri().await.into()
     }
 
     /// Serve signer

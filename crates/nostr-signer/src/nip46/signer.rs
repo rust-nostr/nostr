@@ -81,7 +81,13 @@ impl NostrConnectRemoteSigner {
     }
 
     /// Get Nostr Connect URI
+    #[deprecated(since = "0.33.0", note = "Use `bunker_uri` instead")]
     pub async fn nostr_connect_uri(&self) -> NostrConnectURI {
+        self.bunker_uri().await
+    }
+
+    /// Get `bunker` URI
+    pub async fn bunker_uri(&self) -> NostrConnectURI {
         NostrConnectURI::Bunker {
             signer_public_key: self.keys.public_key(),
             relays: self.relays().await,
