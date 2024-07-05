@@ -39,6 +39,7 @@
 * pool: return relay urls to which `subscription` have or not been success for `subscribe*` methods ([Yuki Kishimoto])
 * pool: rename `Relay::terminate` to `Relay::disconnect` ([Yuki Kishimoto])
 * pool: always send `RelayPoolNotification::Message` variant ([Yuki Kishimoto])
+* signer: use `limit(0)` instead of `since` for `Nip46Signer` subscription filter ([Yuki Kishimoto])
 * sdk: allow to change auto authentication to relays option (NIP-42) after client initialization ([Yuki Kishimoto])
 * sdk: Retrieve contact list public keys only from the latest events ([Xiao Yu])
 * bindings(nostr): allow to specify coordinates in `EventBuilder::delete` constructor ([Yuki Kishimoto])

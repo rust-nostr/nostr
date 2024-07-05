@@ -257,7 +257,7 @@ async fn subscribe(
     let filter = Filter::new()
         .pubkey(public_key)
         .kind(Kind::NostrConnect)
-        .since(Timestamp::now());
+        .limit(0);
 
     let notifications = pool.notifications();
 
