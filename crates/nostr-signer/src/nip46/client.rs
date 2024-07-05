@@ -278,12 +278,29 @@ async fn get_signer_public_key(
         while let Ok(notification) = notifications.recv().await {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind() == Kind::NostrConnect {
+                    // Decrypt content
                     let msg: String =
                         nip04::decrypt(secret_key, event.author_ref(), event.content())?;
-                    tracing::debug!("New Nostr Connect message received: {msg}");
-                    let msg = Message::from_json(msg)?;
-                    if let Ok(Request::Connect { public_key, .. }) = msg.to_request() {
-                        return Ok(public_key);
+
+                    tracing::debug!("Received Nostr Connect message: '{msg}'");
+
+                    // Parse message
+                    let msg: Message = Message::from_json(msg)?;
+
+                    // Match message
+                    match msg {
+                        Message::Request {
+                            req: Request::Connect { public_key, .. },
+                            ..
+                        } => {
+                            return Ok(public_key);
+                        }
+                        Message::Response {
+                            result: Some(ResponseResult::Connect),
+                            error: None,
+                            ..
+                        } => return Ok(event.author()),
+                        _ => {}
                     }
                 }
             }
