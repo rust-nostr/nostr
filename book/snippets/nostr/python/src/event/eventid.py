@@ -10,8 +10,10 @@ def event_id():
     # ANCHOR: build-event-id
     print("  Build Event ID:")
     event_id = EventId(keys.public_key(),Timestamp.now(),Kind(1),[],"")
+    print(f"     - {event_id}")
     # ANCHOR_END: build-event-id
 
+    print()
     # ANCHOR: format-parse-hex
     # To Hex and then Parse
     print("  Event ID (hex):")
