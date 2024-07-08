@@ -27,6 +27,7 @@
 
 ### Changed
 
+* Bump `uniffi` to `v0.28.0` ([Yuki Kishimoto])
 * nostr: rename NIP-51 `EventBuilder` set constructors and `Kind` variants ([Yuki Kishimoto])
 * nostr: small adj. to NIP-47 `ListTransactionsRequestParams` and `LookupInvoiceResponseResult` structs ([Yuki Kishimoto])
 * nostr: add `identifier` arg to NIP-51 `EventBuilder` set constructors ([Yuki Kishimoto])
