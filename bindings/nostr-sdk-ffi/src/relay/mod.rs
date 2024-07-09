@@ -10,7 +10,7 @@ use std::time::Duration;
 use nostr_ffi::{ClientMessage, Event, EventId, Filter, RelayInformationDocument};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{pool, FilterOptions, SubscriptionId, Url};
-use uniffi::Object;
+use uniffi::{Object, Record};
 
 pub mod blacklist;
 pub mod limits;
@@ -27,6 +27,65 @@ pub use self::status::RelayStatus;
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
 use crate::NostrDatabase;
+
+#[derive(Record)]
+pub struct ReconciliationSendFailureItem {
+    pub id: Arc<EventId>,
+    pub error: String,
+}
+
+/// Reconciliation output
+#[derive(Record)]
+pub struct Reconciliation {
+    /// The IDs that were stored locally
+    pub local: Vec<Arc<EventId>>,
+    /// The IDs that were missing locally (stored on relay)
+    pub remote: Vec<Arc<EventId>>,
+    /// Events that are **successfully** sent to relays during reconciliation
+    pub sent: Vec<Arc<EventId>>,
+    /// Event that are **successfully** received from relay
+    pub received: Vec<Arc<EventId>>,
+
+    pub send_failures: HashMap<String, Vec<ReconciliationSendFailureItem>>,
+}
+
+impl From<pool::Reconciliation> for Reconciliation {
+    fn from(value: pool::Reconciliation) -> Self {
+        Self {
+            local: value
+                .local
+                .into_iter()
+                .map(|e| Arc::new(e.into()))
+                .collect(),
+            remote: value
+                .remote
+                .into_iter()
+                .map(|e| Arc::new(e.into()))
+                .collect(),
+            sent: value.sent.into_iter().map(|e| Arc::new(e.into())).collect(),
+            received: value
+                .received
+                .into_iter()
+                .map(|e| Arc::new(e.into()))
+                .collect(),
+            send_failures: value
+                .send_failures
+                .into_iter()
+                .map(|(url, map)| {
+                    (
+                        url.to_string(),
+                        map.into_iter()
+                            .map(|(id, e)| ReconciliationSendFailureItem {
+                                id: Arc::new(id.into()),
+                                error: e,
+                            })
+                            .collect(),
+                    )
+                })
+                .collect(),
+        }
+    }
+}
 
 #[derive(Object)]
 pub struct Relay {
@@ -310,8 +369,16 @@ impl Relay {
     /// Negentropy reconciliation
     ///
     /// Use events stored in database
-    pub async fn reconcile(&self, filter: &Filter, opts: &NegentropyOptions) -> Result<()> {
-        Ok(self.inner.reconcile(filter.deref().clone(), **opts).await?)
+    pub async fn reconcile(
+        &self,
+        filter: &Filter,
+        opts: &NegentropyOptions,
+    ) -> Result<Reconciliation> {
+        Ok(self
+            .inner
+            .reconcile(filter.deref().clone(), **opts)
+            .await?
+            .into())
     }
 
     /// Negentropy reconciliation with custom items
@@ -320,7 +387,7 @@ impl Relay {
         filter: &Filter,
         items: Vec<NegentropyItem>,
         opts: &NegentropyOptions,
-    ) -> Result<()> {
+    ) -> Result<Reconciliation> {
         let items = items
             .into_iter()
             .map(|item| (**item.id, **item.timestamp))
@@ -328,7 +395,8 @@ impl Relay {
         Ok(self
             .inner
             .reconcile_with_items(filter.deref().clone(), items, **opts)
-            .await?)
+            .await?
+            .into())
     }
 
     /// Check if relay support negentropy protocol

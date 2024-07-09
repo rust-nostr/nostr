@@ -1540,7 +1540,7 @@ impl Client {
         &self,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<Output<()>, Error> {
+    ) -> Result<Output<Reconciliation>, Error> {
         Ok(self.pool.reconcile(filter, opts).await?)
     }
 
@@ -1553,7 +1553,7 @@ impl Client {
         urls: I,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<Output<()>, Error>
+    ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1569,7 +1569,7 @@ impl Client {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Output<()>, Error> {
+    ) -> Result<Output<Reconciliation>, Error> {
         Ok(self.pool.reconcile_with_items(filter, items, opts).await?)
     }
 
@@ -1583,7 +1583,7 @@ impl Client {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Output<()>, Error>
+    ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

@@ -14,7 +14,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod result;
 
-use self::result::{JsOutput, JsSendEventOutput, JsSubscribeOutput};
+use self::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
 use crate::relay::blacklist::JsRelayBlacklist;
@@ -440,7 +440,7 @@ impl JsRelayPool {
         &self,
         filter: &JsFilter,
         opts: &JsNegentropyOptions,
-    ) -> Result<JsOutput> {
+    ) -> Result<JsReconciliationOutput> {
         self.inner
             .reconcile(filter.deref().clone(), **opts)
             .await

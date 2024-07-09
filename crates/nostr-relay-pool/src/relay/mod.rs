@@ -5,7 +5,7 @@
 //! Relay
 
 use std::cmp;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -66,6 +66,39 @@ pub enum RelayNotification {
     },
     /// Shutdown
     Shutdown,
+}
+
+// #[derive(Debug, Clone, Default, PartialEq, Eq)]
+// pub struct ReconciliationFailures {
+//     /// Send failures
+//     pub send: HashMap<EventId, Vec<String>>,
+//     // Receive failures (NOT CURRENTLY AVAILABLE)
+//     // pub receive: HashMap<EventId, Vec<String>>,
+// }
+
+/// Reconciliation output
+#[derive(Debug, Clone, Default)]
+pub struct Reconciliation {
+    /// Events that were stored locally (missing on relay)
+    pub local: HashSet<EventId>,
+    /// Events that were stored on relay (missing locally)
+    pub remote: HashSet<EventId>,
+    /// Events that are **successfully** sent to relays during reconciliation
+    pub sent: HashSet<EventId>,
+    /// Event that are **successfully** received from relay during reconciliation
+    pub received: HashSet<EventId>,
+    /// Send failures
+    pub send_failures: HashMap<Url, HashMap<EventId, String>>,
+}
+
+impl Reconciliation {
+    pub(crate) fn merge(&mut self, other: Reconciliation) {
+        self.local.extend(other.local);
+        self.remote.extend(other.remote);
+        self.sent.extend(other.sent);
+        self.received.extend(other.received);
+        self.send_failures.extend(other.send_failures);
+    }
 }
 
 /// Relay
@@ -368,7 +401,11 @@ impl Relay {
     ///
     /// Use events stored in database
     #[inline]
-    pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
+    pub async fn reconcile(
+        &self,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<Reconciliation, Error> {
         self.inner.reconcile(filter, opts).await
     }
 
@@ -379,7 +416,7 @@ impl Relay {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<Reconciliation, Error> {
         self.inner.reconcile_with_items(filter, items, opts).await
     }
 

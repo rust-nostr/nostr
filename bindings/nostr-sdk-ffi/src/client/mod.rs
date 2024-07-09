@@ -27,7 +27,7 @@ pub use self::options::Options;
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
-use crate::pool::result::{Output, SendEventOutput, SubscribeOutput};
+use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
 use crate::relay::{RelayBlacklist, RelayOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -606,7 +606,7 @@ impl Client {
         &self,
         filter: Arc<Filter>,
         opts: Arc<NegentropyOptions>,
-    ) -> Result<Output> {
+    ) -> Result<ReconciliationOutput> {
         Ok(self
             .inner
             .reconcile(filter.as_ref().deref().clone(), **opts)

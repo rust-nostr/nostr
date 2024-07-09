@@ -17,6 +17,7 @@ pub mod result;
 use self::result::{Output, SendEventOutput, SubscribeOutput};
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
+use crate::pool::result::ReconciliationOutput;
 use crate::relay::options::{FilterOptions, NegentropyOptions};
 use crate::relay::{RelayBlacklist, RelayOptions, RelaySendOptions, SubscribeOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -399,7 +400,11 @@ impl RelayPool {
     /// Negentropy reconciliation
     ///
     /// Use events stored in database
-    pub async fn reconcile(&self, filter: &Filter, opts: &NegentropyOptions) -> Result<Output> {
+    pub async fn reconcile(
+        &self,
+        filter: &Filter,
+        opts: &NegentropyOptions,
+    ) -> Result<ReconciliationOutput> {
         Ok(self
             .inner
             .reconcile(filter.deref().clone(), **opts)
@@ -413,7 +418,7 @@ impl RelayPool {
         filter: &Filter,
         items: Vec<NegentropyItem>,
         opts: &NegentropyOptions,
-    ) -> Result<Output> {
+    ) -> Result<ReconciliationOutput> {
         let items = items
             .into_iter()
             .map(|item| (**item.id, **item.timestamp))

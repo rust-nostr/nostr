@@ -2,9 +2,13 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::{HashMap, HashSet};
+
 use nostr_js::event::JsEventId;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
+
+use crate::relay::JsReconciliation;
 
 #[derive(Clone)]
 #[wasm_bindgen(js_name = FailedOutputItem)]
@@ -59,17 +63,7 @@ impl From<Output<EventId>> for JsSendEventOutput {
     fn from(output: Output<EventId>) -> Self {
         Self {
             id: output.val.into(),
-            output: JsOutput {
-                success: output.success.into_iter().map(|u| u.to_string()).collect(),
-                failed: output
-                    .failed
-                    .into_iter()
-                    .map(|(u, e)| JsFailedOutputItem {
-                        url: u.to_string(),
-                        error: e,
-                    })
-                    .collect(),
-            },
+            output: convert_output(output.success, output.failed),
         }
     }
 }
@@ -89,17 +83,38 @@ impl From<Output<SubscriptionId>> for JsSubscribeOutput {
     fn from(output: Output<SubscriptionId>) -> Self {
         Self {
             id: output.val.to_string(),
-            output: JsOutput {
-                success: output.success.into_iter().map(|u| u.to_string()).collect(),
-                failed: output
-                    .failed
-                    .into_iter()
-                    .map(|(u, e)| JsFailedOutputItem {
-                        url: u.to_string(),
-                        error: e,
-                    })
-                    .collect(),
-            },
+            output: convert_output(output.success, output.failed),
         }
+    }
+}
+
+/// Reconciliation output
+#[wasm_bindgen(js_name = ReconciliationOutput)]
+pub struct JsReconciliationOutput {
+    #[wasm_bindgen(getter_with_clone)]
+    pub report: JsReconciliation,
+    #[wasm_bindgen(getter_with_clone)]
+    pub output: JsOutput,
+}
+
+impl From<Output<Reconciliation>> for JsReconciliationOutput {
+    fn from(output: Output<Reconciliation>) -> Self {
+        Self {
+            report: output.val.into(),
+            output: convert_output(output.success, output.failed),
+        }
+    }
+}
+
+fn convert_output(success: HashSet<Url>, failed: HashMap<Url, Option<String>>) -> JsOutput {
+    JsOutput {
+        success: success.into_iter().map(|u| u.to_string()).collect(),
+        failed: failed
+            .into_iter()
+            .map(|(u, e)| JsFailedOutputItem {
+                url: u.to_string(),
+                error: e,
+            })
+            .collect(),
     }
 }

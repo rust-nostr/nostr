@@ -4,7 +4,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use nostr::{EventId, SubscriptionId, Url};
 
@@ -25,12 +25,15 @@ where
     pub failed: HashMap<Url, Option<String>>,
 }
 
-impl Output<()> {
-    pub(super) fn success(url: Url) -> Self {
+impl<T> Output<T>
+where
+    T: Debug,
+{
+    pub(super) fn success(url: Url, val: T) -> Self {
         let mut success: HashSet<Url> = HashSet::with_capacity(1);
         success.insert(url);
         Self {
-            val: (),
+            val,
             success,
             failed: HashMap::new(),
         }
@@ -45,6 +48,15 @@ where
 
     fn deref(&self) -> &Self::Target {
         &self.val
+    }
+}
+
+impl<T> DerefMut for Output<T>
+where
+    T: Debug,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.val
     }
 }
 

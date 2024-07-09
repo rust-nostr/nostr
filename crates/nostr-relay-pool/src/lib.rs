@@ -24,4 +24,4 @@ pub use self::relay::options::{
     SubscribeAutoCloseOptions, SubscribeOptions,
 };
 pub use self::relay::stats::RelayConnectionStats;
-pub use self::relay::{Relay, RelayBlacklist, RelayNotification, RelayStatus};
+pub use self::relay::{Reconciliation, Relay, RelayBlacklist, RelayNotification, RelayStatus};

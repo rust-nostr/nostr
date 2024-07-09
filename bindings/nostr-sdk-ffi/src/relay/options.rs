@@ -338,4 +338,14 @@ impl NegentropyOptions {
         builder.inner = builder.inner.direction(direction.into());
         builder
     }
+
+    /// Dry run
+    ///
+    /// Just check what event are missing: execute reconciliation but WITHOUT
+    /// getting/sending full events.
+    pub fn dry_run(self: Arc<Self>) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.dry_run();
+        builder
+    }
 }

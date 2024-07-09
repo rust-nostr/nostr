@@ -28,7 +28,7 @@ pub use self::options::RelayPoolOptions;
 pub use self::result::Output;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist, RelayStatus};
-use crate::SubscribeOptions;
+use crate::{Reconciliation, SubscribeOptions};
 
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -448,7 +448,7 @@ impl RelayPool {
         &self,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<Output<()>, Error> {
+    ) -> Result<Output<Reconciliation>, Error> {
         self.inner.reconcile(filter, opts).await
     }
 
@@ -459,7 +459,7 @@ impl RelayPool {
         urls: I,
         filter: Filter,
         opts: NegentropyOptions,
-    ) -> Result<Output<()>, Error>
+    ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -475,7 +475,7 @@ impl RelayPool {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Output<()>, Error> {
+    ) -> Result<Output<Reconciliation>, Error> {
         self.inner.reconcile_with_items(filter, items, opts).await
     }
 
@@ -487,7 +487,7 @@ impl RelayPool {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Output<()>, Error>
+    ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,

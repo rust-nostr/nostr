@@ -28,7 +28,7 @@ use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
-use crate::pool::result::{JsOutput, JsSendEventOutput, JsSubscribeOutput};
+use crate::pool::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::relay::blacklist::JsRelayBlacklist;
 use crate::relay::options::{JsNegentropyOptions, JsSubscribeAutoCloseOptions};
 use crate::relay::{JsRelay, JsRelayArray};
@@ -747,7 +747,7 @@ impl JsClient {
         &self,
         filter: &JsFilter,
         opts: &JsNegentropyOptions,
-    ) -> Result<JsOutput> {
+    ) -> Result<JsReconciliationOutput> {
         self.inner
             .reconcile(filter.deref().clone(), **opts)
             .await

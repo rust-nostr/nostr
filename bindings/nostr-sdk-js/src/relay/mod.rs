@@ -24,6 +24,35 @@ use self::options::{
 };
 use crate::duration::JsDuration;
 
+#[derive(Clone)]
+#[wasm_bindgen(js_name = Reconciliation)]
+pub struct JsReconciliation {
+    /// The IDs that were stored locally
+    #[wasm_bindgen(getter_with_clone)]
+    pub local: Vec<JsEventId>,
+    /// The IDs that were missing locally (stored on relay)
+    #[wasm_bindgen(getter_with_clone)]
+    pub remote: Vec<JsEventId>,
+    /// Events that are **successfully** sent to relays during reconciliation
+    #[wasm_bindgen(getter_with_clone)]
+    pub sent: Vec<JsEventId>,
+    /// Event that are **successfully** received from relay
+    #[wasm_bindgen(getter_with_clone)]
+    pub received: Vec<JsEventId>,
+    // TODO: add send_failures:
+}
+
+impl From<Reconciliation> for JsReconciliation {
+    fn from(value: Reconciliation) -> Self {
+        Self {
+            local: value.local.into_iter().map(|e| e.into()).collect(),
+            remote: value.remote.into_iter().map(|e| e.into()).collect(),
+            sent: value.sent.into_iter().map(|e| e.into()).collect(),
+            received: value.received.into_iter().map(|e| e.into()).collect(),
+        }
+    }
+}
+
 #[wasm_bindgen]
 extern "C" {
     /// Array
@@ -278,10 +307,15 @@ impl JsRelay {
     /// Use events stored in database
     ///
     /// <https://github.com/hoytech/negentropy>
-    pub async fn reconcile(&self, filter: &JsFilter, opts: &JsNegentropyOptions) -> Result<()> {
+    pub async fn reconcile(
+        &self,
+        filter: &JsFilter,
+        opts: &JsNegentropyOptions,
+    ) -> Result<JsReconciliation> {
         self.inner
             .reconcile(filter.deref().clone(), **opts)
             .await
             .map_err(into_err)
+            .map(|o| o.into())
     }
 }

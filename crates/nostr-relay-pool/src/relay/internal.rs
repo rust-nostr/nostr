@@ -40,7 +40,7 @@ use super::options::{
     NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP,
 };
 use super::stats::RelayConnectionStats;
-use super::{Error, RelayNotification, RelayStatus};
+use super::{Error, Reconciliation, RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
 
 struct NostrMessage {
@@ -1622,7 +1622,11 @@ impl InternalRelay {
         Ok(count)
     }
 
-    pub async fn reconcile(&self, filter: Filter, opts: NegentropyOptions) -> Result<(), Error> {
+    pub async fn reconcile(
+        &self,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<Reconciliation, Error> {
         let items = self.database.negentropy_items(filter.clone()).await?;
         self.reconcile_with_items(filter, items, opts).await
     }
@@ -1632,7 +1636,7 @@ impl InternalRelay {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<Reconciliation, Error> {
         // Check if read option is disabled
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
@@ -1706,14 +1710,16 @@ impl InternalRelay {
         .await
         .ok_or(Error::Timeout)??;
 
-        let do_up: bool = opts.direction.do_up();
-        let do_down: bool = opts.direction.do_down();
+        let do_up: bool = opts.do_up();
+        let do_down: bool = opts.do_down();
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
-        let mut in_flight_down = false;
-        let mut sync_done = false;
+        let mut in_flight_down: bool = false;
+        let mut sync_done: bool = false;
         let mut have_ids: Vec<Bytes> = Vec::new();
         let mut need_ids: Vec<Bytes> = Vec::new();
         let down_sub_id: SubscriptionId = SubscriptionId::generate();
+
+        let mut output: Reconciliation = Reconciliation::default();
 
         // Start reconciliation
         while let Ok(notification) = notifications.recv().await {
@@ -1731,6 +1737,13 @@ impl InternalRelay {
                                     &mut have_ids,
                                     &mut need_ids,
                                 )?;
+
+                                output.local.extend(
+                                    have_ids.iter().filter_map(|b| EventId::from_slice(b).ok()),
+                                );
+                                output.remote.extend(
+                                    need_ids.iter().filter_map(|b| EventId::from_slice(b).ok()),
+                                );
 
                                 if !do_up {
                                     have_ids.clear();
@@ -1772,11 +1785,32 @@ impl InternalRelay {
                             status,
                             message,
                         } => {
-                            if in_flight_up.remove(&event_id) && !status {
-                                tracing::error!(
-                                    "Unable to upload event {event_id} to {}: {message}",
-                                    self.url
-                                );
+                            if in_flight_up.remove(&event_id) {
+                                if status {
+                                    output.sent.insert(event_id);
+                                } else {
+                                    tracing::error!(
+                                        "Unable to upload event {event_id} to {}: {message}",
+                                        self.url
+                                    );
+
+                                    output
+                                        .send_failures
+                                        .entry(self.url())
+                                        .and_modify(|map| {
+                                            map.insert(event_id, message.clone());
+                                        })
+                                        .or_default()
+                                        .insert(event_id, message);
+                                }
+                            }
+                        }
+                        RelayMessage::Event {
+                            subscription_id,
+                            event,
+                        } => {
+                            if subscription_id == down_sub_id {
+                                output.received.insert(event.id);
                             }
                         }
                         RelayMessage::EndOfStoredEvents(id) => {
@@ -1879,7 +1913,7 @@ impl InternalRelay {
         };
         self.send_msg(close_msg, send_opts).await?;
 
-        Ok(())
+        Ok(output)
     }
 
     pub async fn support_negentropy(&self) -> Result<bool, Error> {

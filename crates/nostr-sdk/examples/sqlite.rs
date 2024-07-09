@@ -30,9 +30,24 @@ async fn main() -> Result<()> {
 
     // Negentropy reconcile
     let filter = Filter::new().author(my_keys.public_key());
-    client
-        .reconcile(filter, NegentropyOptions::default())
+    let output = client
+        .reconcile(
+            filter,
+            NegentropyOptions::default().direction(NegentropyDirection::Both),
+        )
         .await?;
+
+    println!("Local: {}", output.local.len());
+    println!("Remote: {}", output.remote.len());
+    println!("Sent: {}", output.sent.len());
+    println!("Received: {}", output.received.len());
+    println!("Failures:");
+    for (url, map) in output.send_failures.iter() {
+        println!("* '{url}':");
+        for (id, e) in map.iter() {
+            println!("  - {id}: {e}");
+        }
+    }
 
     // Query events from database
     let filter = Filter::new().author(my_keys.public_key()).limit(10);

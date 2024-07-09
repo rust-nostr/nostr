@@ -334,4 +334,12 @@ impl JsNegentropyOptions {
     pub fn direction(self, direction: JsNegentropyDirection) -> Self {
         self.inner.direction(direction.into()).into()
     }
+
+    /// Dry run
+    ///
+    /// Just check what event are missing: execute reconciliation but WITHOUT
+    /// getting/sending full events.
+    pub fn dry_run(self) -> Self {
+        self.inner.dry_run().into()
+    }
 }

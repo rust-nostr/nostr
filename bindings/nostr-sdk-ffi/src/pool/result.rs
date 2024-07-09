@@ -2,12 +2,14 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use nostr_ffi::EventId;
-use nostr_sdk::{pool, SubscriptionId};
+use nostr_sdk::{pool, SubscriptionId, Url};
 use uniffi::Record;
+
+use crate::relay::Reconciliation;
 
 /// Output
 ///
@@ -46,14 +48,7 @@ impl From<pool::Output<nostr_sdk::EventId>> for SendEventOutput {
     fn from(output: pool::Output<nostr_sdk::EventId>) -> Self {
         Self {
             id: Arc::new(output.val.into()),
-            output: Output {
-                success: output.success.into_iter().map(|u| u.to_string()).collect(),
-                failed: output
-                    .failed
-                    .into_iter()
-                    .map(|(u, e)| (u.to_string(), e))
-                    .collect(),
-            },
+            output: convert_output(output.success, output.failed),
         }
     }
 }
@@ -71,14 +66,33 @@ impl From<pool::Output<SubscriptionId>> for SubscribeOutput {
     fn from(output: pool::Output<SubscriptionId>) -> Self {
         Self {
             id: output.val.to_string(),
-            output: Output {
-                success: output.success.into_iter().map(|u| u.to_string()).collect(),
-                failed: output
-                    .failed
-                    .into_iter()
-                    .map(|(u, e)| (u.to_string(), e))
-                    .collect(),
-            },
+            output: convert_output(output.success, output.failed),
         }
+    }
+}
+
+/// Reconciliation output
+#[derive(Record)]
+pub struct ReconciliationOutput {
+    pub report: Reconciliation,
+    pub output: Output,
+}
+
+impl From<pool::Output<pool::Reconciliation>> for ReconciliationOutput {
+    fn from(output: pool::Output<pool::Reconciliation>) -> Self {
+        Self {
+            report: output.val.into(),
+            output: convert_output(output.success, output.failed),
+        }
+    }
+}
+
+fn convert_output(success: HashSet<Url>, failed: HashMap<Url, Option<String>>) -> Output {
+    Output {
+        success: success.into_iter().map(|u| u.to_string()).collect(),
+        failed: failed
+            .into_iter()
+            .map(|(u, e)| (u.to_string(), e))
+            .collect(),
     }
 }
