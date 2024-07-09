@@ -1036,6 +1036,22 @@ mod tests {
             ))
         );
 
+        assert_eq!(
+            Tag::parse(&[
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "malware"
+            ])
+            .unwrap(),
+            Tag::from_standardized_without_cell(TagStandard::EventReport(
+                EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                Report::Malware
+            ))
+        );
+
         assert_eq!(Tag::parse(&["nonce", "1", "20"]).unwrap(), Tag::pow(1, 20));
 
         assert_eq!(
