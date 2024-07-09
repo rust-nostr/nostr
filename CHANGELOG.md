@@ -23,6 +23,8 @@
 
 ## [Unreleased]
 
+* nostr: add `Report::Malware` variant ([Daniel Cadenas])
+
 ### Summary
 
 ### Changed
@@ -83,7 +85,7 @@
 ### Summary
 
 Added `async`/`future` support to Python, Kotlin and Swift, added automatic authentication to relays (NIP-42, can be deactivated in client options),
-improvements to relay limits, many bug fixes (relays not auto reconnect, wrong query order for SQLite, 
+improvements to relay limits, many bug fixes (relays not auto reconnect, wrong query order for SQLite,
 tokio panic when using SQLite database in bindings) and more!
 
 Note for kotlin devs: from this release the packages will be published at `org.rust-nostr` instead of `io.github.rust-nostr`.
@@ -162,8 +164,8 @@ Note for kotlin devs: from this release the packages will be published at `org.r
 
 ### Summary
 
-Reworked `Tag`, added `TagStandard` enum, simplified the way to subscribe and/or reconcile to subset of relays 
-(respectively, `client.subscribe_to` and `client.reconcile_with`), added blacklist support to mute public keys or event IDs, 
+Reworked `Tag`, added `TagStandard` enum, simplified the way to subscribe and/or reconcile to subset of relays
+(respectively, `client.subscribe_to` and `client.reconcile_with`), added blacklist support to mute public keys or event IDs,
 removed zap split from `client.zap` method, many improvements and more!
 
 ### Changed
@@ -238,8 +240,8 @@ removed zap split from `client.zap` method, many improvements and more!
 
 ### Summary
 
-Adapted NIP46 to last changes, added `NostrConnectRemoteSigner` to easily build remote signers (just construct it and call `serve` method), 
-improved proxy options (allow to specify the proxy target: all relays or only `.onion` ones), 
+Adapted NIP46 to last changes, added `NostrConnectRemoteSigner` to easily build remote signers (just construct it and call `serve` method),
+improved proxy options (allow to specify the proxy target: all relays or only `.onion` ones),
 improvements to NWC client, fixed equality operator for bindings (Python, Kotlin and Swift),
 added `nostrdb` storage backend, added NIP32 and completed NIP51 support and more!
 
