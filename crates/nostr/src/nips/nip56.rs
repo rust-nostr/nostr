@@ -34,6 +34,8 @@ impl fmt::Display for Error {
 pub enum Report {
     /// Depictions of nudity, porn, etc
     Nudity,
+    /// Virus, trojan horse, worm, robot, spyware, adware, back door, ransomware, rootkit, kidnapper, etc.
+    Malware,
     /// Profanity, hateful speech, etc.
     Profanity,
     /// Something which may be illegal in some jurisdiction
@@ -50,6 +52,7 @@ impl fmt::Display for Report {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Nudity => write!(f, "nudity"),
+            Self::Malware => write!(f, "malware"),
             Self::Profanity => write!(f, "profanity"),
             Self::Illegal => write!(f, "illegal"),
             Self::Spam => write!(f, "spam"),
@@ -65,6 +68,7 @@ impl FromStr for Report {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "nudity" => Ok(Self::Nudity),
+            "malware" => Ok(Self::Malware),
             "profanity" => Ok(Self::Profanity),
             "illegal" => Ok(Self::Illegal),
             "spam" => Ok(Self::Spam),

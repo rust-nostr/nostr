@@ -21,6 +21,8 @@ use crate::types::JsTimestamp;
 pub enum JsReport {
     /// Depictions of nudity, porn, etc
     Nudity,
+    /// Virus, trojan horse, worm, robot, spyware, adware, back door, ransomware, rootkit, kidnapper, etc.
+    Malware,
     /// Profanity, hateful speech, etc.
     Profanity,
     /// Something which may be illegal in some jurisdiction
@@ -37,6 +39,7 @@ impl From<JsReport> for Report {
     fn from(value: JsReport) -> Self {
         match value {
             JsReport::Nudity => Self::Nudity,
+            JsReport::Malware => Self::Malware,
             JsReport::Profanity => Self::Profanity,
             JsReport::Illegal => Self::Illegal,
             JsReport::Spam => Self::Spam,
