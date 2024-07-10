@@ -755,7 +755,7 @@ impl JsClient {
             .map(|o| o.into())
     }
 
-    /// Handle notifications
+    /// Handle pool notifications
     ///
     /// **This method spawn a thread**, so ensure to keep up the app after calling this (if needed).
     ///
@@ -795,11 +795,11 @@ impl JsClient {
     /// // Optionally, call `abortable.abort();` when you need to stop handle notifications thread
     /// ```
     #[wasm_bindgen(js_name = handleNotifications)]
-    pub fn handle_notifications(&self, callback: HandleNotification) -> Result<JsAbortHandle> {
+    pub fn handle_pool_notifications(&self, callback: HandleNotification) -> Result<JsAbortHandle> {
         let inner = self.inner.clone();
         let handle = thread::abortable(async move {
             inner
-            .handle_notifications(|notification| async {
+            .handle_pool_notifications(|notification| async {
                 match notification {
                     RelayPoolNotification::Message { relay_url, message } => {
                         let message: JsRelayMessage = message.into();
@@ -824,6 +824,8 @@ impl JsClient {
         }).map_err(into_err)?;
         Ok(handle.into())
     }
+
+    // TODO: add handle_notifications
 }
 
 #[wasm_bindgen(typescript_custom_section)]

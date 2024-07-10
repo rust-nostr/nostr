@@ -62,6 +62,9 @@
 * signer: add `NostrSigner::unwrap_gift_wrap` method ([Yuki Kishimoto])
 * signer: add `bunker_uri` method to NIP-46 client and signer ([Yuki Kishimoto])
 * sdk: add `Client::unwrap_gift_wrap` method ([Yuki Kishimoto])
+* sdk: add `ClientNotification` enum ([Yuki Kishimoto])
+* sdk: add option to automatically decrypt NIP-17 and notify client channel ([Yuki Kishimoto])
+* sdk: add `Client::handle_pool_notifications` and `Client::pool_notifications` methods ([Yuki Kishimoto])
 * js(sdk): partially expose `JsRelayPool` ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
