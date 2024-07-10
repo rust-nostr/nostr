@@ -17,6 +17,7 @@ use nostr::{
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
+mod constants;
 mod error;
 mod internal;
 pub mod options;
@@ -28,7 +29,7 @@ pub use self::options::RelayPoolOptions;
 pub use self::result::Output;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist, RelayStatus};
-use crate::SubscribeOptions;
+use crate::{RelayServiceFlags, SubscribeOptions};
 
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,6 +130,11 @@ impl RelayPool {
     #[inline]
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         self.inner.relays().await
+    }
+
+    /// Get relays that have a certain [RelayServiceFlag] enabled
+    pub async fn relays_with_flag(&self, flag: RelayServiceFlags) -> HashMap<Url, Relay> {
+        self.inner.relays_with_flag(flag).await
     }
 
     /// Get [`Relay`]

@@ -5,6 +5,7 @@
 use async_utility::thread;
 use nostr::message::MessageHandleError;
 use nostr::types::url;
+use nostr::PublicKey;
 use nostr_database::DatabaseError;
 use thiserror::Error;
 
@@ -52,6 +53,9 @@ pub enum Error {
     /// Relay not found
     #[error("relay not found")]
     RelayNotFound,
+    /// Relay not found
+    #[error("relay metadata not found for `{0}` public key")]
+    RelayMetadataNotFound(PublicKey),
     /// Notification Handler error
     #[error("notification handler error: {0}")]
     Handler(String),

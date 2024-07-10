@@ -774,7 +774,7 @@ impl InternalRelay {
                 match self.spawn_message_handler(ws_tx, ws_rx) {
                     Ok(()) => {
                         // Subscribe to relay
-                        if self.opts.flags.has_read() {
+                        if self.opts.flags.can_read() {
                             let opts: RelaySendOptions =
                                 RelaySendOptions::default().skip_send_confirmation(true);
                             if let Err(e) = self.resubscribe_all(opts).await {
@@ -1020,11 +1020,11 @@ impl InternalRelay {
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        if !self.opts.flags.has_write() && msgs.iter().any(|msg| msg.is_event()) {
+        if !self.opts.flags.can_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
         }
 
-        if !self.opts.flags.has_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
+        if !self.opts.flags.can_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
             return Err(Error::ReadDisabled);
         }
 
@@ -1079,6 +1079,10 @@ impl InternalRelay {
         events: Vec<Event>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
+        if !self.opts.flags.can_write() {
+            return Err(Error::WriteDisabled);
+        }
+
         if events.is_empty() {
             return Err(Error::BatchEventEmpty);
         }
@@ -1158,7 +1162,7 @@ impl InternalRelay {
     }
 
     async fn resubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
-        if !self.opts.flags.has_read() {
+        if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1192,7 +1196,7 @@ impl InternalRelay {
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
         // Check if relay has READ flags disabled
-        if !self.opts.flags.has_read() {
+        if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1324,7 +1328,7 @@ impl InternalRelay {
         id: SubscriptionId,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        if !self.opts.flags.has_read() {
+        if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1337,7 +1341,7 @@ impl InternalRelay {
     }
 
     pub async fn unsubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
-        if !self.opts.flags.has_read() {
+        if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1365,6 +1369,11 @@ impl InternalRelay {
     where
         F: Future<Output = ()>,
     {
+        // Check if relay has READ flags disabled
+        if !self.opts.flags.can_read() {
+            return Err(Error::ReadDisabled);
+        }
+
         // Check if relay is connected
         if !self.is_connected().await
             && self.stats.attempts() > MIN_ATTEMPTS
@@ -1548,7 +1557,7 @@ impl InternalRelay {
         opts: NegentropyOptions,
     ) -> Result<(), Error> {
         // Check if read option is disabled
-        if !self.opts.flags.has_read() {
+        if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
