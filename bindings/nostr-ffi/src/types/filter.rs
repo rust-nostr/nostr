@@ -11,6 +11,7 @@ use uniffi::{Enum, Object, Record};
 
 use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
+use crate::nips::nip01::Coordinate;
 use crate::{Event, EventId, Kind, PublicKey, Timestamp};
 
 #[derive(Enum)]
@@ -296,6 +297,37 @@ impl Filter {
     pub fn remove_identifiers(self: Arc<Self>, identifiers: Vec<String>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.remove_identifiers(identifiers);
+        builder
+    }
+
+    /// Add coordinate
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub fn coordinate(self: Arc<Self>, coordinate: &Coordinate) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.coordinate(coordinate.deref());
+        builder
+    }
+
+    /// Add coordinates
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub fn coordinates(self: Arc<Self>, coordinates: Vec<Arc<Coordinate>>) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder
+            .inner
+            .coordinates(coordinates.iter().map(|c| c.as_ref().deref()));
+        builder
+    }
+
+    /// Remove coordinates
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub fn remove_coordinates(self: Arc<Self>, coordinates: Vec<Arc<Coordinate>>) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder
+            .inner
+            .remove_coordinates(coordinates.iter().map(|c| c.as_ref().deref()));
         builder
     }
 

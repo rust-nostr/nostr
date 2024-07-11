@@ -7,7 +7,7 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::collections::{BTreeMap as AllocMap, BTreeSet as AllocSet};
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use core::fmt;
 use core::hash::Hash;
 use core::str::FromStr;
@@ -19,6 +19,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::event::TagsIndexes;
+use crate::nips::nip01::Coordinate;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
 type GenericTags = AllocMap<SingleLetterTag, AllocSet<String>>;
@@ -514,7 +515,7 @@ impl Filter {
 
     /// Add identifier
     ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/33.md>
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn identifier<S>(self, identifier: S) -> Self
     where
@@ -525,7 +526,7 @@ impl Filter {
 
     /// Add identifiers
     ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/33.md>
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn identifiers<I, S>(self, identifiers: I) -> Self
     where
@@ -539,6 +540,8 @@ impl Filter {
     }
 
     /// Remove identifiers
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn remove_identifiers<I, S>(self, identifiers: I) -> Self
     where
@@ -548,6 +551,45 @@ impl Filter {
         self.remove_custom_tag(
             SingleLetterTag::lowercase(Alphabet::D),
             identifiers.into_iter().map(|s| s.into()),
+        )
+    }
+
+    /// Add coordinate
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn coordinate(self, coordinate: &Coordinate) -> Self {
+        self.custom_tag(
+            SingleLetterTag::lowercase(Alphabet::A),
+            [coordinate.to_string()],
+        )
+    }
+
+    /// Add coordinates
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn coordinates<'a, I>(self, coordinates: I) -> Self
+    where
+        I: IntoIterator<Item = &'a Coordinate>,
+    {
+        self.custom_tag(
+            SingleLetterTag::lowercase(Alphabet::A),
+            coordinates.into_iter().map(|c| c.to_string()),
+        )
+    }
+
+    /// Remove coordinates
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn remove_coordinates<'a, I>(self, coordinates: I) -> Self
+    where
+        I: IntoIterator<Item = &'a Coordinate>,
+    {
+        self.remove_custom_tag(
+            SingleLetterTag::lowercase(Alphabet::A),
+            coordinates.into_iter().map(|c| c.to_string()),
         )
     }
 

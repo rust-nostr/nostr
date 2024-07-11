@@ -57,6 +57,7 @@
 * nostr: add `nip05::profile` function ([Yuki Kishimoto])
 * nostr: add `LEN` const to `PublicKey`, `SecretKey` and `EncryptedSecretKey` ([Yuki Kishimoto])
 * nostr: add `Report::Malware` variant ([Daniel Cadenas])
+* nostr: add `coordinate` methods to `Filter` struct ([DanConwayDev])
 * pool: add `Output<T>` struct ([Yuki Kishimoto])
 * pool: add `Output<EventId>::id` and `Output<SubscriptionId>::id` methods ([Yuki Kishimoto])
 * signer: add `NostrSigner::unwrap_gift_wrap` method ([Yuki Kishimoto])

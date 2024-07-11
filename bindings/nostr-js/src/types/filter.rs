@@ -10,6 +10,7 @@ use wasm_bindgen::prelude::*;
 use crate::error::{into_err, Result};
 use crate::event::{JsEvent, JsEventId};
 use crate::key::JsPublicKey;
+use crate::nips::nip01::JsCoordinate;
 use crate::types::JsTimestamp;
 
 #[wasm_bindgen(js_name = Alphabet)]
@@ -274,6 +275,31 @@ impl JsFilter {
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     pub fn references(self, v: Vec<String>) -> Self {
         self.inner.references(v).into()
+    }
+
+    /// Add coordinate
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub fn coordinate(self, coordinate: &JsCoordinate) -> Self {
+        self.inner.coordinate(coordinate.deref()).into()
+    }
+
+    /// Set coordinates
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub fn coordinates(self, coordinates: Vec<JsCoordinate>) -> Self {
+        self.inner
+            .coordinates(coordinates.iter().map(|c| c.deref()))
+            .into()
+    }
+
+    /// Remove coordinates
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub fn remove_coordinates(self, coordinates: Vec<JsCoordinate>) -> Self {
+        self.inner
+            .remove_coordinates(coordinates.iter().map(|c| c.deref()))
+            .into()
     }
 
     /// Set search field
