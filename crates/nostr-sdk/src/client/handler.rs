@@ -4,8 +4,7 @@
 
 use async_utility::thread;
 use atomic_destructor::StealthClone;
-use nostr::RelayMessage;
-use nostr_relay_pool::RelayPoolNotification;
+use nostr_relay_pool::prelude::*;
 
 use super::Client;
 
@@ -26,8 +25,19 @@ impl Client {
                         if client.opts.is_nip42_auto_authentication_enabled() {
                             if let RelayMessage::Auth { challenge } = message {
                                 match client.auth(challenge, relay_url.clone()).await {
-                                    Ok(_) => {
+                                    Ok(..) => {
                                         tracing::info!("Authenticated to '{relay_url}' relay.");
+
+                                        if let Ok(relay) = client.relay(relay_url).await {
+                                            let opts = RelaySendOptions::new()
+                                                .skip_send_confirmation(true);
+                                            if let Err(e) = relay.resubscribe(opts).await {
+                                                tracing::error!(
+                                                    "Impossible to resubscribe to '{}': {e}",
+                                                    relay.url()
+                                                );
+                                            }
+                                        }
                                     }
                                     Err(e) => {
                                         tracing::error!(

@@ -267,6 +267,12 @@ impl Relay {
         self.inner.auth(event, opts).await
     }
 
+    /// Resubscribe to all **closed** or not yet initiated subscriptions
+    #[inline]
+    pub async fn resubscribe(&self, opts: RelaySendOptions) -> Result<(), Error> {
+        self.inner.resubscribe(opts).await
+    }
+
     /// Subscribe to filters
     ///
     /// Internally generate a new random [SubscriptionId]. Check `subscribe_with_id` method to use a custom [SubscriptionId].

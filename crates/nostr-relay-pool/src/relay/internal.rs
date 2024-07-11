@@ -136,10 +136,22 @@ impl RelayChannels {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct SubscriptionData {
     pub filters: Vec<Filter>,
     pub subscribed_at: Timestamp,
+    /// Subscription closed by relay
+    pub closed: bool,
+}
+
+impl Default for SubscriptionData {
+    fn default() -> Self {
+        Self {
+            filters: Vec::new(),
+            subscribed_at: Timestamp::zero(),
+            closed: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -305,13 +317,26 @@ impl InternalRelay {
         }
     }
 
+    /// Mark subscription as closed
+    async fn subscription_closed(&self, id: &SubscriptionId) {
+        let mut subscriptions = self.subscriptions.write().await;
+        if let Some(data) = subscriptions.get_mut(id) {
+            data.closed = true;
+        }
+    }
+
     /// Check if should subscribe for current websocket session
     pub(crate) async fn should_resubscribe(&self, id: &SubscriptionId) -> bool {
         let subscriptions = self.subscriptions.read().await;
         match subscriptions.get(id) {
-            Some(SubscriptionData { subscribed_at, .. }) => {
+            Some(SubscriptionData {
+                subscribed_at,
+                closed,
+                ..
+            }) => {
                 // Never subscribed -> SHOULD subscribe
-                if subscribed_at.is_zero() {
+                // Subscription closed by relay -> SHOULD subscribe
+                if subscribed_at.is_zero() || *closed {
                     return true;
                 }
 
@@ -777,7 +802,7 @@ impl InternalRelay {
                         if self.opts.flags.has_read() {
                             let opts: RelaySendOptions =
                                 RelaySendOptions::default().skip_send_confirmation(true);
-                            if let Err(e) = self.resubscribe_all(opts).await {
+                            if let Err(e) = self.resubscribe(opts).await {
                                 tracing::error!("Impossible to subscribe to '{url}': {e}")
                             }
                         }
@@ -809,6 +834,11 @@ impl InternalRelay {
                         message,
                     } => {
                         tracing::debug!("Received OK from '{}' for event {event_id}: status={status}, message={message}", self.url);
+                    }
+                    RelayMessage::Closed {
+                        subscription_id, ..
+                    } => {
+                        self.subscription_closed(subscription_id).await;
                     }
                     _ => (),
                 }
@@ -1211,7 +1241,7 @@ impl InternalRelay {
         .ok_or(Error::Timeout)?
     }
 
-    async fn resubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
+    pub async fn resubscribe(&self, opts: RelaySendOptions) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
         }
@@ -1258,6 +1288,8 @@ impl InternalRelay {
         // Compose and send REQ message
         let msg: ClientMessage = ClientMessage::req(id.clone(), filters.clone());
         self.send_msg(msg, opts.send_opts).await?;
+
+        // TODO: check if relay send CLOSED message?
 
         // Check if auto-close condition is set
         match opts.auto_close {
