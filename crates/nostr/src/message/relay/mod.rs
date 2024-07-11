@@ -18,6 +18,63 @@ pub use self::raw::RawRelayMessage;
 use super::MessageHandleError;
 use crate::{Event, EventId, JsonUtil, SubscriptionId};
 
+/// Machine-readable prefixes for `OK` and `CLOSED` relay messages
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum MachineReadablePrefix {
+    /// Duplicate
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    Duplicate,
+    /// POW
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    Pow,
+    /// Blocked
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    Blocked,
+    /// Rate limited
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    RateLimited,
+    /// Invalid
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    Invalid,
+    /// Error
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    Error,
+    /// Authentication required
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    AuthRequired,
+    /// Restricted
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    Restricted,
+}
+
+impl MachineReadablePrefix {
+    /// Parse machine-readable prefix
+    pub fn parse<S>(message: S) -> Option<Self>
+    where
+        S: AsRef<str>,
+    {
+        match message.as_ref() {
+            m if m.starts_with("duplicate:") => Some(Self::Duplicate),
+            m if m.starts_with("pow:") => Some(Self::Pow),
+            m if m.starts_with("blocked:") => Some(Self::Blocked),
+            m if m.starts_with("rate-limited:") => Some(Self::RateLimited),
+            m if m.starts_with("invalid:") => Some(Self::Invalid),
+            m if m.starts_with("error:") => Some(Self::Error),
+            m if m.starts_with("auth-required:") => Some(Self::AuthRequired),
+            m if m.starts_with("restricted:") => Some(Self::Restricted),
+            _ => None,
+        }
+    }
+}
+
 /// Negentropy error code
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NegentropyErrorCode {
@@ -85,14 +142,18 @@ impl<'de> Deserialize<'de> for NegentropyErrorCode {
 /// Messages sent by relays, received by clients
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RelayMessage {
-    /// `["EVENT", <subscription_id>, <event JSON>]` (NIP01)
+    /// `["EVENT", <subscription_id>, <event JSON>]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Event {
         /// Subscription ID
         subscription_id: SubscriptionId,
         /// Event
         event: Box<Event>,
     },
-    /// `["OK", <event_id>, <true|false>, <message>]` (NIP01)
+    /// `["OK", <event_id>, <true|false>, <message>]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Ok {
         /// Event ID
         event_id: EventId,
@@ -101,26 +162,36 @@ pub enum RelayMessage {
         /// Message
         message: String,
     },
-    /// `["EOSE", <subscription_id>]` (NIP01)
+    /// `["EOSE", <subscription_id>]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     EndOfStoredEvents(SubscriptionId),
-    /// ["NOTICE", \<message\>] (NIP01)
+    /// `["NOTICE", <message>]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Notice {
         /// Message
         message: String,
     },
-    /// `["CLOSED", <subscription_id>, <message>]` (NIP01)
+    /// `["CLOSED", <subscription_id>, <message>]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Closed {
         /// Subscription ID
         subscription_id: SubscriptionId,
         /// Message
         message: String,
     },
-    /// `["AUTH", <challenge-string>]` (NIP42)
+    /// `["AUTH", <challenge-string>]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     Auth {
         /// Challenge
         challenge: String,
     },
-    /// `["COUNT", <subscription_id>, {"count": <integer>}]` (NIP45)
+    /// `["COUNT", <subscription_id>, {"count": <integer>}]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/45.md>
     Count {
         /// Subscription ID
         subscription_id: SubscriptionId,

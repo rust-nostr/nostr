@@ -18,7 +18,7 @@ pub mod client;
 pub mod relay;
 
 pub use self::client::ClientMessage;
-pub use self::relay::{RawRelayMessage, RelayMessage};
+pub use self::relay::{MachineReadablePrefix, RawRelayMessage, RelayMessage};
 use crate::event;
 
 /// Messages error
