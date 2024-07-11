@@ -99,6 +99,34 @@ pub enum KindEnum {
     PublicChatReserved48,
     /// Public Chat Reserved (NIP28)
     PublicChatReserved49,
+    /// Git Patch
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitPatch,
+    /// Git Issue
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitIssue,
+    /// Git Reply
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitReply,
+    /// Open Status of Git Patch or Issue
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitStatusOpen,
+    /// Applied / Merged Status of Git Patch or Resolved Status of Git Issue
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitStatusApplied,
+    /// Closed Status of Git Patch or Issue
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitStatusClosed,
+    /// Draft Status of Git Patch or Issue
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitStatusDraft,
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
@@ -213,6 +241,10 @@ pub enum KindEnum {
     PrivateDirectMessage,
     /// Long-form Text Note (NIP23)
     LongFormTextNote,
+    /// Git Repository Announcement
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitRepoAnnouncement,
     /// Application-specific Data (NIP78)
     ApplicationSpecificData,
     /// File Metadata (NIP94)
@@ -272,6 +304,13 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::PublicChatReserved47 => Self::PublicChatReserved47,
             nostr::Kind::PublicChatReserved48 => Self::PublicChatReserved48,
             nostr::Kind::PublicChatReserved49 => Self::PublicChatReserved49,
+            nostr::Kind::GitPatch => Self::GitPatch,
+            nostr::Kind::GitIssue => Self::GitIssue,
+            nostr::Kind::GitReply => Self::GitReply,
+            nostr::Kind::GitStatusOpen => Self::GitStatusOpen,
+            nostr::Kind::GitStatusApplied => Self::GitStatusApplied,
+            nostr::Kind::GitStatusClosed => Self::GitStatusClosed,
+            nostr::Kind::GitStatusDraft => Self::GitStatusDraft,
             nostr::Kind::Label => Self::Label,
             nostr::Kind::WalletConnectInfo => Self::WalletConnectInfo,
             nostr::Kind::Reporting => Self::Reporting,
@@ -309,6 +348,7 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::GiftWrap => Self::GiftWrap,
             nostr::Kind::PrivateDirectMessage => Self::PrivateDirectMessage,
             nostr::Kind::LongFormTextNote => Self::LongFormTextNote,
+            nostr::Kind::GitRepoAnnouncement => Self::GitRepoAnnouncement,
             nostr::Kind::ApplicationSpecificData => Self::ApplicationSpecificData,
             nostr::Kind::FileMetadata => Self::FileMetadata,
             nostr::Kind::HttpAuth => Self::HttpAuth,
@@ -350,6 +390,13 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::PublicChatReserved47 => Self::PublicChatReserved47,
             KindEnum::PublicChatReserved48 => Self::PublicChatReserved48,
             KindEnum::PublicChatReserved49 => Self::PublicChatReserved49,
+            KindEnum::GitPatch => Self::GitPatch,
+            KindEnum::GitIssue => Self::GitIssue,
+            KindEnum::GitReply => Self::GitReply,
+            KindEnum::GitStatusOpen => Self::GitStatusOpen,
+            KindEnum::GitStatusApplied => Self::GitStatusApplied,
+            KindEnum::GitStatusClosed => Self::GitStatusClosed,
+            KindEnum::GitStatusDraft => Self::GitStatusDraft,
             KindEnum::Label => Self::Label,
             KindEnum::WalletConnectInfo => Self::WalletConnectInfo,
             KindEnum::Reporting => Self::Reporting,
@@ -388,6 +435,7 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::PrivateDirectMessage => Self::PrivateDirectMessage,
             KindEnum::LongFormTextNote => Self::LongFormTextNote,
             KindEnum::ApplicationSpecificData => Self::ApplicationSpecificData,
+            KindEnum::GitRepoAnnouncement => Self::GitRepoAnnouncement,
             KindEnum::FileMetadata => Self::FileMetadata,
             KindEnum::HttpAuth => Self::HttpAuth,
             KindEnum::SetStall => Self::SetStall,
