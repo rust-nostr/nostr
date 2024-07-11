@@ -64,6 +64,7 @@
 * signer: add `NostrSigner::unwrap_gift_wrap` method ([Yuki Kishimoto])
 * signer: add `bunker_uri` method to NIP-46 client and signer ([Yuki Kishimoto])
 * sdk: add `Client::unwrap_gift_wrap` method ([Yuki Kishimoto])
+* js(nostr): complete `JsFilter` struct ([Yuki Kishimoto])
 * js(sdk): partially expose `JsRelayPool` ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 

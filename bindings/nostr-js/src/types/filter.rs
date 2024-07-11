@@ -194,15 +194,22 @@ impl JsFilter {
         self.inner.try_as_json().map_err(into_err)
     }
 
-    /// Set subscription id
+    /// Set event ID
     pub fn id(self, id: &JsEventId) -> Self {
         self.inner.id(**id).into()
     }
 
-    /// Set subscription ids
+    /// Set event IDs
     pub fn ids(self, ids: Vec<JsEventId>) -> Self {
-        let ids = ids.into_iter().map(|id| id.into());
-        self.inner.ids(ids).into()
+        self.inner.ids(ids.into_iter().map(|id| id.into())).into()
+    }
+
+    /// Remove event IDs
+    #[wasm_bindgen(js_name = removeIds)]
+    pub fn remove_ids(self, ids: Vec<JsEventId>) -> Self {
+        self.inner
+            .remove_ids(ids.into_iter().map(|id| id.into()))
+            .into()
     }
 
     /// Set author
@@ -212,8 +219,17 @@ impl JsFilter {
 
     /// Set authors
     pub fn authors(self, authors: Vec<JsPublicKey>) -> Self {
-        let authors = authors.into_iter().map(|p| p.into());
-        self.inner.authors(authors).into()
+        self.inner
+            .authors(authors.into_iter().map(|p| p.into()))
+            .into()
+    }
+
+    /// Remove authors
+    #[wasm_bindgen(js_name = removeAuthors)]
+    pub fn remove_authors(self, authors: Vec<JsPublicKey>) -> Self {
+        self.inner
+            .remove_authors(authors.into_iter().map(|p| p.into()))
+            .into()
     }
 
     /// Set kind
@@ -223,8 +239,15 @@ impl JsFilter {
 
     /// Set kinds
     pub fn kinds(self, kinds: Vec<u16>) -> Self {
-        let kinds = kinds.into_iter().map(Kind::from);
-        self.inner.kinds(kinds).into()
+        self.inner.kinds(kinds.into_iter().map(Kind::from)).into()
+    }
+
+    /// Remove kinds
+    #[wasm_bindgen(js_name = removeKinds)]
+    pub fn remove_kinds(self, kinds: Vec<u16>) -> Self {
+        self.inner
+            .remove_kinds(kinds.into_iter().map(Kind::from))
+            .into()
     }
 
     /// Set event
@@ -234,8 +257,17 @@ impl JsFilter {
 
     /// Set events
     pub fn events(self, ids: Vec<JsEventId>) -> Self {
-        let ids = ids.into_iter().map(|id| id.into());
-        self.inner.events(ids).into()
+        self.inner
+            .events(ids.into_iter().map(|id| id.into()))
+            .into()
+    }
+
+    /// Remove events
+    #[wasm_bindgen(js_name = removeEvents)]
+    pub fn remove_events(self, ids: Vec<JsEventId>) -> Self {
+        self.inner
+            .remove_events(ids.into_iter().map(|id| id.into()))
+            .into()
     }
 
     /// Set pubkey
@@ -245,8 +277,17 @@ impl JsFilter {
 
     /// Set pubkeys
     pub fn pubkeys(self, pubkeys: Vec<JsPublicKey>) -> Self {
-        let pubkeys = pubkeys.into_iter().map(|p| p.into());
-        self.inner.pubkeys(pubkeys).into()
+        self.inner
+            .pubkeys(pubkeys.into_iter().map(|p| p.into()))
+            .into()
+    }
+
+    /// Remove pubkeys
+    #[wasm_bindgen(js_name = removePubkeys)]
+    pub fn remove_pubkeys(self, pubkeys: Vec<JsPublicKey>) -> Self {
+        self.inner
+            .remove_pubkeys(pubkeys.into_iter().map(|p| p.into()))
+            .into()
     }
 
     /// Set hashtag
@@ -263,6 +304,14 @@ impl JsFilter {
         self.inner.hashtags(hashtags).into()
     }
 
+    /// Remove hashtags
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    #[wasm_bindgen(js_name = removeHashtags)]
+    pub fn remove_hashtags(self, hashtags: Vec<String>) -> Self {
+        self.inner.remove_hashtags(hashtags).into()
+    }
+
     /// Set reference
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
@@ -275,6 +324,36 @@ impl JsFilter {
     /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
     pub fn references(self, v: Vec<String>) -> Self {
         self.inner.references(v).into()
+    }
+
+    /// Remove references
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/12.md>
+    #[wasm_bindgen(js_name = removeReferences)]
+    pub fn remove_references(self, v: Vec<String>) -> Self {
+        self.inner.remove_references(v).into()
+    }
+
+    /// Add identifier
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub fn identifier(self, identifier: &str) -> Self {
+        self.inner.identifier(identifier).into()
+    }
+
+    /// Set identifiers
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub fn identifiers(self, identifiers: Vec<String>) -> Self {
+        self.inner.identifiers(identifiers).into()
+    }
+
+    /// Remove identifiers
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[wasm_bindgen(js_name = removeIdentifiers)]
+    pub fn remove_identifiers(self, identifiers: Vec<String>) -> Self {
+        self.inner.remove_identifiers(identifiers).into()
     }
 
     /// Add coordinate
@@ -296,6 +375,7 @@ impl JsFilter {
     /// Remove coordinates
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[wasm_bindgen(js_name = removeCoordinates)]
     pub fn remove_coordinates(self, coordinates: Vec<JsCoordinate>) -> Self {
         self.inner
             .remove_coordinates(coordinates.iter().map(|c| c.deref()))
@@ -307,9 +387,21 @@ impl JsFilter {
         self.inner.search(value).into()
     }
 
+    /// Remove search
+    #[wasm_bindgen(js_name = removeSearch)]
+    pub fn remove_search(self) -> Self {
+        self.inner.remove_search().into()
+    }
+
     /// Set since unix timestamp
     pub fn since(self, since: &JsTimestamp) -> Self {
         self.inner.since(**since).into()
+    }
+
+    /// Remove since
+    #[wasm_bindgen(js_name = removeSince)]
+    pub fn remove_since(self) -> Self {
+        self.inner.remove_since().into()
     }
 
     /// Set until unix timestamp
@@ -317,9 +409,21 @@ impl JsFilter {
         self.inner.until(**until).into()
     }
 
+    /// Remove until
+    #[wasm_bindgen(js_name = removeUntil)]
+    pub fn remove_until(self) -> Self {
+        self.inner.remove_until().into()
+    }
+
     /// Set limit
     pub fn limit(self, limit: f64) -> Self {
         self.inner.limit(limit as usize).into()
+    }
+
+    /// Remove limit
+    #[wasm_bindgen(js_name = removeLimit)]
+    pub fn remove_limit(self) -> Self {
+        self.inner.remove_limit().into()
     }
 
     #[wasm_bindgen(js_name = customTag)]
@@ -330,6 +434,12 @@ impl JsFilter {
     #[wasm_bindgen(js_name = removeCustomTag)]
     pub fn remove_custom_tag(self, tag: &JsSingleLetterTag, values: Vec<String>) -> Self {
         self.inner.remove_custom_tag(**tag, values).into()
+    }
+
+    /// Check if `Filter` is empty
+    #[wasm_bindgen(js_name = isEmpty)]
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
     }
 
     /// Determine if `Filter` match given `Event`.
