@@ -60,6 +60,7 @@
 * nostr: add `coordinate` methods to `Filter` struct ([DanConwayDev])
 * nostr: add NIP-34 kinds ([DanConwayDev])
 * nostr: add `MachineReadablePrefix` enum ([Yuki Kishimoto])
+* nostr: add `ClientMessage::is_auth` ([Yuki Kishimoto])
 * pool: add `Output<T>` struct ([Yuki Kishimoto])
 * pool: add `Output<EventId>::id` and `Output<SubscriptionId>::id` methods ([Yuki Kishimoto])
 * signer: add `NostrSigner::unwrap_gift_wrap` method ([Yuki Kishimoto])

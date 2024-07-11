@@ -157,6 +157,12 @@ impl ClientMessage {
         matches!(self, ClientMessage::Close(_))
     }
 
+    /// Check if is an `AUTH` message
+    #[inline]
+    pub fn is_auth(&self) -> bool {
+        matches!(self, ClientMessage::Auth(_))
+    }
+
     /// Serialize as [`Value`]
     pub fn as_value(&self) -> Value {
         match self {
