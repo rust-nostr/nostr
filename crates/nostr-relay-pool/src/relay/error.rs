@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use async_utility::thread;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
-use nostr::{event, negentropy, EventId, PublicKey};
+use nostr::{event, negentropy, EventId, Kind, PublicKey};
 use nostr_database::DatabaseError;
 use thiserror::Error;
 
@@ -133,6 +133,14 @@ pub enum Error {
     /// Public key blacklisted
     #[error("Received event authored by blacklisted public key: {0}")]
     PublicKeyBlacklisted(PublicKey),
+    /// Unexpected kind
+    #[error("Unexpected kind: expected={expected}, found={found}")]
+    UnexpectedKind {
+        /// Expected kind
+        expected: Kind,
+        /// Found kind
+        found: Kind,
+    },
     /// Notification Handler error
     #[error("notification handler error: {0}")]
     Handler(String),

@@ -76,6 +76,7 @@
 * pool: fix shutdown notification sent to external channel on `Relay::terminate` method call ([Yuki Kishimoto])
 * pool: fix `RelayPool::reconcile_advanced` method uses database items instead of the passed ones ([Yuki Kishimoto])
 * signer: add missing NIP-46 connect "ACK" message handling ([Yuki Kishimoto])
+* sdk: fix NIP-42 client authentication ([Yuki Kishimoto])
 * js: fix "RuntimeError: memory access out of bounds" WASM error ([Yuki Kishimoto])
 
 ### Removed

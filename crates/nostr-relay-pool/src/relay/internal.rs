@@ -1157,6 +1157,60 @@ impl InternalRelay {
         .ok_or(Error::Timeout)?
     }
 
+    pub async fn auth(&self, event: Event, opts: RelaySendOptions) -> Result<(), Error> {
+        // Check if NIP-42 event
+        if event.kind != Kind::Authentication {
+            return Err(Error::UnexpectedKind {
+                expected: Kind::Authentication,
+                found: event.kind(),
+            });
+        }
+
+        let mut notifications = self.internal_notification_sender.subscribe();
+
+        let id: EventId = event.id();
+
+        // Send message
+        let msg: ClientMessage = ClientMessage::auth(event);
+        self.send_msg(msg, opts).await?;
+
+        // Handle responses
+        time::timeout(Some(opts.timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                match notification {
+                    RelayNotification::Message {
+                        message:
+                            RelayMessage::Ok {
+                                event_id,
+                                status,
+                                message,
+                            },
+                    } => {
+                        if id == event_id {
+                            return if status {
+                                Ok(())
+                            } else {
+                                Err(Error::EventNotPublished(message))
+                            };
+                        }
+                    }
+                    RelayNotification::RelayStatus { status } => {
+                        if opts.skip_disconnected && status.is_disconnected() {
+                            return Err(Error::EventNotPublished(String::from(
+                                "relay not connected (status changed)",
+                            )));
+                        }
+                    }
+                    _ => (),
+                }
+            }
+
+            Err(Error::EventNotPublished(String::from("loop terminated")))
+        })
+        .await
+        .ok_or(Error::Timeout)?
+    }
+
     async fn resubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);

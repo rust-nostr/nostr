@@ -259,6 +259,14 @@ impl Relay {
         self.inner.batch_event(events, opts).await
     }
 
+    /// Send client authentication event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
+    pub async fn auth(&self, event: Event, opts: RelaySendOptions) -> Result<(), Error> {
+        self.inner.auth(event, opts).await
+    }
+
     /// Subscribe to filters
     ///
     /// Internally generate a new random [SubscriptionId]. Check `subscribe_with_id` method to use a custom [SubscriptionId].
