@@ -57,7 +57,7 @@ impl JsRelayInformationDocument {
         self.inner.contact.clone()
     }
 
-    #[wasm_bindgen(getter)]
+    #[wasm_bindgen(js_name = supportedNips, getter)]
     pub fn supported_nips(&self) -> Option<Vec<u16>> {
         self.inner.supported_nips.clone()
     }

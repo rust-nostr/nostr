@@ -198,6 +198,7 @@ impl JsTag {
 
     /// Get `SingleLetterTag`
     #[inline]
+    #[wasm_bindgen(js_name = singleLetterTag)]
     pub fn single_letter_tag(&self) -> Option<JsSingleLetterTag> {
         self.inner.single_letter_tag().map(|s| s.into())
     }
@@ -281,6 +282,7 @@ impl JsTag {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     #[inline]
+    #[wasm_bindgen(js_name = eventReport)]
     pub fn event_report(event_id: &JsEventId, report: JsReport) -> Self {
         Self {
             inner: Tag::event_report(**event_id, report.into()),
@@ -291,6 +293,7 @@ impl JsTag {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     #[inline]
+    #[wasm_bindgen(js_name = publicKeyReport)]
     pub fn public_key_report(public_key: &JsPublicKey, report: JsReport) -> Self {
         Self {
             inner: Tag::public_key_report(**public_key, report.into()),
@@ -301,6 +304,7 @@ impl JsTag {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
+    #[wasm_bindgen(js_name = relayMetadata)]
     pub fn relay_metadata(relay_url: &str, metadata: Option<JsRelayMetadata>) -> Result<JsTag> {
         let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
         Ok(Self {

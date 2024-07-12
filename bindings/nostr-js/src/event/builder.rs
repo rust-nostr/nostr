@@ -54,6 +54,7 @@ impl JsEventBuilder {
     }
 
     /// Add tags
+    #[wasm_bindgen(js_name = addTags)]
     pub fn add_tags(self, tags: Vec<JsTag>) -> Self {
         self.inner
             .add_tags(tags.into_iter().map(|t| t.into()))

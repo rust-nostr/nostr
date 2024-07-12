@@ -59,6 +59,7 @@ impl JsNostrConnectMetadata {
     }
 
     /// Serialize as JSON string
+    #[wasm_bindgen(js_name = asJson)]
     pub fn as_json(&self) -> Result<String> {
         self.inner.try_as_json().map_err(into_err)
     }

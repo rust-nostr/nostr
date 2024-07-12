@@ -117,7 +117,7 @@ impl JsZapRequestData {
         self.inner.lnurl.clone()
     }
 
-    #[wasm_bindgen(getter, js_name = eventID)]
+    #[wasm_bindgen(getter, js_name = eventId)]
     pub fn event_id(&self) -> Option<JsEventId> {
         self.inner.event_id.map(|e| e.into())
     }

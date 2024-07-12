@@ -48,6 +48,7 @@
 * bindings(nostr): allow to specify coordinates in `EventBuilder::delete` constructor ([Yuki Kishimoto])
 * ffi(sdk): convert `RelayPool::handle_notifications` method to async/future ([Yuki Kishimoto])
 * js: increase max stack size to `0x1E84800` bytes (32 MiB) ([Yuki Kishimoto])
+* js(nostr): adj. method names to camelcase format ([Yuki Kishimoto])
 
 ### Added
 
