@@ -36,14 +36,14 @@ Listen for notifications from the relays based on the subscribed filters and pro
 <div slot="title">Python</div>
 <section>
 
-TODO
+Docs aren't ready yet, please check the examples at <https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-ffi/bindings-python/examples>.
 
 </section>
 
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+Docs aren't ready yet, please check the examples at <https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-js/examples>.
 
 </section>
 

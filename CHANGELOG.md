@@ -21,9 +21,14 @@
 
 -->
 
-## [Unreleased]
+## [v0.33.0]
 
 ### Summary
+
+Better outputs for send/batch/reconcile methods (ex. you can now easily know where a message/event is successfully published and where/why failed),
+allow to change NIP-42 option after client initialization, increase max stack size for JS bindings to prevent "memory access out of bounds" error,
+expose more objects/methods for JS bindings, dry run option for negentropy reconciliation, get NIP-46 relay from NIP-05 profile, 
+bug fixes (NIP-42 auth not works correctly, NIP-46 "ACK" message not handled, ...) and more!
 
 ### Changed
 
@@ -337,7 +342,8 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [lnbc1QWFyb24]: https://github.com/lnbc1QWFyb24
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.33.0...HEAD
+[v0.33.0]: https://github.com/rust-nostr/nostr/compare/v0.32.0...v0.33.0
 [v0.32.0]: https://github.com/rust-nostr/nostr/compare/v0.31.0...v0.32.0
 [v0.31.0]: https://github.com/rust-nostr/nostr/compare/v0.30.0...v0.31.0
 [v0.30.0]: https://github.com/rust-nostr/nostr/compare/v0.29.0...v0.30.0

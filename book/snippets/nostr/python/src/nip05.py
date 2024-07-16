@@ -28,5 +28,5 @@ async def nip05():
     print("Profile NIP-05:")
     nip_05 = "yuki@yukikishimoto.com"
     profile = await get_nip05_profile(nip_05)
-    print(f"     {nip_05} Profile: {profile.to_bech32()}")
+    print(f"     {nip_05} Public key: {profile.public_key().to_bech32()}")
     # ANCHOR_END: nip05-profile
