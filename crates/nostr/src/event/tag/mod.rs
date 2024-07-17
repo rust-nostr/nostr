@@ -281,6 +281,14 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::Description(description.into()))
     }
 
+    /// Protected event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    #[inline]
+    pub fn protected() -> Self {
+        Self::from_standardized_without_cell(TagStandard::Protected)
+    }
+
     /// Compose custom tag
     ///
     /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
@@ -320,6 +328,14 @@ impl Tag {
                 ..
             })
         )
+    }
+
+    /// Check if it's a protected event tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    #[inline]
+    pub fn is_protected(&self) -> bool {
+        matches!(self.as_standardized(), Some(TagStandard::Protected))
     }
 }
 
@@ -479,6 +495,11 @@ mod tests {
 
     #[test]
     fn test_tag_as_vec() {
+        assert_eq!(
+            vec!["-"],
+            Tag::from_standardized_without_cell(TagStandard::Protected).to_vec()
+        );
+
         assert_eq!(
             vec!["content-warning"],
             Tag::from_standardized_without_cell(TagStandard::ContentWarning { reason: None })
@@ -853,6 +874,8 @@ mod tests {
     #[test]
     fn test_tag_parser() {
         assert_eq!(Tag::parse::<String>(&[]).unwrap_err(), Error::EmptyTag);
+
+        assert_eq!(Tag::parse(&["-"]).unwrap(), Tag::protected());
 
         assert_eq!(
             Tag::parse(&["content-warning"]).unwrap(),

@@ -344,6 +344,18 @@ impl JsTag {
         }
     }
 
+    /// Protected event
+    ///
+    /// JSON: `["-"]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    #[inline]
+    pub fn protected() -> Self {
+        Self {
+            inner: Tag::protected(),
+        }
+    }
+
     /// Check if is a standard event tag with `root` marker
     #[inline]
     #[wasm_bindgen(js_name = isRoot)]
@@ -356,5 +368,14 @@ impl JsTag {
     #[wasm_bindgen(js_name = isReply)]
     pub fn is_reply(&self) -> bool {
         self.inner.is_reply()
+    }
+
+    /// Check if it's a protected event tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    #[inline]
+    #[wasm_bindgen(js_name = isProtected)]
+    pub fn is_protected(&self) -> bool {
+        self.inner.is_protected()
     }
 }

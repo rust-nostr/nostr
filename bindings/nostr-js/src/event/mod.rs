@@ -245,6 +245,15 @@ impl JsEvent {
         self.inner.hashtags().map(|t| t.to_owned()).collect()
     }
 
+    /// Check if it's a protected event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    #[inline]
+    #[wasm_bindgen(js_name = isProtected)]
+    pub fn is_protected(&self) -> bool {
+        self.inner.is_protected()
+    }
+
     #[wasm_bindgen(js_name = fromJson)]
     pub fn from_json(json: &str) -> Result<JsEvent> {
         Ok(Self {

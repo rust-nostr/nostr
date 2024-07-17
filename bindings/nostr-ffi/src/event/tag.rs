@@ -34,6 +34,10 @@ pub enum TagKind {
     SingleLetter {
         single_letter: Arc<SingleLetterTag>,
     },
+    /// Protected event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    Protected,
     /// Relay
     RelayUrl,
     /// Nonce
@@ -120,6 +124,7 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             tag::TagKind::SingleLetter(single_letter) => Self::SingleLetter {
                 single_letter: Arc::new(single_letter.into()),
             },
+            tag::TagKind::Protected => Self::Protected,
             tag::TagKind::Relay => Self::RelayUrl,
             tag::TagKind::Nonce => Self::Nonce,
             tag::TagKind::Delegation => Self::Delegation,
@@ -171,6 +176,7 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
     fn from(value: TagKind) -> Self {
         match value {
             TagKind::SingleLetter { single_letter } => Self::SingleLetter(**single_letter),
+            TagKind::Protected => Self::Protected,
             TagKind::RelayUrl => Self::Relay,
             TagKind::Nonce => Self::Nonce,
             TagKind::Delegation => Self::Delegation,
@@ -424,6 +430,19 @@ impl Tag {
         }
     }
 
+    /// Protected event
+    ///
+    /// JSON: `["-"]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn protected() -> Self {
+        Self {
+            inner: tag::Tag::protected(),
+        }
+    }
+
     /// Compose custom tag
     ///
     /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
@@ -443,6 +462,13 @@ impl Tag {
     /// Check if is a standard event tag with `reply` marker
     pub fn is_reply(&self) -> bool {
         self.inner.is_reply()
+    }
+
+    /// Check if it's a protected event tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    pub fn is_protected(&self) -> bool {
+        self.inner.is_protected()
     }
 }
 
@@ -650,6 +676,10 @@ pub enum TagStandard {
     Label {
         label: Vec<String>,
     },
+    /// Protected event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    Protected,
 }
 
 impl From<tag::TagStandard> for TagStandard {
@@ -822,6 +852,7 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::Word(word) => Self::Word { word },
             tag::TagStandard::LabelNamespace(label) => Self::LabelNamespace { namespace: label },
             tag::TagStandard::Label(labels) => Self::Label { label: labels },
+            tag::TagStandard::Protected => Self::Protected,
         }
     }
 }
@@ -968,6 +999,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Word { word } => Ok(Self::Word(word)),
             TagStandard::LabelNamespace { namespace } => Ok(Self::LabelNamespace(namespace)),
             TagStandard::Label { label } => Ok(Self::Label(label)),
+            TagStandard::Protected => Ok(Self::Protected),
         }
     }
 }

@@ -15,6 +15,10 @@ use crate::SingleLetterTag;
 pub enum TagKind<'a> {
     /// Single letter
     SingleLetter(SingleLetterTag),
+    /// Protected event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    Protected,
     /// Relay
     Relay,
     /// Nonce
@@ -103,6 +107,7 @@ impl<'a> fmt::Display for TagKind<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::SingleLetter(s) => write!(f, "{s}"),
+            Self::Protected => write!(f, "-"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
@@ -151,6 +156,7 @@ impl<'a> fmt::Display for TagKind<'a> {
 impl<'a> From<&'a str> for TagKind<'a> {
     fn from(kind: &'a str) -> Self {
         match kind {
+            "-" => Self::Protected,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,

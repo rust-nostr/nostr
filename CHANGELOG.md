@@ -21,6 +21,20 @@
 
 -->
 
+## [Unreleased]
+
+### Summary
+
+### Changed
+
+### Added
+
+* nostr: add NIP-70 support ([Yuki Kishimoto])
+
+### Fixed
+
+### Removed
+
 ## [v0.33.0]
 
 ### Summary

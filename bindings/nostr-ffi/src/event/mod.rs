@@ -227,6 +227,13 @@ impl Event {
         self.inner.hashtags().map(|t| t.to_owned()).collect()
     }
 
+    /// Check if it's a protected event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    pub fn is_protected(&self) -> bool {
+        self.inner.is_protected()
+    }
+
     #[inline]
     #[uniffi::constructor]
     pub fn from_json(json: &str) -> Result<Self> {

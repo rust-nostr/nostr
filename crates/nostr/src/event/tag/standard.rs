@@ -167,6 +167,10 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
     Label(Vec<String>),
+    /// Protected event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    Protected,
 }
 
 impl TagStandard {
@@ -233,6 +237,7 @@ impl TagStandard {
             }
             TagKind::Delegation => return parse_delegation_tag(tag),
             TagKind::Encrypted => return Ok(Self::Encrypted),
+            TagKind::Protected => return Ok(Self::Protected),
             TagKind::Relays => {
                 // Relays vec is of unknown length so checked here based on kind
                 let urls = tag
@@ -546,6 +551,7 @@ impl TagStandard {
                 character: Alphabet::L,
                 uppercase: false,
             }),
+            Self::Protected => TagKind::Protected,
         }
     }
 
@@ -779,6 +785,7 @@ impl From<TagStandard> for Vec<String> {
                 tag.extend(l);
                 tag
             }
+            TagStandard::Protected => vec![tag_kind],
         }
     }
 }
