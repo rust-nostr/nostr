@@ -542,165 +542,162 @@ impl InternalRelay {
         });
     }
 
-    fn spawn_message_handler(&self, mut ws_tx: Sink, mut ws_rx: Stream) -> Result<(), Error> {
-        let relay = self.clone();
-        thread::spawn(async move {
-            tracing::debug!("Relay Message Handler started for '{}'", relay.url);
+    async fn sender_message_handler(&self, mut ws_tx: Sink) {
+        // Lock receivers
+        let mut rx_nostr = self.channels.rx_nostr().await;
+        let mut rx_ping = self.channels.rx_ping().await;
+        let mut rx_service = self.channels.rx_service().await;
 
-            let sender = async {
-                // Lock receivers
-                let mut rx_nostr = relay.channels.rx_nostr().await;
-                let mut rx_ping = relay.channels.rx_ping().await;
-                let mut rx_service = relay.channels.rx_service().await;
+        loop {
+            tokio::select! {
+                // Nostr channel receiver
+                Some(NostrMessage { msgs, shot }) = rx_nostr.recv() => {
+                    // Serialize messages to JSON and compose WebSocket text message
+                    let msgs: Vec<WsMessage> = msgs
+                        .into_iter()
+                        .map(|msg| WsMessage::Text(msg.as_json()))
+                        .collect();
 
-                loop {
-                    tokio::select! {
-                        // Nostr channel receiver
-                        Some(NostrMessage { msgs, shot }) = rx_nostr.recv() => {
-                            // Serialize messages to JSON and compose WebSocket text message
-                            let msgs: Vec<WsMessage> = msgs
-                                .into_iter()
-                                .map(|msg| WsMessage::Text(msg.as_json()))
-                                .collect();
+                    // Calculate messages size
+                    let size: usize = msgs.iter().map(|msg| msg.len()).sum();
+                    let len: usize = msgs.len();
 
-                            // Calculate messages size
-                            let size: usize = msgs.iter().map(|msg| msg.len()).sum();
-                            let len: usize = msgs.len();
+                    // Compose log msg without prefix ("Sending" or "Sent")
+                    let partial_log_msg: String = if len == 1 {
+                        let json = &msgs[0]; // SAFETY: len checked above (len == 1)
+                        format!("'{json}' to '{}'", self.url)
+                    } else {
+                        format!("{len} messages to '{}'", self.url)
+                    };
 
-                            // Compose log msg without prefix ("Sending" or "Sent")
-                            let partial_log_msg: String = if len == 1 {
-                                let json = &msgs[0]; // SAFETY: len checked above (len == 1)
-                                format!("'{json}' to '{}'", relay.url)
-                            } else {
-                                format!("{len} messages to '{}'", relay.url)
-                            };
+                    tracing::debug!("Sending {partial_log_msg} (size: {size} bytes)");
 
-                            tracing::debug!("Sending {partial_log_msg} (size: {size} bytes)");
+                    // Send WebSocket messages
+                    let status: bool = match send_ws_msgs(&mut ws_tx, msgs).await {
+                        Ok(()) => {
+                            // TODO: tracing::debug!("Sent {partial_log_msg} (size: {size} bytes)");
+                            self.stats.add_bytes_sent(size);
+                            true
+                        }
+                        Err(e) => {
+                            tracing::error!("Impossible to send {partial_log_msg}: {e}");
+                            false
+                        }
+                    };
 
-                            // Send WebSocket messages
-                            let status: bool = match send_ws_msgs(&mut ws_tx, msgs).await {
-                                Ok(()) => {
-                                    // TODO: tracing::debug!("Sent {partial_log_msg} (size: {size} bytes)");
-                                    relay.stats.add_bytes_sent(size);
-                                    true
-                                }
-                                Err(e) => {
-                                    tracing::error!("Impossible to send {partial_log_msg}: {e}");
-                                    false
-                                }
-                            };
+                    // Send oneshot message
+                    if let Some(sender) = shot {
+                        if sender.send(status).is_err() {
+                            tracing::trace!(
+                                "Impossible to send '{status}' oneshot msg for '{}",
+                                self.url
+                            );
+                        }
+                    }
 
-                            // Send oneshot message
-                            if let Some(sender) = shot {
-                                if sender.send(status).is_err() {
-                                    tracing::trace!(
-                                        "Impossible to send '{status}' oneshot msg for '{}",
-                                        relay.url
-                                    );
-                                }
+                    // If error, break receiver loop
+                    if !status {
+                        break;
+                    }
+                }
+                // Ping channel receiver
+                Ok(()) = rx_ping.changed() => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                         // Get nonce and mark as seen
+                        let nonce: u64 = *rx_ping.borrow_and_update();
+
+                        // Compose ping message
+                        let msg = WsMessage::Ping(nonce.to_string().as_bytes().to_vec());
+
+                        // Send WebSocket message
+                        match send_ws_msgs(&mut ws_tx, [msg]).await {
+                            Ok(()) => {
+                                self.stats.ping.just_sent().await;
+                                tracing::debug!("Ping '{}' (nonce: {nonce})", self.url);
                             }
-
-                            // If error, break receiver loop
-                            if !status {
+                            Err(e) => {
+                                tracing::error!("Impossible to ping '{}': {e}", self.url);
                                 break;
                             }
                         }
-                        // Ping channel receiver
-                        Ok(()) = rx_ping.changed() => {
-                            #[cfg(not(target_arch = "wasm32"))]
-                            {
-                                 // Get nonce and mark as seen
-                                let nonce: u64 = *rx_ping.borrow_and_update();
-
-                                // Compose ping message
-                                let msg = WsMessage::Ping(nonce.to_string().as_bytes().to_vec());
-
-                                // Send WebSocket message
-                                match send_ws_msgs(&mut ws_tx, [msg]).await {
-                                    Ok(()) => {
-                                        relay.stats.ping.just_sent().await;
-                                        tracing::debug!("Ping '{}' (nonce: {nonce})", relay.url);
-                                    }
-                                    Err(e) => {
-                                        tracing::error!("Impossible to ping '{}': {e}", relay.url);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        // Service channel receiver (stop, shutdown, ..)
-                        Ok(()) = rx_service.changed() => {
-                            // Get service and mark as seen
-                            let service: RelayServiceEvent = *rx_service.borrow_and_update();
-
-                            match service {
-                                // Do nothing
-                                RelayServiceEvent::None => {},
-                                // Terminate
-                                RelayServiceEvent::Terminate => {
-                                    if relay.is_scheduled_for_termination() {
-                                        relay.set_status(RelayStatus::Terminated, true).await;
-                                        relay.schedule_for_termination(false);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        else => break
                     }
                 }
+                // Service channel receiver (stop, shutdown, ..)
+                Ok(()) = rx_service.changed() => {
+                    // Get service and mark as seen
+                    let service: RelayServiceEvent = *rx_service.borrow_and_update();
 
-                // Close WebSocket
-                match close_ws(&mut ws_tx).await {
-                    Ok(..) => {
-                        tracing::debug!("WebSocket closed for '{}'", relay.url);
-                    }
-                    Err(e) => {
-                        tracing::error!("Impossible to close WebSocket for '{}': {e}", relay.url);
-                    }
-                }
-            };
-
-            let receiver = async {
-                while let Some(msg) = ws_rx.next().await {
-                    if let Ok(msg) = msg {
-                        match msg {
-                            #[cfg(not(target_arch = "wasm32"))]
-                            WsMessage::Pong(bytes) => {
-                                if relay.opts.flags.has_ping() {
-                                    match String::from_utf8(bytes) {
-                                        Ok(nonce) => match nonce.parse::<u64>() {
-                                            Ok(nonce) => {
-                                                if relay.stats.ping.last_nonce() == nonce {
-                                                    tracing::debug!(
-                                                        "Pong from '{}' match nonce: {}",
-                                                        relay.url,
-                                                        nonce
-                                                    );
-                                                    relay.stats.ping.set_replied(true);
-                                                    let sent_at = relay.stats.ping.sent_at().await;
-                                                    relay
-                                                        .stats
-                                                        .save_latency(sent_at.elapsed())
-                                                        .await;
-                                                } else {
-                                                    tracing::error!("Pong nonce not match: received={nonce}, expected={}", relay.stats.ping.last_nonce());
-                                                }
-                                            }
-                                            Err(e) => tracing::error!("{e}"),
-                                        },
-                                        Err(e) => tracing::error!("{e}"),
-                                    }
-                                }
-                            }
-                            _ => {
-                                let data: Vec<u8> = msg.into_data();
-                                relay.handle_relay_message_infallible(&data).await;
+                    match service {
+                        // Do nothing
+                        RelayServiceEvent::None => {},
+                        // Terminate
+                        RelayServiceEvent::Terminate => {
+                            if self.is_scheduled_for_termination() {
+                                self.set_status(RelayStatus::Terminated, true).await;
+                                self.schedule_for_termination(false);
+                                break;
                             }
                         }
                     }
                 }
-            };
+                else => break
+            }
+        }
+
+        // Close WebSocket
+        match close_ws(&mut ws_tx).await {
+            Ok(..) => {
+                tracing::debug!("WebSocket closed for '{}'", self.url);
+            }
+            Err(e) => {
+                tracing::error!("Impossible to close WebSocket for '{}': {e}", self.url);
+            }
+        }
+    }
+
+    async fn receiver_message_handler(&self, mut ws_rx: Stream) {
+        while let Some(msg) = ws_rx.next().await {
+            if let Ok(msg) = msg {
+                match msg {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    WsMessage::Pong(bytes) => {
+                        if self.opts.flags.has_ping() {
+                            match String::from_utf8(bytes) {
+                                Ok(nonce) => match nonce.parse::<u64>() {
+                                    Ok(nonce) => {
+                                        if self.stats.ping.last_nonce() == nonce {
+                                            tracing::debug!(
+                                                "Pong from '{}' match nonce: {}",
+                                                self.url,
+                                                nonce
+                                            );
+                                            self.stats.ping.set_replied(true);
+                                            let sent_at = self.stats.ping.sent_at().await;
+                                            self.stats.save_latency(sent_at.elapsed()).await;
+                                        } else {
+                                            tracing::error!("Pong nonce not match: received={nonce}, expected={}", self.stats.ping.last_nonce());
+                                        }
+                                    }
+                                    Err(e) => tracing::error!("{e}"),
+                                },
+                                Err(e) => tracing::error!("{e}"),
+                            }
+                        }
+                    }
+                    _ => {
+                        let data: Vec<u8> = msg.into_data();
+                        self.handle_relay_message_infallible(&data).await;
+                    }
+                }
+            }
+        }
+    }
+
+    fn spawn_message_handler(&self, ws_tx: Sink, ws_rx: Stream) -> Result<(), Error> {
+        let relay = self.clone();
+        thread::spawn(async move {
+            tracing::debug!("Relay Message Handler started for '{}'", relay.url);
 
             #[cfg(not(target_arch = "wasm32"))]
             let pinger = async {
@@ -744,10 +741,10 @@ impl InternalRelay {
 
             // Wait that one of the futures terminate/complete
             tokio::select! {
-                _ = receiver => {
+                _ = relay.receiver_message_handler(ws_rx) => {
                     tracing::trace!("Relay connection closed for '{}'", relay.url);
                 }
-                _ = sender => {
+                _ = relay.sender_message_handler(ws_tx) => {
                     tracing::trace!("Relay sender exited for '{}'", relay.url);
                 }
                 _ = pinger => {
