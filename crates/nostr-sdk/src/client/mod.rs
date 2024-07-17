@@ -1234,12 +1234,13 @@ impl Client {
         receiver: PublicKey,
         message: S,
         reply_to: Option<EventId>,
+        relays: Option<Vec<String>>,
     ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
-        self.gift_wrap(receiver, rumor, None).await
+        self.gift_wrap(receiver, rumor, None, relays).await
     }
 
     /// Repost
@@ -1484,6 +1485,7 @@ impl Client {
         receiver: PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
+        relays: Option<Vec<String>>,
     ) -> Result<Output<EventId>, Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
@@ -1501,7 +1503,10 @@ impl Client {
         let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal, expiration)?;
 
         // Send event
-        self.send_event(gift_wrap).await
+        match relays {
+            Some(relays) => self.send_event_to(relays, gift_wrap).await,
+            None => self.send_event(gift_wrap).await,
+        }
     }
 
     /// Unwrap Gift Wrap event

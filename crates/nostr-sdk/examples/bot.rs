@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
                                     ),
                                 };
 
-                                client.send_private_msg(sender, content, None).await?;
+                                client.send_private_msg(sender, content, None, None).await?;
                             }
                         }
                         Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
