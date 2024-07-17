@@ -30,6 +30,7 @@
 ### Added
 
 * nostr: add NIP-70 support ([Yuki Kishimoto])
+* sdk: add `Client::gift_wrap_to` and `Client::send_private_msg_to` ([reyamir])
 
 ### Fixed
 
@@ -354,6 +355,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [Xiao Yu]: https://github.com/kasugamirai
 [RydalWater]: https://github.com/RydalWater
 [lnbc1QWFyb24]: https://github.com/lnbc1QWFyb24
+[reyamir]: https://github.com/reyamir
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.33.0...HEAD

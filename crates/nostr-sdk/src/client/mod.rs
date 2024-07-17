@@ -1224,7 +1224,7 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /// Send private direct message
+    /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
@@ -1240,6 +1240,28 @@ impl Client {
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
         self.gift_wrap(receiver, rumor, None).await
+    }
+
+    /// Send private direct message to specific relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
+    #[cfg(feature = "nip59")]
+    pub async fn send_private_msg_to<I, S, U>(
+        &self,
+        urls: I,
+        receiver: PublicKey,
+        message: S,
+        reply_to: Option<EventId>,
+    ) -> Result<Output<EventId>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        S: Into<String>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
+        self.gift_wrap_to(urls, receiver, rumor, None).await
     }
 
     /// Repost
@@ -1475,16 +1497,14 @@ impl Client {
         self.internal_zap(to, satoshi, details).await
     }
 
-    /// Gift Wrap
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    /// Build gift wrap event
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap(
+    async fn internal_gift_wrap(
         &self,
         receiver: PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
-    ) -> Result<Output<EventId>, Error> {
+    ) -> Result<Event, Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
         let public_key: PublicKey = signer.public_key().await?;
@@ -1498,10 +1518,45 @@ impl Client {
         let seal: Event = self.sign_event_builder(seal).await?;
 
         // Compose gift wrap
-        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal, expiration)?;
+        Ok(EventBuilder::gift_wrap_from_seal(
+            &receiver, &seal, expiration,
+        )?)
+    }
 
-        // Send event
+    /// Construct Gift Wrap and send to all relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
+    #[cfg(feature = "nip59")]
+    pub async fn gift_wrap(
+        &self,
+        receiver: PublicKey,
+        rumor: EventBuilder,
+        expiration: Option<Timestamp>,
+    ) -> Result<Output<EventId>, Error> {
+        let gift_wrap: Event = self.internal_gift_wrap(receiver, rumor, expiration).await?;
         self.send_event(gift_wrap).await
+    }
+
+    /// Construct Gift Wrap and send to specific relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
+    #[cfg(feature = "nip59")]
+    pub async fn gift_wrap_to<I, U>(
+        &self,
+        urls: I,
+        receiver: PublicKey,
+        rumor: EventBuilder,
+        expiration: Option<Timestamp>,
+    ) -> Result<Output<EventId>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let gift_wrap: Event = self.internal_gift_wrap(receiver, rumor, expiration).await?;
+        self.send_event_to(urls, gift_wrap).await
     }
 
     /// Unwrap Gift Wrap event

@@ -493,7 +493,7 @@ impl Client {
             .into())
     }
 
-    /// Send private direct message
+    /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[uniffi::method(default(reply_to = None))]
@@ -506,6 +506,24 @@ impl Client {
         Ok(self
             .inner
             .send_private_msg(**receiver, message, reply_to.map(|t| **t))
+            .await?
+            .into())
+    }
+
+    /// Send private direct message to specific relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[uniffi::method(default(reply_to = None))]
+    pub async fn send_private_msg_to(
+        &self,
+        urls: Vec<String>,
+        receiver: &PublicKey,
+        message: String,
+        reply_to: Option<Arc<EventId>>,
+    ) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .send_private_msg_to(urls, **receiver, message, reply_to.map(|t| **t))
             .await?
             .into())
     }
@@ -561,7 +579,7 @@ impl Client {
             .await?)
     }
 
-    /// Gift Wrap
+    /// Construct Gift Wrap and send to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     pub async fn gift_wrap(
@@ -573,6 +591,28 @@ impl Client {
         Ok(self
             .inner
             .gift_wrap(
+                **receiver,
+                rumor.as_ref().deref().clone(),
+                expiration.map(|t| **t),
+            )
+            .await?
+            .into())
+    }
+
+    /// Construct Gift Wrap and send to specific relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    pub async fn gift_wrap_to(
+        &self,
+        urls: Vec<String>,
+        receiver: &PublicKey,
+        rumor: Arc<EventBuilder>,
+        expiration: Option<Arc<Timestamp>>,
+    ) -> Result<SendEventOutput> {
+        Ok(self
+            .inner
+            .gift_wrap_to(
+                urls,
                 **receiver,
                 rumor.as_ref().deref().clone(),
                 expiration.map(|t| **t),

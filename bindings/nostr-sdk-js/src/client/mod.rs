@@ -537,7 +537,7 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Send private direct message
+    /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[wasm_bindgen(js_name = sendPrivateMsg)]
@@ -549,6 +549,24 @@ impl JsClient {
     ) -> Result<JsSendEventOutput> {
         self.inner
             .send_private_msg(**receiver, message, reply_to.map(|t| *t))
+            .await
+            .map_err(into_err)
+            .map(Into::into)
+    }
+
+    /// Send private direct message to specific relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[wasm_bindgen(js_name = sendPrivateMsgTo)]
+    pub async fn send_private_msg_to(
+        &self,
+        urls: Vec<String>,
+        receiver: &JsPublicKey,
+        message: &str,
+        reply_to: Option<JsEventId>,
+    ) -> Result<JsSendEventOutput> {
+        self.inner
+            .send_private_msg_to(urls, **receiver, message, reply_to.map(|t| *t))
             .await
             .map_err(into_err)
             .map(Into::into)
@@ -708,7 +726,7 @@ impl JsClient {
             .map_err(into_err)
     }
 
-    /// Gift Wrap
+    /// Construct Gift Wrap and send to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[wasm_bindgen(js_name = giftWrap)]
@@ -720,6 +738,29 @@ impl JsClient {
     ) -> Result<JsSendEventOutput> {
         self.inner
             .gift_wrap(**receiver, rumor.deref().clone(), expiration.map(|t| *t))
+            .await
+            .map_err(into_err)
+            .map(Into::into)
+    }
+
+    /// Construct Gift Wrap and send to specific relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[wasm_bindgen(js_name = giftWrapTo)]
+    pub async fn gift_wrap_to(
+        &self,
+        urls: Vec<String>,
+        receiver: &JsPublicKey,
+        rumor: &JsEventBuilder,
+        expiration: Option<JsTimestamp>,
+    ) -> Result<JsSendEventOutput> {
+        self.inner
+            .gift_wrap_to(
+                urls,
+                **receiver,
+                rumor.deref().clone(),
+                expiration.map(|t| *t),
+            )
             .await
             .map_err(into_err)
             .map(Into::into)
