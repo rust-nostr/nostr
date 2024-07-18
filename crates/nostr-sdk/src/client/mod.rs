@@ -1234,13 +1234,34 @@ impl Client {
         receiver: PublicKey,
         message: S,
         reply_to: Option<EventId>,
-        relays: Option<Vec<String>>,
     ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
-        self.gift_wrap(receiver, rumor, None, relays).await
+        self.gift_wrap(receiver, rumor, None).await
+    }
+
+    /// Send private direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
+    #[cfg(feature = "nip59")]
+    pub async fn send_private_msg_to<I, S, U>(
+        &self,
+        urls: I,
+        receiver: PublicKey,
+        message: S,
+        reply_to: Option<EventId>,
+    ) -> Result<Output<EventId>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        S: Into<String>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
+        self.gift_wrap_to(urls, receiver, rumor, None).await
     }
 
     /// Repost
@@ -1485,7 +1506,6 @@ impl Client {
         receiver: PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
-        relays: Option<Vec<String>>,
     ) -> Result<Output<EventId>, Error> {
         // Compose rumor
         let signer: NostrSigner = self.signer().await?;
@@ -1503,10 +1523,42 @@ impl Client {
         let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal, expiration)?;
 
         // Send event
-        match relays {
-            Some(relays) => self.send_event_to(relays, gift_wrap).await,
-            None => self.send_event(gift_wrap).await,
-        }
+        self.send_event(gift_wrap).await
+    }
+
+    /// Gift Wrap
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[cfg(feature = "nip59")]
+    pub async fn gift_wrap_to<I, U>(
+        &self,
+        urls: I,
+        receiver: PublicKey,
+        rumor: EventBuilder,
+        expiration: Option<Timestamp>,
+    ) -> Result<Output<EventId>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Compose rumor
+        let signer: NostrSigner = self.signer().await?;
+        let public_key: PublicKey = signer.public_key().await?;
+        let rumor = rumor.to_unsigned_event(public_key);
+
+        // Compose seal
+        // TODO: use directly the `EventBuilder::seal` constructor
+        let content: String = signer.nip44_encrypt(receiver, rumor.as_json()).await?;
+        let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, [])
+            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK));
+        let seal: Event = self.sign_event_builder(seal).await?;
+
+        // Compose gift wrap
+        let gift_wrap: Event = EventBuilder::gift_wrap_from_seal(&receiver, &seal, expiration)?;
+
+        // Send event
+        self.send_event_to(urls, gift_wrap).await
     }
 
     /// Unwrap Gift Wrap event

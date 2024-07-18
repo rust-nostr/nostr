@@ -58,7 +58,18 @@ async fn main() -> Result<()> {
                                     ),
                                 };
 
-                                client.send_private_msg(sender, content, None, None).await?;
+                                // Send private message to general relays
+                                // client.send_private_msg(sender, content, None).await?;
+
+                                // Send private message to specific relays
+                                client
+                                    .send_private_msg_to(
+                                        vec!["wss://auth.nostr1.com"],
+                                        sender,
+                                        content,
+                                        None,
+                                    )
+                                    .await?;
                             }
                         }
                         Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),

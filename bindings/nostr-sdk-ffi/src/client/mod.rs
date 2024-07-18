@@ -505,7 +505,7 @@ impl Client {
     ) -> Result<SendEventOutput> {
         Ok(self
             .inner
-            .send_private_msg(**receiver, message, reply_to.map(|t| **t), None)
+            .send_private_msg(**receiver, message, reply_to.map(|t| **t))
             .await?
             .into())
     }
@@ -576,7 +576,6 @@ impl Client {
                 **receiver,
                 rumor.as_ref().deref().clone(),
                 expiration.map(|t| **t),
-                None,
             )
             .await?
             .into())
