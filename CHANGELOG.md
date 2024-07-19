@@ -28,11 +28,14 @@
 ### Changed
 
 * nostr: deprecate `Event::author_ref` and `Event::iter_tags` ([Yuki Kishimoto])
+* nostr: calculate `EventId` in `EventBuilder::to_unsigned_event_with_supplier` ([Yuki Kishimoto])
+* nostr: ensure that NIP-59 rumor has `EventId` ([Yuki Kishimoto])
 
 ### Added
 
 * nostr: add NIP-70 support ([Yuki Kishimoto])
 * nostr: add `EventId::LEN` const ([Yuki Kishimoto])
+* nostr: add `UnsignedEvent::ensure_id` method ([Yuki Kishimoto])
 * sdk: add `Client::gift_wrap_to` and `Client::send_private_msg_to` ([reyamir])
 
 ### Fixed

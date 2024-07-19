@@ -111,6 +111,16 @@ impl UnsignedEvent {
         }
     }
 
+    /// Ensure to set [EventId]
+    ///
+    /// If `id` is `None`, compute and set it.
+    #[inline]
+    pub fn ensure_id(&mut self) {
+        if self.id.is_none() {
+            self.id = Some(self.compute_id());
+        }
+    }
+
     #[inline]
     fn compute_id(&self) -> EventId {
         EventId::new(

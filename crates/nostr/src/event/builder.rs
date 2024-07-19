@@ -234,7 +234,6 @@ impl EventBuilder {
     }
 
     /// Build [`UnsignedEvent`]
-    #[inline]
     pub fn to_unsigned_event_with_supplier<T>(
         self,
         supplier: &T,
@@ -243,7 +242,7 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        UnsignedEvent {
+        let mut unsigned = UnsignedEvent {
             id: None,
             pubkey,
             created_at: self
@@ -252,7 +251,9 @@ impl EventBuilder {
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-        }
+        };
+        unsigned.ensure_id();
+        unsigned
     }
 
     /// Build POW [`Event`]
@@ -1299,19 +1300,24 @@ impl EventBuilder {
     /// Seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
     pub fn seal(
         sender_keys: &Keys,
         receiver_pubkey: &PublicKey,
-        rumor: UnsignedEvent,
+        mut rumor: UnsignedEvent,
     ) -> Result<Self, Error> {
+        // Make sure that rumor has event ID
+        rumor.ensure_id();
+
+        // Encrypt content
         let content: String = nip44::encrypt(
             sender_keys.secret_key()?,
             receiver_pubkey,
             rumor.as_json(),
             Version::default(),
         )?;
+
+        // Compose builder
         Ok(Self::new(Kind::Seal, content, [])
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK)))
     }
