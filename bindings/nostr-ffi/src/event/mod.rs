@@ -69,7 +69,8 @@ impl Event {
 
     pub fn tags(&self) -> Vec<Arc<Tag>> {
         self.inner
-            .iter_tags()
+            .tags
+            .iter()
             .cloned()
             .map(|t| Arc::new(t.into()))
             .collect()

@@ -63,7 +63,7 @@ impl FromStr for RelayMetadata {
 /// Extracts the relay info (url, optional read/write flag) from the event
 #[inline]
 pub fn extract_relay_list(event: &Event) -> impl Iterator<Item = (&Url, &Option<RelayMetadata>)> {
-    event.iter_tags().filter_map(|tag| {
+    event.tags.iter().filter_map(|tag| {
         if let Some(TagStandard::RelayMetadata {
             relay_url,
             metadata,

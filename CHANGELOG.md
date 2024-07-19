@@ -27,6 +27,8 @@
 
 ### Changed
 
+* nostr: deprecate `Event::author_ref` and `Event::iter_tags` ([Yuki Kishimoto])
+
 ### Added
 
 * nostr: add NIP-70 support ([Yuki Kishimoto])

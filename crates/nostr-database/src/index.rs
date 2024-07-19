@@ -67,9 +67,9 @@ impl From<&Event> for EventIndex {
         Self {
             created_at: e.created_at(),
             event_id: e.id(),
-            pubkey: PublicKeyPrefix::from(e.author_ref()),
+            pubkey: PublicKeyPrefix::from(&e.pubkey),
             kind: e.kind(),
-            tags: TagIndexes::from(e.iter_tags()),
+            tags: TagIndexes::from(e.tags.iter()),
         }
     }
 }
@@ -208,8 +208,8 @@ impl<'a> EventOrTempEvent<'a> {
 
     fn pubkey(&self) -> PublicKeyPrefix {
         match self {
-            Self::Event(e) => PublicKeyPrefix::from(e.author_ref()),
-            Self::EventOwned(e) => PublicKeyPrefix::from(e.author_ref()),
+            Self::Event(e) => PublicKeyPrefix::from(&e.pubkey),
+            Self::EventOwned(e) => PublicKeyPrefix::from(&e.pubkey),
             #[cfg(feature = "flatbuf")]
             Self::Temp(r) => PublicKeyPrefix::from(r.pubkey),
         }
@@ -235,8 +235,8 @@ impl<'a> EventOrTempEvent<'a> {
 
     fn tags(self) -> TagIndexes {
         match self {
-            Self::Event(e) => TagIndexes::from(e.iter_tags()),
-            Self::EventOwned(e) => TagIndexes::from(e.iter_tags()),
+            Self::Event(e) => TagIndexes::from(e.tags.iter()),
+            Self::EventOwned(e) => TagIndexes::from(e.tags.iter()),
             #[cfg(feature = "flatbuf")]
             Self::Temp(r) => r.tags,
         }

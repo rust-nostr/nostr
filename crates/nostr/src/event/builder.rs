@@ -444,7 +444,8 @@ impl EventBuilder {
 
                 // Add others `p` tags
                 tags.extend(
-                    root.iter_tags()
+                    root.tags
+                        .iter()
                         .filter(|t| {
                             t.kind()
                                 == TagKind::SingleLetter(SingleLetterTag {
@@ -478,7 +479,8 @@ impl EventBuilder {
         // Add others `p` tags of reply_to event
         tags.extend(
             reply_to
-                .iter_tags()
+                .tags
+                .iter()
                 .filter(|t| {
                     t.kind()
                         == TagKind::SingleLetter(SingleLetterTag {
@@ -915,7 +917,8 @@ impl EventBuilder {
 
         // add e tag
         if let Some(tag) = zap_request
-            .iter_tags()
+            .tags
+            .iter()
             .find(|t| {
                 t.kind()
                     == TagKind::SingleLetter(SingleLetterTag {
@@ -930,7 +933,8 @@ impl EventBuilder {
 
         // add a tag
         if let Some(tag) = zap_request
-            .iter_tags()
+            .tags
+            .iter()
             .find(|t| {
                 t.kind()
                     == TagKind::SingleLetter(SingleLetterTag {
@@ -945,7 +949,8 @@ impl EventBuilder {
 
         // add p tag
         if let Some(tag) = zap_request
-            .iter_tags()
+            .tags
+            .iter()
             .find(|t| {
                 t.kind()
                     == TagKind::SingleLetter(SingleLetterTag {
@@ -1053,7 +1058,8 @@ impl EventBuilder {
         I: IntoIterator<Item = Tag>, // TODO: change to `PublicKey`?
     {
         let badge_id = badge_definition
-            .iter_tags()
+            .tags
+            .iter()
             .find_map(|t| match t.as_standardized() {
                 Some(TagStandard::Identifier(id)) => Some(id),
                 _ => None,
@@ -1100,7 +1106,7 @@ impl EventBuilder {
         }
 
         for award in badge_awards.iter() {
-            if !award.iter_tags().any(|t| match t.as_standardized() {
+            if !award.tags.iter().any(|t| match t.as_standardized() {
                 Some(TagStandard::PublicKey { public_key, .. }) => public_key == pubkey_awarded,
                 _ => false,
             }) {
@@ -1126,7 +1132,7 @@ impl EventBuilder {
         let badge_awards_identifiers = badge_awards.into_iter().filter_map(|event| {
             let (_, relay_url) = nip58::extract_awarded_public_key(event.tags(), pubkey_awarded)?;
             let relay_url = relay_url.clone();
-            let (id, a_tag) = event.iter_tags().find_map(|t| match t.as_standardized() {
+            let (id, a_tag) = event.tags.iter().find_map(|t| match t.as_standardized() {
                 Some(TagStandard::Coordinate { coordinate, .. }) => {
                     Some((coordinate.identifier.clone(), t.clone()))
                 }
@@ -1190,7 +1196,8 @@ impl EventBuilder {
         let kind: Kind = job_request.kind() + 1000;
         if kind.is_job_result() {
             let mut tags: Vec<Tag> = job_request
-                .iter_tags()
+                .tags
+                .iter()
                 .filter_map(|t| {
                     if t.kind()
                         == TagKind::SingleLetter(SingleLetterTag {

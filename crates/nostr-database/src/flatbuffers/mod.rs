@@ -63,10 +63,11 @@ impl FlatBufferEncode for Event {
         fbb.reset();
 
         let id = event_fbs::Fixed32Bytes::new(&self.id.to_bytes());
-        let pubkey = event_fbs::Fixed32Bytes::new(&self.author_ref().to_bytes());
+        let pubkey = event_fbs::Fixed32Bytes::new(&self.pubkey.to_bytes());
         let sig = event_fbs::Fixed64Bytes::new(self.sig.as_ref());
         let tags = self
-            .iter_tags()
+            .tags
+            .iter()
             .map(|t| {
                 let tags = t
                     .as_vec()

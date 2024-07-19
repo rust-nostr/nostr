@@ -114,12 +114,12 @@ impl UnwrappedGift {
         let secret_key: &SecretKey = receiver_keys.secret_key()?;
 
         // Decrypt and verify seal
-        let seal: String = nip44::decrypt(secret_key, gift_wrap.author_ref(), gift_wrap.content())?;
+        let seal: String = nip44::decrypt(secret_key, &gift_wrap.pubkey, gift_wrap.content())?;
         let seal: Event = Event::from_json(seal)?;
         seal.verify_with_ctx(secp)?;
 
         // Decrypt rumor
-        let rumor: String = nip44::decrypt(secret_key, seal.author_ref(), seal.content())?;
+        let rumor: String = nip44::decrypt(secret_key, &seal.pubkey, seal.content())?;
 
         Ok(UnwrappedGift {
             sender: seal.author(),

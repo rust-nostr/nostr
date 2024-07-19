@@ -241,6 +241,7 @@ impl Event {
 
     /// Get event author reference (`pubkey` field)
     #[inline]
+    #[deprecated(since = "0.34.0")]
     pub fn author_ref(&self) -> &PublicKey {
         &self.inner.pubkey
     }
@@ -265,6 +266,7 @@ impl Event {
 
     /// Iterate event tags
     #[inline]
+    #[deprecated(since = "0.34.0")]
     pub fn iter_tags(&self) -> impl Iterator<Item = &Tag> {
         self.inner.tags.iter()
     }
@@ -278,7 +280,8 @@ impl Event {
     /// Get content of **first** tag that match [TagKind].
     #[inline]
     pub fn get_tag_content(&self, kind: TagKind) -> Option<&str> {
-        self.iter_tags()
+        self.tags
+            .iter()
             .find(|t| t.kind() == kind)
             .and_then(|t| t.content())
     }
@@ -286,13 +289,14 @@ impl Event {
     /// Get content of all tags that match [TagKind].
     #[inline]
     pub fn get_tags_content(&self, kind: TagKind) -> Vec<&str> {
-        self.iter_tags()
+        self.tags
+            .iter()
             .filter(|t| t.kind() == kind)
             .filter_map(|t| t.content())
             .collect()
     }
 
-    /// Get reference to event content
+    /// Get reference of event content
     #[inline]
     pub fn content(&self) -> &str {
         &self.inner.content
@@ -369,7 +373,7 @@ impl Event {
     /// Get [`Timestamp`] expiration if set
     #[inline]
     pub fn expiration(&self) -> Option<&Timestamp> {
-        for tag in self.iter_tags().filter(|t| t.kind() == TagKind::Expiration) {
+        for tag in self.tags.iter().filter(|t| t.kind() == TagKind::Expiration) {
             if let Some(TagStandard::Expiration(timestamp)) = tag.as_standardized() {
                 return Some(timestamp);
             }
@@ -465,7 +469,8 @@ impl Event {
     #[inline]
     pub fn identifier(&self) -> Option<&str> {
         for tag in self
-            .iter_tags()
+            .tags
+            .iter()
             .filter(|t| t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D)))
         {
             if let Some(TagStandard::Identifier(id)) = tag.as_standardized() {
@@ -480,7 +485,7 @@ impl Event {
     /// **This method extract ONLY `TagStandard::PublicKey`, `TagStandard::PublicKeyReport` and `TagStandard::PublicKeyLiveEvent` variants**
     #[inline]
     pub fn public_keys(&self) -> impl Iterator<Item = &PublicKey> {
-        self.iter_tags().filter_map(|t| match t.as_standardized() {
+        self.tags.iter().filter_map(|t| match t.as_standardized() {
             Some(TagStandard::PublicKey { public_key, .. }) => Some(public_key),
             Some(TagStandard::PublicKeyReport(public_key, ..)) => Some(public_key),
             Some(TagStandard::PublicKeyLiveEvent { public_key, .. }) => Some(public_key),
@@ -493,7 +498,7 @@ impl Event {
     /// **This method extract ONLY `TagStandard::Event` and `TagStandard::EventReport` variants**
     #[inline]
     pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
-        self.iter_tags().filter_map(|t| match t.as_standardized() {
+        self.tags.iter().filter_map(|t| match t.as_standardized() {
             Some(TagStandard::Event { event_id, .. }) => Some(event_id),
             Some(TagStandard::EventReport(event_id, ..)) => Some(event_id),
             _ => None,
@@ -505,7 +510,7 @@ impl Event {
     /// **This method extract ONLY `TagStandard::Coordinate`**
     #[inline]
     pub fn coordinates(&self) -> impl Iterator<Item = &Coordinate> {
-        self.iter_tags().filter_map(|t| match t.as_standardized() {
+        self.tags.iter().filter_map(|t| match t.as_standardized() {
             Some(TagStandard::Coordinate { coordinate, .. }) => Some(coordinate),
             _ => None,
         })
@@ -516,7 +521,7 @@ impl Event {
     /// **This method extract ONLY `TagStandard::Hashtag`**
     #[inline]
     pub fn hashtags(&self) -> impl Iterator<Item = &String> {
-        self.iter_tags().filter_map(|t| match t.as_standardized() {
+        self.tags.iter().filter_map(|t| match t.as_standardized() {
             Some(TagStandard::Hashtag(hashtag)) => Some(hashtag),
             _ => None,
         })
@@ -525,7 +530,8 @@ impl Event {
     pub(crate) fn build_tags_indexes(&self) -> TagsIndexes {
         let mut idx: TagsIndexes = TagsIndexes::new();
         for (single_letter_tag, content) in self
-            .iter_tags()
+            .tags
+            .iter()
             .filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
         {
             idx.entry(single_letter_tag)
@@ -547,7 +553,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
     #[inline]
     pub fn is_protected(&self) -> bool {
-        self.iter_tags().any(|t| t.is_protected())
+        self.tags.iter().any(|t| t.is_protected())
     }
 }
 

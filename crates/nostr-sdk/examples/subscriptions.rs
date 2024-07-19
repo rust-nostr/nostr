@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
                 // Check kind
                 if event.kind() == Kind::EncryptedDirectMessage {
                     if let Ok(msg) =
-                        nip04::decrypt(keys.secret_key()?, event.author_ref(), event.content())
+                        nip04::decrypt(keys.secret_key()?, &event.pubkey, event.content())
                     {
                         println!("DM: {msg}");
                     } else {

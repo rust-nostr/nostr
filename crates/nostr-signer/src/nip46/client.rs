@@ -135,7 +135,7 @@ impl Nip46Signer {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind() == Kind::NostrConnect {
-                        let msg = nip04::decrypt(secret_key, event.author_ref(), event.content())?;
+                        let msg = nip04::decrypt(secret_key, &event.pubkey, event.content())?;
                         let msg = Message::from_json(msg)?;
 
                         tracing::debug!("Received NIP46 message: '{msg}'");
@@ -287,8 +287,7 @@ async fn get_signer_public_key(
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind() == Kind::NostrConnect {
                     // Decrypt content
-                    let msg: String =
-                        nip04::decrypt(secret_key, event.author_ref(), event.content())?;
+                    let msg: String = nip04::decrypt(secret_key, &event.pubkey, event.content())?;
 
                     tracing::debug!("Received Nostr Connect message: '{msg}'");
 

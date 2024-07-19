@@ -357,7 +357,7 @@ where
 }
 
 fn extract_anon_tag_message(event: &Event) -> Result<&String, Error> {
-    for tag in event.iter_tags() {
+    for tag in event.tags.iter() {
         if let Some(TagStandard::Anon { msg }) = tag.as_standardized() {
             return msg.as_ref().ok_or(Error::InvalidPrivateZapMessage);
         }
