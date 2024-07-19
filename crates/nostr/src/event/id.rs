@@ -20,9 +20,6 @@ use crate::nips::nip21::NostrURI;
 use crate::util::hex;
 use crate::{PublicKey, Timestamp};
 
-/// Event ID size
-pub const EVENT_ID_SIZE: usize = 32;
-
 /// [`EventId`] error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
@@ -56,9 +53,12 @@ impl From<hex::Error> for Error {
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct EventId([u8; EVENT_ID_SIZE]);
+pub struct EventId([u8; 32]);
 
 impl EventId {
+    /// Event ID len
+    pub const LEN: usize = 32;
+
     /// Generate [`EventId`]
     pub fn new(
         public_key: &PublicKey,
@@ -75,7 +75,7 @@ impl EventId {
 
     /// Construct event ID
     #[inline]
-    pub fn owned(bytes: [u8; EVENT_ID_SIZE]) -> Self {
+    pub fn owned(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes)
     }
 
@@ -110,7 +110,7 @@ impl EventId {
     where
         S: AsRef<[u8]>,
     {
-        let mut bytes: [u8; 32] = [0u8; 32];
+        let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
         hex::decode_to_slice(hex, &mut bytes)?;
         Ok(Self::owned(bytes))
     }
@@ -119,12 +119,12 @@ impl EventId {
     #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         // Check len
-        if slice.len() != EVENT_ID_SIZE {
+        if slice.len() != Self::LEN {
             return Err(Error::InvalidEventId);
         }
 
         // Copy bytes
-        let mut bytes: [u8; EVENT_ID_SIZE] = [0u8; EVENT_ID_SIZE];
+        let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
         bytes.copy_from_slice(slice);
 
         // Construct owned
@@ -134,18 +134,18 @@ impl EventId {
     /// All zeros
     #[inline]
     pub fn all_zeros() -> Self {
-        Self::owned([0u8; EVENT_ID_SIZE])
+        Self::owned([0u8; Self::LEN])
     }
 
     /// Get as bytes
     #[inline]
-    pub fn as_bytes(&self) -> &[u8; EVENT_ID_SIZE] {
+    pub fn as_bytes(&self) -> &[u8; Self::LEN] {
         &self.0
     }
 
     /// Consume and get bytes
     #[inline]
-    pub fn to_bytes(self) -> [u8; 32] {
+    pub fn to_bytes(self) -> [u8; Self::LEN] {
         self.0
     }
 
@@ -180,8 +180,8 @@ impl AsRef<[u8]> for EventId {
     }
 }
 
-impl AsRef<[u8; EVENT_ID_SIZE]> for EventId {
-    fn as_ref(&self) -> &[u8; EVENT_ID_SIZE] {
+impl AsRef<[u8; EventId::LEN]> for EventId {
+    fn as_ref(&self) -> &[u8; EventId::LEN] {
         self.as_bytes()
     }
 }

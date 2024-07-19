@@ -32,6 +32,7 @@
 ### Added
 
 * nostr: add NIP-70 support ([Yuki Kishimoto])
+* nostr: add `EventId::LEN` const ([Yuki Kishimoto])
 * sdk: add `Client::gift_wrap_to` and `Client::send_private_msg_to` ([reyamir])
 
 ### Fixed
