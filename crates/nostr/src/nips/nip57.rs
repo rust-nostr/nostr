@@ -273,7 +273,7 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     tags.push(Tag::from_standardized_without_cell(TagStandard::Anon {
         msg: None,
     }));
-    Ok(EventBuilder::new(Kind::ZapRequest, message, tags).to_event(&keys)?)
+    Ok(EventBuilder::new(Kind::ZapRequest, message, tags).sign_with_keys(&keys)?)
 }
 
 /// Create **private** zap request
@@ -308,7 +308,7 @@ where
         tags.push(Tag::event(event_id));
     }
     let msg: String = EventBuilder::new(Kind::ZapPrivateMessage, &data.message, tags)
-        .to_event_with_ctx(secp, rng, supplier, keys)?
+        .sign_with_ctx(secp, rng, supplier, keys)?
         .as_json();
     let msg: String = encrypt_private_zap_message(rng, &secret_key, &data.public_key, msg)?;
 
@@ -320,7 +320,7 @@ where
     let private_zap_keys: Keys = Keys::new_with_ctx(secp, secret_key);
     Ok(EventBuilder::new(Kind::ZapRequest, "", tags)
         .custom_created_at(created_at)
-        .to_event_with_ctx(secp, rng, supplier, &private_zap_keys)?)
+        .sign_with_ctx(secp, rng, supplier, &private_zap_keys)?)
 }
 
 /// Create NIP57 encryption key for **private** zap

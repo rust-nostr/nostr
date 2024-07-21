@@ -66,6 +66,7 @@ pub use crate::nips::nip65::{self, *};
 pub use crate::nips::nip90::{self, *};
 pub use crate::nips::nip94::{self, *};
 pub use crate::nips::nip98::{self, *};
+pub use crate::signer::{self, *};
 pub use crate::types::*;
 pub use crate::util::{self, *};
 #[cfg(feature = "std")]
