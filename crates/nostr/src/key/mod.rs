@@ -16,6 +16,8 @@ use core::str::FromStr;
 use std::sync::OnceLock as OnceCell;
 
 #[cfg(feature = "std")]
+use async_trait::async_trait;
+#[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
@@ -29,7 +31,7 @@ pub mod vanity;
 pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
 #[cfg(feature = "std")]
-use crate::SECP256K1;
+use crate::{Event, NostrSigner, SignerError, UnsignedEvent, SECP256K1};
 
 /// [`Keys`] error
 #[derive(Debug, PartialEq, Eq)]
@@ -255,6 +257,62 @@ impl FromStr for Keys {
     #[inline]
     fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
         Self::parse(secret_key)
+    }
+}
+
+#[cfg(feature = "std")]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl NostrSigner for Keys {
+    async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
+        Ok(self.public_key)
+    }
+
+    async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
+        unsigned.sign_with_keys(self).map_err(SignerError::backend)
+    }
+
+    #[cfg(feature = "nip04")]
+    async fn nip04_encrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        let secret_key: &SecretKey = self.secret_key();
+        crate::nips::nip04::encrypt(secret_key, public_key, content).map_err(SignerError::backend)
+    }
+
+    #[cfg(feature = "nip04")]
+    async fn nip04_decrypt(
+        &self,
+        public_key: &PublicKey,
+        encrypted_content: &str,
+    ) -> Result<String, SignerError> {
+        let secret_key: &SecretKey = self.secret_key();
+        crate::nips::nip04::decrypt(secret_key, public_key, encrypted_content)
+            .map_err(SignerError::backend)
+    }
+
+    #[cfg(feature = "nip44")]
+    async fn nip44_encrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        use crate::nips::nip44::{self, Version};
+        let secret_key: &SecretKey = self.secret_key();
+        nip44::encrypt(secret_key, public_key, content, Version::default())
+            .map_err(SignerError::backend)
+    }
+
+    #[cfg(feature = "nip44")]
+    async fn nip44_decrypt(
+        &self,
+        public_key: &PublicKey,
+        payload: &str,
+    ) -> Result<String, SignerError> {
+        let secret_key: &SecretKey = self.secret_key();
+        crate::nips::nip44::decrypt(secret_key, public_key, payload).map_err(SignerError::backend)
     }
 }
 

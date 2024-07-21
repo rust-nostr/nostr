@@ -46,6 +46,8 @@ pub enum Error {
     Json(serde_json::Error),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
+    /// Signer error
+    Signer(SignerError),
     /// Unsigned event error
     Unsigned(super::unsigned::Error),
     /// OpenTimestamps error
@@ -80,6 +82,7 @@ impl fmt::Display for Error {
             Self::Key(e) => write!(f, "Key: {e}"),
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Signer(e) => write!(f, "{e}"),
             Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
             #[cfg(feature = "nip03")]
             Self::OpenTimestamps(e) => write!(f, "NIP03: {e}"),
@@ -112,6 +115,12 @@ impl From<serde_json::Error> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+impl From<SignerError> for Error {
+    fn from(e: SignerError) -> Self {
+        Self::Signer(e)
     }
 }
 
@@ -211,32 +220,8 @@ impl EventBuilder {
         self
     }
 
-    /// Build event
-    #[inline]
-    pub fn to_event_with_ctx<C, R, T>(
-        self,
-        secp: &Secp256k1<C>,
-        rng: &mut R,
-        supplier: &T,
-        keys: &Keys,
-    ) -> Result<Event, Error>
-    where
-        C: Signing + Verification,
-        R: Rng + CryptoRng,
-        T: TimeSupplier,
-    {
-        let pubkey: PublicKey = keys.public_key();
-        Ok(self
-            .to_unsigned_event_with_supplier(supplier, pubkey)
-            .sign_with_ctx(secp, rng, keys)?)
-    }
-
     /// Build unsigned event
-    pub fn to_unsigned_event_with_supplier<T>(
-        self,
-        supplier: &T,
-        pubkey: PublicKey,
-    ) -> UnsignedEvent
+    pub fn build_with_ctx<T>(self, supplier: &T, pubkey: PublicKey) -> UnsignedEvent
     where
         T: TimeSupplier,
     {
@@ -291,18 +276,87 @@ impl EventBuilder {
         }
     }
 
-    /// Build event
+    /// Build unsigned event
     #[inline]
     #[cfg(feature = "std")]
-    pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
-        self.to_event_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), keys)
+    #[deprecated(since = "0.36.0", note = "Use `build` method instead")]
+    pub fn to_unsigned_event(self, pubkey: PublicKey) -> UnsignedEvent {
+        self.build_with_ctx(&Instant::now(), pubkey)
     }
 
     /// Build unsigned event
     #[inline]
     #[cfg(feature = "std")]
-    pub fn to_unsigned_event(self, pubkey: PublicKey) -> UnsignedEvent {
-        self.to_unsigned_event_with_supplier(&Instant::now(), pubkey)
+    pub fn build(self, pubkey: PublicKey) -> UnsignedEvent {
+        self.build_with_ctx(&Instant::now(), pubkey)
+    }
+
+    /// Build, sign and return [`Event`]
+    #[inline]
+    #[cfg(feature = "std")]
+    #[deprecated(since = "0.36.0", note = "Use `sign_with_ctx` method instead")]
+    pub fn to_event_with_ctx<C, R, T>(
+        self,
+        secp: &Secp256k1<C>,
+        rng: &mut R,
+        supplier: &T,
+        keys: &Keys,
+    ) -> Result<Event, Error>
+    where
+        C: Signing + Verification,
+        R: Rng + CryptoRng,
+        T: TimeSupplier,
+    {
+        self.sign_with_ctx(secp, rng, supplier, keys)
+    }
+
+    /// Build event
+    #[inline]
+    #[cfg(feature = "std")]
+    #[deprecated(
+        since = "0.36.0",
+        note = "Use `sign` or `sign_with_keys` method instead"
+    )]
+    pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
+        self.sign_with_keys(keys)
+    }
+
+    /// Build, sign and return [`Event`]
+    #[inline]
+    #[cfg(feature = "std")]
+    pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
+    where
+        T: NostrSigner,
+    {
+        let public_key: PublicKey = signer.get_public_key().await?;
+        let unsigned: UnsignedEvent = self.build(public_key);
+        Ok(signer.sign_event(unsigned).await?)
+    }
+
+    /// Build, sign and return [`Event`] using [`Keys`] signer
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
+        self.sign_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), keys)
+    }
+
+    /// Build, sign and return [`Event`] using [`Keys`] signer
+    pub fn sign_with_ctx<C, R, T>(
+        self,
+        secp: &Secp256k1<C>,
+        rng: &mut R,
+        supplier: &T,
+        keys: &Keys,
+    ) -> Result<Event, Error>
+    where
+        C: Signing + Verification,
+        R: Rng + CryptoRng,
+        T: TimeSupplier,
+    {
+        let pubkey: PublicKey = keys.public_key();
+        Ok(self
+            .build_with_ctx(supplier, pubkey)
+            .sign_with_ctx(secp, rng, keys)?)
     }
 
     /// Profile metadata
@@ -1225,14 +1279,18 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
-    pub fn seal(
-        sender_keys: &Keys,
+    pub async fn seal<T>(
+        signer: &T,
         receiver_pubkey: &PublicKey,
         rumor: UnsignedEvent,
-    ) -> Result<Self, Error> {
-        Ok(nip59::make_seal(sender_keys, receiver_pubkey, rumor)?)
+    ) -> Result<Self, Error>
+    where
+        T: NostrSigner,
+    {
+        Ok(nip59::make_seal(signer, receiver_pubkey, rumor).await?)
     }
 
+    // TODO: remove expiration arg and return event builder (this will allow to build POW events and add custom tags)
     /// Gift Wrap from seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
@@ -1266,7 +1324,7 @@ impl EventBuilder {
 
         Self::new(Kind::GiftWrap, content, tags)
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
-            .to_event(&keys)
+            .sign_with_keys(&keys)
     }
 
     /// Gift Wrap
@@ -1274,13 +1332,19 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
-    pub fn gift_wrap(
-        sender_keys: &Keys,
+    pub async fn gift_wrap<T>(
+        signer: &T,
         receiver: &PublicKey,
         rumor: UnsignedEvent,
         expiration: Option<Timestamp>,
-    ) -> Result<Event, Error> {
-        let seal: Event = Self::seal(sender_keys, receiver, rumor)?.to_event(sender_keys)?;
+    ) -> Result<Event, Error>
+    where
+        T: NostrSigner,
+    {
+        let seal: Event = Self::seal(signer, receiver, rumor)
+            .await?
+            .sign(signer)
+            .await?;
         Self::gift_wrap_from_seal(receiver, &seal, expiration)
     }
 
@@ -1592,7 +1656,7 @@ mod tests {
         );
 
         let event = EventBuilder::text_note("hello", [])
-            .to_event(&keys)
+            .sign_with_keys(&keys)
             .unwrap();
 
         let serialized = event.as_json();
@@ -1734,7 +1798,7 @@ mod tests {
         let event_builder: Event =
             EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)
                 .unwrap()
-                .to_event(&keys)
+                .sign_with_keys(&keys)
                 .unwrap();
 
         assert_eq!(event_builder.kind, Kind::BadgeAward);
@@ -1760,12 +1824,12 @@ mod tests {
         ];
         let bravery_badge_event =
             EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())
-                .to_event(&badge_one_keys)
+                .sign_with_keys(&badge_one_keys)
                 .unwrap();
         let bravery_badge_award =
             EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())
                 .unwrap()
-                .to_event(&badge_one_keys)
+                .sign_with_keys(&badge_one_keys)
                 .unwrap();
 
         // Badge 2
@@ -1774,12 +1838,12 @@ mod tests {
 
         let honor_badge_event =
             EventBuilder::define_badge("honor", None, None, None, None, Vec::new())
-                .to_event(&badge_two_keys)
+                .sign_with_keys(&badge_two_keys)
                 .unwrap();
         let honor_badge_award =
             EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())
                 .unwrap()
-                .to_event(&badge_two_keys)
+                .sign_with_keys(&badge_two_keys)
                 .unwrap();
 
         let example_event_json = format!(
@@ -1807,7 +1871,7 @@ mod tests {
         let profile_badges =
             EventBuilder::profile_badges(badge_definitions, badge_awards, &pub_key)
                 .unwrap()
-                .to_event(&keys)
+                .sign_with_keys(&keys)
                 .unwrap();
 
         assert_eq!(profile_badges.kind, Kind::ProfileBadges);
@@ -1825,7 +1889,7 @@ mod benches {
     pub fn builder_to_event(bh: &mut Bencher) {
         let keys = Keys::generate();
         bh.iter(|| {
-            black_box(EventBuilder::text_note("hello", []).to_event(&keys)).unwrap();
+            black_box(EventBuilder::text_note("hello", []).sign_with_keys(&keys)).unwrap();
         });
     }
 }

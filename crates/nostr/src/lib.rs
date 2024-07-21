@@ -46,6 +46,7 @@ pub mod key;
 pub mod message;
 pub mod nips;
 pub mod prelude;
+pub mod signer;
 pub mod types;
 pub mod util;
 
@@ -61,6 +62,8 @@ pub use self::key::{Keys, PublicKey, SecretKey};
 pub use self::message::{ClientMessage, RawRelayMessage, RelayMessage, SubscriptionId};
 #[doc(hidden)]
 pub use self::nips::nip19::{FromBech32, ToBech32};
+#[doc(hidden)]
+pub use self::signer::{NostrSigner, SignerError};
 #[doc(hidden)]
 pub use self::types::{
     Alphabet, Contact, Filter, ImageDimensions, Metadata, SingleLetterTag, Timestamp, TryIntoUrl,

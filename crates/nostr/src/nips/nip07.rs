@@ -10,6 +10,7 @@ use alloc::string::{String, ToString};
 use core::fmt;
 use core::str::FromStr;
 
+use async_trait::async_trait;
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::schnorr::Signature;
 use js_sys::{Array, Function, Object, Promise, Reflect};
@@ -18,6 +19,7 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
 
 use crate::event::{self, unsigned};
+use crate::signer::{NostrSigner, SignerError};
 use crate::{key, Event, PublicKey, UnsignedEvent};
 
 /// NIP07 error
@@ -139,7 +141,7 @@ impl Nip07Signer {
     }
 
     /// Get Public Key
-    pub async fn get_public_key(&self) -> Result<PublicKey, Error> {
+    async fn _get_public_key(&self) -> Result<PublicKey, Error> {
         let func: Function = self.get_func(&self.nostr_obj, "getPublicKey")?;
         let promise: Promise = Promise::resolve(&func.call0(&self.nostr_obj)?);
         let result: JsValue = JsFuture::from(promise).await?;
@@ -149,8 +151,7 @@ impl Nip07Signer {
         Ok(PublicKey::from_hex(public_key)?)
     }
 
-    /// Sign event
-    pub async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Error> {
+    async fn _sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Error> {
         let func: Function = self.get_func(&self.nostr_obj, "signEvent")?;
 
         let tags: Array = unsigned
@@ -221,12 +222,7 @@ impl Nip07Signer {
             .map_err(|_| Error::NamespaceNotFound(String::from("nip04")))
     }
 
-    /// NIP04 encrypt
-    pub async fn nip04_encrypt<T>(
-        &self,
-        public_key: &PublicKey,
-        content: T,
-    ) -> Result<String, Error>
+    async fn _nip04_encrypt<T>(&self, public_key: &PublicKey, content: T) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
@@ -245,8 +241,7 @@ impl Nip07Signer {
             .ok_or_else(|| Error::TypeMismatch(String::from("expected a string")))
     }
 
-    /// NIP04 decrypt
-    pub async fn nip04_decrypt<S>(
+    async fn _nip04_decrypt<S>(
         &self,
         public_key: &PublicKey,
         ciphertext: S,
@@ -275,12 +270,7 @@ impl Nip07Signer {
             .map_err(|_| Error::NamespaceNotFound(String::from("nip44")))
     }
 
-    /// NIP44 encrypt
-    pub async fn nip44_encrypt<T>(
-        &self,
-        public_key: &PublicKey,
-        content: T,
-    ) -> Result<String, Error>
+    async fn _nip44_encrypt<T>(&self, public_key: &PublicKey, content: T) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
@@ -299,8 +289,7 @@ impl Nip07Signer {
             .ok_or_else(|| Error::TypeMismatch(String::from("expected a string")))
     }
 
-    /// NIP44 decrypt
-    pub async fn nip44_decrypt<T>(
+    async fn _nip44_decrypt<T>(
         &self,
         public_key: &PublicKey,
         ciphertext: T,
@@ -321,5 +310,58 @@ impl Nip07Signer {
         result
             .as_string()
             .ok_or_else(|| Error::TypeMismatch(String::from("expected a string")))
+    }
+}
+
+#[async_trait(?Send)]
+impl NostrSigner for Nip07Signer {
+    async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
+        self._get_public_key().await.map_err(SignerError::backend)
+    }
+
+    async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
+        self._sign_event(unsigned)
+            .await
+            .map_err(SignerError::backend)
+    }
+
+    async fn nip04_encrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        self._nip04_encrypt(public_key, content)
+            .await
+            .map_err(SignerError::backend)
+    }
+
+    async fn nip04_decrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        self._nip04_decrypt(public_key, content)
+            .await
+            .map_err(SignerError::backend)
+    }
+
+    async fn nip44_encrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        self._nip44_encrypt(public_key, content)
+            .await
+            .map_err(SignerError::backend)
+    }
+
+    async fn nip44_decrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        self._nip44_decrypt(public_key, content)
+            .await
+            .map_err(SignerError::backend)
     }
 }

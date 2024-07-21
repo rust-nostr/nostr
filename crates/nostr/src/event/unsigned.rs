@@ -143,16 +143,16 @@ impl UnsignedEvent {
         Ok(())
     }
 
-    /// Sign an unsigned event
+    /// Sign an unsigned event with [`Keys`] signer
     ///
     /// Internally: calculate [EventId] (if not set), sign it, compose and verify [Event].
     #[inline]
     #[cfg(feature = "std")]
-    pub fn sign(self, keys: &Keys) -> Result<Event, Error> {
+    pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
         self.sign_with_ctx(&SECP256K1, &mut OsRng, keys)
     }
 
-    /// Sign an unsigned event
+    /// Sign an unsigned event with [`Keys`] signer
     ///
     /// Internally: calculate [EventId] (if not set), sign it, compose and verify [Event].
     pub fn sign_with_ctx<C, R>(

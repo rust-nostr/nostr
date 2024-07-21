@@ -93,8 +93,13 @@ impl JsUnsignedEvent {
     /// Sign an unsigned event
     ///
     /// Internally: calculate event ID (if not set), sign it, compose and verify event.
-    pub fn sign(self, keys: &JsKeys) -> Result<JsEvent> {
-        Ok(self.inner.sign(keys.deref()).map_err(into_err)?.into())
+    #[wasm_bindgen(js_name = signWithKeys)]
+    pub fn sign_with_keys(self, keys: &JsKeys) -> Result<JsEvent> {
+        Ok(self
+            .inner
+            .sign_with_keys(keys.deref())
+            .map_err(into_err)?
+            .into())
     }
 
     /// Add signature to unsigned event

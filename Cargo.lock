@@ -2750,6 +2750,7 @@ name = "nostr"
 version = "0.35.0"
 dependencies = [
  "aes",
+ "async-trait",
  "base64 0.22.1",
  "bech32",
  "bip39",

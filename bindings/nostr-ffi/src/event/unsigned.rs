@@ -67,8 +67,10 @@ impl UnsignedEvent {
     /// Sign an unsigned event
     ///
     /// Internally: calculate event ID (if not set), sign it, compose and verify event.
-    pub fn sign(&self, keys: &Keys) -> Result<Event> {
-        Ok(Event::from(self.inner.clone().sign(keys.deref())?))
+    pub fn sign_with_keys(&self, keys: &Keys) -> Result<Event> {
+        Ok(Event::from(
+            self.inner.clone().sign_with_keys(keys.deref())?,
+        ))
     }
 
     /// Add signature to unsigned event
