@@ -134,7 +134,7 @@ The following crate feature flags are available:
 |     ✅     | [28 - Public Chat](https://github.com/nostr-protocol/nips/blob/master/28.md)                                    |
 |     ❌     | [29 - Relay-based Groups](https://github.com/nostr-protocol/nips/blob/master/29.md)                             |
 |     ✅     | [30 - Custom Emoji](https://github.com/nostr-protocol/nips/blob/master/30.md)                                   |
-|     ❌     | [31 - Dealing with Unknown Events](https://github.com/nostr-protocol/nips/blob/master/31.md)                    |
+|     ✅     | [31 - Dealing with Unknown Events](https://github.com/nostr-protocol/nips/blob/master/31.md)                    |
 |     ✅     | [32 - Labeling](https://github.com/nostr-protocol/nips/blob/master/32.md)                                       |
 |     ❌     | [34 - `git` stuff](https://github.com/nostr-protocol/nips/blob/master/34.md)                                    |
 |     ❌     | [35 - Torrents](https://github.com/nostr-protocol/nips/blob/master/35.md)                                       |

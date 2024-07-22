@@ -38,6 +38,10 @@ pub enum TagKind {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
     Protected,
+    /// Human-readable plaintext summary of what that event is about
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
+    Alt,
     /// Relay
     RelayUrl,
     /// Nonce
@@ -125,6 +129,7 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
                 single_letter: Arc::new(single_letter.into()),
             },
             tag::TagKind::Protected => Self::Protected,
+            tag::TagKind::Alt => Self::Alt,
             tag::TagKind::Relay => Self::RelayUrl,
             tag::TagKind::Nonce => Self::Nonce,
             tag::TagKind::Delegation => Self::Delegation,
@@ -177,6 +182,7 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
         match value {
             TagKind::SingleLetter { single_letter } => Self::SingleLetter(**single_letter),
             TagKind::Protected => Self::Protected,
+            TagKind::Alt => Self::Alt,
             TagKind::RelayUrl => Self::Relay,
             TagKind::Nonce => Self::Nonce,
             TagKind::Delegation => Self::Delegation,
@@ -443,6 +449,19 @@ impl Tag {
         }
     }
 
+    /// A short human-readable plaintext summary of what that event is about
+    ///
+    /// JSON: `["alt", "<summary>"]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn alt(summary: &str) -> Self {
+        Self {
+            inner: tag::Tag::alt(summary),
+        }
+    }
+
     /// Compose custom tag
     ///
     /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
@@ -680,6 +699,12 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
     Protected,
+    /// A short human-readable plaintext summary of what that event is about
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
+    Alt {
+        summary: String,
+    },
 }
 
 impl From<tag::TagStandard> for TagStandard {
@@ -853,6 +878,7 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::LabelNamespace(label) => Self::LabelNamespace { namespace: label },
             tag::TagStandard::Label(labels) => Self::Label { label: labels },
             tag::TagStandard::Protected => Self::Protected,
+            tag::TagStandard::Alt(summary) => Self::Alt { summary },
         }
     }
 }
@@ -1000,6 +1026,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::LabelNamespace { namespace } => Ok(Self::LabelNamespace(namespace)),
             TagStandard::Label { label } => Ok(Self::Label(label)),
             TagStandard::Protected => Ok(Self::Protected),
+            TagStandard::Alt { summary } => Ok(Self::Alt(summary)),
         }
     }
 }

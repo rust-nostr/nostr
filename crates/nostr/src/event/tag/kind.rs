@@ -19,6 +19,10 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
     Protected,
+    /// Human-readable plaintext summary of what that event is about
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
+    Alt,
     /// Relay
     Relay,
     /// Nonce
@@ -108,6 +112,7 @@ impl<'a> fmt::Display for TagKind<'a> {
         match self {
             Self::SingleLetter(s) => write!(f, "{s}"),
             Self::Protected => write!(f, "-"),
+            Self::Alt => write!(f, "alt"),
             Self::Relay => write!(f, "relay"),
             Self::Nonce => write!(f, "nonce"),
             Self::Delegation => write!(f, "delegation"),
@@ -157,6 +162,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
     fn from(kind: &'a str) -> Self {
         match kind {
             "-" => Self::Protected,
+            "alt" => Self::Alt,
             "relay" => Self::Relay,
             "nonce" => Self::Nonce,
             "delegation" => Self::Delegation,

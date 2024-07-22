@@ -171,6 +171,10 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
     Protected,
+    /// A short human-readable plaintext summary of what that event is about
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
+    Alt(String),
 }
 
 impl TagStandard {
@@ -339,6 +343,7 @@ impl TagStandard {
                     character: Alphabet::L,
                     uppercase: true,
                 }) => Ok(Self::LabelNamespace(tag_1.to_string())),
+                TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
                 TagKind::Dim => Ok(Self::Dim(ImageDimensions::from_str(tag_1)?)),
                 _ => Err(Error::UnknownStardardizedTag),
             };
@@ -552,6 +557,7 @@ impl TagStandard {
                 uppercase: false,
             }),
             Self::Protected => TagKind::Protected,
+            Self::Alt(..) => TagKind::Alt,
         }
     }
 
@@ -786,6 +792,7 @@ impl From<TagStandard> for Vec<String> {
                 tag
             }
             TagStandard::Protected => vec![tag_kind],
+            TagStandard::Alt(summary) => vec![tag_kind, summary],
         }
     }
 }

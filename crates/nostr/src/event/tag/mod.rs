@@ -289,6 +289,19 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::Protected)
     }
 
+    /// A short human-readable plaintext summary of what that event is about
+    ///
+    /// JSON: `["alt", "<summary>"]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
+    #[inline]
+    pub fn alt<T>(summary: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::from_standardized_without_cell(TagStandard::Alt(summary.into()))
+    }
+
     /// Compose custom tag
     ///
     /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
@@ -499,6 +512,8 @@ mod tests {
             vec!["-"],
             Tag::from_standardized_without_cell(TagStandard::Protected).to_vec()
         );
+
+        assert_eq!(vec!["alt", "something"], Tag::alt("something").to_vec());
 
         assert_eq!(
             vec!["content-warning"],
@@ -876,6 +891,11 @@ mod tests {
         assert_eq!(Tag::parse::<String>(&[]).unwrap_err(), Error::EmptyTag);
 
         assert_eq!(Tag::parse(&["-"]).unwrap(), Tag::protected());
+
+        assert_eq!(
+            Tag::parse(&["alt", "something"]).unwrap(),
+            Tag::alt("something")
+        );
 
         assert_eq!(
             Tag::parse(&["content-warning"]).unwrap(),

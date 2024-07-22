@@ -33,6 +33,7 @@
 
 ### Added
 
+* nostr: add NIP-31 support ([Yuki Kishimoto])
 * nostr: add NIP-70 support ([Yuki Kishimoto])
 * nostr: add `EventId::LEN` const ([Yuki Kishimoto])
 * nostr: add `UnsignedEvent::ensure_id` method ([Yuki Kishimoto])

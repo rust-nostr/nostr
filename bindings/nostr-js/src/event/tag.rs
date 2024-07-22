@@ -356,6 +356,18 @@ impl JsTag {
         }
     }
 
+    /// A short human-readable plaintext summary of what that event is about
+    ///
+    /// JSON: `["alt", "<summary>"]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
+    #[inline]
+    pub fn alt(summary: &str) -> Self {
+        Self {
+            inner: Tag::alt(summary),
+        }
+    }
+
     /// Check if is a standard event tag with `root` marker
     #[inline]
     #[wasm_bindgen(js_name = isRoot)]
