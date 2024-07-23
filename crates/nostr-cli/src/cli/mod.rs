@@ -31,6 +31,8 @@ pub enum CliCommand {
 #[derive(Debug, Parser)]
 #[command(name = "")]
 pub enum Command {
+    /// Generate random keys
+    Generate,
     /// Sync public key's event with specified relays (negentropy)
     #[command(arg_required_else_help = true)]
     Sync {

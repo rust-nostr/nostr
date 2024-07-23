@@ -41,6 +41,7 @@
 * nostr: add `EventId::LEN` const ([Yuki Kishimoto])
 * nostr: add `UnsignedEvent::ensure_id` method ([Yuki Kishimoto])
 * sdk: add `Client::gift_wrap_to` and `Client::send_private_msg_to` ([reyamir])
+* cli: add `generate` command ([Yuki Kishimoto])
 
 ### Fixed
 

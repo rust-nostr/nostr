@@ -113,6 +113,12 @@ async fn run() -> Result<()> {
 
 async fn handle_command(command: Command, client: &Client) -> Result<()> {
     match command {
+        Command::Generate => {
+            let keys: Keys = Keys::generate();
+            println!("Secret key: {}", keys.secret_key()?.to_bech32()?);
+            println!("Public key: {}", keys.public_key().to_bech32()?);
+            Ok(())
+        }
         Command::Sync {
             public_key,
             relays,
