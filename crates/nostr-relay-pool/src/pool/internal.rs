@@ -638,9 +638,7 @@ impl InternalRelayPool {
                 .await
                 .unwrap_or_default();
 
-            // Compose IDs and Events collections
-            let ids: Arc<Mutex<HashSet<EventId>>> =
-                Arc::new(Mutex::new(stored_events.iter().map(|e| e.id()).collect()));
+            // Compose events collections
             let events: Arc<Mutex<BTreeSet<Event>>> =
                 Arc::new(Mutex::new(stored_events.into_iter().collect()));
 
@@ -648,17 +646,12 @@ impl InternalRelayPool {
             let mut handles = Vec::with_capacity(urls.len());
             for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
                 let filters = filters.clone();
-                let ids = ids.clone();
                 let events = events.clone();
                 let handle = thread::spawn(async move {
                     if let Err(e) = relay
                         .get_events_of_with_callback(filters, timeout, opts, |event| async {
-                            let mut ids = ids.lock().await;
-                            if !ids.contains(&event.id()) {
-                                let mut events = events.lock().await;
-                                ids.insert(event.id());
-                                events.insert(event);
-                            }
+                            let mut events = events.lock().await;
+                            events.insert(event);
                         })
                         .await
                     {

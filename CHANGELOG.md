@@ -32,6 +32,7 @@
 * nostr: ensure that NIP-59 rumor has `EventId` ([Yuki Kishimoto])
 * pool: get events only from remote relay when calling `Relay::get_events_of` ([Yuki Kishimoto])
 * pool: take mutex ownership instead of clone in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
+* pool: remove IDs collection from `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 
 ### Added
 
