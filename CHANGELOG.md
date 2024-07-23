@@ -47,6 +47,8 @@
 
 ### Removed
 
+* cli: remove `tracing-subscriber` dep
+
 ## [v0.33.0]
 
 ### Summary

@@ -1643,7 +1643,6 @@ dependencies = [
  "rustyline",
  "serde_json",
  "tokio",
- "tracing-subscriber",
 ]
 
 [[package]]

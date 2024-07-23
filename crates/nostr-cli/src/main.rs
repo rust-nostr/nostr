@@ -14,7 +14,6 @@ use rayon::prelude::*;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use tokio::time::Instant;
-use tracing_subscriber::fmt::format::FmtSpan;
 
 mod cli;
 mod util;
@@ -29,10 +28,6 @@ async fn main() {
 }
 
 async fn run() -> Result<()> {
-    tracing_subscriber::fmt::fmt()
-        .with_span_events(FmtSpan::CLOSE)
-        .init();
-
     let args = Cli::parse();
 
     match args.command {
