@@ -674,7 +674,7 @@ impl InternalRelayPool {
             }
 
             // Lock events, iterate set and revert order (events are sorted in ascending order in the BTreeSet)
-            let events: BTreeSet<Event> = events.lock().await.clone();
+            let events: BTreeSet<Event> = util::take_mutex_ownership(events).await;
             let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
 
             // Check how many filters are passed and return the limit
