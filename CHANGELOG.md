@@ -51,6 +51,7 @@
 
 ### Removed
 
+* nostr: remove support for `nrelay` NIP-19 entity ([Yuki Kishimoto])
 * cli: remove `tracing-subscriber` dep
 
 ## [v0.33.0]

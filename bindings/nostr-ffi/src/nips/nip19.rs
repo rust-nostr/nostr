@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use nostr::nips::nip19::{self, FromBech32, ToBech32};
 use nostr::nips::nip21::NostrURI;
-use nostr::Url;
 use uniffi::{Enum, Object};
 
 use super::nip01::Coordinate;
@@ -33,8 +32,6 @@ pub enum Nip19Enum {
     Event { event: Arc<Nip19Event> },
     /// naddr
     Coord { coordinate: Arc<Coordinate> },
-    /// nrelay
-    Relay { relay: Arc<Nip19Relay> },
 }
 
 impl From<nip19::Nip19> for Nip19Enum {
@@ -60,9 +57,6 @@ impl From<nip19::Nip19> for Nip19Enum {
             },
             nip19::Nip19::Coordinate(coordinate) => Self::Coord {
                 coordinate: Arc::new(coordinate.into()),
-            },
-            nip19::Nip19::Relay(val) => Self::Relay {
-                relay: Arc::new(val.into()),
             },
         }
     }
@@ -208,54 +202,5 @@ impl Nip19Profile {
 
     pub fn relays(&self) -> Vec<String> {
         self.inner.relays.iter().map(|u| u.to_string()).collect()
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Object)]
-#[uniffi::export(Debug, Eq, Hash)]
-pub struct Nip19Relay {
-    inner: nip19::Nip19Relay,
-}
-
-impl From<nip19::Nip19Relay> for Nip19Relay {
-    fn from(inner: nip19::Nip19Relay) -> Self {
-        Self { inner }
-    }
-}
-
-#[uniffi::export]
-impl Nip19Relay {
-    #[uniffi::constructor]
-    pub fn new(url: &str) -> Result<Self> {
-        let url: Url = Url::parse(url)?;
-        Ok(Self {
-            inner: nip19::Nip19Relay::new(url),
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_bech32(bech32: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nip19::Nip19Relay::from_bech32(bech32)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nip19::Nip19Relay::from_nostr_uri(uri)?,
-        })
-    }
-
-    pub fn to_bech32(&self) -> Result<String> {
-        Ok(self.inner.to_bech32()?)
-    }
-
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        Ok(self.inner.to_nostr_uri()?)
-    }
-
-    pub fn url(&self) -> String {
-        self.inner.url.to_string()
     }
 }

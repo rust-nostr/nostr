@@ -31,7 +31,6 @@ pub const PREFIX_BECH32_NOTE_ID: &str = "note";
 pub const PREFIX_BECH32_PROFILE: &str = "nprofile";
 pub const PREFIX_BECH32_EVENT: &str = "nevent";
 pub const PREFIX_BECH32_COORDINATE: &str = "naddr";
-pub const PREFIX_BECH32_RELAY: &str = "nrelay";
 
 const HRP_SECRET_KEY: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_SECRET_KEY);
 #[cfg(feature = "nip49")]
@@ -41,7 +40,6 @@ const HRP_NOTE_ID: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_NOTE_ID);
 const HRP_PROFILE: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_PROFILE);
 const HRP_EVENT: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_EVENT);
 const HRP_COORDINATE: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_COORDINATE);
-const HRP_RELAY: Hrp = Hrp::parse_unchecked(PREFIX_BECH32_RELAY);
 
 pub const SPECIAL: u8 = 0;
 pub const RELAY: u8 = 1;
@@ -176,8 +174,6 @@ enum Nip19Prefix {
     NEvent,
     /// naddr
     NAddr,
-    /// nrelay
-    NRelay,
 }
 
 impl FromStr for Nip19Prefix {
@@ -193,7 +189,6 @@ impl FromStr for Nip19Prefix {
             PREFIX_BECH32_PROFILE => Ok(Nip19Prefix::NProfile),
             PREFIX_BECH32_EVENT => Ok(Nip19Prefix::NEvent),
             PREFIX_BECH32_COORDINATE => Ok(Nip19Prefix::NAddr),
-            PREFIX_BECH32_RELAY => Ok(Nip19Prefix::NRelay),
             _ => Err(Error::WrongPrefixOrVariant),
         }
     }
@@ -219,8 +214,6 @@ pub enum Nip19 {
     Event(Nip19Event),
     /// naddr
     Coordinate(Coordinate),
-    /// nrelay
-    Relay(Nip19Relay),
 }
 
 pub trait FromBech32: Sized {
@@ -256,7 +249,6 @@ impl FromBech32 for Nip19 {
             Nip19Prefix::NEvent => Ok(Self::Event(Nip19Event::from_bech32_data(data)?)),
             Nip19Prefix::Note => Ok(Self::EventId(EventId::from_slice(data.as_slice())?)),
             Nip19Prefix::NAddr => Ok(Self::Coordinate(Coordinate::from_bech32_data(data)?)),
-            Nip19Prefix::NRelay => Ok(Self::Relay(Nip19Relay::from_bech32_data(data)?)),
         }
     }
 }
@@ -274,7 +266,6 @@ impl ToBech32 for Nip19 {
             Nip19::Profile(profile) => profile.to_bech32(),
             Nip19::EventId(event_id) => event_id.to_bech32(),
             Nip19::Coordinate(coordinate) => coordinate.to_bech32(),
-            Nip19::Relay(relay) => relay.to_bech32(),
         }
     }
 }
@@ -652,75 +643,6 @@ impl FromBech32 for Nip19Profile {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct Nip19Relay {
-    pub url: Url,
-}
-
-impl Nip19Relay {
-    #[inline]
-    pub fn new(url: Url) -> Self {
-        Self { url }
-    }
-
-    fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
-        let mut url: Option<Url> = None;
-
-        while !data.is_empty() {
-            let t = data.first().ok_or(Error::TLV)?;
-            let l = data.get(1).ok_or(Error::TLV)?;
-            let l = *l as usize;
-
-            let bytes = data.get(2..l + 2).ok_or(Error::TLV)?;
-
-            if *t == SPECIAL && url.is_none() {
-                let u: &str = str::from_utf8(bytes)?;
-                url = Some(Url::from_str(u)?);
-            }
-
-            data.drain(..l + 2);
-        }
-
-        Ok(Self {
-            url: url.ok_or_else(|| Error::FieldMissing("url".to_string()))?,
-        })
-    }
-}
-
-impl ToBech32 for Nip19Relay {
-    type Err = Error;
-
-    fn to_bech32(&self) -> Result<String, Self::Err> {
-        let url: &[u8] = self.url.as_str().as_bytes();
-
-        // Allocate capacity
-        let mut bytes: Vec<u8> = Vec::with_capacity(1 + 1 + url.len());
-
-        bytes.push(SPECIAL); // Type
-        bytes.push(url.len() as u8); // Len
-        bytes.extend(url); // Value
-
-        Ok(bech32::encode::<Bech32>(HRP_RELAY, &bytes)?)
-    }
-}
-
-impl FromBech32 for Nip19Relay {
-    type Err = Error;
-
-    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data) = bech32::decode(s.as_ref())?;
-
-        if hrp != HRP_RELAY {
-            return Err(Error::WrongPrefixOrVariant);
-        }
-
-        Self::from_bech32_data(data)
-    }
-}
-
 impl Coordinate {
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut identifier: Option<String> = None;
@@ -946,21 +868,6 @@ mod tests {
     fn test_parse_nevent_with_malformed_public_key() {
         let event = Nip19Event::from_bech32("nevent1qqsqye53g5jg5pzw87q6a3nstkf2wu7jph87nala2nvfyw5u3ewlhfspr9mhxue69uhkymmnw3ezumr9vd682unfveujumn9wspyqve5xasnyvehxqunqvryxyukydr9xsmn2d3jxgcn2wf5v5uxyerpxucrvct9x43nwwp4v3jnqwt9x5uk2dpkxq6kvwf3vycrxe35893ska2ytu").unwrap();
         assert!(event.author.is_none());
-    }
-
-    #[test]
-    fn test_bech32_nrelay() {
-        let encoded = "nrelay1qq28wumn8ghj7un9d3shjtnyv9kh2uewd9hsc5zt2x";
-        let parsed = Nip19Relay::from_bech32(encoded).unwrap();
-
-        let expected_url = Url::from_str("wss://relay.damus.io").unwrap();
-
-        assert_eq!(parsed.url, expected_url);
-
-        // Test serialization and deserialization
-        let relay = Nip19Relay { url: expected_url };
-        let serialized = relay.to_bech32().unwrap();
-        assert_eq!(relay, Nip19Relay::from_bech32(serialized).unwrap());
     }
 }
 
