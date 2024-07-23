@@ -32,12 +32,14 @@ async fn run() -> Result<()> {
 
     match args.command {
         CliCommand::Open => {
+            println!("Opening database...");
             //let db = RocksDatabase::open("./db/nostr").await?;
             let db = SQLiteDatabase::open("nostr.db").await?;
             // let db = MemoryDatabase::with_opts(MemoryDatabaseOptions {
             //     events: true,
             //     max_events: None,
             // });
+            println!("Constructing client...");
             let client = Client::builder().database(db).build();
 
             let rl = &mut DefaultEditor::new()?;
@@ -122,21 +124,34 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             // Add relays
             client.add_relays(relays.iter()).await?;
 
-            // println!("Connecting to relays...");
+            println!("Connecting to relays...");
 
             // Connect and wait for connection
             client.connect_with_timeout(Duration::from_secs(60)).await;
 
-            // println!("Connected.");
+            // Compose filter and opts
+            let filter: Filter = Filter::default().author(public_key);
+            let direction: NegentropyDirection = direction.into();
+            let opts: NegentropyOptions = NegentropyOptions::default().direction(direction);
 
-            // println!("Reconciling events with relays...");
+            // Dry run
+            let output: Output<Reconciliation> = client
+                .reconcile_with(relays.iter(), filter.clone(), opts.dry_run())
+                .await?;
+
+            println!(
+                "Reconciling events with relays: local={}, remote={}",
+                output.local.len(),
+                output.remote.len()
+            );
 
             // Reconcile
-            let filter: Filter = Filter::default().author(public_key);
-            let opts: NegentropyOptions = NegentropyOptions::default().direction(direction.into());
-            client.reconcile_with(relays.iter(), filter, opts).await?;
+            let output: Output<Reconciliation> =
+                client.reconcile_with(relays.iter(), filter, opts).await?;
 
-            // println!("Reconciliation terminated.");
+            println!("Reconciliation terminated:");
+            println!("- Sent {} events", output.sent.len());
+            println!("- Received {} events", output.received.len());
 
             // Remove relays
             for url in relays.into_iter() {
