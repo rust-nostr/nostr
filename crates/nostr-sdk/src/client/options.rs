@@ -18,6 +18,7 @@ use nostr_relay_pool::{RelayLimits, RelayPoolOptions, RelaySendOptions};
 pub struct Options {
     wait_for_send: bool,
     wait_for_subscription: bool,
+    pub(super) autoconnect: bool,
     new_events_difficulty: Arc<AtomicU8>,
     min_pow_difficulty: Arc<AtomicU8>,
     pub(super) req_filters_chunk_size: u8,
@@ -37,6 +38,7 @@ impl Default for Options {
         Self {
             wait_for_send: true,
             wait_for_subscription: false,
+            autoconnect: false,
             new_events_difficulty: Arc::new(AtomicU8::new(0)),
             min_pow_difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: 10,
@@ -88,6 +90,15 @@ impl Options {
             .timeout(self.send_timeout)
             .skip_send_confirmation(!self.wait_for_subscription)
             .skip_disconnected(self.skip_disconnected_relays)
+    }
+
+    /// Automatically start connection with relays (default: false)
+    ///
+    /// When set to `true`, there isn't the need of calling the connect methods.
+    #[inline]
+    pub fn autoconnect(mut self, val: bool) -> Self {
+        self.autoconnect = val;
+        self
     }
 
     /// Set default POW difficulty for `Event`

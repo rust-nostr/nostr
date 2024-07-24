@@ -54,6 +54,15 @@ impl Options {
         builder
     }
 
+    /// Automatically start connection with relays (default: false)
+    ///
+    /// When set to `true`, there isn't the need of calling the connect methods.
+    pub fn autoconnect(self: Arc<Self>, val: bool) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.autoconnect(val);
+        builder
+    }
+
     pub fn difficulty(self: Arc<Self>, difficulty: u8) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.difficulty(difficulty);

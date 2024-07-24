@@ -48,6 +48,13 @@ impl JsOptions {
         self.inner.wait_for_subscription(wait).into()
     }
 
+    /// Automatically start connection with relays (default: false)
+    ///
+    /// When set to `true`, there isn't the need of calling the connect methods.
+    pub fn autoconnect(self, val: bool) -> Self {
+        self.inner.autoconnect(val).into()
+    }
+
     pub fn difficulty(self, difficulty: u8) -> Self {
         self.inner.difficulty(difficulty).into()
     }

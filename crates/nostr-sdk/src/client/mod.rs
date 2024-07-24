@@ -416,7 +416,13 @@ impl Client {
             .limits(self.opts.relay_limits.clone());
 
         // Add relay
-        self.add_relay_with_opts::<Url>(url, opts).await
+        let added: bool = self.add_relay_with_opts::<&Url>(&url, opts).await?;
+
+        if added && self.opts.autoconnect {
+            self.connect_relay::<Url>(url).await?;
+        }
+
+        Ok(added)
     }
 
     /// Add new relay with custom [`RelayOptions`]
