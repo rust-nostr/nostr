@@ -33,6 +33,7 @@
 * pool: get events only from remote relay when calling `Relay::get_events_of` ([Yuki Kishimoto])
 * pool: take mutex ownership instead of clone in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: remove IDs collection from `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
+* pool: better checks before perform queries or send messages to relays ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])
 
 ### Added

@@ -268,13 +268,31 @@ impl InternalRelay {
 
     #[inline]
     pub async fn is_connected(&self) -> bool {
-        self.status().await == RelayStatus::Connected
+        self.status().await.is_connected()
     }
 
     /// Check if is `disconnected`, `stopped` or `terminated`
     #[inline]
     pub async fn is_disconnected(&self) -> bool {
         self.status().await.is_disconnected()
+    }
+
+    async fn check_ready(&self) -> Result<(), Error> {
+        let status: RelayStatus = self.status().await;
+
+        // Relay initialized, never called connect method
+        if status.is_initialized() {
+            return Err(Error::NotConnected);
+        }
+
+        if !status.is_connected()
+            && self.stats.attempts() > MIN_ATTEMPTS
+            && self.stats.uptime() < MIN_UPTIME
+        {
+            return Err(Error::NotConnected);
+        }
+
+        Ok(())
     }
 
     #[cfg(feature = "nip11")]
@@ -1047,20 +1065,17 @@ impl InternalRelay {
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
+        // Check if relay is ready
+        if opts.skip_disconnected {
+            self.check_ready().await?;
+        }
+
         if !self.opts.flags.has_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
         }
 
         if !self.opts.flags.has_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
             return Err(Error::ReadDisabled);
-        }
-
-        if opts.skip_disconnected
-            && !self.is_connected().await
-            && self.stats.attempts() > MIN_ATTEMPTS
-            && self.stats.uptime() < MIN_UPTIME
-        {
-            return Err(Error::NotConnected);
         }
 
         if opts.skip_send_confirmation {
@@ -1448,13 +1463,8 @@ impl InternalRelay {
     where
         F: Future<Output = ()>,
     {
-        // Check if relay is connected
-        if !self.is_connected().await
-            && self.stats.attempts() > MIN_ATTEMPTS
-            && self.stats.uptime() < MIN_UPTIME
-        {
-            return Err(Error::NotConnected);
-        }
+        // Check if relay is ready
+        self.check_ready().await?;
 
         // Compose options
         let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
@@ -1629,17 +1639,12 @@ impl InternalRelay {
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
     ) -> Result<Reconciliation, Error> {
+        // Check if relay is ready
+        self.check_ready().await?;
+
         // Check if read option is disabled
         if !self.opts.flags.has_read() {
             return Err(Error::ReadDisabled);
-        }
-
-        // Check if relay is connected
-        if !self.is_connected().await
-            && self.stats.attempts() > MIN_ATTEMPTS
-            && self.stats.uptime() < MIN_UPTIME
-        {
-            return Err(Error::NotConnected);
         }
 
         // Compose negentropy struct, add items and seal
