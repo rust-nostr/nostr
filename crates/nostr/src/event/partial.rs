@@ -9,12 +9,9 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
 
 use super::raw::{self, RawEvent};
 use super::tag;
-#[cfg(feature = "std")]
-use crate::SECP256K1;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Tag, Timestamp};
 
 /// [`PartialEvent`] error
@@ -22,8 +19,6 @@ use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Tag, Timestamp};
 pub enum Error {
     /// Error serializing or deserializing JSON data
     Json(serde_json::Error),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
     /// Raw event error
     RawEvent(raw::Error),
     /// Tag parse
@@ -39,7 +34,6 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Json(e) => write!(f, "Json: {e}"),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::RawEvent(e) => write!(f, "Raw event: {e}"),
             Self::Tag(e) => write!(f, "Tag: {e}"),
             Self::InvalidSignature => write!(f, "Invalid signature"),
@@ -50,12 +44,6 @@ impl fmt::Display for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
     }
 }
 
@@ -72,7 +60,7 @@ impl From<tag::Error> for Error {
 }
 
 /// Partial event
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PartialEvent {
     /// ID
     pub id: EventId,
@@ -89,27 +77,8 @@ impl PartialEvent {
         Ok(raw.try_into()?)
     }
 
-    /// Verify [`Signature`]
-    #[inline]
-    #[cfg(feature = "std")]
-    pub fn verify_signature(&self) -> Result<(), Error> {
-        self.verify_signature_with_ctx(&SECP256K1)
-    }
-
-    /// Verify [`Signature`]
-    #[inline]
-    pub fn verify_signature_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
-    where
-        C: Verification,
-    {
-        // Verify signature
-        let message: Message = Message::from_digest_slice(self.id.as_bytes())?;
-        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
-            .map_err(|_| Error::InvalidSignature)
-    }
-
     /// Merge [`MissingPartialEvent`] and compose [`Event`]
-    pub fn merge(&self, missing: MissingPartialEvent) -> Result<Event, Error> {
+    pub fn merge(self, missing: MissingPartialEvent) -> Result<Event, Error> {
         let mut tags: Vec<Tag> = Vec::with_capacity(missing.tags.len());
         for tag in missing.tags.into_iter() {
             tags.push(Tag::parse(&tag)?);
