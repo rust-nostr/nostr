@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
     let req_event = req.to_event(&nwc_uri).unwrap();
 
     let subscription = Filter::new()
-        .author(nwc_uri.public_key)
+        .author(nwc_uri.public_key.clone())
         .kind(Kind::WalletConnectResponse)
         .event(req_event.id)
         .since(Timestamp::now());

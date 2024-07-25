@@ -17,7 +17,7 @@ use core::ops::Deref;
 use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Verification, XOnlyPublicKey};
 #[cfg(feature = "std")]
 use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
 use serde::ser::SerializeStruct;
@@ -44,7 +44,7 @@ use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Alphabet, JsonUtil, PublicKey, SingleLetterTag, Timestamp};
+use crate::{key, Alphabet, JsonUtil, PublicKey, SingleLetterTag, Timestamp};
 
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
@@ -99,6 +99,8 @@ pub enum Error {
     Json(String),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
+    /// Key error
+    Key(key::Error),
 }
 
 #[cfg(feature = "std")]
@@ -112,6 +114,7 @@ impl fmt::Display for Error {
             Self::UnknownKey(key) => write!(f, "Unknown JSON event key: {key}"),
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Key(e) => write!(f, "{e}"),
         }
     }
 }
@@ -125,6 +128,12 @@ impl From<serde_json::Error> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Key(e)
     }
 }
 
@@ -236,7 +245,7 @@ impl Event {
     /// Get event author (`pubkey` field)
     #[inline]
     pub fn author(&self) -> PublicKey {
-        self.inner.pubkey
+        self.inner.pubkey.clone()
     }
 
     /// Get event author reference (`pubkey` field)
@@ -358,7 +367,8 @@ impl Event {
         C: Verification,
     {
         let message: Message = Message::from_digest_slice(self.inner.id.as_bytes())?;
-        secp.verify_schnorr(&self.inner.sig, &message, &self.inner.pubkey)
+        let public_key: &XOnlyPublicKey = self.inner.pubkey.as_x_only()?;
+        secp.verify_schnorr(&self.inner.sig, &message, public_key)
             .map_err(|_| Error::InvalidSignature)
     }
 
@@ -491,6 +501,22 @@ impl Event {
             Some(TagStandard::PublicKeyLiveEvent { public_key, .. }) => Some(public_key),
             _ => None,
         })
+    }
+
+    /// Extract public keys from tags (`p` tag)
+    ///
+    /// **This method extract ONLY `TagStandard::PublicKey`, `TagStandard::PublicKeyReport` and `TagStandard::PublicKeyLiveEvent` variants**
+    #[inline]
+    pub fn into_public_keys(self) -> impl Iterator<Item = PublicKey> {
+        self.inner
+            .tags
+            .into_iter()
+            .filter_map(|t| match t.to_standardized() {
+                Some(TagStandard::PublicKey { public_key, .. }) => Some(public_key),
+                Some(TagStandard::PublicKeyReport(public_key, ..)) => Some(public_key),
+                Some(TagStandard::PublicKeyLiveEvent { public_key, .. }) => Some(public_key),
+                _ => None,
+            })
     }
 
     /// Extract event IDs from tags (`e` tag)

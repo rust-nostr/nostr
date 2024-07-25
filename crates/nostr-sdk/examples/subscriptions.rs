@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let subscription = Filter::new()
-        .author(public_key)
+        .author(public_key.clone())
         .kind(Kind::Metadata)
         .since(Timestamp::now());
 
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
     // Subscribe with custom ID
     let sub_id_2 = SubscriptionId::new("other-id");
     let filter = Filter::new()
-        .author(public_key)
+        .author(public_key.clone())
         .kind(Kind::TextNote)
         .since(Timestamp::now());
     client

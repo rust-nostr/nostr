@@ -174,11 +174,13 @@ impl From<Coordinate> for Filter {
 impl From<&Coordinate> for Filter {
     fn from(value: &Coordinate) -> Self {
         if value.identifier.is_empty() {
-            Filter::new().kind(value.kind).author(value.public_key)
+            Filter::new()
+                .kind(value.kind)
+                .author(value.public_key.clone())
         } else {
             Filter::new()
                 .kind(value.kind)
-                .author(value.public_key)
+                .author(value.public_key.clone())
                 .identifier(value.identifier.clone())
         }
     }

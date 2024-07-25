@@ -24,7 +24,7 @@ use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::RngCore;
 use cbc::{Decryptor, Encryptor};
 
-use crate::{util, PublicKey, SecretKey};
+use crate::{key, util, PublicKey, SecretKey};
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
@@ -42,6 +42,8 @@ pub enum Error {
     WrongBlockMode,
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
+    /// Key error
+    Key(key::Error),
 }
 
 #[cfg(feature = "std")]
@@ -58,6 +60,7 @@ impl fmt::Display for Error {
                 "Wrong encryption block mode. The content must be encrypted using CBC mode!"
             ),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
+            Self::Key(e) => write!(f, "{e}"),
         }
     }
 }
@@ -65,6 +68,12 @@ impl fmt::Display for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Key(e)
     }
 }
 
@@ -98,7 +107,7 @@ where
     T: AsRef<[u8]>,
 {
     // Generate key
-    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
 
     // Generate iv
     let mut iv: [u8; 16] = [0u8; 16];
@@ -141,7 +150,7 @@ where
     let iv: Vec<u8> = general_purpose::STANDARD
         .decode(parsed_content[1])
         .map_err(|_| Error::Base64Decode)?;
-    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
 
     let cipher = Aes256CbcDec::new(&key.into(), iv.as_slice().into());
     let result = cipher

@@ -1177,7 +1177,7 @@ impl Client {
         let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
 
         for event in events.into_iter() {
-            pubkeys.extend(event.public_keys());
+            pubkeys.extend(event.into_public_keys());
         }
 
         Ok(pubkeys)
@@ -1188,21 +1188,31 @@ impl Client {
         &self,
         timeout: Option<Duration>,
     ) -> Result<HashMap<PublicKey, Metadata>, Error> {
-        let public_keys = self.get_contact_list_public_keys(timeout).await?;
-        let mut contacts: HashMap<PublicKey, Metadata> =
-            public_keys.iter().map(|p| (*p, Metadata::new())).collect();
+        let mut public_keys = self.get_contact_list_public_keys(timeout).await?;
+        let mut contacts: HashMap<PublicKey, Metadata> = public_keys
+            .iter()
+            .cloned()
+            .map(|p| (p, Metadata::new()))
+            .collect();
 
         let chunk_size: usize = self.opts.req_filters_chunk_size as usize;
-        for chunk in public_keys.chunks(chunk_size) {
+        while !public_keys.is_empty() {
             let mut filters: Vec<Filter> = Vec::new();
-            for public_key in chunk.iter() {
-                filters.push(
-                    Filter::new()
-                        .author(*public_key)
-                        .kind(Kind::Metadata)
-                        .limit(1),
-                );
+
+            for _ in 0..chunk_size {
+                match public_keys.pop() {
+                    Some(public_key) => {
+                        filters.push(
+                            Filter::new()
+                                .author(public_key)
+                                .kind(Kind::Metadata)
+                                .limit(1),
+                        );
+                    }
+                    None => break,
+                }
             }
+
             let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(event.content())?;
@@ -1229,7 +1239,8 @@ impl Client {
     where
         S: Into<String>,
     {
-        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
+        let rumor: EventBuilder =
+            EventBuilder::private_msg_rumor(receiver.clone(), message, reply_to);
         self.gift_wrap(receiver, rumor, None).await
     }
 
@@ -1251,7 +1262,8 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
+        let rumor: EventBuilder =
+            EventBuilder::private_msg_rumor(receiver.clone(), message, reply_to);
         self.gift_wrap_to(urls, receiver, rumor, None).await
     }
 
@@ -1503,7 +1515,7 @@ impl Client {
 
         // Compose seal
         // TODO: use directly the `EventBuilder::seal` constructor
-        let content: String = signer.nip44_encrypt(receiver, rumor.as_json()).await?;
+        let content: String = signer.nip44_encrypt(&receiver, rumor.as_json()).await?;
         let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, [])
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK));
         let seal: Event = self.sign_event_builder(seal).await?;

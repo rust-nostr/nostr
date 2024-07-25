@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
     // Mute public key
     let muted_public_key =
         PublicKey::from_bech32("npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft")?;
-    client.mute_public_keys([muted_public_key]).await;
+    client.mute_public_keys([muted_public_key.clone()]).await;
 
     // Get events from all connected relays
     let public_key =

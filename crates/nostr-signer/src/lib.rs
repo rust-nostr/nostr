@@ -150,17 +150,21 @@ impl NostrSigner {
 
     /// NIP04 encrypt
     #[cfg(feature = "nip04")]
-    pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip04_encrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        content: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
         let content: &[u8] = content.as_ref();
         match self {
-            Self::Keys(keys) => Ok(nip04::encrypt(keys.secret_key()?, &public_key, content)?),
+            Self::Keys(keys) => Ok(nip04::encrypt(keys.secret_key()?, public_key, content)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
+            Self::NIP46(signer) => Ok(signer.nip04_encrypt(public_key.clone(), content).await?),
         }
     }
 
@@ -190,7 +194,11 @@ impl NostrSigner {
 
     /// NIP44 encryption with [NostrSigner]
     #[cfg(feature = "nip44")]
-    pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip44_encrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        content: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
@@ -198,14 +206,14 @@ impl NostrSigner {
         match self {
             Self::Keys(keys) => Ok(nip44::encrypt(
                 keys.secret_key()?,
-                &public_key,
+                public_key,
                 content,
                 nip44::Version::default(),
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip44_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(signer) => Ok(signer.nip44_encrypt(public_key, content).await?),
+            Self::NIP46(signer) => Ok(signer.nip44_encrypt(public_key.clone(), content).await?),
         }
     }
 

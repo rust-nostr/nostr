@@ -122,7 +122,7 @@ impl UnwrappedGift {
         let rumor: String = nip44::decrypt(secret_key, &seal.pubkey, seal.content())?;
 
         Ok(UnwrappedGift {
-            sender: seal.author(),
+            sender: seal.author().clone(),
             rumor: UnsignedEvent::from_json(rumor)?,
         })
     }

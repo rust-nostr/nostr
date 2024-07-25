@@ -1048,8 +1048,11 @@ impl EventBuilder {
         // Add identity tag
         tags.push(Tag::from_standardized_without_cell(
             TagStandard::Coordinate {
-                coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.author())
-                    .identifier(badge_id),
+                coordinate: Coordinate::new(
+                    Kind::BadgeDefinition,
+                    badge_definition.author().clone(),
+                )
+                .identifier(badge_id),
                 relay_url: None,
             },
         ));
@@ -1224,7 +1227,7 @@ impl EventBuilder {
                 extra_info,
             }),
             Tag::event(job_request.id()),
-            Tag::public_key(job_request.author()),
+            Tag::public_key(job_request.author().clone()),
             Tag::from_standardized_without_cell(TagStandard::Amount {
                 millisats: amount_millisats,
                 bolt11,
@@ -1324,7 +1327,7 @@ impl EventBuilder {
         )?;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(expiration.is_some()));
-        tags.push(Tag::public_key(*receiver));
+        tags.push(Tag::public_key(receiver.clone()));
 
         if let Some(timestamp) = expiration {
             tags.push(Tag::expiration(timestamp));
@@ -1796,7 +1799,7 @@ mod tests {
         let badge_one_pubkey = badge_one_keys.public_key();
 
         let awarded_pubkeys = vec![
-            pub_key,
+            pub_key.clone(),
             PublicKey::from_str("232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df")
                 .unwrap(),
         ];

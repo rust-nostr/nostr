@@ -62,8 +62,8 @@ impl FlatBufferEncode for Event {
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
         fbb.reset();
 
-        let id = event_fbs::Fixed32Bytes::new(&self.id.to_bytes());
-        let pubkey = event_fbs::Fixed32Bytes::new(&self.pubkey.to_bytes());
+        let id = event_fbs::Fixed32Bytes::new(self.id.as_bytes());
+        let pubkey = event_fbs::Fixed32Bytes::new(self.pubkey.as_bytes());
         let sig = event_fbs::Fixed64Bytes::new(self.sig.as_ref());
         let tags = self
             .tags
@@ -114,7 +114,7 @@ impl FlatBufferDecode for Event {
 
         Ok(Self::new(
             EventId::owned(ev.id().ok_or(Error::NotFound)?.0),
-            PublicKey::from_slice(&ev.pubkey().ok_or(Error::NotFound)?.0)?,
+            PublicKey::unchecked(ev.pubkey().ok_or(Error::NotFound)?.0),
             Timestamp::from(ev.created_at()),
             Kind::from(ev.kind() as u16),
             tags,

@@ -77,7 +77,7 @@ impl NWC {
             self.relay.connect(Some(Duration::from_secs(10))).await;
 
             let filter = Filter::new()
-                .author(self.uri.public_key)
+                .author(self.uri.public_key.clone())
                 .kind(Kind::WalletConnectResponse)
                 .since(Timestamp::now());
 

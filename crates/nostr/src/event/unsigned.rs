@@ -242,7 +242,7 @@ impl From<Event> for UnsignedEvent {
     fn from(event: Event) -> Self {
         Self {
             id: Some(event.id),
-            pubkey: event.pubkey,
+            pubkey: event.pubkey.clone(),
             created_at: event.created_at,
             kind: event.kind,
             tags: event.tags.clone(),

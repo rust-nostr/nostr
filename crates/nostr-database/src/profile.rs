@@ -12,8 +12,10 @@ use crate::{Metadata, PublicKey};
 /// Profile
 #[derive(Debug, Clone)]
 pub struct Profile {
-    public_key: PublicKey,
-    metadata: Metadata,
+    /// Public key
+    pub public_key: PublicKey,
+    /// Metadata
+    pub metadata: Metadata,
 }
 
 impl PartialEq for Profile {
@@ -50,6 +52,7 @@ impl From<PublicKey> for Profile {
 
 impl Profile {
     /// Compose new profile
+    #[inline]
     pub fn new(public_key: PublicKey, metadata: Metadata) -> Self {
         Self {
             public_key,
@@ -58,11 +61,13 @@ impl Profile {
     }
 
     /// Get profile public key
+    #[inline]
     pub fn public_key(&self) -> PublicKey {
-        self.public_key
+        self.public_key.clone()
     }
 
     /// Get profile metadata
+    #[inline]
     pub fn metadata(&self) -> Metadata {
         self.metadata.clone()
     }
@@ -72,7 +77,7 @@ impl Profile {
     /// Steps (go to next step if field is `None` or `empty`):
     /// * Check `display_name` field
     /// * Check `name` field
-    /// * Return cutted public key (ex. `00000000:00000002`)
+    /// * Return cut public key (ex. `00000000:00000002`)
     pub fn name(&self) -> String {
         if let Some(display_name) = &self.metadata.display_name {
             if !display_name.is_empty() {
@@ -86,14 +91,15 @@ impl Profile {
             }
         }
 
-        cut_public_key(self.public_key)
+        cut_public_key(&self.public_key)
     }
 }
 
 /// Get the first and last 8 chars of a [`PublicKey`]
 ///
 /// Ex. `00000000:00000002`
-pub fn cut_public_key(pk: PublicKey) -> String {
-    let pk = pk.to_string();
+#[inline]
+pub fn cut_public_key(pk: &PublicKey) -> String {
+    let pk = pk.to_hex();
     format!("{}:{}", &pk[0..8], &pk[pk.len() - 8..])
 }

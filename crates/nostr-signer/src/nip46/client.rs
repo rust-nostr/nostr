@@ -61,7 +61,7 @@ impl Nip46Signer {
 
         // Get signer public key
         let signer_public_key: PublicKey = match uri.signer_public_key() {
-            Some(public_key) => public_key,
+            Some(public_key) => public_key.clone(),
             None => get_signer_public_key(&app_keys, notifications, timeout).await?,
         };
 
@@ -96,13 +96,13 @@ impl Nip46Signer {
     /// Get signer [PublicKey]
     #[inline]
     pub fn signer_public_key(&self) -> PublicKey {
-        self.signer_public_key
+        self.signer_public_key.clone()
     }
 
     /// Get `bunker` URI
     pub async fn bunker_uri(&self) -> NostrConnectURI {
         NostrConnectURI::Bunker {
-            signer_public_key: self.signer_public_key,
+            signer_public_key: self.signer_public_key(),
             relays: self.relays().await,
             secret: self.secret.clone(),
         }

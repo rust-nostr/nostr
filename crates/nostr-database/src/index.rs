@@ -80,7 +80,7 @@ struct PublicKeyPrefix([u8; PUBLIC_KEY_PREFIX_SIZE]);
 
 impl From<&PublicKey> for PublicKeyPrefix {
     fn from(pk: &PublicKey) -> Self {
-        let pk: [u8; 32] = pk.serialize();
+        let pk: [u8; 32] = *pk.as_bytes();
         Self::from(pk)
     }
 }
@@ -358,7 +358,7 @@ impl From<Filter> for QueryPattern {
         let (authors_len, first_author): (usize, Option<PublicKey>) = filter
             .authors
             .as_ref()
-            .map(|set| (set.len(), set.iter().next().copied()))
+            .map(|set| (set.len(), set.iter().next().cloned()))
             .unwrap_or_default();
         let ids_len: usize = filter.ids.as_ref().map(|set| set.len()).unwrap_or_default();
         let generic_tags_len: usize = filter.generic_tags.len();
@@ -540,7 +540,7 @@ impl InternalDatabaseIndexes {
             // Check `a` tags
             for coordinate in event.coordinates() {
                 let coordinate_pubkey_prefix: PublicKeyPrefix =
-                    PublicKeyPrefix::from(coordinate.public_key);
+                    PublicKeyPrefix::from(&coordinate.public_key);
                 if coordinate_pubkey_prefix == pubkey_prefix {
                     // Save deleted coordinate at certain timestamp
                     self.deleted_coordinates
@@ -1242,7 +1242,7 @@ mod tests {
         let event =
             Event::new(
                 event_id,
-                pubkey,
+                pubkey.clone(),
                 Timestamp::from(1612809991),
                 Kind::TextNote,
                 [
@@ -1257,7 +1257,7 @@ mod tests {
 
           &Event::new(
             event_id,
-            pubkey,
+            pubkey.clone(),
             Timestamp::from(1612809991),
             Kind::TextNote,
             [],
@@ -1276,7 +1276,7 @@ mod tests {
 
         // Match (author, kind and since)
         let filter: FilterIndex = Filter::new()
-            .author(pubkey)
+            .author(pubkey.clone())
             .kind(Kind::TextNote)
             .since(Timestamp::from(1612808000))
             .into();

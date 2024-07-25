@@ -11,7 +11,7 @@ use nostr::prelude::*;
 use super::{Client, Error};
 
 /// Zap entity
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ZapEntity {
     /// Zap to event
     Event(EventId),
@@ -34,6 +34,12 @@ impl From<Nip19Event> for ZapEntity {
 impl From<PublicKey> for ZapEntity {
     fn from(value: PublicKey) -> Self {
         Self::PublicKey(value)
+    }
+}
+
+impl From<&PublicKey> for ZapEntity {
+    fn from(value: &PublicKey) -> Self {
+        Self::PublicKey(value.clone())
     }
 }
 
@@ -96,18 +102,18 @@ impl Client {
 
         // Get entity metadata
         let to: ZapEntity = to.into();
-        let (public_key, metadata): (PublicKey, Metadata) = match to {
+        let (public_key, metadata): (PublicKey, Metadata) = match to.clone() {
             ZapEntity::Event(event_id) => {
                 // Get event
                 let filter: Filter = Filter::new().id(event_id);
                 let events: Vec<Event> = self.get_events_of(vec![filter], None).await?;
                 let event: &Event = events.first().ok_or(Error::EventNotFound(event_id))?;
                 let public_key: PublicKey = event.author();
-                let metadata: Metadata = self.metadata(public_key).await?;
+                let metadata: Metadata = self.metadata(public_key.clone()).await?;
                 (public_key, metadata)
             }
             ZapEntity::PublicKey(public_key) => {
-                let metadata: Metadata = self.metadata(public_key).await?;
+                let metadata: Metadata = self.metadata(public_key.clone()).await?;
                 (public_key, metadata)
             }
         };

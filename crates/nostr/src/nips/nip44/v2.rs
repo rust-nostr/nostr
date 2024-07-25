@@ -143,9 +143,9 @@ impl ConversationKey {
 
     /// Derive Conversation Key
     #[inline]
-    pub fn derive(secret_key: &SecretKey, public_key: &PublicKey) -> Self {
-        let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
-        Self(hkdf::extract(b"nip44-v2", &shared_key))
+    pub fn derive(secret_key: &SecretKey, public_key: &PublicKey) -> Result<Self, Error> {
+        let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
+        Ok(Self(hkdf::extract(b"nip44-v2", &shared_key)))
     }
 
     /// Compose Conversation Key from bytes
@@ -436,7 +436,7 @@ mod tests {
             };
             let note = vector.get("note").unwrap().as_str().unwrap();
 
-            let computed_conversation_key = ConversationKey::derive(&sec1, &pub2);
+            let computed_conversation_key = ConversationKey::derive(&sec1, &pub2).unwrap();
 
             assert_eq!(
                 conversation_key,
@@ -518,7 +518,7 @@ mod tests {
             let ciphertext = vector.get("ciphertext").unwrap().as_str().unwrap();
 
             // Test conversation key
-            let computed_conversation_key = ConversationKey::derive(&sec1, &pub2);
+            let computed_conversation_key = ConversationKey::derive(&sec1, &pub2).unwrap();
             assert_eq!(
                 computed_conversation_key, conversation_key,
                 "Conversation key failure on ValidSec #{}",
@@ -574,11 +574,11 @@ mod tests {
 
             let sec1result = {
                 let sec1hex = vector.get("sec1").unwrap().as_str().unwrap();
-                SecretKey::from_str(sec1hex)
+                SecretKey::parse(sec1hex)
             };
             let pub2result = {
                 let pub2hex = vector.get("pub2").unwrap().as_str().unwrap();
-                PublicKey::from_str(pub2hex)
+                PublicKey::parse_checked(pub2hex)
             };
             let note = vector.get("note").unwrap().as_str().unwrap();
 
