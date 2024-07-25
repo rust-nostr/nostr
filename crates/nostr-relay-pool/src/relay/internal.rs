@@ -433,6 +433,9 @@ impl InternalRelay {
                             status,
                         }
                     }
+                    RelayNotification::Authenticated => RelayPoolNotification::Authenticated {
+                        relay_url: self.url(),
+                    },
                     RelayNotification::Shutdown => RelayPoolNotification::Shutdown,
                 };
 
@@ -1230,6 +1233,10 @@ impl InternalRelay {
                     } => {
                         if id == event_id {
                             return if status {
+                                // Send notification
+                                self.send_notification(RelayNotification::Authenticated, true)
+                                    .await;
+
                                 Ok(())
                             } else {
                                 Err(Error::EventNotPublished(message))

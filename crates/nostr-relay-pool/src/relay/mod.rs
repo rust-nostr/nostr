@@ -64,6 +64,10 @@ pub enum RelayNotification {
         /// Relay Status
         status: RelayStatus,
     },
+    /// Authenticated to relay
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    Authenticated,
     /// Shutdown
     Shutdown,
 }

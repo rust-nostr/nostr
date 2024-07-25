@@ -56,6 +56,13 @@ pub enum RelayPoolNotification {
         /// Relay Status
         status: RelayStatus,
     },
+    /// Authenticated to relay
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    Authenticated {
+        /// Relay url
+        relay_url: Url,
+    },
     /// Shutdown
     Shutdown,
 }
