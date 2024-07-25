@@ -31,7 +31,7 @@ async fn run() -> Result<()> {
     let args = Cli::parse();
 
     match args.command {
-        CliCommand::Open => {
+        CliCommand::Open { relays } => {
             println!("Opening database...");
             //let db = RocksDatabase::open("./db/nostr").await?;
             let db = SQLiteDatabase::open("nostr.db").await?;
@@ -41,6 +41,9 @@ async fn run() -> Result<()> {
             // });
             println!("Constructing client...");
             let client = Client::builder().database(db).build();
+
+            client.add_relays(relays).await?;
+            client.connect().await;
 
             let rl = &mut DefaultEditor::new()?;
 
@@ -121,13 +124,21 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             relays,
             direction,
         } => {
-            // Add relays
-            client.add_relays(relays.iter()).await?;
+            let current_relays = client.relays().await;
 
-            println!("Connecting to relays...");
+            let list: Vec<Url> = if !relays.is_empty() {
+                // Add relays
+                client.add_relays(relays.iter()).await?;
 
-            // Connect and wait for connection
-            client.connect_with_timeout(Duration::from_secs(60)).await;
+                println!("Connecting to relays...");
+
+                // Connect and wait for connection
+                client.connect_with_timeout(Duration::from_secs(60)).await;
+
+                relays.clone()
+            } else {
+                current_relays.keys().cloned().collect()
+            };
 
             // Compose filter and opts
             let filter: Filter = Filter::default().author(public_key);
@@ -136,7 +147,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
 
             // Dry run
             let output: Output<Reconciliation> = client
-                .reconcile_with(relays.iter(), filter.clone(), opts.dry_run())
+                .reconcile_with(list.iter(), filter.clone(), opts.dry_run())
                 .await?;
 
             println!(
@@ -146,8 +157,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             );
 
             // Reconcile
-            let output: Output<Reconciliation> =
-                client.reconcile_with(relays.iter(), filter, opts).await?;
+            let output: Output<Reconciliation> = client.reconcile_with(list, filter, opts).await?;
 
             println!("Reconciliation terminated:");
             println!("- Sent {} events", output.sent.len());
@@ -155,7 +165,10 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
 
             // Remove relays
             for url in relays.into_iter() {
-                client.remove_relay(url).await?;
+                if !current_relays.contains_key(&url) {
+                    println!("Relay '{url}' removed.");
+                    client.remove_relay(url).await?;
+                }
             }
 
             Ok(())

@@ -21,7 +21,12 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum CliCommand {
-    Open,
+    Open {
+        #[clap(long)]
+        relays: Vec<Url>,
+        // tor: bool,
+        // proxy: Option<SocketAddr>,
+    },
     /// Serve Nostr Connect signer
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
@@ -39,6 +44,7 @@ pub enum Command {
         /// Public key
         public_key: PublicKey,
         /// Relays
+        #[clap(long)]
         relays: Vec<Url>,
         /// Direction
         #[clap(short, long, value_enum, default_value_t = CliNegentropyDirection::Down)]
@@ -47,7 +53,7 @@ pub enum Command {
     /// Query
     Query {
         /// Event ID
-        #[clap(short, long)]
+        #[clap(long)]
         id: Option<EventId>,
         /// Author
         #[clap(short, long)]
@@ -56,10 +62,10 @@ pub enum Command {
         #[clap(short, long)]
         kind: Option<Kind>,
         /// Identifier (`d` tag)
-        #[clap(short, long)]
+        #[clap(long)]
         identifier: Option<String>,
         /// Full-text search
-        #[clap(short, long)]
+        #[clap(long)]
         search: Option<String>,
         /// Since
         #[clap(short, long)]
@@ -74,7 +80,7 @@ pub enum Command {
         #[clap(long)]
         reverse: bool,
         /// Query only database
-        #[clap(short, long)]
+        #[clap(long)]
         database: bool,
         /// Print result
         #[clap(long)]
