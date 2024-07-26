@@ -52,6 +52,8 @@
 
 ### Fixed
 
+* database: fix indexes `QueryPattern` ([Yuki Kishimoto])
+
 ### Removed
 
 * nostr: remove support for `nrelay` NIP-19 entity ([Yuki Kishimoto])

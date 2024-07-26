@@ -375,13 +375,14 @@ impl From<Filter> for QueryPattern {
             ids_len,
             generic_tags_len,
             identifier,
+            filter.search.as_ref(),
         ) {
-            (0, None, 1, Some(author), 0, 0, None) => Self::Author(QueryByAuthorParams {
+            (0, None, 1, Some(author), 0, 0, None, None) => Self::Author(QueryByAuthorParams {
                 author: PublicKeyPrefix::from(author),
                 since: filter.since,
                 until: filter.until,
             }),
-            (1, Some(kind), 1, Some(author), 0, 0, None) => {
+            (1, Some(kind), 1, Some(author), 0, 0, None, None) => {
                 Self::KindAuthor(QueryByKindAndAuthorParams {
                     kind,
                     author: PublicKeyPrefix::from(author),
@@ -389,7 +390,7 @@ impl From<Filter> for QueryPattern {
                     until: filter.until,
                 })
             }
-            (1, Some(kind), 1, Some(author), 0, _, Some(identifier))
+            (1, Some(kind), 1, Some(author), 0, _, Some(identifier), None)
                 if kind.is_parameterized_replaceable() =>
             {
                 Self::ParamReplaceable(QueryByParamReplaceable {
@@ -1346,5 +1347,9 @@ mod tests {
         let filter: FilterIndex = Filter::new().hashtag("this-should-not-match").into();
         assert!(!filter.match_event(&event));
         assert!(!filter.match_event(&event_with_empty_tags));
+
+        // Not match (search disabled)
+        let filter: FilterIndex = Filter::new().search("test").into();
+        assert!(!filter.match_event(&event));
     }
 }
