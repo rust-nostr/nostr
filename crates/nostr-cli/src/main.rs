@@ -32,13 +32,16 @@ async fn run() -> Result<()> {
 
     match args.command {
         CliCommand::Open { relays } => {
-            println!("Opening database...");
+            println!("Loading database...");
+            let now = Instant::now();
             //let db = RocksDatabase::open("./db/nostr").await?;
             let db = SQLiteDatabase::open("nostr.db").await?;
             // let db = MemoryDatabase::with_opts(MemoryDatabaseOptions {
             //     events: true,
             //     max_events: None,
             // });
+            println!("Loaded in {:.2} secs", now.elapsed().as_secs_f64());
+
             println!("Constructing client...");
             let client = Client::builder().database(db).build();
 
