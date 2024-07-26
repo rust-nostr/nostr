@@ -104,16 +104,19 @@ struct FilterIndex {
     ids: HashSet<EventId>,
     authors: HashSet<PublicKeyPrefix>,
     kinds: HashSet<Kind>,
+    search: Option<String>,
     since: Option<Timestamp>,
     until: Option<Timestamp>,
     generic_tags: HashMap<SingleLetterTag, HashSet<String>>,
 }
 
 impl FilterIndex {
+    #[inline]
     fn ids_match(&self, event: &EventIndex) -> bool {
         self.ids.is_empty() || self.ids.contains(&event.event_id)
     }
 
+    #[inline]
     fn authors_match(&self, event: &EventIndex) -> bool {
         self.authors.is_empty() || self.authors.contains(&event.pubkey)
     }
@@ -137,8 +140,17 @@ impl FilterIndex {
         })
     }
 
+    #[inline]
     fn kind_match(&self, kind: &Kind) -> bool {
         self.kinds.is_empty() || self.kinds.contains(kind)
+    }
+
+    #[inline]
+    fn search_match(&self, _event: &EventIndex) -> bool {
+        match self.search {
+            Some(..) => false, // TODO: search currently not supported, return false!
+            None => true,
+        }
     }
 
     pub fn match_event(&self, event: &EventIndex) -> bool {
@@ -148,6 +160,7 @@ impl FilterIndex {
             && self.kind_match(&event.kind)
             && self.authors_match(event)
             && self.tag_match(event)
+            && self.search_match(event)
     }
 }
 
@@ -162,6 +175,7 @@ impl From<Filter> for FilterIndex {
                 .map(PublicKeyPrefix::from)
                 .collect(),
             kinds: value.kinds.unwrap_or_default(),
+            search: value.search,
             since: value.since,
             until: value.until,
             generic_tags: value.generic_tags,
@@ -1205,6 +1219,14 @@ mod tests {
                 )
                 .await,
             vec![ev.id()]
+        );
+
+        // Search filter disabled, must return an empty result
+        assert_eq!(
+            indexes
+                .query([Filter::new().search("Text note")], Order::Desc)
+                .await,
+            Vec::new()
         );
     }
 

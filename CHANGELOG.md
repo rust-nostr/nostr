@@ -35,6 +35,7 @@
 * pool: take mutex ownership instead of clone in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: remove IDs collection from `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: better checks before perform queries or send messages to relays ([Yuki Kishimoto])
+* database: not match event if `Filter::search` field is set ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])
 * cli: allow to specify relays in `open` command ([Yuki Kishimoto])
 
