@@ -1189,45 +1189,50 @@ impl EventBuilder {
     /// Data Vending Machine (DVM) - Job Result
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    pub fn job_result(
+    pub fn job_result<S>(
         job_request: Event,
-        amount_millisats: u64,
+        payload: S,
+        millisats: u64,
         bolt11: Option<String>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
         let kind: Kind = job_request.kind() + 1000;
-        if kind.is_job_result() {
-            let mut tags: Vec<Tag> = job_request
-                .tags
-                .iter()
-                .filter_map(|t| {
-                    if t.kind()
-                        == TagKind::SingleLetter(SingleLetterTag {
-                            character: Alphabet::I,
-                            uppercase: false,
-                        })
-                    {
-                        Some(t.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            tags.extend_from_slice(&[
-                Tag::event(job_request.id()),
-                Tag::public_key(job_request.author()),
-                Tag::from_standardized_without_cell(TagStandard::Request(job_request)),
-                Tag::from_standardized_without_cell(TagStandard::Amount {
-                    millisats: amount_millisats,
-                    bolt11,
-                }),
-            ]);
-            Ok(Self::new(kind, "", tags))
-        } else {
-            Err(Error::WrongKind {
+
+        // Check if Job Result kind
+        if !kind.is_job_result() {
+            return Err(Error::WrongKind {
                 received: kind,
                 expected: WrongKindError::Range(NIP90_JOB_RESULT_RANGE),
-            })
+            });
         }
+
+        let mut tags: Vec<Tag> = job_request
+            .tags
+            .iter()
+            .filter_map(|t| {
+                if t.kind()
+                    == TagKind::SingleLetter(SingleLetterTag {
+                        character: Alphabet::I,
+                        uppercase: false,
+                    })
+                {
+                    Some(t.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        tags.extend_from_slice(&[
+            Tag::event(job_request.id()),
+            Tag::public_key(job_request.author()),
+            Tag::from_standardized_without_cell(TagStandard::Request(job_request)),
+            Tag::from_standardized_without_cell(TagStandard::Amount { millisats, bolt11 }),
+        ]);
+
+        Ok(Self::new(kind, payload, tags))
     }
 
     /// Data Vending Machine (DVM) - Job Feedback

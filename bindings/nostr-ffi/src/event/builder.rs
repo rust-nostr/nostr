@@ -503,13 +503,15 @@ impl EventBuilder {
     #[uniffi::constructor(default(bolt11 = None))]
     pub fn job_result(
         job_request: &Event,
-        amount_millisats: u64,
+        payload: String,
+        millisats: u64,
         bolt11: Option<String>,
     ) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventBuilder::job_result(
                 job_request.deref().clone(),
-                amount_millisats,
+                payload,
+                millisats,
                 bolt11,
             )?,
         })
