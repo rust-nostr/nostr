@@ -50,6 +50,7 @@
 * sdk: add `Client::gift_wrap_to` and `Client::send_private_msg_to` ([reyamir])
 * sdk: add option to autoconnect relay on `Client::add_relay` method call ([Yuki Kishimoto])
 * cli: add `generate` command ([Yuki Kishimoto])
+* book: add some python examples ([RydalWater])
 
 ### Fixed
 

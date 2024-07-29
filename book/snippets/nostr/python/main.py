@@ -9,6 +9,7 @@ from src.event.json import event_json
 from src.event.builder import event_builder
 from src.event.tags import tags
 from src.event.eventid import event_id
+from src.event.kind import kind
 from src.nip01 import nip01
 from src.nip05 import nip05
 from src.nip06 import nip06
@@ -25,6 +26,7 @@ async def main():
     event_json()
     event_builder()
     event_id()
+    kind()
     timestamps()
     tags()
     filters()
