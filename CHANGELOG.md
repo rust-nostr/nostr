@@ -32,6 +32,7 @@
 * nostr: calculate `EventId` in `EventBuilder::to_unsigned_event_with_supplier` ([Yuki Kishimoto])
 * nostr: ensure that NIP-59 rumor has `EventId` ([Yuki Kishimoto])
 * nostr: update `PartialEvent` methods ([Yuki Kishimoto])
+* nostr: change `EventBuilder::award_badge` fingerprint ([Yuki Kishimoto])
 * pool: get events only from remote relay when calling `Relay::get_events_of` ([Yuki Kishimoto])
 * pool: take mutex ownership instead of clone in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: remove IDs collection from `InternalRelayPool::get_events_from` ([Yuki Kishimoto])

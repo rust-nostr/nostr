@@ -451,11 +451,14 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
     #[uniffi::constructor]
-    pub fn award_badge(badge_definition: &Event, awarded_pubkeys: &[Arc<Tag>]) -> Result<Self> {
+    pub fn award_badge(
+        badge_definition: &Event,
+        awarded_public_keys: &[Arc<PublicKey>],
+    ) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventBuilder::award_badge(
                 badge_definition.deref(),
-                awarded_pubkeys.iter().map(|a| a.as_ref().deref().clone()),
+                awarded_public_keys.iter().map(|a| ***a),
             )?,
         })
     }

@@ -1054,9 +1054,9 @@ impl EventBuilder {
     /// Badge award
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
-    pub fn award_badge<I>(badge_definition: &Event, awarded_pubkeys: I) -> Result<Self, Error>
+    pub fn award_badge<I>(badge_definition: &Event, awarded_public_keys: I) -> Result<Self, Error>
     where
-        I: IntoIterator<Item = Tag>, // TODO: change to `PublicKey`?
+        I: IntoIterator<Item = PublicKey>,
     {
         let badge_id = badge_definition
             .tags
@@ -1079,11 +1079,8 @@ impl EventBuilder {
             },
         ));
 
-        // Add awarded pubkeys
-        let ptags = awarded_pubkeys
-            .into_iter()
-            .filter(|p| p.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::P)));
-        tags.extend(ptags);
+        // Add awarded public keys
+        tags.extend(awarded_public_keys.into_iter().map(Tag::public_key));
 
         // Build event
         Ok(Self::new(Kind::BadgeAward, "", tags))
@@ -1824,8 +1821,8 @@ mod tests {
             "created_at": 1671739153,
             "tags": [
                 ["a", "30009:{}:bravery"],
-                ["p", "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245", "wss://nostr.oxtr.dev"],
-                ["p", "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df", "wss://nostr.oxtr.dev"]
+                ["p", "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245"],
+                ["p", "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df"]
             ]
             }}"#,
             pub_key, pub_key
@@ -1834,24 +1831,10 @@ mod tests {
 
         // Create new event with the event builder
         let awarded_pubkeys = vec![
-            Tag::from_standardized(TagStandard::PublicKey {
-                public_key: PublicKey::from_str(
-                    "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
-                )
+            PublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
-                alias: None,
-                uppercase: false,
-            }),
-            Tag::from_standardized(TagStandard::PublicKey {
-                public_key: PublicKey::from_str(
-                    "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
-                )
+            PublicKey::from_str("232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df")
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
-                alias: None,
-                uppercase: false,
-            }),
         ];
         let event_builder: Event =
             EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)
@@ -1874,31 +1857,18 @@ mod tests {
         // Create badge 1
         let badge_one_keys = Keys::generate();
         let badge_one_pubkey = badge_one_keys.public_key();
-        let relay_url = UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap();
 
         let awarded_pubkeys = vec![
-            Tag::from_standardized(TagStandard::PublicKey {
-                public_key: pub_key,
-                relay_url: Some(relay_url.clone()),
-                alias: None,
-                uppercase: false,
-            }),
-            Tag::from_standardized(TagStandard::PublicKey {
-                public_key: PublicKey::from_str(
-                    "232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df",
-                )
+            pub_key,
+            PublicKey::from_str("232a4ba3df82ccc252a35abee7d87d1af8fc3cc749e4002c3691434da692b1df")
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from_str("wss://nostr.oxtr.dev").unwrap()),
-                alias: None,
-                uppercase: false,
-            }),
         ];
         let bravery_badge_event =
-            self::EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())
+            EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())
                 .to_event(&badge_one_keys)
                 .unwrap();
         let bravery_badge_award =
-            self::EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())
+            EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())
                 .unwrap()
                 .to_event(&badge_one_keys)
                 .unwrap();
@@ -1908,11 +1878,11 @@ mod tests {
         let badge_two_pubkey = badge_two_keys.public_key();
 
         let honor_badge_event =
-            self::EventBuilder::define_badge("honor", None, None, None, None, Vec::new())
+            EventBuilder::define_badge("honor", None, None, None, None, Vec::new())
                 .to_event(&badge_two_keys)
                 .unwrap();
         let honor_badge_award =
-            self::EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())
+            EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())
                 .unwrap()
                 .to_event(&badge_two_keys)
                 .unwrap();
@@ -1922,21 +1892,18 @@ mod tests {
             "content":"",
             "id": "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
             "kind": 30008,
-            "pubkey": "{}",
+            "pubkey": "{pub_key}",
             "sig":"fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             "created_at":1671739153,
             "tags":[
                 ["d", "profile_badges"],
-                ["a", "30009:{}:bravery"],
-                ["e", "{}", "wss://nostr.oxtr.dev"],
-                ["a", "30009:{}:honor"],
-                ["e", "{}", "wss://nostr.oxtr.dev"]
+                ["a", "30009:{badge_one_pubkey}:bravery"],
+                ["e", "{}"],
+                ["a", "30009:{badge_two_pubkey}:honor"],
+                ["e", "{}"]
             ]
             }}"#,
-            pub_key,
-            badge_one_pubkey,
             bravery_badge_award.id(),
-            badge_two_pubkey,
             honor_badge_award.id(),
         );
         let example_event: Event = serde_json::from_str(&example_event_json).unwrap();

@@ -442,7 +442,7 @@ impl JsEventBuilder {
     #[wasm_bindgen(js_name = awardBadge)]
     pub fn award_badge(
         badge_definition: &JsEvent,
-        awarded_public_keys: Vec<JsTag>,
+        awarded_public_keys: Vec<JsPublicKey>,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
             inner: EventBuilder::award_badge(
