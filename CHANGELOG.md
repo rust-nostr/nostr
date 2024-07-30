@@ -60,6 +60,7 @@
 
 ### Removed
 
+* Remove deprecated methods/functions ([Yuki Kishimoto])
 * nostr: remove support for `nrelay` NIP-19 entity ([Yuki Kishimoto])
 * cli: remove `tracing-subscriber` dep
 

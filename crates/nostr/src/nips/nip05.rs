@@ -17,7 +17,6 @@ use reqwest::{Client, Response};
 use serde_json::Value;
 use url::Url;
 
-use super::nip19::Nip19Profile;
 use crate::{key, PublicKey};
 
 /// `NIP05` error
@@ -186,19 +185,6 @@ where
         public_key,
         relays,
         nip46,
-    })
-}
-
-/// Get NIP-05 profile
-#[deprecated(since = "0.33.0", note = "use `profile` instead.")]
-pub async fn get_profile<S>(nip05: S, _proxy: Option<SocketAddr>) -> Result<Nip19Profile, Error>
-where
-    S: AsRef<str>,
-{
-    let profile: Nip05Profile = profile(nip05, _proxy).await?;
-    Ok(Nip19Profile {
-        public_key: profile.public_key,
-        relays: profile.relays,
     })
 }
 

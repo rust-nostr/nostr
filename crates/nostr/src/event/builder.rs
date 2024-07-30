@@ -1375,17 +1375,6 @@ impl EventBuilder {
         Self::gift_wrap_from_seal(receiver, &seal, expiration)
     }
 
-    /// GiftWrapped Sealed Direct message
-    #[inline]
-    #[cfg(feature = "nip59")]
-    #[deprecated(since = "0.31.0", note = "Use `private_msg_rumor` instead.")]
-    pub fn sealed_direct<S>(receiver: PublicKey, message: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::private_msg_rumor(receiver, message, None)
-    }
-
     /// Private Direct message rumor
     ///
     /// <div class="warning">
