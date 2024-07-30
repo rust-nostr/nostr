@@ -568,7 +568,25 @@ impl JsEventBuilder {
         }
     }
 
-    // TODO: add seal
+    /// Seal
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
+    #[wasm_bindgen]
+    pub fn seal(
+        sender_keys: &JsKeys,
+        receiver_public_key: &JsPublicKey,
+        rumor: &JsUnsignedEvent,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            inner: nostr::EventBuilder::seal(
+                sender_keys.deref(),
+                receiver_public_key.deref(),
+                rumor.deref().clone(),
+            )
+            .map_err(into_err)?,
+        })
+    }
 
     /// Gift Wrap from seal
     ///

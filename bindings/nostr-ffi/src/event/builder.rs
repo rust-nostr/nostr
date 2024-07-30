@@ -584,7 +584,24 @@ impl EventBuilder {
         }
     }
 
-    // TODO: add seal
+    /// Seal
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
+    #[uniffi::constructor]
+    pub fn seal(
+        sender_keys: &Keys,
+        receiver_public_key: &PublicKey,
+        rumor: &UnsignedEvent,
+    ) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventBuilder::seal(
+                sender_keys.deref(),
+                receiver_public_key.deref(),
+                rumor.deref().clone(),
+            )?,
+        })
+    }
 
     /// Private Direct message rumor
     ///
