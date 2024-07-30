@@ -135,3 +135,6 @@ required-features = ["std"]
 [[example]]
 name = "nip15"
 required-features = ["std"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }

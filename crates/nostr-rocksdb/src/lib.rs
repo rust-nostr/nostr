@@ -8,6 +8,7 @@
 #![deny(warnings)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
+#![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
 
 use std::collections::{BTreeSet, HashSet};
 use std::path::Path;

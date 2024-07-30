@@ -9,6 +9,7 @@
 #![warn(rustdoc::bare_urls)]
 #![allow(unknown_lints, clippy::arc_with_non_send_sync)]
 #![cfg_attr(not(target_arch = "wasm32"), allow(unused))]
+#![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;

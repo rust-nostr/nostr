@@ -104,6 +104,7 @@ mod inner {
     use super::IntermediateCustomNostrDatabase;
 
     #[async_trait]
+    #[allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive
     impl NostrDatabase for IntermediateCustomNostrDatabase {
         type Err = DatabaseError;
 
