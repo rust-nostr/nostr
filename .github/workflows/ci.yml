@@ -16,10 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Install just
-        run: cargo install just
       - name: Check
-        run: just check-fmt
+        run: bash contrib/scripts/check-fmt.sh check
 
   check-crates:
     name: Check crates
@@ -27,10 +25,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Install just
-      run: cargo install just
     - name: Check
-      run: just check-crates
+      run: bash contrib/scripts/check-crates.sh "" ci
 
   check-crates-msrv:
     name: Check crates (MSRV)
@@ -38,10 +34,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Install just
-      run: cargo install just
     - name: Check
-      run: just check-crates-msrv
+      run: bash contrib/scripts/check-crates.sh msrv ""
 
   check-bindings:
     name: Check bindings
@@ -49,10 +43,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Install just
-      run: cargo install just
     - name: Check
-      run: just check-bindings
+      run: bash contrib/scripts/check-bindings.sh
 
   check-docs:
     name: Check docs
@@ -60,10 +52,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Install just
-        run: cargo install just
       - name: Check
-        run: just check-docs
+        run: bash contrib/scripts/check-docs.sh
 
   build-no-std:
     name: Build no_std
