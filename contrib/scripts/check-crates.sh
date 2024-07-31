@@ -44,7 +44,15 @@ skip_msrv=(
 for arg in "${buildargs[@]}";
 do
     # Skip the current crate if is_msrv is true and it's in the skip list
-    if [ "$is_msrv" == true ] && [[ $arg == "${skip_msrv[*]}" ]]; then
+    skip=false
+    for skip_arg in "${skip_msrv[@]}";
+    do
+        if [ "$is_msrv" == true ] && [[ "$arg" == "$skip_arg" ]]; then
+            skip=true
+            break
+        fi
+    done
+    if [ "$skip" == true ]; then
         echo "Skipping MSRV check for '$arg'"
         echo
         continue
