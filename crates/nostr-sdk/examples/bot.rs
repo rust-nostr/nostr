@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind() == Kind::GiftWrap {
-                    match UnwrappedGift::from_gift_wrap(&keys, &event) {
+                    match client.unwrap_gift_wrap(&event).await {
                         Ok(UnwrappedGift { rumor, sender }) => {
                             if rumor.kind == Kind::PrivateDirectMessage {
                                 let content: String = match rumor.content.as_str() {

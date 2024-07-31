@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
         .handle_notifications(|notification| async {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind() == Kind::GiftWrap {
-                    let UnwrappedGift { rumor, .. } = nip59::extract_rumor(&my_keys, &event)?;
+                    let UnwrappedGift { rumor, .. } = client.unwrap_gift_wrap(&event).await?;
                     println!("Rumor: {}", rumor.as_json());
                 } else {
                     println!("{:?}", event);
