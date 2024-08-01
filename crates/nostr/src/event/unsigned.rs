@@ -168,7 +168,7 @@ impl UnsignedEvent {
     {
         let verify_id: bool = self.id.is_some();
         let id: EventId = self.id.unwrap_or_else(|| self.compute_id());
-        let message: Message = Message::from_digest_slice(id.as_bytes())?;
+        let message: Message = Message::from_digest(id.to_bytes());
         let sig: Signature = keys.sign_schnorr_with_ctx(secp, &message, rng)?;
         self.internal_add_signature(secp, id, sig, verify_id, false)
     }
