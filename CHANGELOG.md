@@ -60,6 +60,7 @@
 
 ### Fixed
 
+* pool: fix `Event` notification variant sent also for events sent by the SDK ([Yuki Kishimoto])
 * database: fix indexes `QueryPattern` ([Yuki Kishimoto])
 
 ### Removed

@@ -79,15 +79,21 @@ impl MemoryDatabase {
         &self,
         seen_event_ids: &mut LruCache<EventId, HashSet<Url>>,
         event_id: EventId,
-        relay_url: Url,
+        relay_url: Option<Url>,
     ) {
         match seen_event_ids.get_mut(&event_id) {
             Some(set) => {
-                set.insert(relay_url);
+                if let Some(url) = relay_url {
+                    set.insert(url);
+                }
             }
             None => {
-                let mut set = HashSet::with_capacity(1);
-                set.insert(relay_url);
+                let mut set: HashSet<Url> = HashSet::new();
+
+                if let Some(url) = relay_url {
+                    set.insert(url);
+                }
+
                 seen_event_ids.put(event_id, set);
             }
         }
@@ -125,6 +131,10 @@ impl NostrDatabase for MemoryDatabase {
                 Ok(false)
             }
         } else {
+            // Mark it as seen
+            let mut seen_event_ids = self.seen_event_ids.lock().await;
+            self._event_id_seen(&mut seen_event_ids, event.id(), None);
+
             Ok(false)
         }
     }
@@ -178,7 +188,7 @@ impl NostrDatabase for MemoryDatabase {
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
         let mut seen_event_ids = self.seen_event_ids.lock().await;
-        self._event_id_seen(&mut seen_event_ids, event_id, relay_url);
+        self._event_id_seen(&mut seen_event_ids, event_id, Some(relay_url));
         Ok(())
     }
 

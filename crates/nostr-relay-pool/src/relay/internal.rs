@@ -1024,25 +1024,25 @@ impl InternalRelay {
                     return Err(Error::EventExpired);
                 }
 
-                // Check if saved
-                if !saved {
-                    // Verify event
+                // Verify event
+                if !seen && !saved {
                     event.verify()?;
+                }
 
-                    // Save event
+                // Save event
+                if !saved {
                     self.database.save_event(&event).await?;
                 }
 
                 // Box event
-                let event: Box<Event> = Box::new(event);
+                let boxed_event: Box<Event> = Box::new(event);
 
-                // Check if seen
-                if !seen {
-                    // Send notification
+                // Send notification
+                if !seen && !saved {
                     self.send_notification(
                         RelayNotification::Event {
                             subscription_id: SubscriptionId::new(&subscription_id),
-                            event: event.clone(),
+                            event: boxed_event.clone(),
                         },
                         true,
                     )
@@ -1051,7 +1051,7 @@ impl InternalRelay {
 
                 Ok(Some(RelayMessage::Event {
                     subscription_id: SubscriptionId::new(subscription_id),
-                    event,
+                    event: boxed_event,
                 }))
             }
             m => Ok(Some(RelayMessage::try_from(m)?)),
