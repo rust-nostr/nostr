@@ -13,8 +13,6 @@ use crate::{PublicKey, SecretKey};
 /// NIP44 Version
 #[derive(Enum)]
 pub enum Nip44Version {
-    /// V1 (deprecated)
-    Deprecated,
     /// V2 - Secp256k1 ECDH, HKDF, padding, ChaCha20, HMAC-SHA256 and base64
     V2,
 }
@@ -22,8 +20,6 @@ pub enum Nip44Version {
 impl From<Nip44Version> for Version {
     fn from(version: Nip44Version) -> Self {
         match version {
-            #[allow(deprecated)]
-            Nip44Version::Deprecated => Self::V1,
             Nip44Version::V2 => Self::V2,
         }
     }

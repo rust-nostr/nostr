@@ -11,18 +11,14 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use base64::engine::{general_purpose, Engine};
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::RngCore;
-use chacha20::cipher::{KeyIvInit, StreamCipher};
-use chacha20::XChaCha20;
 
 pub mod v2;
 
 use self::v2::ConversationKey;
-use crate::{util, PublicKey, SecretKey};
+use crate::{PublicKey, SecretKey};
 
 /// Error
 #[derive(Debug, PartialEq, Eq)]
@@ -76,11 +72,6 @@ impl From<base64::DecodeError> for Error {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum Version {
-    /// Reserved
-    // Reserved = 0x00,
-    /// V1 (deprecated)
-    #[deprecated]
-    V1 = 0x01,
     /// V2 - Secp256k1 ECDH, HKDF, padding, ChaCha20, HMAC-SHA256 and base64
     #[default]
     V2 = 0x02,
@@ -99,8 +90,6 @@ impl TryFrom<u8> for Version {
 
     fn try_from(version: u8) -> Result<Self, Self::Error> {
         match version {
-            #[allow(deprecated)]
-            0x01 => Ok(Self::V1),
             0x02 => Ok(Self::V2),
             v => Err(Error::UnknownVersion(v)),
         }
@@ -135,31 +124,6 @@ where
     T: AsRef<[u8]>,
 {
     match version {
-        #[allow(deprecated)]
-        Version::V1 => {
-            // Compose key
-            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
-            let key: Sha256Hash = Sha256Hash::hash(&shared_key);
-
-            // Generate 192-bit nonce
-            let mut nonce: [u8; 24] = [0u8; 24];
-            rng.fill_bytes(&mut nonce);
-
-            // Compose cipher
-            let mut cipher = XChaCha20::new(key.as_byte_array().into(), &nonce.into());
-
-            // Encrypt
-            let mut buffer: Vec<u8> = content.as_ref().to_vec();
-            cipher.apply_keystream(&mut buffer);
-
-            // Compose payload
-            let mut payload: Vec<u8> = vec![version.as_u8()];
-            payload.extend_from_slice(nonce.as_slice());
-            payload.extend(buffer);
-
-            // Encode payload to base64
-            Ok(general_purpose::STANDARD.encode(payload))
-        }
         Version::V2 => {
             let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
             let payload: Vec<u8> = v2::encrypt_to_bytes_with_rng(rng, &conversation_key, content)?;
@@ -198,29 +162,6 @@ where
     let version: u8 = *payload.first().ok_or(Error::VersionNotFound)?;
 
     match Version::try_from(version)? {
-        #[allow(deprecated)]
-        Version::V1 => {
-            // Get data from payload
-            let nonce: &[u8] = payload
-                .get(1..25)
-                .ok_or_else(|| Error::NotFound(String::from("nonce")))?;
-            let ciphertext: &[u8] = payload
-                .get(25..)
-                .ok_or_else(|| Error::NotFound(String::from("ciphertext")))?;
-
-            // Compose key
-            let shared_key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
-            let key: Sha256Hash = Sha256Hash::hash(&shared_key);
-
-            // Compose cipher
-            let mut cipher = XChaCha20::new(key.as_byte_array().into(), nonce.into());
-
-            // Decrypt
-            let mut buffer: Vec<u8> = ciphertext.to_vec();
-            cipher.apply_keystream(&mut buffer);
-
-            Ok(buffer)
-        }
         Version::V2 => {
             let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
             v2::decrypt_to_bytes(&conversation_key, &payload)
@@ -263,43 +204,6 @@ mod tests {
         assert_eq!(
             decrypt(bob_keys.secret_key().unwrap(), &alice_pk, encrypted_content).unwrap(),
             content
-        );
-    }
-
-    #[test]
-    fn test_nip44_decryption() {
-        let secret_key =
-            SecretKey::from_str("0000000000000000000000000000000000000000000000000000000000000002")
-                .unwrap();
-        let public_key =
-            PublicKey::from_str("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdeb")
-                .unwrap();
-        let payload =
-            "AUXEhLosA5eFMYOtumkiFW4Joq1OPmkU8k/25+3+VDFvOU39qkUDl1aiy8Q+0ozTwbhD57VJoIYayYS++hE=";
-        assert_eq!(
-            decrypt(&secret_key, &public_key, payload).unwrap(),
-            String::from("A Peer-to-Peer Electronic Cash System")
-        );
-
-        let secret_key =
-            SecretKey::from_str("0000000000000000000000000000000000000000000000000000000000000001")
-                .unwrap();
-        let public_key =
-            PublicKey::from_str("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
-                .unwrap();
-        let payload = "AdYN4IQFz5veUIFH6CIkrGr0CcErnlSS4VdvoQaP2DCB1dIFL72HSriG1aFABcTlu86hrsG0MdOO9rPdVXc3jptMMzqvIN6tJlHPC8GdwFD5Y8BT76xIIOTJR2W0IdrM7++WC/9harEJAdeWHDAC9zNJX81CpCz4fnV1FZ8GxGLC0nUF7NLeUiNYu5WFXQuO9uWMK0pC7tk3XVogk90X6rwq0MQG9ihT7e1elatDy2YGat+VgQlDrz8ZLRw/lvU+QqeXMQgjqn42sMTrimG6NdKfHJSVWkT6SKZYVsuTyU1Iu5Nk0twEV8d11/MPfsMx4i36arzTC9qxE6jftpOoG8f/jwPTSCEpHdZzrb/CHJcpc+zyOW9BZE2ZOmSxYHAE0ustC9zRNbMT3m6LqxIoHq8j+8Ysu+Cwqr4nUNLYq/Q31UMdDg1oamYS17mWIAS7uf2yF5uT5IlG";
-        assert_eq!(decrypt(&secret_key, &public_key, payload).unwrap(), String::from("A purely peer-to-peer version of electronic cash would allow online payments to be sent directly from one party to another without going through a financial institution. Digital signatures provide part of the solution, but the main benefits are lost if a trusted third party is still required to prevent double-spending."));
-
-        let secret_key =
-            SecretKey::from_str("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364139")
-                .unwrap();
-        let public_key =
-            PublicKey::from_str("0000000000000000000000000000000000000000000000000000000000000002")
-                .unwrap();
-        let payload = "AfSBdQ4T36kLcit8zg2znYCw2y6JXMMAGjM=";
-        assert_eq!(
-            decrypt(&secret_key, &public_key, payload).unwrap(),
-            String::from("a")
         );
     }
 }
