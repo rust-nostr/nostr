@@ -70,6 +70,7 @@
 * nostr: remove support for `nrelay` NIP-19 entity ([Yuki Kishimoto])
 * nostr: remove support for NIP-44 v1 ([Yuki Kishimoto])
 * nostr: remove `EventBuilder::encrypted_direct_msg` ([Yuki Kishimoto])
+* sdk: remove `Client::send_direct_msg` ([Yuki Kishimoto])
 * cli: remove `tracing-subscriber` dep
 
 ## [v0.33.0]

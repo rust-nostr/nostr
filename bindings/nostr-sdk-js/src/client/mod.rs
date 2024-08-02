@@ -517,26 +517,6 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Send encrypted direct message
-    ///
-    /// <div class="warning"><strong>Unsecure!</strong> Use `sendPrivateMsg` instead!</div>
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
-    #[wasm_bindgen(js_name = sendDirectMsg)]
-    pub async fn send_direct_msg(
-        &self,
-        receiver: &JsPublicKey,
-        msg: &str,
-        reply: Option<JsEventId>,
-    ) -> Result<JsSendEventOutput> {
-        #[allow(deprecated)]
-        self.inner
-            .send_direct_msg(**receiver, msg, reply.map(|id| id.into()))
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
     /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>

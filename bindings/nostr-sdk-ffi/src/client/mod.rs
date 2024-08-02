@@ -474,25 +474,6 @@ impl Client {
             .into())
     }
 
-    /// Encrypted direct msg
-    ///
-    /// <div class="warning"><strong>Unsecure!</strong> Use `send_private_msg` instead!</div>
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
-    pub async fn send_direct_msg(
-        &self,
-        receiver: &PublicKey,
-        msg: String,
-        reply: Option<Arc<EventId>>,
-    ) -> Result<SendEventOutput> {
-        #[allow(deprecated)]
-        Ok(self
-            .inner
-            .send_direct_msg(**receiver, msg, reply.map(|r| **r))
-            .await?
-            .into())
-    }
-
     /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>

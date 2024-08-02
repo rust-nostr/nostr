@@ -1215,34 +1215,6 @@ impl Client {
         Ok(contacts)
     }
 
-    /// Send encrypted direct message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
-    #[deprecated(note = "Unsecure! Use `send_private_msg` instead.")]
-    #[cfg(feature = "nip04")]
-    pub async fn send_direct_msg<S>(
-        &self,
-        receiver: PublicKey,
-        msg: S,
-        reply_to: Option<EventId>,
-    ) -> Result<Output<EventId>, Error>
-    where
-        S: Into<String>,
-    {
-        let signer = self.signer().await?;
-        let content: String = signer.nip04_encrypt(receiver, msg.into()).await?;
-
-        let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(reply_to.is_some()));
-        tags.push(Tag::public_key(receiver));
-        if let Some(id) = reply_to {
-            tags.push(Tag::event(id));
-        }
-
-        let builder: EventBuilder = EventBuilder::new(Kind::EncryptedDirectMessage, content, tags);
-
-        self.send_event_builder(builder).await
-    }
-
     /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
