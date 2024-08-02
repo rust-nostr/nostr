@@ -565,31 +565,6 @@ impl EventBuilder {
         ))
     }
 
-    /// Create encrypted direct msg event
-    ///
-    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/04.md>
-    #[deprecated(note = "Unsecure! Deprecated in favor of NIP-17!")]
-    #[cfg(all(feature = "std", feature = "nip04"))]
-    pub fn encrypted_direct_msg<S>(
-        sender_keys: &Keys,
-        receiver_pubkey: PublicKey,
-        content: S,
-        reply_to: Option<EventId>,
-    ) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        let content: String =
-            nip04::encrypt(sender_keys.secret_key()?, &receiver_pubkey, content.into())?;
-        let mut tags: Vec<Tag> = vec![Tag::public_key(receiver_pubkey)];
-        if let Some(reply_to) = reply_to {
-            tags.push(Tag::event(reply_to));
-        }
-        Ok(Self::new(Kind::EncryptedDirectMessage, content, tags))
-    }
-
     /// Repost
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
@@ -1666,33 +1641,6 @@ mod tests {
         let deserialized = Event::from_json(serialized).unwrap();
 
         assert_eq!(event, deserialized);
-    }
-
-    #[test]
-    #[cfg(all(feature = "std", feature = "nip04"))]
-    fn test_encrypted_direct_msg() {
-        let sender_keys = Keys::new(
-            SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
-                .unwrap(),
-        );
-        let receiver_keys = Keys::new(
-            SecretKey::from_str("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
-                .unwrap(),
-        );
-
-        let content = "Mercury, the Winged Messenger";
-        #[allow(deprecated)]
-        let event = EventBuilder::encrypted_direct_msg(
-            &sender_keys,
-            receiver_keys.public_key(),
-            content,
-            None,
-        )
-        .unwrap()
-        .to_event(&sender_keys)
-        .unwrap();
-
-        event.verify().unwrap();
     }
 
     #[test]

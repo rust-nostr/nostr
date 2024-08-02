@@ -188,28 +188,6 @@ impl JsEventBuilder {
         }
     }
 
-    /// Create encrypted direct msg event
-    ///
-    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
-    #[wasm_bindgen(js_name = encryptedDirectMsg)]
-    pub fn encrypted_direct_msg(
-        sender_keys: &JsKeys,
-        receiver_pubkey: &JsPublicKey,
-        content: &str,
-        reply_to: Option<JsEventId>,
-    ) -> Result<JsEventBuilder> {
-        Ok(Self {
-            #[allow(deprecated)]
-            inner: EventBuilder::encrypted_direct_msg(
-                sender_keys.deref(),
-                **receiver_pubkey,
-                content,
-                reply_to.map(|id| id.into()),
-            )
-            .map_err(into_err)?,
-        })
-    }
-
     /// Repost
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>

@@ -178,27 +178,6 @@ impl EventBuilder {
         }
     }
 
-    /// Create encrypted direct msg event
-    ///
-    /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
-    #[uniffi::constructor(default(reply_to = None))]
-    pub fn encrypted_direct_msg(
-        sender_keys: &Keys,
-        receiver_pubkey: &PublicKey,
-        content: &str,
-        reply_to: Option<Arc<EventId>>,
-    ) -> Result<Self> {
-        Ok(Self {
-            #[allow(deprecated)]
-            inner: nostr::EventBuilder::encrypted_direct_msg(
-                sender_keys.deref(),
-                **receiver_pubkey,
-                content,
-                reply_to.map(|id| **id),
-            )?,
-        })
-    }
-
     /// Repost
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
