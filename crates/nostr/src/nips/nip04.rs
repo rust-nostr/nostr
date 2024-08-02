@@ -3,7 +3,9 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP04
+//! NIP-04
+//!
+//! <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/04.md>
 
@@ -67,6 +69,8 @@ impl From<secp256k1::Error> for Error {
 }
 
 /// Encrypt
+///
+/// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
 #[inline]
 #[cfg(feature = "std")]
 pub fn encrypt<T>(
@@ -81,6 +85,8 @@ where
 }
 
 /// Encrypt
+///
+/// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
 pub fn encrypt_with_rng<R, T>(
     rng: &mut R,
     secret_key: &SecretKey,
@@ -113,6 +119,8 @@ where
 }
 
 /// Decrypts content to bytes
+///
+/// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
 pub fn decrypt_to_bytes<S>(
     secret_key: &SecretKey,
     public_key: &PublicKey,
@@ -144,6 +152,8 @@ where
 }
 
 /// Decrypts content to a UTF-8 string
+///
+/// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
 #[inline]
 pub fn decrypt<T>(
     secret_key: &SecretKey,
