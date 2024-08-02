@@ -358,12 +358,16 @@ impl JsFilter {
 
     /// Add coordinate
     ///
+    /// Query for `a` tag.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn coordinate(self, coordinate: &JsCoordinate) -> Self {
         self.inner.coordinate(coordinate.deref()).into()
     }
 
     /// Set coordinates
+    ///
+    /// Query for `a` tags.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn coordinates(self, coordinates: Vec<JsCoordinate>) -> Self {
@@ -373,6 +377,8 @@ impl JsFilter {
     }
 
     /// Remove coordinates
+    ///
+    /// Remove `a` tags.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = removeCoordinates)]

@@ -302,6 +302,8 @@ impl Filter {
 
     /// Add coordinate
     ///
+    /// Query for `a` tag.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn coordinate(self: Arc<Self>, coordinate: &Coordinate) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
@@ -310,6 +312,8 @@ impl Filter {
     }
 
     /// Add coordinates
+    ///
+    /// Query for `a` tags.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn coordinates(self: Arc<Self>, coordinates: Vec<Arc<Coordinate>>) -> Self {
@@ -321,6 +325,8 @@ impl Filter {
     }
 
     /// Remove coordinates
+    ///
+    /// Remove `a` tags.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn remove_coordinates(self: Arc<Self>, coordinates: Vec<Arc<Coordinate>>) -> Self {

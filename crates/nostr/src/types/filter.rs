@@ -556,6 +556,8 @@ impl Filter {
 
     /// Add coordinate
     ///
+    /// Query for `a` tag.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn coordinate(self, coordinate: &Coordinate) -> Self {
@@ -566,6 +568,8 @@ impl Filter {
     }
 
     /// Add coordinates
+    ///
+    /// Query for `a` tags.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
@@ -580,6 +584,8 @@ impl Filter {
     }
 
     /// Remove coordinates
+    ///
+    /// Remove `a` tags.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
