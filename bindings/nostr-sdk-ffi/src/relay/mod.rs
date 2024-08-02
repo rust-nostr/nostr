@@ -332,7 +332,9 @@ impl Relay {
         Ok(self.inner.unsubscribe_all(**opts).await?)
     }
 
-    /// Get events that matches filters from remote relay
+    /// Get events of filters
+    ///
+    /// Get events from local database and relay
     pub async fn get_events_of(
         &self,
         filters: Vec<Arc<Filter>>,

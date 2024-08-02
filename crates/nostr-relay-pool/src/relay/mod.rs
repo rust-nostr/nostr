@@ -376,7 +376,9 @@ impl Relay {
             .await
     }
 
-    /// Get events that matches filters from remote relay
+    /// Get events of filters
+    ///
+    /// Get events from local database and relay
     #[inline]
     pub async fn get_events_of(
         &self,

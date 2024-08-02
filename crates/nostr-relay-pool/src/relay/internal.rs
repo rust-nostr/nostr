@@ -5,7 +5,7 @@
 //! Internal Relay
 
 use std::cmp;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -24,7 +24,7 @@ use nostr::{
     ClientMessage, Event, EventId, Filter, JsonUtil, Keys, Kind, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
-use nostr_database::DynNostrDatabase;
+use nostr_database::{DynNostrDatabase, Order};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, RwLock};
 
@@ -1595,13 +1595,18 @@ impl InternalRelay {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
+        let stored_events: Vec<Event> = self
+            .database
+            .query(filters.clone(), Order::Desc)
+            .await
+            .unwrap_or_default();
+        let events: Mutex<BTreeSet<Event>> = Mutex::new(stored_events.into_iter().collect());
         self.get_events_of_with_callback(filters, timeout, opts, |event| async {
             let mut events = events.lock().await;
-            events.push(event);
+            events.insert(event);
         })
         .await?;
-        Ok(events.into_inner())
+        Ok(events.into_inner().into_iter().rev().collect())
     }
 
     pub async fn count_events_of(
