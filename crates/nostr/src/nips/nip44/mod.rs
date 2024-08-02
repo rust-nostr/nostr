@@ -107,7 +107,7 @@ impl TryFrom<u8> for Version {
     }
 }
 
-/// Encrypt - EXPERIMENTAL
+/// Encrypt
 #[inline]
 #[cfg(feature = "std")]
 pub fn encrypt<T>(
@@ -122,7 +122,7 @@ where
     encrypt_with_rng(&mut OsRng, secret_key, public_key, content, version)
 }
 
-/// Encrypt - EXPERIMENTAL
+/// Encrypt
 pub fn encrypt_with_rng<R, T>(
     rng: &mut R,
     secret_key: &SecretKey,

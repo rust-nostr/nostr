@@ -50,6 +50,7 @@
 * nostr: add `EventId::LEN` const ([Yuki Kishimoto])
 * nostr: add `UnsignedEvent::ensure_id` method ([Yuki Kishimoto])
 * nostr: add missing `payload` arg to `EventBuilder::job_result` ([Yuki Kishimoto])
+* nostr: add `ConversationKey::new` ([Yuki Kishimoto])
 * pool: add `RelayPoolNotification::Authenticated` variant ([Yuki Kishimoto])
 * sdk: add `Client::gift_wrap_to` and `Client::send_private_msg_to` ([reyamir])
 * sdk: add option to autoconnect relay on `Client::add_relay` method call ([Yuki Kishimoto])

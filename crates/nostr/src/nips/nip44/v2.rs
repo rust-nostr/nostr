@@ -135,6 +135,12 @@ impl Deref for ConversationKey {
 }
 
 impl ConversationKey {
+    /// Construct conversation key from 32-byte array
+    #[inline]
+    pub fn new(bytes: [u8; 32]) -> Self {
+        Self(Hmac::from_byte_array(bytes))
+    }
+
     /// Derive Conversation Key
     #[inline]
     pub fn derive(secret_key: &SecretKey, public_key: &PublicKey) -> Self {
