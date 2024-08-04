@@ -76,8 +76,8 @@ impl SQLiteDatabase {
                 let mut rows = stmt.query([])?;
                 let mut events = BTreeSet::new();
                 while let Ok(Some(row)) = rows.next() {
-                    let buf: Vec<u8> = row.get(0)?;
-                    let raw = TempEvent::decode(&buf)?;
+                    let buf: &[u8] = row.get_ref(0)?.as_bytes()?;
+                    let raw = TempEvent::decode(buf)?;
                     events.insert(raw);
                 }
                 Ok::<BTreeSet<TempEvent>, Error>(events)
@@ -269,8 +269,8 @@ impl NostrDatabase for SQLiteDatabase {
                 let mut rows = stmt.query([event_id.to_hex()])?;
                 let mut relays = HashSet::new();
                 while let Ok(Some(row)) = rows.next() {
-                    let url: String = row.get(0)?;
-                    relays.insert(Url::parse(&url)?);
+                    let url: &str = row.get_ref(0)?.as_str()?;
+                    relays.insert(Url::parse(url)?);
                 }
                 Ok(Some(relays))
             })
@@ -287,12 +287,13 @@ impl NostrDatabase for SQLiteDatabase {
                 let row = rows
                     .next()?
                     .ok_or_else(|| Error::NotFound("event".into()))?;
-                let buf: Vec<u8> = row.get(0)?;
-                Ok(Event::decode(&buf)?)
+                let buf: &[u8] = row.get_ref(0)?.as_bytes()?;
+                Ok(Event::decode(buf)?)
             })
             .await?
     }
 
+    #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
         Ok(self.indexes.count(filters).await)
@@ -303,14 +304,14 @@ impl NostrDatabase for SQLiteDatabase {
         let ids: Vec<EventId> = self.indexes.query(filters, order).await;
         self.pool
             .interact(move |conn| {
-                let mut events = Vec::with_capacity(ids.len());
+                let mut events: Vec<Event> = Vec::with_capacity(ids.len());
                 let mut stmt =
                     conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
                 for id in ids.into_iter() {
                     let mut rows = stmt.query([id.to_hex()])?;
                     while let Ok(Some(row)) = rows.next() {
-                        let buf: Vec<u8> = row.get(0)?;
-                        events.push(Event::decode(&buf)?);
+                        let buf: &[u8] = row.get_ref(0)?.as_bytes()?;
+                        events.push(Event::decode(buf)?);
                     }
                 }
                 Ok(events)
@@ -318,6 +319,7 @@ impl NostrDatabase for SQLiteDatabase {
             .await?
     }
 
+    #[inline]
     async fn event_ids_by_filters(
         &self,
         filters: Vec<Filter>,
@@ -326,6 +328,7 @@ impl NostrDatabase for SQLiteDatabase {
         Ok(self.indexes.query(filters, order).await)
     }
 
+    #[inline]
     async fn negentropy_items(
         &self,
         filter: Filter,

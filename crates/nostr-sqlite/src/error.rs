@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use nostr_database::{flatbuffers, DatabaseError};
+use rusqlite::types::FromSqlError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -20,6 +21,9 @@ pub enum Error {
     /// Migration error
     #[error(transparent)]
     Migration(#[from] MigrationError),
+    /// From SQL error
+    #[error(transparent)]
+    FromSql(#[from] FromSqlError),
     /// Database error
     #[error(transparent)]
     Database(#[from] DatabaseError),

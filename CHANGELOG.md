@@ -39,6 +39,7 @@
 * pool: bump `async-wsocket` to `v0.6` ([Yuki Kishimoto])
 * database: not match event if `Filter::search` field is set ([Yuki Kishimoto])
 * sdk: rename `Proxy` and `ProxyTarget` to `Connection` and `ConnectionTarget` ([Yuki Kishimoto])
+* sqlite: use `ValueRef` instead of owned one ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])
 * cli: allow to specify relays in `open` command ([Yuki Kishimoto])
 
