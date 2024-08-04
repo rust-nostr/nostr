@@ -409,6 +409,15 @@ impl Request {
         }
     }
 
+    /// Compose `multi_pay_invoice` request
+    #[inline]
+    pub fn multi_pay_invoice(params: MultiPayInvoiceRequestParams) -> Self {
+        Self {
+            method: Method::MultiPayInvoice,
+            params: RequestParams::MultiPayInvoice(params),
+        }
+    }
+
     /// Compose `pay_keysend` request
     #[inline]
     pub fn pay_keysend(params: PayKeysendRequestParams) -> Self {
