@@ -4,7 +4,7 @@
 
 //! Tag Indexes
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "flatbuf")]
@@ -48,10 +48,7 @@ impl TagIndexes {
                 if t.len() > 1 {
                     if let Some(single_letter_tag) = single_char_tagname(t.get(0)) {
                         let inner = hash(t.get(1));
-                        tag_index
-                            .entry(single_letter_tag)
-                            .or_default()
-                            .insert(inner);
+                        tag_index.entry(single_letter_tag).or_default().push(inner);
                     }
                 }
             }
@@ -60,9 +57,10 @@ impl TagIndexes {
     }
 
     /// Get hashed `d` tag
+    #[inline]
     pub fn identifier(&self) -> Option<[u8; TAG_INDEX_VALUE_SIZE]> {
         let values = self.inner.get(&SingleLetterTag::lowercase(Alphabet::D))?;
-        values.iter().next().copied()
+        values.first().copied()
     }
 }
 
@@ -76,10 +74,7 @@ where
             iter.filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
         {
             let inner = hash(content);
-            tag_index
-                .entry(single_letter_tag)
-                .or_default()
-                .insert(inner);
+            tag_index.entry(single_letter_tag).or_default().push(inner);
         }
         tag_index
     }
@@ -108,11 +103,11 @@ where
 /// Tag Index Values
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct TagIndexValues {
-    inner: BTreeSet<[u8; TAG_INDEX_VALUE_SIZE]>,
+    inner: Vec<[u8; TAG_INDEX_VALUE_SIZE]>,
 }
 
 impl Deref for TagIndexValues {
-    type Target = BTreeSet<[u8; TAG_INDEX_VALUE_SIZE]>;
+    type Target = Vec<[u8; TAG_INDEX_VALUE_SIZE]>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner

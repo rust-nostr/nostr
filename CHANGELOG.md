@@ -39,6 +39,7 @@
 * pool: bump `async-wsocket` to `v0.6` ([Yuki Kishimoto])
 * database: not match event if `Filter::search` field is set ([Yuki Kishimoto])
 * database: avoid to copy `EventId` in `Event::decode` ([Yuki Kishimoto])
+* database: use `Vec` instead of `BTreeSet` as inner value for `TagIndexValues` ([Yuki Kishimoto])
 * sdk: rename `Proxy` and `ProxyTarget` to `Connection` and `ConnectionTarget` ([Yuki Kishimoto])
 * sqlite: use `ValueRef` instead of owned one ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])
@@ -65,6 +66,7 @@
 
 * pool: fix `Event` notification variant sent also for events sent by the SDK ([Yuki Kishimoto])
 * database: fix indexes `QueryPattern` ([Yuki Kishimoto])
+* database: fix query issue due to wrong tag value order ([Yuki Kishimoto])
 
 ### Removed
 
