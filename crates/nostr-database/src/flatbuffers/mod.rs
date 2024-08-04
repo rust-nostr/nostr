@@ -18,9 +18,7 @@ mod event_generated;
 mod event_seen_by_generated;
 
 use self::event_generated::event_fbs;
-pub(crate) use self::event_generated::event_fbs::StringVector;
 use self::event_seen_by_generated::event_seen_by_fbs;
-use crate::temp::TempEvent;
 
 /// FlatBuffers Error
 #[derive(Debug, Error)]
@@ -121,19 +119,6 @@ impl FlatBufferDecode for Event {
             ev.content().ok_or(Error::NotFound)?.to_owned(),
             Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
         ))
-    }
-}
-
-impl FlatBufferDecode for TempEvent {
-    #[tracing::instrument(skip_all, level = "trace")]
-    fn decode(buf: &[u8]) -> Result<Self, Error> {
-        let ev = event_fbs::root_as_event(buf)?;
-        let id = ev.id().ok_or(Error::NotFound)?.0;
-        let pubkey = ev.pubkey().ok_or(Error::NotFound)?.0;
-        let created_at = ev.created_at();
-        let kind = ev.kind() as u16;
-        let tags = ev.tags().ok_or(Error::NotFound)?;
-        Ok(Self::new(id, pubkey, created_at, kind, tags))
     }
 }
 

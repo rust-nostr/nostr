@@ -21,7 +21,7 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
     Backend, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, NostrDatabase, Order, TempEvent,
+    FlatBufferEncode, NostrDatabase, Order,
 };
 use rusqlite::config::DbConfig;
 use rusqlite::Connection;
@@ -77,10 +77,10 @@ impl SQLiteDatabase {
                 let mut events = BTreeSet::new();
                 while let Ok(Some(row)) = rows.next() {
                     let buf: &[u8] = row.get_ref(0)?.as_bytes()?;
-                    let raw = TempEvent::decode(buf)?;
+                    let raw = Event::decode(buf)?;
                     events.insert(raw);
                 }
-                Ok::<BTreeSet<TempEvent>, Error>(events)
+                Ok::<BTreeSet<Event>, Error>(events)
             })
             .await??;
 

@@ -32,7 +32,7 @@ use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::NostrDatabase;
 use nostr_database::{
     Backend, DatabaseError, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, Order, TempEvent,
+    FlatBufferEncode, Order,
 };
 use tokio::sync::Mutex;
 use wasm_bindgen::{JsCast, JsValue};
@@ -200,7 +200,7 @@ impl WebDatabase {
             .filter_map(js_value_to_string)
             .filter_map(|v| {
                 let bytes = hex::decode(v).ok()?;
-                TempEvent::decode(&bytes).ok()
+                Event::decode(&bytes).ok()
             });
 
         // Build indexes

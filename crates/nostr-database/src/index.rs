@@ -16,8 +16,6 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::tag_indexes::{hash, TagIndexValues, TagIndexes, TAG_INDEX_VALUE_SIZE};
-#[cfg(feature = "flatbuf")]
-use crate::temp::TempEvent;
 use crate::Order;
 
 /// Public Key Prefix Size
@@ -187,8 +185,6 @@ impl From<Filter> for FilterIndex {
 pub enum EventOrTempEvent<'a> {
     Event(&'a Event),
     EventOwned(Box<Event>),
-    #[cfg(feature = "flatbuf")]
-    Temp(TempEvent),
 }
 
 impl<'a> From<Event> for EventOrTempEvent<'a> {
@@ -203,20 +199,11 @@ impl<'a> From<&'a Event> for EventOrTempEvent<'a> {
     }
 }
 
-#[cfg(feature = "flatbuf")]
-impl<'a> From<TempEvent> for EventOrTempEvent<'a> {
-    fn from(value: TempEvent) -> Self {
-        Self::Temp(value)
-    }
-}
-
 impl<'a> EventOrTempEvent<'a> {
     fn id(&self) -> Result<EventId, Error> {
         match self {
             EventOrTempEvent::Event(e) => Ok(e.id()),
             EventOrTempEvent::EventOwned(e) => Ok(e.id()),
-            #[cfg(feature = "flatbuf")]
-            EventOrTempEvent::Temp(r) => Ok(EventId::from_slice(&r.id)?),
         }
     }
 
@@ -224,8 +211,6 @@ impl<'a> EventOrTempEvent<'a> {
         match self {
             Self::Event(e) => PublicKeyPrefix::from(&e.pubkey),
             Self::EventOwned(e) => PublicKeyPrefix::from(&e.pubkey),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => PublicKeyPrefix::from(r.pubkey),
         }
     }
 
@@ -233,8 +218,6 @@ impl<'a> EventOrTempEvent<'a> {
         match self {
             Self::Event(e) => e.created_at(),
             Self::EventOwned(e) => e.created_at(),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.created_at,
         }
     }
 
@@ -242,8 +225,6 @@ impl<'a> EventOrTempEvent<'a> {
         match self {
             Self::Event(e) => e.kind(),
             Self::EventOwned(e) => e.kind(),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.kind,
         }
     }
 
@@ -251,8 +232,6 @@ impl<'a> EventOrTempEvent<'a> {
         match self {
             Self::Event(e) => TagIndexes::from(e.tags.iter()),
             Self::EventOwned(e) => TagIndexes::from(e.tags.iter()),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.tags,
         }
     }
 
@@ -260,8 +239,6 @@ impl<'a> EventOrTempEvent<'a> {
         match self {
             Self::Event(e) => e.identifier().map(hash),
             Self::EventOwned(e) => e.identifier().map(hash),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.identifier,
         }
     }
 
@@ -269,8 +246,6 @@ impl<'a> EventOrTempEvent<'a> {
         match self {
             Self::Event(e) => Box::new(e.event_ids()),
             Self::EventOwned(e) => Box::new(e.event_ids()),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => Box::new(r.event_ids.iter()),
         }
     }
 
@@ -278,8 +253,6 @@ impl<'a> EventOrTempEvent<'a> {
         match self {
             Self::Event(e) => Box::new(e.coordinates()),
             Self::EventOwned(e) => Box::new(e.coordinates()),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => Box::new(r.coordinates.iter()),
         }
     }
 
@@ -287,8 +260,6 @@ impl<'a> EventOrTempEvent<'a> {
         match self {
             Self::Event(e) => e.is_expired_at(now),
             Self::EventOwned(e) => e.is_expired_at(now),
-            #[cfg(feature = "flatbuf")]
-            Self::Temp(r) => r.is_expired(now),
         }
     }
 }
