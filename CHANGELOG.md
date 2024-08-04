@@ -38,6 +38,7 @@
 * pool: better checks before perform queries or send messages to relays ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.6` ([Yuki Kishimoto])
 * database: not match event if `Filter::search` field is set ([Yuki Kishimoto])
+* database: avoid to copy `EventId` in `Event::decode` ([Yuki Kishimoto])
 * sdk: rename `Proxy` and `ProxyTarget` to `Connection` and `ConnectionTarget` ([Yuki Kishimoto])
 * sqlite: use `ValueRef` instead of owned one ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])

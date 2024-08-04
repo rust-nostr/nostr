@@ -113,7 +113,7 @@ impl FlatBufferDecode for Event {
             .collect::<Result<Vec<Tag>, _>>()?;
 
         Ok(Self::new(
-            EventId::from_slice(&ev.id().ok_or(Error::NotFound)?.0)?,
+            EventId::owned(ev.id().ok_or(Error::NotFound)?.0),
             PublicKey::from_slice(&ev.pubkey().ok_or(Error::NotFound)?.0)?,
             Timestamp::from(ev.created_at()),
             Kind::from(ev.kind() as u16),
