@@ -427,7 +427,7 @@ struct InternalDatabaseIndexes {
     ids_index: HashMap<EventId, ArcEventIndex>,
     author_index: HashMap<PublicKeyPrefix, BTreeSet<ArcEventIndex>>,
     kind_author_index: HashMap<(Kind, PublicKeyPrefix), BTreeSet<ArcEventIndex>>,
-    kind_author_tags_index:
+    param_replaceable_index:
         HashMap<(Kind, PublicKeyPrefix, [u8; TAG_INDEX_VALUE_SIZE]), ArcEventIndex>,
     deleted_ids: HashSet<EventId>,
     deleted_coordinates: HashMap<Coordinate, Timestamp>,
@@ -577,7 +577,7 @@ impl InternalDatabaseIndexes {
 
             if kind.is_parameterized_replaceable() {
                 if let Some(identifier) = e.tags.identifier() {
-                    self.kind_author_tags_index
+                    self.param_replaceable_index
                         .insert((kind, pubkey_prefix, identifier), e.clone());
                 }
             }
@@ -612,7 +612,7 @@ impl InternalDatabaseIndexes {
 
                     if ev.kind.is_parameterized_replaceable() {
                         if let Some(identifier) = ev.tags.identifier() {
-                            self.kind_author_tags_index
+                            self.param_replaceable_index
                                 .remove(&(ev.kind, ev.pubkey, identifier));
                         }
                     }
@@ -726,7 +726,7 @@ impl InternalDatabaseIndexes {
         }
 
         let ev = self
-            .kind_author_tags_index
+            .param_replaceable_index
             .get(&(kind, author, identifier))?;
 
         if self.deleted_ids.contains(&ev.event_id) {
