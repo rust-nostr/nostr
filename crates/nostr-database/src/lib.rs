@@ -158,13 +158,6 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Query store with filters
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err>;
 
-    /// Get event IDs by filters
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err>;
-
     /// Get `negentropy` items
     async fn negentropy_items(
         &self,
@@ -343,17 +336,6 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
 
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
         self.0.query(filters, order).await.map_err(Into::into)
-    }
-
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err> {
-        self.0
-            .event_ids_by_filters(filters, order)
-            .await
-            .map_err(Into::into)
     }
 
     async fn negentropy_items(

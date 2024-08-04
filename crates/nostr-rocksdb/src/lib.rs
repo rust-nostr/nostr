@@ -331,14 +331,6 @@ impl NostrDatabase for RocksDatabase {
         .map_err(DatabaseError::backend)?
     }
 
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err> {
-        Ok(self.indexes.query(filters, order).await)
-    }
-
     async fn negentropy_items(
         &self,
         filter: Filter,

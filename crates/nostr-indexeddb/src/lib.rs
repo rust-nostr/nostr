@@ -465,14 +465,6 @@ impl_nostr_database!({
         Ok(events)
     }
 
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, IndexedDBError> {
-        Ok(self.indexes.query(filters, order).await)
-    }
-
     async fn negentropy_items(
         &self,
         filter: Filter,

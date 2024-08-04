@@ -235,18 +235,6 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err> {
-        if self.opts.events {
-            Ok(self.indexes.query(filters, order).await)
-        } else {
-            Err(DatabaseError::FeatureDisabled)
-        }
-    }
-
     async fn negentropy_items(
         &self,
         filter: Filter,
