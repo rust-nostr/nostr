@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use nostr::prelude::*;
-use nostr_database::{DatabaseIndexes, Order};
+use nostr_database::{DatabaseHelper, Order};
 use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::main]
@@ -24,7 +24,7 @@ async fn main() {
             .unwrap();
     let keys_b = Keys::new(secret_key);
 
-    let index = DatabaseIndexes::new();
+    let index = DatabaseHelper::new();
 
     for i in 0..100_000 {
         let event = EventBuilder::text_note(format!("Event #{i}"), [])

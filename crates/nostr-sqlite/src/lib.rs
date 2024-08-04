@@ -20,7 +20,7 @@ use async_trait::async_trait;
 use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
-    Backend, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
+    Backend, DatabaseEventResult, DatabaseHelper, FlatBufferBuilder, FlatBufferDecode,
     FlatBufferEncode, NostrDatabase, Order,
 };
 use rusqlite::config::DbConfig;
@@ -39,7 +39,7 @@ use self::pool::Pool;
 #[derive(Debug, Clone)]
 pub struct SQLiteDatabase {
     pool: Pool,
-    indexes: DatabaseIndexes,
+    helper: DatabaseHelper,
     fbb: Arc<RwLock<FlatBufferBuilder<'static>>>,
 }
 
@@ -57,7 +57,7 @@ impl SQLiteDatabase {
 
         let this = Self {
             pool,
-            indexes: DatabaseIndexes::new(),
+            helper: DatabaseHelper::new(),
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
@@ -85,7 +85,7 @@ impl SQLiteDatabase {
             .await??;
 
         // Build indexes
-        let to_discard: HashSet<EventId> = self.indexes.bulk_index(events).await;
+        let to_discard: HashSet<EventId> = self.helper.bulk_index(events).await;
 
         // Discard events
         if !to_discard.is_empty() {
@@ -114,10 +114,10 @@ impl NostrDatabase for SQLiteDatabase {
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         // Index event
-        let EventIndexResult {
+        let DatabaseEventResult {
             to_store,
             to_discard,
-        } = self.indexes.index_event(event).await;
+        } = self.helper.index_event(event).await;
 
         if !to_discard.is_empty() {
             self.pool
@@ -161,7 +161,7 @@ impl NostrDatabase for SQLiteDatabase {
         let mut fbb = self.fbb.write().await;
 
         // Events to store
-        let events = self.indexes.bulk_import(events).await;
+        let events = self.helper.bulk_import(events).await;
 
         // Encode
         let events: Vec<(EventId, Vec<u8>)> = events
@@ -193,7 +193,7 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        if self.indexes.has_event_id_been_deleted(event_id).await {
+        if self.helper.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else {
             let event_id: String = event_id.to_hex();
@@ -231,7 +231,7 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        Ok(self.indexes.has_event_id_been_deleted(event_id).await)
+        Ok(self.helper.has_event_id_been_deleted(event_id).await)
     }
 
     async fn has_coordinate_been_deleted(
@@ -240,7 +240,7 @@ impl NostrDatabase for SQLiteDatabase {
         timestamp: Timestamp,
     ) -> Result<bool, Self::Err> {
         Ok(self
-            .indexes
+            .helper
             .has_coordinate_been_deleted(coordinate, timestamp)
             .await)
     }
@@ -296,27 +296,13 @@ impl NostrDatabase for SQLiteDatabase {
     #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
-        Ok(self.indexes.count(filters).await)
+        Ok(self.helper.count(filters).await)
     }
 
+    #[inline]
     #[tracing::instrument(skip_all)]
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
-        let ids: Vec<EventId> = self.indexes.query(filters, order).await;
-        self.pool
-            .interact(move |conn| {
-                let mut events: Vec<Event> = Vec::with_capacity(ids.len());
-                let mut stmt =
-                    conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
-                for id in ids.into_iter() {
-                    let mut rows = stmt.query([id.to_hex()])?;
-                    while let Ok(Some(row)) = rows.next() {
-                        let buf: &[u8] = row.get_ref(0)?.as_bytes()?;
-                        events.push(Event::decode(buf)?);
-                    }
-                }
-                Ok(events)
-            })
-            .await?
+        Ok(self.helper.query(filters, order).await)
     }
 
     #[inline]
@@ -324,11 +310,11 @@ impl NostrDatabase for SQLiteDatabase {
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        Ok(self.indexes.negentropy_items(filter).await)
+        Ok(self.helper.negentropy_items(filter).await)
     }
 
     async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
-        match self.indexes.delete(filter).await {
+        match self.helper.delete(filter).await {
             Some(ids) => {
                 self.pool
                     .interact(move |conn| {
@@ -368,7 +354,7 @@ impl NostrDatabase for SQLiteDatabase {
 
         migration::run(&self.pool).await?;
 
-        self.indexes.clear().await;
+        self.helper.clear().await;
 
         Ok(())
     }

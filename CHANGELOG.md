@@ -44,6 +44,7 @@
 * database: not match event if `Filter::search` field is set ([Yuki Kishimoto])
 * database: avoid to copy `EventId` in `Event::decode` ([Yuki Kishimoto])
 * database: use `Vec` instead of `BTreeSet` as inner value for `TagIndexValues` ([Yuki Kishimoto])
+* database: rework `DatabaseIndexes` and rename to `DatabaseHelper` ([Yuki Kishimoto])
 * sdk: rename `Proxy` and `ProxyTarget` to `Connection` and `ConnectionTarget` ([Yuki Kishimoto])
 * sqlite: use `ValueRef` instead of owned one ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])

@@ -20,15 +20,15 @@ use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, PublicKey, Timesta
 mod error;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuffers;
-pub mod index;
+pub mod helper;
 pub mod memory;
 pub mod profile;
-mod tag_indexes;
+mod util;
 
 pub use self::error::DatabaseError;
 #[cfg(feature = "flatbuf")]
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
-pub use self::index::{DatabaseIndexes, EventIndexResult};
+pub use self::helper::{DatabaseEventResult, DatabaseHelper};
 pub use self::memory::{MemoryDatabase, MemoryDatabaseOptions};
 pub use self::profile::Profile;
 

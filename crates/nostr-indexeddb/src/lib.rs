@@ -31,8 +31,8 @@ use nostr::{Event, EventId, Filter, Timestamp, Url};
 #[cfg(target_arch = "wasm32")]
 use nostr_database::NostrDatabase;
 use nostr_database::{
-    Backend, DatabaseError, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, Order,
+    Backend, DatabaseError, DatabaseEventResult, DatabaseHelper, FlatBufferBuilder,
+    FlatBufferDecode, FlatBufferEncode, Order,
 };
 use tokio::sync::Mutex;
 use wasm_bindgen::{JsCast, JsValue};
@@ -61,7 +61,7 @@ pub struct OngoingMigration {
 #[derive(Clone)]
 pub struct WebDatabase {
     db: Arc<IdbDatabase>,
-    indexes: DatabaseIndexes,
+    helper: DatabaseHelper,
     fbb: Arc<Mutex<FlatBufferBuilder<'static>>>,
 }
 
@@ -81,7 +81,7 @@ impl WebDatabase {
     {
         let mut this = Self {
             db: Arc::new(IdbDatabase::open(name.as_ref())?.into_future().await?),
-            indexes: DatabaseIndexes::new(),
+            helper: DatabaseHelper::new(),
             fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
@@ -204,7 +204,7 @@ impl WebDatabase {
             });
 
         // Build indexes
-        let to_discard: HashSet<EventId> = self.indexes.bulk_index(events.collect()).await;
+        let to_discard: HashSet<EventId> = self.helper.bulk_index(events.collect()).await;
 
         // Discard events
         for event_id in to_discard.into_iter() {
@@ -254,10 +254,10 @@ impl_nostr_database!({
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, IndexedDBError> {
         // Index event
-        let EventIndexResult {
+        let DatabaseEventResult {
             to_store,
             to_discard,
-        } = self.indexes.index_event(event).await;
+        } = self.helper.index_event(event).await;
 
         if to_store {
             let tx = self
@@ -301,7 +301,7 @@ impl_nostr_database!({
         let store = tx.object_store(EVENTS_CF)?;
 
         // Bulk import indexes
-        let events = self.indexes.bulk_import(events).await;
+        let events = self.helper.bulk_import(events).await;
 
         // Acquire FlatBuffers Builder
         let mut fbb = self.fbb.lock().await;
@@ -324,7 +324,7 @@ impl_nostr_database!({
         &self,
         event_id: &EventId,
     ) -> Result<bool, IndexedDBError> {
-        if self.indexes.has_event_id_been_deleted(event_id).await {
+        if self.helper.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else {
             let tx = self
@@ -349,7 +349,7 @@ impl_nostr_database!({
     }
 
     async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, IndexedDBError> {
-        Ok(self.indexes.has_event_id_been_deleted(event_id).await)
+        Ok(self.helper.has_event_id_been_deleted(event_id).await)
     }
 
     async fn has_coordinate_been_deleted(
@@ -358,7 +358,7 @@ impl_nostr_database!({
         timestamp: Timestamp,
     ) -> Result<bool, IndexedDBError> {
         Ok(self
-            .indexes
+            .helper
             .has_coordinate_been_deleted(coordinate, timestamp)
             .await)
     }
@@ -434,42 +434,24 @@ impl_nostr_database!({
     }
 
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, IndexedDBError> {
-        Ok(self.indexes.count(filters).await)
+        Ok(self.helper.count(filters).await)
     }
 
+    #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(
         &self,
         filters: Vec<Filter>,
         order: Order,
     ) -> Result<Vec<Event>, IndexedDBError> {
-        let tx = self
-            .db
-            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
-        let store = tx.object_store(EVENTS_CF)?;
-
-        let ids: Vec<EventId> = self.indexes.query(filters, order).await;
-        let mut events: Vec<Event> = Vec::with_capacity(ids.len());
-
-        for event_id in ids.into_iter() {
-            let key = JsValue::from(event_id.to_hex());
-            if let Some(jsvalue) = store.get(&key)?.await? {
-                let event_hex: String =
-                    js_value_to_string(jsvalue).ok_or(DatabaseError::NotFound)?;
-                let bytes: Vec<u8> = hex::decode(event_hex).map_err(DatabaseError::backend)?;
-                let event: Event = Event::decode(&bytes).map_err(DatabaseError::backend)?;
-                events.push(event);
-            }
-        }
-
-        Ok(events)
+        Ok(self.helper.query(filters, order).await)
     }
 
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, IndexedDBError> {
-        Ok(self.indexes.negentropy_items(filter).await)
+        Ok(self.helper.negentropy_items(filter).await)
     }
 
     async fn delete(&self, filter: Filter) -> Result<(), IndexedDBError> {
@@ -478,7 +460,7 @@ impl_nostr_database!({
             .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
         let store = tx.object_store(EVENTS_CF)?;
 
-        match self.indexes.delete(filter).await {
+        match self.helper.delete(filter).await {
             Some(ids) => {
                 for id in ids.into_iter() {
                     let key = JsValue::from(id.to_hex());
@@ -502,7 +484,7 @@ impl_nostr_database!({
             store.clear()?.await?;
         }
 
-        self.indexes.clear().await;
+        self.helper.clear().await;
 
         Ok(())
     }

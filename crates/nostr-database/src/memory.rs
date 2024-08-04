@@ -6,7 +6,6 @@
 
 use std::collections::{BTreeSet, HashSet};
 use std::hash::Hash;
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -15,7 +14,9 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use tokio::sync::Mutex;
 
-use crate::{Backend, DatabaseError, DatabaseIndexes, EventIndexResult, NostrDatabase, Order};
+use crate::{
+    util, Backend, DatabaseError, DatabaseEventResult, DatabaseHelper, NostrDatabase, Order,
+};
 
 /// Database options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -49,8 +50,7 @@ impl MemoryDatabaseOptions {
 pub struct MemoryDatabase {
     opts: MemoryDatabaseOptions,
     seen_event_ids: Arc<Mutex<LruCache<EventId, HashSet<Url>>>>,
-    events: Arc<Mutex<LruCache<EventId, Event>>>,
-    indexes: DatabaseIndexes,
+    helper: DatabaseHelper,
 }
 
 impl Default for MemoryDatabase {
@@ -69,9 +69,8 @@ impl MemoryDatabase {
     pub fn with_opts(opts: MemoryDatabaseOptions) -> Self {
         Self {
             opts,
-            seen_event_ids: Arc::new(Mutex::new(new_lru_cache(opts.max_events))),
-            events: Arc::new(Mutex::new(new_lru_cache(opts.max_events))),
-            indexes: DatabaseIndexes::new(),
+            seen_event_ids: Arc::new(Mutex::new(util::new_lru_cache(opts.max_events))),
+            helper: DatabaseHelper::new(),
         }
     }
 
@@ -111,25 +110,8 @@ impl NostrDatabase for MemoryDatabase {
 
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         if self.opts.events {
-            let EventIndexResult {
-                to_store,
-                to_discard,
-            } = self.indexes.index_event(event).await;
-
-            if to_store {
-                let mut events = self.events.lock().await;
-
-                events.put(event.id(), event.clone());
-
-                for event_id in to_discard.into_iter() {
-                    events.pop(&event_id);
-                }
-
-                Ok(true)
-            } else {
-                tracing::warn!("Event {} not saved: unknown", event.id());
-                Ok(false)
-            }
+            let DatabaseEventResult { to_store, .. } = self.helper.index_event(event).await;
+            Ok(to_store)
         } else {
             // Mark it as seen
             let mut seen_event_ids = self.seen_event_ids.lock().await;
@@ -141,14 +123,7 @@ impl NostrDatabase for MemoryDatabase {
 
     async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
         if self.opts.events {
-            let events = self.indexes.bulk_import(events).await;
-
-            let mut e = self.events.lock().await;
-
-            for event in events.into_iter() {
-                e.put(event.id(), event);
-            }
-
+            self.helper.bulk_import(events).await;
             Ok(())
         } else {
             Err(DatabaseError::FeatureDisabled)
@@ -156,11 +131,10 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        if self.indexes.has_event_id_been_deleted(event_id).await {
+        if self.helper.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else if self.opts.events {
-            let events = self.events.lock().await;
-            Ok(events.contains(event_id))
+            Ok(self.helper.has_event(event_id).await)
         } else {
             Ok(false)
         }
@@ -172,7 +146,7 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        Ok(self.indexes.has_event_id_been_deleted(event_id).await)
+        Ok(self.helper.has_event_id_been_deleted(event_id).await)
     }
 
     async fn has_coordinate_been_deleted(
@@ -181,7 +155,7 @@ impl NostrDatabase for MemoryDatabase {
         timestamp: Timestamp,
     ) -> Result<bool, Self::Err> {
         Ok(self
-            .indexes
+            .helper
             .has_coordinate_been_deleted(coordinate, timestamp)
             .await)
     }
@@ -200,36 +174,28 @@ impl NostrDatabase for MemoryDatabase {
         Ok(seen_event_ids.get(&event_id).cloned())
     }
 
-    async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
+    // TODO: use reference
+    async fn event_by_id(&self, id: EventId) -> Result<Event, Self::Err> {
         if self.opts.events {
-            let mut events = self.events.lock().await;
-            events
-                .get(&event_id)
-                .cloned()
+            self.helper
+                .event_by_id(&id)
+                .await
                 .ok_or(DatabaseError::NotFound)
         } else {
             Err(DatabaseError::FeatureDisabled)
         }
     }
 
+    #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
-        Ok(self.indexes.count(filters).await)
+        Ok(self.helper.count(filters).await)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
         if self.opts.events {
-            let ids = self.indexes.query(filters, order).await;
-            let mut events = self.events.lock().await;
-
-            let mut list: Vec<Event> = Vec::with_capacity(ids.len());
-            for event_id in ids.into_iter() {
-                if let Some(event) = events.get(&event_id).cloned() {
-                    list.push(event);
-                }
-            }
-            Ok(list)
+            Ok(self.helper.query(filters, order).await)
         } else {
             Err(DatabaseError::FeatureDisabled)
         }
@@ -240,51 +206,24 @@ impl NostrDatabase for MemoryDatabase {
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
         if self.opts.events {
-            Ok(self.indexes.negentropy_items(filter).await)
+            Ok(self.helper.negentropy_items(filter).await)
         } else {
             Err(DatabaseError::FeatureDisabled)
         }
     }
 
     async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
-        let mut events = self.events.lock().await;
-
-        match self.indexes.delete(filter).await {
-            Some(ids) => {
-                for id in ids.into_iter() {
-                    events.pop(&id);
-                }
-            }
-            None => {
-                events.clear();
-            }
-        };
-
+        self.helper.delete(filter).await;
         Ok(())
     }
 
     async fn wipe(&self) -> Result<(), Self::Err> {
-        // Clear indexes
-        self.indexes.clear().await;
+        // Clear helper
+        self.helper.clear().await;
 
         // Clear
         let mut seen_event_ids = self.seen_event_ids.lock().await;
         seen_event_ids.clear();
-        let mut events = self.events.lock().await;
-        events.clear();
         Ok(())
-    }
-}
-
-fn new_lru_cache<K, V>(size: Option<usize>) -> LruCache<K, V>
-where
-    K: Hash + Eq,
-{
-    match size {
-        Some(size) => match NonZeroUsize::new(size) {
-            Some(size) => LruCache::new(size),
-            None => LruCache::unbounded(),
-        },
-        None => LruCache::unbounded(),
     }
 }
