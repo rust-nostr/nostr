@@ -43,20 +43,26 @@ async fn main() -> Result<()> {
     let bech32_pubkey: String = my_keys.public_key().to_bech32()?;
     println!("Bech32 PubKey: {}", bech32_pubkey);
 
-    // Create new client
-    let client = Client::new(&my_keys);
+    // Configure client to use proxy for `.onion` relays
+    let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
+    let connection: Connection = Connection::new()
+        .proxy(addr) // Use `.embedded_tor()` instead to enable the embedded tor client (require `tor` feature)
+        .target(ConnectionTarget::Onion);
+    let opts = Options::new().connection(connection);
 
-    let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
+    // Create new client with custom options.
+    // Use `Client::new(signer)` to construct the client with a custom signer and default options
+    // or `Client::default()` to create one without signer and with default options.
+    let client = Client::with_opts(&my_keys, opts);
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
+    client.add_relay("ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion").await?;
+    
+    // Add relay with custom options
     client.add_relay_with_opts(
         "wss://relay.nostr.info", 
-        RelayOptions::new().proxy(proxy).write(false)
-    ).await?;
-    client.add_relay_with_opts(
-        "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
-        RelayOptions::new().proxy(proxy),
+        RelayOptions::new().write(false)
     ).await?;
 
     // Connect to relays
