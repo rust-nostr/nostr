@@ -748,10 +748,8 @@ impl Filter {
     #[inline]
     fn search_match(&self, event: &Event) -> bool {
         match &self.search {
-            Some(query) => event
-                .content
-                .split_whitespace()
-                .any(|word| word.eq_ignore_ascii_case(query)),
+            // TODO: best ways?
+            Some(query) => event.content.to_lowercase().contains(&query.to_lowercase()),
             None => true,
         }
     }
@@ -1122,6 +1120,34 @@ mod tests {
 
         // Test match search
         let filter: Filter = Filter::new().search("test").into();
+        assert!(filter.match_event(&event));
+    }
+
+    #[test]
+    fn test_filter_search_match_event() {
+        let json: &str = r#"{
+              "id": "3d1e30c357eba92568ba67138f9a508d29b306e5254952ee4d7c8039bd4a48fa",
+              "pubkey": "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
+              "created_at": 1711027680,
+              "kind": 0,
+              "tags": [
+                [
+                  "alt",
+                  "User profile for Yuki Kishimoto"
+                ],
+                [
+                  "i",
+                  "github:yukibtc",
+                  "69d9980b6e6b5d77a3e1e369ccaca9ba"
+                ]
+              ],
+              "content": "{\"banner\":\"https://i.imgur.com/f1h1GgJ.jpg\",\"website\":\"https://yukikishimoto.com\",\"nip05\":\"_@yukikishimoto.com\",\"picture\":\"https://yukikishimoto.com/images/avatar.jpg\",\"lud16\":\"yuki@getalby.com\",\"display_name\":\"Yuki Kishimoto\",\"about\":\"GitHub: https://github.com/yukibtc\\nPGP: 86F3 105A DFA8 AB58 7268  DCD7 8D3D CD04 2496 19D1\",\"name\":\"Yuki Kishimoto\",\"displayName\":\"Yuki Kishimoto\"}",
+              "sig": "27dddf90036cb7ea893eb13827342c49cbb72c442b3ac7b1f09081868b752d4c6e85882a881599e02a1374d4825e492e81703d44bce9728adccf66bb49f14220"
+            }
+        "#;
+        let event = Event::from_json(json).unwrap();
+
+        let filter = Filter::new().search("Yuki kishi");
         assert!(filter.match_event(&event));
     }
 }
