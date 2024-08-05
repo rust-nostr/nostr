@@ -5,7 +5,6 @@
 //! Tag
 
 use alloc::string::{String, ToString};
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
@@ -37,7 +36,7 @@ use crate::{ImageDimensions, PublicKey, SingleLetterTag, Timestamp, UncheckedUrl
 #[derive(Debug, Clone)]
 pub struct Tag {
     buf: Vec<String>,
-    standardized: Arc<OnceCell<Option<TagStandard>>>,
+    standardized: OnceCell<Option<TagStandard>>,
 }
 
 impl PartialEq for Tag {
@@ -71,7 +70,7 @@ impl Tag {
     fn new(buf: Vec<String>, standardized: Option<TagStandard>) -> Self {
         Self {
             buf,
-            standardized: Arc::new(OnceCell::from(standardized)),
+            standardized: OnceCell::from(standardized),
         }
     }
 
@@ -79,7 +78,7 @@ impl Tag {
     fn new_with_empty_cell(buf: Vec<String>) -> Self {
         Self {
             buf,
-            standardized: Arc::new(OnceCell::new()),
+            standardized: OnceCell::new(),
         }
     }
 
@@ -146,10 +145,7 @@ impl Tag {
 
     /// Consume tag and get standardized tag
     pub fn to_standardized(self) -> Option<TagStandard> {
-        // TODO: replace with `Arc::unwrap_or_clone(self.standardized)` when MSRV will be >= 1.76.0
-        let standardized: OnceCell<Option<TagStandard>> =
-            Arc::try_unwrap(self.standardized).unwrap_or_else(|arc| (*arc).clone());
-        match standardized.into_inner() {
+        match self.standardized.into_inner() {
             Some(inner) => inner,
             None => TagStandard::parse(&self.buf).ok(),
         }

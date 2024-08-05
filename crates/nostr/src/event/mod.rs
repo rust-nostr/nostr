@@ -7,8 +7,6 @@
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
-#[cfg(feature = "std")]
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
@@ -137,7 +135,7 @@ pub struct Event {
     deser_order: Vec<EventKey>,
     /// Tags indexes
     #[cfg(feature = "std")]
-    tags_indexes: Arc<OnceCell<TagsIndexes>>,
+    tags_indexes: OnceCell<TagsIndexes>,
 }
 
 impl fmt::Debug for Event {
@@ -215,7 +213,7 @@ impl Event {
             },
             deser_order: Vec::new(),
             #[cfg(feature = "std")]
-            tags_indexes: Arc::new(OnceCell::new()),
+            tags_indexes: OnceCell::new(),
         }
     }
 
@@ -653,7 +651,7 @@ impl<'de> Deserialize<'de> for Event {
             inner: serde_json::from_value(value).map_err(serde::de::Error::custom)?,
             deser_order,
             #[cfg(feature = "std")]
-            tags_indexes: Arc::new(OnceCell::new()),
+            tags_indexes: OnceCell::new(),
         })
     }
 }
