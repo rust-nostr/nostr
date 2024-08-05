@@ -33,6 +33,7 @@
 * nostr: ensure that NIP-59 rumor has `EventId` ([Yuki Kishimoto])
 * nostr: update `PartialEvent` methods ([Yuki Kishimoto])
 * nostr: change `EventBuilder::award_badge` fingerprint ([Yuki Kishimoto])
+* nostr: add NIP-50 support to `Filter::match_event` method ([Yuki Kishimoto])
 * pool: take mutex ownership instead of clone in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: remove IDs collection from `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: better checks before perform queries or send messages to relays ([Yuki Kishimoto])

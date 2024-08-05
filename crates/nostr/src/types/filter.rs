@@ -745,9 +745,18 @@ impl Filter {
         })
     }
 
+    #[inline]
+    fn search_match(&self, event: &Event) -> bool {
+        match &self.search {
+            Some(query) => event
+                .content
+                .split_whitespace()
+                .any(|word| word.eq_ignore_ascii_case(query)),
+            None => true,
+        }
+    }
+
     /// Determine if [Filter] match given [Event].
-    ///
-    /// The `search` field is not supported yet!
     #[inline]
     pub fn match_event(&self, event: &Event) -> bool {
         self.ids_match(event)
@@ -756,6 +765,7 @@ impl Filter {
             && self.since.map_or(true, |t| event.created_at >= t)
             && self.until.map_or(true, |t| event.created_at <= t)
             && self.tag_match(event)
+            && self.search_match(event)
     }
 }
 
@@ -1109,6 +1119,10 @@ mod tests {
         let filter: Filter = Filter::new().hashtag("this-should-not-match");
         assert!(!filter.match_event(&event));
         assert!(!filter.match_event(&event_with_empty_tags));
+
+        // Test match search
+        let filter: Filter = Filter::new().search("test").into();
+        assert!(filter.match_event(&event));
     }
 }
 

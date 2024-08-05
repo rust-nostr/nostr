@@ -449,8 +449,7 @@ impl JsFilter {
     }
 
     /// Determine if `Filter` match given `Event`.
-    ///
-    /// The `search` filed is not supported yet!
+    #[inline]
     #[wasm_bindgen(js_name = matchEvent)]
     pub fn match_event(&self, event: &JsEvent) -> bool {
         self.inner.match_event(event.deref())
