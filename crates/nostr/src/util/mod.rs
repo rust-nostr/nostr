@@ -60,7 +60,7 @@ where
         Ok(serde_json::from_slice(json.as_ref())?)
     }
 
-    /// Serialize to JSON string
+    /// Serialize as JSON string
     ///
     /// This method could panic! Use `try_as_json` for error propagation.
     #[inline]
@@ -68,9 +68,23 @@ where
         serde_json::to_string(self).unwrap()
     }
 
-    /// Serialize to JSON string
+    /// Serialize as JSON string
     #[inline]
     fn try_as_json(&self) -> Result<String, Self::Err> {
+        Ok(serde_json::to_string(self)?)
+    }
+
+    /// Serialize as pretty JSON string
+    ///
+    /// This method could panic! Use `try_as_pretty_json` for error propagation.
+    #[inline]
+    fn as_pretty_json(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap()
+    }
+
+    /// Serialize as pretty JSON string
+    #[inline]
+    fn try_as_pretty_json(&self) -> Result<String, Self::Err> {
         Ok(serde_json::to_string(self)?)
     }
 }

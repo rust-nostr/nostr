@@ -55,6 +55,7 @@
 * nostr: add missing `payload` arg to `EventBuilder::job_result` ([Yuki Kishimoto])
 * nostr: add `ConversationKey::new` ([Yuki Kishimoto])
 * nostr: add `Request::multi_pay_invoice` constructor ([Yuki Kishimoto])
+* nostr: add `Jsonutil::as_pretty_json` and `JsonUtil::try_as_pretty_json` methods ([Yuki Kishimoto])
 * pool: add `RelayPoolNotification::Authenticated` variant ([Yuki Kishimoto])
 * sdk: add `Client::gift_wrap_to` and `Client::send_private_msg_to` ([reyamir])
 * sdk: add option to autoconnect relay on `Client::add_relay` method call ([Yuki Kishimoto])
