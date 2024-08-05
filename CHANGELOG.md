@@ -62,6 +62,7 @@
 * sdk: add support to embedded tor client ([Yuki Kishimoto])
 * ffi(nostr): add `EventBuilder::seal` constructor ([Yuki Kishimoto])
 * cli: add `generate` command ([Yuki Kishimoto])
+* cli: add `json` flag to `query` command ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed

@@ -188,6 +188,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             reverse,
             database,
             print,
+            json,
         } => {
             let db = client.database();
 
@@ -246,7 +247,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
                 );
                 if print {
                     // Print events
-                    util::print_events(events);
+                    util::print_events(events, json);
                 }
             } else {
                 // Query relays

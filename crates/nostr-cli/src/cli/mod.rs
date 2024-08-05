@@ -85,6 +85,9 @@ pub enum Command {
         /// Print result
         #[clap(long)]
         print: bool,
+        /// Print result as JSON (require `print` flag!)
+        #[clap(long)]
+        json: bool,
     },
     /// Database
     #[command(arg_required_else_help = true)]
