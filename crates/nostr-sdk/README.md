@@ -3,7 +3,6 @@
 [![crates.io](https://img.shields.io/crates/v/nostr-sdk.svg)](https://crates.io/crates/nostr-sdk)
 [![crates.io - Downloads](https://img.shields.io/crates/d/nostr-sdk)](https://crates.io/crates/nostr-sdk)
 [![Documentation](https://docs.rs/nostr-sdk/badge.svg)](https://docs.rs/nostr-sdk)
-[![Rustc Version 1.64.0+](https://img.shields.io/badge/rustc-1.64.0%2B-lightgrey.svg)](https://blog.rust-lang.org/2022/09/22/Rust-1.64.0.html)
 [![CI](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/crates/l/nostr-sdk.svg)](../../LICENSE)
 
@@ -20,7 +19,7 @@ other lower-level crates. If you're attempting something more custom, you might 
 * [`nostr-database`](https://crates.io/crates/nostr-database): Database for Nostr apps
 * [`nostr-relay-pool`](https://crates.io/crates/nostr-relay-pool): Nostr Relay Pool
 * [`nostr-signer`](https://crates.io/crates/nostr-signer): Signer for Nostr apps
-* [`nostr-zapper`](https://crates.io/crates/nostr-zapper): Zapper abscraction for Nostr apps
+* [`nostr-zapper`](https://crates.io/crates/nostr-zapper): Zapper abstraction for Nostr apps
 * [`nwc`](https://crates.io/crates/nwc): `NWC` client and zapper backend for Nostr apps
 
 ## Getting started
@@ -139,10 +138,10 @@ The following crate feature flags are available:
 
 | Feature     | Default | Description                                                                                  |
 |-------------|:-------:|----------------------------------------------------------------------------------------------|
-| `tor`       |   No    | Enable support for embedded tor client (MSRV `1.70.0`)                                       |
-| `ndb`       |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend (MSRV `1.70.0`)        |
+| `tor`       |   No    | Enable support for embedded tor client                                                       |
+| `ndb`       |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend                        |
 | `sqlite`    |   No    | Enable SQLite storage backend                                                                |
-| `rocksdb`   |   No    | Enable RocksDB storage backend (MSRV `1.66.0`)                                               |
+| `rocksdb`   |   No    | Enable RocksDB storage backend                                                               |
 | `indexeddb` |   No    | Enable Web's IndexedDb storage backend                                                       |
 | `webln`     |   No    | Enable WebLN zapper                                                                          |
 | `all-nips`  |   Yes   | Enable all NIPs                                                                              |

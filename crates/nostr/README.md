@@ -3,7 +3,6 @@
 [![crates.io](https://img.shields.io/crates/v/nostr.svg)](https://crates.io/crates/nostr)
 [![crates.io - Downloads](https://img.shields.io/crates/d/nostr)](https://crates.io/crates/nostr)
 [![Documentation](https://docs.rs/nostr/badge.svg)](https://docs.rs/nostr)
-[![Rustc Version 1.64.0+](https://img.shields.io/badge/rustc-1.64.0%2B-lightgrey.svg)](https://blog.rust-lang.org/2022/09/22/Rust-1.64.0.html)
 [![CI](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/crates/l/nostr.svg)](../../LICENSE)
 

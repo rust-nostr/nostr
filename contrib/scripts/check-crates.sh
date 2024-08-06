@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # MSRV
-msrv="1.64.0"
+msrv="1.70.0"
 
 is_ci=false
 is_msrv=false
@@ -46,10 +46,7 @@ buildargs=(
     "-p nostr-sdk --features tor"
 )
 
-skip_msrv=(
-  "-p nostr-sdk --features ndb"     # MSRV: 1.70.0
-  "-p nostr-sdk --features tor"     # MSRV: 1.70.0
-)
+skip_msrv=()
 
 for arg in "${buildargs[@]}";
 do

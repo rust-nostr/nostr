@@ -27,6 +27,7 @@
 
 ### Changed
 
+* Bump MSRV to v1.70.0 ([Yuki Kishimoto])
 * Bump toolchain channel to `1.80.1` ([Yuki Kishimoto])
 * nostr: deprecate `Event::author_ref` and `Event::iter_tags` ([Yuki Kishimoto])
 * nostr: calculate `EventId` in `EventBuilder::to_unsigned_event_with_supplier` ([Yuki Kishimoto])
