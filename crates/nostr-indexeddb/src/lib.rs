@@ -81,7 +81,7 @@ impl WebDatabase {
     {
         let mut this = Self {
             db: Arc::new(IdbDatabase::open(name.as_ref())?.into_future().await?),
-            helper: DatabaseHelper::new(),
+            helper: DatabaseHelper::unbounded(),
             fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
@@ -90,6 +90,8 @@ impl WebDatabase {
 
         Ok(this)
     }
+
+    // TODO: add open_with_opts
 
     async fn migration(&mut self) -> Result<(), IndexedDBError> {
         let name: String = self.db.name();

@@ -57,7 +57,7 @@ impl SQLiteDatabase {
 
         let this = Self {
             pool,
-            helper: DatabaseHelper::new(),
+            helper: DatabaseHelper::unbounded(),
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
@@ -66,6 +66,8 @@ impl SQLiteDatabase {
 
         Ok(this)
     }
+
+    // TODO: add open_with_opts
 
     #[tracing::instrument(skip_all)]
     async fn build_indexes(&self) -> Result<(), Error> {

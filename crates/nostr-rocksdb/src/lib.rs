@@ -100,7 +100,7 @@ impl RocksDatabase {
 
         let this = Self {
             db: Arc::new(db),
-            helper: DatabaseHelper::new(),
+            helper: DatabaseHelper::unbounded(),
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
@@ -108,6 +108,8 @@ impl RocksDatabase {
 
         Ok(this)
     }
+
+    // TODO: add open_with_opts
 
     fn cf_handle(&self, name: &str) -> Result<Arc<BoundColumnFamily>, DatabaseError> {
         self.db.cf_handle(name).ok_or(DatabaseError::NotFound)

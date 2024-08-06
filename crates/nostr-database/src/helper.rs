@@ -14,6 +14,7 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 use tokio::sync::RwLock;
 
+use crate::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
 use crate::Order;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -171,7 +172,7 @@ enum InternalQueryResult<'a> {
 #[derive(Debug, Clone, Default)]
 struct InternalDatabaseHelper {
     /// Sorted events
-    events: BTreeSet<DatabaseEvent>,
+    events: BTreeCappedSet<DatabaseEvent>,
     /// Events by ID
     ids: HashMap<EventId, DatabaseEvent>,
     author_index: HashMap<PublicKey, BTreeSet<DatabaseEvent>>,
@@ -179,10 +180,18 @@ struct InternalDatabaseHelper {
     param_replaceable_index: HashMap<(Kind, PublicKey, String), DatabaseEvent>,
     deleted_ids: HashSet<EventId>,
     deleted_coordinates: HashMap<Coordinate, Timestamp>,
-    // TODO: add capacity
 }
 
 impl InternalDatabaseHelper {
+    pub fn bounded(size: usize) -> Self {
+        let mut helper: InternalDatabaseHelper = InternalDatabaseHelper::default();
+        helper.events.change_capacity(Capacity::Bounded {
+            max: size,
+            policy: OverCapacityPolicy::Last,
+        });
+        helper
+    }
+
     /// Bulk index
     #[tracing::instrument(skip_all)]
     pub fn bulk_index(&mut self, events: BTreeSet<Event>) -> HashSet<EventId> {
@@ -294,29 +303,39 @@ impl InternalDatabaseHelper {
                 event: Arc::new(event.clone()),
             }; // TODO: avoid clone?
 
-            self.events.insert(e.clone());
-            self.ids.insert(e.id, e.clone());
-            self.author_index
-                .entry(pubkey_prefix)
-                .or_default()
-                .insert(e.clone());
+            let InsertResult { inserted, pop } = self.events.insert(e.clone());
 
-            if kind.is_parameterized_replaceable() {
-                if let Some(identifier) = e.identifier() {
-                    self.param_replaceable_index
-                        .insert((kind, pubkey_prefix, identifier.to_string()), e.clone());
+            if inserted {
+                self.ids.insert(e.id, e.clone());
+                self.author_index
+                    .entry(pubkey_prefix)
+                    .or_default()
+                    .insert(e.clone());
+
+                if kind.is_parameterized_replaceable() {
+                    if let Some(identifier) = e.identifier() {
+                        self.param_replaceable_index
+                            .insert((kind, pubkey_prefix, identifier.to_string()), e.clone());
+                    }
                 }
+
+                if kind.is_replaceable() {
+                    let mut set = BTreeSet::new();
+                    set.insert(e);
+                    self.kind_author_index.insert((kind, pubkey_prefix), set);
+                } else {
+                    self.kind_author_index
+                        .entry((kind, pubkey_prefix))
+                        .or_default()
+                        .insert(e);
+                }
+            } else {
+                to_discard.insert(e.id);
             }
 
-            if kind.is_replaceable() {
-                let mut set = BTreeSet::new();
-                set.insert(e);
-                self.kind_author_index.insert((kind, pubkey_prefix), set);
-            } else {
-                self.kind_author_index
-                    .entry((kind, pubkey_prefix))
-                    .or_default()
-                    .insert(e);
+            if let Some(event) = pop {
+                to_discard.insert(event.id);
+                self.discard_event(event);
             }
         }
 
@@ -352,6 +371,25 @@ impl InternalDatabaseHelper {
                 }
                 self.deleted_ids.insert(*id);
             }
+        }
+    }
+
+    fn discard_event(&mut self, ev: DatabaseEvent) {
+        self.ids.remove(&ev.id);
+
+        if let Some(set) = self.author_index.get_mut(&ev.pubkey) {
+            set.remove(&ev);
+        }
+
+        if ev.kind.is_parameterized_replaceable() {
+            if let Some(identifier) = ev.identifier() {
+                self.param_replaceable_index
+                    .remove(&(ev.kind, ev.pubkey, identifier.to_string()));
+            }
+        }
+
+        if let Some(set) = self.kind_author_index.get_mut(&(ev.kind, ev.pubkey)) {
+            set.remove(&ev);
         }
     }
 
@@ -619,6 +657,7 @@ impl InternalDatabaseHelper {
 
     /// Clear indexes
     pub fn clear(&mut self) {
+        // TODO: clear but preserve capacity
         *self = Self::default();
     }
 }
@@ -630,9 +669,18 @@ pub struct DatabaseHelper {
 }
 
 impl DatabaseHelper {
-    /// New empty database indexes
-    pub fn new() -> Self {
+    /// Unbounded database helper
+    #[inline]
+    pub fn unbounded() -> Self {
         Self::default()
+    }
+
+    /// Bounded database helper
+    #[inline]
+    pub fn bounded(max: usize) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(InternalDatabaseHelper::bounded(max))),
+        }
     }
 
     /// Bulk index
@@ -773,7 +821,7 @@ mod tests {
         let keys_a = Keys::new(SecretKey::from_bech32(SECRET_KEY_A).unwrap());
         let keys_b = Keys::new(SecretKey::from_bech32(SECRET_KEY_B).unwrap());
 
-        let indexes = DatabaseHelper::new();
+        let indexes = DatabaseHelper::unbounded();
 
         // Build indexes
         let mut events: BTreeSet<Event> = BTreeSet::new();

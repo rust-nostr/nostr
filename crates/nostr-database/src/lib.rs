@@ -23,6 +23,7 @@ pub mod flatbuffers;
 pub mod helper;
 pub mod memory;
 pub mod profile;
+mod tree;
 mod util;
 
 pub use self::error::DatabaseError;

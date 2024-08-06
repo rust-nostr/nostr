@@ -70,7 +70,10 @@ impl MemoryDatabase {
         Self {
             opts,
             seen_event_ids: Arc::new(Mutex::new(util::new_lru_cache(opts.max_events))),
-            helper: DatabaseHelper::new(),
+            helper: match opts.max_events {
+                Some(max) => DatabaseHelper::bounded(max),
+                None => DatabaseHelper::unbounded(),
+            },
         }
     }
 

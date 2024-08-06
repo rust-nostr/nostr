@@ -24,7 +24,7 @@ async fn main() {
             .unwrap();
     let keys_b = Keys::new(secret_key);
 
-    let index = DatabaseHelper::new();
+    let index = DatabaseHelper::unbounded();
 
     for i in 0..100_000 {
         let event = EventBuilder::text_note(format!("Event #{i}"), [])
