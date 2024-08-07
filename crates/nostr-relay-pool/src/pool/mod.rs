@@ -217,6 +217,14 @@ impl RelayPool {
         self.inner.subscription(id).await
     }
 
+    /// Register subscription in the [RelayPool]
+    ///
+    /// When a new relay will be added, saved subscriptions will be automatically used for it.
+    #[inline]
+    pub async fn save_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
+        self.inner.save_subscription(id, filters).await
+    }
+
     /// Send client message to all connected relays
     #[inline]
     pub async fn send_msg(

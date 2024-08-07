@@ -122,7 +122,7 @@ impl InternalRelayPool {
         subscriptions.get(id).cloned()
     }
 
-    async fn update_pool_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
+    pub async fn save_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
         let mut subscriptions = self.subscriptions.write().await;
         let current: &mut Vec<Filter> = subscriptions.entry(id).or_default();
         *current = filters;
@@ -459,9 +459,8 @@ impl InternalRelayPool {
     ) -> Result<Output<()>, Error> {
         // Check if isn't auto-closing subscription
         if !opts.is_auto_closing() {
-            // Update pool subscriptions
-            self.update_pool_subscription(id.clone(), filters.clone())
-                .await;
+            // Save subscription
+            self.save_subscription(id.clone(), filters.clone()).await;
         }
 
         // Get relays
