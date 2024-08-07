@@ -159,9 +159,8 @@ where
             // Unbounded capacity or bounded capacity not reached
             _ => {
                 // Insert value
-                let inserted: bool = self.set.insert(value);
                 InsertResult {
-                    inserted,
+                    inserted: self.set.insert(value),
                     pop: None,
                 }
             }

@@ -61,8 +61,7 @@ impl SQLiteDatabase {
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
-        // Build indexes
-        this.build_indexes().await?;
+        this.bulk_load().await?;
 
         Ok(this)
     }
@@ -70,24 +69,27 @@ impl SQLiteDatabase {
     // TODO: add open_with_opts
 
     #[tracing::instrument(skip_all)]
-    async fn build_indexes(&self) -> Result<(), Error> {
+    async fn bulk_load(&self) -> Result<(), Error> {
         let events = self
             .pool
             .interact(move |conn| {
-                let mut stmt = conn.prepare_cached("SELECT event FROM events;")?;
+                // Query
+                let mut stmt = conn.prepare("SELECT event FROM events;")?;
                 let mut rows = stmt.query([])?;
+
+                // Decode
                 let mut events = BTreeSet::new();
                 while let Ok(Some(row)) = rows.next() {
                     let buf: &[u8] = row.get_ref(0)?.as_bytes()?;
-                    let raw = Event::decode(buf)?;
-                    events.insert(raw);
+                    let event = Event::decode(buf)?;
+                    events.insert(event);
                 }
                 Ok::<BTreeSet<Event>, Error>(events)
             })
             .await??;
 
         // Build indexes
-        let to_discard: HashSet<EventId> = self.helper.bulk_index(events).await;
+        let to_discard: HashSet<EventId> = self.helper.bulk_load(events).await;
 
         // Discard events
         if !to_discard.is_empty() {

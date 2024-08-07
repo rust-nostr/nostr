@@ -86,7 +86,7 @@ impl WebDatabase {
         };
 
         this.migration().await?;
-        this.build_indexes().await?;
+        this.bulk_load().await?;
 
         Ok(this)
     }
@@ -189,7 +189,7 @@ impl WebDatabase {
         Ok(())
     }
 
-    async fn build_indexes(&self) -> Result<(), IndexedDBError> {
+    async fn bulk_load(&self) -> Result<(), IndexedDBError> {
         tracing::debug!("Building database indexes...");
         let tx = self
             .db
@@ -203,10 +203,11 @@ impl WebDatabase {
             .filter_map(|v| {
                 let bytes = hex::decode(v).ok()?;
                 Event::decode(&bytes).ok()
-            });
+            })
+            .collect();
 
         // Build indexes
-        let to_discard: HashSet<EventId> = self.helper.bulk_index(events.collect()).await;
+        let to_discard: HashSet<EventId> = self.helper.bulk_load(events).await;
 
         // Discard events
         for event_id in to_discard.into_iter() {

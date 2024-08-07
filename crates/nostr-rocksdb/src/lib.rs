@@ -104,7 +104,7 @@ impl RocksDatabase {
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
-        this.build_indexes().await?;
+        this.bulk_load().await?;
 
         Ok(this)
     }
@@ -116,7 +116,7 @@ impl RocksDatabase {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn build_indexes(&self) -> Result<(), DatabaseError> {
+    async fn bulk_load(&self) -> Result<(), DatabaseError> {
         let cf = self.cf_handle(EVENTS_CF)?;
         let events = self
             .db
@@ -126,7 +126,7 @@ impl RocksDatabase {
             .collect();
 
         // Build indexes
-        let to_discard: HashSet<EventId> = self.helper.bulk_index(events).await;
+        let to_discard: HashSet<EventId> = self.helper.bulk_load(events).await;
 
         // Discard events
         if !to_discard.is_empty() {

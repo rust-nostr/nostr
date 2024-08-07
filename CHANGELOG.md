@@ -47,6 +47,7 @@
 * database: use `Vec` instead of `BTreeSet` as inner value for `TagIndexValues` ([Yuki Kishimoto])
 * database: rework `DatabaseIndexes` and rename to `DatabaseHelper` ([Yuki Kishimoto])
 * database: allow to set max capacity to `DatabaseHelper` ([Yuki Kishimoto])
+* database: speedup helper bulk load ([Yuki Kishimoto])
 * sdk: rename `Proxy` and `ProxyTarget` to `Connection` and `ConnectionTarget` ([Yuki Kishimoto])
 * sqlite: use `ValueRef` instead of owned one ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])

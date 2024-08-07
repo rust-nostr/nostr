@@ -59,6 +59,7 @@ struct QueryByKindAndAuthorParams {
 }
 
 impl QueryByKindAndAuthorParams {
+    #[inline]
     pub fn new(kind: Kind, author: PublicKey) -> Self {
         Self {
             kind,
@@ -78,6 +79,7 @@ struct QueryByParamReplaceable {
 }
 
 impl QueryByParamReplaceable {
+    #[inline]
     pub fn new(kind: Kind, author: PublicKey, identifier: String) -> Self {
         Self {
             kind,
@@ -192,9 +194,11 @@ impl InternalDatabaseHelper {
         helper
     }
 
-    /// Bulk index
+    // Bulk load
+    //
+    // NOT CHANGE `events` ARG! Processing events in ASC it's much more performant
     #[tracing::instrument(skip_all)]
-    pub fn bulk_index(&mut self, events: BTreeSet<Event>) -> HashSet<EventId> {
+    pub fn bulk_load(&mut self, events: BTreeSet<Event>) -> HashSet<EventId> {
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
@@ -236,15 +240,14 @@ impl InternalDatabaseHelper {
         let mut to_discard: HashSet<EventId> = HashSet::new();
 
         // Compose others fields
-        let pubkey_prefix: PublicKey = event.author();
+        let author: PublicKey = event.author();
         let created_at: Timestamp = event.created_at();
         let kind: Kind = event.kind();
 
         let mut should_insert: bool = true;
 
         if kind.is_replaceable() {
-            let params: QueryByKindAndAuthorParams =
-                QueryByKindAndAuthorParams::new(kind, pubkey_prefix);
+            let params: QueryByKindAndAuthorParams = QueryByKindAndAuthorParams::new(kind, author);
             for ev in self.internal_query_by_kind_and_author(params) {
                 if ev.created_at > created_at || ev.id == event.id {
                     should_insert = false;
@@ -255,14 +258,21 @@ impl InternalDatabaseHelper {
         } else if kind.is_parameterized_replaceable() {
             match event.identifier() {
                 Some(identifier) => {
-                    // TODO: check if coordinate was deleted
-                    let params: QueryByParamReplaceable =
-                        QueryByParamReplaceable::new(kind, pubkey_prefix, identifier.to_string());
-                    if let Some(ev) = self.internal_query_param_replaceable(params) {
-                        if ev.created_at > created_at || ev.id == event.id {
-                            should_insert = false;
-                        } else {
-                            to_discard.insert(ev.id);
+                    let coordinate: Coordinate =
+                        Coordinate::new(kind, author).identifier(identifier);
+
+                    // Check if coordinate was deleted
+                    if self.has_coordinate_been_deleted(&coordinate, now) {
+                        should_insert = false;
+                    } else {
+                        let params: QueryByParamReplaceable =
+                            QueryByParamReplaceable::new(kind, author, identifier.to_string());
+                        if let Some(ev) = self.internal_query_param_replaceable(params) {
+                            if ev.created_at > created_at || ev.id == event.id {
+                                should_insert = false;
+                            } else {
+                                to_discard.insert(ev.id);
+                            }
                         }
                     }
                 }
@@ -272,7 +282,7 @@ impl InternalDatabaseHelper {
             // Check `e` tags
             for id in event.event_ids() {
                 if let Some(ev) = self.ids.get(id) {
-                    if ev.pubkey == pubkey_prefix && ev.created_at <= created_at {
+                    if ev.pubkey == author && ev.created_at <= created_at {
                         to_discard.insert(ev.id);
                     }
                 }
@@ -280,16 +290,37 @@ impl InternalDatabaseHelper {
 
             // Check `a` tags
             for coordinate in event.coordinates() {
-                if coordinate.public_key == pubkey_prefix {
+                if coordinate.public_key == author {
                     // Save deleted coordinate at certain timestamp
                     self.deleted_coordinates
-                        .insert(coordinate.clone(), created_at);
+                        .entry(coordinate.clone())
+                        .and_modify(|t| {
+                            // Update only if newer
+                            if created_at > *t {
+                                *t = created_at
+                            }
+                        })
+                        .or_insert(created_at);
 
-                    let filter: Filter = coordinate.into();
-                    let filter: Filter = filter.until(created_at);
-                    // Not check if ev.pubkey match the pubkey_prefix because assume that query
-                    // returned only the events owned by pubkey_prefix
-                    to_discard.extend(self.internal_generic_query(filter).map(|e| e.id));
+                    // Not check if ev.pubkey match the author because assume that query
+                    // returned only the events owned by author
+                    if !coordinate.identifier.is_empty() {
+                        let mut params: QueryByParamReplaceable = QueryByParamReplaceable::new(
+                            coordinate.kind,
+                            coordinate.public_key,
+                            coordinate.identifier.clone(),
+                        );
+                        params.until = Some(created_at);
+                        if let Some(ev) = self.internal_query_param_replaceable(params) {
+                            to_discard.insert(ev.id);
+                        }
+                    } else {
+                        let mut params: QueryByKindAndAuthorParams =
+                            QueryByKindAndAuthorParams::new(coordinate.kind, coordinate.public_key);
+                        params.until = Some(created_at);
+                        to_discard
+                            .extend(self.internal_query_by_kind_and_author(params).map(|e| e.id));
+                    }
                 }
             }
         }
@@ -308,24 +339,24 @@ impl InternalDatabaseHelper {
             if inserted {
                 self.ids.insert(e.id, e.clone());
                 self.author_index
-                    .entry(pubkey_prefix)
+                    .entry(author)
                     .or_default()
                     .insert(e.clone());
 
                 if kind.is_parameterized_replaceable() {
                     if let Some(identifier) = e.identifier() {
                         self.param_replaceable_index
-                            .insert((kind, pubkey_prefix, identifier.to_string()), e.clone());
+                            .insert((kind, author, identifier.to_string()), e.clone());
                     }
                 }
 
                 if kind.is_replaceable() {
                     let mut set = BTreeSet::new();
                     set.insert(e);
-                    self.kind_author_index.insert((kind, pubkey_prefix), set);
+                    self.kind_author_index.insert((kind, author), set);
                 } else {
                     self.kind_author_index
-                        .entry((kind, pubkey_prefix))
+                        .entry((kind, author))
                         .or_default()
                         .insert(e);
                 }
@@ -632,9 +663,9 @@ impl InternalDatabaseHelper {
     pub fn has_coordinate_been_deleted(
         &self,
         coordinate: &Coordinate,
-        timestamp: Timestamp,
+        timestamp: &Timestamp,
     ) -> bool {
-        if let Some(t) = self.deleted_coordinates.get(coordinate).copied() {
+        if let Some(t) = self.deleted_coordinates.get(coordinate) {
             t >= timestamp
         } else {
             false
@@ -685,9 +716,9 @@ impl DatabaseHelper {
 
     /// Bulk index
     #[tracing::instrument(skip_all)]
-    pub async fn bulk_index(&self, events: BTreeSet<Event>) -> HashSet<EventId> {
+    pub async fn bulk_load(&self, events: BTreeSet<Event>) -> HashSet<EventId> {
         let mut inner = self.inner.write().await;
-        inner.bulk_index(events)
+        inner.bulk_load(events)
     }
 
     /// Bulk import
@@ -768,7 +799,7 @@ impl DatabaseHelper {
         timestamp: Timestamp,
     ) -> bool {
         let inner = self.inner.read().await;
-        inner.has_coordinate_been_deleted(coordinate, timestamp)
+        inner.has_coordinate_been_deleted(coordinate, &timestamp)
     }
 
     /// Delete all events that match [Filter]
@@ -829,7 +860,7 @@ mod tests {
             let event = Event::from_json(event).unwrap();
             events.insert(event);
         }
-        indexes.bulk_index(events).await;
+        indexes.bulk_load(events).await;
 
         // Test expected output
         let expected_output = vec![
