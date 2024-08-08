@@ -968,7 +968,7 @@ impl InternalRelay {
                 }
 
                 // Deserialize missing event fields
-                let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event);
+                let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event)?;
 
                 // TODO: check if word/hashtag is blacklisted
 

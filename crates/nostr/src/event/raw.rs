@@ -10,8 +10,8 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
+use bitcoin::secp256k1;
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self};
 
 use super::{id, tag};
 use crate::{key, Event, EventId, JsonUtil, Kind, PartialEvent, PublicKey, Tag, Timestamp};
@@ -122,11 +122,9 @@ impl TryFrom<&RawEvent> for PartialEvent {
     fn try_from(raw: &RawEvent) -> Result<Self, Self::Error> {
         let id: EventId = EventId::from_hex(&raw.id)?;
         let public_key: PublicKey = PublicKey::from_hex(&raw.pubkey)?;
-        let sig: Signature = Signature::from_str(&raw.sig)?;
         Ok(Self {
             id,
             pubkey: public_key,
-            sig,
         })
     }
 }

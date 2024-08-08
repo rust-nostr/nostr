@@ -7,7 +7,9 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
+use core::str::FromStr;
 
+use bitcoin::secp256k1;
 use bitcoin::secp256k1::schnorr::Signature;
 
 use super::raw::{self, RawEvent};
@@ -23,6 +25,8 @@ pub enum Error {
     RawEvent(raw::Error),
     /// Tag parse
     Tag(tag::Error),
+    /// Secp256k1 error
+    Secp256k1(secp256k1::Error),
     /// Invalid signature
     InvalidSignature,
 }
@@ -36,6 +40,7 @@ impl fmt::Display for Error {
             Self::Json(e) => write!(f, "Json: {e}"),
             Self::RawEvent(e) => write!(f, "Raw event: {e}"),
             Self::Tag(e) => write!(f, "Tag: {e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
             Self::InvalidSignature => write!(f, "Invalid signature"),
         }
     }
@@ -59,6 +64,12 @@ impl From<tag::Error> for Error {
     }
 }
 
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
+}
+
 /// Partial event
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PartialEvent {
@@ -66,8 +77,6 @@ pub struct PartialEvent {
     pub id: EventId,
     /// Author
     pub pubkey: PublicKey,
-    /// Signature
-    pub sig: Signature,
 }
 
 impl PartialEvent {
@@ -91,7 +100,7 @@ impl PartialEvent {
             missing.kind,
             tags,
             missing.content,
-            self.sig,
+            missing.sig,
         ))
     }
 }
@@ -111,18 +120,21 @@ pub struct MissingPartialEvent {
     pub tags: Vec<Vec<String>>,
     /// Content
     pub content: String,
+    /// Signature
+    pub sig: Signature,
 }
 
 impl MissingPartialEvent {
     /// Compose from [RawEvent]
     #[inline]
-    pub fn from_raw(raw: RawEvent) -> Self {
-        Self {
+    pub fn from_raw(raw: RawEvent) -> Result<Self, Error> {
+        Ok(Self {
             created_at: Timestamp::from(raw.created_at),
             kind: Kind::from(raw.kind),
             tags: raw.tags,
             content: raw.content,
-        }
+            sig: Signature::from_str(&raw.sig)?,
+        })
     }
 
     /// Extract identifier (`d` tag), if exists.
