@@ -74,14 +74,13 @@ impl fmt::Debug for WebDatabase {
 }
 
 impl WebDatabase {
-    /// Open IndexedDB store
-    pub async fn open<S>(name: S) -> Result<Self, IndexedDBError>
+    async fn new<S>(name: S, helper: DatabaseHelper) -> Result<Self, IndexedDBError>
     where
         S: AsRef<str>,
     {
         let mut this = Self {
             db: Arc::new(IdbDatabase::open(name.as_ref())?.into_future().await?),
-            helper: DatabaseHelper::unbounded(),
+            helper,
             fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
@@ -91,7 +90,23 @@ impl WebDatabase {
         Ok(this)
     }
 
-    // TODO: add open_with_opts
+    /// Open database with **unlimited** capacity
+    #[inline]
+    pub async fn open<S>(name: S) -> Result<Self, IndexedDBError>
+    where
+        S: AsRef<str>,
+    {
+        Self::new(name, DatabaseHelper::unbounded()).await
+    }
+
+    /// Open database with **limited** capacity
+    #[inline]
+    pub async fn open_bounded<S>(name: S, max_capacity: usize) -> Result<Self, IndexedDBError>
+    where
+        S: AsRef<str>,
+    {
+        Self::new(name, DatabaseHelper::bounded(max_capacity)).await
+    }
 
     async fn migration(&mut self) -> Result<(), IndexedDBError> {
         let name: String = self.db.name();

@@ -43,7 +43,7 @@ pub struct RocksDatabase {
     fbb: Arc<RwLock<FlatBufferBuilder<'static>>>,
 }
 
-fn default_opts() -> rocksdb::Options {
+fn default_opts() -> Options {
     let mut opts = Options::default();
     opts.set_keep_log_file_num(10);
     opts.set_max_open_files(16);
@@ -71,8 +71,7 @@ fn column_families() -> Vec<ColumnFamilyDescriptor> {
 }
 
 impl RocksDatabase {
-    /// Open RocksDB store
-    pub async fn open<P>(path: P) -> Result<Self, DatabaseError>
+    async fn new<P>(path: P, helper: DatabaseHelper) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,
     {
@@ -100,7 +99,7 @@ impl RocksDatabase {
 
         let this = Self {
             db: Arc::new(db),
-            helper: DatabaseHelper::unbounded(),
+            helper,
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
@@ -109,7 +108,23 @@ impl RocksDatabase {
         Ok(this)
     }
 
-    // TODO: add open_with_opts
+    /// Open database with **unlimited** capacity
+    #[inline]
+    pub async fn open<P>(path: P) -> Result<Self, DatabaseError>
+    where
+        P: AsRef<Path>,
+    {
+        Self::new(path, DatabaseHelper::unbounded()).await
+    }
+
+    /// Open database with **limited** capacity
+    #[inline]
+    pub async fn open_bounded<P>(path: P, max_capacity: usize) -> Result<Self, DatabaseError>
+    where
+        P: AsRef<Path>,
+    {
+        Self::new(path, DatabaseHelper::bounded(max_capacity)).await
+    }
 
     fn cf_handle(&self, name: &str) -> Result<Arc<BoundColumnFamily>, DatabaseError> {
         self.db.cf_handle(name).ok_or(DatabaseError::NotFound)

@@ -44,8 +44,7 @@ pub struct SQLiteDatabase {
 }
 
 impl SQLiteDatabase {
-    /// Open SQLite store
-    pub async fn open<P>(path: P) -> Result<Self, Error>
+    async fn new<P>(path: P, helper: DatabaseHelper) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
@@ -57,7 +56,7 @@ impl SQLiteDatabase {
 
         let this = Self {
             pool,
-            helper: DatabaseHelper::unbounded(),
+            helper,
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
@@ -66,7 +65,23 @@ impl SQLiteDatabase {
         Ok(this)
     }
 
-    // TODO: add open_with_opts
+    /// Open database with **unlimited** capacity
+    #[inline]
+    pub async fn open<P>(path: P) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Self::new(path, DatabaseHelper::unbounded()).await
+    }
+
+    /// Open database with **limited** capacity
+    #[inline]
+    pub async fn open_bounded<P>(path: P, max_capacity: usize) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        Self::new(path, DatabaseHelper::bounded(max_capacity)).await
+    }
 
     #[tracing::instrument(skip_all)]
     async fn bulk_load(&self) -> Result<(), Error> {
